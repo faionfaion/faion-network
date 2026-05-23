@@ -2,87 +2,93 @@
 slug: indie-postmortem-template
 tier: solo
 group: product
-domain: pm
+domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Structured postmortem template for indie hackers and small-team founders to turn failed launches into public consumption — narrative arc, learning extraction, metrics, opt-in privacy.
-content_id: "45ebbb7305e91a53"
-tags: [product, indie-hacker, postmortem, failed-launch, public-narrative, content-marketing]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Run a blameless solo-founder postmortem after a launch / outage / project-end: timeline, contributing factors, blast radius, lessons, and ≤3 follow-up actions — capped at 30 min.
+content_id: "d7bb14d28609c137"
+complexity: light
+produces: report
+est_tokens: 3500
+tags: ["postmortem", "blameless", "incident", "solo-founder", "learning"]
 ---
-
 # Indie Postmortem Template
 
 ## Summary
 
-**One-sentence:** A 7-section postmortem template (narrative / what we tried / metrics / what we learned / what we'd do differently / what comes next / opt-in privacy) for indie hackers turning failed launches into shareable content.
+**One-sentence:** Run a blameless solo-founder postmortem after a launch / outage / project-end: timeline, contributing factors, blast radius, lessons, and ≤3 follow-up actions — capped at 30 min.
 
-**One-paragraph:** SRE-style internal incident postmortems exist in faion (`inc-postmortem-auto-draft-no-publish`); they target ops audiences and stay private. Indie hackers face a different need: turning a failed product / failed launch into PUBLIC content that drives community trust, audience growth, and learning capture. Mechanism: narrative-arc structure (setup → attempt → outcome → reflection), explicit metrics (visitors, signups, churn, MRR trajectory, time-spent, cost), separation of "what we learned" from "what we'd do differently" (different lessons), opt-in privacy section (what about customers / co-founders / financials gets shared), and a "what comes next" section that closes the loop. Primary output: a publishable postmortem post + a private debrief log paired with it.
+**One-paragraph:** Adapts the SRE-style postmortem for a one-person team: blameless framing is automatic but rigor is not. The template forces a timeline reconstruction, factor classification, and ≤3 actionable follow-ups rather than a generic 'do better next time'. The 30-min cap keeps it sustainable so it actually happens.
+
+**Ефективно для:**
+
+- Solo founder after a failed launch / outage / abandoned project — wants the lesson without spending half a day or sinking into self-blame.
 
 ## Applies If (ALL must hold)
 
-- product / launch / experiment has been shut down OR has been declared "failed" (not "we'll come back to it someday")
-- founder is willing to publish AT LEAST the public-safe version of the postmortem
-- some metrics are available (even if "0 paying customers" — that's a number)
-- failure is recent enough (&lt; 12 months) that lessons are still actionable
+- Incident, failed launch, or abandoned project just ended.
+- Founder has ≥30 min to spend on the postmortem.
+- Follow-up actions can actually be picked up within 2 weeks.
 
 ## Skip If (ANY kills it)
 
-- product is still alive and pivoting — write a pivot retrospective, not a postmortem
-- founder is in active emotional processing of the failure (write the private debrief first, public post later)
-- legal / NDA constraints prevent meaningful disclosure (write private only)
-- audience is enterprise B2B with public-postmortem risk (write differently-framed "lessons" content instead)
+- Trivial bug fix — no postmortem needed.
+- Founder in active firefight — postmortem only after stabilisation.
+- Repeating the same postmortem template that produced no change — try a different format.
 
 ## Prerequisites
 
-- raw timeline of the launch / product life (dates, decisions, releases)
-- metrics dump (analytics, billing, support volume, time-spent)
-- a list of "what surprised us" — the highest-value section content
-- review by a trusted second reader before publishing (catches blame, ambiguity, emotional leak)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Event under review (link) | url | Incident log / launch doc |
+| Timeline raw notes | markdown | Logs / chat |
+| Calendar slot (30 min) | calendar event | Calendar |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `geek/sdlc-ai/inc-postmortem-auto-draft-no-publish` | SRE postmortem methodology; this methodology is its public-narrative counterpart |
-| `pro/marketing/growth-marketer/launch-week-orchestration` | If the failure is launch-week-shaped, consume the orchestration's "what was attempted" |
-| `solo/marketing/content-marketer/personal-narrative-content` | Public postmortems are a content artifact; consume the narrative-content rules |
+| `solo/product/product-manager/product-launch` | Launch context that may have triggered the postmortem. |
+| `solo/product/product-operations/feedback-management` | Inputs that may surface during reconstruction. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: narrative arc, metrics with numbers (not feelings), what-we-learned vs what-we'd-do-differently split, opt-in privacy, no-blame-framing | ~1000 |
-| `content/02-output-contract.xml` | essential | Public-post structure + private-debrief structure + forbidden patterns | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (vague metrics, victim narrative, lesson-as-platitude, etc.) with detector + repair | ~1000 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `timeline_assembly` | sonnet | From raw events, build the chronological narrative arc |
-| `metrics_table_population` | haiku | Mechanical: extract numbers from analytics / billing exports |
-| `lesson_extraction` | opus | Cross-event synthesis — what is the actual learning vs the surface explanation |
-| `privacy_filter_pass` | sonnet | Strip PII / NDA-sensitive content from the public version |
+| `draft-indie-postmortem-template` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-indie-postmortem-template` | haiku | Schema check + threshold checks; deterministic. |
+| `review-indie-postmortem-template` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/public-postmortem.md` | 7-section public-facing post template |
-| `templates/private-debrief.md` | Internal debrief paired with public post |
-| `templates/metrics-table.md` | Standard numbers table (visitors, signups, MRR, churn, costs) |
+| `templates/indie-postmortem-template.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/indie-postmortem-template.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/privacy-scan.py` | Scans public draft for PII / NDA flags (named co-founders, customer names, raw financial figures) | Before publishing |
-| `scripts/blame-scan.py` | Scans for blame-language patterns and victim framing | Before publishing |
+| `scripts/validate-indie-postmortem-template.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-operations/`
-- peer methodologies: `failed-experiment-debrief`, `personal-narrative-content`, `pivot-retrospective`
-- external: [Indie Hackers shutdown posts (corpus)](https://www.indiehackers.com/) · [Y Combinator startup-failure essays](https://www.ycombinator.com/) · [Patrick McKenzie — Reflective Writing on Failure](https://www.kalzumeus.com/)
+- [[product-launch]]
+- [[feedback-management]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

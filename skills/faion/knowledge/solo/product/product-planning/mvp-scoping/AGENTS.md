@@ -2,73 +2,94 @@
 slug: mvp-scoping
 tier: solo
 group: product
-domain: pm
+domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Define the smallest product version that validates a hypothesis: one core problem, one user, one measurable learning goal, a kill criterion, and Must-Have features capped at 60% of build capacity.
-content_id: "19efc1dc27973cd8"
-tags: [mvp, scoping, hypothesis, moscow, validation]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Scope an MVP that tests one riskiest assumption with ≤2 weeks build, ≥10 segment users, and explicit kill / success thresholds — defends scope against feature creep.
+content_id: "214b6666cd8308ef"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["mvp", "scope", "riskiest-assumption", "cut", "ship"]
 ---
 # MVP Scoping
 
 ## Summary
 
-**One-sentence:** Define the smallest product version that validates a hypothesis: one core problem, one user, one measurable learning goal, a kill criterion, and Must-Have features capped at 60% of build capacity.
+**One-sentence:** Scope an MVP that tests one riskiest assumption with ≤2 weeks build, ≥10 segment users, and explicit kill / success thresholds — defends scope against feature creep.
 
-**One-paragraph:** Define the smallest product version that validates a hypothesis: one core problem, one user, one measurable learning goal, a kill criterion, and Must-Have features capped at 60% of build capacity. If you cannot state what you will learn and when you will stop, it is not an MVP.
+**One-paragraph:** Scopes an MVP from the bottom up: name riskiest assumption → minimum journey that tests it → cut everything else. Defends scope against creep with an explicit Now/Not-Now policy. Ship date is a function of scope, not a wish.
+
+**Ефективно для:**
+
+- Solo founder whose MVPs keep landing as full products — needs a scoping discipline that holds scope under stakeholder pressure.
 
 ## Applies If (ALL must hold)
 
-- Starting a new product or major feature where the goal is hypothesis validation, not final UX.
-- Founder has 30+ "obvious" features and needs to cut to 3–5 buildable in one timebox without losing focus.
-- An agent is converting an idea description into an implementation plan and needs explicit scope before SDD/spec writing.
-- Following up with mlp-planning, micro-mvps, or product-discovery — MVP scoping is the entry gate.
+- Riskiest assumption is named.
+- ≥10 segment users reachable.
+- ≤2 weeks build capacity available.
 
 ## Skip If (ANY kills it)
 
-- Post-PMF feature work — use roadmap-design + RICE instead.
-- Compliance-driven products where "minimum" is dictated by regulation (the floor is fixed).
-- B2B enterprise sales where the "MVP" must include integrations and SLAs — that is an MMP, not an MVP.
-- When you already know the answer and need to ship — skip ceremony, write the spec directly.
+- Compliance / contractual scope blocks bottom-up cuts.
+- Risk requires multi-week build (use Micro-MVP series instead).
+- Pre-discovery — no riskiest assumption yet.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Riskiest assumption | string | Discovery |
+| Reachable segment | csv | CRM |
+| Build capacity estimate | estimate | Plan |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/product/product-planning/minimum-product-frameworks` | Frame selection routing to MVP. |
+| `solo/product/product-planning/micro-mvp-cut-rubric` | Sub-tool for scope-cutting. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-mvp-scoping` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-mvp-scoping` | haiku | Schema check + threshold checks; deterministic. |
+| `review-mvp-scoping` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/mvp-scoping.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/mvp-scoping.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-mvp-scoping.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-planning/`
+- [[minimum-product-frameworks]]
+- [[micro-mvp-cut-rubric]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

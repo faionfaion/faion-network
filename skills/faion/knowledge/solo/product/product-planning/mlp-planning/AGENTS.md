@@ -2,76 +2,94 @@
 slug: mlp-planning
 tier: solo
 group: product
-domain: pm
+domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Plan the upgrade from a validated MVP to a Minimum Lovable Product: a four-layer audit (Functional → Reliable → Usable → Delightful) that identifies the specific gap between "it works" and "I love it".
-content_id: "b81d679984db170e"
-tags: [mlp, retention, product-polish, ux, user-delight]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Plan a Minimum Lovable Product: one 'wow' moment, ≥1 thoughtful UX detail, real polish on the critical path, but everything else stays MVP-level.
+content_id: "518c14b23f0c1b62"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["mlp", "delight", "polish", "wow-moment", "critical-path"]
 ---
 # MLP Planning
 
 ## Summary
 
-**One-sentence:** Plan the upgrade from a validated MVP to a Minimum Lovable Product: a four-layer audit (Functional → Reliable → Usable → Delightful) that identifies the specific gap between "it works" and "I love it".
+**One-sentence:** Plan a Minimum Lovable Product: one 'wow' moment, ≥1 thoughtful UX detail, real polish on the critical path, but everything else stays MVP-level.
 
-**One-paragraph:** Plan the upgrade from a validated MVP to a Minimum Lovable Product: a four-layer audit (Functional → Reliable → Usable → Delightful) that identifies the specific gap between "it works" and "I love it". MLP = MVP + targeted delight in high-frequency, high-visibility interactions. The process ends with explicit completion criteria tied to retention and NPS targets, not feature counts.
+**One-paragraph:** An MLP layers one designed-for-delight moment on top of an MVP. The methodology forces choice — exactly one wow moment, not three — and gates polish to the critical path so the rest of the product still ships in MVP shape. The goal is love, not feature-completeness.
+
+**Ефективно для:**
+
+- Solo founder whose MVP-shaped product gets 'meh' reactions; ready to invest a delight sprint on one polished moment without rebuilding everything.
 
 ## Applies If (ALL must hold)
 
-- MVP is live, core hypothesis validated, but Day-7/30 retention is weak.
-- Users complete the core flow but don't return or recommend.
-- You're preparing a second-wave release specifically targeting retention.
-- NPS is below 30 and you need a structured diagnosis.
-- Activation rate is acceptable but week-over-week churn is rising.
-- App store / review reception is "useful but not loved" — 3-4 stars with comments about polish, not function.
+- Have an MVP that ships and works.
+- Goal is love / word-of-mouth, not just learning.
+- ≤5 dev-days available for delight investment.
 
 ## Skip If (ANY kills it)
 
-- Problem hypothesis is still unvalidated — validate with MVP first.
-- No usage data yet; MLP audit requires actual interaction patterns to rate layers.
-- B2B/enterprise deal where retention is driven by contract, not experience.
-- Prioritising more features over polishing existing ones is a strategic choice — revisit after feature bets resolve.
-- Core funnel is broken (activation under 20%) — fix Layer 1 functionally before rating Layers 2–4.
+- MVP still failing core utility test — fix that first.
+- Goal is learning, not love — use MVP frame.
+- Audience tolerates rough edges (e.g. internal tooling).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Working MVP | url | Product |
+| User feedback on MVP | log | Feedback funnel |
+| Critical-path map | diagram | UX doc |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/product/product-planning/minimum-product-frameworks` | Frame selection that points to MLP. |
+| `solo/ux/ui-designer` | Design layer for the wow moment. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-mlp-planning` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-mlp-planning` | haiku | Schema check + threshold checks; deterministic. |
+| `review-mlp-planning` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/mlp-planning.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/mlp-planning.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-mlp-planning.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-planning/`
+- [[minimum-product-frameworks]]
+- [[ui-designer]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

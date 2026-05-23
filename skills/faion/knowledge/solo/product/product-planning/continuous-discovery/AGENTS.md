@@ -2,72 +2,94 @@
 slug: continuous-discovery
 tier: solo
 group: product
-domain: pm
+domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Continuous discovery is a weekly cadence of user interviews, feedback synthesis, and opportunity-to-roadmap diffing that keeps product decisions connected to fresh user evidence.
-content_id: "09d2bd7b60d51b4e"
-tags: [discovery, continuous, user-research, cadence, roadmap]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Maintain a weekly customer-touch habit (interview / survey / observation) feeding a continuously updated assumption tree so discovery is a rhythm, not a project.
+content_id: "b6100af8f5379cc9"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["continuous-discovery", "habit", "interviews", "assumption-tree", "weekly"]
 ---
 # Continuous Discovery
 
 ## Summary
 
-**One-sentence:** Continuous discovery is a weekly cadence of user interviews, feedback synthesis, and opportunity-to-roadmap diffing that keeps product decisions connected to fresh user evidence.
+**One-sentence:** Maintain a weekly customer-touch habit (interview / survey / observation) feeding a continuously updated assumption tree so discovery is a rhythm, not a project.
 
-**One-paragraph:** Continuous discovery is a weekly cadence of user interviews, feedback synthesis, and opportunity-to-roadmap diffing that keeps product decisions connected to fresh user evidence. Allocate 15–20% of capacity to it, maintain a controlled vocabulary of themes (new themes need approval), and tie every roadmap change to at least one cited opportunity from the discovery repository.
+**One-paragraph:** Discovery is treated as a habit, not a quarterly project. The weekly touch keeps a rolling assumption tree fresh; the tree drives experiment design without restart cost. Solo founders skip discovery between launches and pay later — the habit prevents that.
+
+**Ефективно для:**
+
+- Solo founder shipping every 2 weeks but talking to no users between launches; needs a 1-hour weekly habit that keeps the assumption tree fresh.
 
 ## Applies If (ALL must hold)
 
-- Post-MVP product where weekly insight is needed to keep the roadmap honest and grounded in evidence.
-- Team has at least one customer-touching channel (interviews, support, in-app, analytics) feeding raw signal into the discovery process.
-- Pairing with roadmap-design so Now/Next/Later buckets keep evolving in response to emerging user evidence.
-- Solo PM or founder who needs an automated cadence to replace a research team and synthesize signals into themes.
+- Product has ≥10 reachable users.
+- Founder commits ≥1 hr/week to user touch.
+- Assumption tree (or equivalent) exists or can be started.
 
 ## Skip If (ANY kills it)
 
-- Pre-PMF / 0-to-1 products — use product-discovery (deep-dive phase) until you have customers and a steady signal source.
-- Products with fewer than 50 active users — discovery becomes anecdote-driven and too noisy to inform strategic roadmap decisions.
-- Heavily regulated environments where every customer touch needs legal review (loop is too slow to be useful).
+- Pre-product phase — use directed discovery instead.
+- Mass-market product with no reachable cohort.
+- Founder cannot commit any weekly time — burn risk too high.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Reachable user list | csv | CRM / community |
+| Assumption tree (seed) | markdown | Discovery output |
+| Weekly slot in calendar | calendar event | Calendar |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/product/product-manager/product-discovery` | Cycle-shaped discovery that draws from the rolling tree. |
+| `solo/product/product-operations/feedback-management` | Feedback funnel feeding qualitative signal. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-continuous-discovery` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-continuous-discovery` | haiku | Schema check + threshold checks; deterministic. |
+| `review-continuous-discovery` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/continuous-discovery.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/continuous-discovery.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-continuous-discovery.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-planning/`
+- [[product-discovery]]
+- [[feedback-management]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

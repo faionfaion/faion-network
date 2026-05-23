@@ -1,89 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="AC Quality Rubric — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>Five testable rules for scoring and approving acceptance criteria. Weak ACs cost more than slow rewrites; the rubric forces the cheap rewrite up front.</summary>
+<text id="01-core-rules" title="Acceptance Criteria Quality Rubric Core Rules" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Testable rules grounding Acceptance Criteria Quality Rubric. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
 
   <section title="Rule set">
 
-    <rule id="r1-seven-dimensions" testable="true" depth="essential">
-      <statement>Every AC is scored on 7 dimensions, each 0/1/2: (1) Testability (can a test be written from this text alone?), (2) Observability (is the success signal in user behavior or system state observable?), (3) Scope (does it cover one outcome, not several?), (4) Precondition (is the starting state explicit?), (5) Postcondition (is the end state explicit?), (6) Edge-case coverage (are at least the obvious failure / empty / overflow states addressed in the story's AC set?), (7) BDD form (Given-When-Then or equivalent, not free prose).</statement>
-      <rationale source="ISO 29148 requirements quality, BDD literature (North, North, Adzic)">Multi-dimension scoring catches ACs that are "kind of OK" overall but fail on a specific axis. Each axis has a known repair pattern, so scoring becomes diagnostic, not just judgmental.</rationale>
+    <rule id="r1-testable" testable="true" depth="essential">
+      <statement>AC is testable — there is a binary check that proves it true/false.</statement>
+      <rationale source="BDD literature">AC is testable — there is a binary check that proves it true/false.</rationale>
     </rule>
-
-    <rule id="r2-10-of-14-threshold" testable="true" depth="essential">
-      <statement>An AC scoring 10/14 or higher passes. An AC scoring below 10 is REJECTED — sent back for rewrite. An AC scoring 0 on any single dimension is rejected regardless of total (you cannot trade a missing postcondition for an excellent BDD form).</statement>
-      <rationale source="Empirical AC-quality studies, weakest-link reasoning">The "no-zero" rule prevents specific catastrophic gaps (e.g., perfect BDD form but unobservable success) from sneaking through with high other-axis scores. Empirically, ACs that score 10+ correlate with &lt;15% mid-sprint clarifications; ACs below 10 correlate with &gt;40%.</rationale>
+    <rule id="r2-atomic" testable="true" depth="essential">
+      <statement>AC is atomic — one assertion per criterion; &apos;and&apos; splits the AC.</statement>
+      <rationale source="BDD literature">AC is atomic — one assertion per criterion; &apos;and&apos; splits the AC.</rationale>
     </rule>
-
-    <rule id="r3-no-sprint-without-rewrite" testable="true" depth="essential">
-      <statement>A story does NOT enter the sprint until every one of its ACs scores ≥ 10. The PM cannot promise "we'll clarify it during the sprint" — empirical data shows that path produces 30-50% rework. Sprint commit is the rewrite gate.</statement>
-      <rationale source="Sprint-data analysis (Standish, Scrum Alliance), DoR ratification literature">"We'll figure it out" is the #1 driver of sprint failure. The cost of rewriting before sprint commit is 5-15 minutes per AC; the cost of mid-sprint rework is hours to days. Forcing the gate at commit is the cheapest place to catch defects.</rationale>
+    <rule id="r3-observable" testable="true" depth="essential">
+      <statement>AC describes observable behaviour, not internal implementation.</statement>
+      <rationale source="BDD literature">AC describes observable behaviour, not internal implementation.</rationale>
     </rule>
-
-    <rule id="r4-fix-pattern-required" testable="true" depth="essential">
-      <statement>A rejected AC MUST come with: the dimension that failed (lowest-scoring), the fix pattern from the lookup table (e.g., "missing-postcondition -&gt; add 'Then the system displays...'"), and a proposed rewrite. Reject-with-vibe ("this needs work") is forbidden — it loops the AC without learning.</statement>
-      <rationale source="Code-review research (Bacchelli, Microsoft empirical studies), feedback literature">Vague reject creates ping-pong. Concrete reject with rewrite shape teaches the author the pattern, so the next AC of the same shape lands on first attempt. Within 4-6 sprints, team AC quality rises measurably.</rationale>
+    <rule id="r4-unambiguous" testable="true" depth="essential">
+      <statement>AC has no weasel words (&apos;works&apos;, &apos;reasonable&apos;, &apos;fast&apos;).</statement>
+      <rationale source="Practitioner experience">AC has no weasel words (&apos;works&apos;, &apos;reasonable&apos;, &apos;fast&apos;).</rationale>
     </rule>
-
-    <rule id="r5-ac-not-implementation" testable="true" depth="essential">
-      <statement>ACs describe OBSERVABLE OUTCOMES, never implementation. Forbidden in AC text: framework names, library names, file paths, database column names, function names, UI component names beyond user-visible labels. Allowed: user actions, system responses, data validation states, error messages as the user sees them.</statement>
-      <rationale source="Outside-in TDD (Freeman / Pryce), Spec-by-Example (Adzic)">Implementation-coupled ACs prevent dev from picking the best implementation. They also become wrong as soon as refactor happens. Outcome-focused ACs let dev refactor freely while preserving the contract.</rationale>
+    <rule id="r5-negative-cases" testable="true" depth="essential">
+      <statement>Negative / error cases included alongside happy path.</statement>
+      <rationale source="Practitioner experience">Negative / error cases included alongside happy path.</rationale>
     </rule>
-
-  </section>
-
-  <section title="Canonical example">
-
-    <example type="good" title="AC that scores 13/14">
-      <code lang="text"><![CDATA[
-Story: User can request password reset
-
-AC-1:
-  Given a registered user with verified email,
-  When the user submits the password-reset form with their email,
-  Then the system sends a reset email within 60 seconds,
-  AND the email contains a link valid for 24 hours,
-  AND the user sees a confirmation message "If that email is registered,
-      you'll receive a reset link" (regardless of whether email exists,
-      to avoid account enumeration).
-
-Score:
-  Testability:        2 (each clause is checkable)
-  Observability:      2 (email-receipt + UI message + DB token timestamp)
-  Scope:              2 (one outcome: reset request)
-  Precondition:       2 (registered user with verified email)
-  Postcondition:      2 (email sent + UI shown + token valid 24h)
-  Edge-case coverage: 1 (enumeration handled; expiry implied; missing: rate-limit)
-  BDD form:           2 (full Given-When-Then-And)
-  Total: 13/14  PASS
-      ]]></code>
-      <note>Illustrates r1, r5: multi-dimensional pass with one specific gap noted for next AC.</note>
-    </example>
-
-    <example type="bad" title="AC that scores 4/14">
-      <code lang="text"><![CDATA[
-AC-1: "Password reset should work."
-
-Score:
-  Testability:        0 (what does 'work' mean?)
-  Observability:      0 (no observable signal)
-  Scope:              1 (vaguely about reset, but no boundary)
-  Precondition:       0 (no starting state)
-  Postcondition:      0 (no end state)
-  Edge-case coverage: 0 (none)
-  BDD form:           0 (free prose)
-  Total: 1/14  REJECT (also has zero-axis fail)
-
-Fix pattern: "missing-everything -&gt; full Given-When-Then rewrite,
-include precondition, observable postcondition, at least 1 edge case".
-Proposed rewrite: see AC-1 in the GOOD example above.
-      ]]></code>
-      <note>Illustrates r2, r4: zero-axis kill rule + concrete fix pattern instead of vibe reject.</note>
-    </example>
+    <rule id="r6-threshold" testable="true" depth="essential">
+      <statement>AC scoring &lt;4/5 is rejected and rewritten.</statement>
+      <rationale source="Practitioner experience">AC scoring &lt;4/5 is rejected and rewritten.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in AGENTS.md &quot;Applies If&quot; do not all hold, OR any &quot;Skip If&quot; disqualifier is true, do not run this methodology — route to the named alternative.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Methodologies are pre-condition gated; running them out-of-scope produces noise and burns the agent context budget.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold, execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-ac-quality-rubric.py` before returning.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Tying the entry rule to the validator script closes the loop between policy and machine check.</rationale>
+    </rule>
 
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

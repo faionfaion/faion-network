@@ -2,74 +2,94 @@
 slug: technical-debt-management
 tier: solo
 group: product
-domain: pm
+domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Systematic process for making technical debt visible, quantifying its interest cost, prioritizing paydown against the roadmap, and allocating 15-20% of sprint capacity continuously.
-content_id: "b187463217f158b6"
-tags: [technical-debt, refactoring, code-quality, sprint-planning, engineering-velocity]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Maintain a debt register, budget 10-20% of capacity for debt work per sprint, prioritise by interest rate (cost-of-living-with × likelihood-of-incident), and refuse zero-debt sprints.
+content_id: "6cccaf4e1d6cc6b5"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["tech-debt", "register", "interest-rate", "capacity-budget", "ops"]
 ---
 # Technical Debt Management
 
 ## Summary
 
-**One-sentence:** Systematic process for making technical debt visible, quantifying its interest cost, prioritizing paydown against the roadmap, and allocating 15-20% of sprint capacity continuously.
+**One-sentence:** Maintain a debt register, budget 10-20% of capacity for debt work per sprint, prioritise by interest rate (cost-of-living-with × likelihood-of-incident), and refuse zero-debt sprints.
 
-**One-paragraph:** Systematic process for making technical debt visible, quantifying its interest cost, prioritizing paydown against the roadmap, and allocating 15-20% of sprint capacity continuously. Classifies debt into 6 types (deliberate, accidental, bit-rot, design, documentation, test), scores each on Interest/Contagion/Effort/Alignment, and sequences paydown aligned with planned feature work to minimize marginal cost.
+**One-paragraph:** Tech debt is treated as a managed liability, not a moral failing. Each item carries an interest rate (cost of carrying × likelihood of incident); each sprint pays a 10-20% budget; the register prevents debt from being invisible. Zero-debt sprints are forbidden because they always reappear as crisis sprints.
+
+**Ефективно для:**
+
+- Solo dev with a 14-month codebase already groaning under inherited choices; needs a forcing function to keep paying down debt without sacrificing every feature.
 
 ## Applies If (ALL must hold)
 
-- Codebase has aging dependencies, fragmented patterns, and "fear zones" engineers avoid.
-- Onboarding: agent surveys repo for hot-spots and surfaces undocumented assumptions.
-- Quarterly debt-paydown planning: scoring and sequencing the register against upcoming roadmap.
-- Pre-acquisition or pre-investment due diligence: producing defensible debt inventory.
-- Migration planning (lib upgrade, framework jump, monolith decomposition).
+- Codebase ≥3 months old.
+- Team capacity is measurable per sprint / cycle.
+- Stakeholder pressure to ship features risks crowding out debt work.
 
 ## Skip If (ANY kills it)
 
-- One-person codebase under 6 months old — debt is rounding error, ship features.
-- Debt that is actually a missing feature — do not classify "we never built X" as "we built X badly".
-- Production incident response — debt management is a planning activity, not firefighting.
-- Code-quality theater — do not run an agent to generate a debt list nobody will fund.
+- Greenfield <1 month old — no debt accumulated.
+- Pure throwaway prototype — never going to maintain.
+- Crisis sprint stabilising production — debt work pauses.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Codebase access | credential | Repo |
+| Sprint capacity (person-days) | integer | Team plan |
+| Interest-rate rubric | table | Team doc |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/product/product-operations/backlog-management` | Debt register is a state in the backlog. |
+| `solo/dev/code-quality (free tier)` | Practices that reduce new debt creation. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-technical-debt-management` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-technical-debt-management` | haiku | Schema check + threshold checks; deterministic. |
+| `review-technical-debt-management` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/technical-debt-management.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/technical-debt-management.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-technical-debt-management.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-operations/`
+- [[backlog-management]]
+- [[code-quality (free tier)]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

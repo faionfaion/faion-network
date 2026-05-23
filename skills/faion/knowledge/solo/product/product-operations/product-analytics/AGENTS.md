@@ -2,74 +2,94 @@
 slug: product-analytics
 tier: solo
 group: product
-domain: pm
+domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Framework for measuring user behavior to drive product decisions.
-content_id: "9f27252d25e50bd4"
-tags: [product-analytics, metrics, tracking-plan, dashboards, instrumentation]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Stand up a minimum-viable analytics setup: NSM + 3-5 leading + 1 health metric, tracking plan, dashboard, and a weekly review tying numbers to product decisions.
+content_id: "68ab7c8c488aac93"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["analytics", "metrics", "nsm", "dashboard", "tracking-plan"]
 ---
 # Product Analytics
 
 ## Summary
 
-**One-sentence:** Framework for measuring user behavior to drive product decisions.
+**One-sentence:** Stand up a minimum-viable analytics setup: NSM + 3-5 leading + 1 health metric, tracking plan, dashboard, and a weekly review tying numbers to product decisions.
 
-**One-paragraph:** Framework for measuring user behavior to drive product decisions. Defines the questions analytics must answer before any tracking call, designs minimal tracking plans with max 12 events per feature using Object-Action naming, implements dashboards per audience, and establishes review rituals. Connects raw event data to actionable insights without tracking everything.
+**One-paragraph:** Analytics for a solo founder is not 'instrument everything'; it's 'instrument the metric that would change a decision'. The template forces a tracking plan written before instrumentation, a dashboard before queries, and a weekly review before redesign so the number serves the decision rather than the dashboard.
+
+**Ефективно для:**
+
+- Solo founder with traffic but no idea what to track; needs a 5-metric setup that feeds decisions, not vanity charts.
 
 ## Applies If (ALL must hold)
 
-- Designing tracking plan for a new product or feature pre-launch.
-- Auditing existing event taxonomy: detect duplicates, naming inconsistencies, undocumented properties.
-- Generating SQL/cohort queries from natural-language questions.
-- Weekly anomaly summaries from PostHog/Amplitude/Mixpanel exports.
-- Stitching multiple analytics sources into one cohort view.
+- Product has ≥1 user touchpoint generating events.
+- Founder commits ≥1 hour/week to review the dashboard.
+- Decisions can plausibly hinge on the metric movement.
 
 ## Skip If (ANY kills it)
 
-- Real-time alerting/SLO monitoring — use Prometheus/Grafana, not LLMs.
-- Compliance-bound metrics (HIPAA, GDPR-deletion, SOX revenue) — agent-generated SQL needs lawyer-grade audit trail.
-- High-volume operational dashboards — LLM-in-loop adds latency, breaks "glance" rituals.
-- No user analytics instrumented yet — install before agentizing.
+- Pre-traffic phase (no events to track).
+- Compliance restriction blocks event collection.
+- Existing analytics already healthy — skip; tune instead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Product surfaces inventory | list | Ops doc |
+| NSM candidate list | list | Strategy doc |
+| Analytics tool access | credential | Tool |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/marketing/weekly-growth-review-rhythm` | Cadence in which these metrics get reviewed. |
+| `solo/product/product-manager/product-discovery` | Decisions fed by the metrics. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-product-analytics` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-product-analytics` | haiku | Schema check + threshold checks; deterministic. |
+| `review-product-analytics` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/product-analytics.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/product-analytics.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-product-analytics.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-operations/`
+- [[weekly-growth-review-rhythm]]
+- [[product-discovery]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

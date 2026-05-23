@@ -2,73 +2,94 @@
 slug: okr-setting
 tier: solo
 group: product
-domain: pm
+domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: OKRs (Objectives and Key Results) connect inspiring qualitative goals to quantitative progress measures within a fixed period.
-content_id: "c7ad9015fc8f0277"
-tags: [okr, goal-setting, quarterly-planning, key-results, outcomes]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Set quarterly OKRs: 1-3 objectives, 3 key results each, leading not lagging where possible, with a confidence band and weekly check-in cadence.
+content_id: "8f10305fbb41ca55"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["okr", "objectives", "key-results", "quarterly", "leading-indicators"]
 ---
 # OKR Setting
 
 ## Summary
 
-**One-sentence:** OKRs (Objectives and Key Results) connect inspiring qualitative goals to quantitative progress measures within a fixed period.
+**One-sentence:** Set quarterly OKRs: 1-3 objectives, 3 key results each, leading not lagging where possible, with a confidence band and weekly check-in cadence.
 
-**One-paragraph:** OKRs (Objectives and Key Results) connect inspiring qualitative goals to quantitative progress measures within a fixed period. The hard constraints: 3-5 Objectives per period, each with 3-5 Key Results; KRs must be measurable outcomes (not tasks or outputs); target confidence is 70%, not 100%. A six-step process covers drafting, validation, communication, and weekly tracking.
+**One-paragraph:** OKRs work when they're few, leading, and reviewed. The methodology forces choice — at most 3 objectives — and pairs each with leading-indicator KRs so the team can act on signals mid-quarter rather than reading a post-mortem.
+
+**Ефективно для:**
+
+- Solo founder running with vague 'goals for the quarter' — needs a 3-objective frame that survives 13 weeks without rewrite, plus a weekly check-in that doesn't take 2 hours.
 
 ## Applies If (ALL must hold)
 
-- Starting a new quarter or planning period.
-- Team or product lacks shared measurable goals and every priority feels equal.
-- Key Results exist but they're shipping tasks, not outcomes—need a rewrite.
-- Post-retrospective realignment when previous goals missed.
+- Quarterly planning cadence exists or is being established.
+- Founder commits ≥30 min/week to OKR check-in.
+- Outcomes can plausibly be measured within a quarter.
 
 ## Skip If (ANY kills it)
 
-- Fewer than 4 weeks of work horizon—overhead exceeds signal, use a sprint goal.
-- Goals are externally mandated contractual deliverables—OKRs add no value over a contract.
-- No baseline metrics available; KRs without baselines are fiction.
-- Pre-PMF stage with zero users—measuring retention or NPS is premature.
+- Crisis / firefight mode — fix that first.
+- Pre-product phase — use discovery cadence instead.
+- Team prefers a different system (e.g. NSM-only) and is happy with it.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Strategic outcomes | markdown | Strategy doc |
+| Metric history (3+ months) | csv | Analytics |
+| Calendar slot for check-ins | calendar event | Calendar |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/product/product-manager/roadmap-design` | OKRs anchor roadmap horizons. |
+| `solo/product/product-operations/product-analytics` | KR data source. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-okr-setting` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-okr-setting` | haiku | Schema check + threshold checks; deterministic. |
+| `review-okr-setting` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/okr-setting.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/okr-setting.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-okr-setting.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-planning/`
+- [[roadmap-design]]
+- [[product-analytics]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

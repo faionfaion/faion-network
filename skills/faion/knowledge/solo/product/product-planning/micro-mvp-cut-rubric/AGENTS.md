@@ -2,90 +2,92 @@
 slug: micro-mvp-cut-rubric
 tier: solo
 group: product
-domain: pm
+domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: A mechanical rubric for cutting any product feature to a day-sized (≤ 8 hours) slice without losing the user value.
-content_id: "9402b6df39373eb9"
-tags: [mvp,scoping,solo,day-sized,slice,cut-rubric]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Run a 5-question cut rubric to slice an MVP scope down to ≤5 dev-days while preserving the riskiest assumption test.
+content_id: "5c9ef063ff9a26e1"
+complexity: light
+produces: rubric
+est_tokens: 2900
+tags: ["mvp", "scope-cut", "rubric", "solo", "minimum"]
 ---
 # Micro-MVP Cut Rubric
 
 ## Summary
 
-**One-sentence:** A mechanical rubric for cutting any product feature to a day-sized (≤ 8 hours) slice without losing the user value.
+**One-sentence:** Run a 5-question cut rubric to slice an MVP scope down to ≤5 dev-days while preserving the riskiest assumption test.
 
-**One-paragraph:** Solo SaaS builders know "ship small" but mid-feature lose the discipline and start "while I'm here, I'll also..." This methodology gives a 6-axis cut rubric that mechanically reduces a feature to a day-sized slice: data model (one entity not two), surface (one page not three), permissions (owner-only not team), persistence (in-memory ok, defer DB), tests (smoke not exhaustive), UI polish (zero, ship raw). Mechanism: each axis has a "ship now" cut + a "defer to next slice" annotation. Primary output: a 1-page spec listing the cut decisions and the deferred items, with the day-sized slice ready to claim in the SDD task queue.
+**One-paragraph:** Solo MVPs bloat. The 5-question rubric is run on every proposed scope item: would-cut-on-deadline / falsifies-the-risk / 3-dev-days-or-less / no-payment-flow-needed / no-user-management-needed. Items failing any question are deferred to v2. Output is a defensible ≤5-day scope.
+
+**Ефективно для:**
+
+- Solo founder whose 'MVP' has crept to 6 weeks of dev work — needs a forcing function to recover the 'minimum' part without losing the risk test.
 
 ## Applies If (ALL must hold)
 
-- operator is solo or 2-person team shipping daily SDD cycles
-- new feature is on the roadmap with stated user outcome
-- feature has been scoped past hypothesis (validation done) but pre-build
-- operator has access to SDD task queue OR backlog
-- daily ship cadence is a goal (not weekly / sprint)
+- Current MVP scope >5 dev-days.
+- Riskiest assumption can be named.
+- Founder ships solo or with ≤1 collaborator.
 
 ## Skip If (ANY kills it)
 
-- enterprise feature requiring SOC2 / regulatory traceability — can't cut to one day
-- feature blocked on third-party SDK / integration with no sandbox
-- feature requires data migration that itself exceeds 8 hours
-- team of ≥ 3 working on the same feature — coordination overhead exceeds value
-- operator is exploring, not shipping (use research-spike, not micro-MVP)
+- Compliance / contractual scope cannot be cut.
+- MVP already <5 dev-days.
+- Pre-discovery — no riskiest assumption yet identified.
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- one-line user outcome ("user can do X")
-- known target user (1 person or 1 segment)
-- access to existing codebase / scaffold
-- one consecutive 8-hour block available (not fragmented)
-- decision authority to defer the rest
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Current MVP scope list | list | Spec / backlog |
+| Riskiest assumption | string | Discovery |
+| Dev-day estimates per item | table | Engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/sdd/sdd/sdd-task-decomposition` | Receives the day-sized slice as input |
-| `solo/product/product-planning/micro-mvps` | Conceptual companion methodology |
-| `solo/sdd/sdd/spec-writing` | Spec format for the cut slice |
+| `solo/product/product-planning/mvp-scoping` | Source MVP scope candidate. |
+| `solo/product/product-manager/product-discovery` | Riskiest assumption source. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: 6-axis cut, day-sized ceiling, deferral discipline, smoke-only tests, raw UI ship | ~1000 |
-| `content/02-output-contract.xml` | essential | Cut-decision schema, deferred-list schema, slice spec format | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (scope creep mid-day, gold-plating, defer-everything, etc.) | ~1100 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `feature_axis_assessor` | sonnet | Assess each axis: minimum slice + deferred items |
-| `time_estimator` | haiku | Estimate the proposed slice against 8h ceiling |
-| `slice_spec_draft` | sonnet | Produce 1-page spec with cuts + deferrals |
-| `deferral_list_writer` | haiku | Format deferred items into next-slice candidates |
+| `draft-micro-mvp-cut-rubric` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-micro-mvp-cut-rubric` | haiku | Schema check + threshold checks; deterministic. |
+| `review-micro-mvp-cut-rubric` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/cut-rubric.md` | 6-axis cut worksheet |
-| `templates/slice-spec.md` | 1-page slice spec template |
-| `templates/deferral-list.md` | Next-slice candidate list |
-| `templates/post-slice-retro.md` | 15-min retro after slice ships |
+| `templates/micro-mvp-cut-rubric.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/micro-mvp-cut-rubric.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/slice-time-budget.py` | Estimate effort per axis | Pre-cut |
-| `scripts/cut-validator.py` | Validate cut output against 8h ceiling | Post-cut |
+| `scripts/validate-micro-mvp-cut-rubric.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-planning/`
-- peer methodology: `micro-mvps`, `solo/sdd/sdd/sdd-task-decomposition`
-- external: [Basecamp Shape Up](https://basecamp.com/shapeup) · [Marty Cagan, Inspired](https://svpg.com/inspired-how-to-create-products-customers-love/)
+- [[mvp-scoping]]
+- [[product-discovery]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

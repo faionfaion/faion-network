@@ -2,75 +2,91 @@
 slug: minimum-product-frameworks
 tier: solo
 group: product
-domain: pm
+domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A decision matrix for choosing the right "minimum X product" framework for a given market context.
-content_id: "dc964a3963bcc535"
-tags: [mvp, frameworks, product-scoping, market-fit, release-strategy]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pick one of four minimum-product frames (MVP / MLP / MMP / MMR) for the current goal, document the trade-off, and run the matching planning methodology.
+content_id: "3a5bcf1a08312fd2"
+complexity: light
+produces: decision-record
+est_tokens: 2900
+tags: ["mvp", "mlp", "mmp", "mmr", "decision-matrix", "frame"]
 ---
 # Minimum Product Frameworks
 
 ## Summary
 
-**One-sentence:** A decision matrix for choosing the right "minimum X product" framework for a given market context.
+**One-sentence:** Pick one of four minimum-product frames (MVP / MLP / MMP / MMR) for the current goal, document the trade-off, and run the matching planning methodology.
 
-**One-paragraph:** A decision matrix for choosing the right "minimum X product" framework for a given market context. Nine frameworks — MVP, MLP, MMP, MAC, RAT, MDP, MVA, MFP, SLC — each suited to a different combination of market uncertainty, competitive density, and buyer type. The core rule: picking the wrong framework wastes validation budget and may guarantee failure in crowded markets where users already have "good enough" alternatives.
+**One-paragraph:** Different goals demand different 'minimum' framings: MVP for learning, MLP for love, MMP for marketable, MMR for revenue. The decision matrix maps goal → frame → downstream methodology. Picking wrong = building a Minimum Lovable Product when you needed an MVP (or vice versa).
+
+**Ефективно для:**
+
+- Solo founder who keeps hearing different acronyms (MVP/MLP/MMP) and isn't sure which fits — needs a decision matrix that maps current goal to the right framework.
 
 ## Applies If (ALL must hold)
 
-- Trigger: starting a new product and deciding how much to build before first release.
-- Trigger: switching market context (e.g. moving from B2C to B2B) and re-scoping.
-- Trigger: team debate "is this MVP or MLP?" — use the decision matrix to resolve.
-- Trigger: competitive analysis reveals incumbent products are already polished.
-- Trigger: spec.md / SDD feature kickoff before writing implementation-plan.md.
-- Trigger: pivot decision — last release missed adoption KPI; re-scope with a different framework.
+- Goal is set for the next ship (learn / love / market / monetise).
+- Multiple frames plausible — needs disambiguation.
+- Downstream methodology will be picked from the frame.
 
 ## Skip If (ANY kills it)
 
-- Framework already chosen and validated — don't re-litigate mid-build.
-- Pure technical feasibility spikes — use MFP by default, no matrix needed.
-- Internal tooling with a captive user base — minimal standards differ.
-- Bug-fix or maintenance release — framework choice does not apply.
+- Goal is genuinely ambiguous — fix that first.
+- Frame is locked by external constraint (e.g. investor mandate).
+- Single-day patch — no framework needed.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Stated goal for the ship | string | PM doc |
+| Decision matrix reference | table | Team doc |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/product/product-planning/mvp-scoping` | MVP downstream methodology. |
+| `solo/product/product-planning/mlp-planning` | MLP downstream methodology. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-minimum-product-frameworks` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-minimum-product-frameworks` | haiku | Schema check + threshold checks; deterministic. |
+| `review-minimum-product-frameworks` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/minimum-product-frameworks.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/minimum-product-frameworks.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-minimum-product-frameworks.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-planning/`
+- [[mvp-scoping]]
+- [[mlp-planning]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

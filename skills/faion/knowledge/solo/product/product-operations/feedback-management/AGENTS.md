@@ -2,72 +2,94 @@
 slug: feedback-management
 tier: solo
 group: product
-domain: pm
+domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Systematic pipeline for collecting feedback from multiple channels, categorizing it against a locked taxonomy, aggregating patterns by topic and segment, linking top clusters to backlog items, and closing the loop with users when their requests ship.
-content_id: "3dd1a9ef38c7b0c4"
-tags: [feedback, customer-research, triage, product-signals]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Capture user feedback through a single inbound channel, triage daily, classify by theme + severity, close the loop with the user, and feed verified themes into the roadmap.
+content_id: "933e321b519dab0c"
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["feedback", "triage", "themes", "close-the-loop", "ops"]
 ---
 # Feedback Management
 
 ## Summary
 
-**One-sentence:** Systematic pipeline for collecting feedback from multiple channels, categorizing it against a locked taxonomy, aggregating patterns by topic and segment, linking top clusters to backlog items, and closing the loop with users when their requests ship.
+**One-sentence:** Capture user feedback through a single inbound channel, triage daily, classify by theme + severity, close the loop with the user, and feed verified themes into the roadmap.
 
-**One-paragraph:** Systematic pipeline for collecting feedback from multiple channels, categorizing it against a locked taxonomy, aggregating patterns by topic and segment, linking top clusters to backlog items, and closing the loop with users when their requests ship. The pipeline runs: Collect → Categorize → Analyze → Prioritize → Act → Close Loop. Taxonomy is code-versioned; changes require a migration and re-tag run.
+**One-paragraph:** Operational pipeline: capture → triage → classify → close-the-loop → roadmap-feed. Daily triage prevents the inbox from rotting; theme classification turns anecdote into signal; explicit close-the-loop keeps the channel trusted so feedback keeps coming.
+
+**Ефективно для:**
+
+- Solo founder receiving feedback through 5 channels (email, X, Discord, support, in-app); needs a single funnel that turns chatter into prioritised themes without dropping anyone.
 
 ## Applies If (ALL must hold)
 
-- Feedback arriving from 3+ channels and a human can no longer triage in real time.
-- You want a daily/weekly digest of categorized, deduplicated, prioritized requests linked to backlog items.
-- Automated close-the-loop emails needed when a requested feature ships.
-- Sentiment tracking against a release or pricing change is required.
+- Product has ≥1 active user channel receiving feedback.
+- Volume ≥3 messages/week — high enough to need a system.
+- Founder commits ≥30 min/day to triage.
 
 ## Skip If (ANY kills it)
 
-- Fewer than 20 feedback items per week — manual handling beats pipeline overhead.
-- High-stakes B2B accounts where every quote requires named-customer context — keep human in the loop end-to-end.
-- Regulated industries (medical, finance) where verbatim handling has compliance constraints — PII redaction first.
+- Pre-launch phase with no users.
+- Established support team handling triage already.
+- Founder cannot commit any daily triage time.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inbound channels list | list | Ops doc |
+| Theme taxonomy (seed list) | list | PM doc |
+| Daily triage slot in calendar | calendar event | Calendar |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/product/product-operations/product-analytics` | Quant signal that triangulates qual themes. |
+| `solo/product/product-manager/roadmap-design` | Where verified themes land downstream. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-feedback-management` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-feedback-management` | haiku | Schema check + threshold checks; deterministic. |
+| `review-feedback-management` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/feedback-management.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/feedback-management.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-feedback-management.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-operations/`
+- [[product-analytics]]
+- [[roadmap-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
