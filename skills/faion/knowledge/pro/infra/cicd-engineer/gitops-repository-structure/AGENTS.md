@@ -3,70 +3,96 @@ slug: gitops-repository-structure
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: The config repository layout is the foundation of a maintainable GitOps setup.
-content_id: "adfa87c93c5f77fe"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a GitOps config-repo layout config (monorepo with base + overlays per env + Kustomize/Helm patterns + multi-team tenant structure + promotion via PRs).
+content_id: "71117a51c40712b6"
+complexity: medium
+produces: config
+est_tokens: 4300
 tags: [gitops, kustomize, helm, repository-structure, kubernetes]
 ---
-# GitOps Repository Structure
+# GitOps — Repository Structure
 
 ## Summary
 
-**One-sentence:** The config repository layout is the foundation of a maintainable GitOps setup.
+**One-sentence:** Generates a GitOps config-repo layout config (monorepo with base + overlays per env + Kustomize/Helm patterns + multi-team tenant structure + promotion via PRs).
 
-**One-paragraph:** The config repository layout is the foundation of a maintainable GitOps setup. Use folder-per-environment in a monorepo with Kustomize base/overlays or Helm value files. Avoid branch-per-environment — it creates merge complexity and makes promotions difficult.
+**One-paragraph:** Generates a GitOps config-repo layout config (monorepo with base + overlays per env + Kustomize/Helm patterns + multi-team tenant structure + promotion via PRs). The methodology pins the artefact shape, ties every conclusion to a rule, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Multi-env (dev/staging/prod) deployments з shared base + overlays.
+- Multi-team setup з tenant isolation в одному репозиторії.
+- PR-based promotion (overlay change → PR → ArgoCD/Flux apply).
+- Kustomize-heavy stacks; Helm wrap при потребі параметризації.
 
 ## Applies If (ALL must hold)
 
-- Setting up a new GitOps config repository for one or more Kubernetes clusters.
-- Migrating from a branch-per-environment workflow to a maintainable structure.
-- Onboarding a new team or application into an existing GitOps platform.
-- Defining environment promotion strategy (dev to staging to prod via PRs).
+- Multiple environments (≥2: e.g. staging + prod).
+- Shared base manifests with env-specific overrides.
+- Multi-tenant or multi-team config sharing.
+- Promotion model needs to live in Git (PRs between branches or env folders).
 
 ## Skip If (ANY kills it)
 
-- Single-application, single-environment repos where the monorepo layout adds unnecessary complexity — use a flat structure.
-- Non-Kubernetes workloads (bare VMs, serverless) where Kustomize/Helm overlays don't apply.
+- Single-env single-tenant — overlays are overkill.
+- Team prefers Helm-only with per-env values files (Kustomize layer adds no value).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Env list | YAML | Platform |
+| Team list with isolation needs | YAML | Platform |
+| Helm chart inventory | JSON | App teams |
+| Promotion policy | table (env → env → who approves) | Platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/infra/cicd-engineer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-gitops-repository-structure` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
+| `templates/config-instance.json` | JSON instance of a filled config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gitops-repository-structure.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- Parent: `pro/infra/cicd-engineer/AGENTS.md`
+- [[finops-framework]]
+- [[gitops-core-principles]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

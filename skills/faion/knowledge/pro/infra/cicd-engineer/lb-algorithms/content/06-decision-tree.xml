@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Load Balancing Algorithms Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals (request cost, fleet capacity, autoscaling, NAT) to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-measured">Is the backend response-time distribution measured?</root-question>
+
+    <branch when="measured == false">
+      <conclusion ref="measure-before-choose" verdict="run a 5-minute synthetic load; do not pick an algorithm without data"/>
+    </branch>
+
+    <branch when="measured == true">
+      <question id="q-variance">p99 / p50 ratio?</question>
+
+      <branch when="p99_p50_ratio &gt; 2">
+        <question id="q-fleet1">Fleet capacity homogeneous?</question>
+        <branch when="capacity == homogeneous">
+          <conclusion ref="leastconn-default-variable-cost" verdict="least-connections"/>
+        </branch>
+        <branch when="capacity == heterogeneous">
+          <conclusion ref="weighted-by-capacity" verdict="weighted-least-connections with weights ~ capacity"/>
+        </branch>
+      </branch>
+
+      <branch when="p99_p50_ratio &lt;= 1.2">
+        <question id="q-sticky">Session affinity required?</question>
+        <branch when="affinity == false">
+          <question id="q-fleet2">Fleet capacity homogeneous?</question>
+          <branch when="capacity == homogeneous">
+            <conclusion ref="round-robin-only-uniform" verdict="round-robin"/>
+          </branch>
+          <branch when="capacity == heterogeneous">
+            <conclusion ref="weighted-by-capacity" verdict="weighted-round-robin"/>
+          </branch>
+        </branch>
+        <branch when="affinity == true">
+          <question id="q-autoscale">Autoscaling OR NAT clients?</question>
+          <branch when="autoscale_or_nat == true">
+            <conclusion ref="no-ip-hash-autoscale" verdict="cookie-sticky (NOT ip-hash)"/>
+          </branch>
+          <branch when="autoscale_or_nat == false">
+            <conclusion ref="no-ip-hash-autoscale" verdict="ip-hash acceptable on a stable, NAT-free fleet"/>
+          </branch>
+        </branch>
+      </branch>
+
+      <branch when="p99_p50_ratio &gt; 1.2 AND p99_p50_ratio &lt;= 2">
+        <conclusion ref="leastconn-default-variable-cost" verdict="least-connections (borderline cost variance; prefer adaptive algorithm)"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="websocket-asg-heterogeneous">
+    measured=true → p99/p50=4 → heterogeneous → weighted-least-connections with weight vector matching capacity → satisfies leastconn-default-variable-cost + weighted-by-capacity.
+  </example>
+</text>

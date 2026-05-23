@@ -1,0 +1,42 @@
+# purpose: Kubernetes pod spec with livenessProbe + readinessProbe + startupProbe wired to handlers
+# consumes: see content/02-output-contract.xml inputs (liveness_path, readiness_path, thresholds)
+# produces: artefact conforming to content/02-output-contract.xml (lb_kind=kubernetes)
+# depends-on: content/01-core-rules.xml (liveness-ne-readiness, threshold-tuned, expect-status-match)
+# token-budget-impact: ~300 tokens when loaded as context
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  template:
+    spec:
+      containers:
+        - name: web
+          image: registry.example.com/web:1.2.3
+          ports:
+            - containerPort: 8080
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 30          # tolerate up to ~5 min cold-boot / migrations
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 0        # startupProbe gates this
+            periodSeconds: 10
+            timeoutSeconds: 2
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            timeoutSeconds: 5             # > sum of bounded dep timeouts (3 s + 2 s)
+            successThreshold: 2
+            failureThreshold: 3

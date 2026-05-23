@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gitops-flux Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gitops-flux. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Flux CD — Setup and Operation Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules including a `skip-this-methodology` rule. Each pairs a binary check with sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="crd-canonical-set" testable="true" depth="essential">
+      <statement>Each tenant MUST use the canonical Flux CRD set: GitRepository (source) → Kustomization (apply Kustomize) OR HelmRelease (apply Helm). Mixing apply mechanisms outside this set is rejected.</statement>
+      <rationale source="Flux docs">Canonical CRDs are the reconciliation surface; ad-hoc Jobs that kubectl apply outside Flux destroy auditability.</rationale>
     </rule>
+    <rule id="kustomization-prune-on" testable="true" depth="essential">
+      <statement>Kustomization MUST set `spec.prune: true`. Without prune, removed manifests stay in the cluster (drift accumulation).</statement>
+      <rationale source="Flux Kustomization docs">Prune is what makes Git the source of truth; without it, Git ≠ cluster.</rationale>
+    </rule>
+    <rule id="helmrelease-with-imagepolicy" testable="true" depth="essential">
+      <statement>HelmRelease for production MUST be paired with ImagePolicy + ImageRepository + ImageUpdateAutomation when image-tag updates are expected. Manual chart version bumps for image-only changes are rejected.</statement>
+      <rationale source="Flux Image Automation">Manual bumps deviate from GitOps; image automation closes the loop end-to-end.</rationale>
+    </rule>
+    <rule id="notification-controller-required" testable="true" depth="essential">
+      <statement>NotificationController MUST be configured to alert on reconcile failures + drift events to a team channel. Silent failures are rejected.</statement>
+      <rationale source="Operational hygiene">Failures invisible until incidents; notifications shrink MTTR.</rationale>
+    </rule>
+    <rule id="tenant-isolation-via-rbac" testable="true" depth="essential">
+      <statement>Multi-tenant setups MUST isolate via Namespace + RBAC + ServiceAccount per tenant. Cluster-wide tenants are rejected.</statement>
+      <rationale source="Multi-tenancy">Cluster-wide tenants enable cross-tenant blast radius; isolation is the only safe pattern.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip when (a) ArgoCD was chosen, (b) cluster k8s &lt;1.25, or (c) single-team setup where UI tooling is the better fit.</statement>
+      <rationale source="Scope guard">Tool fit dominates outcome; pushing Flux where ArgoCD fits creates resistance.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

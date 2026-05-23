@@ -1,22 +1,69 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="lb-health-checks Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Load Balancer Health Checks Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the health-check artefact this methodology produces. Validator enforces probe distinction + timeouts + threshold floor.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/lb-health-checks.json",
+  "type": "object",
+  "required": ["liveness_path", "readiness_path", "readiness_deps", "interval_sec", "healthy_threshold", "unhealthy_threshold", "lb_expect_status"],
+  "properties": {
+    "liveness_path": {"type": "string", "pattern": "^/"},
+    "readiness_path": {"type": "string", "pattern": "^/"},
+    "readiness_deps": {
+      "type": "array", "minItems": 1,
+      "items": {"type": "object", "required": ["name", "timeout_sec"], "properties": {"name": {"type": "string"}, "timeout_sec": {"type": "number", "minimum": 1, "maximum": 10}}}
+    },
+    "interval_sec": {"type": "integer", "minimum": 10, "maximum": 30},
+    "healthy_threshold": {"type": "integer", "minimum": 2},
+    "unhealthy_threshold": {"type": "integer", "minimum": 2},
+    "lb_expect_status": {"type": "integer", "const": 200},
+    "lb_kind": {"enum": ["haproxy", "nginx", "kubernetes", "aws-alb", "gcp-lb"]}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "liveness_path": "/health/live",
+  "readiness_path": "/health/ready",
+  "readiness_deps": [
+    {"name": "postgres", "timeout_sec": 3},
+    {"name": "redis", "timeout_sec": 2}
+  ],
+  "interval_sec": 10,
+  "healthy_threshold": 2,
+  "unhealthy_threshold": 3,
+  "lb_expect_status": 200,
+  "lb_kind": "kubernetes"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "liveness_path": "/health",
+  "readiness_path": "/health",
+  "readiness_deps": [],
+  "interval_sec": 1,
+  "healthy_threshold": 1,
+  "unhealthy_threshold": 1,
+  "lb_expect_status": 0
+}
+]]></code>
+    <note>Liveness == readiness; no deep deps; 1 s interval; single-failure threshold; no expect-status.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f-same-path">liveness_path == readiness_path</pattern>
+    <pattern id="f-no-deps">readiness_deps is empty list</pattern>
+    <pattern id="f-low-interval">interval_sec &lt; 10</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-lb-health-checks.py">Validator script</reference>
 </text>

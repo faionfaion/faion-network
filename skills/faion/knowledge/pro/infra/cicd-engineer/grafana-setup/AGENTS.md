@@ -3,72 +3,96 @@ slug: grafana-setup
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Grafana setup methodology covering Docker Compose, Kubernetes Helm, and High Availability deployment patterns, with configuration-as-code provisioning for data sources, dashboards, and alerting.
-content_id: "a6454c9fb651061e"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a Grafana deployment config (Docker / Kubernetes / HA topology + database backend + provisioning configuration + Alloy agent migration + RBAC + backup) for production-grade setup.
+content_id: "decfb63010bf35e4"
+complexity: deep
+produces: config
+est_tokens: 4300
 tags: [grafana, monitoring, provisioning, observability, kubernetes]
 ---
-# Grafana Setup and Provisioning
+# Grafana — Deployment and Provisioning
 
 ## Summary
 
-**One-sentence:** Grafana setup methodology covering Docker Compose, Kubernetes Helm, and High Availability deployment patterns, with configuration-as-code provisioning for data sources, dashboards, and alerting.
+**One-sentence:** Generates a Grafana deployment config (Docker / Kubernetes / HA topology + database backend + provisioning configuration + Alloy agent migration + RBAC + backup) for production-grade setup.
 
-**One-paragraph:** Grafana setup methodology covering Docker Compose, Kubernetes Helm, and High Availability deployment patterns, with configuration-as-code provisioning for data sources, dashboards, and alerting. Grafana Agent reached EOL on November 1, 2025 — all new deployments must use Grafana Alloy. HA requires PostgreSQL or MySQL (SQLite is single-node only); no session affinity needed since sessions are stored in the database.
+**One-paragraph:** Generates a Grafana deployment config (Docker / Kubernetes / HA topology + database backend + provisioning configuration + Alloy agent migration + RBAC + backup) for production-grade setup. The methodology pins the artefact shape, ties every conclusion to a rule, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Production Grafana deploy: K8s (Helm) або Docker з HA topology.
+- Configuration-as-code: provisioning/datasources, dashboards, alerting.
+- Міграція з Grafana Agent на Alloy (Agent EOL Nov 2025).
+- HA setup з shared Postgres/MySQL та session storage.
 
 ## Applies If (ALL must hold)
 
-- Deploying Grafana for the first time in any environment (Docker, K8s, VM)
-- Migrating from Grafana Agent to Grafana Alloy (mandatory — Agent EOL Nov 2025)
-- Setting up HA Grafana for production with PostgreSQL backend
-- Configuring alerting pipelines with contact points and notification policies
-- Managing Grafana infrastructure as code with Terraform or Helm
+- Need to deploy or upgrade a Grafana instance for production.
+- HA / multi-replica setup required (≥2 nodes behind LB).
+- Provisioning-as-code (datasources/dashboards/alerts via files).
+- Migration from Grafana Agent → Alloy (Agent EOL Nov 2025).
 
 ## Skip If (ANY kills it)
 
-- Quick local exploration with no persistence requirement — use `docker run grafana/grafana` directly
-- When Grafana Cloud is available and operational complexity must be zero
-- When the only requirement is viewing existing dashboards — no setup needed, just access
+- Local single-user Grafana for dev — Docker Compose is sufficient without ceremony.
+- Managed Grafana (Grafana Cloud) — provisioning UI is the supported path.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Target platform | kubernetes / docker / vm | Platform team |
+| Database backend | Postgres / MySQL URL | Platform team |
+| Provisioning repo | git path | SRE team |
+| Backup target | S3 bucket / volume | Platform team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/infra/cicd-engineer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-grafana-setup` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
+| `templates/config-instance.json` | JSON instance of a filled config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-grafana-setup.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- Parent: `pro/infra/cicd-engineer/AGENTS.md`
+- [[finops-framework]]
+- [[gitops-core-principles]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

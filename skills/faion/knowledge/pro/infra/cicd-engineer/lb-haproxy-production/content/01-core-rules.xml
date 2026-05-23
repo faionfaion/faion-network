@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="lb-haproxy-production Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for lb-haproxy-production. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="HAProxy Production Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>6 testable rules for production-grade HAProxy. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="tls12-min-cipher-suites" testable="true" depth="essential">
+      <statement>TLS frontends MUST bind with `ssl crt /path/to/cert.pem alpn h2,http/1.1` and set `ssl-default-bind-options no-sslv3 no-tlsv10 no-tlsv11 prefer-client-ciphers`. Cipher list MUST exclude RC4, 3DES, EXPORT, CBC-only ciphers.</statement>
+      <rationale source="Mozilla TLS guidelines + HAProxy SSL/TLS docs">TLS 1.0/1.1 and weak ciphers fail PCI-DSS scans and expose users to BEAST/POODLE-class attacks. ALPN advertisement enables HTTP/2 which is mandatory for modern browsers.</rationale>
     </rule>
+
+    <rule id="stick-table-rate-limit" testable="true" depth="essential">
+      <statement>Public HTTP frontends MUST declare a `stick-table type ip size 100k expire 10m store http_req_rate(10s)` and reject IPs above the configured threshold (default: 100 req/10s) with HTTP 429.</statement>
+      <rationale source="HAProxy stick-tables documentation">Without rate limiting, a single misbehaving client can saturate the backend pool. Stick-tables are in-process and require no external Redis — operationally cheaper than a distributed limiter for single-LB-instance topologies.</rationale>
+    </rule>
+
+    <rule id="nbthread-cpu-map" testable="true" depth="essential">
+      <statement>`global { nbthread N; cpu-map auto:1/1-N 0-(N-1) }` where N equals (or is &lt;=) the number of physical cores on the LB host. `daemon` mode + multi-process (`nbproc`) is forbidden — use threads.</statement>
+      <rationale source="HAProxy 2.4+ scaling guide">`nbthread` with CPU pinning eliminates the cross-CPU cache misses that `nbproc` introduced. On a 16-core box, properly threaded HAProxy handles 2-3× more TLS connections than the same box in nbproc mode.</rationale>
+    </rule>
+
+    <rule id="maxconn-sized" testable="true" depth="essential">
+      <statement>`global maxconn` MUST be set to (available RAM / ~16 KiB per connection). `defaults maxconn` MUST equal the same value or be lower. Per-frontend `maxconn` MUST be set to throttle individual frontends.</statement>
+      <rationale source="HAProxy capacity-planning guide">Unbounded `maxconn` lets HAProxy OOM-kill itself under SYN floods. Sizing by RAM keeps the process inside its allocation and lets the kernel rather than the heap apply backpressure.</rationale>
+    </rule>
+
+    <rule id="http-check-expect" testable="true" depth="essential">
+      <statement>Backends MUST use `option httpchk GET /health` plus `http-check expect status 200` (or stricter body match). `option httpchk` without `expect` is forbidden.</statement>
+      <rationale source="HAProxy health-check docs">Without `expect`, any HTTP response (including 502 from a crashed app behind a still-listening proxy) counts as healthy. The `expect` clause is what makes the check meaningful.</rationale>
+    </rule>
+
+    <rule id="keepalived-vrrp" testable="true" depth="essential">
+      <statement>Active-passive HAProxy deployments MUST run `keepalived` with VRRP. Master and backup MUST share the same `virtual_router_id`, distinct `priority` values, and a `track_script` that returns non-zero when HAProxy is unhealthy. Plain DNS round-robin is forbidden for HA.</statement>
+      <rationale source="keepalived + HAProxy HA reference">VRRP fails over the VIP in &lt; 2 seconds and reroutes existing connections to the surviving node. DNS-based failover relies on client TTL honour and can take minutes.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

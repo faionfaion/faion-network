@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="lb-high-availability Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for lb-high-availability as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="LB High Availability Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>3 antipatterns observed in HA LB designs. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Single-AZ backend deployment behind a multi-AZ load balancer.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>If all backends are in one AZ and that AZ fails, the LB is healthy but all backends are unreachable — the service is down despite appearing to have HA infrastructure. Spread backends across at least 2 AZs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Setting Route 53 TTL to 30 seconds and claiming sub-minute GSLB failover.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>DNS caching by intermediary resolvers and client OS is unpredictable. Corporate DNS, carrier DNS, and CDN edge nodes ignore low TTLs or have minimum cache times. Real-world failover for DNS-based GSLB is 30 seconds to 5 minutes — design SLOs accordingly or switch to anycast.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="single-az-behind-multi-az-lb" severity="high">
+      <symptom>One AZ goes dark; the ALB stays "healthy" with green target health in the dashboard, but every backend lives in the failed AZ and the service is down.</symptom>
+      <root-cause source="AWS Well-Architected reliability">Author trusted the LB's multi-AZ subnet list to confer HA without spreading backends across AZs.</root-cause>
+      <fix>Spread backends ≥ 2 per AZ across ≥ 2 AZs (or all 3 in us-east-1). Add a deployment policy that fails CI if the target group is healthy in only one AZ.</fix>
+    </antipattern>
+
+    <antipattern id="dns-gslb-at-9999" severity="high">
+      <symptom>Region us-east-1 goes down. Route 53 health-check failure triggers a record change with 60 s TTL; mobile customers stay broken for 30+ minutes because their carrier resolver caches DNS for 1 hour.</symptom>
+      <root-cause source="AWS Global Accelerator FAQ + DNS TTL behaviour studies">SLO is 99.99% but the global LB is DNS-based; real-world failover is 30 s – 5 min.</root-cause>
+      <fix>Migrate to anycast (AWS Global Accelerator with regional ALB endpoints, or GCP Global LB). Failover happens at BGP layer in &lt; 30 s independent of client DNS caches.</fix>
+    </antipattern>
+
+    <antipattern id="no-sigterm-drain" severity="medium">
+      <symptom>Rolling deploy causes a wave of 502 / connection-reset errors at the load balancer; users see ~10–30 s of intermittent failures per deploy.</symptom>
+      <root-cause source="Kubernetes graceful-shutdown docs">Pod receives SIGTERM and immediately exits; readiness probe never goes 503; the LB keeps sending new requests for one full health-check interval.</root-cause>
+      <fix>Add a SIGTERM handler that flips the readiness flag to 503 immediately. Set `terminationGracePeriodSeconds: 60`. Set LB `deregistration_delay = 30`. In code, finish in-flight requests before `exit(0)`.</fix>
+    </antipattern>
+
   </section>
 </text>

@@ -1,22 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="lb-haproxy-production Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="HAProxy Production Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the HAProxy config artefact this methodology produces. Validator enforces TLS, rate-limit, thread tuning, maxconn, expect, HA wiring.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/lb-haproxy-production.json",
+  "type": "object",
+  "required": ["tls_version_min", "stick_table_rate_limit", "nbthread", "maxconn", "http_check_expect", "ha_mode"],
+  "properties": {
+    "tls_version_min": {"enum": ["TLSv1.2", "TLSv1.3"]},
+    "stick_table_rate_limit": {"type": "object", "required": ["enabled", "threshold_per_10s"], "properties": {"enabled": {"const": true}, "threshold_per_10s": {"type": "integer", "minimum": 1}}},
+    "nbthread": {"type": "integer", "minimum": 1},
+    "cpu_map_auto": {"type": "boolean", "const": true},
+    "maxconn": {"type": "integer", "minimum": 100},
+    "http_check_expect": {"type": "boolean", "const": true},
+    "ha_mode": {"enum": ["keepalived-vrrp", "anycast", "active-active-stateless", "single"]},
+    "frontends": {"type": "array", "items": {"type": "object"}},
+    "backends": {"type": "array", "items": {"type": "object"}}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "tls_version_min": "TLSv1.2",
+  "stick_table_rate_limit": {"enabled": true, "threshold_per_10s": 100},
+  "nbthread": 8,
+  "cpu_map_auto": true,
+  "maxconn": 200000,
+  "http_check_expect": true,
+  "ha_mode": "keepalived-vrrp",
+  "frontends": [{"name": "https_front", "bind": "*:443 ssl crt /etc/haproxy/certs.pem"}],
+  "backends": [{"name": "web", "balance": "leastconn", "health_check": "GET /health expect 200"}]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "tls_version_min": "TLSv1.0",
+  "stick_table_rate_limit": {"enabled": false, "threshold_per_10s": 0},
+  "nbthread": 1,
+  "maxconn": 0,
+  "http_check_expect": false,
+  "ha_mode": "single"
+}
+]]></code>
+    <note>TLS 1.0; no rate limit; nbthread=1 wastes cores; maxconn=0 unbounded; missing expect; no HA.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f-tls10">tls_version_min == TLSv1.0 OR TLSv1.1</pattern>
+    <pattern id="f-no-expect">http_check_expect != true</pattern>
+    <pattern id="f-unbounded-maxconn">maxconn &lt;= 0</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-lb-haproxy-production.py">Validator script</reference>
 </text>

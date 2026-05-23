@@ -1,19 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="lb-high-availability Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for lb-high-availability. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="LB High Availability Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>5 testable rules for HA load-balanced topologies. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Production load-balanced services MUST deploy at minimum 2 load balancer instances in active-active or active-passive configuration, AND distribute backend instances across at least 2 availability zones, AND maintain a minimum of 2 healthy backend instances in each zone. A configuration with 1 LB instance is not HA regardless of how many backends exist behind it.</statement>
-      <rationale source="v1-source">A single load balancer instance fails (process crash, instance host failure, network partition) and takes down the entire service. Zone spreading for backends ensures an AZ failure eliminates at most half the capacity rather than all of it. The 2-instance minimum for both LB and backend tiers is the smallest configuration that provides N-1 redundancy.</rationale>
+
+    <rule id="two-lb-min" testable="true" depth="essential">
+      <statement>Any production service with SLA ≥ 99.9% MUST front itself with ≥ 2 LB instances in active-active or active-passive configuration. A single LB instance is not HA regardless of how many backends sit behind it.</statement>
+      <rationale source="AWS Well-Architected + Cloud LB HA references">A single LB instance is itself a SPOF — process crash, host failure, or network partition takes the whole service down. ≥ 2 instances + automatic failover (VRRP / managed LB pair) is the minimum that satisfies N-1.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>For multi-region HA, prefer anycast-based global load balancers (AWS Global Accelerator, Cloudflare Load Balancing, GCP Global Load Balancer) over DNS-based GSLB (Route 53 latency/geo routing, NS1, Akamai GTM) when the availability SLA is 99.99% or higher. DNS-based failover relies on client TTL compliance; actual failover time is 30 seconds to 5 minutes, not sub-second. Anycast failover is under 30 seconds at the routing layer.</statement>
-      <rationale source="v1-source">DNS TTLs are honored unevenly: corporate resolvers, mobile carrier DNS, and CDN intermediaries cache aggressively and ignore low TTLs. A DNS record change with TTL=30 may take 5 minutes to propagate to all clients. Anycast routing happens at the BGP layer — traffic reroutes when a PoP withdraws routes, independent of DNS caching.</rationale>
+
+    <rule id="two-az-min" testable="true" depth="essential">
+      <statement>Backend instances MUST be distributed across ≥ 2 availability zones. Each AZ MUST host ≥ 2 healthy backend instances (i.e., total ≥ 4 backends for N-1 in each AZ).</statement>
+      <rationale source="AWS Well-Architected + GCP reliability docs">A single-AZ backend pool means an AZ outage takes the whole service down — the LB is healthy but every backend is unreachable. ≥ 2 AZs with ≥ 2 backends each survives one full AZ failure with capacity.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>For zero-downtime deployments: (1) mark the backend as draining in the LB before stopping the process; (2) wait for in-flight requests to complete (deregistration_delay or drain timeout, typically 30s); (3) only then stop the process. The application's /health/ready endpoint MUST return 503 immediately when a SIGTERM is received, before the process starts draining — this signals the LB to stop sending new requests within one health check interval.</statement>
-      <rationale source="v1-source">Without connection draining, stopping a backend immediately terminates in-flight requests, causing 502 errors at the client. Without the readiness probe returning 503 on SIGTERM, the LB continues routing new requests to the shutting-down instance after the process stops accepting them, creating a window of 502 errors equal to the health check interval (10-30s).</rationale>
+
+    <rule id="anycast-over-dns-for-9999" testable="true" depth="essential">
+      <statement>For multi-region HA with SLA ≥ 99.99%, the global LB MUST be anycast (AWS Global Accelerator, GCP Global HTTP(S) LB, Cloudflare LB). DNS-based GSLB (Route 53 latency / geo routing, NS1, Akamai GTM) is forbidden at this SLA tier.</statement>
+      <rationale source="AWS Global Accelerator FAQ + Cloudflare LB docs">DNS-based GSLB failover is 30 s – 5 min in practice (resolver caches ignore short TTLs); anycast failover is &lt; 30 s at the BGP layer.</rationale>
     </rule>
+
+    <rule id="drain-on-sigterm" testable="true" depth="essential">
+      <statement>Zero-downtime deployments MUST implement: (a) SIGTERM handler that flips readiness probe to 503 immediately; (b) deregistration delay / drain timeout ≥ 30 s; (c) process exit only after drain completes. Plain `kill -TERM` followed by immediate exit is forbidden.</statement>
+      <rationale source="Kubernetes graceful-shutdown docs + LB drain references">Without readiness flip on SIGTERM, the LB keeps sending new requests for the next 10–30 s; the dying process answers with 502/connection-reset. Drain delay lets in-flight requests complete cleanly.</rationale>
+    </rule>
+
+    <rule id="no-single-az-backends" testable="true" depth="essential">
+      <statement>Multi-AZ LBs (e.g., AWS ALB with subnets in 3 AZs) MUST NOT be paired with single-AZ backend pools. The LB target group MUST have healthy targets in every subnet AZ the LB listens on.</statement>
+      <rationale source="AWS ELB cross-zone load-balancing docs">A multi-AZ LB with single-AZ backends still goes fully down if that one AZ fails; it merely looks HA in the dashboard.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

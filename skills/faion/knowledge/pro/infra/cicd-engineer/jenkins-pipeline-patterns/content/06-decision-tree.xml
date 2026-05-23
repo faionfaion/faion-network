@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Jenkins Pipeline Patterns Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals (pipeline count, library presence, parallelism need) to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-style">Top-level syntax in the existing Jenkinsfile?</root-question>
+
+    <branch when="style == top_level_scripted">
+      <conclusion ref="declarative-with-script-escape" verdict="rewrite top-level as Declarative; move scripted into script{} with a justification comment"/>
+    </branch>
+
+    <branch when="style == declarative">
+      <question id="q-lib">Is shared logic duplicated across &gt;3 pipelines?</question>
+
+      <branch when="duplicated == true">
+        <question id="q-lib-loc">Library code currently lives in app repo?</question>
+        <branch when="library_in_app_repo == true">
+          <conclusion ref="shared-lib-dedicated-repo" verdict="extract library to dedicated repo; vars/+src/+resources/+test/ layout; tag v1.0.0"/>
+        </branch>
+        <branch when="library_in_app_repo == false">
+          <question id="q-lib-pin">@Library refs pinned?</question>
+          <branch when="pinned == false">
+            <conclusion ref="library-version-pinned" verdict="replace @main with semver tag; disable implicit loading"/>
+          </branch>
+          <branch when="pinned == true">
+            <question id="q-parallel">Pipeline uses parallel branches?</question>
+            <branch when="parallel == true">
+              <conclusion ref="parallel-workspace-isolation" verdict="wrap each branch in dir() or ws(); lock() shared external resources"/>
+            </branch>
+            <branch when="parallel == false">
+              <conclusion ref="options-required" verdict="confirm options{} block has timeout + buildDiscarder + disableConcurrentBuilds + timestamps"/>
+            </branch>
+          </branch>
+        </question>
+      </branch>
+
+      <branch when="duplicated == false">
+        <question id="q-agent">Agent kind?</question>
+        <branch when="agent == kubernetes">
+          <conclusion ref="pod-resources-required" verdict="enforce requests + limits on every container; privileged only on explicit dind"/>
+        </branch>
+        <branch when="agent != kubernetes">
+          <conclusion ref="options-required" verdict="confirm options{} block is complete"/>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="brownfield-scripted-monolith">
+    style=top_level_scripted → rewrite as Declarative → extract dup logic to dedicated library → pin v1.0.0 → wrap parallel branches in dir() → enforces all 6 rules.
+  </example>
+</text>

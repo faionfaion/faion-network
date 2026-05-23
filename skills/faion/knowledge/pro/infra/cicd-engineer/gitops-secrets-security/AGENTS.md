@@ -3,71 +3,96 @@ slug: gitops-secrets-security
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Secrets in GitOps require explicit tooling because plaintext secrets in Git are a critical vulnerability.
-content_id: "8ae3e1e1105f3ac0"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a GitOps secrets-and-security config (SOPS with age/KMS or Sealed Secrets or External Secrets + RBAC least-privilege + AI-agent gotchas + secret rotation cadence).
+content_id: "9b14fba9b3b8fa33"
+complexity: deep
+produces: config
+est_tokens: 4300
 tags: [gitops, secrets, sops, security, kubernetes]
 ---
-# GitOps Secret Management and Security
+# GitOps — Secrets and Security
 
 ## Summary
 
-**One-sentence:** Secrets in GitOps require explicit tooling because plaintext secrets in Git are a critical vulnerability.
+**One-sentence:** Generates a GitOps secrets-and-security config (SOPS with age/KMS or Sealed Secrets or External Secrets + RBAC least-privilege + AI-agent gotchas + secret rotation cadence).
 
-**One-paragraph:** Secrets in GitOps require explicit tooling because plaintext secrets in Git are a critical vulnerability. Three mature solutions exist: SOPS (encrypt-in-place, Git-native), Sealed Secrets (cluster-encrypted CRDs), and External Secrets Operator (pull from Vault/AWS SM/GCP SM). Each has distinct trust models. Security hardening covers RBAC, network policies, and AI-agent-specific risks.
+**One-paragraph:** Generates a GitOps secrets-and-security config (SOPS with age/KMS or Sealed Secrets or External Secrets + RBAC least-privilege + AI-agent gotchas + secret rotation cadence). The methodology pins the artefact shape, ties every conclusion to a rule, and routes the operator via a decision tree that always terminates either on an applicable rule or on `skip-this-methodology`. Apply when preconditions hold; skip via the tree otherwise.
+
+**Ефективно для:**
+
+- Зберігання secrets в Git без plaintext (SOPS + age / KMS).
+- External secret stores (Vault, AWS Secrets Manager) via ESO.
+- RBAC tightening: ServiceAccounts тільки на потрібні CRDs.
+- Audit: rotation cadence + key revocation event capture.
 
 ## Applies If (ALL must hold)
 
-- Any GitOps setup — secret management is mandatory, not optional.
-- SOPS: when the team controls key management (age keys, AWS KMS, GCP KMS) and wants secrets to live in Git in encrypted form.
-- Sealed Secrets: when secrets should be cluster-scoped and you want a simple CLI (kubeseal) without external KMS dependency.
-- External Secrets Operator: when secrets already live in Vault, AWS Secrets Manager, GCP Secret Manager, or Azure Key Vault and you want to avoid duplicating them.
+- Kubernetes manifests are stored in Git.
+- Secrets (DB passwords, API tokens, certificates) are required by workloads.
+- Compliance / audit requirements apply to secret handling.
+- Team can integrate KMS (cloud) OR age-keyring OR external secret store.
 
 ## Skip If (ANY kills it)
 
-- Sealed Secrets: do not use across multiple clusters without managing cluster-specific keys — a sealed secret from cluster A cannot be decrypted by cluster B.
-- SOPS with shared age keys: avoid single shared key for all environments — use per-environment keys so staging keys cannot decrypt prod secrets.
-- External Secrets without network policy: ESO requires egress from the cluster to the secret store — ensure network policies allow this only from the ESO namespace.
+- Secrets are injected exclusively by a CSI driver and never appear in manifests.
+- Single-dev cluster with no compliance obligation.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| KMS / age keyring availability | ARN / key path | Platform |
+| Secret inventory | list of secrets per workload | App teams |
+| Secret rotation policy | cadence per class | Security |
+| RBAC baseline | ClusterRole + Role YAML | Platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/infra/cicd-engineer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application requires judgement. |
+| `draft-gitops-secrets-security` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
+| `templates/config-instance.json` | JSON instance of a filled config artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gitops-secrets-security.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- Parent: `pro/infra/cicd-engineer/AGENTS.md`
+- [[finops-framework]]
+- [[gitops-core-principles]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

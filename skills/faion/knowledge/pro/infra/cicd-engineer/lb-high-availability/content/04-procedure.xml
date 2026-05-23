@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="LB High Availability Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the lb-high-availability methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="capture-sla">
+      <input>Product SLA target + customer geography.</input>
+      <action>Capture target (99.9 / 99.95 / 99.99 / 99.999). Map customers to required regions. Decide single vs multi region.</action>
+      <output>SLA tier + region count.</output>
+    </step>
+
+    <step n="2" name="failure-domain-analysis">
+      <input>Current or proposed topology + SLA tier.</input>
+      <action>Enumerate failure domains (process, host, AZ, region, DNS provider). For each: "if X fails, what happens?" Reject any path where one failure takes the whole service down.</action>
+      <output>Failure-domain table marked OK/SPOF.</output>
+      <decision-gate>If any SPOF is found in a tier targeting ≥ 99.9, STOP and redesign that tier.</decision-gate>
+    </step>
+
+    <step n="3" name="pick-topology">
+      <input>SLA tier + region count + budget.</input>
+      <action>Apply 06-decision-tree.xml. 99.9 single-region → 2 LB + 2 AZ + 2 backends/AZ. 99.99 multi-region → anycast GSLB + per-region 2-AZ replicas. 99.999 → multi-cloud anycast + drained read paths.</action>
+      <output>Topology block: LB instances, AZ count, GSLB kind.</output>
+    </step>
+
+    <step n="4" name="wire-zero-downtime">
+      <input>Topology + deploy strategy.</input>
+      <action>Add SIGTERM handler flipping readiness to 503. Set drain delay ≥ 30 s (LB target group + K8s `terminationGracePeriodSeconds`). Roll deploys one AZ at a time. Confirm canary stage by killing one backend mid-traffic and observing zero 5xx.</action>
+      <output>Application + deploy config with drain.</output>
+    </step>
+
+    <step n="5" name="record-and-validate">
+      <input>Topology + drain config + failure-domain table.</input>
+      <action>Render `templates/ha-decision-record.md` capturing SLA, topology, failure modes, mitigations. Run `validate-lb-high-availability.py --file artefact.json`. Schedule quarterly chaos test of LB failover + region failover.</action>
+      <output>Committed ADR + recurring chaos drill.</output>
+    </step>
+
+  </section>
+</text>

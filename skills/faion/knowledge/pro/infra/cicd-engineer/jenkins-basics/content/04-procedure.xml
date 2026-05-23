@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Jenkins Basics Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the jenkins-basics methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="confirm-jenkins-fits">
+      <input>Project host (GitHub / GitLab / self-hosted), team size, compliance needs.</input>
+      <action>Apply the decision tree (06-decision-tree.xml). If host=GitHub and no compliance lock-in, STOP and use github-actions-basics instead. If host=GitLab, STOP and use gitlab-cicd.</action>
+      <output>Decision: jenkins / native-CI</output>
+      <decision-gate>If decision != jenkins, abandon this methodology.</decision-gate>
+    </step>
+
+    <step n="2" name="select-agent-strategy">
+      <input>Kubernetes availability + build resource profile.</input>
+      <action>If a Kubernetes cluster is reachable, pick `agent { kubernetes { yaml '...' } }` with explicit resource requests/limits. Otherwise pick `agent { docker { image '...' } }` for single-container builds. Forbid `agent any`.</action>
+      <output>Agent block + pod-template YAML if K8s.</output>
+    </step>
+
+    <step n="3" name="write-jenkinsfile">
+      <input>Build/test/deploy commands + branch policy + secret inventory.</input>
+      <action>Write Declarative Jenkinsfile: pipeline → agent → options(timeout, buildDiscarder, disableConcurrentBuilds) → stages(Install/Validate/Test/Build/Deploy) → post(always cleanWs, failure slackSend). Inject every secret via `withCredentials`.</action>
+      <output>Jenkinsfile in repo root.</output>
+    </step>
+
+    <step n="4" name="capture-controller-config">
+      <input>Current controller config + plugin list.</input>
+      <action>Export running config to `jcasc/jenkins.yaml` (Manage Jenkins → Configuration as Code → View). Lock plugins via `plugins.txt`. Set controller executors to 0. Commit both files to source control.</action>
+      <output>jcasc/jenkins.yaml + plugins.txt</output>
+      <decision-gate>If JCasC plugin is not installed, install it before continuing.</decision-gate>
+    </step>
+
+    <step n="5" name="validate-and-register">
+      <input>Jenkinsfile + JCasC YAML + validator.</input>
+      <action>Run `validate-jenkins-basics.py --file artefact.json`. Submit the Jenkinsfile via the Pipeline Linter REST endpoint (`POST /pipeline-model-converter/validate`). Register the repo as a Multibranch Pipeline (single repo) or under an Organization Folder (whole org).</action>
+      <output>Pipeline live; first build green.</output>
+    </step>
+
+  </section>
+</text>

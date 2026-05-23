@@ -1,0 +1,89 @@
+# purpose: ingress-nginx controller Deployment + Service + PDB + ServiceAccount with HA primitives
+# consumes: see content/02-output-contract.xml inputs (controller, replicas, pdb_min_available, anti_affinity, topology_spread)
+# produces: artefact conforming to content/02-output-contract.xml (controller=ingress-nginx)
+# depends-on: content/01-core-rules.xml (replicas-min-3, pdb-min-available, anti-affinity-required, topology-spread-azs)
+# token-budget-impact: ~700 tokens when loaded as context
+
+apiVersion: v1
+kind: Namespace
+metadata: { name: ingress-nginx }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: ingress-nginx, namespace: ingress-nginx }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: ingress-nginx-controller, namespace: ingress-nginx }
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app.kubernetes.io/name: ingress-nginx }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: ingress-nginx }
+    spec:
+      serviceAccountName: ingress-nginx
+      terminationGracePeriodSeconds: 300
+
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels: { app.kubernetes.io/name: ingress-nginx }
+              topologyKey: kubernetes.io/hostname
+
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app.kubernetes.io/name: ingress-nginx }
+
+      containers:
+        - name: controller
+          image: registry.k8s.io/ingress-nginx/controller:v1.10.0
+          args:
+            - /nginx-ingress-controller
+            - --ingress-class=public
+            - --publish-service=ingress-nginx/ingress-nginx
+          resources:
+            requests: { cpu: "200m", memory: "256Mi" }
+            limits:   { cpu: "1",    memory: "512Mi" }
+          ports:
+            - { name: http,    containerPort: 80,  protocol: TCP }
+            - { name: https,   containerPort: 443, protocol: TCP }
+            - { name: metrics, containerPort: 10254 }
+          livenessProbe:
+            httpGet: { path: /healthz, port: 10254 }
+            periodSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet: { path: /healthz, port: 10254 }
+            periodSeconds: 10
+            failureThreshold: 3
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: ingress-nginx-pdb, namespace: ingress-nginx }
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels: { app.kubernetes.io/name: ingress-nginx }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: ingress-nginx, namespace: ingress-nginx }
+spec:
+  type: LoadBalancer
+  selector: { app.kubernetes.io/name: ingress-nginx }
+  ports:
+    - { name: http,  port: 80,  targetPort: http }
+    - { name: https, port: 443, targetPort: https }
+---
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: public
+spec:
+  controller: k8s.io/ingress-nginx

@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="lb-haproxy-production Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for lb-haproxy-production as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="HAProxy Production Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in HAProxy production deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="health-check-without-expect" severity="high">
+      <symptom>Pool stays "all healthy" while users get 502s. Backend processes crashed; an upstream sidecar still answers TCP and returns 502, which HAProxy counts as alive.</symptom>
+      <root-cause source="HAProxy health-check docs">`option httpchk GET /health` is declared without `http-check expect status 200`.</root-cause>
+      <fix>Always pair `option httpchk` with `http-check expect status 200` (or a stricter body match). Pre-commit lint rejects any backend missing `expect`.</fix>
+    </antipattern>
+
+    <antipattern id="nbproc-leak" severity="medium">
+      <symptom>HAProxy 2.4+ config still uses `nbproc 4`. Stick-tables don't sync between processes; rate-limiting is per-process, allowing 4× the intended traffic per IP.</symptom>
+      <root-cause source="HAProxy 2.4 migration notes">Author migrated from 1.8 config without removing `nbproc` and switching to `nbthread`.</root-cause>
+      <fix>Replace `nbproc N` with `nbthread N` + `cpu-map auto:1/1-N 0-(N-1)`. Stick-tables now live in a single shared address space and rate limits become accurate.</fix>
+    </antipattern>
+
+    <antipattern id="dns-only-failover" severity="high">
+      <symptom>Primary HAProxy crashes. DNS TTL is 60s; corporate DNS resolvers cache for 5+ minutes; mobile carriers cache for hours. Some users see service down for 30 minutes.</symptom>
+      <root-cause source="keepalived + HAProxy HA reference">Operators relied on DNS round-robin or low-TTL records for failover; no VIP + VRRP in place.</root-cause>
+      <fix>Deploy keepalived on master + backup nodes with VRRP and a `track_script` checking HAProxy health. Move clients to the VIP; DNS now resolves to a static highly-available address.</fix>
+    </antipattern>
+
   </section>
 </text>

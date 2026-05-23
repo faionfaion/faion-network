@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Jenkins Basics Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals (host, compliance, agent strategy) to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-host">Where does the repository live + what's the compliance posture?</root-question>
+
+    <branch when="host == github AND compliance == none">
+      <conclusion ref="declarative-default" verdict="prefer github-actions-basics; do NOT introduce Jenkins"/>
+    </branch>
+
+    <branch when="host == gitlab AND compliance == none">
+      <conclusion ref="declarative-default" verdict="prefer gitlab-cicd; do NOT introduce Jenkins"/>
+    </branch>
+
+    <branch when="host == self-hosted OR compliance == on-prem-required">
+      <question id="q-cluster">Kubernetes cluster reachable from controller?</question>
+
+      <branch when="cluster == true">
+        <conclusion ref="kubernetes-agent" verdict="use agent { kubernetes { yaml '...' } } with resources.requests + limits"/>
+      </branch>
+
+      <branch when="cluster == false">
+        <question id="q-docker">Docker daemon available on agent VMs?</question>
+        <branch when="docker == true">
+          <conclusion ref="kubernetes-agent" verdict="use agent { docker { image '...' args '...' } } single-container"/>
+        </branch>
+        <branch when="docker == false">
+          <conclusion ref="zero-controller-executors" verdict="use agent { label 'linux' } with labelled long-lived agents; NEVER agent any or controller"/>
+        </branch>
+      </branch>
+    </branch>
+
+    <branch when="controller_config == ui_only">
+      <conclusion ref="jcasc-config" verdict="install JCasC, export current config to jenkins.yaml, commit to source control before any further change"/>
+    </branch>
+
+    <branch when="has_hardcoded_secret == true">
+      <conclusion ref="withCredentials-only" verdict="replace literal with credentials() / withCredentials() binding; rotate the leaked secret"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="green-field-self-hosted">
+    host=self-hosted → cluster=true → use kubernetes agent with explicit resource limits → enforces kubernetes-agent rule.
+  </example>
+</text>

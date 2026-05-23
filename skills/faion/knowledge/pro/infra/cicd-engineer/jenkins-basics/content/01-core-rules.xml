@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="jenkins-basics Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for jenkins-basics. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Jenkins Basics Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the jenkins-basics methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="declarative-default" testable="true" depth="essential">
+      <statement>Every new Jenkinsfile MUST use Declarative syntax (`pipeline { ... }`). Scripted blocks are only allowed inside `script { }` sections when Declarative cannot express the logic, with a code comment explaining why.</statement>
+      <rationale source="Jenkins docs — Pipeline syntax">Declarative pipelines support syntax validation at load time, restart-from-stage, and the `post` section for structured cleanup. Scripted pipelines provide no static validation; errors appear only at runtime.</rationale>
     </rule>
+
+    <rule id="zero-controller-executors" testable="true" depth="essential">
+      <statement>The Jenkins controller MUST have 0 executors. All material work (clone, build, test) runs on Kubernetes / Docker / label-bound agents.</statement>
+      <rationale source="Jenkins docs — Hardening the controller">Builds on the controller consume scheduling and plugin-processing resources, causing job-queue delays and OOM kills of Jenkins itself. They also have direct filesystem access to the credentials store — a security violation.</rationale>
+    </rule>
+
+    <rule id="jcasc-config" testable="true" depth="essential">
+      <statement>All controller configuration (security realm, authorization, node definitions, shared libraries, credentials) MUST be defined in a JCasC YAML file in source control. UI-driven changes are forbidden — any drift MUST be re-applied via JCasC.</statement>
+      <rationale source="Jenkins JCasC plugin docs">Manual Jenkins configuration is not reproducible. After a DR restore, JCasC re-applies the full config in minutes; without it, rebuilding a controller takes hours of manual clicks and is unauditable.</rationale>
+    </rule>
+
+    <rule id="withCredentials-only" testable="true" depth="essential">
+      <statement>Secrets MUST be injected via the Credentials plugin (`withCredentials([...]) { ... }` or `credentials('id')`). Hard-coded credentials in Jenkinsfiles are forbidden. `sh "echo ${secret}"` interpolation is forbidden; use `sh '''echo "$SECRET"'''` with env-var binding.</statement>
+      <rationale source="Jenkins Credentials Binding plugin docs">Hard-coded credentials end up in Git and build logs. Groovy `${}` interpolation inside `sh "..."` is a shell-injection footgun and leaks secrets into the process tree.</rationale>
+    </rule>
+
+    <rule id="options-timeout-buildDiscarder" testable="true" depth="essential">
+      <statement>Every pipeline MUST set `options { timeout(time: 30, unit: 'MINUTES'); buildDiscarder(logRotator(numToKeepStr: '10')); disableConcurrentBuilds() }` (or stricter project-specific values). Every pipeline MUST clean its workspace in `post { always { cleanWs() } }`.</statement>
+      <rationale source="Jenkins docs — Pipeline best practices">Pipelines without timeouts hang on stuck processes and consume executor slots. Without buildDiscarder, accumulated build artifacts and logs fill the controller disk. Without cleanWs, agents accumulate stale workspaces.</rationale>
+    </rule>
+
+    <rule id="kubernetes-agent" testable="true" depth="essential">
+      <statement>For dynamic agent pools, use `agent { kubernetes { yaml '...' } }` with explicit `resources.requests` + `resources.limits` per container, or `agent { docker { image '...' args '...' } }` for single-container builds. `agent any` is forbidden in production pipelines.</statement>
+      <rationale source="Jenkins Kubernetes plugin docs">Kubernetes agents are created on demand and destroyed after the build, eliminating stale-state. Resource limits prevent a runaway build from starving the cluster. `agent any` makes the build non-deterministic and leaks state across builds.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

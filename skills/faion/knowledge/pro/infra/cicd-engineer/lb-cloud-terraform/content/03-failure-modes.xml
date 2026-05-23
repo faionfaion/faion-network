@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="lb-cloud-terraform Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for lb-cloud-terraform as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Cloud LB Terraform Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed when provisioning cloud LBs via Terraform. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="terraform-destroyed-prod-lb" severity="high">
+      <symptom>Engineer ran `terraform destroy` in the wrong workspace; the prod ALB and its target groups disappeared. Service is down; restoring requires manual recreation + DNS update.</symptom>
+      <root-cause source="AWS ELB best practices">`enable_deletion_protection = true` was missing on the prod `aws_lb` resource.</root-cause>
+      <fix>Set `enable_deletion_protection = true` on every production LB. Add `lifecycle { prevent_destroy = true }` as a belt-and-braces. Block `terraform destroy` on prod via OPA / Terraform Cloud policies.</fix>
+    </antipattern>
+
+    <antipattern id="old-tls-policy" severity="high">
+      <symptom>External PCI-DSS audit fails: scanner reports the LB accepts TLS 1.0 and supports CBC ciphers. Mitigation deadline is 30 days.</symptom>
+      <root-cause source="Mozilla TLS guidelines + AWS ELB security policies">`ssl_policy = "ELBSecurityPolicy-2016-08"` (default suggested by old AWS docs) was copy-pasted into the Terraform.</root-cause>
+      <fix>Replace with `ELBSecurityPolicy-TLS13-1-2-2021-06` (AWS) or `MODERN` (GCP). Run `nmap --script ssl-enum-ciphers -p 443` after apply to confirm.</fix>
+    </antipattern>
+
+    <antipattern id="open-backend-security-group" severity="high">
+      <symptom>Honeypot detects scans hitting backend EC2 instances directly on port 8080, bypassing the ALB and WAF. Logs show the SG allows `0.0.0.0/0` on the backend port.</symptom>
+      <root-cause source="AWS Well-Architected security pillar">Author copied a wide SG rule (`cidr_blocks = ["0.0.0.0/0"]`) onto the backend instead of referencing the ALB SG ID.</root-cause>
+      <fix>Backend SG ingress MUST use `source_security_group_id = aws_security_group.alb.id`, never a CIDR. tflint rule `aws_security_group_invalid_ingress` enforces this in CI.</fix>
+    </antipattern>
+
   </section>
 </text>

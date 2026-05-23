@@ -1,5 +1,8 @@
-// kubernetes-agent.groovy
-// Reusable Kubernetes pod template for dynamic Jenkins agents.
+// purpose: Kubernetes pod template for dynamic Jenkins agents
+// consumes: nodeImage, helmVersion, resource request/limit overrides
+// produces: agent_kind=kubernetes container per content/02-output-contract.xml
+// depends-on: content/01-core-rules.xml (kubernetes-agent, zero-controller-executors)
+// token-budget-impact: ~500 tokens when loaded as context
 // Copy into vars/ of your Shared Library.
 // Usage: kubernetesAgent(nodeImage: 'node:20', helmVersion: '3.14') { ... }
 

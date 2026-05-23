@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Cloud LB Terraform Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals (cloud, protocol, scope) to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-cloud">Cloud provider?</root-question>
+
+    <branch when="cloud == aws">
+      <question id="q-aws-proto">Protocol?</question>
+      <branch when="protocol == http_https">
+        <conclusion ref="tls-1-2-min-policy" verdict="aws_lb type=application (ALB) + ELBSecurityPolicy-TLS13-1-2-2021-06"/>
+      </branch>
+      <branch when="protocol == tcp_udp">
+        <conclusion ref="deletion-protection-on" verdict="aws_lb type=network (NLB) + deletion_protection + TLS pass-through"/>
+      </branch>
+      <branch when="protocol == cross_region_anycast">
+        <conclusion ref="deletion-protection-on" verdict="AWS Global Accelerator + NLB origin"/>
+      </branch>
+    </branch>
+
+    <branch when="cloud == gcp">
+      <question id="q-gcp-scope">Global or regional?</question>
+      <branch when="scope == global">
+        <conclusion ref="tls-1-2-min-policy" verdict="GCP Global HTTP(S) LB + managed cert + MODERN policy + Cloud Armor"/>
+      </branch>
+      <branch when="scope == regional">
+        <conclusion ref="security-group-tight" verdict="GCP regional LB + firewall rule sourced from LB SA, not 0.0.0.0/0"/>
+      </branch>
+    </branch>
+
+    <branch when="cloud == azure">
+      <conclusion ref="deletion-protection-on" verdict="out of scope for this methodology; see azurerm_application_gateway / azurerm_frontdoor"/>
+    </branch>
+
+    <branch when="has_public_http_listener == true AND has_http_to_https_redirect == false">
+      <conclusion ref="http-to-https-redirect" verdict="add 80 listener with type=redirect to 443 before merging"/>
+    </branch>
+
+    <branch when="access_logs_bucket == empty">
+      <conclusion ref="access-logs-enabled" verdict="provision dedicated versioned bucket + bucket policy; enable access_logs block"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="aws-public-web">
+    cloud=aws → protocol=http_https → ALB + modern TLS policy → confirm redirect + access logs + tight SG → fully satisfies 5 rules.
+  </example>
+</text>

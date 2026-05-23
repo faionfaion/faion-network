@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Load Balancer Health Checks Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals (probe split, dep depth, runtime, LB) to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-split">Liveness and readiness on the same path?</root-question>
+
+    <branch when="same_path == true">
+      <conclusion ref="liveness-ne-readiness" verdict="split /health/live (always 200) + /health/ready (deep probe)"/>
+    </branch>
+
+    <branch when="same_path == false">
+      <question id="q-deep">Does /health/ready touch every critical dependency?</question>
+      <branch when="touches_deps == false">
+        <conclusion ref="deep-probe-deps" verdict="add SELECT 1, PING, broker heartbeat — return 503 if any fails"/>
+      </branch>
+      <branch when="touches_deps == true">
+        <question id="q-timeouts">Each dep call bound by per-call timeout?</question>
+        <branch when="timeouts == false">
+          <conclusion ref="timeout-bound-probe" verdict="wrap every dep call in 1-5 s timeout; explicit 503 on timeout"/>
+        </branch>
+        <branch when="timeouts == true">
+          <question id="q-thresholds">Check interval &gt;= 10 s AND thresholds &gt;= 2?</question>
+          <branch when="thresholds_ok == false">
+            <conclusion ref="threshold-tuned" verdict="set interval 10-30 s, healthy &gt;= 2, unhealthy &gt;= 2 (cloud) or 3 (HAProxy)"/>
+          </branch>
+          <branch when="thresholds_ok == true">
+            <conclusion ref="expect-status-match" verdict="LB probe must assert status 200 (http-check expect / status_match)"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="new-service-k8s">
+    same_path=true → split into /live + /ready → touches_deps=true (DB+Redis) → timeouts=true (3 s + 2 s) → thresholds_ok=true (interval=10, healthy=2, unhealthy=3) → expect-status=200 → satisfies all 5 rules.
+  </example>
+</text>

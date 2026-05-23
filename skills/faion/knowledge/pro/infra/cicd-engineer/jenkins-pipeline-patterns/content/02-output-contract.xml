@@ -1,22 +1,94 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="jenkins-pipeline-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Jenkins Pipeline Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the pipeline-pattern artefact this methodology produces. Validator enforces syntax + library pinning + parallel isolation + pod resources.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/jenkins-pipeline-patterns.json",
+  "type": "object",
+  "required": ["syntax", "options", "agent_strategy", "shared_libraries"],
+  "properties": {
+    "syntax": {"enum": ["declarative", "scripted"]},
+    "options": {
+      "type": "object",
+      "required": ["timeout_minutes", "buildDiscarder_keep", "disableConcurrentBuilds", "timestamps"],
+      "properties": {
+        "timeout_minutes": {"type": "integer", "minimum": 1, "maximum": 240},
+        "buildDiscarder_keep": {"type": "integer", "minimum": 1},
+        "disableConcurrentBuilds": {"type": "boolean"},
+        "timestamps": {"type": "boolean", "const": true},
+        "ansiColor": {"type": "boolean"}
+      }
+    },
+    "agent_strategy": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": {"enum": ["kubernetes", "docker", "label", "matrix"]},
+        "pod_resources_set": {"type": "boolean", "const": true}
+      }
+    },
+    "shared_libraries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "version_pinned", "dedicated_repo"],
+        "properties": {
+          "name": {"type": "string", "pattern": "^[a-z][a-z0-9-]+$"},
+          "version_pinned": {"type": "boolean", "const": true},
+          "dedicated_repo": {"type": "boolean", "const": true}
+        }
+      }
+    },
+    "parallel_branches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {"type": "string"},
+          "workspace_isolated": {"type": "boolean", "const": true}
+        }
+      }
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "syntax": "declarative",
+  "options": {"timeout_minutes": 30, "buildDiscarder_keep": 50, "disableConcurrentBuilds": true, "timestamps": true, "ansiColor": true},
+  "agent_strategy": {"kind": "kubernetes", "pod_resources_set": true},
+  "shared_libraries": [{"name": "platform", "version_pinned": true, "dedicated_repo": true}],
+  "parallel_branches": [
+    {"name": "unit-tests", "workspace_isolated": true},
+    {"name": "integration-tests", "workspace_isolated": true}
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "syntax": "scripted",
+  "options": {"timeout_minutes": 0, "disableConcurrentBuilds": false, "timestamps": false},
+  "agent_strategy": {"kind": "kubernetes", "pod_resources_set": false},
+  "shared_libraries": [{"name": "platform", "version_pinned": false, "dedicated_repo": false}]
+}
+]]></code>
+    <note>Top-level scripted; no timeout; no concurrency disable; missing pod resources; library not pinned; library not in dedicated repo.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f-floating-lib">`@Library\('[^@]+@(main|master)'`</pattern>
+    <pattern id="f-no-pod-resources">pod template missing both `requests` and `limits`</pattern>
+    <pattern id="f-shared-workspace">`parallel {` without `dir()` or `ws()` inside any branch</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-jenkins-pipeline-patterns.py">Validator script</reference>
 </text>

@@ -1,23 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="lb-algorithms Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for lb-algorithms. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Load Balancing Algorithms Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules grounding the lb-algorithms methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use round-robin only when all backend servers have equal capacity AND request processing time is uniform (short-lived, homogeneous requests). Use weighted round-robin when servers have different capacities but request time is still uniform. Never use round-robin or weighted round-robin for workloads with variable-cost endpoints (mixed fast/slow API routes, large file uploads alongside simple reads).</statement>
-      <rationale source="v1-source">Round-robin distributes by connection count, not CPU cost. A server handling one long-running request alongside many short ones accumulates queue depth while receiving equal new connections. Least-connections handles this correctly at the cost of per-connection tracking.</rationale>
+
+    <rule id="round-robin-only-uniform" testable="true" depth="essential">
+      <statement>Round-robin (or weighted round-robin) MUST be chosen only when ALL backend servers have equal capacity AND request processing time is uniform (p99 / p50 ≤ 1.2). For any workload with variable-cost endpoints (mixed fast/slow API, large file uploads alongside short reads), select least-connections instead.</statement>
+      <rationale source="Cloudflare LB algorithms learning hub">Round-robin distributes by connection count, not CPU cost. A server handling one long-running request alongside many short ones accumulates queue depth while still receiving equal new connections — uneven utilisation that round-robin cannot self-correct.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Do not use IP hash in autoscaling environments or behind NAT/VPN. IP hash routes all traffic from a client IP to one backend; when backends scale in/out, all existing sessions redistribute. When clients share a NAT IP (corporate networks, mobile carriers), one backend receives disproportionate load.</statement>
-      <rationale source="v1-source">IP hash + frequent autoscale events causes constant wholesale re-distribution — the sticky property breaks on every scale event. NAT collapses many real users to one IP, creating a thundering-herd effect on a single backend. Cookie-based persistence handles both problems correctly.</rationale>
+
+    <rule id="no-ip-hash-autoscale" testable="true" depth="essential">
+      <statement>Do NOT use IP hash in autoscaling environments OR behind NAT / VPN. If session persistence is required, use cookie-based sticky sessions instead.</statement>
+      <rationale source="HAProxy + Nginx sticky-session docs">IP hash routes all traffic from a client IP to one backend; when backends scale in/out the sticky property breaks. NAT collapses thousands of real users to one IP → one backend gets a thundering herd. Cookie persistence handles both correctly.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Use least-connections (or weighted least-connections for heterogeneous capacity) as the default algorithm for any workload with variable request processing time: WebSocket connections, database proxies, long-running HTTP uploads/downloads, streaming endpoints, or mixed fast/slow API routes. Use least-response-time only when a load balancer health probe provides accurate per-backend latency measurements.</statement>
-      <rationale source="v1-source">Least-connections adapts to request cost naturally — a backend processing a slow request accumulates connection count and receives fewer new requests. Weighted least-connections extends this to heterogeneous fleets. Least-response-time is the most accurate but requires active probing; its benefit over least-connections is measurable only when backends have significantly different computational power or cache hit rates.</rationale>
+
+    <rule id="leastconn-default-variable-cost" testable="true" depth="essential">
+      <statement>For any workload with variable processing time (WebSocket connections, database proxies, long-running HTTP uploads/downloads, streaming endpoints, mixed fast/slow API routes), choose `leastconn` (or `weighted leastconn` for heterogeneous capacity) as the default algorithm.</statement>
+      <rationale source="HAProxy `balance` documentation">Least-connections adapts to request cost naturally — a backend processing a slow request accumulates connection count and receives fewer new ones. The per-connection tracking overhead is negligible compared to the queueing it prevents.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>When adding a new load balancer to a production system, measure actual backend response time distribution before picking an algorithm. If p50 and p99 differ by more than 2x (evidence of variable-cost requests), default to least-connections. If they are within 20%, round-robin is acceptable.</statement>
-      <rationale source="v1-source">Algorithm decisions made without traffic data produce subtle load imbalances that are invisible until a backend falls behind and starts dropping requests under peak load. Measuring first eliminates guesswork.</rationale>
+
+    <rule id="weighted-by-capacity" testable="true" depth="essential">
+      <statement>When fleet capacity is heterogeneous (servers with different CPU/RAM), set connection weights proportional to actual capacity (e.g., 100 / 100 / 50 for two large + one small). Plain (unweighted) algorithms MUST NOT be used on heterogeneous fleets.</statement>
+      <rationale source="Nginx upstream module docs">Without weights, small servers receive equal load and saturate first; the cluster behaves as if its capacity equals N × the smallest server. Weights restore proportional distribution.</rationale>
     </rule>
+
+    <rule id="measure-before-choose" testable="true" depth="essential">
+      <statement>Before picking an algorithm for a new LB, measure (or estimate from APM) the actual backend response-time distribution. If p99 and p50 differ by more than 2×, default to least-connections; if within ±20%, round-robin is acceptable.</statement>
+      <rationale source="Cloudflare + Gcore LB algorithm guides">Algorithm decisions made without data produce subtle load imbalances that are invisible until a backend falls behind and starts dropping under peak. Measurement first eliminates guesswork.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

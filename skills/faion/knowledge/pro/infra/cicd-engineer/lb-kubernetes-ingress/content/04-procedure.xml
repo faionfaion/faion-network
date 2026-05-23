@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Kubernetes Ingress Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the lb-kubernetes-ingress methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="pick-controller">
+      <input>Cluster type, existing knowledge, traffic profile.</input>
+      <action>Apply 06-decision-tree.xml. ingress-nginx for general HTTP/HTTPS; haproxy-ingress for TCP+rate-limit + stick-tables; traefik for cert-manager-free + dashboard; envoy-gateway for Gateway API + traffic splitting.</action>
+      <output>Chosen controller.</output>
+    </step>
+
+    <step n="2" name="emit-controller-deployment">
+      <input>Controller choice + node count + AZ count.</input>
+      <action>Render `templates/controller-deployment.yaml` with `replicas: 3`, PDB `minAvailable: 2`, `podAntiAffinity` on hostname, `topologySpreadConstraints` on zone, `terminationGracePeriodSeconds: 300`, explicit `resources.requests` + `limits`.</action>
+      <output>Controller Deployment + Service + PDB + ServiceAccount.</output>
+    </step>
+
+    <step n="3" name="emit-per-app-ingress">
+      <input>App routes + TLS issuer + per-route policy (rate-limit / CORS / body size).</input>
+      <action>For each app, render `templates/ingress.yaml` with `ingressClassName` matching the controller, `cert-manager.io/cluster-issuer` annotation for TLS, plus rate-limit + CORS + body-size annotations from the controller's own namespace.</action>
+      <output>Ingress per app.</output>
+      <decision-gate>If any annotation uses a different controller's namespace, fail.</decision-gate>
+    </step>
+
+    <step n="4" name="separate-classes">
+      <input>Traffic-class list.</input>
+      <action>For each class (public / internal / admin), deploy a separate controller Deployment + IngressClass. Public class binds to the public LoadBalancer; internal class binds to the internal LB or ClusterIP only.</action>
+      <output>Per-class controller deployments.</output>
+    </step>
+
+    <step n="5" name="validate-and-drain-test">
+      <input>Artefact JSON + cluster.</input>
+      <action>Run `validate-lb-kubernetes-ingress.py --file artefact.json`. Drain a controller-node: `kubectl drain node-1 --ignore-daemonsets --delete-emptydir-data`. Watch that traffic stays green (no 502s) — PDB + anti-affinity should keep ≥ 2 controllers up at all times.</action>
+      <output>Drain test passed.</output>
+    </step>
+
+  </section>
+</text>

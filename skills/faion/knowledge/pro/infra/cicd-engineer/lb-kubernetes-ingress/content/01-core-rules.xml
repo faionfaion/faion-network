@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="lb-kubernetes-ingress Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for lb-kubernetes-ingress. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Kubernetes Ingress Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>5 testable rules for Kubernetes Ingress deployments. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="replicas-min-3" testable="true" depth="essential">
+      <statement>Production Ingress controller Deployments MUST have `replicas: ≥ 3`. Single-replica controllers are forbidden in production.</statement>
+      <rationale source="Kubernetes Ingress production checklist + Ingress-Nginx docs">A single Ingress pod failing or being evicted causes a full HTTP outage for every route. Three replicas survive one pod loss + one rolling-restart at a time.</rationale>
     </rule>
+
+    <rule id="pdb-min-available" testable="true" depth="essential">
+      <statement>Every Ingress controller Deployment MUST have a PodDisruptionBudget with `minAvailable: 2` (for `replicas: 3`). The PDB MUST select the same labels as the Deployment.</statement>
+      <rationale source="Kubernetes PDB docs">Without a PDB, voluntary disruptions (node drain, cluster upgrade) can evict all controller pods at once. The PDB blocks the drain until at least 2 pods remain ready.</rationale>
+    </rule>
+
+    <rule id="anti-affinity-required" testable="true" depth="essential">
+      <statement>Ingress controller Deployments MUST set `podAntiAffinity` with `topologyKey: kubernetes.io/hostname` to prevent two controller pods landing on the same node. `requiredDuringSchedulingIgnoredDuringExecution` is the production default.</statement>
+      <rationale source="Kubernetes scheduling docs">Without anti-affinity, all controller pods may co-locate on one node; that node failing takes the whole Ingress tier down.</rationale>
+    </rule>
+
+    <rule id="topology-spread-azs" testable="true" depth="essential">
+      <statement>Multi-AZ clusters MUST set `topologySpreadConstraints` with `topologyKey: topology.kubernetes.io/zone` and `whenUnsatisfiable: ScheduleAnyway` (or `DoNotSchedule` if enough nodes exist). Single-AZ controller pools in a multi-AZ cluster are forbidden.</statement>
+      <rationale source="Kubernetes topology spread docs">Without zone spread, all controller pods may end up in one AZ; an AZ failure removes the Ingress tier entirely.</rationale>
+    </rule>
+
+    <rule id="annotations-controller-namespaced" testable="true" depth="essential">
+      <statement>Per-Ingress annotations MUST use the namespace of the chosen controller: `nginx.ingress.kubernetes.io/*` for ingress-nginx, `haproxy.org/*` for HAProxy Ingress, `traefik.ingress.kubernetes.io/*` for Traefik. Mixing namespaces is forbidden — annotations from a different controller are silently ignored.</statement>
+      <rationale source="ingress-nginx + HAProxy Ingress + Traefik docs">Cross-controller annotations are a top LLM bug: rate-limit / CORS / body-size silently never apply because the annotation belongs to a controller that is not installed.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

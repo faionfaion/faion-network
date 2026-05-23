@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Load Balancing Algorithms Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the lb-algorithms methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="measure-traffic-profile">
+      <input>APM traces or load-test report for the workload behind the LB.</input>
+      <action>Compute p50 + p95 + p99 backend response time. Note request mix (short read vs long upload). Note whether autoscaling is in scope and whether clients sit behind NAT/VPN.</action>
+      <output>Traffic profile: {p50_ms, p99_ms, request_cost, autoscaling, nat_behind_lb}.</output>
+      <decision-gate>If profile is unknown, run a 5-minute synthetic load test before proceeding. Without data, algorithm choice is guesswork.</decision-gate>
+    </step>
+
+    <step n="2" name="check-fleet-capacity">
+      <input>Server inventory + per-server CPU/RAM.</input>
+      <action>Mark fleet as homogeneous (all identical) or heterogeneous. For heterogeneous, draft weights proportional to capacity.</action>
+      <output>Fleet capacity flag + weight vector.</output>
+    </step>
+
+    <step n="3" name="apply-decision-tree">
+      <input>Traffic profile + fleet capacity.</input>
+      <action>Walk `content/06-decision-tree.xml`. The tree leads to one of: round-robin, weighted-round-robin, least-connections, weighted-least-connections, least-response-time, cookie-sticky.</action>
+      <output>Algorithm choice + linked rule id.</output>
+    </step>
+
+    <step n="4" name="emit-config">
+      <input>Algorithm + fleet + LB technology (Nginx / HAProxy / cloud LB).</input>
+      <action>Render the matching template (`templates/upstream.conf` for Nginx, `templates/backend.cfg` for HAProxy). Insert weights per heterogeneous fleet rule. Record decision JSON to `templates/algorithm-decision.json`.</action>
+      <output>LB config snippet + algorithm-decision.json artefact.</output>
+    </step>
+
+    <step n="5" name="validate-and-deploy">
+      <input>algorithm-decision.json + validator.</input>
+      <action>Run `validate-lb-algorithms.py --file algorithm-decision.json`. Commit the LB config + decision JSON to source. Apply to a canary backend pool first; compare p99 before/after.</action>
+      <output>Decision approved + algorithm rolled out.</output>
+      <decision-gate>If post-rollout p99 regresses &gt;10%, roll back and re-measure.</decision-gate>
+    </step>
+
+  </section>
+</text>

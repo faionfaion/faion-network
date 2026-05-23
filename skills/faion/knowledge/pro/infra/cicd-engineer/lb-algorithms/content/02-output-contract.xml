@@ -1,22 +1,63 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="lb-algorithms Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Load Balancing Algorithms Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema for the algorithm-choice artefact this methodology produces. Validator enforces measured-before-choose + autoscaling/NAT consistency.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/lb-algorithms.json",
+  "type": "object",
+  "required": ["algorithm", "fleet_capacity", "request_cost", "autoscaling", "nat_behind_lb", "measured"],
+  "properties": {
+    "algorithm": {"enum": ["round-robin", "weighted-round-robin", "least-connections", "weighted-least-connections", "least-response-time", "ip-hash", "cookie-sticky", "resource-based"]},
+    "fleet_capacity": {"enum": ["homogeneous", "heterogeneous"]},
+    "request_cost": {"enum": ["uniform", "variable"]},
+    "autoscaling": {"type": "boolean"},
+    "nat_behind_lb": {"type": "boolean"},
+    "measured": {"type": "object", "required": ["p50_ms", "p99_ms"], "properties": {"p50_ms": {"type": "number"}, "p99_ms": {"type": "number"}}},
+    "weights": {"type": "array", "items": {"type": "integer", "minimum": 1}},
+    "rationale": {"type": "string", "minLength": 30}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "algorithm": "weighted-least-connections",
+  "fleet_capacity": "heterogeneous",
+  "request_cost": "variable",
+  "autoscaling": true,
+  "nat_behind_lb": false,
+  "measured": {"p50_ms": 80, "p99_ms": 240},
+  "weights": [100, 100, 50],
+  "rationale": "p99/p50 = 3x, fleet has two large + one small node, ASG scales; leastconn adapts and weights restore proportional capacity."
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "algorithm": "ip-hash",
+  "fleet_capacity": "homogeneous",
+  "request_cost": "uniform",
+  "autoscaling": true,
+  "nat_behind_lb": true,
+  "measured": {"p50_ms": 50, "p99_ms": 55},
+  "rationale": "wanted sticky sessions"
+}
+]]></code>
+    <note>ip-hash + autoscaling + NAT — violates no-ip-hash-autoscale. Use cookie-sticky.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f-iphash-autoscale">algorithm == ip-hash AND (autoscaling == true OR nat_behind_lb == true)</pattern>
+    <pattern id="f-rr-heterogeneous">algorithm == round-robin AND fleet_capacity == heterogeneous</pattern>
+    <pattern id="f-rr-variable">algorithm == round-robin AND request_cost == variable</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-lb-algorithms.py">Validator script</reference>
 </text>

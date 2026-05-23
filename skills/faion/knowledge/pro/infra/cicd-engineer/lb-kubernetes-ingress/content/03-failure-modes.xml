@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="lb-kubernetes-ingress Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for lb-kubernetes-ingress as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Kubernetes Ingress Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>3 antipatterns observed in K8s Ingress deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="annotation-cross-controller" severity="high">
+      <symptom>Rate-limit annotation `haproxy.org/rate-limit-requests: "60"` is set on an Ingress, but rate limiting never kicks in. The cluster actually runs `ingress-nginx`.</symptom>
+      <root-cause source="ingress-nginx + HAProxy Ingress docs">Author copied the annotation from a different controller's docs without checking which controller is installed.</root-cause>
+      <fix>Use `nginx.ingress.kubernetes.io/limit-rpm: "60"` for ingress-nginx. Add a pre-commit linter that asserts every annotation namespace matches the installed controller.</fix>
+    </antipattern>
+
+    <antipattern id="single-replica-controller" severity="high">
+      <symptom>Cluster upgrade drains the controller node; the single Ingress pod is evicted; every HTTP route 502s for 90 s while the replacement comes up.</symptom>
+      <root-cause source="Kubernetes Ingress production checklist">Controller Deployment has `replicas: 1` and no PDB.</root-cause>
+      <fix>Set `replicas: 3` + PDB `minAvailable: 2`. Add anti-affinity + topology-spread. Drain test: cordon a node, watch all routes stay green.</fix>
+    </antipattern>
+
+    <antipattern id="co-located-controllers" severity="medium">
+      <symptom>Cluster has 3 Ingress controller pods, but during a node failure all three vanish — they happened to land on one node.</symptom>
+      <root-cause source="Kubernetes scheduling docs">No `podAntiAffinity` with `topologyKey: kubernetes.io/hostname`. The scheduler placed all 3 replicas on the cheapest node.</root-cause>
+      <fix>Add `requiredDuringSchedulingIgnoredDuringExecution` anti-affinity on `app.kubernetes.io/name=ingress-nginx`. Re-roll the Deployment; pods spread to 3 distinct nodes.</fix>
+    </antipattern>
+
   </section>
 </text>

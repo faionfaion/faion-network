@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Cloud LB Terraform Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the lb-cloud-terraform methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="confirm-lb-product">
+      <input>Provider + protocol + traffic profile.</input>
+      <action>Apply the decision tree (06-decision-tree.xml). HTTP/HTTPS on AWS → ALB; TCP/UDP on AWS → NLB; global anycast HTTP → GCP Global LB or AWS Global Accelerator. Azure path is out of scope here.</action>
+      <output>Selected LB product.</output>
+    </step>
+
+    <step n="2" name="provision-prereqs">
+      <input>VPC, subnets, ACM/managed cert ARN, log-bucket.</input>
+      <action>Confirm VPC + ≥2 subnets across AZs for HA. Pre-provision ACM cert (AWS) or `google_compute_managed_ssl_certificate` (GCP). Pre-provision S3/GCS bucket with versioning + correct bucket policy.</action>
+      <output>Resource IDs ready for the LB module.</output>
+      <decision-gate>If the cert is unverified or bucket policy is missing, STOP.</decision-gate>
+    </step>
+
+    <step n="3" name="write-terraform">
+      <input>Resource IDs + naming convention + tags.</input>
+      <action>Render `templates/alb.tf` or `templates/gcp-global-lb.tf`. Set `enable_deletion_protection = true`, `ssl_policy = "ELBSecurityPolicy-TLS13-1-2-2021-06"`, HTTP listener → 301 redirect, security group restricted to 80+443, target SG sourced from LB SG ID.</action>
+      <output>Terraform module files.</output>
+    </step>
+
+    <step n="4" name="static-scan">
+      <input>Module files.</input>
+      <action>Run `tflint --enable-rule=aws_lb_invalid_load_balancer_type` + `tfsec` + `checkov -d .`. Resolve every HIGH finding. Run `validate-lb-cloud-terraform.py --file artefact.json`.</action>
+      <output>All static scans clean.</output>
+      <decision-gate>If HIGH findings remain, fix before plan.</decision-gate>
+    </step>
+
+    <step n="5" name="plan-apply-observe">
+      <input>Workspace + var-file.</input>
+      <action>`terraform plan -out=tfplan` → review diff → `terraform apply tfplan`. Confirm LB DNS resolves; confirm `nmap --script ssl-enum-ciphers` shows only TLS 1.2+. Confirm first access log appears in the bucket within 5 minutes.</action>
+      <output>LB live + logs flowing.</output>
+    </step>
+
+  </section>
+</text>

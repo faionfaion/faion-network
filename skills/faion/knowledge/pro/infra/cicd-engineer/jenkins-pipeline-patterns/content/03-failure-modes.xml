@@ -1,52 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="jenkins-pipeline-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for jenkins-pipeline-patterns as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Jenkins Pipeline Patterns Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>4 antipatterns observed in real Jenkins pipeline patterns. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Writing entire pipeline logic inside a single large scripted block because "Groovy is more powerful than Declarative".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Scripted blocks hide logic from CI/CD governance, syntax checking, and team review. Build errors reference internal CPS class names (org.jenkinsci.plugins.workflow.cps.CpsThread) that agents misinterpret as application errors. Maintenance burden increases dramatically when the next team member touches the pipeline. The pipeline becomes unmaintainable as team size grows. New team members cannot understand the flow without running the build and reading error messages.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Storing shared library code directly in the application repository alongside Jenkinsfiles instead of a dedicated library repo.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Complicates versioning and testing. When the application repo is cloned for a build, the library code is checked out at the same commit, preventing independent rollback. Multi-team governance becomes impossible. Updates to the library must coordinate with application releases, slowing down fix deployment. A library bug in shared library breaks all 50+ pipelines simultaneously with no quick rollback path.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Parallel branches sharing the same workspace without `dir()` or `ws()` isolation, causing file races.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Jenkins shares workspace by default across parallel branches. A unit test writing to `target/` and integration test reading from `target/` simultaneously causes corruption. Always use `dir('unique-dir-${env.EXECUTOR_NUMBER}')` or separate workspaces.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Omitting `timeout` and `buildDiscarder`, relying on manual Jenkins administration to kill stuck builds and archive old logs.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Leaves the system vulnerable to queue starvation and disk exhaustion. New team members do not understand the cleanup rules.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Using static node labels (agent { label 'ubuntu-builder' }) on-prem instead of Kubernetes pod templates.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Static labels require manual node provisioning and do not scale. Pod templates auto-scale with cluster load and isolate resource contention per-pipeline.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Logging environment variables inside `withCredentials` or using `sh -x` to debug, which leaks secrets despite masking.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Even though Jenkins masks values in final output, intermediate debug logs and log aggregation systems may capture unmasked values. The pipeline becomes a vector for credential theft.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Omitting `post { always { cleanWs() } }` because "Jenkins will clean up eventually".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Workspace accumulates over hundreds of builds, filling disk very quickly. Operator intervention becomes urgent. The pipeline becomes slow to start due to workspace size.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Allowing agents to push Jenkinsfile changes directly to main and then run the build to "validate in real-time".</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Pollutes build history with generated/test builds. Slow feedback loop. If the generated Jenkinsfile has a credential leak, it is already committed.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>Using Pattern or Matcher objects directly in the main pipeline flow without `@NonCPS` wrapping.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Compiles fine, but the CPS transformer cannot serialize the Pattern object. At a random checkpoint (after a parallel stage, after a timeout, after a plugin API call), the build fails with `NotSerializableException: java.util.regex.Pattern`. The error is opaque and difficult to diagnose.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="not-serializable-exception" severity="high">
+      <symptom>Pipeline runs for 45 minutes then fails with `java.io.NotSerializableException: java.util.regex.Pattern` at a random CPS checkpoint. Re-running succeeds maybe once in three.</symptom>
+      <root-cause source="Jenkins CPS plugin docs">Author stored a non-Serializable object (Pattern, BufferedReader, JsonSlurperClassic) in a local variable that crosses a CPS checkpoint (sh / sleep / input).</root-cause>
+      <fix>Wrap the offending code in `@NonCPS def helper() { ... }` returning only primitives. Never store non-Serializable references in Pipeline scope; instantiate inside `@NonCPS` blocks and consume the result immediately.</fix>
+    </antipattern>
+
+    <antipattern id="floating-library-ref" severity="high">
+      <symptom>Library author pushes a change to `main`. Within 5 minutes, 50 production pipelines start failing with new behaviour nobody asked for; rollback requires force-pushing the library repo.</symptom>
+      <root-cause source="Jenkins Shared Libraries docs">Pipelines reference `@Library('platform@main') _`; implicit loading is enabled in `Configure System`.</root-cause>
+      <fix>Disable implicit loading. Force every pipeline to `@Library('platform@v1.4.2') _` with a real semver tag. Bump tags via PR + library smoke test.</fix>
+    </antipattern>
+
+    <antipattern id="parallel-workspace-race" severity="high">
+      <symptom>Unit + integration tests run in parallel; flaky `FileNotFoundException` or corrupted `target/` reports. The bug never reproduces locally.</symptom>
+      <root-cause source="Jenkins Pipeline parallel docs">Branches share the default workspace; both write to `target/` simultaneously.</root-cause>
+      <fix>Wrap each branch in `dir("branch-${env.STAGE_NAME}")` (or `ws()` for a fresh workspace). For shared external resources (DB, registry credential), wrap the affected step in `lock(resource: 'shared-db')`.</fix>
+    </antipattern>
+
+    <antipattern id="pod-no-resources" severity="medium">
+      <symptom>One runaway test consumes 16 GB on a 4-node K8s cluster, evicting all other build pods. SREs spend hours diagnosing why "the cluster broke".</symptom>
+      <root-cause source="Jenkins Kubernetes plugin docs">Pod template defines containers without `resources.requests` and `resources.limits`.</root-cause>
+      <fix>Set both `requests` (typical: 100m CPU / 256Mi memory for lightweight containers, 500m / 512Mi for builds, 1000m / 1Gi for docker:dind) and `limits` (2-4× requests). Pre-commit lint rejects pod templates missing either.</fix>
+    </antipattern>
+
   </section>
 </text>

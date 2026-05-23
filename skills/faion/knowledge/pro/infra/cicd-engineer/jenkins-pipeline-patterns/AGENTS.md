@@ -3,73 +3,100 @@ slug: jenkins-pipeline-patterns
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Advanced Jenkins pipeline patterns for production-grade declarative pipelines, shared libraries, scripted pipelines, and reusable components throughout organizations.
-content_id: "6ce6b4e84a490913"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates production-grade Declarative Jenkinsfiles + version-pinned Shared Libraries + isolated parallel stages + K8s pod templates for brownfield orgs.
+content_id: "a1162151dcc3b729"
+complexity: deep
+produces: code
+est_tokens: 5400
 tags: [jenkins, pipeline, cicd, groovy, shared-libraries]
 ---
 # Jenkins Pipeline Patterns
 
 ## Summary
 
-**One-sentence:** Advanced Jenkins pipeline patterns for production-grade declarative pipelines, shared libraries, scripted pipelines, and reusable components throughout organizations.
+**One-sentence:** Generates production-grade Declarative Jenkinsfiles + version-pinned Shared Libraries + isolated parallel stages + K8s pod templates for brownfield orgs.
 
-**One-paragraph:** Advanced Jenkins pipeline patterns for production-grade declarative pipelines, shared libraries, scripted pipelines, and reusable components throughout organizations. This guide covers best practices for 2025-2026, including proper separation between declarative (structured, team-maintainable) and scripted (complex, flexible Groovy) approaches, shared library directory structure and Groovy serialization rules for CPS safety, parallel stages with resource management and workspace isolation, Kubernetes pod templates for dynamic provisioning, and agentic workflow for autonomous pipeline authoring with validation checkpoints.
+**One-paragraph:** Advanced Jenkins pipeline patterns for production-grade Declarative pipelines, Shared Libraries, scripted escapes, and reusable components across an organization. Covers Declarative-by-default with Scripted only inside `script { }`, Shared Library directory structure + CPS serialization rules, parallel stages with workspace isolation + lock(), Kubernetes pod templates with explicit resource requests/limits, and full pipeline options for timeout + buildDiscarder + concurrent-builds policy. Aimed at brownfield orgs with 50+ pipelines where standardisation matters more than raw speed.
+
+**Ефективно для:**
+
+- 50+ pipelines в одній організації, потребують shared library з єдиним стандартом.
+- CPS-сериалізація: уникнути `NotSerializableException` на годинах робіт через `@NonCPS`.
+- Parallel matrix builds (cross-OS / cross-JDK / cross-Node) з resource-aware агентами.
+- Kubernetes pod templates з explicit requests/limits та dedicated service accounts.
+- Migration: монолітні Jenkinsfile → модулярні `vars/`-функції з pinned `@Library('lib@v1.2.3')`.
 
 ## Applies If (ALL must hold)
 
-- Brownfield organization running Jenkins controller (LTS) where migration to GitHub Actions or GitLab CI is not on the roadmap.
-- You need a Groovy shared library to enforce conventions across 50+ pipelines (build/test/deploy/notify steps).
-- Matrix or fan-out builds across multiple JDK, Node, or OS axes that GitHub Actions matrices cannot express cheaply.
-- Heavy on-prem, air-gapped scenarios with self-hosted agents and tight Vault or Artifactory integration.
-- Existing investment in Jenkinsfile, plugin ecosystem (Blue Ocean, Configuration as Code, Job DSL), and team familiarity with Groovy.
+- Brownfield organization running a Jenkins controller (LTS) with no migration off Jenkins on the roadmap.
+- You need a Groovy Shared Library to enforce conventions across 50+ pipelines.
+- Matrix or fan-out builds across multiple OS / JDK / Node axes.
+- Heavy on-prem / air-gapped scenarios with Vault or Artifactory integration.
+- Existing investment in Jenkinsfile + plugin ecosystem + team Groovy familiarity.
 
 ## Skip If (ANY kills it)
 
-- Greenfield repo on GitHub or GitLab — use native CI; Jenkins adds operator burden with no upside. GitHub Actions is simpler to set up and requires no infrastructure.
-- Solo dev or small team — Jenkins controller maintenance (plugin upgrades, JVM tuning, agent provisioning) outweighs benefits. GitHub Actions is serverless.
-- Workloads that fit cleanly into GitHub Actions reusable workflows or composite actions. Most modern pipelines do.
-- Ephemeral or serverless CI requirements — Jenkins is stateful and assumes long-lived controllers. Lambda-based CI is incompatible with Jenkins architecture.
+- Greenfield repo on GitHub or GitLab — use native CI; Jenkins adds operator burden with no upside.
+- Solo dev or small team — controller maintenance outweighs benefits.
+- Workloads that fit cleanly into GitHub Actions reusable workflows or composite actions.
+- Ephemeral / serverless CI requirements — Jenkins is stateful and assumes a long-lived controller.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Existing Jenkinsfile or pipeline spec | Groovy / Markdown | repo / team |
+| Shared Library repo URL | git URL | platform team |
+| Library version tag | semver tag | release manager |
+| Agent strategy | label / docker / kubernetes | infra |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[jenkins-basics]] | Declarative + JCasC + zero-controller-executors fundamentals. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules: declarative-with-script-escape, shared-lib-dedicated-repo, library-version-pinned, parallel-workspace-isolation, pod-resources-required, options-required | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema for code + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `select-pattern` | sonnet | Decision among shared-lib / parallel / matrix variants. |
+| `write-shared-lib-var` | opus | CPS serialization + Groovy idiom judgement. |
+| `lint-cps-issues` | haiku | Mechanical regex audit for `Pattern.compile`, `each {}`, `@NonCPS`. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/Jenkinsfile.declarative` | Declarative pipeline with parallel stages + options + post handlers |
+| `templates/shared-library-var.groovy` | `vars/buildApp.groovy` skeleton enforcing CPS-safe patterns |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-jenkins-pipeline-patterns.py` | Validate the pipeline-pattern artefact JSON against 02-output-contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/infra/cicd-engineer/`
+- [[jenkins-basics]]
+- [[github-actions-basics]]
+- [[gitlab-cicd]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (pipeline count, library presence, parallelism need, agent type) to a concrete pattern variant, each leaf referencing a rule from `01-core-rules.xml`.

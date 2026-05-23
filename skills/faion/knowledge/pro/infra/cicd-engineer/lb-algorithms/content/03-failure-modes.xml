@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="lb-algorithms Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for lb-algorithms as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Load Balancing Algorithms Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed in real load-balancer deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="round-robin-variable-cost" severity="high">
+      <symptom>One backend in a round-robin pool shows 90% CPU while peers idle at 20%. p99 latency degrades during business hours; restarting the hot backend "fixes it" for a few hours.</symptom>
+      <root-cause source="Cloudflare LB algorithms guide">Round-robin distributes by new-connection count, not work cost. The workload contains long-running endpoints (uploads, exports) that pin sessions to a server.</root-cause>
+      <fix>Switch to `leastconn`. No code change required; the hot server stops receiving new connections until it drains. Measure: hot-spot CPU should converge with peers within minutes.</fix>
+    </antipattern>
+
+    <antipattern id="ip-hash-with-nat" severity="high">
+      <symptom>Corporate customers report all their employees route to the same backend; rolling restarts of that one backend visibly disrupt them while other backends stay idle.</symptom>
+      <root-cause source="HAProxy + Nginx sticky-session docs">`ip_hash` is configured for "sticky sessions"; the customer's 5000 users share one NAT egress IP.</root-cause>
+      <fix>Replace `ip_hash` with cookie-based persistence (`sticky cookie SRVID insert indirect nocache` in HAProxy; `sticky_cookie` in Nginx Plus or app-level sticky cookies in OSS Nginx). Each real user gets their own affinity.</fix>
+    </antipattern>
+
+    <antipattern id="unweighted-mixed-capacity" severity="medium">
+      <symptom>Two new larger nodes added to the pool; cluster throughput barely improves. The small node still saturates first under load tests.</symptom>
+      <root-cause source="Nginx upstream module docs">Pool uses plain `leastconn` (or RR) with no `weight=` directives; the small node receives equal connections to the large ones and remains the bottleneck.</root-cause>
+      <fix>Set `weight` proportional to capacity (`server large1 ... weight=100; server small1 ... weight=50`). Recheck under the same load test — small node's queue should now drain in step with large ones.</fix>
+    </antipattern>
+
   </section>
 </text>

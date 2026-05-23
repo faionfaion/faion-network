@@ -1,22 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="lb-kubernetes-ingress Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Kubernetes Ingress Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the K8s Ingress artefact this methodology produces. Validator enforces replicas, PDB, anti-affinity, topology spread, annotation namespace.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/lb-kubernetes-ingress.json",
+  "type": "object",
+  "required": ["controller", "replicas", "pdb_min_available", "anti_affinity", "topology_spread", "annotation_namespace"],
+  "properties": {
+    "controller": {"enum": ["ingress-nginx", "haproxy-ingress", "traefik", "envoy-gateway"]},
+    "replicas": {"type": "integer", "minimum": 3},
+    "pdb_min_available": {"type": "integer", "minimum": 2},
+    "anti_affinity": {"type": "string", "const": "kubernetes.io/hostname"},
+    "topology_spread": {"type": "string", "const": "topology.kubernetes.io/zone"},
+    "annotation_namespace": {"enum": ["nginx.ingress.kubernetes.io", "haproxy.org", "traefik.ingress.kubernetes.io"]},
+    "tls_via_cert_manager": {"type": "boolean"},
+    "rate_limit_rpm": {"type": "integer", "minimum": 1},
+    "body_size_limit": {"type": "string"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "controller": "ingress-nginx",
+  "replicas": 3,
+  "pdb_min_available": 2,
+  "anti_affinity": "kubernetes.io/hostname",
+  "topology_spread": "topology.kubernetes.io/zone",
+  "annotation_namespace": "nginx.ingress.kubernetes.io",
+  "tls_via_cert_manager": true,
+  "rate_limit_rpm": 600,
+  "body_size_limit": "8m"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "controller": "ingress-nginx",
+  "replicas": 1,
+  "pdb_min_available": 0,
+  "anti_affinity": "",
+  "topology_spread": "",
+  "annotation_namespace": "haproxy.org",
+  "tls_via_cert_manager": false
+}
+]]></code>
+    <note>Single replica; no PDB; no anti-affinity; cross-controller annotation namespace; no cert-manager.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f-replicas-1">replicas &lt; 3 on production</pattern>
+    <pattern id="f-no-pdb">pdb_min_available &lt; 2</pattern>
+    <pattern id="f-annotation-cross">controller == ingress-nginx AND annotation_namespace != nginx.ingress.kubernetes.io</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-lb-kubernetes-ingress.py">Validator script</reference>
 </text>

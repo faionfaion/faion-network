@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="jenkins-basics Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for jenkins-basics as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Jenkins Basics Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed in real Jenkins deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using Scripted Pipeline for a standard build-test-deploy workflow.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Declarative covers 95% of use cases with better tooling support. Scripted pipelines are harder to read, have no syntax validation, and cannot restart from a failed stage.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="scripted-default" severity="medium">
+      <symptom>Team writes new pipelines in Scripted Groovy because "it's more powerful". Linter cannot validate; restart-from-stage does not work; junior engineers cannot debug runtime errors.</symptom>
+      <root-cause source="Jenkins docs — Pipeline syntax">Author copied a Scripted skeleton from a 2017 blog post without checking that Declarative covers the same use case.</root-cause>
+      <fix>Default to Declarative. Use `script { }` blocks only when Declarative has no equivalent (rare: dynamic stage generation, complex Groovy logic).</fix>
+    </antipattern>
+
+    <antipattern id="builds-on-controller" severity="high">
+      <symptom>Controller OOM-kills mid-build; job queue stalls; users see "Slave went offline" on the controller itself. Credentials store sees stray reads from build steps.</symptom>
+      <root-cause source="Jenkins docs — Hardening the controller">Controller has &gt; 0 executors; some pipelines use `agent { label 'master' }` or `agent any` and land on the controller.</root-cause>
+      <fix>Set controller executors to 0 in JCasC. Force `agent { kubernetes ... }` or `agent { label '!master' }`. Forbid `agent any` via pipeline-policy lint.</fix>
+    </antipattern>
+
+    <antipattern id="ui-config-drift" severity="high">
+      <symptom>DR drill takes 6 hours of manual UI clicking to rebuild a controller. Config drifts between staging and prod; nobody knows what is canonical.</symptom>
+      <root-cause source="Jenkins JCasC plugin docs">Operators configure Jenkins via the UI; JCasC is either not installed or not enforced.</root-cause>
+      <fix>Install JCasC. Store `jenkins.yaml` in Git. Periodically diff the running controller's exported config against the committed YAML; fail CI on drift.</fix>
+    </antipattern>
+
+    <antipattern id="floating-plugin-versions" severity="medium">
+      <symptom>Pipelines that passed yesterday fail today after a plugin auto-upgrade. Sometimes the controller fails to start because two plugins are incompatible.</symptom>
+      <root-cause source="Jenkins plugin manager docs">No `plugins.txt` pin; plugins are upgraded via the UI without testing in staging.</root-cause>
+      <fix>Pin every plugin in `plugins.txt` with `jenkins-plugin-cli`. Bump on a defined schedule; run the upgrade in a staging controller first; never auto-upgrade in production.</fix>
+    </antipattern>
+
   </section>
 </text>

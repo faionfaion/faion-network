@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="HAProxy Production Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the lb-haproxy-production methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="size-host">
+      <input>Available host CPU + RAM + expected peak QPS / concurrent conns.</input>
+      <action>Compute `nbthread` = physical cores. Compute `maxconn` ≈ (RAM_bytes - 512 MiB OS reserve) / 16 KiB. Decide HA mode (keepalived-vrrp / anycast / single).</action>
+      <output>Tuning numbers + HA mode.</output>
+    </step>
+
+    <step n="2" name="write-global-defaults">
+      <input>Tuning numbers + TLS cert path.</input>
+      <action>Render `global` block: `daemon`, `nbthread N`, `cpu-map auto:1/1-N 0-(N-1)`, `tune.ssl.default-dh-param 2048`, `ssl-default-bind-options no-sslv3 no-tlsv10 no-tlsv11`. Render `defaults`: `mode http`, `option httplog`, timeouts.</action>
+      <output>Global + defaults sections.</output>
+    </step>
+
+    <step n="3" name="write-frontend-and-acls">
+      <input>Domain list + path routing rules + rate-limit policy.</input>
+      <action>Render `frontend https_front bind *:443 ssl crt ...`. Add `stick-table type ip size 100k expire 10m store http_req_rate(10s)`. Add `http-request deny deny_status 429 if { sc_http_req_rate(0) gt N }`. Add ACL rules per host/path.</action>
+      <output>Frontend block.</output>
+    </step>
+
+    <step n="4" name="write-backends-with-checks">
+      <input>Backend pool + algorithm + health endpoint.</input>
+      <action>Render `backend ... balance leastconn option httpchk GET /health http-check expect status 200 server srv1 ip:port check inter 10s fall 3 rise 2`. Configure cookie-based persistence if session affinity is required.</action>
+      <output>Backend blocks.</output>
+    </step>
+
+    <step n="5" name="ha-wire-validate">
+      <input>VIP + interfaces + master priority.</input>
+      <action>Render `keepalived.conf` with VRRP instance + `track_script` checking HAProxy systemd unit. Run `haproxy -c -f haproxy.cfg`. Run `validate-lb-haproxy-production.py --file artefact.json`. Failover test by stopping HAProxy on master and confirming the VIP migrates to backup within 2 s.</action>
+      <output>Active-passive cluster up; first request flowing.</output>
+      <decision-gate>If failover takes &gt; 5 s, debug VRRP keepalive interval before going live.</decision-gate>
+    </step>
+
+  </section>
+</text>

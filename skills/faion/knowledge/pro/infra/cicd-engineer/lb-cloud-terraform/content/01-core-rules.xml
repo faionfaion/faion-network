@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="lb-cloud-terraform Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for lb-cloud-terraform. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Cloud LB Terraform Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules for provisioning cloud LBs via Terraform safely. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="deletion-protection-on" testable="true" depth="essential">
+      <statement>Every production `aws_lb` resource MUST have `enable_deletion_protection = true`. GCP `google_compute_global_forwarding_rule` MUST have `lifecycle { prevent_destroy = true }`.</statement>
+      <rationale source="AWS ELB best practices + Terraform lifecycle docs">A stray `terraform destroy` (wrong workspace, careless module change) can delete a production LB in seconds. Deletion protection is the only mechanism that survives operator error.</rationale>
     </rule>
+
+    <rule id="tls-1-2-min-policy" testable="true" depth="essential">
+      <statement>HTTPS listeners MUST use `ssl_policy = "ELBSecurityPolicy-TLS13-1-2-2021-06"` (AWS) or the GCP `MODERN` SSL policy. TLS &lt; 1.2 listeners are forbidden.</statement>
+      <rationale source="PCI-DSS v4.0 + Mozilla SSL config generator">TLS 1.0/1.1 have known weaknesses (BEAST, POODLE) and are non-compliant with PCI-DSS v4 and FedRAMP. Modern profile enforces TLS 1.2+ with AEAD ciphers.</rationale>
+    </rule>
+
+    <rule id="access-logs-enabled" testable="true" depth="essential">
+      <statement>Every LB MUST emit access logs to a dedicated, versioned object store: S3 bucket with bucket policy for `elasticloadbalancing.amazonaws.com` (AWS), or `google_storage_bucket` with `log_config.enable = true` and `sample_rate = 1.0` (GCP).</statement>
+      <rationale source="AWS ELB access logs docs + Cloud Logging docs">Without access logs you cannot diagnose 5xx storms, attribute traffic spikes, or detect WAF-evading attackers. Versioned bucket lets you replay logs even if attackers tamper with newer objects.</rationale>
+    </rule>
+
+    <rule id="http-to-https-redirect" testable="true" depth="essential">
+      <statement>Public-facing HTTP listeners (port 80) MUST be either absent or configured to return a 301 redirect to the HTTPS listener (`type = "redirect"`). Forwarding plain HTTP to backends is forbidden.</statement>
+      <rationale source="OWASP + Mozilla TLS guidelines">Mixing HTTP and HTTPS routes leaks session cookies, allows MITM credential stealing, and breaks HSTS preload eligibility.</rationale>
+    </rule>
+
+    <rule id="security-group-tight" testable="true" depth="essential">
+      <statement>ALB security group ingress MUST be limited to ports 80 + 443 from `0.0.0.0/0` (or narrower for internal LBs). Backend security groups MUST allow ingress only from the LB security group, not from `0.0.0.0/0` and not from a CIDR.</statement>
+      <rationale source="AWS Well-Architected security pillar">Open backend security groups defeat the LB's purpose. Allowing all ports to the LB enables port-scan amplification.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

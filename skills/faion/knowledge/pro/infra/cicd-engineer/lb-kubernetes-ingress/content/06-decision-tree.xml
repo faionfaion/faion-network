@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Kubernetes Ingress Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals (cluster type, controller need, traffic class) to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-cluster">Cluster runtime?</root-question>
+
+    <branch when="cluster == managed_cloud_with_native_ingress">
+      <conclusion ref="annotations-controller-namespaced" verdict="prefer cloud-native (ALB Ingress / GKE Ingress); see lb-cloud-terraform"/>
+    </branch>
+
+    <branch when="cluster == self_hosted OR cluster == bare_metal">
+      <question id="q-controller">Controller choice?</question>
+
+      <branch when="controller == ingress-nginx">
+        <conclusion ref="annotations-controller-namespaced" verdict="annotations namespace = nginx.ingress.kubernetes.io"/>
+      </branch>
+      <branch when="controller == haproxy-ingress">
+        <conclusion ref="annotations-controller-namespaced" verdict="annotations namespace = haproxy.org"/>
+      </branch>
+      <branch when="controller == traefik">
+        <conclusion ref="annotations-controller-namespaced" verdict="annotations namespace = traefik.ingress.kubernetes.io"/>
+      </branch>
+      <branch when="controller == envoy-gateway">
+        <conclusion ref="annotations-controller-namespaced" verdict="Gateway API CRDs (HTTPRoute / Gateway), not annotations"/>
+      </branch>
+
+      <branch when="replicas == 1">
+        <conclusion ref="replicas-min-3" verdict="bump replicas to 3, add PDB minAvailable 2"/>
+      </branch>
+
+      <branch when="anti_affinity_missing == true">
+        <conclusion ref="anti-affinity-required" verdict="add podAntiAffinity on kubernetes.io/hostname"/>
+      </branch>
+
+      <branch when="multi_az_cluster == true AND topology_spread_missing == true">
+        <conclusion ref="topology-spread-azs" verdict="add topologySpreadConstraints on topology.kubernetes.io/zone"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="bare-metal-nginx">
+    cluster=self_hosted → controller=ingress-nginx → annotations namespace = nginx.ingress.kubernetes.io → replicas check (≥ 3) → anti-affinity → topology-spread → satisfies all 5 rules.
+  </example>
+</text>

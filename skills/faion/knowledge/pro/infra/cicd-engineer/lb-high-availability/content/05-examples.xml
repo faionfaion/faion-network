@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="LB High Availability Worked Example" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>End-to-end worked example: SLA target 99.99% → topology selection → failure-domain analysis → final decision-record artefact.</summary>
+
+  <section title="Scenario">
+    <p>Service: payments-api. Customer base: US + EU. SLA target: 99.99%. Current state: one ALB in us-east-1 fronting 4 EC2 instances split across us-east-1a / 1b.</p>
+  </section>
+
+  <section title="Walkthrough">
+
+    <step n="1" name="capture-sla">
+      <p>SLA = 99.99 → ≤ ~52 min/year allowable downtime. Customers in EU + US → multi-region required.</p>
+    </step>
+
+    <step n="2" name="failure-domain-analysis">
+      <p>Tabulate:</p>
+      <list>
+        <item>Process crash → ALB managed HA across AZs handles it. OK.</item>
+        <item>AZ-1a fails → 2 backends remain in 1b. OK if 1b can absorb load.</item>
+        <item>us-east-1 region fails → service is DOWN. SPOF.</item>
+        <item>Route 53 propagation delay → 5 min outage for some clients. SPOF if relying on DNS-based GSLB.</item>
+      </list>
+      <p>Two SPOFs at 99.99 tier. Redesign required.</p>
+    </step>
+
+    <step n="3" name="pick-topology">
+      <p>Add us-west-2 region (mirror of us-east-1). Front both with AWS Global Accelerator (anycast). Endpoint group per region with `traffic_dial_percentage` 100 / 0 active-standby.</p>
+    </step>
+
+    <step n="4" name="wire-zero-downtime">
+      <p>Add SIGTERM handler (see templates/sigterm-drain.py). Set ALB target group `deregistration_delay = 30`. Kubernetes `terminationGracePeriodSeconds: 60`. Chaos test: kill one backend; observe 0 × 5xx.</p>
+    </step>
+
+    <step n="5" name="record-and-validate">
+      <p>Output decision-record JSON:</p>
+      <code lang="json"><![CDATA[
+{
+  "sla_target": "99.99",
+  "lb_instances": 2,
+  "azs_used": 3,
+  "backends_per_az": 2,
+  "gslb_kind": "anycast",
+  "drain_on_sigterm": true,
+  "deregistration_delay_sec": 30,
+  "failure_modes_documented": true,
+  "adr_path": ".aidocs/decisions/ha-payments.md"
+}
+]]></code>
+      <p>Validator passes (no SPOF, anycast at 99.99, drain wired). ADR is committed at `.aidocs/decisions/ha-payments.md`.</p>
+    </step>
+
+  </section>
+</text>

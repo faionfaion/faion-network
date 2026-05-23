@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Load Balancer Health Checks Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the lb-health-checks methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="enumerate-dependencies">
+      <input>Service architecture diagram + runtime deps.</input>
+      <action>List every external system the request path needs (DB, cache, broker, downstream HTTP). Mark each as critical (required for any traffic) or optional (degrade gracefully). Pick a probe timeout per critical dep (default 3 s).</action>
+      <output>Dependency table with name + timeout.</output>
+    </step>
+
+    <step n="2" name="implement-handlers">
+      <input>Dep table + runtime (Python / Node / Go).</input>
+      <action>Implement `/health/live` returning 200 unconditionally. Implement `/health/ready` running each critical dep check in parallel, each wrapped in its timeout. Return 200 only if all critical checks pass; 503 otherwise with a JSON map showing which dep failed.</action>
+      <output>Two HTTP handlers in code.</output>
+    </step>
+
+    <step n="3" name="wire-lb-probes">
+      <input>LB technology + handler paths.</input>
+      <action>Kubernetes: pod spec with `livenessProbe` → /health/live + `readinessProbe` → /health/ready + `startupProbe` for slow boots. HAProxy: `option httpchk GET /health/ready` + `http-check expect status 200`. Nginx Plus: `health_check uri=/health/ready match=ok`. Cloud LB target group: HTTP /health/ready, healthy_threshold 2, unhealthy_threshold 3.</action>
+      <output>LB probe config.</output>
+    </step>
+
+    <step n="4" name="tune-thresholds">
+      <input>SLO for failure detection + flapping budget.</input>
+      <action>Default interval 10 s, healthy 2, unhealthy 3. For latency-critical services tighten unhealthy to 2 (faster eviction at cost of more flap risk). For long boots (DB migrations) add `startupProbe` with `failureThreshold: 30`.</action>
+      <output>Final threshold numbers.</output>
+    </step>
+
+    <step n="5" name="validate-and-chaos-test">
+      <input>Artefact JSON + chaos test.</input>
+      <action>Run `validate-lb-health-checks.py --file artefact.json`. Chaos test: stop the DB; confirm `/health/ready` returns 503 within (timeout + interval) seconds; confirm LB removes the backend within (interval × unhealthy_threshold) seconds.</action>
+      <output>Validated config + verified failover.</output>
+      <decision-gate>If chaos test does not remove the pod within budget, tighten thresholds before going live.</decision-gate>
+    </step>
+
+  </section>
+</text>

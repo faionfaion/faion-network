@@ -1,22 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="lb-high-availability Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="LB High Availability Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the HA decision-record this methodology produces. Validator enforces minimum redundancy + anycast-at-9999 + drain wiring.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/lb-high-availability.json",
+  "type": "object",
+  "required": ["sla_target", "lb_instances", "azs_used", "backends_per_az", "gslb_kind", "drain_on_sigterm"],
+  "properties": {
+    "sla_target": {"enum": ["99.9", "99.95", "99.99", "99.999"]},
+    "lb_instances": {"type": "integer", "minimum": 2},
+    "azs_used": {"type": "integer", "minimum": 2},
+    "backends_per_az": {"type": "integer", "minimum": 2},
+    "gslb_kind": {"enum": ["single-region", "dns-based", "anycast"]},
+    "drain_on_sigterm": {"type": "boolean", "const": true},
+    "deregistration_delay_sec": {"type": "integer", "minimum": 30},
+    "failure_modes_documented": {"type": "boolean"},
+    "adr_path": {"type": "string"}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "sla_target": "99.99",
+  "lb_instances": 2,
+  "azs_used": 3,
+  "backends_per_az": 2,
+  "gslb_kind": "anycast",
+  "drain_on_sigterm": true,
+  "deregistration_delay_sec": 30,
+  "failure_modes_documented": true,
+  "adr_path": ".aidocs/decisions/ha-payments.md"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "sla_target": "99.99",
+  "lb_instances": 1,
+  "azs_used": 1,
+  "backends_per_az": 1,
+  "gslb_kind": "dns-based",
+  "drain_on_sigterm": false,
+  "deregistration_delay_sec": 0
+}
+]]></code>
+    <note>Single LB; single AZ; single backend; DNS-based GSLB at 99.99 SLA; no drain — every rule violated.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="f-single-lb">lb_instances &lt; 2</pattern>
+    <pattern id="f-single-az">azs_used &lt; 2</pattern>
+    <pattern id="f-dns-at-9999">sla_target in ("99.99","99.999") AND gslb_kind == "dns-based"</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-lb-high-availability.py">Validator script</reference>
 </text>

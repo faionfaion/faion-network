@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="lb-health-checks Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for lb-health-checks as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Load Balancer Health Checks Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>3 antipatterns observed when wiring health checks. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Wiring /healthz to an endpoint that returns 200 even when the database is down.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The LB keeps the backend in rotation and routes traffic that will fail at the application layer. Users see errors; the LB sees healthy backends. Push for deep health checks via dependency probe that return 503 when dependencies are unavailable.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="shallow-always-200" severity="high">
+      <symptom>Production incident: DB is down, but the LB still routes traffic; users see 500 errors while dashboards show "all backends healthy".</symptom>
+      <root-cause source="SRE workbook — health endpoints">`/health` returns `{"status":"ok"}` unconditionally; it never touches the DB.</root-cause>
+      <fix>Add a `/health/ready` endpoint that runs `SELECT 1` on the primary DB + `PING` on the cache, bounded by 5 s timeouts. Return 503 if any check fails. Wire LB to `/health/ready`, not `/health`.</fix>
+    </antipattern>
+
+    <antipattern id="shared-live-ready" severity="high">
+      <symptom>Pod is killed mid-startup; restart loop. The DB migration that runs at boot takes 2 minutes; readiness fails during that window, and the same endpoint is also wired to liveness — kubelet restarts the pod.</symptom>
+      <root-cause source="Kubernetes probe docs">Same handler (`/health`) wired to both `livenessProbe` and `readinessProbe`.</root-cause>
+      <fix>Split into `/health/live` (always 200 once process up) and `/health/ready` (deep probe). Wire `livenessProbe` to `/health/live` and `readinessProbe` to `/health/ready`. Add `startupProbe` for slow boots.</fix>
+    </antipattern>
+
+    <antipattern id="unbounded-dep-probe" severity="medium">
+      <symptom>Single hung DB connection makes the readiness probe hang for 30 s; the LB times out and removes the pod even though every other dependency is healthy.</symptom>
+      <root-cause source="Kubernetes probe docs + SRE workbook">Dependency calls inside the probe have no per-call timeout.</root-cause>
+      <fix>Wrap every dep call in a 1–5 s timeout (`context.WithTimeout` / `requests.get(..., timeout=3)`). The handler must explicitly return 503 on timeout, not let the LB's own probe timeout fire.</fix>
+    </antipattern>
+
   </section>
 </text>

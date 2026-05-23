@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="LB High Availability Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals (SLA tier, region count, deploy cadence) to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-sla">SLA tier?</root-question>
+
+    <branch when="sla &lt; 99.9">
+      <conclusion ref="two-lb-min" verdict="single LB acceptable for dev/internal; document tradeoff"/>
+    </branch>
+
+    <branch when="sla &gt;= 99.9 AND sla &lt; 99.99">
+      <conclusion ref="two-lb-min" verdict="≥ 2 LB + ≥ 2 AZ + ≥ 2 backends/AZ; single-region OK"/>
+    </branch>
+
+    <branch when="sla &gt;= 99.99">
+      <question id="q-region">Multi-region required?</question>
+      <branch when="multi_region == true">
+        <question id="q-gslb">GSLB kind chosen?</question>
+        <branch when="gslb == dns_based">
+          <conclusion ref="anycast-over-dns-for-9999" verdict="switch to anycast (Global Accelerator / GCP Global LB / Cloudflare LB)"/>
+        </branch>
+        <branch when="gslb == anycast">
+          <conclusion ref="anycast-over-dns-for-9999" verdict="anycast confirmed; verify failover &lt; 30 s via chaos drill"/>
+        </branch>
+      </branch>
+      <branch when="multi_region == false">
+        <conclusion ref="two-az-min" verdict="single-region OK if SLA computed only over regional availability; ≥ 3 AZ recommended"/>
+      </branch>
+    </branch>
+
+    <branch when="azs_used == 1 AND lb_subnets_multi_az == true">
+      <conclusion ref="no-single-az-backends" verdict="spread backends across all AZs the LB listens on"/>
+    </branch>
+
+    <branch when="deploy_cadence &gt;= weekly">
+      <conclusion ref="drain-on-sigterm" verdict="implement SIGTERM → 503 readiness flip + ≥ 30 s drain"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="payments-99-99-multi-region">
+    sla=99.99 → multi_region=true → gslb=dns_based → switch to anycast → satisfies anycast-over-dns-for-9999.
+  </example>
+</text>

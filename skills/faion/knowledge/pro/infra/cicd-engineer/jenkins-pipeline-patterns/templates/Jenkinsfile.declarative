@@ -1,0 +1,107 @@
+// purpose: Declarative Jenkinsfile with parallel stages + options + post handlers + pinned @Library
+// consumes: see content/02-output-contract.xml inputs (agent_strategy, options, shared_libraries)
+// produces: artefact conforming to content/02-output-contract.xml (syntax=declarative)
+// depends-on: content/01-core-rules.xml (declarative-with-script-escape, parallel-workspace-isolation, library-version-pinned, options-required)
+// token-budget-impact: ~800 tokens when loaded as context
+
+@Library('platform@v1.4.2') _
+
+pipeline {
+    agent {
+        kubernetes {
+            yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  serviceAccountName: jenkins-agent
+  containers:
+  - name: node
+    image: node:20-alpine
+    command: [cat]
+    tty: true
+    resources:
+      requests: { cpu: "500m", memory: "512Mi" }
+      limits:   { cpu: "1",    memory: "1Gi"   }
+  - name: helm
+    image: alpine/helm:3.14
+    command: [cat]
+    tty: true
+    resources:
+      requests: { cpu: "100m", memory: "128Mi" }
+      limits:   { cpu: "500m", memory: "512Mi" }
+'''
+        }
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '50', artifactNumToKeepStr: '10'))
+        disableConcurrentBuilds()
+        timestamps()
+        ansiColor('xterm')
+    }
+
+    stages {
+        stage('Install') {
+            steps {
+                container('node') {
+                    sh 'npm ci --cache .npm --prefer-offline'
+                }
+            }
+        }
+
+        stage('Validate') {
+            parallel {
+                stage('Lint') {
+                    steps {
+                        dir("branch-lint") {
+                            container('node') {
+                                sh 'npm run lint'
+                            }
+                        }
+                    }
+                }
+                stage('Type Check') {
+                    steps {
+                        dir("branch-typecheck") {
+                            container('node') {
+                                sh 'npm run typecheck'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                container('node') {
+                    sh 'npm test -- --coverage'
+                }
+            }
+            post {
+                always { junit testResults: 'junit.xml', allowEmptyResults: true }
+            }
+        }
+
+        stage('Deploy Prod') {
+            when { branch 'main' }
+            options { lock(resource: 'prod-deploy') }
+            input { message 'Deploy to production?'; ok 'Deploy' }
+            steps {
+                container('helm') {
+                    withCredentials([file(credentialsId: 'kubeconfig-prod', variable: 'KUBECONFIG')]) {
+                        deployToK8s release: 'myapp', chart: './charts/myapp'
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always { cleanWs() }
+        failure {
+            notifySlack channel: '#ci-alerts', color: 'danger'
+        }
+    }
+}

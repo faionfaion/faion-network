@@ -1,11 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="lb-health-checks Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for lb-health-checks. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Load Balancer Health Checks Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules for sound health-check design. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="liveness-ne-readiness" testable="true" depth="essential">
+      <statement>Liveness and readiness MUST be distinct endpoints. Liveness (`/health/live`) returns 200 if the process can serve any request; failure triggers Kubernetes pod restart. Readiness (`/health/ready`) returns 200 only when ALL critical dependencies respond within budget; failure removes the pod from the LB pool WITHOUT restart.</statement>
+      <rationale source="Kubernetes probe docs">Using the same endpoint for both probes creates restart loops — a slow dependency (DB migration mid-startup) triggers liveness failure and kills the pod before it can ever serve traffic.</rationale>
     </rule>
+
+    <rule id="deep-probe-deps" testable="true" depth="essential">
+      <statement>The readiness probe MUST actively check every external dependency the request path needs: primary DB (`SELECT 1`), cache (`PING`), broker (`AMQP heartbeat` or `Kafka admin`). A probe that returns 200 without touching dependencies is forbidden.</statement>
+      <rationale source="SRE workbook — health endpoints">Shallow probes mask backend failure — the LB happily routes traffic to a backend that cannot serve it. Deep probes return 503 the moment a dependency dies; the LB removes the backend within one check interval.</rationale>
+    </rule>
+
+    <rule id="timeout-bound-probe" testable="true" depth="essential">
+      <statement>Every dependency call inside `/health/ready` MUST be wrapped in a 1–5 s timeout (e.g., `context.WithTimeout` in Go, `psycopg2.connect(connect_timeout=5)` in Python, `redis.ping().timeout(5)` in Node). The probe handler MUST return 503 when any timeout fires.</statement>
+      <rationale source="Kubernetes probe docs + SRE workbook">Without a timeout, a hung dependency blocks the probe forever; the LB declares the backend unhealthy from the LB's own timeout instead of the backend's deliberate 503, costing diagnosability.</rationale>
+    </rule>
+
+    <rule id="threshold-tuned" testable="true" depth="essential">
+      <statement>Check interval MUST be 10–30 s. Healthy threshold ≥ 2 consecutive successes (cloud LB) or ≥ 2 (HAProxy `rise 2`). Unhealthy threshold ≥ 2 (cloud) or ≥ 3 (HAProxy `fall 3`). 1-second intervals or 1-failure thresholds are forbidden.</statement>
+      <rationale source="HAProxy + cloud LB tuning guides">Sub-10 s intervals create probe storms — at 1000 backends × 1 s, the LB spends meaningful CPU just probing. Single-failure thresholds flap during transient GC pauses.</rationale>
+    </rule>
+
+    <rule id="expect-status-match" testable="true" depth="essential">
+      <statement>LB-side check config MUST assert response status AND, where applicable, response-body match. HAProxy: `http-check expect status 200`. Nginx: `health_check status_match=200`. Kubernetes httpGet: `success_threshold` ≥ 2.</statement>
+      <rationale source="HAProxy + Nginx + K8s probe docs">Without `expect`, any response (502 from a still-listening proxy in front of a crashed app) counts as healthy.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

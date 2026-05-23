@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Jenkins Pipeline Patterns Procedure" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5-step procedure to apply the jenkins-pipeline-patterns methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="audit-current-pipeline">
+      <input>Existing Jenkinsfile + shared library refs + agent declaration.</input>
+      <action>Grep for top-level `node {` (scripted), floating `@Library('lib@main')`, missing `options { timeout }`, `agent any`, and pod templates lacking `requests` / `limits`. Inventory non-Serializable Groovy classes referenced from `vars/`.</action>
+      <output>Audit report listing each violated rule from 01-core-rules.xml.</output>
+    </step>
+
+    <step n="2" name="extract-shared-library">
+      <input>Common pipeline steps repeated across &gt;3 pipelines.</input>
+      <action>Move common logic to `vars/buildApp.groovy`, `vars/deployToK8s.groovy`, `vars/notifySlack.groovy` in a dedicated library repo. Add `src/com/example/` for shared Groovy classes (Serializable). Add `test/` JenkinsPipelineUnit specs. Tag a semver release.</action>
+      <output>Library repo + tag (e.g., `v1.0.0`).</output>
+      <decision-gate>If the library cannot be moved out of the app repo, document the blocker and STOP — library-version-pinned cannot be enforced inside a co-located library.</decision-gate>
+    </step>
+
+    <step n="3" name="rewrite-pipeline-declarative">
+      <input>Audit report + new library tag.</input>
+      <action>Convert top-level scripted to Declarative. Replace `script {}` blocks with `when` expressions where possible. Pin `@Library('lib@v1.0.0') _`. Add full `options {}` (timeout + buildDiscarder + disableConcurrentBuilds + timestamps + ansiColor). Wrap every parallel branch in `dir()` or `ws()`.</action>
+      <output>Declarative Jenkinsfile.</output>
+    </step>
+
+    <step n="4" name="harden-kubernetes-pod-template">
+      <input>Existing pod template YAML.</input>
+      <action>For every container set `resources.requests.cpu`, `resources.requests.memory`, `resources.limits.cpu`, `resources.limits.memory`. Restrict `serviceAccountName` to least-privilege. Make `privileged: true` opt-in only for explicit docker:dind containers.</action>
+      <output>Hardened pod template.</output>
+    </step>
+
+    <step n="5" name="validate-and-promote">
+      <input>Jenkinsfile + library tag + pod template + validator.</input>
+      <action>Run `validate-jenkins-pipeline-patterns.py --file artefact.json`. Submit Jenkinsfile to the Pipeline Linter REST endpoint. Run the library `JenkinsPipelineUnit` test suite. Merge + tag the library; promote pipelines one shard at a time.</action>
+      <output>Pipeline live with all rules enforced.</output>
+      <decision-gate>If the linter fails, do not merge — fix the violation first.</decision-gate>
+    </step>
+
+  </section>
+</text>

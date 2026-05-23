@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="HAProxy Production Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals (protocol mix, HA need, rate-limit need) to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-protocol">Protocol mix on the LB?</root-question>
+
+    <branch when="protocol == http_only">
+      <question id="q-tls">Public HTTPS?</question>
+      <branch when="public == true">
+        <conclusion ref="tls12-min-cipher-suites" verdict="HTTPS frontend with TLS 1.2+ bind options + modern ciphers"/>
+      </branch>
+      <branch when="public == false">
+        <conclusion ref="maxconn-sized" verdict="HTTP frontend; size maxconn from RAM"/>
+      </branch>
+    </branch>
+
+    <branch when="protocol == mixed_l4_l7">
+      <conclusion ref="nbthread-cpu-map" verdict="separate frontend blocks (mode tcp for DB, mode http for web); nbthread+cpu-map for parallelism"/>
+    </branch>
+
+    <branch when="rate_limit_needed == true">
+      <conclusion ref="stick-table-rate-limit" verdict="declare stick-table + deny on http_req_rate threshold"/>
+    </branch>
+
+    <branch when="ha_required == true">
+      <question id="q-ha-style">Anycast routing available?</question>
+      <branch when="anycast == true">
+        <conclusion ref="keepalived-vrrp" verdict="anycast LB cluster (no keepalived needed)"/>
+      </branch>
+      <branch when="anycast == false">
+        <conclusion ref="keepalived-vrrp" verdict="keepalived VRRP active-passive with track_script"/>
+      </branch>
+    </branch>
+
+    <branch when="health_check_no_expect == true">
+      <conclusion ref="http-check-expect" verdict="add http-check expect status 200 to every backend"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="public-https-with-rate-limit-ha">
+    protocol=http_only → public=true → TLS 1.2+ bind → rate_limit_needed=true → stick-table 100/10s → ha_required=true → anycast=false → keepalived VRRP → satisfies 4 rules.
+  </example>
+</text>
