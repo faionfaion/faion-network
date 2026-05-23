@@ -1,49 +1,107 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Nomad Mode Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Pins the shape of the Trip Mode Declaration and the daily 2h-window log. Founder must publish these before and during the trip respectively.</summary>
+<text id="02-output-contract" title="Nomad Low-Energy Mode Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="declaration.trip_start_date" format="YYYY-MM-DD"/>
-      <field name="declaration.trip_end_date" format="YYYY-MM-DD"/>
-      <field name="declaration.timezones" type="list_of_string" min="1"/>
-      <field name="declaration.response_window_hours" type="enum" values="24|48"/>
-      <field name="declaration.paused_ops" type="list_of_string" min="1" notes="must list each production-touching op explicitly"/>
-      <field name="declaration.daily_window_local_time" format="HH:MM-HH:MM"/>
-      <field name="declaration.emergency_channel" type="string" notes="for catastrophic incidents only"/>
-      <field name="declaration.zero_work_days" type="list_of_date" min="1"/>
-      <field name="daily_log.date" format="YYYY-MM-DD"/>
-      <field name="daily_log.window_used_hours" type="float" min="0" max="4"/>
-      <field name="daily_log.shipped" type="list_of_string"/>
-      <field name="daily_log.deferred" type="list_of_string"/>
-      <field name="daily_log.bandwidth_quality" type="enum" values="good|patchy|offline"/>
-      <field name="post_trip.deferred_deploy_queue_size" type="integer" min="0"/>
-      <field name="post_trip.async_backlog_thread_count" type="integer" min="0"/>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/nomad-low-energy-mode.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "activation_date",
+    "expected_return",
+    "allowed_tasks",
+    "auto_reply_text",
+    "escalation_contact",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "activation_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "expected_return": {
+      "type": "string",
+      "format": "date"
+    },
+    "allowed_tasks": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 5
+    },
+    "auto_reply_text": {
+      "type": "string"
+    },
+    "escalation_contact": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">declaration.paused_ops empty when the team operates a production deploy pipeline (paused must include deploys)</pattern>
-      <pattern id="f2">declaration.zero_work_days empty for a trip longer than 4 days</pattern>
-      <pattern id="f3">daily_log.window_used_hours &gt; 4 (hard ceiling)</pattern>
-      <pattern id="f4">production deploy happened during trip window without an incident-justified override note</pattern>
-      <pattern id="f5">declaration.response_window_hours set to a value &lt; 24 (defeats the mode)</pattern>
-      <pattern id="f6">trip_end_date earlier than trip_start_date OR window length &lt; 1 day</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Override a single zero-work day if (a) an actual paid customer incident requires intervention AND (b) the founder logs an override note. The mode is then re-anchored with a replacement zero-day in the next 3 calendar days.</transformation>
-      <transformation>Extend the daily window to 3-4 hours for a maximum of 2 days per trip if a pre-trip deliverable slipped; never as the default.</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Trip Mode Declaration posted to team channel BEFORE departure</item>
-      <item>paused_ops lists every production-touching workflow</item>
-      <item>At least one zero-work day per 5 calendar days</item>
-      <item>Daily window does not exceed 4 hours on any single day</item>
-      <item>Deferred-deploy queue tagged in PRs, not held in memory</item>
-      <item>Post-trip update published within 72h of return</item>
+      <pattern id="f1">allowed_tasks empty OR length &gt; 5 — violates r2</pattern>
+      <pattern id="f2">auto_reply_text empty — violates r3</pattern>
+      <pattern id="f3">escalation_contact empty — violates r4</pattern>
+      <pattern id="f4">expected_return missing OR &lt; activation_date — violates r5</pattern>
+      <pattern id="f5">owner == &apos;team&apos; / &apos;&apos; / null</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "low-energy-mode-2026-w22",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "activation_date": "2026-05-25",
+  "expected_return": "2026-06-08",
+  "allowed_tasks": [
+    "async-standup-read",
+    "contractor-block-escalation",
+    "customer-emergency-reply"
+  ],
+  "auto_reply_text": "Limited availability until June 8; for emergencies contact @co-founder; daily check-in by 18:00 UTC.",
+  "escalation_contact": "@co-founder",
+  "owner": "@ruslan"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "activation_date": "2026-05-25",
+  "expected_return": "",
+  "allowed_tasks": [],
+  "auto_reply_text": "",
+  "escalation_contact": "",
+  "owner": "team"
+}
+]]></code>
+    <note>Invalid — required fields missing or forbidden patterns matched (e.g. owner=='team').</note>
+  </example>
+
+  <reference path="scripts/validate-nomad-low-energy-mode.py">Schema validator (stdlib only).</reference>
 </text>

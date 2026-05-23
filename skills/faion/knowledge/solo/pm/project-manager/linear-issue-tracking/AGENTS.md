@@ -4,72 +4,92 @@ tier: solo
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Linear is purpose-built for high-velocity software teams.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: PM-facing Linear playbook: triage cadence, cycle ceremonies, label hygiene, reporting templates — for PMs who run Linear day-to-day.
 content_id: "47d11764c93d3e16"
-tags: [linear, issue-tracking, sprints, cycles, github-integration]
+complexity: medium
+produces: spec
+est_tokens: 3800
+tags: ["linear", "pm", "project-manager", "solo", "operations"]
 ---
-# Linear for High-Velocity Software Teams
+# Linear Issue Tracking (Project Manager)
 
 ## Summary
 
-**One-sentence:** Linear is purpose-built for high-velocity software teams.
+**One-sentence:** PM-facing Linear playbook: triage cadence, cycle ceremonies, label hygiene, reporting templates — for PMs who run Linear day-to-day.
 
-**One-paragraph:** Linear is purpose-built for high-velocity software teams. Its keyboard-first interface (C create, S status, P priority) reduces task management overhead to seconds per issue. The "Linear Method" — cycles for time-boxing, projects for initiatives, roadmap for long-term vision — provides structure without configuration overhead. GitHub integration with "Fixes BAK-NNN" auto-transitions issues through In Review and Done without manual updates. Linear's GraphQL API supports full CRUD operations and webhooks for agent-driven automation.
+**One-paragraph:** Pins the PM-level operating discipline for an existing Linear workspace: triage cadence, cycle ceremonies (planning + check-in + retro), label hygiene policy, weekly status template. Sister methodology to `pm-agile/linear-issue-tracking` (which covers setup); this covers operations.
+
+**Ефективно для:**
+
+- PM (solo or in a 2-10 team) inheriting or running a Linear workspace day-to-day. Stops the slow drift to label sprawl + missed triage by pinning the ceremonies.
 
 ## Applies If (ALL must hold)
 
-- Engineering team building software products needs fast, low-friction issue tracking.
-- Team values keyboard-driven workflows and wants to minimize PM tool overhead.
-- Startup or growth-stage company needing minimal configuration to start.
-- Continuous deployment team where issues move through states quickly.
-- GitHub is the code host — Linear's GitHub integration is best-in-class.
+- Linear workspace already exists (or being adopted alongside pm-agile/linear-issue-tracking)
+- PM (or founder acting as PM) running ≥1 team in Linear
+- Cycle cadence agreed (1w / 2w)
 
 ## Skip If (ANY kills it)
 
-- Non-technical stakeholders need to update issues — Linear's UI has a learning curve compared to Trello or Notion.
-- OKR or goal tracking alongside issue tracking — Linear has limited goal management; use ClickUp.
-- Complex documentation alongside tasks — Linear has no docs; use Notion.
-- Detailed time tracking or billing required — Linear has no native time tracking.
+- No Linear workspace and not adopting
+- Engineering team self-organises without a PM role
+- Workspace size >50 active members (different playbook)
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Existing Linear workspace + admin access | config | Linear admin |
+| Cycle cadence + start day documented | doc | team agreement |
+| Current label taxonomy + state set | list | Linear export |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/pm/pm-agile/linear-issue-tracking` | Parent setup methodology — workspace + label + state baseline. |
+| `solo/pm/burndown-diagnosis-cheatsheet` | Peer methodology — runs from Linear cycle data when drift is detected. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules incl. skip-this-methodology + run-the-checklist | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-linear-issue-tracking` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-linear-issue-tracking` | haiku | Schema check + threshold checks; deterministic. |
+| `review-linear-issue-tracking` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/linear-issue-tracking.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/linear-issue-tracking.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-linear-issue-tracking.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/pm/project-manager/`
+- [[linear-issue-tracking__pm-agile]]
+- [[burndown-diagnosis-cheatsheet]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

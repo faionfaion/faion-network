@@ -4,85 +4,92 @@ tier: solo
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pre-defined low-energy operating mode for nomad founders: tasks allowed, comms allowed, blockers escalation rules — keeps the business alive during travel / illness / family.
 content_id: "55a2f575ba33daf6"
-summary: A working-mode template for digital-nomad solopreneurs that swaps stable-workstation defaults (live deploys, 4-hour focus blocks, real-time pairing) for offline-first, async-only, 2-hour-window work suitable for travel, jet-lag, and 4G hotspots.
-tags: [solopreneur, nomad, async, travel, productivity, offline-first]
+complexity: medium
+produces: spec
+est_tokens: 3700
+tags: ["nomad", "low-energy", "pm", "solo", "remote"]
 ---
-
-# Digital-Nomad Low-Energy Work Mode
+# Nomad Low-Energy Mode
 
 ## Summary
 
-**One-sentence:** Define a low-energy work mode (offline-first edits, async-only ops, 2-hour focus windows, deferred-deploy queue) that a solo founder switches into during travel, jet-lag, or low-bandwidth weeks.
+**One-sentence:** Pre-defined low-energy operating mode for nomad founders: tasks allowed, comms allowed, blockers escalation rules — keeps the business alive during travel / illness / family.
 
-**One-paragraph:** Faion playbooks implicitly assume a stable workstation: full ergonomic setup, gigabit upstream, 4-hour focus blocks, real-time pairing on Discord. Digital nomads work in cafes, airports, 4G hotspots, and timezone-shifted weeks. Without a defined low-energy mode, the founder either (a) tries to run the normal cadence and ships broken work or burns out, or (b) drops everything for a week, accumulating maintenance debt. This methodology defines a switchable mode with three pillars: offline-first development (local-only edits, deferred CI), async-only ops (no real-time meetings, deferred deploys), and constrained focus windows (2-hour blocks, max 4 hours productive per day). Primary output: a per-trip operating mode declaration that the founder posts to their team channel and a checklist of pre-departure preparations.
+**One-paragraph:** Pins a pre-declared 'low-energy mode' (≤2 hrs/day capacity) for the nomad founder: which tasks proceed, which pause, which comms get auto-replies, which trigger escalation. Output is a versioned spec activated by a single switch, deactivated on return. Avoids ad-hoc decision-making while travelling.
+
+**Ефективно для:**
+
+- Nomad founder facing travel days, sick days, family weeks, time-zone shifts. One switch from 'normal' to 'low-energy' that the business survives without daily founder decisions.
 
 ## Applies If (ALL must hold)
 
-- founder is solo OR working in a team of ≤3 with async culture
-- travel window is ≥ 3 calendar days OR low-bandwidth conditions last ≥ 1 work day
-- founder still wants to make some progress (not full vacation mode)
-- bandwidth available is below 5 Mbps OR has variable / metered access
+- Founder travels OR operates across timezones ≥6 weeks/year
+- ≥1 paying customer or active contractor depends on founder responsiveness
+- Founder already has a 'normal mode' operating rhythm (standup, 1:1s, reviews)
 
 ## Skip If (ANY kills it)
 
-- full vacation declared — close the laptop instead, no mode needed
-- travel window &lt; 1 day — overhead of mode-switch exceeds benefit
-- team includes synchronous-required roles (customer support live chat, on-call rotation that cannot be paused) — coverage handoff is required first, not a low-energy mode
-- founder reports to a manager with synchronous-meeting expectations — negotiate calendar before invoking this mode
+- Salaried single-employer setup — no founder operating rhythm
+- Pre-revenue with no customers / contractors to manage
+- Founder fully delegated; ops continue without low-energy switch
 
 ## Prerequisites
 
-- repo cloned with all current branches and dependencies already installed locally
-- last-known-good build artifact cached locally
-- payment-related operations queued or paused at the provider (Stripe, banking) before departure
-- pre-travel ops checklist completed (see templates/pre-departure-checklist.md)
-- team / customer expectations communicated: response-window widened to 24-48h
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Normal-mode rhythm doc (standup / 1:1 / reviews) | doc | ops doc |
+| Auto-reply policy (email + Slack) | doc | comms |
+| Escalation contact (co-founder / VA / lawyer if applicable) | table | people doc |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/pm/project-manager/personal-energy-budget` | Source of the daily-energy concept on which the mode is built |
-| `solo/dev/api-developer/offline-first-dev-loop` | Sibling pattern for the dev-loop discipline used inside the mode |
-| `solo/comms/communicator/async-status-updates` | Async update cadence keeps customers and partners informed without sync calls |
+| `solo/pm/client-visibility-vs-velocity-tradeoff` | Peer methodology — low-energy mode adjusts client cadence per tier. |
+| `solo/pm/async-standup-methodology` | Peer methodology — async standup persists in low-energy mode. |
 
-## Content
+## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: declare-mode, 2-hour-window, deferred-deploy, async-only-ops, daily-recharge-buffer | ~900 |
-| `content/02-output-contract.xml` | essential | Trip-mode declaration schema, daily-log schema, exit-mode checklist | ~600 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes specific to nomad work: cafe-wifi deploy, timezone overlap mistake, payment-related auth flow at the wrong hour, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules incl. skip-this-methodology + run-the-checklist | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `pre_departure_checklist_generation` | haiku | Form fill from trip details |
-| `daily_2_hour_window_planning` | sonnet | Per-day judgment on what fits in the window |
-| `deferred_deploy_queue_review` | sonnet | Bounded review of which deploys can wait |
+| `draft-nomad-low-energy-mode` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-nomad-low-energy-mode` | haiku | Schema check + threshold checks; deterministic. |
+| `review-nomad-low-energy-mode` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/trip-mode-declaration.md` | One-page declaration posted to team channel before departure |
-| `templates/pre-departure-checklist.md` | 12-item checklist (repo cloned, builds cached, ops paused, etc.) |
-| `templates/daily-2h-window-log.md` | Daily journal stub: what fit in the window, what got deferred |
+| `templates/nomad-low-energy-mode.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/nomad-low-energy-mode.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/pre-flight-build-warmup.sh` | Pre-fetches dependencies, runs full build + tests offline-friendly, caches Docker layers | T-1 day before departure |
-| `scripts/deferred-deploy-queue.sh` | Tags PRs with `defer-until-back` label, posts to team channel | On entering nomad mode |
+| `scripts/validate-nomad-low-energy-mode.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/pm/project-manager/SKILL.md`
-- peer methodologies: `solo/pm/project-manager/personal-energy-budget`, `solo/comms/communicator/async-status-updates`
-- external: [Pieter Levels working notes on nomad ops] · [Basecamp Shape Up Chapter on uninterrupted time] · [Tsedal Neeley, Remote Work Revolution (HBR Press, 2021)]
+- [[client-visibility-vs-velocity-tradeoff]]
+- [[async-standup-methodology]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

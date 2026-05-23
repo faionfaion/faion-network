@@ -4,73 +4,92 @@ tier: solo
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: For teams already on GitHub, GitHub Projects provides native code-task traceability: "Fixes #123" in a PR automatically transitions the linked issue to Done when merged.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Solo / small-team GitHub Projects (v2) setup: 1-2 Projects max, repository-linked, custom fields ≤8, automations via GraphQL or workflows.
 content_id: "ac938ee61721c021"
-tags: [github, projects, issue-tracking, automation, graphql]
+complexity: medium
+produces: spec
+est_tokens: 3900
+tags: ["github", "github-projects", "pm", "solo", "issue-tracking"]
 ---
-# GitHub Projects v2 for Code-Task Traceability
+# GitHub Projects
 
 ## Summary
 
-**One-sentence:** For teams already on GitHub, GitHub Projects provides native code-task traceability: "Fixes #123" in a PR automatically transitions the linked issue to Done when merged.
+**One-sentence:** Solo / small-team GitHub Projects (v2) setup: 1-2 Projects max, repository-linked, custom fields ≤8, automations via GraphQL or workflows.
 
-**One-paragraph:** For teams already on GitHub, GitHub Projects provides native code-task traceability: "Fixes #123" in a PR automatically transitions the linked issue to Done when merged. Organization-level projects span multiple repositories. Custom fields (Status, Priority, Sprint iteration, Team) are configured in the GitHub UI before agent automation begins. The GitHub CLI (gh project) is the simplest agent interface — no GraphQL boilerplate needed for most operations.
+**One-paragraph:** Pins the GitHub Projects v2 baseline: one Project per outcome (not per repo), repository-linked, ≤8 custom fields, GraphQL/workflow automations bounded to property changes. Output is a versioned spec keeping the Project lean enough to outlast year 1.
+
+**Ефективно для:**
+
+- Solo founder or 2-10 engineers using GitHub as primary code + tracker. One Project that ties issues + PRs across repos without HubSpot-style sprawl.
 
 ## Applies If (ALL must hold)
 
-- Codebase is on GitHub and code-task traceability ("Fixes #123") is a priority.
-- Team already manages Issues and PRs on GitHub.
-- Open-source project needs a public-facing project board for community contributors.
-- Cross-repository work under one GitHub organization.
-- GitHub Actions already in use — extending to project automation is a natural fit.
+- Code lives in ≥1 GitHub repo
+- Team size 1-10 engineers
+- Issues + PRs tracked in GitHub (or planning to consolidate)
 
 ## Skip If (ANY kills it)
 
-- Team is not on GitHub (GitLab, Bitbucket) — tool is GitHub-native only.
-- Complex portfolio management across many products — GitHub Projects lacks portfolio hierarchy.
-- OKR or goal tracking required — GitHub has no goals layer; use Linear or ClickUp.
-- Non-technical stakeholders need to update tasks — GitHub UI has a learning curve.
-- Built-in velocity charts, burndown, or capacity planning required — needs custom Actions.
+- Engineering team >25 — GitHub Projects v2 UI gets sluggish
+- Non-engineering workflow (sales/ops) — pick Trello / Linear instead
+- Already on Linear / Jira + not migrating
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| GitHub org + repo admin access | config | GitHub admin |
+| Team roster + GitHub handles | table | people doc |
+| Outcome / initiative list | doc | roadmap |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/pm/pm-agile/linear-issue-tracking` | Peer methodology — comparison baseline; GitHub picks here, Linear there. |
+| `solo/pm/capacity-fit-calculator` | Peer methodology — capacity reads GitHub Project iteration data. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules incl. skip-this-methodology + run-the-checklist | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-github-projects` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-github-projects` | haiku | Schema check + threshold checks; deterministic. |
+| `review-github-projects` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/github-projects.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/github-projects.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-github-projects.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/pm/project-manager/`
+- [[linear-issue-tracking__pm-agile]]
+- [[capacity-fit-calculator]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

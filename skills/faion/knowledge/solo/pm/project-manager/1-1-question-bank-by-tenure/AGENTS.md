@@ -4,76 +4,90 @@ tier: solo
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: End-to-end playbook for 1 1 question bank by tenure that walks an operator from trigger to closed outcome with named artefacts at each step.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Tenure-indexed question bank for 1:1s: 30-60-90 day questions, 6-month, 1-year, 2-year+ — different inputs need different questions.
 content_id: "dd73ec21a5a4b819"
-tags: [1, playbook, pm]
+complexity: light
+produces: checklist
+est_tokens: 3500
+tags: ["1on1", "pm", "question-bank", "solo", "tenure"]
 ---
-# 1 1 Question Bank By Tenure
+# 1:1 Question Bank by Tenure
 
 ## Summary
 
-**One-sentence:** End-to-end playbook for 1 1 question bank by tenure that walks an operator from trigger to closed outcome with named artefacts at each step.
+**One-sentence:** Tenure-indexed question bank for 1:1s: 30-60-90 day questions, 6-month, 1-year, 2-year+ — different inputs need different questions.
 
-**One-paragraph:** End-to-end playbook for 1 1 question bank by tenure that walks an operator from trigger to closed outcome with named artefacts at each step. team-development is high-level; no concrete tenure-segmented question bank (week-1 vs month-3 vs year-2) for recurring 1:1s.
+**One-paragraph:** Pins a 5-bucket question bank (30d / 60d / 90d / 6mo / 1yr+) of ≥10 pre-tested 1:1 questions each. Output is a versioned spec the PM consults before each 1:1 so questions match tenure. Pairs with `pm-1on1-template-engineering-design` (the 5-section template).
+
+**Ефективно для:**
+
+- Solo PM running 1:1s with contractors at different tenures who keeps asking 'how's it going' to everyone. Tenure-bucketed questions surface different signals at each stage.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by 1 1 question bank by tenure end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- Running 1:1s with ≥1 teammate
+- Teammates span ≥2 tenure brackets (30d / 60d / 90d / 6mo / 1yr+)
+- Default 1:1 template exists (or being adopted alongside)
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- Only one teammate, one tenure — bank is overkill
+- No 1:1 cadence at all — adopt cadence first
+- Tenure data unavailable / irrelevant (e.g. one-off contractors)
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| List of teammates with start dates | table | people doc |
+| Standard 1:1 template (5 sections) | doc | pm-1on1-template-engineering-design |
+| Rolling notes per teammate | doc | notes store |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/pm/project-manager/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `solo/pm/pm-1on1-template-engineering-design` | Peer methodology — bank questions fill the 5-section template. |
+| `solo/pm/project-manager/freelancer-personal-crm-minimal` | Peer methodology — tenure data sourced from the CRM. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules incl. skip-this-methodology + run-the-checklist | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `input_collection` | haiku | Structured gather from inputs |
-| `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| `draft-1-1-question-bank-by-tenure` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-1-1-question-bank-by-tenure` | haiku | Schema check + threshold checks; deterministic. |
+| `review-1-1-question-bank-by-tenure` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/1-1-question-bank-by-tenure.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/1-1-question-bank-by-tenure.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-1-1-question-bank-by-tenure.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/pm/project-manager/`
-- peer methodologies: see siblings under `solo/pm/project-manager/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[pm-1on1-template-engineering-design]]
+- [[freelancer-personal-crm-minimal]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

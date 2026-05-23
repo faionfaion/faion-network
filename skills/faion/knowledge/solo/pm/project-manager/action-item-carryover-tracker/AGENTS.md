@@ -4,76 +4,92 @@ tier: solo
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: End-to-end playbook for action item carryover tracker that walks an operator from trigger to closed outcome with named artefacts at each step.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Single rolling log of action items + carryover age + owner + due date — surfaces 'this thing has slipped 4 weeks' before the meeting dies.
 content_id: "e32d17bb20881a98"
-tags: [action, playbook, pm]
+complexity: medium
+produces: report
+est_tokens: 3700
+tags: ["action-items", "pm", "solo", "meetings", "tracker"]
 ---
 # Action Item Carryover Tracker
 
 ## Summary
 
-**One-sentence:** End-to-end playbook for action item carryover tracker that walks an operator from trigger to closed outcome with named artefacts at each step.
+**One-sentence:** Single rolling log of action items + carryover age + owner + due date — surfaces 'this thing has slipped 4 weeks' before the meeting dies.
 
-**One-paragraph:** End-to-end playbook for action item carryover tracker that walks an operator from trigger to closed outcome with named artefacts at each step. Retro actions die; needs a recurring carryover ritual tied to next sprint planning input.
+**One-paragraph:** Pins a rolling action-item log indexed by source meeting + owner + due date + carryover age. Output is a versioned spec; weekly the agent emits the 'stale' subset (carryover ≥3) to force triage instead of theatre.
+
+**Ефективно для:**
+
+- Solo founder running meetings whose 'action items' line gets longer each week. Surfaces stale items (≥3 carryovers) so they're killed, closed, or escalated — not silently re-added.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by action item carryover tracker end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- ≥1 recurring meeting generating action items
+- Team / founder reviews meeting notes ≥weekly
+- Action items have identifiable owners (even if same person)
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- Solo no-meeting founder with no recurring action-item source
+- Action items already tracked rigorously in PM tool (Linear / Asana)
+- Crisis-incident mode — actions captured per-incident
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source meeting list (standup / 1:1 / sprint review) | table | calendar |
+| Existing action-item dumps from last 4 weeks | doc | meeting notes |
+| Owner identifier convention (@handle) | doc | team agreement |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/pm/project-manager/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `solo/pm/async-standup-methodology` | Peer methodology — async standup feeds blocker actions into this tracker. |
+| `solo/pm/burndown-diagnosis-cheatsheet` | Peer methodology — remediation actions land here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 rules incl. skip-this-methodology + run-the-checklist | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `input_collection` | haiku | Structured gather from inputs |
-| `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| `draft-action-item-carryover-tracker` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-action-item-carryover-tracker` | haiku | Schema check + threshold checks; deterministic. |
+| `review-action-item-carryover-tracker` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/action-item-carryover-tracker.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/action-item-carryover-tracker.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-action-item-carryover-tracker.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/pm/project-manager/`
-- peer methodologies: see siblings under `solo/pm/project-manager/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[async-standup-methodology]]
+- [[burndown-diagnosis-cheatsheet]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

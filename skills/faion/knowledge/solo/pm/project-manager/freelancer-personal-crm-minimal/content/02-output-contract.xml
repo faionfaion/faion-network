@@ -1,51 +1,109 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Freelancer Personal CRM Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of CRM artifacts. Subagent must satisfy this before returning a schema, weekly review, or follow-up recommendation.</summary>
+<text id="02-output-contract" title="Freelancer Personal CRM (Minimal) Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="tables" type="enum_set" required_keys="leads,clients,invoices"/>
-      <field name="leads_fields" type="exact_set"
-             value="name,source,stage,next_action_date,value_estimate"/>
-      <field name="clients_fields" type="exact_set"
-             value="name,start_date,hourly_or_fixed,retainer_end_date,health"/>
-      <field name="invoices_fields" type="exact_set"
-             value="client,amount,issued_date,due_date,status"/>
-      <field name="lead_stages" type="closed_enum"
-             value="new,qualified,proposal_sent,negotiating,won,lost"/>
-      <field name="follow_up_cadence_days" type="array_int"
-             default="[3,7,14,30]"/>
-      <field name="invoice_alarm_day" type="integer" min="30" max="30"/>
-      <field name="weekly_review_slot" format="weekday + time + duration_minutes"/>
-    </required>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/freelancer-personal-crm-minimal.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "table_url",
+    "field_count",
+    "stages",
+    "review_day",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "table_url": {
+      "type": "string"
+    },
+    "field_count": {
+      "type": "integer",
+      "maximum": 12
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6
+    },
+    "review_day": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">More than three top-level tables (rejected: Activities, Notes-as-table, Deals separate from Leads)</pattern>
-      <pattern id="f2">Mandatory fields &gt; 5 per table (optional fields are NOT in the contract)</pattern>
-      <pattern id="f3">Freeform / freetext stage values like "kinda interested" or "warming up"</pattern>
-      <pattern id="f4">"Follow up forever" cadence with no day-30 lost rule</pattern>
-      <pattern id="f5">Aging invoices beyond day 45 without a recorded operator decision (final notice OR pause)</pattern>
-      <pattern id="f6">Team-CRM features in the spec (assigned_to, team_visibility, role_permissions)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Add ONE optional field per table only after operator runs the schema for ≥ 4 weeks AND can name the workflow that needs it.</transformation>
-      <transformation>Substitute Notion / Airtable / Google Sheets / markdown — schema stays identical across tools.</transformation>
-      <transformation>Adjust cadence to 5-10-21-45 for high-trust referral leads, but only with explicit operator override.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/notion-schema.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Exactly three tables in the artifact</item>
-      <item>Each table has 5 mandatory fields, no more</item>
-      <item>Lead stages are the closed enum, no freeform values</item>
-      <item>Follow-up cadence is 3-7-14-30 (or explicit overridden value)</item>
-      <item>Invoice aging alarm fires at day 30</item>
-      <item>Weekly review slot is dated and recurring</item>
-      <item>No multi-user fields appear anywhere</item>
+      <pattern id="f1">stages.length != 6 — violates r1</pattern>
+      <pattern id="f2">field_count &gt; 12 — violates r2</pattern>
+      <pattern id="f3">review_day missing — violates r3</pattern>
+      <pattern id="f4">table_url empty — violates r1</pattern>
+      <pattern id="f5">owner == &apos;team&apos; / &apos;&apos; / null</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "crm-minimal-2026-q2",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "table_url": "notion://workspace/crm",
+  "field_count": 11,
+  "stages": [
+    "lead",
+    "qualified",
+    "proposal",
+    "signed",
+    "active",
+    "churned"
+  ],
+  "review_day": "Friday",
+  "owner": "@ruslan"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "table_url": "",
+  "field_count": 22,
+  "stages": [
+    "lead",
+    "qualified",
+    "proposal",
+    "signed",
+    "active"
+  ],
+  "review_day": "",
+  "owner": "team"
+}
+]]></code>
+    <note>Invalid — required fields missing or forbidden patterns matched (e.g. owner=='team').</note>
+  </example>
+
+  <reference path="scripts/validate-freelancer-personal-crm-minimal.py">Schema validator (stdlib only).</reference>
 </text>

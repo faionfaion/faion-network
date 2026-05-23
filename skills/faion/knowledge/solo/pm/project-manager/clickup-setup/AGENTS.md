@@ -4,72 +4,92 @@ tier: solo
 group: pm
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: ClickUp workspace architecture: 4-level hierarchy (Workspace → Space → Folder → List), ClickApps configuration (Sprints, Time Tracking, Custom Fields, Priorities, Multiple Assignees), custom status workflow per space, views (List, Board, Gantt, Workload, Dashboard), and automation rules for status transitions and template application.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Solo / small-team ClickUp baseline: hierarchy (Workspace → Space → Folder → List → Task), custom statuses ≤7, automations ≤10.
 content_id: "2057512c14519cb0"
-tags: [clickup, project-management, task-tracking, team-coordination, workflow-automation]
+complexity: medium
+produces: spec
+est_tokens: 4000
+tags: ["clickup", "pm", "solo", "issue-tracking"]
 ---
 # ClickUp Setup
 
 ## Summary
 
-**One-sentence:** ClickUp workspace architecture: 4-level hierarchy (Workspace → Space → Folder → List), ClickApps configuration (Sprints, Time Tracking, Custom Fields, Priorities, Multiple Assignees), custom status workflow per space, views (List, Board, Gantt, Workload, Dashboard), and automation rules for status transitions and template application.
+**One-sentence:** Solo / small-team ClickUp baseline: hierarchy (Workspace → Space → Folder → List → Task), custom statuses ≤7, automations ≤10.
 
-**One-paragraph:** ClickUp workspace architecture: 4-level hierarchy (Workspace → Space → Folder → List), ClickApps configuration (Sprints, Time Tracking, Custom Fields, Priorities, Multiple Assignees), custom status workflow per space, views (List, Board, Gantt, Workload, Dashboard), and automation rules for status transitions and template application. Create custom fields at the highest applicable level (Workspace > Space > Folder) to avoid duplication.
+**One-paragraph:** Pins a ClickUp workspace skeleton: one Workspace, ≤3 Spaces (eng / ops / sales), Folder-per-project, List-per-sprint or pipeline, canonical 7-state custom-status set, ≤10 automations, ClickApps trimmed to essentials. Output is a versioned spec preventing the 'every-feature-on' bloat ClickUp is famous for.
+
+**Ефективно для:**
+
+- Solo founder or small team adopting ClickUp who wants to skip the 6-month feature-bloat phase. One spec covering hierarchy, statuses, automations, and ClickApps to keep on.
 
 ## Applies If (ALL must hold)
 
-- Starting a new organization that needs PM, docs, and time tracking in one tool
-- Migrating from a simpler tool (Trello, Asana) when the team has outgrown it
-- Cross-functional team with different workflows per department (Engineering uses Sprints; Marketing uses a content calendar)
-- OKR and goal tracking needed alongside task management
-- Time tracking and billing required
+- Adopting ClickUp OR auditing existing ClickUp workspace
+- Team size 1-15
+- Multiple workflow types in scope (eng + ops + sales) OR single but expanding
 
 ## Skip If (ANY kills it)
 
-- Team is already on GitHub and needs code-task traceability — GitHub Projects is a better fit
-- Solo developer or very small team — ClickUp's hierarchy adds setup overhead that exceeds its value at this scale
-- Team primarily needs kanban with minimal configuration — Trello is simpler and faster to adopt
-- Technical team values keyboard-first, minimal-config workflows — Linear is a better fit
+- Engineering-only team — Linear is a better fit
+- Team size >25 — ClickUp gets unwieldy
+- Already on Asana / Notion exclusively and not migrating
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Team roster + role list | table | people doc |
+| Existing workspace / Spaces (if migrating) | list | ClickUp admin |
+| Workflow inventory (one workflow per team segment) | doc | ops doc |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/pm/pm-agile/linear-issue-tracking` | Peer methodology — comparison baseline; ClickUp picks here, Linear there. |
+| `solo/pm/capacity-fit-calculator` | Peer methodology — capacity computation reads ClickUp time-estimates. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules incl. skip-this-methodology + run-the-checklist | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-clickup-setup` | sonnet | Per-instance judgement on the artefact; bounded inputs. |
+| `validate-clickup-setup` | haiku | Schema check + threshold checks; deterministic. |
+| `review-clickup-setup` | opus | Cross-cycle synthesis; high-stakes change to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/clickup-setup.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/clickup-setup.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-clickup-setup.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/pm/project-manager/`
+- [[linear-issue-tracking__pm-agile]]
+- [[capacity-fit-calculator]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
