@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="gce-instance-templates Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for gce-instance-templates as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using a specific image version instead of an image family in the instance template.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Pinned images never receive OS security patches automatically. New instances created months later will boot a stale, potentially vulnerable image. Image families resolve to the latest patched image at creation time with zero template changes.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Reusing the default Compute Engine service account for application VMs.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The default SA has project editor permissions. Any VM compromise yields full project access. Create a dedicated SA and assign only the IAM roles the workload actually needs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Hardcoding configuration values in the startup script instead of reading from instance metadata.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hardcoded values make the template environment-specific, defeating its reusability. Use instance metadata keys for environment, version, and config — the same template can then serve dev, staging, and production by varying only the metadata at MIG creation time.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Gce Instance Templates Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns commonly observed when applying the gce-instance-templates methodology. Each pairs a symptom + root-cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="default-compute-sa" severity="high">
+      <symptom>Default compute SA has project-wide editor scope; container compromise reaches all GCP services.</symptom>
+      <root-cause source="Internal — F-066 audit">Template `serviceAccount` omitted or `default`.</root-cause>
+      <fix>Create dedicated SA with least-privileged roles; set in template.</fix>
+    </antipattern>
+    <antipattern id="ssh-keys-in-metadata" severity="high">
+      <symptom>Metadata-key SSH bypasses IAM and audit logging.</symptom>
+      <root-cause source="Internal — F-066 audit">Template metadata includes `ssh-keys`.</root-cause>
+      <fix>Remove metadata SSH keys; enable OS Login + IAP TCP forwarding.</fix>
+    </antipattern>
+    <antipattern id="non-idempotent-startup" severity="medium">
+      <symptom>Auto-heal produces partially configured instances on re-bootstrap.</symptom>
+      <root-cause source="Internal — F-066 audit">Startup script runs `apt install` without `if ! dpkg -l` check.</root-cause>
+      <fix>Add idempotency guards to startup script; verify by running twice.</fix>
+    </antipattern>
+    <antipattern id="secrets-in-startup-script" severity="high">
+      <symptom>Secrets readable from inside VM by any process.</symptom>
+      <root-cause source="Internal — F-066 audit">`echo PASSWORD=... &gt; /etc/app.env` in startup script.</root-cause>
+      <fix>Fetch from Secret Manager at runtime; metadata access via Workload Identity.</fix>
+    </antipattern>
   </section>
 </text>

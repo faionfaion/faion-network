@@ -3,21 +3,31 @@ slug: gce-autoscaling
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: The GCE autoscaler adjusts the size of a Managed Instance Group in response to one or more scaling signals: CPU utilization, load balancing capacity, custom Cloud Monitoring metrics, time-based schedules, or ML-based predictive forecasting.
-content_id: "1aa0e9959377f1db"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Configure GCE autoscalers for MIGs using CPU, load-balancing, custom Cloud Monitoring metrics, schedule-based, and predictive signals with scale-in controls to prevent flapping.
+content_id: "b123776a2196ba6d"
+complexity: medium
+produces: config
+est_tokens: 4100
 tags: [gcp, compute-engine, autoscaling, performance]
 ---
-# GCE Autoscaling
+# Gce Autoscaling
 
 ## Summary
 
-**One-sentence:** The GCE autoscaler adjusts the size of a Managed Instance Group in response to one or more scaling signals: CPU utilization, load balancing capacity, custom Cloud Monitoring metrics, time-based schedules, or ML-based predictive forecasting.
+**One-sentence:** Configure GCE autoscalers for MIGs using CPU, load-balancing, custom Cloud Monitoring metrics, schedule-based, and predictive signals with scale-in controls to prevent flapping.
 
 **One-paragraph:** The GCE autoscaler adjusts the size of a Managed Instance Group in response to one or more scaling signals: CPU utilization, load balancing capacity, custom Cloud Monitoring metrics, time-based schedules, or ML-based predictive forecasting. Multiple signals can be combined; the autoscaler scales to whichever signal demands the most capacity. Scale-in controls prevent rapid downscaling that would cause flapping during brief traffic dips.
+
+**Ефективно для:**
+
+- Stateless web/API tier у Managed Instance Group зі stable load shape.
+- CPU-target autoscaling (60–70%) як дефолт для compute-bound workload.
+- Custom-metric autoscaling (queue depth) для воркерів через Cloud Monitoring.
+- Scheduled scaling профілі для добового / робочого циклу.
 
 ## Applies If (ALL must hold)
 
@@ -29,46 +39,61 @@ tags: [gcp, compute-engine, autoscaling, performance]
 
 ## Skip If (ANY kills it)
 
-- Stateful MIGs where instance replacement destroys per-instance data — autoscaling removes instances without draining persistent state; use manual scaling or stateful MIG policies instead.
-- MIGs with min_replicas = 0 for production services — a scale-to-zero event during a traffic dip causes a cold-start latency spike when traffic returns; keep minimum >= 1 (or >= 3 for regional MIGs).
-- Workloads with unpredictable, spiky traffic (e.g., viral events) where the 60-second reaction time is too slow — pre-scale via a schedule or use Cloud Run/GKE with faster scale-to-zero.
+- Stateful workload that cannot tolerate instance replacement.
+- GKE Pod autoscaling — use HPA/VPA/CA instead.
+- Cloud Run autoscaling — use `cloud-run-autoscaling`.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| MIG | existing MIG | GCE deploy |
+| Scaling metric | CPU / custom / schedule | team |
+| Min/max replicas | int range | capacity planner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[gce-managed-instance-groups]] | Sibling methodology that supplies context required here. |
+| [[gce-instance-templates]] | Sibling methodology that supplies context required here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules with statement + rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule id from 01-core-rules | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applicability` | sonnet | Decision tree application — needs nuance + context awareness. |
+| `draft-config` | sonnet | Light judgement on field selection + naming conventions. |
+| `validate-output` | haiku | Mechanical schema validation via `scripts/validate-gce-autoscaling.py`. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/gce-autoscaling.yaml` | Skeleton for the config artefact this methodology produces. |
+| `templates/_smoke-test.yaml` | Minimum viable filled-in example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gce-autoscaling.py` | Validate the config artefact against the JSON Schema in `02-output-contract.xml`. | CI on each artefact change; pre-commit; manual on draft. |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
+- [[gce-managed-instance-groups]]
+- [[gce-instance-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree branches on observable workload / configuration signals and routes to a specific rule id from `01-core-rules.xml`. Use it whenever the input shape is ambiguous between two adjacent methodologies in this sub-skill (e.g. gce-autoscaling vs an adjacent sibling).

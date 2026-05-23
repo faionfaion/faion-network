@@ -3,21 +3,31 @@ slug: gcp-cloud-run-serverless
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Cloud Run and Cloud Functions Gen2 best practices: deploy with a dedicated service account, Secret Manager secrets, VPC connector for private resource access, min-instances for production cold-start elimination, blue-green traffic splitting for safe rollouts, and Binary Authorization for image trust.
-content_id: "4a540f131864a5ec"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: GCP Cloud Run and Cloud Functions Gen2 best practices: secure service deployment, VPC connector, blue-green traffic splitting, Secret Manager integration, and Cloud Run security/setup checklists.
+content_id: "34d48911b86503b3"
+complexity: medium
+produces: config
+est_tokens: 4100
 tags: [gcp, cloud-run, serverless, cloud-functions, blue-green]
 ---
-# GCP Cloud Run and Serverless
+# Gcp Cloud Run Serverless
 
 ## Summary
 
-**One-sentence:** Cloud Run and Cloud Functions Gen2 best practices: deploy with a dedicated service account, Secret Manager secrets, VPC connector for private resource access, min-instances for production cold-start elimination, blue-green traffic splitting for safe rollouts, and Binary Authorization for image trust.
+**One-sentence:** GCP Cloud Run and Cloud Functions Gen2 best practices: secure service deployment, VPC connector, blue-green traffic splitting, Secret Manager integration, and Cloud Run security/setup checklists.
 
 **One-paragraph:** Cloud Run and Cloud Functions Gen2 best practices: deploy with a dedicated service account, Secret Manager secrets, VPC connector for private resource access, min-instances for production cold-start elimination, blue-green traffic splitting for safe rollouts, and Binary Authorization for image trust.
+
+**Ефективно для:**
+
+- HTTP/gRPC stateless API з автоскейлом 0→N за запитами.
+- Event-driven worker через Pub/Sub push-subscription.
+- Microservice patterns: концентрація бізнес-логіки + мінімальний runtime.
+- Когнітивна навігація між services / jobs / generation gen1↔gen2.
 
 ## Applies If (ALL must hold)
 
@@ -29,46 +39,62 @@ tags: [gcp, cloud-run, serverless, cloud-functions, blue-green]
 
 ## Skip If (ANY kills it)
 
-- Stateful workloads or long-running background jobs — use Compute Engine or GKE.
-- Workloads requiring DaemonSets, host network access, or custom node config — use GKE Standard.
-- VPC and firewall configuration — use gcp-networking-vpc.
+- Long-running batch (>60 min) — use Cloud Run Jobs.
+- Stateful workload requiring persistent disk.
+- Custom kernel / privileged container needs.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Application image | OCI image in Artifact Registry | build pipeline |
+| Traffic shape | concurrency / RPS estimate | team |
+| Cold-start tolerance | min-instances policy | product owner |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[gcp-networking-vpc]] | Sibling methodology that supplies context required here. |
+| [[gcp-security-iam]] | Sibling methodology that supplies context required here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules with statement + rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule id from 01-core-rules | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applicability` | sonnet | Decision tree application — needs nuance + context awareness. |
+| `draft-config` | sonnet | Light judgement on field selection + naming conventions. |
+| `validate-output` | haiku | Mechanical schema validation via `scripts/validate-gcp-cloud-run-serverless.py`. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/gcp-cloud-run-serverless.yaml` | Skeleton for the config artefact this methodology produces. |
+| `templates/_smoke-test.yaml` | Minimum viable filled-in example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gcp-cloud-run-serverless.py` | Validate the config artefact against the JSON Schema in `02-output-contract.xml`. | CI on each artefact change; pre-commit; manual on draft. |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
+- [[gcp-networking-vpc]]
+- [[gcp-security-iam]]
+- [[gcp-compute-gke]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree branches on observable workload / configuration signals and routes to a specific rule id from `01-core-rules.xml`. Use it whenever the input shape is ambiguous between two adjacent methodologies in this sub-skill (e.g. gcp-cloud-run-serverless vs an adjacent sibling).

@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="gcp-arch-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for gcp-arch-patterns as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Single-zone GKE clusters for production workloads.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A zone outage takes the entire cluster offline — control plane and all worker nodes. Regional clusters survive zone failures with automatic rescheduling.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Cloud SQL with `availability_type = ZONAL` in production.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>ZONAL provides no automatic failover. A zone outage requires manual promotion of a replica, causing 5–30 minutes of downtime depending on replication lag.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Pub/Sub subscription without a dead-letter topic for production workloads.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A single bad message can block an entire subscription if there is no DLT to absorb it after max retries. The subscription falls arbitrarily behind with no alerting mechanism.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Gcp Arch Patterns Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns commonly observed when applying the gcp-arch-patterns methodology. Each pairs a symptom + root-cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="zonal-gke-prod" severity="high">
+      <symptom>Zone outage takes the cluster offline.</symptom>
+      <root-cause source="Internal — F-066 audit">GKE cluster created as zonal.</root-cause>
+      <fix>Recreate as regional GKE; migrate workloads via blue/green.</fix>
+    </antipattern>
+    <antipattern id="cloud-sql-zonal" severity="high">
+      <symptom>Single-zone outage takes the DB offline; lost RPO.</symptom>
+      <root-cause source="Internal — F-066 audit">Cloud SQL `availability_type=ZONAL` in production.</root-cause>
+      <fix>Enable HA (`availability_type=REGIONAL`); recheck PITR settings.</fix>
+    </antipattern>
+    <antipattern id="no-workload-identity" severity="medium">
+      <symptom>Pods carry node-level SA keys; credential leak risk.</symptom>
+      <root-cause source="Internal — F-066 audit">GKE cluster has Workload Identity disabled.</root-cause>
+      <fix>Enable Workload Identity; bind k8s SA to Google SA per workload.</fix>
+    </antipattern>
+    <antipattern id="static-assets-from-app" severity="medium">
+      <symptom>Application instances serve static assets — wastes compute + cold-start cost.</symptom>
+      <root-cause source="Internal — F-066 audit">Static files served from app container.</root-cause>
+      <fix>Move to Cloud Storage + Global LB + CDN.</fix>
+    </antipattern>
   </section>
 </text>

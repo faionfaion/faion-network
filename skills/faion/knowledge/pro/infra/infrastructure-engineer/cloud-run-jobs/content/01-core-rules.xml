@@ -1,11 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="cloud-run-jobs Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for cloud-run-jobs. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Cloud Run Jobs Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5 testable rules for the cloud-run-jobs methodology. Each rule pairs a binary check + sourced rationale + concrete remediation hook.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="task-idempotency-required" testable="true" depth="essential">
+      <statement>Cloud Run Job tasks MUST be idempotent: running the same task twice with the same `CLOUD_RUN_TASK_INDEX` MUST produce the same result and not corrupt state.</statement>
+      <rationale source="Cloud Run Jobs retries doc">Cloud Run retries failed tasks up to `max-retries`; non-idempotent tasks cause duplicate writes, double-charged payments, or corrupted state.</rationale>
+    </rule>
+    <rule id="explicit-task-timeout" testable="true" depth="essential">
+      <statement>Every job MUST set `--task-timeout` explicitly. Default of 10 minutes is unsafe for ETL/report workloads.</statement>
+      <rationale source="Cloud Run Jobs config docs">Hitting default timeout silently truncates jobs and emits opaque failures; explicit timeout makes capacity planning deterministic.</rationale>
+    </rule>
+    <rule id="task-index-work-distribution" testable="true" depth="essential">
+      <statement>Tasks MUST use `CLOUD_RUN_TASK_INDEX` and `CLOUD_RUN_TASK_COUNT` to slice the work set; the last index handles any remainder.</statement>
+      <rationale source="Cloud Run parallel-jobs docs">Without index-based partitioning, every task reprocesses the full set, multiplying cost and producing duplicate output.</rationale>
+    </rule>
+    <rule id="checkpoint-long-tasks" testable="true" depth="essential">
+      <statement>Tasks running &gt;30 minutes MUST checkpoint progress to Cloud Storage so retries resume from the checkpoint, not from scratch.</statement>
+      <rationale source="Internal — batch-jobs audit 2026">Without checkpointing a single transient failure forces a full re-execution and quickly exceeds the 168-hour cap on long jobs.</rationale>
+    </rule>
+    <rule id="scheduler-invoker-role" testable="true" depth="essential">
+      <statement>Cloud Scheduler-driven jobs MUST use a dedicated service account with `roles/run.invoker` on the job, not the default compute SA.</statement>
+      <rationale source="Cloud Scheduler IAM docs">Default compute SA carries broad permissions; a dedicated SA scoped to `run.invoker` keeps the blast radius of credential leaks small.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the input fails ALL "Applies If" preconditions or matches ANY "Skip If" disqualifier, do not apply this methodology — route the task to the adjacent sibling instead.</statement>
+      <rationale source="F-066 requirements-checklist B5.6">Even flat checklists need an explicit skip leaf in the decision tree; this rule is the universal terminal.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

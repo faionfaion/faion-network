@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="cloud-run-jobs Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for cloud-run-jobs as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Processing all items in every task without using CLOUD_RUN_TASK_INDEX for partitioning.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>All tasks process the same data N times. With 100 tasks and 10,000 items, 1,000,000 items are processed instead of 10,000. Results are duplicated N times; cost multiplies by task_count.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Cloud Run Jobs Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns commonly observed when applying the cloud-run-jobs methodology. Each pairs a symptom + root-cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="ignore-task-index" severity="high">
+      <symptom>Every parallel task reprocesses the full dataset; output is duplicated and bill scales by task_count.</symptom>
+      <root-cause source="Internal — F-066 audit">Worker code reads the full input slice unconditionally — never reads `CLOUD_RUN_TASK_INDEX`.</root-cause>
+      <fix>Refactor the worker to slice work by `CLOUD_RUN_TASK_INDEX` / `CLOUD_RUN_TASK_COUNT`; add unit test on slice math.</fix>
+    </antipattern>
+    <antipattern id="non-idempotent-task" severity="high">
+      <symptom>Retries cause duplicate writes / double charges; downstream state corrupts.</symptom>
+      <root-cause source="Internal — F-066 audit">Retry of the same `CLOUD_RUN_TASK_INDEX` produces a different effect than the first execution.</root-cause>
+      <fix>Add idempotency keys to writes; OR set `--max-retries=0` and own retry policy externally.</fix>
+    </antipattern>
+    <antipattern id="default-timeout" severity="medium">
+      <symptom>Long jobs silently truncate at 10 min default and emit opaque failure.</symptom>
+      <root-cause source="Internal — F-066 audit">No `--task-timeout` set on `gcloud run jobs create`.</root-cause>
+      <fix>Pass `--task-timeout=&lt;expected_max_duration_plus_buffer&gt;` and surface the value in the deploy manifest.</fix>
+    </antipattern>
+    <antipattern id="scheduler-uses-compute-sa" severity="medium">
+      <symptom>Default compute SA grants too-broad permissions to scheduled invocation.</symptom>
+      <root-cause source="Internal — F-066 audit">Cloud Scheduler invoker is the default compute SA (visible in `gcloud scheduler jobs describe`).</root-cause>
+      <fix>Create dedicated SA, grant `roles/run.invoker` on the job only, point Scheduler at it.</fix>
+    </antipattern>
   </section>
 </text>

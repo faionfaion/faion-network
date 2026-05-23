@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="gce-managed-instance-groups Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for gce-managed-instance-groups as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Setting initial_delay_sec shorter than the actual VM startup and application warmup time.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The autoheal loop will mark a healthy but still-starting VM as unhealthy, delete it, and recreate it. If all VMs are simultaneously starting (e.g., after a rolling restart), this creates a thrashing loop that can take the entire MIG offline until the initial delay is corrected.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using OPPORTUNISTIC update policy for rolling updates in production.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>OPPORTUNISTIC only replaces instances when they are recreated for other reasons (e.g., preemption, autohealing). The MIG can remain in a mixed-template state indefinitely. PROACTIVE replaces all instances on a schedule within the maxUnavailable/maxSurge constraints.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Gce Managed Instance Groups Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns commonly observed when applying the gce-managed-instance-groups methodology. Each pairs a symptom + root-cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="zonal-mig-prod" severity="high">
+      <symptom>Single-zone outage takes the whole MIG offline.</symptom>
+      <root-cause source="Internal — F-066 audit">MIG created as zonal, not regional.</root-cause>
+      <fix>Recreate as regional MIG distributing across ≥3 zones.</fix>
+    </antipattern>
+    <antipattern id="no-auto-heal" severity="high">
+      <symptom>Unhealthy instances stay in rotation; users hit failures.</symptom>
+      <root-cause source="Internal — F-066 audit">MIG has no auto-healing policy or health check.</root-cause>
+      <fix>Add HTTP health check + auto-healing policy with initial-delay ≥ boot time.</fix>
+    </antipattern>
+    <antipattern id="default-rolling-update" severity="medium">
+      <symptom>Too many instances replaced at once; capacity dips.</symptom>
+      <root-cause source="Internal — F-066 audit">`updatePolicy` not set OR maxUnavailable too high.</root-cause>
+      <fix>Set explicit `maxSurge=1`, `maxUnavailable=0` for production.</fix>
+    </antipattern>
+    <antipattern id="ad-hoc-instance-edit" severity="medium">
+      <symptom>Manual edits disappear on auto-heal; configuration drift.</symptom>
+      <root-cause source="Internal — F-066 audit">Operator SSH-fixes a running instance.</root-cause>
+      <fix>Push fix through new template version; treat instances as cattle.</fix>
+    </antipattern>
   </section>
 </text>

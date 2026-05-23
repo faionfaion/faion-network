@@ -1,19 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gce-autoscaling Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gce-autoscaling. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Gce Autoscaling Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5 testable rules for the gce-autoscaling methodology. Each rule pairs a binary check + sourced rationale + concrete remediation hook.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The autoscaler's initialization_period (cooldown_period in Terraform) MUST be set greater than the VM startup time plus application warmup time. For applications with initialization &gt; 2 minutes, predictive autoscaling MUST be enabled with OPTIMIZE_AVAILABILITY mode.</statement>
-      <rationale source="v1-source">If the cooldown period is shorter than VM startup, the autoscaler observes high CPU on starting VMs and interprets it as demand, triggering additional scale-out when the existing scale-out has not yet registered. This results in over-provisioning proportional to the ratio of startup time to cooldown period.</rationale>
+    <rule id="cpu-target-default" testable="true" depth="essential">
+      <statement>Default to CPU-target autoscaling at 60–70% utilisation for stateless compute-bound workloads.</statement>
+      <rationale source="GCE autoscaling docs">60–70% leaves headroom for burst without keeping idle capacity expensive.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every autoscaler MUST configure scale_in_control with a time_window_sec of at least 600 seconds (10 minutes) and a max_scaled_in_replicas fixed count or percentage that prevents more than 20% of instances from being removed in that window.</statement>
-      <rationale source="v1-source">Without scale-in controls, a traffic dip lasting 60+ seconds triggers aggressive scale-in. When traffic returns, the reduced fleet is undersized and latency rises while the autoscaler re-scales out. The 10-minute window smooths short traffic dips and prevents the flapping pattern.</rationale>
+    <rule id="custom-metric-autoscaling" testable="true" depth="essential">
+      <statement>Worker MIGs processing a queue MUST scale on a Cloud Monitoring custom metric (queue depth or oldest message age), not on CPU.</statement>
+      <rationale source="GCE custom-metric autoscaling docs">CPU is a lagging indicator for queue workers; scaling on queue depth keeps tail latency bounded.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Production autoscalers MUST set min_replicas to at least 1 for single-zone MIGs and at least 3 for regional MIGs. max_replicas MUST be set with cost awareness: calculate the maximum expected load at 60% CPU utilization to derive max_replicas, then add a 20% safety margin.</statement>
-      <rationale source="v1-source">min_replicas = 0 causes a cold-start gap on every scale-to-zero event. max_replicas without a ceiling risks runaway scaling from a metric misconfiguration or DDoS event; the ceiling limits financial blast radius.</rationale>
+    <rule id="scheduled-scaling-profiles" testable="true" depth="essential">
+      <statement>Predictable daily/weekly patterns MUST use scaling schedules in addition to dynamic policies.</statement>
+      <rationale source="GCE scaling schedules docs">Pure dynamic scaling lags morning ramp-ups; schedules pre-warm capacity.</rationale>
+    </rule>
+    <rule id="min-instances-for-cold-start" testable="true" depth="essential">
+      <statement>Set `--min-num-replicas` ≥1 for services where cold start is user-visible; document why if 0.</statement>
+      <rationale source="GCE autoscaler docs">min=0 hits cold start every quiet period; explicit policy makes the trade-off auditable.</rationale>
+    </rule>
+    <rule id="cooldown-tuned-to-boot" testable="true" depth="essential">
+      <statement>`--cool-down-period` MUST be ≥ instance boot + warmup time so the autoscaler doesn't double-scale.</statement>
+      <rationale source="GCE autoscaler docs">Too-short cooldown amplifies scale-out into oscillation and overshoots target.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the input fails ALL "Applies If" preconditions or matches ANY "Skip If" disqualifier, do not apply this methodology — route the task to the adjacent sibling instead.</statement>
+      <rationale source="F-066 requirements-checklist B5.6">Even flat checklists need an explicit skip leaf in the decision tree; this rule is the universal terminal.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

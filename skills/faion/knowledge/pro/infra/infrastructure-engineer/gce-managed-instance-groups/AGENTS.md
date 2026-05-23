@@ -3,21 +3,31 @@ slug: gce-managed-instance-groups
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A Managed Instance Group (MIG) maintains a set of identical VMs created from a single instance template, provides autohealing by replacing failed instances, supports rolling updates and canary deployments, and integrates with Google Cloud Load Balancing.
-content_id: "1ecd4aa804ea4969"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Deploy and operate GCE Managed Instance Groups (MIGs) for production: regional vs zonal placement, health checks, autohealing, rolling updates, and canary deployments.
+content_id: "d5a4b65f7600774f"
+complexity: medium
+produces: config
+est_tokens: 4100
 tags: [gcp, compute-engine, managed-instance-groups, high-availability]
 ---
-# GCE Managed Instance Groups (MIGs)
+# Gce Managed Instance Groups
 
 ## Summary
 
-**One-sentence:** A Managed Instance Group (MIG) maintains a set of identical VMs created from a single instance template, provides autohealing by replacing failed instances, supports rolling updates and canary deployments, and integrates with Google Cloud Load Balancing.
+**One-sentence:** Deploy and operate GCE Managed Instance Groups (MIGs) for production: regional vs zonal placement, health checks, autohealing, rolling updates, and canary deployments.
 
 **One-paragraph:** A Managed Instance Group (MIG) maintains a set of identical VMs created from a single instance template, provides autohealing by replacing failed instances, supports rolling updates and canary deployments, and integrates with Google Cloud Load Balancing. Use regional MIGs (multi-zone) for all production workloads; zonal MIGs are acceptable only for dev/test or cost-sensitive batch jobs.
+
+**Ефективно для:**
+
+- Regional MIG із multi-zone розподілом для HA.
+- Rolling updates через Updater з maxSurge/maxUnavailable.
+- Auto-healing через HTTP health-check + initial-delay для бутстрапу.
+- Per-instance configs для канаркового rollout у MIG.
 
 ## Applies If (ALL must hold)
 
@@ -29,46 +39,62 @@ tags: [gcp, compute-engine, managed-instance-groups, high-availability]
 
 ## Skip If (ANY kills it)
 
-- Stateful workloads that require per-instance persistent identity (databases, Kafka brokers) — use Stateful MIGs or GKE StatefulSets instead; a standard MIG replaces instances without preserving disk data or network identity.
-- Single-VM development machines — MIG overhead is not justified; create the VM directly.
-- Workloads with long initialization that cannot tolerate instance replacement — use suspend/resume or ensure the health check initial_delay_sec accounts for full startup time.
+- Single-VM workload with no need for HA/auto-heal.
+- GKE — use Kubernetes Deployments/StatefulSets.
+- Cloud Run / serverless workloads.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Instance template (versioned) | GCE instance template | from `gce-instance-templates` |
+| Health check | HTTP/HTTPS/TCP | team |
+| Placement strategy | regional vs zonal | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[gce-instance-templates]] | Sibling methodology that supplies context required here. |
+| [[gce-autoscaling]] | Sibling methodology that supplies context required here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules with statement + rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule id from 01-core-rules | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applicability` | sonnet | Decision tree application — needs nuance + context awareness. |
+| `draft-config` | sonnet | Light judgement on field selection + naming conventions. |
+| `validate-output` | haiku | Mechanical schema validation via `scripts/validate-gce-managed-instance-groups.py`. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/gce-managed-instance-groups.yaml` | Skeleton for the config artefact this methodology produces. |
+| `templates/_smoke-test.yaml` | Minimum viable filled-in example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gce-managed-instance-groups.py` | Validate the config artefact against the JSON Schema in `02-output-contract.xml`. | CI on each artefact change; pre-commit; manual on draft. |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
+- [[gce-instance-templates]]
+- [[gce-autoscaling]]
+- [[gce-spot-vms]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree branches on observable workload / configuration signals and routes to a specific rule id from `01-core-rules.xml`. Use it whenever the input shape is ambiguous between two adjacent methodologies in this sub-skill (e.g. gce-managed-instance-groups vs an adjacent sibling).

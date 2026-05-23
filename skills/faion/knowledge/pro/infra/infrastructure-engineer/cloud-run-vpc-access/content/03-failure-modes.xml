@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="cloud-run-vpc-access Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for cloud-run-vpc-access as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using Serverless VPC Access connector for new deployments while Direct VPC egress is available in the same region.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Connectors are bottlenecks: a single connector instance supports max 200-300 Mbps and is shared across all services using it. Direct VPC egress eliminates the connector VM, reduces cost, and scales linearly with Cloud Run instances.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Cloud Run Vpc Access Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns commonly observed when applying the cloud-run-vpc-access methodology. Each pairs a symptom + root-cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="public-egress-route" severity="high">
+      <symptom>Egress to private CIDRs goes through public internet (or fails).</symptom>
+      <root-cause source="Internal — F-066 audit">`--vpc-egress=all-traffic` not set OR no connector configured.</root-cause>
+      <fix>Configure connector OR direct VPC egress; set egress to `private-ranges-only` when no internet needed.</fix>
+    </antipattern>
+    <antipattern id="undersized-connector" severity="medium">
+      <symptom>Tail latency spikes; throttled egress under load.</symptom>
+      <root-cause source="Internal — F-066 audit">Connector autoscaler at max instances for &gt;1h during peak.</root-cause>
+      <fix>Resize connector min/max instances; consider direct VPC egress (gen2) instead.</fix>
+    </antipattern>
+    <antipattern id="public-ingress-internal-service" severity="high">
+      <symptom>Internal-only service is reachable from public internet; IAM is the only barrier.</symptom>
+      <root-cause source="Internal — F-066 audit">`gcloud run services describe` shows `ingress: all`.</root-cause>
+      <fix>Set `--ingress=internal` (or `internal-and-cloud-load-balancing`).</fix>
+    </antipattern>
+    <antipattern id="connector-per-service" severity="low">
+      <symptom>IP space exhaustion; quota issues on connector count.</symptom>
+      <root-cause source="Internal — F-066 audit">Each service has its own connector pointing to the same VPC.</root-cause>
+      <fix>Consolidate to one shared connector per region per VPC.</fix>
+    </antipattern>
   </section>
 </text>

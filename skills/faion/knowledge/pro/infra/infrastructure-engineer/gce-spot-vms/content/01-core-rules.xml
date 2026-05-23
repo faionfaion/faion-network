@@ -1,19 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gce-spot-vms Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gce-spot-vms. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Gce Spot Vms Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5 testable rules for the gce-spot-vms methodology. Each rule pairs a binary check + sourced rationale + concrete remediation hook.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Spot VMs MUST be provisioned with provisioning_model = "SPOT" (not preemptible = true, which creates the legacy Preemptible type). The instance_termination_action MUST be set to either STOP (to preserve the disk for resumption) or DELETE (for ephemeral batch workers). automatic_restart MUST be set to false.</statement>
-      <rationale source="v1-source">preemptible = true creates a legacy Preemptible VM with a 24-hour runtime limit. SPOT provisioning_model creates a Spot VM with no runtime limit. automatic_restart = true is incompatible with Spot VMs and causes instance creation to fail.</rationale>
+    <rule id="spot-with-checkpointing" testable="true" depth="essential">
+      <statement>Spot/preemptible workloads MUST persist progress checkpoints to Cloud Storage at intervals shorter than the expected preemption window.</statement>
+      <rationale source="GCE Spot docs">Without checkpointing, preemption wipes hours of work; periodic checkpoint ensures bounded re-execution cost.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every Spot VM template MUST include a shutdown script that completes within 30 seconds. The script MUST save checkpointed state to Cloud Storage (or another external store) before the 30-second window closes. The script MUST NOT rely on the VM disk being available after preemption when termination_action = DELETE.</statement>
-      <rationale source="v1-source">GCP sends an ACPI shutdown signal 30 seconds before termination. Any in-memory state not externalized within this window is lost. The shutdown-script metadata key is executed automatically on receiving the preemption signal; it is the only reliable hook for state preservation.</rationale>
+    <rule id="graceful-shutdown-hook" testable="true" depth="essential">
+      <statement>Workloads on Spot VMs MUST handle the 30-second `SIGTERM` shutdown notice and flush state.</statement>
+      <rationale source="GCE Spot termination docs">Spot VMs receive a 30-second notice; ignoring it loses uncommitted work and may corrupt downstream state.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Spot VMs in production MUST run inside a regional MIG with autohealing enabled. The MIG MUST span at least 2 zones so that a zone-level Spot capacity shortage does not eliminate all workers. Critical workloads MUST mix Spot and standard VMs (e.g., 70% Spot, 30% standard) to maintain a guaranteed minimum capacity floor.</statement>
-      <rationale source="v1-source">Spot availability varies by zone and machine type. Zone-level preemption events (capacity reclamation) can affect all Spot VMs in a zone simultaneously. Multi-zone MIGs absorb zone-level events. A standard VM floor ensures the service never reaches zero capacity.</rationale>
+    <rule id="mixed-standard-and-spot" testable="true" depth="essential">
+      <statement>Mixed MIGs MUST keep a non-Spot baseline (≥1 instance) for SLO floor + Spot for burst.</statement>
+      <rationale source="GCE MIG docs">Pure-Spot fleets risk full preemption; mixed pools maintain availability while harvesting cost savings.</rationale>
+    </rule>
+    <rule id="instance-termination-action" testable="true" depth="essential">
+      <statement>Spot VMs in MIGs MUST set `--instance-termination-action=STOP` (or `DELETE`) consistently; mixing in one MIG is forbidden.</statement>
+      <rationale source="GCE Spot termination docs">Mismatched termination actions inside a MIG produce inconsistent recovery behaviour.</rationale>
+    </rule>
+    <rule id="no-spot-for-critical-slo" testable="true" depth="essential">
+      <statement>Workloads with SLOs above 99.5% availability MUST NOT run on Spot/preemptible alone.</statement>
+      <rationale source="Internal — SLO + Spot policy">Spot availability is best-effort; relying on Spot for critical SLOs makes the SLO unattainable.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the input fails ALL "Applies If" preconditions or matches ANY "Skip If" disqualifier, do not apply this methodology — route the task to the adjacent sibling instead.</statement>
+      <rationale source="F-066 requirements-checklist B5.6">Even flat checklists need an explicit skip leaf in the decision tree; this rule is the universal terminal.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

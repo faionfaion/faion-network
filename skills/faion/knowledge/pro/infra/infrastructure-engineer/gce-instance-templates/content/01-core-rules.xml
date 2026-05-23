@@ -1,15 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gce-instance-templates Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gce-instance-templates. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Gce Instance Templates Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5 testable rules for the gce-instance-templates methodology. Each rule pairs a binary check + sourced rationale + concrete remediation hook.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Instance templates MUST use an image family (e.g. ubuntu-os-cloud/ubuntu-2404-lts-amd64) rather than a specific image version. Templates MUST be versioned by name suffix (date or semantic version, e.g. app-template-20260427 or app-template-v2). The lifecycle block MUST contain create_before_destroy = true in Terraform.</statement>
-      <rationale source="v1-source">Image families resolve to the latest patched image at creation time, eliminating the need to update the template for OS security patches. Name versioning enables audit trails and rollback. create_before_destroy prevents Terraform from deleting the in-use template before the replacement is ready, which would break MIG updates.</rationale>
+    <rule id="immutable-versioned-templates" testable="true" depth="essential">
+      <statement>Instance templates are immutable; ANY change MUST produce a new template version (suffixed v2/v3 or by date).</statement>
+      <rationale source="GCE instance template docs">Editing in place is not supported; treating templates as versioned artefacts makes rollbacks trivial.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Instance templates MUST attach a dedicated service account with only the IAM roles required for the workload (principle of least privilege). Templates MUST NOT use the default Compute service account. The scopes field MUST be set to cloud-platform when a dedicated service account is used (IAM roles on the SA govern access, not scopes).</statement>
-      <rationale source="v1-source">The default Compute service account has project editor permissions; any compromised VM becomes a full project compromised. A dedicated SA with minimal roles limits blast radius. The cloud-platform scope defers to SA IAM roles and avoids the confusion of per-API scope lists.</rationale>
+    <rule id="least-privileged-service-account" testable="true" depth="essential">
+      <statement>Templates MUST assign a dedicated service account with least-privileged scopes — never the default compute SA with full cloud-platform scope.</statement>
+      <rationale source="GCE SA docs">Default SA grants broad project-wide access; per-template SA contains blast radius.</rationale>
+    </rule>
+    <rule id="os-login-iap-no-metadata-keys" testable="true" depth="essential">
+      <statement>Templates MUST enable OS Login + IAP TCP forwarding; SSH keys in instance metadata are forbidden.</statement>
+      <rationale source="OS Login docs">Metadata-key SSH bypasses IAM and audit; OS Login ties access to IAM identities with full logging.</rationale>
+    </rule>
+    <rule id="startup-script-idempotent" testable="true" depth="essential">
+      <statement>Startup scripts MUST be idempotent and check current state before mutating (no blind `apt install` loops without check).</statement>
+      <rationale source="Internal — VM bootstrap audit">Non-idempotent scripts fail re-execution after auto-heal, producing partially configured instances.</rationale>
+    </rule>
+    <rule id="metadata-no-secrets" testable="true" depth="essential">
+      <statement>Secrets MUST NOT be embedded in instance metadata or startup scripts; use Secret Manager + Workload Identity instead.</statement>
+      <rationale source="GCE security docs">Metadata is readable from inside the VM by any process; embedded secrets leak via local-account compromise.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the input fails ALL "Applies If" preconditions or matches ANY "Skip If" disqualifier, do not apply this methodology — route the task to the adjacent sibling instead.</statement>
+      <rationale source="F-066 requirements-checklist B5.6">Even flat checklists need an explicit skip leaf in the decision tree; this rule is the universal terminal.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

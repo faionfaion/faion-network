@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="gce-spot-vms Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for gce-spot-vms as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using preemptible = true instead of provisioning_model = "SPOT" for new deployments.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Preemptible VMs are a legacy product with a hard 24-hour runtime limit. Spot VMs are the current product, have no runtime limit, and support more features. All new Spot VM deployments must use provisioning_model = "SPOT" in the scheduling block.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Running Spot VMs without a shutdown script.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without a shutdown script, all in-memory application state is lost when GCP preempts the instance. For batch workloads, this means replaying all work since the last checkpoint. For stateful services, it means data loss. The 30-second window is reliable enough to flush state to GCS for most workloads.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Using 100% Spot VMs for a production service with an SLO.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Zone-level capacity reclamation events can preempt all Spot VMs in a zone simultaneously. With 100% Spot and no standard VM floor, the service can go to zero capacity. Always maintain a standard VM baseline (at least 30% of min replicas on standard VMs) for SLO-bearing services.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Gce Spot Vms Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns commonly observed when applying the gce-spot-vms methodology. Each pairs a symptom + root-cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="no-checkpoint" severity="high">
+      <symptom>Preemption wipes hours of work; full re-execution required.</symptom>
+      <root-cause source="Internal — F-066 audit">Worker doesn't write progress to durable storage.</root-cause>
+      <fix>Add checkpoint at intervals shorter than expected preemption window (e.g. every 5 min).</fix>
+    </antipattern>
+    <antipattern id="ignore-sigterm" severity="high">
+      <symptom>Uncommitted work lost on 30s shutdown notice; downstream state corrupts.</symptom>
+      <root-cause source="Internal — F-066 audit">Worker doesn't trap SIGTERM.</root-cause>
+      <fix>Trap SIGTERM, flush buffers, persist state, exit clean.</fix>
+    </antipattern>
+    <antipattern id="pure-spot-fleet" severity="medium">
+      <symptom>Full preemption wipes the fleet; outage during preemption storms.</symptom>
+      <root-cause source="Internal — F-066 audit">100% of MIG is Spot.</root-cause>
+      <fix>Add non-Spot baseline (≥1 instance) for SLO floor.</fix>
+    </antipattern>
+    <antipattern id="spot-for-critical-slo" severity="high">
+      <symptom>SLO unattainable; on-call pages due to preemption.</symptom>
+      <root-cause source="Internal — F-066 audit">Workload with &gt;99.5% SLO running on Spot only.</root-cause>
+      <fix>Move to standard VMs OR raise SLO commitment.</fix>
+    </antipattern>
   </section>
 </text>

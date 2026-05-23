@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="cloud-run-monitoring Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for cloud-run-monitoring as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using print() statements or unstructured logger.info("user_id: " + user_id) for application logging.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Unstructured logs cannot be filtered by field (e.g., user_id = "u123"), cannot generate log-based metrics, and are 10x slower to search in Cloud Logging. Structured JSON is parsed at ingest with zero extra cost.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Cloud Run Monitoring Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns commonly observed when applying the cloud-run-monitoring methodology. Each pairs a symptom + root-cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="unstructured-logs" severity="high">
+      <symptom>Cloud Logging cannot filter / aggregate; investigation is full-text search.</symptom>
+      <root-cause source="Internal — F-066 audit">Application emits `print(...)` or `logger.info(plain text)` to stdout.</root-cause>
+      <fix>Switch to JSON formatter writing severity + message + trace; verify Cloud Logging shows structured fields.</fix>
+    </antipattern>
+    <antipattern id="no-alert-policies" severity="high">
+      <symptom>Production incidents are detected by user reports, not by monitoring.</symptom>
+      <root-cause source="Internal — F-066 audit">`gcloud alpha monitoring policies list --filter='display_name~service-name'` returns empty.</root-cause>
+      <fix>Create alerts on 5xx rate, p99 latency, instance count, CPU utilisation.</fix>
+    </antipattern>
+    <antipattern id="trace-header-dropped" severity="medium">
+      <symptom>Cross-service traces fracture; root cause analysis blocked across microservices.</symptom>
+      <root-cause source="Internal — F-066 audit">Outbound HTTP client doesn't forward `X-Cloud-Trace-Context`.</root-cause>
+      <fix>Wrap HTTP client to propagate trace header; verify Cloud Trace shows connected spans.</fix>
+    </antipattern>
+    <antipattern id="secrets-in-logs" severity="high">
+      <symptom>Logged credentials leak to BigQuery sinks and broadly-readable buckets.</symptom>
+      <root-cause source="Internal — F-066 audit">Log entries contain `password=`, `token=`, or PII patterns (grep on log sink).</root-cause>
+      <fix>Add redaction at logger level; review last 30 days of logs and rotate any leaked credentials.</fix>
+    </antipattern>
   </section>
 </text>

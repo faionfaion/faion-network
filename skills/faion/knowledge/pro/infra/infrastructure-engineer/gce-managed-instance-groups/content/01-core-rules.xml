@@ -1,19 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gce-managed-instance-groups Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gce-managed-instance-groups. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Gce Managed Instance Groups Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5 testable rules for the gce-managed-instance-groups methodology. Each rule pairs a binary check + sourced rationale + concrete remediation hook.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Production MIGs MUST be regional (not zonal), MUST set minimum instances to at least 3 (one per zone), and MUST configure distribution_policy_target_shape to EVEN. Zonal MIGs are permitted only for dev/test environments.</statement>
-      <rationale source="v1-source">A zonal MIG becomes fully unavailable during a zone outage. Regional MIGs with EVEN distribution ensure capacity across all three zones; a zone outage reduces capacity to 66% rather than 0%.</rationale>
+    <rule id="regional-multi-zone-ha" testable="true" depth="essential">
+      <statement>Production MIGs MUST be regional with instances distributed across ≥3 zones.</statement>
+      <rationale source="GCE MIG HA docs">Zonal MIGs fail entirely on a single-zone outage; regional MIGs survive zone loss.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every production MIG MUST configure autohealing with an HTTP(S) health check and set initial_delay_sec to at least the full VM startup plus application warmup time. The health check path MUST return HTTP 200 only when the application is fully ready to serve traffic.</statement>
-      <rationale source="v1-source">If initial_delay_sec is too short, the autoheal loop replaces healthy VMs that are still starting, causing a thrashing loop that takes the entire MIG offline. The health check path must reflect true readiness, not just that the process is running.</rationale>
+    <rule id="controlled-rolling-update" testable="true" depth="essential">
+      <statement>Rolling updates MUST set explicit `maxSurge` and `maxUnavailable` (e.g. `maxSurge=1`, `maxUnavailable=0`).</statement>
+      <rationale source="GCE MIG updater docs">Default rolling update can take down too many instances at once for capacity-sensitive workloads.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Rolling updates on production MIGs MUST set max_unavailable_fixed = 0 (or maxUnavailable=0) and max_surge_fixed &gt;= 1 to ensure capacity is never reduced during the update. Update type MUST be PROACTIVE so instances are replaced immediately rather than waiting for natural turnover.</statement>
-      <rationale source="v1-source">maxUnavailable=0 guarantees that the load balancer always has the full target pool available. maxSurge&gt;=1 provides the surge capacity needed to start new-template instances before draining old ones. PROACTIVE mode ensures the update actually completes; OPPORTUNISTIC only replaces on recreation events and can leave the MIG in a mixed state indefinitely.</rationale>
+    <rule id="auto-healing-with-health-check" testable="true" depth="essential">
+      <statement>MIGs MUST have an auto-healing policy backed by an HTTP/HTTPS health check with an explicit `--initial-delay-sec`.</statement>
+      <rationale source="GCE MIG auto-healing docs">Without auto-healing, unhealthy instances stay in rotation; without initial delay healthy boot-up traffic gets killed prematurely.</rationale>
+    </rule>
+    <rule id="per-instance-config-for-canary" testable="true" depth="essential">
+      <statement>Per-instance configs MUST be used for limited canary rollouts inside a MIG, never edited ad-hoc on a running instance.</statement>
+      <rationale source="GCE per-instance config docs">Ad-hoc per-instance edits are not tracked and disappear on auto-heal.</rationale>
+    </rule>
+    <rule id="connection-draining-for-stateful" testable="true" depth="essential">
+      <statement>Stateful or long-connection workloads MUST configure backend connection draining on the load balancer before MIG resize/update.</statement>
+      <rationale source="GCE LB connection-draining docs">Without draining, in-flight requests are dropped during instance replacement.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the input fails ALL "Applies If" preconditions or matches ANY "Skip If" disqualifier, do not apply this methodology — route the task to the adjacent sibling instead.</statement>
+      <rationale source="F-066 requirements-checklist B5.6">Even flat checklists need an explicit skip leaf in the decision tree; this rule is the universal terminal.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

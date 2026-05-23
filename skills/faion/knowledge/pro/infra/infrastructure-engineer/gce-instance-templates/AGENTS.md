@@ -3,21 +3,31 @@ slug: gce-instance-templates
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Instance templates are immutable, reusable VM configurations that define machine type, boot disk image, network settings, service account, labels, and startup/shutdown scripts.
-content_id: "b9230d345b11e1b8"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Design, version, and manage GCE instance templates as the single source of truth for VM configuration in Managed Instance Groups and standalone deployments.
+content_id: "4485d67d57eb8351"
+complexity: medium
+produces: config
+est_tokens: 4100
 tags: [gcp, compute-engine, instance-templates, infrastructure-as-code]
 ---
-# GCE Instance Templates
+# Gce Instance Templates
 
 ## Summary
 
-**One-sentence:** Instance templates are immutable, reusable VM configurations that define machine type, boot disk image, network settings, service account, labels, and startup/shutdown scripts.
+**One-sentence:** Design, version, and manage GCE instance templates as the single source of truth for VM configuration in Managed Instance Groups and standalone deployments.
 
 **One-paragraph:** Instance templates are immutable, reusable VM configurations that define machine type, boot disk image, network settings, service account, labels, and startup/shutdown scripts. Every Managed Instance Group (MIG) requires an instance template; standalone VMs benefit from templates for consistency. Always version templates by name and use image families, not specific image versions, to get automatic security patches.
+
+**Ефективно для:**
+
+- Версіоновані instance templates (immutable) як основа MIG.
+- Startup script + образ із pre-installed agent для бутстрапу VM.
+- Service account з мінімальним scope + metadata-driven config.
+- OS Login + IAP замість SSH-ключів у metadata.
 
 ## Applies If (ALL must hold)
 
@@ -29,45 +39,62 @@ tags: [gcp, compute-engine, instance-templates, infrastructure-as-code]
 
 ## Skip If (ANY kills it)
 
-- One-off diagnostic or short-lived VMs — the overhead of template creation exceeds the value; use gcloud directly.
-- VMs with highly individualized configurations that differ per instance — templates require all VMs to start from the same base; per-instance divergence belongs in startup scripts reading instance metadata.
+- One-off VM that won't be replicated — create instance directly.
+- GKE node-pool template — managed by GKE, not GCE template.
+- Cloud Run / Cloud Functions deployment.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Image | GCE image / family | platform team |
+| Service account | least-privilege SA | IAM owner |
+| Startup script | shell or cloud-init | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[gce-managed-instance-groups]] | Sibling methodology that supplies context required here. |
+| [[gce-spot-vms]] | Sibling methodology that supplies context required here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules with statement + rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule id from 01-core-rules | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applicability` | sonnet | Decision tree application — needs nuance + context awareness. |
+| `draft-config` | sonnet | Light judgement on field selection + naming conventions. |
+| `validate-output` | haiku | Mechanical schema validation via `scripts/validate-gce-instance-templates.py`. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/gce-instance-templates.yaml` | Skeleton for the config artefact this methodology produces. |
+| `templates/_smoke-test.yaml` | Minimum viable filled-in example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gce-instance-templates.py` | Validate the config artefact against the JSON Schema in `02-output-contract.xml`. | CI on each artefact change; pre-commit; manual on draft. |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
+- [[gce-managed-instance-groups]]
+- [[gce-spot-vms]]
+- [[gcp-terraform-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree branches on observable workload / configuration signals and routes to a specific rule id from `01-core-rules.xml`. Use it whenever the input shape is ambiguous between two adjacent methodologies in this sub-skill (e.g. gce-instance-templates vs an adjacent sibling).

@@ -1,83 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gcp-arch-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gcp-arch-patterns. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Gcp Arch Patterns Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5 testable rules for the gcp-arch-patterns methodology. Each rule pairs a binary check + sourced rationale + concrete remediation hook.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Deploy GKE Standard or Autopilot clusters as REGIONAL (not zonal) with a minimum of 3 zones for production; use Autopilot when teams want to avoid node management overhead.</statement>
-      <rationale source="v1-source">Zonal clusters are single points of failure — a zone outage takes the cluster control plane offline. Regional clusters survive individual zone failures with no downtime.</rationale>
+    <rule id="regional-private-gke" testable="true" depth="essential">
+      <statement>Production GKE clusters MUST be regional with private nodes, Workload Identity enabled, and managed Prometheus.</statement>
+      <rationale source="GCP GKE best-practices">Regional + private nodes + Workload Identity is the baseline that survives zone loss and avoids node-level SA keys.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use the REGULAR release channel for production clusters; avoid RAPID channel in production due to less-tested releases.</statement>
-      <rationale source="v1-source">REGULAR receives Kubernetes versions with a minimum 2-week bake period. RAPID receives new versions immediately with less production validation.</rationale>
+    <rule id="cloud-sql-regional-pitr" testable="true" depth="essential">
+      <statement>Production Cloud SQL instances MUST set `availability_type=REGIONAL` and enable point-in-time recovery (PITR).</statement>
+      <rationale source="Cloud SQL HA docs">REGIONAL with PITR is the only combination that survives a zonal outage AND lets us restore from arbitrary timestamps.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Enable Workload Identity on all clusters; use per-namespace Kubernetes Service Accounts bound to GCP service accounts; never use node-level service account keys.</statement>
-      <rationale source="v1-source">Workload Identity eliminates node metadata server access for service account keys. It provides per-workload identity rather than per-node, following least privilege.</rationale>
+    <rule id="static-assets-on-cs-cdn" testable="true" depth="essential">
+      <statement>Static assets MUST be served from Cloud Storage behind a Global HTTPS Load Balancer with Cloud CDN enabled.</statement>
+      <rationale source="Cloud CDN docs">Origin offload + edge caching dominates the cost / latency trade-off for static content.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Enable Binary Authorization with ATTESTOR_BASED policy; require vulnerability scan attestation from Container Analysis before deployment to production.</statement>
-      <rationale source="v1-source">Binary Authorization prevents unscanned or unsigned images from running in production, enforcing supply chain security for SOC2/PCI compliance.</rationale>
+    <rule id="microservices-on-cloud-run" testable="true" depth="essential">
+      <statement>Stateless microservices MUST default to Cloud Run; reach for GKE only if Cloud Run limits (memory, request length, networking) are exceeded.</statement>
+      <rationale source="Cloud Run vs GKE decision docs">Cloud Run absorbs ops burden cheaper than GKE; reserving GKE for the cases that need it keeps the architecture lean.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Enable Shielded Nodes with Secure Boot on all node pools; enable Dataplane V2 (eBPF) for network policy enforcement.</statement>
-      <rationale source="v1-source">Shielded Nodes verify node integrity against bootkit and rootkit attacks. Dataplane V2 provides granular network policy enforcement at the kernel level.</rationale>
+    <rule id="pubsub-dataflow-bq" testable="true" depth="essential">
+      <statement>Streaming + batch data pipelines MUST follow Pub/Sub → Dataflow → BigQuery topology with schemas registered in Schema Registry / Data Catalog.</statement>
+      <rationale source="GCP data-pipeline reference architecture">This is the canonical reference pipeline; following it leverages managed scaling and schema governance out of the box.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Remove the default node pool after cluster creation; use dedicated node pools with autoscaling for each workload tier (system, application, batch); add taints to Spot node pools.</statement>
-      <rationale source="v1-source">The default node pool has fixed configuration unsuitable for production. Dedicated pools allow per-workload machine type, autoscaling bounds, and preemption policies.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Configure Spot VM node pools with a `Spot:OnDemand` taint for fault-tolerant batch workloads; use ResourceQuotas per namespace to prevent runaway autoscaling.</statement>
-      <rationale source="v1-source">Spot VMs cost 60–91% less than On-Demand but can be preempted with 30-second notice. Taints ensure only workloads designed for preemption land on Spot nodes.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Always set `availability_type = REGIONAL` for production Cloud SQL instances; enable PITR with 30-day retention; disable public IP.</statement>
-      <rationale source="v1-source">ZONAL instances have no automatic failover — a zone outage requires manual intervention. REGIONAL provides automatic failover to a standby in a different zone within 60 seconds.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Enable Query Insights and set logging flags `log_checkpoints`, `log_connections`, `log_disconnections`, `log_lock_waits` for PostgreSQL; enable deletion protection on production instances.</statement>
-      <rationale source="v1-source">Query Insights identifies slow queries with negligible overhead. Connection and lock logging provides the audit trail required for compliance. Deletion protection prevents accidental drops.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Enforce SSL (`require_ssl = true`); use Private Service Connect from GKE; never expose Cloud SQL via public IP.</statement>
-      <rationale source="v1-source">Public IP Cloud SQL instances are frequently flagged in security audits. Private connectivity eliminates the attack surface for credential stuffing and brute-force attacks.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Create read replicas in the same region as the primary for read-heavy workloads; create cross-region replicas for disaster recovery when RPO is under 1 hour.</statement>
-      <rationale source="v1-source">Same-region replicas add no cross-region data transfer costs and reduce primary load. Cross-region replicas provide an independent copy for DR failover.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Use Cloud SQL PostgreSQL for standard OLTP; use AlloyDB for PostgreSQL-compatible workloads requiring 2x+ query throughput; use Spanner for global multi-region consistency with 99.999% SLA.</statement>
-      <rationale source="v1-source">AlloyDB delivers ~2x transactional and up to 100x analytical throughput over Cloud SQL via its columnar engine. Spanner provides external consistency across regions at significantly higher cost.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Use Cloud Run for stateless HTTP workloads; bind each service to a dedicated service account with minimal IAM roles; tune concurrency and CPU allocation per workload type.</statement>
-      <rationale source="v1-source">Per-service accounts enable auditing of which service touched which resource. Wrong concurrency causes either cold-start storms (too low) or memory exhaustion (too high).</rationale>
-    </rule>
-    <rule id="r14" testable="true" depth="essential">
-      <statement>Enable VPC connector or Direct VPC egress for Cloud Run services that access Cloud SQL, Memorystore, or internal services; do not expose internal APIs via public Cloud Run URLs (set ingress to `internal-and-cloud-load-balancing`).</statement>
-      <rationale source="v1-source">VPC egress routes Cloud Run traffic through the VPC, enabling access to private resources without public exposure or NAT gateway costs.</rationale>
-    </rule>
-    <rule id="r15" testable="true" depth="essential">
-      <statement>Configure a dead-letter topic on every Pub/Sub subscription with `max_delivery_attempts = 5`; use exactly-once delivery for financial and idempotency-critical workflows.</statement>
-      <rationale source="v1-source">Without a DLT, messages that fail processing are retried indefinitely, blocking the subscription and delaying subsequent messages. DLT enables failure inspection and replay.</rationale>
-    </rule>
-    <rule id="r16" testable="true" depth="essential">
-      <statement>Use Push subscriptions (Cloud Run, Cloud Functions) for event-driven workloads; use Pull subscriptions for batch consumers that need to control processing rate.</statement>
-      <rationale source="v1-source">Push triggers immediately on message arrival. Pull gives consumers backpressure control and prevents overloading downstream systems.</rationale>
-    </rule>
-    <rule id="r17" testable="true" depth="essential">
-      <statement>Partition BigQuery tables on ingestion date or a high-cardinality timestamp; cluster on the most common filter columns; use Reservations for critical queries.</statement>
-      <rationale source="v1-source">Partitioning reduces bytes scanned per query by 10–100x. Clustering further reduces data scanned within partitions. On-demand pricing without reservations creates unpredictable costs for large queries.</rationale>
-    </rule>
-    <rule id="r18" testable="true" depth="essential">
-      <statement>Design Dataflow pipelines to be idempotent and restartable; use checkpointing for streaming pipelines; define watermarks for late-arriving data.</statement>
-      <rationale source="v1-source">Dataflow workers can fail and restart mid-job. Non-idempotent pipelines produce duplicate records on restart. Watermarks define when a window is considered complete.</rationale>
-    </rule>
-    <rule id="r19" testable="true" depth="essential">
-      <statement>Use Cloud Storage + Cloud CDN + Global HTTP(S) Load Balancer for static assets and public APIs. Configure caching headers (`Cache-Control: public, max-age=...`) to maximize CDN hit ratio. Use Cloud Armor at the load balancer edge for DDoS protection and WAF rules.</statement>
-      <rationale source="v1-source">CDN caches assets in 100+ edge locations, reducing latency for global users. Cloud Armor blocks attacks at the edge before they consume origin bandwidth.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the input fails ALL "Applies If" preconditions or matches ANY "Skip If" disqualifier, do not apply this methodology — route the task to the adjacent sibling instead.</statement>
+      <rationale source="F-066 requirements-checklist B5.6">Even flat checklists need an explicit skip leaf in the decision tree; this rule is the universal terminal.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

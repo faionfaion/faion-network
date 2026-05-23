@@ -1,19 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gcp-billing-cost Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gcp-billing-cost. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Gcp Billing Cost Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5 testable rules for the gcp-billing-cost methodology. Each rule pairs a binary check + sourced rationale + concrete remediation hook.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every production project MUST have a budget configured with alert thresholds at 50%, 90%, and 100% of the monthly spend target. Alerts MUST route to a monitored notification channel (email group or Pub/Sub).</statement>
-      <rationale source="v1-source">Without budget alerts, cost anomalies (runaway VMs, data egress spikes, accidental BigQuery full table scans) go undetected until the monthly bill. Multi-threshold alerts give early warning before overspend is irrecoverable.</rationale>
+    <rule id="bigquery-billing-export" testable="true" depth="essential">
+      <statement>Every billing account MUST have BigQuery billing export enabled (detailed-usage + pricing tables).</statement>
+      <rationale source="GCP billing export docs">Without BQ export, cost analysis is limited to the Cloud Console UI — no joinable, queryable fact table.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Billing exports MUST be enabled to BigQuery for all production billing accounts. The export dataset must be queried via scheduled queries or Looker Studio to produce per-team cost reports at least monthly.</statement>
-      <rationale source="v1-source">The GCP console billing UI does not support custom cost allocation or chargeback. BigQuery exports are the only way to query costs by label, folder, or project combination at scale.</rationale>
+    <rule id="budget-alerts-50-90-100" testable="true" depth="essential">
+      <statement>Every project MUST have budget alerts at 50%, 90%, and 100% of monthly target with Pub/Sub notification.</statement>
+      <rationale source="GCP budgets docs">Tiered alerts give time to react before overspend; Pub/Sub channel enables automation (Slack, paging).</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>All projects MUST have env, team, and cost_center labels. All major resources (VMs, GKE node pools, Cloud SQL instances, buckets) MUST inherit or carry the same labels. Enforce via org policy custom constraint (custom.requireProjectLabels).</statement>
-      <rationale source="v1-source">Labels are propagated to billing export line items. A missing label on a VM means that VM's cost appears as unattributed in chargeback reports — the team is not charged and no one investigates the spend.</rationale>
+    <rule id="finops-label-discipline" testable="true" depth="essential">
+      <statement>All resources MUST carry labels `env`, `team`, `cost-center` at minimum; missing labels block cost attribution.</statement>
+      <rationale source="FinOps Foundation guidance">Without labels the BQ export aggregates only by project — too coarse to allocate cost to teams.</rationale>
+    </rule>
+    <rule id="committed-use-discounts" testable="true" depth="essential">
+      <statement>Stable baseline compute (vCPU/RAM, Cloud SQL) MUST be evaluated for 1y/3y committed-use discounts quarterly.</statement>
+      <rationale source="GCP CUD docs">CUDs deliver 30–55% discount on baseline; skipping the review leaves money on the table.</rationale>
+    </rule>
+    <rule id="idle-resource-sweep" testable="true" depth="essential">
+      <statement>Idle resources (zero-traffic Cloud Run, unattached IPs, oversized Cloud SQL, idle GCE) MUST be reviewed monthly via Recommender.</statement>
+      <rationale source="GCP Recommender docs">Recommender surfaces idle/oversized resources automatically; ignoring it accumulates waste over time.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the input fails ALL "Applies If" preconditions or matches ANY "Skip If" disqualifier, do not apply this methodology — route the task to the adjacent sibling instead.</statement>
+      <rationale source="F-066 requirements-checklist B5.6">Even flat checklists need an explicit skip leaf in the decision tree; this rule is the universal terminal.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

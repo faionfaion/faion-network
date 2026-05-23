@@ -1,19 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gcp-iam-design Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gcp-iam-design. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Gcp Iam Design Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5 testable rules for the gcp-iam-design methodology. Each rule pairs a binary check + sourced rationale + concrete remediation hook.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Basic roles (roles/owner, roles/editor, roles/viewer) MUST NOT be granted in production projects. Use predefined roles or custom roles with only the required permissions.</statement>
-      <rationale source="v1-source">Basic roles grant access to all GCP services, not just the ones a workload needs. A service account with roles/editor can write to any bucket, create VMs, and modify IAM — far beyond what most workloads require.</rationale>
+    <rule id="folder-level-bindings" testable="true" depth="essential">
+      <statement>Cross-cutting IAM bindings (security viewer, billing user, network admin) MUST be applied at folder level and inherited, never per-project.</statement>
+      <rationale source="IAM best-practices">Per-project bindings drift; folder-level bindings stay consistent and auditable.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Service account keys (JSON key files) MUST NOT be used for GKE workloads. Use Workload Identity Federation to bind Kubernetes service accounts to GCP service accounts instead.</statement>
-      <rationale source="v1-source">Key files are static credentials that can be leaked via container logs, environment variables, or git commits. Workload Identity uses short-lived tokens bound to the pod identity and requires no secret management.</rationale>
+    <rule id="least-privilege-roles" testable="true" depth="essential">
+      <statement>Use predefined roles tailored to the action, not basic roles (`Owner`, `Editor`, `Viewer`) on production resources.</statement>
+      <rationale source="GCP IAM docs">Basic roles grant excessive permissions and violate least-privilege.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Each workload MUST have a dedicated service account. Never share a service account across multiple applications or environments. Never use the default compute service account.</statement>
-      <rationale source="v1-source">Shared service accounts make it impossible to audit which workload made which API call, and over-permission one workload to satisfy another. Per-workload service accounts enable least-privilege and auditable activity logs.</rationale>
+    <rule id="workload-identity-federation" testable="true" depth="essential">
+      <statement>External CI/CD (GitHub Actions, GitLab) MUST use Workload Identity Federation; long-lived service-account JSON keys are forbidden.</statement>
+      <rationale source="GCP WIF docs">Static SA keys are the largest single source of GCP credential leaks; WIF eliminates the static credential entirely.</rationale>
+    </rule>
+    <rule id="conditional-bindings" testable="true" depth="essential">
+      <statement>Sensitive bindings (Owner, IAM admin, Secret Manager admin) MUST carry IAM Conditions restricting resource, time, or source IP where applicable.</statement>
+      <rationale source="IAM Conditions docs">Conditions narrow exposure of the most powerful roles without losing operational flexibility.</rationale>
+    </rule>
+    <rule id="impersonation-instead-of-keys" testable="true" depth="essential">
+      <statement>Developers and tooling MUST impersonate service accounts via short-lived tokens, never download SA JSON keys.</statement>
+      <rationale source="GCP SA impersonation docs">Impersonation is auditable and revocable; downloaded keys leak in repos, dotfiles, and incident drives.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the input fails ALL "Applies If" preconditions or matches ANY "Skip If" disqualifier, do not apply this methodology — route the task to the adjacent sibling instead.</statement>
+      <rationale source="F-066 requirements-checklist B5.6">Even flat checklists need an explicit skip leaf in the decision tree; this rule is the universal terminal.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

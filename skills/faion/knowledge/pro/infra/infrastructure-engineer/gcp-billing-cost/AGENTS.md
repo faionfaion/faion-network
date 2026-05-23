@@ -3,21 +3,31 @@ slug: gcp-billing-cost
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: GCP billing is structured around billing accounts linked to projects, with costs attributed via resource labels.
-content_id: "3db8a9f995bba80f"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Configure GCP billing accounts, budget alerts at multiple thresholds, BigQuery billing exports, and cost allocation labels for per-team chargeback and spend optimization.
+content_id: "15f44b070792229d"
+complexity: medium
+produces: report
+est_tokens: 4900
 tags: [gcp, billing, cost-management, budgets, cost-allocation]
 ---
-# GCP Billing and Cost Management
+# Gcp Billing Cost
 
 ## Summary
 
-**One-sentence:** GCP billing is structured around billing accounts linked to projects, with costs attributed via resource labels.
+**One-sentence:** Configure GCP billing accounts, budget alerts at multiple thresholds, BigQuery billing exports, and cost allocation labels for per-team chargeback and spend optimization.
 
 **One-paragraph:** GCP billing is structured around billing accounts linked to projects, with costs attributed via resource labels. Budget alerts at 50%, 90%, and 100% thresholds prevent surprise overspend. BigQuery billing exports enable custom dashboards and per-team chargeback via label-based queries. Labels are the only mechanism for cost allocation — enforce them from day one via org policy.
+
+**Ефективно для:**
+
+- BigQuery billing export з добовим analysis за project/label.
+- Budget alerts на 50/90/100% поточного місячного forecast.
+- FinOps tagging convention (env, team, cost-center) на всіх ресурсах.
+- Committed-use discount планування за 1- або 3-річними коміттами.
 
 ## Applies If (ALL must hold)
 
@@ -28,45 +38,63 @@ tags: [gcp, billing, cost-management, budgets, cost-allocation]
 
 ## Skip If (ANY kills it)
 
-- Personal sandbox projects with minimal spend — a single $10/month alert is sufficient; full export pipeline is over-engineering.
-- Network cost analysis (egress, interconnect) — those require Traffic Analytics and billing exports combined with VPC Flow Logs.
+- Pre-launch cost forecast for unknown workload — use sizing guides first.
+- Per-resource debugging of a single anomaly without aggregate data.
+- Non-GCP cost analysis (AWS/Azure).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| BigQuery billing export dataset | dataset id | billing admin |
+| Period of interest | from / to dates | FinOps |
+| Cost-center labels | label keys | FinOps |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[gcp-resource-hierarchy]] | Sibling methodology that supplies context required here. |
+| [[gcp-org-policies]] | Sibling methodology that supplies context required here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules with statement + rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output | ~900 |
+| `content/05-examples.xml` | essential | Worked end-to-end example | ~800 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule id from 01-core-rules | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applicability` | sonnet | Decision tree application — needs nuance + context awareness. |
+| `draft-report` | sonnet | Light judgement on field selection + naming conventions. |
+| `validate-output` | haiku | Mechanical schema validation via `scripts/validate-gcp-billing-cost.py`. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/gcp-billing-cost.md` | Skeleton for the report artefact this methodology produces. |
+| `templates/_smoke-test.md` | Minimum viable filled-in example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gcp-billing-cost.py` | Validate the report artefact against the JSON Schema in `02-output-contract.xml`. | CI on each artefact change; pre-commit; manual on draft. |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
+- [[gcp-resource-hierarchy]]
+- [[gcp-org-policies]]
+- [[gcp-overview-cli]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree branches on observable workload / configuration signals and routes to a specific rule id from `01-core-rules.xml`. Use it whenever the input shape is ambiguous between two adjacent methodologies in this sub-skill (e.g. gcp-billing-cost vs an adjacent sibling).

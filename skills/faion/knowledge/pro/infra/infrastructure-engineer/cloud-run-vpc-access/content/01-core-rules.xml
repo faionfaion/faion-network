@@ -1,11 +1,35 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="cloud-run-vpc-access Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for cloud-run-vpc-access. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Cloud Run Vpc Access Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5 testable rules for the cloud-run-vpc-access methodology. Each rule pairs a binary check + sourced rationale + concrete remediation hook.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="use-connector-or-direct-egress" testable="true" depth="essential">
+      <statement>Reach private resources via either a Serverless VPC Access connector (gen1) or direct VPC egress (gen2). Pick exactly one — do not mix.</statement>
+      <rationale source="Cloud Run VPC docs">Mixing connector and direct egress creates undefined routing precedence and intermittent failures.</rationale>
+    </rule>
+    <rule id="least-privileged-egress-setting" testable="true" depth="essential">
+      <statement>Set `--vpc-egress=private-ranges-only` whenever the service only needs to reach private CIDRs; reserve `all-traffic` for services that also need internet egress through VPC.</statement>
+      <rationale source="Cloud Run VPC docs">`all-traffic` routes every packet through VPC NAT, inflating cost and pulling internet traffic through customer firewalls unnecessarily.</rationale>
+    </rule>
+    <rule id="connector-subnet-sized" testable="true" depth="essential">
+      <statement>Serverless VPC Access connectors MUST be sized with min/max instances appropriate to throughput; the connector subnet must be a dedicated `/28`.</statement>
+      <rationale source="Connector sizing docs">Undersized connectors throttle egress and silently degrade tail latency; shared subnets risk IP exhaustion.</rationale>
+    </rule>
+    <rule id="ingress-internal-when-private" testable="true" depth="essential">
+      <statement>Internal-only services MUST set `--ingress=internal` (or `internal-and-cloud-load-balancing`) to block public traffic at the platform level.</statement>
+      <rationale source="Cloud Run ingress docs">Relying on IAM alone leaves a publicly reachable endpoint that can be probed; ingress=internal removes the attack surface entirely.</rationale>
+    </rule>
+    <rule id="connector-shared-across-services" testable="true" depth="essential">
+      <statement>Multiple Cloud Run services in the same region MAY share a single connector; do not create a connector per service.</statement>
+      <rationale source="Cloud Run VPC scaling docs">Per-service connectors waste IP space and quota; sharing is the supported pattern when throughput requirements stay within the connector's capacity.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the input fails ALL "Applies If" preconditions or matches ANY "Skip If" disqualifier, do not apply this methodology — route the task to the adjacent sibling instead.</statement>
+      <rationale source="F-066 requirements-checklist B5.6">Even flat checklists need an explicit skip leaf in the decision tree; this rule is the universal terminal.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

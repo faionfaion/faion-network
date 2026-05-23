@@ -3,21 +3,31 @@ slug: gce-spot-vms
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Spot VMs offer up to 91% discount over standard on-demand pricing but can be preempted by GCP with a 30-second warning at any time.
-content_id: "d8a6388f3b270128"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Use GCE Spot VMs (up to 91% discount) for fault-tolerant batch and burst workloads: instance templates, shutdown scripts, MIG autohealing, GKE spot node pools, and cost-optimization patterns.
+content_id: "266eafa814f7c99b"
+complexity: medium
+produces: config
+est_tokens: 4100
 tags: [gcp, compute-engine, spot-vms, cost-optimization]
 ---
-# GCE Spot VMs
+# Gce Spot Vms
 
 ## Summary
 
-**One-sentence:** Spot VMs offer up to 91% discount over standard on-demand pricing but can be preempted by GCP with a 30-second warning at any time.
+**One-sentence:** Use GCE Spot VMs (up to 91% discount) for fault-tolerant batch and burst workloads: instance templates, shutdown scripts, MIG autohealing, GKE spot node pools, and cost-optimization patterns.
 
 **One-paragraph:** Spot VMs offer up to 91% discount over standard on-demand pricing but can be preempted by GCP with a 30-second warning at any time. Spot VMs have no 24-hour limit (unlike the legacy Preemptible VMs they replace) and support the same machine types, regions, and features. They are suitable for batch processing, dev/test environments, fault-tolerant stateless services, and GKE burst capacity. Always use MIGs with autohealing to automatically recreate preempted instances.
+
+**Ефективно для:**
+
+- Batch workload, що толерує переривання (preempted < 24h).
+- Stateless workers з checkpointing у Cloud Storage.
+- Mixed MIG зі стандартними + Spot VMs для baseline + burst.
+- Significant cost saving (60–91%) на non-critical compute.
 
 ## Applies If (ALL must hold)
 
@@ -29,47 +39,62 @@ tags: [gcp, compute-engine, spot-vms, cost-optimization]
 
 ## Skip If (ANY kills it)
 
-- Single-instance production databases or stateful services without external state storage — preemption causes data loss and downtime.
-- Workloads with strict SLOs that cannot tolerate the 30-second preemption window or the instance replacement time — use standard VMs as the baseline, Spot only for burst.
-- Long-running jobs that cannot checkpoint and would lose more than the cost savings if preempted — calculate (preemption_probability * work_lost_cost) vs Spot savings before committing.
-- Applications requiring a guaranteed minimum runtime longer than the observed Spot availability in the target zone — monitor preemption rates per zone and switch zones if availability is low.
+- Stateful workload that cannot be checkpointed or restarted.
+- Production-critical SLO that cannot tolerate preemption.
+- Steady, predictable load — committed-use discounts may be cheaper.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workload tolerance | checkpoint design doc | team |
+| Checkpoint store | Cloud Storage bucket | data eng |
+| Restart hook | shutdown script | team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[gce-instance-templates]] | Sibling methodology that supplies context required here. |
+| [[gce-managed-instance-groups]] | Sibling methodology that supplies context required here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules with statement + rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule id from 01-core-rules | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applicability` | sonnet | Decision tree application — needs nuance + context awareness. |
+| `draft-config` | sonnet | Light judgement on field selection + naming conventions. |
+| `validate-output` | haiku | Mechanical schema validation via `scripts/validate-gce-spot-vms.py`. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/gce-spot-vms.yaml` | Skeleton for the config artefact this methodology produces. |
+| `templates/_smoke-test.yaml` | Minimum viable filled-in example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gce-spot-vms.py` | Validate the config artefact against the JSON Schema in `02-output-contract.xml`. | CI on each artefact change; pre-commit; manual on draft. |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
+- [[gce-instance-templates]]
+- [[gce-managed-instance-groups]]
+- [[gce-autoscaling]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree branches on observable workload / configuration signals and routes to a specific rule id from `01-core-rules.xml`. Use it whenever the input shape is ambiguous between two adjacent methodologies in this sub-skill (e.g. gce-spot-vms vs an adjacent sibling).

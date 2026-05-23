@@ -3,21 +3,32 @@ slug: docker
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Production-Grade Container Development and Deployment (2025-2026).
-content_id: "06df1eeebc2e1c0b"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Production-grade Docker containerization: image building, optimization, networking, storage, security hardening, and deployment best practices for 2025-2026.
+content_id: "9fe998b61460eda8"
+complexity: deep
+produces: config
+est_tokens: 4100
 tags: [docker, containers, dockerfile, security, devops]
 ---
-# Docker Infrastructure
+# Docker
 
 ## Summary
 
-**One-sentence:** Production-Grade Container Development and Deployment (2025-2026).
+**One-sentence:** Production-grade Docker containerization: image building, optimization, networking, storage, security hardening, and deployment best practices for 2025-2026.
 
 **One-paragraph:** Production-Grade Container Development and Deployment (2025-2026). Docker containerization packages applications with dependencies into portable units. This methodology covers production-grade Docker infrastructure: image building, optimization, networking, storage, security hardening, and deployment best practices.
+
+**Ефективно для:**
+
+- Multi-stage Dockerfile для compiled-мов (Go, Java) з мінімальним runtime-шаром.
+- Non-root container з обов'язковим USER + HEALTHCHECK для prod.
+- BuildKit cache mounts для пришвидшення pip/npm/apt у CI.
+- .dockerignore + layer-order оптимізації для cache-hit rate >80%.
+- Distroless / alpine base для production з SBOM + scan.
 
 ## Applies If (ALL must hold)
 
@@ -29,46 +40,61 @@ tags: [docker, containers, dockerfile, security, devops]
 
 ## Skip If (ANY kills it)
 
-- Stateful workloads that require direct hardware access or kernel-level features incompatible with container isolation.
-- Production orchestration at scale — use Kubernetes or managed container services instead of raw Docker Swarm.
-- Legacy applications that cannot be containerized without significant refactoring (e.g., apps requiring GUI, complex COM/DCOM on Windows).
+- Buildpacks-based deployment with no Dockerfile.
+- Pre-built vendor images — no custom build step needed.
+- Source-to-image platforms (e.g. Cloud Run from-source) for one-off prototypes.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Application source code | repo + entrypoint | team |
+| Base image policy | approved registry + tag pinning | platform team |
+| Vulnerability scanner | Artifact Analysis / Trivy | platform team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[cloud-run-jobs]] | Sibling methodology that supplies context required here. |
+| [[cloud-run-monitoring]] | Sibling methodology that supplies context required here. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | Testable rules with statement + rationale + source | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden | ~800 |
+| `content/03-failure-modes.xml` | essential | Antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree → rule id from 01-core-rules | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applicability` | sonnet | Decision tree application — needs nuance + context awareness. |
+| `draft-config` | sonnet | Light judgement on field selection + naming conventions. |
+| `validate-output` | haiku | Mechanical schema validation via `scripts/validate-docker.py`. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/docker.yaml` | Skeleton for the config artefact this methodology produces. |
+| `templates/_smoke-test.yaml` | Minimum viable filled-in example. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-docker.py` | Validate the config artefact against the JSON Schema in `02-output-contract.xml`. | CI on each artefact change; pre-commit; manual on draft. |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
+- [[cloud-run-jobs]]
+- [[cloud-run-monitoring]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree branches on observable workload / configuration signals and routes to a specific rule id from `01-core-rules.xml`. Use it whenever the input shape is ambiguous between two adjacent methodologies in this sub-skill (e.g. docker vs an adjacent sibling).

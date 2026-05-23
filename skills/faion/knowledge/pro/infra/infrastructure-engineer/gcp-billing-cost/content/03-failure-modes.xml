@@ -1,17 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="gcp-billing-cost Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for gcp-billing-cost as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Single 100% threshold budget alert only.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>By the time the 100% alert fires, the spend is already at the budget limit. Multi-threshold alerts (50%, 90%) give time to investigate and cap before the budget is exhausted.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>No billing exports configured; relying on the GCP console billing UI for cost reporting.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The console UI cannot filter by resource labels, aggregate across folders, or support chargeback queries. BigQuery exports are mandatory for any organization with more than one team or project.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Gcp Billing Cost Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns commonly observed when applying the gcp-billing-cost methodology. Each pairs a symptom + root-cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="no-billing-export" severity="high">
+      <symptom>Cost analysis limited to Cloud Console UI; no joinable fact table.</symptom>
+      <root-cause source="Internal — F-066 audit">BQ billing export not enabled on billing account.</root-cause>
+      <fix>Enable detailed-usage + pricing tables export to BQ; backfill what's available.</fix>
+    </antipattern>
+    <antipattern id="no-budget-alerts" severity="high">
+      <symptom>Overspend discovered at month-end invoice, not during the month.</symptom>
+      <root-cause source="Internal — F-066 audit">`gcloud billing budgets list` returns empty.</root-cause>
+      <fix>Create budget alerts at 50/90/100% per project; route via Pub/Sub.</fix>
+    </antipattern>
+    <antipattern id="unlabelled-resources" severity="medium">
+      <symptom>Cost attribution stuck at project level; can't allocate to teams.</symptom>
+      <root-cause source="Internal — F-066 audit">Resources missing `env`, `team`, or `cost-center` labels.</root-cause>
+      <fix>Enforce labels via org policy + automated label backfill scripts.</fix>
+    </antipattern>
+    <antipattern id="never-evaluated-cuds" severity="medium">
+      <symptom>Baseline compute spend 30–55% higher than necessary.</symptom>
+      <root-cause source="Internal — F-066 audit">No committed-use discount evaluation in the last 90 days.</root-cause>
+      <fix>Quarterly CUD review using Recommender; commit on stable baseline.</fix>
+    </antipattern>
+    <antipattern id="orphan-resources" severity="low">
+      <symptom>Idle Cloud Run, unattached IPs, oversized Cloud SQL accumulate cost.</symptom>
+      <root-cause source="Internal — F-066 audit">Recommender's idle / oversized recommendations are not actioned.</root-cause>
+      <fix>Monthly sweep of Recommender output; track action rate as KPI.</fix>
+    </antipattern>
   </section>
 </text>

@@ -1,47 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="docker Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for docker as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using latest tag in production deployments.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Unpredictable deployments — pin specific versions with digest instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Running containers as root user.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Security vulnerability — create non-root user (UID 1000+) instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Storing secrets in ENV or Dockerfile.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Visible in docker inspect and logs — use Docker secrets or vault instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Large monolithic images without multi-stage builds.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Slow deploys and more vulnerabilities — use multi-stage builds and distroless base images.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Using the default bridge network.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>No isolation — use custom networks with segmentation instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>No health checks on production containers.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Silent failures — add HEALTHCHECK to every production image.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Hardcoding config values directly in images.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Inflexible containers — use ENV variables and secrets instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Single RUN instruction per dependency installation line.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Creates many layers and large images — combine RUN commands with &amp;&amp;.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Docker Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns commonly observed when applying the docker methodology. Each pairs a symptom + root-cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="root-in-prod" severity="high">
+      <symptom>Container compromise grants root-equivalent capability on the host namespace.</symptom>
+      <root-cause source="Internal — F-066 audit">Image has no `USER` directive or runs as `USER root`.</root-cause>
+      <fix>Add `USER nonroot` (or numeric UID) in final stage; verify with `docker inspect`.</fix>
+    </antipattern>
+    <antipattern id="floating-tags" severity="high">
+      <symptom>Builds are non-reproducible; upstream image swaps inject untracked changes.</symptom>
+      <root-cause source="Internal — F-066 audit">Base image referenced by `:latest` or named tag without digest.</root-cause>
+      <fix>Pin to digest: `FROM image@sha256:...`; automate digest refresh via Renovate/Dependabot.</fix>
+    </antipattern>
+    <antipattern id="no-dockerignore" severity="medium">
+      <symptom>Secrets and large directories leak into build context; image bloats.</symptom>
+      <root-cause source="Internal — F-066 audit">Repo lacks `.dockerignore`; build context &gt;100 MB.</root-cause>
+      <fix>Add `.dockerignore` covering `.git`, secrets, `node_modules`, build artefacts; rebuild + measure context size.</fix>
+    </antipattern>
+    <antipattern id="single-stage-bloat" severity="medium">
+      <symptom>Image carries compiler + source + dev deps; widens attack surface.</symptom>
+      <root-cause source="Internal — F-066 audit">Final image &gt;500 MB for a binary that fits in &lt;50 MB.</root-cause>
+      <fix>Switch to multi-stage build; final stage = distroless + binary only.</fix>
+    </antipattern>
+    <antipattern id="unscanned-push" severity="high">
+      <symptom>Known-vulnerable CVEs reach production undetected.</symptom>
+      <root-cause source="Internal — F-066 audit">CI pipeline lacks Artifact Analysis / Trivy step before push.</root-cause>
+      <fix>Add scan step; fail build on CRITICAL CVEs; document exception process.</fix>
+    </antipattern>
   </section>
 </text>

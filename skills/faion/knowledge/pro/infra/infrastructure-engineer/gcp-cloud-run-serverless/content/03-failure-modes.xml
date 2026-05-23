@@ -1,12 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="gcp-cloud-run-serverless Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for gcp-cloud-run-serverless as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Gcp Cloud Run Serverless Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns commonly observed when applying the gcp-cloud-run-serverless methodology. Each pairs a symptom + root-cause + concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="local-state" severity="high">
+      <symptom>Reads return inconsistent data across requests; users see stale or missing data.</symptom>
+      <root-cause source="Internal — F-066 audit">Code persists state to local disk or in-process memory.</root-cause>
+      <fix>Move state to Cloud SQL / Firestore / Cloud Storage; redeploy.</fix>
+    </antipattern>
+    <antipattern id="default-concurrency" severity="medium">
+      <symptom>CPU-bound work throttled at default concurrency=80; single-threaded apps overloaded.</symptom>
+      <root-cause source="Internal — F-066 audit">`gcloud run services describe` shows `concurrency: 80` for a CPU-heavy app.</root-cause>
+      <fix>Set explicit `--concurrency` matching app profile (1 for single-threaded, 10–30 for CPU-bound).</fix>
+    </antipattern>
+    <antipattern id="min-instances-defaulted" severity="medium">
+      <symptom>Cold-start latency surprises users on quiet endpoints.</symptom>
+      <root-cause source="Internal — F-066 audit">`min_instances=0` not documented as decision.</root-cause>
+      <fix>Document min-instances trade-off (cost vs cold start) in deploy manifest.</fix>
+    </antipattern>
+    <antipattern id="image-floating-tag" severity="high">
+      <symptom>Reproducibility lost; image swap can introduce regressions silently.</symptom>
+      <root-cause source="Internal — F-066 audit">Service image deployed with floating tag (e.g. `:latest`).</root-cause>
+      <fix>Pin image by digest (`@sha256:...`); update digest via CI/CD only.</fix>
+    </antipattern>
+    <antipattern id="secrets-in-env-vars-image" severity="high">
+      <symptom>Secrets embedded in image layer leak via registry access.</symptom>
+      <root-cause source="Internal — F-066 audit">`ENV API_KEY=...` in Dockerfile.</root-cause>
+      <fix>Mount via Secret Manager (`--set-secrets`); rotate any leaked secrets.</fix>
+    </antipattern>
   </section>
 </text>
