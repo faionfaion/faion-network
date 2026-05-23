@@ -1,22 +1,127 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="business-process-analysis Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Business Process Analysis Output Contract" version="1.1.0" est_tokens="850" depth="essential">
+  <summary>Pins the shape of the process-analysis report. Subagent must satisfy this before returning.</summary>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/business-process-analysis-report.json",
+  "type": "object",
+  "required": ["process_id", "current_state", "analysis", "future_state", "signoffs"],
+  "properties": {
+    "process_id": {"type": "string", "minLength": 2},
+    "current_state": {
+      "type": "object",
+      "required": ["steps", "lanes"],
+      "properties": {
+        "steps": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "lane", "description", "source"],
+            "properties": {
+              "id": {"type": "string"},
+              "lane": {"type": "string"},
+              "description": {"type": "string"},
+              "source": {"type": "string", "minLength": 4}
+            }
+          }
+        },
+        "lanes": {
+          "type": "array", "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["name", "owner_name", "owner_role"],
+            "properties": {
+              "name": {"type": "string"},
+              "owner_name": {"type": "string", "minLength": 2},
+              "owner_role": {"type": "string", "minLength": 2}
+            }
+          }
+        }
+      }
+    },
+    "analysis": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["step_id", "value_add", "cycle_time_min", "cost_usd"],
+        "properties": {
+          "step_id": {"type": "string"},
+          "value_add": {"type": "boolean"},
+          "cycle_time_min": {"type": "number", "minimum": 0},
+          "cost_usd": {"type": "number", "minimum": 0}
+        }
+      }
+    },
+    "future_state": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["step_id", "action", "expected_delta"],
+        "properties": {
+          "step_id": {"type": "string"},
+          "action": {"type": "string", "enum": ["keep", "cut", "change", "add"]},
+          "expected_delta": {"type": "string", "minLength": 4}
+        }
+      }
+    },
+    "signoffs": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["lane", "owner_name", "signoff_ts", "channel"],
+        "properties": {
+          "lane": {"type": "string"},
+          "owner_name": {"type": "string"},
+          "signoff_ts": {"type": "string", "format": "date-time"},
+          "channel": {"type": "string", "enum": ["pr_comment", "email", "slack_ack"]}
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
+  <section title="Examples">
+    <example type="good" title="Valid report fragment">
+      <code lang="json"><![CDATA[
+{
+  "process_id": "invoice-approval",
+  "current_state": {
+    "steps": [{"id": "s-01", "lane": "AP", "description": "Receive invoice email", "source": "ops/sop.md#L12"}],
+    "lanes": [{"name": "AP", "owner_name": "Maria Lopes", "owner_role": "AP Lead"}]
+  },
+  "analysis": [{"step_id": "s-01", "value_add": false, "cycle_time_min": 5, "cost_usd": 1.2}],
+  "future_state": [{"step_id": "s-01", "action": "change", "expected_delta": "auto-ingest via Mailgun webhook; -4 min"}],
+  "signoffs": [{"lane": "AP", "owner_name": "Maria Lopes", "signoff_ts": "2026-05-23T10:00:00Z", "channel": "pr_comment"}]
+}
+]]></code>
+      <note>All required sections present; sources cited; named owner; quantified deltas; signoff timestamp.</note>
+    </example>
+    <example type="bad" title="Invalid — anonymous lane">
+      <code lang="json"><![CDATA[
+{"process_id": "x", "current_state": {"steps": [], "lanes": [{"name": "Ops", "owner_name": "Team", "owner_role": "?"}]}, "analysis": [], "future_state": [], "signoffs": []}
+]]></code>
+      <note>Anonymous owner ("Team") fails r2; empty arrays fail minItems.</note>
+    </example>
+  </section>
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>steps without source citation (rule r1)</item>
+      <item>anonymous lane owner ("Team", "Ops") (rule r2)</item>
+      <item>analysis row missing any of value_add / cycle_time_min / cost_usd (rule r3)</item>
+      <item>prose future-state without diff table (rule r4)</item>
+      <item>missing signoffs[] entry for any lane (rule r5)</item>
     </list>
   </section>
+  <section title="Allowed transformations">
+    <list>
+      <item>Cycle-time can be averaged across observed instances if n &gt;= 5.</item>
+      <item>Cost can be approximated from FTE rate × cycle_time when invoice data missing.</item>
+    </list>
+  </section>
+  <reference path="templates/process-analysis.md"/>
+  <reference path="scripts/validate-business-process-analysis.py"/>
 </text>

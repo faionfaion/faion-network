@@ -3,77 +3,97 @@ slug: ai-elicitation-prompt-patterns
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Prompt-engineering pattern for ai elicitation prompt patterns — reusable prompt skeleton, parameter slots, and validation pass keyed to a concrete deliverable.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Reusable prompt-skeleton + slot library for BA elicitation tasks (interview prep, follow-up probes, paraphrase-back validation) with structural validation per call.
 content_id: "658a22cff66a567f"
-tags: [ai, ba, prompt]
+complexity: medium
+produces: playbook-step
+est_tokens: 4100
+tags: [ai, ba, prompt, elicitation, requirements]
 ---
 # AI Elicitation Prompt Patterns
 
 ## Summary
 
-**One-sentence:** Prompt-engineering pattern for ai elicitation prompt patterns — reusable prompt skeleton, parameter slots, and validation pass keyed to a concrete deliverable.
+**One-sentence:** Reusable prompt-skeleton + slot library for BA elicitation tasks (interview prep, follow-up probes, paraphrase-back validation) with structural validation per call.
 
-**One-paragraph:** Prompt-engineering pattern for ai elicitation prompt patterns — reusable prompt skeleton, parameter slots, and validation pass keyed to a concrete deliverable. Today the corpus tells the BA *that* AI can extract requirements (geek/ai-enabled-business-analysis, single page). It does not give concrete prompt patterns for: stakeholder-interview prep, follow-up question generation, paraphrase-back validation, persona-driven probing. P4 BAs operate in shared LLMs (Copilot, Claude, internal RAG) and need a reusable library, not BABOK definitions.
+**One-paragraph:** Modern BAs run elicitation through a shared LLM (Copilot, Claude, internal RAG). Without a versioned prompt library, every BA reinvents prompts and outputs drift. This methodology codifies a closed pattern set: interview-prep prompts, follow-up question generators, paraphrase-back validators, and persona-driven probes. Each pattern has named slots, a schema for its output, and an eval harness. Output is a `playbook-step` that drops into the elicitation workflow.
+
+**Ефективно для:**
+
+- Stakeholder-interview prep (LLM drafts questions від project brief).
+- Follow-up question generation (LLM пропонує наступні probes після initial answers).
+- Paraphrase-back validation (LLM перефразовує requirement → BA confirms with stakeholder).
+- Persona-driven probing (LLM генерує запитання з точки зору specific persona).
 
 ## Applies If (ALL must hold)
 
-- You build, refine, or hand off an LLM workflow that uses the prompt pattern described by ai elicitation prompt patterns.
-- The pattern's output is structurally validated (schema, regex, or downstream system).
+- You build, refine, or hand off an LLM workflow used by ≥2 BAs.
+- The pattern's output is structurally validated (schema, regex, or downstream parser).
 - Cost and latency budget per call are known before authoring.
 - Versioning rule for the prompt is in place (Git, registry, or prompt-eval harness).
 
 ## Skip If (ANY kills it)
 
-- One-off prompts used once and discarded — versioning overhead exceeds value.
-- Prompts whose output is consumed by humans only, with no downstream parser.
-- Provider-specific quirks change weekly — fold pattern into a registry, not in this methodology.
+- One-off prompts used once and discarded.
+- Output consumed by humans only, with no downstream parser.
+- Provider-specific quirks change weekly — register the prompt, do not encode it here.
 
 ## Prerequisites
 
-- Target model and provider chosen; pricing visible.
-- Eval harness or smoke test script that can run the prompt in CI.
-- Versioning convention (Git, registry, or sidecar metadata).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Target model + provider | config (YAML) | infra team |
+| Eval harness fixture set | JSONL | BA lead |
+| Versioning convention | repo policy doc | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/ba-modeling/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| [[ai-assisted-requirements-elicitation]] | Upstream BABOK-grounded methodology this implements |
+| [[ai-acceptance-criteria-generator-reviewer]] | Downstream rubric that scores the output of these prompts |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 4 rules: slot discipline, schema gate, version tag, cost cap | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for a prompt pattern + valid/invalid examples | 750 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: slot bleed, schema-less, version-orphan, cost runaway, prompt-injection | 850 |
+| `content/04-procedure.xml` | essential | 5-step authoring procedure | 700 |
+| `content/06-decision-tree.xml` | essential | Pattern selection by elicitation phase | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `prompt_compile` | haiku | Slot-fill from inputs |
-| `eval_run` | sonnet | Run the prompt against ground-truth set |
-| `pattern_refactor` | opus | Identify drift and rewrite skeleton |
+| `prompt_compile` | haiku | Mechanical slot-fill from inputs. |
+| `eval_run` | sonnet | Run prompt against ground-truth fixture set. |
+| `pattern_refactor` | opus | Identify drift and rewrite skeleton. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/prompt-pattern.yaml` | Prompt-pattern skeleton with slots + schema reference |
+| `templates/_smoke-test.yaml` | Minimum viable filled pattern for interview-prep |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-ai-elicitation-prompt-patterns.py` | Validate emitted pattern against output-contract schema | CI on each pattern change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/ba-modeling/`
-- peer methodologies: see siblings under `pro/ba/ba-modeling/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[ai-assisted-requirements-elicitation]]
+- [[ai-acceptance-criteria-generator-reviewer]]
+- [[acceptance-criteria]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes the BA from elicitation-phase observable (interview-prep vs follow-up vs paraphrase-back vs persona-probe) to a specific pattern + rule from `01-core-rules.xml`. Use when picking which pattern to instantiate for a given stakeholder session.

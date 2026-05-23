@@ -1,3 +1,9 @@
+<!-- purpose: solution-wide UML use-case diagram (mermaid) -->
+<!-- consumes: actor inventory + use_cases[] ids -->
+<!-- produces: visual overview; not part of the schema artefact -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200 tokens -->
+
 # Use Case Diagram: [System Name]
 
 ## System Boundary

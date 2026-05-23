@@ -3,81 +3,101 @@ slug: data-analysis
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A structured approach to identifying, defining, and documenting data needs before system development.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Identify, define, and document data needs before system development — data dictionary, conceptual/logical model, quality dimensions, and business rules as a versioned contract.
 content_id: "29ca58ceccac3e3f"
-tags: [data-analysis, data-modeling, data-dictionary, erd, data-quality]
+complexity: deep
+produces: spec
+est_tokens: 4400
+tags: [data-analysis, data-dictionary, erd, data-quality, requirements]
 ---
 # Data Analysis
 
 ## Summary
 
-**One-sentence:** A structured approach to identifying, defining, and documenting data needs before system development.
+**One-sentence:** Identify, define, and document data needs before system development — data dictionary, conceptual/logical model, quality dimensions, and business rules as a versioned contract.
 
-**One-paragraph:** A structured approach to identifying, defining, and documenting data needs before system development. Covers data requirements gathering, data element definition, conceptual/logical/physical modeling, data quality assessment across six dimensions, and data business rules. Produces a data dictionary and data requirements document that developers and architects use as authoritative data contracts.
+**One-paragraph:** Pre-development discovery for data entities: harvest sources, build a normalized data dictionary, derive conceptual and logical models, assess data quality on six dimensions (accuracy, completeness, consistency, timeliness, validity, uniqueness), and surface business rules. Output is a `spec` artefact: data_dictionary, ERD, and quality_baseline. Becomes the contract developers, architects, and integration teams build against.
+
+**Ефективно для:**
+
+- Pre-database design коли немає shared data dictionary.
+- ETL / integration layer між двома+ системами.
+- Pre-migration scope assessment.
+- Data-quality baseline для GDPR / HIPAA compliance.
 
 ## Applies If (ALL must hold)
 
 - Starting database or integration design and no shared data dictionary exists.
 - Reports from different systems show conflicting figures for the same metric.
 - Building ETL/integration layer between two or more systems.
-- Assessing data migration scope before cutover.
-- Data quality issues are causing operational problems and no baseline measurement exists.
-- Compliance requires documented data ownership and classification (GDPR, HIPAA).
+- Compliance requires documented data ownership and classification.
 
 ## Skip If (ANY kills it)
 
-- Exploratory analytics spike where the data model will be thrown away — just query and iterate.
-- Event streaming architectures where schema-on-read is intentional; a rigid dictionary adds friction.
+- Exploratory analytics spike where the data model will be thrown away.
+- Event-streaming architectures with schema-on-read by design.
 - Frontend-only features with no new data persistence.
-- When an authoritative data dictionary already exists and is up to date — extend it, do not duplicate.
-- Pure UI/UX research where the output is a prototype, not a data model.
-- Greenfield prototypes pre-PMF where the schema changes weekly — formal data dictionaries become stale faster than written.
-- Statistical / exploratory data analysis (EDA, pandas, notebooks) — that is data science, not BA Data Analysis.
-- Pure ML feature engineering — features evolve through training pipelines, not through a BA-owned dictionary.
-- Tiny CRUD apps with under 10 entities — the ceremony costs more than it saves.
-- One-off ad-hoc reports where data lives only in a spreadsheet for a week.
-- High-trust regulated domains (HIPAA, PCI, SOX) where data classification MUST be human-signed — agents may draft, humans must approve.
+- Authoritative data dictionary already exists and is current — extend, do not duplicate.
+- Tiny CRUD apps with fewer than 10 entities — ceremony costs more than it saves.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source-system inventory | YAML / Markdown table | architecture team |
+| Sample data exports | CSV / Parquet | data engineering |
+| Compliance classification rubric | doc | DPO / legal |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[interface-analysis]] | Sibling that maps the integration surface this data lives behind |
+| [[ba-planning]] | Upstream plan that scopes data-analysis effort + governance |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: every field typed + sourced, six DQ dimensions scored, business rules as predicates, owner per entity, version pinned | 950 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid examples | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: free-text type, anonymous owner, missing DQ baseline, single-system bias | 850 |
+| `content/04-procedure.xml` | essential | 6-step procedure end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example: customer entity across CRM + billing | 700 |
+| `content/06-decision-tree.xml` | essential | Routing on system count + DQ baseline status | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `field_normalization` | haiku | Mechanical mapping CSV header → field row. |
+| `model_derivation` | sonnet | Conceptual → logical → physical with constraints. |
+| `dq_assessment` | opus | Multi-dimensional quality scoring with rationale. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/data-dictionary.md` | Markdown skeleton with field/source/type/owner/DQ columns |
+| `templates/_smoke-test.json` | Minimum viable data-dictionary fixture |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-data-analysis.py` | Validate dictionary JSON against output-contract | Pre-commit; CI gate before handoff to developers |
 
 ## Related
 
-- parent skill: `pro/ba/ba-modeling/`
+- [[interface-analysis]]
+- [[business-process-analysis]]
+- [[ba-planning]]
+- [[acceptance-criteria]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes on observable signals (source-system count, DQ baseline presence, compliance flag) to the right rule. Use when in doubt whether the dictionary is ready to hand off to developers.

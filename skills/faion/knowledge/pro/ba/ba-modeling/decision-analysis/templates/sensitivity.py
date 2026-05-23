@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# purpose: Monte Carlo ±20% weight-jitter sensitivity over a locked matrix
+# consumes: matrix JSON (options, criteria with weight, scores)
+# produces: sensitivity{} block with rank_flip_rate + unstable_pairs
+# depends-on: content/01-core-rules.xml r4
+# token-budget-impact: 0 (runs in shell, not LLM)
 """
 sensitivity.py — Monte Carlo sensitivity analysis for decision matrices.
 

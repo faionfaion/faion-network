@@ -1,3 +1,9 @@
+<!-- purpose: data requirements skeleton (per-feature entity + field shortlist) -->
+<!-- consumes: feature spec + data dictionary version pin -->
+<!-- produces: subset spec referencing dictionary fields -->
+<!-- depends-on: content/01-core-rules.xml r5 (version pin) -->
+<!-- token-budget-impact: ~200 tokens -->
+
 # Data Requirements: [Feature/Project Name]
 
 **Version:** 1.0

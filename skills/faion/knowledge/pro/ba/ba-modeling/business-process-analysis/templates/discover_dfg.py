@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# purpose: discover directly-follows graph from event log CSV
+# consumes: events.csv with case_id, activity, timestamp columns
+# produces: out/dfg.svg + out/stats.csv
+# depends-on: content/04-procedure.xml step 2
+# token-budget-impact: 0 (runs in shell)
 """
 discover_dfg.py — Discover a directly-follows graph from an event log CSV.
 

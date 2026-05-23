@@ -1,3 +1,9 @@
+<!-- purpose: solution-wide interface catalog (one-row-per-interface index) -->
+<!-- consumes: enumerate step output -->
+<!-- produces: top-level interfaces[] index referenced by inventory -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200 tokens -->
+
 # Interface Catalog: [System Name]
 
 **Version:** [X.X]

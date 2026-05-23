@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Use Case Modeling Worked Example" version="1.1.0" est_tokens="700" depth="reference">
+  <summary>End-to-end worked example: Authenticated Patient books an appointment.</summary>
+  <section title="Use case">
+    <code lang="yaml"><![CDATA[
+id: uc-book-appointment
+trace_id: PROD-432
+primary_actor: Authenticated Patient
+secondary_actors:
+  - Clinic Scheduling Service
+  - SMS Gateway
+goal: Book a clinician appointment for a specific date and time.
+preconditions:
+  - "session.authenticated == true"
+  - "patient.has_active_insurance == true"
+  - "patient.verified_email == true"
+postconditions:
+  - "appointment.status == 'booked'"
+  - "sms_sent == true OR sms_queued == true"
+  - "calendar.held_slot == appointment.slot_id"
+main_success_scenario:
+  - 1. Patient selects clinician + available slot
+  - 2. System reserves slot in Scheduling Service
+  - 3. System persists appointment row + dispatches SMS via Gateway
+  - 4. System returns booking_id and ICS link to patient
+alternative_flows:
+  - id: alt-1
+    trigger: "slot becomes unavailable between selection and reservation"
+    steps:
+      - 1. Scheduling Service returns 409 on reserve
+      - 2. System fetches next 3 nearest slots
+      - 3. System prompts patient to pick one
+exception_flows:
+  - id: exc-1
+    trigger: "SMS Gateway timeout"
+    steps:
+      - 1. System persists booking
+      - 2. System queues SMS retry (3 attempts, exp backoff)
+      - 3. System surfaces in-app notification as fallback
+  - id: exc-2
+    trigger: "Scheduling Service 5xx"
+    steps:
+      - 1. System rolls back appointment row
+      - 2. System surfaces "try again in 60s" to patient
+]]></code>
+  </section>
+  <section title="Outcome">
+    <p>QA derives 6 test cases (1 main, 1 alt, 2 exception, 2 negative preconditions). AC team uses preconditions as Given clauses and exception triggers as Then clauses.</p>
+  </section>
+</text>

@@ -1,11 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="interface-analysis Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for interface-analysis. Verify and refine before relying on for production.</summary>
-
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+<text id="01-core-rules" title="Interface Analysis Core Rules" version="1.1.0" est_tokens="950" depth="essential">
+  <summary>Five testable rules every interface-analysis cycle enforces.</summary>
+  <section title="The five rules">
+    <rule id="r1-typed-contract" testable="true" depth="essential">
+      <statement>Every interface carries a machine-readable contract: OpenAPI 3.x for HTTP, AsyncAPI for messaging, JSON Schema or Avro for files. Free-text payload descriptions are forbidden.</statement>
+      <rationale source="ENISA / OpenAPI Initiative guidelines">Untyped contracts cause silent payload drift; typed contracts surface breakage at lint time.</rationale>
+    </rule>
+    <rule id="r2-named-owner" testable="true" depth="essential">
+      <statement>Every interface has a NAMED owner (full name + role) on each side. Anonymous owners block the inventory.</statement>
+      <rationale source="DAMA-DMBOK §3 Data Governance">Anonymous interface ownership produces zombie endpoints nobody updates and silent breakage.</rationale>
+    </rule>
+    <rule id="r3-error-contract" testable="true" depth="essential">
+      <statement>Error semantics are declared: error_codes[] (HTTP status / error_code mapping), retry_policy, idempotency_key shape. Cells empty for any field fail the cycle.</statement>
+      <rationale source="resilience patterns / Nygard, Release It! (2018)">Missing error contracts cause downstream teams to invent ad-hoc retry behavior that amplifies incidents.</rationale>
+    </rule>
+    <rule id="r4-sla-declared" testable="true" depth="essential">
+      <statement>SLA declares latency_p95_ms, availability_pct, throughput_rps, and a clear degradation policy. SLAs without all four are not SLAs.</statement>
+      <rationale source="SRE / Google SRE Book Ch.4 SLOs">Partial SLAs hide consumer expectations; explicit p95+availability+throughput+degradation tightens the contract.</rationale>
+    </rule>
+    <rule id="r5-version-and-fixtures" testable="true" depth="essential">
+      <statement>Interface is versioned (semver in URL path or header) and links to test-fixture set (happy + 1+ failure per error code).</statement>
+      <rationale source="API evolution / Zalando RESTful API Guidelines">Unversioned interfaces break consumers without warning; missing fixtures mean drift goes undetected.</rationale>
     </rule>
   </section>
+  <section title="Canonical examples">
+    <example type="good" title="Interface entry satisfying r1+r3">
+      <code lang="yaml"><![CDATA[
+id: payment-webhook
+protocol: http-webhook
+contract:
+  type: openapi-3.1
+  ref: contracts/payment-webhook.yaml#/paths/~1webhook/post
+error_codes:
+  - {http: 400, code: invalid_signature, retry: false}
+  - {http: 409, code: duplicate_event,   retry: false}
+  - {http: 500, code: internal_error,    retry: true,  backoff: exponential}
+retry_policy: max_attempts=3, base=1s
+idempotency_key: header X-Idempotency-Key (uuid v4)
+]]></code>
+      <note>Typed contract; error codes; retry semantics; idempotency.</note>
+    </example>
+    <example type="bad" title="Failure of r1">
+      <code lang="yaml"><![CDATA[
+id: payment-webhook
+protocol: http
+payload: "JSON object with payment details"
+]]></code>
+      <note>Free-text payload; no contract ref; no error semantics.</note>
+    </example>
+  </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
 </text>

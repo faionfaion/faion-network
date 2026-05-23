@@ -1,22 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="user-story-mapping Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="User Story Mapping Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Pins the story-map artefact.</summary>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/user-story-map.json",
+  "type": "object",
+  "required": ["map_id", "version_tag", "personas", "activities"],
+  "properties": {
+    "map_id": {"type": "string"},
+    "version_tag": {"type": "string", "pattern": "^v\\d+\\.\\d+\\.\\d+$"},
+    "personas": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["id", "name"]}},
+    "activities": {
+      "type": "array", "minItems": 1, "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "tasks"],
+        "properties": {
+          "id": {"type": "string"},
+          "name": {"type": "string"},
+          "tasks": {
+            "type": "array", "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["id", "stories"],
+              "properties": {
+                "id": {"type": "string"},
+                "stories": {
+                  "type": "array", "minItems": 1,
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "title", "persona_id", "release"],
+                    "properties": {
+                      "id": {"type": "string"},
+                      "title": {"type": "string"},
+                      "persona_id": {"type": "string"},
+                      "release": {"type": "string", "enum": ["R1", "R2", "R3", "R4"]}
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
+  <section title="Examples">
+    <example type="good" title="Valid map fragment">
+      <code lang="json"><![CDATA[
+{
+  "map_id": "shop-mvp", "version_tag": "v1.0.0",
+  "personas": [{"id": "shopper", "name": "Returning shopper"}],
+  "activities": [
+    {"id": "act-discover", "name": "Discover", "tasks": [
+      {"id": "task-browse", "stories": [{"id": "s-1", "title": "Browse top", "persona_id": "shopper", "release": "R1"}]}
+    ]},
+    {"id": "act-purchase", "name": "Purchase", "tasks": [
+      {"id": "task-pay", "stories": [{"id": "s-2", "title": "Pay card", "persona_id": "shopper", "release": "R1"}]}
+    ]}
+  ]
+}
+]]></code>
+      <note>R1 covers all activities; persona_id present; bands fixed.</note>
+    </example>
+    <example type="bad" title="Invalid — R1 missing in one activity">
+      <code lang="json"><![CDATA[
+{"map_id": "x", "version_tag": "v1.0.0", "personas": [{"id": "u", "name": "User"}],
+ "activities": [
+  {"id": "a1", "name": "A1", "tasks": [{"id": "t1", "stories": [{"id": "s1", "title": "x", "persona_id": "u", "release": "R1"}]}]},
+  {"id": "a2", "name": "A2", "tasks": [{"id": "t2", "stories": [{"id": "s2", "title": "y", "persona_id": "u", "release": "R3"}]}]}
+]}
+]]></code>
+      <note>act-a2 has no R1 → not a walking skeleton.</note>
+    </example>
+  </section>
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>activity without R1 story (rule r1)</item>
+      <item>story without persona_id or persona_id="all" (rule r2)</item>
+      <item>more than 8 activities (rule r4)</item>
+      <item>release outside {R1,R2,R3,R4} (rule r5)</item>
     </list>
   </section>
+  <reference path="templates/story-map.yaml"/>
+  <reference path="scripts/validate-user-story-mapping.py"/>
 </text>

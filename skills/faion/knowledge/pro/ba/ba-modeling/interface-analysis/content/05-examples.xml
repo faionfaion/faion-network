@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Interface Analysis Worked Example" version="1.1.0" est_tokens="700" depth="reference">
+  <summary>End-to-end example: payment-webhook interface.</summary>
+  <section title="Step 1 — enumerate">
+    <p>Solution = Faion Pro billing. External interfaces found: payment-webhook (Stripe → backend), refund-api (backend → Stripe), invoice-email (backend → SES), receipt-pdf-export (backend → S3 file).</p>
+  </section>
+  <section title="Step 2 — contract">
+    <code lang="yaml"><![CDATA[
+id: payment-webhook
+protocol: http-webhook
+contract:
+  type: openapi-3.1
+  ref: contracts/payment-webhook.yaml#/paths/~1webhook/post
+]]></code>
+  </section>
+  <section title="Step 3 — owners + errors">
+    <code lang="yaml"><![CDATA[
+owners:
+  producer: {name: "Stripe (vendor)", role: "Vendor", contact: "developer-support@stripe.com"}
+  consumer: {name: "Pedro Silva", role: "Payments Lead"}
+error_codes:
+  - {http: 400, code: invalid_signature, retry: false}
+  - {http: 409, code: duplicate_event,   retry: false}
+  - {http: 500, code: internal_error,    retry: true,  backoff: "exp,1s,3x"}
+idempotency_key: header X-Idempotency-Key (uuid v4)
+]]></code>
+  </section>
+  <section title="Step 4 — SLA">
+    <code lang="yaml"><![CDATA[
+sla:
+  latency_p95_ms: 500
+  availability_pct: 99.9
+  throughput_rps: 50
+  degradation_policy: "queue + replay within 24h on degraded mode"
+]]></code>
+  </section>
+  <section title="Step 5 — fixtures + version">
+    <code lang="yaml"><![CDATA[
+fixtures:
+  happy_path: fixtures/wh-happy.json
+  failure_paths:
+    - fixtures/wh-400-invalid-sig.json
+    - fixtures/wh-409-dup.json
+    - fixtures/wh-500-replay.json
+version_tag: v1.0.0
+]]></code>
+  </section>
+  <section title="Outcome">
+    <p>Integration team ships webhook handler against this spec. CI runs all 4 fixtures on every PR; drift surfaces immediately.</p>
+  </section>
+</text>

@@ -3,76 +3,100 @@ slug: use-case-modeling
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A technique for expressing functional requirements as actor-system interaction sequences.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Express functional requirements as named-actor → system interaction sequences (main scenario + alternative + exception flows) with preconditions, postconditions, and trigger per use case.
 content_id: "a8b8106842b7d773"
+complexity: deep
+produces: spec
+est_tokens: 4200
 tags: [use-cases, functional-requirements, actor-goals, scenario-modeling, requirements-traceability]
 ---
 # Use Case Modeling
 
 ## Summary
 
-**One-sentence:** A technique for expressing functional requirements as actor-system interaction sequences.
+**One-sentence:** Express functional requirements as named-actor → system interaction sequences (main scenario + alternative + exception flows) with preconditions, postconditions, and trigger per use case.
 
-**One-paragraph:** A technique for expressing functional requirements as actor-system interaction sequences. Each use case captures WHO achieves WHAT goal with the system and HOW the system responds across normal, alternative, and exception flows. Use case names follow Verb+Noun convention; each has preconditions, a main flow (5-9 steps), alternative flows, exception flows, and postconditions.
+**One-paragraph:** Pre-development functional spec: identify primary + secondary + offstage actors, write use-case briefs with goal-in-context, main success scenario, alternative flows, exception flows, preconditions and postconditions. Output is a `spec` artefact: machine-checkable use-case set ready for AC generation and test-case derivation.
+
+**Ефективно для:**
+
+- Functional-spec stage перед development для actor-driven domains.
+- Pre-AC generation — use cases dive into flows перед Gherkin.
+- Test-case derivation — main + alt + exception → test cases 1:1.
+- Compliance domains де actor authority matters (banking, healthcare).
 
 ## Applies If (ALL must hold)
 
-- Functional requirements for transactional systems (line-of-business apps, regulated software) before development starts
-- Multiple actor types interact with the system and cross-actor collisions have already caused bugs
-- Compliance/audit context (FDA 21 CFR Part 11, SOX) requiring actor-goal → flow → code → test traceability
-- Legacy system migration where screens are reverse-engineered into a controlled spec
-- Test engineers need a deterministic scenario source for end-to-end test design
-- Pre-development alignment when stakeholders speak features and developers need flows
+- System exposes ≥3 actor-driven interactions (login, checkout, approve, refund...).
+- Functional requirements need flow detail beyond user-story summary.
+- Test team will derive scenarios from spec.
+- Each actor is identifiable (role title acceptable; "Team" is not).
 
 ## Skip If (ANY kills it)
 
-- Pure discovery phase — Opportunity Solution Trees give better signal than premature formalization
-- Agile teams operating well with user stories + acceptance criteria — UC specs duplicate work
-- Pure data/analytics platforms where data flow models fit better than actor-goal sequences
-- ML/LLM features with probabilistic responses — use cases assume deterministic system behavior
-- Tiny CRUD apps with one actor and fewer than 10 screens — an acceptance criteria sheet is faster
-- Event-driven systems where event topology matters more than actor goals; use event storming or BPMN
+- Event-driven / pipeline system with no human actor — use process modeling instead.
+- Single-actor CRUD app where stories suffice.
+- Pure UI / styling work with no domain flow.
+- Spike / prototype throwaway.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Actor inventory | YAML / Markdown table | BA + stakeholders |
+| Domain glossary | Markdown | BA |
+| Use-case backlog (titles) | list | product |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[user-story-mapping]] | Upstream — story map produces the use-case backlog titles |
+| [[acceptance-criteria]] | Downstream — each use case main+alt+exception → AC set |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: named actors, main + alt + exception, pre/postconditions, single goal, trace-id to backlog | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + examples | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: anonymous actor, missing exception flow, prose preconditions, kitchen-sink scope | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 700 |
+| `content/05-examples.xml` | essential | Worked example: "User books an appointment" | 700 |
+| `content/06-decision-tree.xml` | essential | Routing on flow completeness + actor naming | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `actor_enumeration` | haiku | Mechanical pull from glossary + interviews. |
+| `main_scenario_drafting` | sonnet | Step-by-step interaction needs light judgment. |
+| `exception_flow_brainstorm` | opus | Edge-case enumeration benefits from deeper reasoning. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/use-case.md` | Markdown skeleton (actor + goal + pre/post + main + alt + exception) |
+| `templates/_smoke-test.json` | Minimum viable use-case JSON |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-use-case-modeling.py` | Validate use-case set against output-contract | Pre-commit; before handoff to QA |
 
 ## Related
 
-- parent skill: `pro/ba/ba-modeling/`
+- [[user-story-mapping]]
+- [[acceptance-criteria]]
+- [[business-process-analysis]]
+- [[interface-analysis]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes on actor naming + flow completeness to the rule firing. Use when in doubt whether a use case is ready for AC derivation.

@@ -3,75 +3,100 @@ slug: decision-analysis
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Structured 6-step process for evaluating options against weighted criteria: define decision → identify options → define and lock criteria with weights → score options with evidence URLs per cell → sensitivity analysis (±20% weight Monte Carlo) → document rationale.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: 6-step decision-matrix process — define decision, options, weighted criteria locked pre-scoring, evidence-per-cell scores, sensitivity Monte Carlo, signed rationale.
 content_id: "540833b2f15e6888"
+complexity: deep
+produces: decision-record
+est_tokens: 4400
 tags: [decision-making, option-evaluation, sensitivity-analysis, monte-carlo, decision-matrix]
 ---
 # Decision Analysis
 
 ## Summary
 
-**One-sentence:** Structured 6-step process for evaluating options against weighted criteria: define decision → identify options → define and lock criteria with weights → score options with evidence URLs per cell → sensitivity analysis (±20% weight Monte Carlo) → document rationale.
+**One-sentence:** 6-step decision-matrix process — define decision, options, weighted criteria locked pre-scoring, evidence-per-cell scores, sensitivity Monte Carlo, signed rationale.
 
-**One-paragraph:** Structured 6-step process for evaluating options against weighted criteria: define decision → identify options → define and lock criteria with weights → score options with evidence URLs per cell → sensitivity analysis (±20% weight Monte Carlo) → document rationale. Weights are locked before scoring; sensitivity analysis determines whether the recommendation is robust or fragile (top option wins less than 70% of Monte Carlo trials → escalate to human).
+**One-paragraph:** Structured option evaluation: define the decision and its reversal cost, enumerate options (with explicit "do nothing"), define and FREEZE weighted criteria before scoring, score each option×criterion cell with evidence URL, run ±20% weight Monte Carlo to surface ranking instability, and capture rationale in a signed decision-record. Output is a `decision-record` artefact that survives audit and prevents post-hoc rationalization.
+
+**Ефективно для:**
+
+- Strategic option choice ≥$10k or irreversible (architecture, vendor, hiring).
+- Multi-criterion trade-offs де gut feel divergent across stakeholders.
+- Post-incident decision audit ("why did we choose X?").
+- Compliance / governance requiring documented rationale.
 
 ## Applies If (ALL must hold)
 
-- Reversible-but-expensive choice with three or more candidate options where the team is sliding toward gut feel (CRM selection, build-vs-buy, LLM provider choice).
-- Stakeholders disagree because they secretly weight criteria differently — making weights explicit collapses the argument.
-- Decision will be re-litigated later (board review, audit, post-mortem) and a written rationale is needed.
-- Comparing N options against a current baseline (Pugh matrix mode).
-- A decision has long-tail risk that only surfaces when tabulated (vendor lock-in, regulatory exposure).
-- Sequential / conditional decisions with probabilities — switch to decision tree with expected value.
+- Decision has ≥2 viable options + "do nothing" baseline.
+- Decision is non-trivial (stakes ≥$10k, reversal cost meaningful, or strategic).
+- Criteria can be enumerated and weighted (5-9 dimensions typical).
+- Evidence (data, citations, benchmarks) is reachable per cell.
 
 ## Skip If (ANY kills it)
 
-- Two-option, low-cost, easily reversible decisions — use a 5-minute pros/cons list.
-- Decision is actually about strategy, not selection — run a brainstorm session first.
-- Analysis is retrofitted to justify a decision already made (the #1 failure mode).
-- Pure financial trade-offs with quantifiable cash flows — use NPV / discounted cash flow directly.
-- Decisions under deep uncertainty where numbers have more than one order-of-magnitude error.
+- Single-criterion decision (price-only, deadline-only).
+- Reversible low-stakes choice (under $1k, undo cost ≈ 0).
+- Time-critical incident response — pick fast, document later.
+- Decisions where stakeholders refuse to commit weights — full rubric becomes theater.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Decision brief | 1-page Markdown | sponsor |
+| Option catalogue | list with descriptions + costs | proposers |
+| Criteria + draft weights | spreadsheet / YAML | BA + sponsor |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[ai-acceptance-criteria-generator-reviewer]] | Sibling rubric pattern this methodology shares discipline with |
+| [[ba-planning]] | Upstream BA governance that scopes who weighs in on the decision |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: weights locked pre-scoring, evidence per cell, "do nothing" included, sensitivity ±20%, signoff | 950 |
+| `content/02-output-contract.xml` | essential | JSON Schema + examples | 850 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: weight reverse-engineering, missing "do nothing", anchor drift, single-rater high-stakes | 800 |
+| `content/04-procedure.xml` | essential | 6-step procedure | 750 |
+| `content/05-examples.xml` | essential | Worked example: vendor selection across 3 options × 6 criteria | 700 |
+| `content/06-decision-tree.xml` | essential | Routing on weight lock + evidence + Monte Carlo | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `criteria_definition` | sonnet | Light judgment on dimension naming + anchors. |
+| `evidence_extraction` | haiku | Mechanical retrieval of evidence URLs per cell. |
+| `sensitivity_analysis` | opus | Monte Carlo + rank-flip detection requires careful reasoning. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/decision-record.md` | Markdown skeleton (decision, options, criteria, scores, sensitivity, signoff) |
+| `templates/_smoke-test.json` | Minimum viable decision-record JSON |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-decision-analysis.py` | Validate decision-record against output-contract + sensitivity threshold | Pre-commit; before stakeholder sign-off |
 
 ## Related
 
-- parent skill: `pro/ba/ba-modeling/`
+- [[ai-acceptance-criteria-generator-reviewer]]
+- [[ba-planning]]
+- [[business-process-analysis]]
+- [[interface-analysis]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes on observable signals (weight lock timestamp, evidence completeness, sensitivity rank-flips) to the active rule. Use when in doubt whether the record is ready for sign-off.

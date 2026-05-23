@@ -1,55 +1,80 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="BA Week-One Pack Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of the deliverable. A BA who passes Day-5 review has produced exactly this folder structure with exactly these required fields populated. Anything else is "not done."</summary>
-
-  <section title="Required deliverable">
-    <p>The output of week one is a folder named <code>week-one-pack/</code> committed to the project workspace (Confluence space, Notion page tree, Drive folder, or git repo — the BA picks one and stays there).</p>
-
+<text id="02-output-contract" title="BA Week-One Pack Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Pins the shape of the week-one-pack manifest. Validator parses this manifest to confirm the deliverable folder is "done".</summary>
+  <section title="JSON Schema (draft-07) — pack manifest">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ba-week-one-pack-manifest.json",
+  "type": "object",
+  "required": ["project_name", "ba_name", "week_range", "files", "signoff"],
+  "properties": {
+    "project_name": {"type": "string", "minLength": 2},
+    "ba_name": {"type": "string", "minLength": 2},
+    "week_range": {"type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}/\\d{4}-\\d{2}-\\d{2}$"},
+    "files": {
+      "type": "object",
+      "required": ["inventory_md", "stakeholders_md", "glossary_md", "processes_md", "risks_md"],
+      "properties": {
+        "inventory_md": {"type": "object", "required": ["path", "row_count"], "properties": {"path": {"type": "string"}, "row_count": {"type": "integer", "minimum": 1}}},
+        "stakeholders_md": {"type": "object", "required": ["path", "named_rows", "approve_authority_count"], "properties": {"named_rows": {"type": "integer", "minimum": 1}, "approve_authority_count": {"type": "integer", "minimum": 1}}},
+        "glossary_md": {"type": "object", "required": ["path", "term_count"], "properties": {"term_count": {"type": "integer", "minimum": 15}}},
+        "processes_md": {"type": "object", "required": ["path", "diagram_files"], "properties": {"diagram_files": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "\\.(png|svg)$"}}}},
+        "risks_md": {"type": "object", "required": ["path", "gap_count", "risk_count"], "properties": {"gap_count": {"type": "integer", "minimum": 5}, "risk_count": {"type": "integer", "minimum": 5}}}
+      }
+    },
+    "signoff": {
+      "type": "object", "required": ["engagement_manager_name", "signoff_ts"],
+      "properties": {"engagement_manager_name": {"type": "string", "minLength": 2}, "signoff_ts": {"type": "string", "format": "date-time"}}
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
+  <section title="Examples">
+    <example type="good" title="Valid manifest">
+      <code lang="json"><![CDATA[
+{
+  "project_name": "Acme Migration",
+  "ba_name": "Maria Lopes",
+  "week_range": "2026-05-18/2026-05-22",
+  "files": {
+    "inventory_md": {"path": "pack/inventory.md", "row_count": 47},
+    "stakeholders_md": {"path": "pack/stakeholders.md", "named_rows": 8, "approve_authority_count": 2},
+    "glossary_md": {"path": "pack/glossary.md", "term_count": 22},
+    "processes_md": {"path": "pack/processes.md", "diagram_files": ["pack/processes.svg"]},
+    "risks_md": {"path": "pack/risks.md", "gap_count": 5, "risk_count": 6}
+  },
+  "signoff": {"engagement_manager_name": "Pedro Silva", "signoff_ts": "2026-05-22T17:00:00Z"}
+}
+]]></code>
+      <note>Required counts met; PM signoff timestamp present.</note>
+    </example>
+    <example type="bad" title="Invalid — missing diagram + low glossary">
+      <code lang="json"><![CDATA[
+{"project_name": "x", "ba_name": "x", "week_range": "x",
+ "files": {"glossary_md": {"path": "g", "term_count": 4}, "processes_md": {"path": "p", "diagram_files": []}},
+ "signoff": {}}
+]]></code>
+      <note>Glossary terms &lt; 15; processes lack diagram; signoff empty.</note>
+    </example>
+  </section>
+  <section title="Forbidden patterns">
     <list>
-      <item><code>README.md</code> — project name, BA name, week range, sign-off field with engagement-manager name + date.</item>
-      <item><code>inventory.md</code> — flat artefact list per r1.</item>
-      <item><code>stakeholders.md</code> — table per r2; >= 1 row with Approve authority for the primary business outcome.</item>
-      <item><code>glossary.md</code> — >= 15 terms per r3; contested flag column present.</item>
-      <item><code>processes.md</code> — >= 1 swimlane/BPMN diagram per r4; lanes tied to stakeholder names.</item>
-      <item><code>risks.md</code> — top 5 gaps, top 5 risks (L x I), open questions per r5.</item>
+      <item>required file path present but row_count/term_count 0 (rule r1)</item>
+      <item>stakeholders_md.approve_authority_count == 0 (rule r2)</item>
+      <item>glossary_md.term_count &lt; 15 (rule r3)</item>
+      <item>processes_md.diagram_files empty (rule r4)</item>
+      <item>signoff.engagement_manager_name empty (rule r5)</item>
     </list>
   </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>Required file present but empty or template-default content.</description>
-      <reason>Counts as not-written and silently passes a casual review. Validator must reject on byte-count and template-string detection.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Stakeholders table with any "TBD" in the Authority or Name column.</description>
-      <reason>Unknown authority is the same as missing the stakeholder for routing decisions.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Processes.md contains only prose, no diagram, even if linked-out to an external Lucidchart.</description>
-      <reason>External links break with seat changes and lose handoff context. Diagram must be committed as PNG/SVG inside the pack folder.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Risks.md exists but lacks a written sign-off line from the engagement manager.</description>
-      <reason>The sign-off is the protection mechanism. Without it the gap memo cannot be referenced in later scope disputes.</reason>
-    </antipattern>
-  </section>
-
   <section title="Allowed transformations">
     <list>
-      <item>Stakeholder authority may use RAPID labels (R/A/P/I/D) instead of Approve/Consult/Inform/None — must be consistent across the file.</item>
-      <item>Glossary may include up to 5 cross-references to existing org glossaries instead of inlining definitions, provided the source URL and last-checked date are recorded.</item>
-      <item>Processes.md may include multiple diagrams if the as-is process splits; r4 minimum is 1.</item>
+      <item>Stakeholder authority may use RAPID (R/A/P/I/D) instead of Approve/Consult/Inform/None when consistent.</item>
+      <item>Glossary may include cross-references to org glossaries with source URL + last-checked date.</item>
     </list>
   </section>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>All six required files exist with non-template content.</item>
-      <item>Stakeholders.md has >= 1 Approve-authority row matching the SOW primary outcome.</item>
-      <item>Glossary count >= 15, contested flag present and used at least once OR a justified note that no terms were contested.</item>
-      <item>Processes.md has a diagram file (PNG/SVG) and lane labels match stakeholder names.</item>
-      <item>Risks.md has 5+5 minimum rows and a sign-off line with name + ISO date.</item>
-      <item>README.md sign-off block filled by engagement manager, not by the BA.</item>
-    </list>
-  </section>
+  <reference path="templates/week-one-pack-skeleton.md"/>
+  <reference path="scripts/validate-ba-onboarding-week-one-template.py"/>
 </text>

@@ -1,3 +1,9 @@
+<!-- purpose: data-dictionary skeleton (entities + fields + owner + DQ + business rules) -->
+<!-- consumes: source-system inventory + introspected schemas + DPO classification -->
+<!-- produces: spec artefact conforming to 02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
+<!-- token-budget-impact: ~400 tokens loaded as template context -->
+
 # Data Dictionary: [System/Domain Name]
 
 **Version:** 1.0

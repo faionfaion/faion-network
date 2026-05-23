@@ -1,22 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="decision-analysis Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Decision Analysis Output Contract" version="1.1.0" est_tokens="850" depth="essential">
+  <summary>Pins the decision-record deliverable.</summary>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/decision-analysis-record.json",
+  "type": "object",
+  "required": ["decision_id", "options", "criteria", "weights_locked_at", "scores", "sensitivity", "approver"],
+  "properties": {
+    "decision_id": {"type": "string", "minLength": 2},
+    "options": {
+      "type": "array", "minItems": 2,
+      "items": {"type": "object", "required": ["id", "name"],
+        "properties": {"id": {"type": "string"}, "name": {"type": "string"}, "is_baseline": {"type": "boolean"}}}
+    },
+    "criteria": {
+      "type": "array", "minItems": 3,
+      "items": {"type": "object", "required": ["id", "name", "weight"],
+        "properties": {"id": {"type": "string"}, "name": {"type": "string"}, "weight": {"type": "number", "minimum": 0, "maximum": 1}}}
+    },
+    "weights_locked_at": {"type": "string", "format": "date-time"},
+    "scores": {
+      "type": "array", "minItems": 6,
+      "items": {"type": "object", "required": ["option_id", "criterion_id", "score", "evidence"],
+        "properties": {"option_id": {"type": "string"}, "criterion_id": {"type": "string"},
+          "score": {"type": "integer", "minimum": 1, "maximum": 5},
+          "evidence": {"type": "string", "minLength": 4}}}
+    },
+    "sensitivity": {
+      "type": "object", "required": ["monte_carlo_runs", "weight_jitter_pct", "rank_flip_rate"],
+      "properties": {
+        "monte_carlo_runs": {"type": "integer", "minimum": 100},
+        "weight_jitter_pct": {"type": "number", "minimum": 5, "maximum": 50},
+        "rank_flip_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "unstable_pairs": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "approver": {
+      "type": "object", "required": ["name", "role", "signoff_ts"],
+      "properties": {"name": {"type": "string", "minLength": 2},
+        "role": {"type": "string", "minLength": 2}, "signoff_ts": {"type": "string", "format": "date-time"}}
+    },
+    "rationale": {"type": "string", "minLength": 32}
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
+  <section title="Examples">
+    <example type="good" title="Valid decision record">
+      <code lang="json"><![CDATA[
+{
+  "decision_id": "vendor-pick-2026q2",
+  "options": [
+    {"id": "do-nothing", "name": "Status quo", "is_baseline": true},
+    {"id": "vendor-a", "name": "Vendor A"},
+    {"id": "vendor-b", "name": "Vendor B"}
+  ],
+  "criteria": [
+    {"id": "tco", "name": "Total cost of ownership", "weight": 0.4},
+    {"id": "fit", "name": "Functional fit", "weight": 0.3},
+    {"id": "risk", "name": "Vendor risk", "weight": 0.3}
+  ],
+  "weights_locked_at": "2026-05-23T08:00:00Z",
+  "scores": [
+    {"option_id": "do-nothing", "criterion_id": "tco", "score": 3, "evidence": "current-spend.csv#row=4"},
+    {"option_id": "vendor-a", "criterion_id": "tco", "score": 4, "evidence": "vendor-a-tco.pdf#page=12"},
+    {"option_id": "vendor-b", "criterion_id": "tco", "score": 3, "evidence": "vendor-b-tco.pdf#page=9"},
+    {"option_id": "do-nothing", "criterion_id": "fit", "score": 2, "evidence": "internal-rfc.md#L40"},
+    {"option_id": "vendor-a", "criterion_id": "fit", "score": 4, "evidence": "vendor-a-demo.mp4#12:30"},
+    {"option_id": "vendor-b", "criterion_id": "fit", "score": 3, "evidence": "vendor-b-demo.mp4#08:15"},
+    {"option_id": "do-nothing", "criterion_id": "risk", "score": 5, "evidence": "internal-baseline.md"},
+    {"option_id": "vendor-a", "criterion_id": "risk", "score": 3, "evidence": "vendor-a-soc2.pdf"},
+    {"option_id": "vendor-b", "criterion_id": "risk", "score": 4, "evidence": "vendor-b-soc2.pdf"}
+  ],
+  "sensitivity": {"monte_carlo_runs": 5000, "weight_jitter_pct": 20, "rank_flip_rate": 0.07, "unstable_pairs": []},
+  "approver": {"name": "Pedro Silva", "role": "CFO", "signoff_ts": "2026-05-23T11:00:00Z"},
+  "rationale": "Vendor A wins on TCO and fit despite higher risk; sensitivity flip rate 7% below 15% threshold."
+}
+]]></code>
+      <note>"do nothing" included; evidence per cell; weights locked; sensitivity below threshold; approver signed.</note>
+    </example>
+    <example type="bad" title="Invalid — missing do-nothing baseline">
+      <code lang="json"><![CDATA[
+{"decision_id": "x", "options": [{"id": "vendor-a", "name": "A"}, {"id": "vendor-b", "name": "B"}],
+ "criteria": [{"id": "tco", "name": "TCO", "weight": 1.0}], "weights_locked_at": "2026-05-23T08:00:00Z",
+ "scores": [], "sensitivity": {"monte_carlo_runs": 100, "weight_jitter_pct": 20, "rank_flip_rate": 0.0},
+ "approver": {"name": "x", "role": "y", "signoff_ts": "2026-05-23T11:00:00Z"}}
+]]></code>
+      <note>No baseline option; under-min criteria; empty scores.</note>
+    </example>
+  </section>
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>weight change after weights_locked_at (rule r1)</item>
+      <item>scores[] cell without evidence (rule r2)</item>
+      <item>options[] without any is_baseline=true entry (rule r3)</item>
+      <item>sensitivity rank_flip_rate &gt; 0.15 without flagged unstable_pairs (rule r4)</item>
+      <item>approver block missing or unsigned (rule r5)</item>
     </list>
   </section>
+  <section title="Allowed transformations">
+    <list>
+      <item>Re-run Monte Carlo with higher run count if rank_flip_rate is near threshold.</item>
+    </list>
+  </section>
+  <reference path="templates/decision-record.md"/>
+  <reference path="scripts/validate-decision-analysis.py"/>
 </text>

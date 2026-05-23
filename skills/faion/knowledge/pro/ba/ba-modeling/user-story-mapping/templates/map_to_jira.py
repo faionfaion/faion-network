@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# purpose: sync story-map YAML to Jira issues
+# consumes: map.yaml + Jira API token (env)
+# produces: created/updated Jira tickets matching stories[]
+# depends-on: content/01-core-rules.xml r3
+# token-budget-impact: 0 (shell tool)
 """
 map_to_jira.py — Sync map.yaml to Jira.
 Creates epics per activity, stories per leaf, labels per release and task.

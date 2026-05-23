@@ -1,3 +1,9 @@
+<!-- purpose: per-interface spec skeleton (protocol + contract + owners + errors + SLA + fixtures) -->
+<!-- consumes: architecture map + sample payloads + SRE SLO doc -->
+<!-- produces: one entry in interfaces[] of the inventory -->
+<!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
+<!-- token-budget-impact: ~350 tokens loaded as template context -->
+
 # Interface Specification: [Interface Name]
 
 **Version:** [X.X]

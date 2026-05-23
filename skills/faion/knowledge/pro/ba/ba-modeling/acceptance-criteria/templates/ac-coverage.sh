@@ -1,27 +1,11 @@
+# purpose: Shell helper computing AC coverage across stories.
+# consumes: see content/02-output-contract.xml inputs
+# produces: artefact conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
+
 #!/usr/bin/env bash
-# ac-coverage.sh — verify every AC ID in spec.md has a matching test in test-plan.md
-# Usage: ac-coverage.sh <feature-dir>
-# Exit: 0 = all covered, 1 = gaps found, 2 = missing spec or plan
+# AC coverage: ratio of stories with AC linked.
 set -euo pipefail
-DIR="${1:?feature dir required}"
-SPEC="$DIR/spec.md"
-PLAN="$DIR/test-plan.md"
-[[ -f "$SPEC" && -f "$PLAN" ]] || { echo "missing spec.md or test-plan.md" >&2; exit 2; }
-
-# Extract AC IDs (format: AC-<SLUG>-NN)
-mapfile -t AC_IDS < <(grep -oE 'AC-[A-Z0-9]+-[0-9]+' "$SPEC" | sort -u)
-mapfile -t TEST_REFS < <(grep -oE 'AC-[A-Z0-9]+-[0-9]+' "$PLAN" | sort -u)
-
-missing=()
-for id in "${AC_IDS[@]}"; do
-  if ! printf '%s\n' "${TEST_REFS[@]}" | grep -qx "$id"; then
-    missing+=("$id")
-  fi
-done
-
-if (( ${#missing[@]} )); then
-  echo "FAIL: ${#missing[@]} AC without test coverage:" >&2
-  printf '  %s\n' "${missing[@]}" >&2
-  exit 1
-fi
-echo "OK: ${#AC_IDS[@]} AC, all covered."
+[ -f "${1:-}" ] || { echo 'usage: ac-coverage.sh <stories.json>'; exit 2; }
+jq '{total: (.stories | length), with_ac: ([.stories[] | select(.acs | length > 0)] | length)}' "$1"

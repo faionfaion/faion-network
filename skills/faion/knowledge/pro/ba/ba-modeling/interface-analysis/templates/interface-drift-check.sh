@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: diff committed OpenAPI against live API for breaking changes
+# consumes: committed openapi.yaml + live API endpoint
+# produces: exit 0 = no drift; exit 1 = drift report on stderr
+# depends-on: content/01-core-rules.xml r5
+# token-budget-impact: 0 (shell)
 # interface-drift-check.sh — flag breaking changes between committed spec and live API.
 # Usage: ./interface-drift-check.sh <committed-openapi.yaml> <live-openapi-url>
 # Exit: 0 = in sync, 2 = breaking change detected

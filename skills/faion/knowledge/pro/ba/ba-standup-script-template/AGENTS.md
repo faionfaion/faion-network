@@ -3,77 +3,95 @@ slug: ba-standup-script-template
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Ba Standup Script Template: codified business-analysis practice that turns the recurring 'role-business-analyst/Daily standup: BA-side prep + run' decision into a repeatable, auditable artefact.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: 3-bullet BA-specific standup script (clarifications-needed / AC-ready / blockers) replacing dev-style updates, captured as a typed daily artefact.
 content_id: "ef0406fb5e67a6a6"
-tags: [ba-standup-script-template, ba, pro]
+complexity: light
+produces: checklist
+est_tokens: 3500
+tags: [ba, standup, agile, daily, communication]
 ---
-# Ba Standup Script Template
+# BA Standup Script Template
 
 ## Summary
 
-**One-sentence:** Ba Standup Script Template: codified business-analysis practice that turns the recurring 'role-business-analyst/Daily standup: BA-side prep + run' decision into a repeatable, auditable artefact.
+**One-sentence:** 3-bullet BA-specific standup script (clarifications-needed / AC-ready / blockers) replacing dev-style updates, captured as a typed daily artefact.
 
-**One-paragraph:** Ba Standup Script Template addresses the gap identified by the role-business-analyst/Daily standup: BA-side prep + run playbook: BAs default to dev-style standup updates; a BA-specific 3-bullet script (clarifications / ACs ready / blockers) is a daily atomic unit. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** BAs default to dev-style "what I did / what I will do" standup updates, which add noise without surfacing the BA-specific signal (open clarifications, AC ready for dev pull, blockers needing stakeholder attention). This methodology pins a 3-bullet script per day with named owners per blocker and a stable schema. Output is a daily `checklist` JSON the scrum master + dev lead can scan in 10 seconds.
+
+**Ефективно для:**
+
+- Daily Scrum / standup BA participation у multi-discipline teams.
+- Slack-async standup channels де update is text-only.
+- Audit trail BA контрибуцій для performance review.
+- Multi-BA team sync — типована структура полегшує aggregation.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-business-analyst/Daily standup: BA-side prep + run OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- BA participates in a daily/recurring standup or async update channel.
+- Output is consumed by scrum master, dev lead, or PM.
+- BA owns ≥1 actionable AC or clarification per sprint.
+- Standup runs at consistent cadence (daily or 3×/week minimum).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Solo BA with no daily sync.
+- Async-only project where standups do not exist.
+- BA off-engagement (PTO, training week).
 
 ## Prerequisites
 
-- recent context for the role-business-analyst/Daily standup: BA-side prep + run task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Sprint backlog | Jira / Linear | scrum master |
+| Open-clarifications log | Markdown / Notion | BA |
+| Blocker registry | Slack / tracker | BA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst` | parent role skill — provides the operating context for this methodology |
+| [[acceptance-criteria]] | Day-to-day AC pipeline this script reports against |
+| [[ba-to-qa-handoff-template]] | Sibling that consumes "AC-ready" bullets at sprint end |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 4 testable rules: bound scope, typed input, named owner per blocker, versioned per day | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (3-bullet shape) + examples | 700 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes: dev-style update, anonymous blocker, blocker without owner, etc. | 800 |
+| `content/06-decision-tree.xml` | essential | Routing on signal-shape | 400 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft_inputs_summary` | haiku | Mechanical template fill from yesterday's state. |
+| `synthesize_blockers` | sonnet | Bounded judgment on which open items rise to "blocker". |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/ba-standup-script-template.json` | JSON schema for the Ba Standup Script Template output contract |
-| `templates/ba-standup-script-template.md` | Markdown skeleton with the required fields |
+| `templates/standup-script.json` | Daily 3-bullet skeleton with required fields |
+| `templates/_smoke-test.json` | Minimum viable filled standup script |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-ba-standup-script-template.py` | Enforce Ba Standup Script Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-ba-standup-script-template.py` | Validate daily script against output-contract | Before posting to standup channel |
 
 ## Related
 
-- parent skill: `pro/ba/`
-- upstream playbook: `role-business-analyst/Daily standup: BA-side prep + run`
+- [[acceptance-criteria]]
+- [[ba-to-qa-handoff-template]]
+- [[ba-onboarding-week-one-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes on script-state (clarifications/AC-ready/blockers populated?) to the active rule.

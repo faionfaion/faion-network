@@ -1,22 +1,121 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="interface-analysis Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Interface Analysis Output Contract" version="1.1.0" est_tokens="850" depth="essential">
+  <summary>Pins the interface-inventory spec.</summary>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/interface-analysis-inventory.json",
+  "type": "object",
+  "required": ["inventory_id", "version_tag", "interfaces"],
+  "properties": {
+    "inventory_id": {"type": "string", "minLength": 2},
+    "version_tag": {"type": "string", "pattern": "^v\\d+\\.\\d+\\.\\d+$"},
+    "interfaces": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "protocol", "contract", "owners", "error_codes", "sla", "fixtures"],
+        "properties": {
+          "id": {"type": "string"},
+          "protocol": {"type": "string", "enum": ["http-rest", "http-webhook", "grpc", "message-bus", "file", "ui", "hardware"]},
+          "contract": {
+            "type": "object",
+            "required": ["type", "ref"],
+            "properties": {
+              "type": {"type": "string", "enum": ["openapi-3.0", "openapi-3.1", "asyncapi-2", "asyncapi-3", "json-schema", "avro", "protobuf"]},
+              "ref": {"type": "string", "minLength": 4}
+            }
+          },
+          "owners": {
+            "type": "object",
+            "required": ["producer", "consumer"],
+            "properties": {
+              "producer": {"type": "object", "required": ["name", "role"]},
+              "consumer": {"type": "object", "required": ["name", "role"]}
+            }
+          },
+          "error_codes": {
+            "type": "array", "minItems": 1,
+            "items": {
+              "type": "object", "required": ["code", "retry"],
+              "properties": {
+                "http": {"type": "integer"},
+                "code": {"type": "string"},
+                "retry": {"type": "boolean"},
+                "backoff": {"type": "string"}
+              }
+            }
+          },
+          "sla": {
+            "type": "object",
+            "required": ["latency_p95_ms", "availability_pct", "throughput_rps", "degradation_policy"],
+            "properties": {
+              "latency_p95_ms": {"type": "number", "minimum": 0},
+              "availability_pct": {"type": "number", "minimum": 0, "maximum": 100},
+              "throughput_rps": {"type": "number", "minimum": 0},
+              "degradation_policy": {"type": "string", "minLength": 4}
+            }
+          },
+          "fixtures": {
+            "type": "object",
+            "required": ["happy_path", "failure_paths"],
+            "properties": {
+              "happy_path": {"type": "string"},
+              "failure_paths": {"type": "array", "minItems": 1, "items": {"type": "string"}}
+            }
+          }
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
+  <section title="Examples">
+    <example type="good" title="Valid inventory">
+      <code lang="json"><![CDATA[
+{
+  "inventory_id": "core-payments", "version_tag": "v1.0.0",
+  "interfaces": [{
+    "id": "payment-webhook", "protocol": "http-webhook",
+    "contract": {"type": "openapi-3.1", "ref": "contracts/payment-webhook.yaml"},
+    "owners": {"producer": {"name": "Stripe Vendor", "role": "Vendor"},
+               "consumer": {"name": "Pedro Silva", "role": "Payments Lead"}},
+    "error_codes": [{"http": 400, "code": "invalid_signature", "retry": false},
+                    {"http": 500, "code": "internal_error", "retry": true, "backoff": "exp"}],
+    "sla": {"latency_p95_ms": 500, "availability_pct": 99.9, "throughput_rps": 50, "degradation_policy": "queue+replay"},
+    "fixtures": {"happy_path": "fixtures/wh-happy.json", "failure_paths": ["fixtures/wh-400.json"]}
+  }]
+}
+]]></code>
+      <note>Typed contract; named owners both sides; error codes; full SLA; fixtures.</note>
+    </example>
+    <example type="bad" title="Invalid — anonymous owner + missing fixtures">
+      <code lang="json"><![CDATA[
+{"inventory_id": "x", "version_tag": "latest", "interfaces": [
+  {"id": "w", "protocol": "http", "contract": {"type": "n/a", "ref": "?"},
+   "owners": {"producer": {"name": "Team", "role": "?"}, "consumer": {"name": "Team", "role": "?"}},
+   "error_codes": [], "sla": {}, "fixtures": {}}]}
+]]></code>
+      <note>Anonymous owners; empty error_codes; no SLA; no fixtures.</note>
+    </example>
+  </section>
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>contract.type outside enum (rule r1)</item>
+      <item>anonymous owners.producer.name or consumer.name (rule r2)</item>
+      <item>error_codes empty (rule r3)</item>
+      <item>sla missing any of latency_p95_ms, availability_pct, throughput_rps, degradation_policy (rule r4)</item>
+      <item>fixtures.failure_paths empty (rule r5)</item>
     </list>
   </section>
+  <section title="Allowed transformations">
+    <list>
+      <item>SLA latency_p95_ms may be derived from sample distribution when measured trace exists.</item>
+    </list>
+  </section>
+  <reference path="templates/interface-spec.md"/>
+  <reference path="scripts/validate-interface-analysis.py"/>
 </text>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Business Process Analysis Worked Example" version="1.1.0" est_tokens="700" depth="reference">
+  <summary>End-to-end worked example: invoice-approval process before/after.</summary>
+  <section title="Inputs">
+    <list>
+      <item>SOP at ops/invoice-sop.md (47 lines)</item>
+      <item>2 stakeholder interview transcripts (Maria Lopes AP, Pedro Silva CFO)</item>
+      <item>30-day ticket export from Jira AP project (CSV)</item>
+    </list>
+  </section>
+  <section title="Stage 1 — identify">
+    <p>process_id: invoice-approval. Trigger: invoice email arrives. Exit: invoice posted in ERP.</p>
+  </section>
+  <section title="Stage 2 — current state">
+    <code lang="text"><![CDATA[
+Lanes:
+  - AP (Maria Lopes, AP Lead)
+  - Finance (Pedro Silva, CFO)
+  - IT (José Almeida, ERP Admin)
+
+Steps:
+  s-01 [AP]      Receive email                       (source: ops/sop.md#L8)
+  s-02 [AP]      Manual entry into ERP form          (source: ops/sop.md#L15)
+  s-03 [Finance] Approval threshold check (> $5k)    (source: interview-pedro#03:14)
+  s-04 [Finance] Sign-off in DocuSign                (source: ops/sop.md#L22)
+  s-05 [AP]      Re-key approval into ERP            (source: interview-maria#08:40)
+  s-06 [IT]      Reconcile failed entries weekly     (source: jira-ap#tickets-30d)
+]]></code>
+  </section>
+  <section title="Stage 3 — analysis">
+    <code lang="text"><![CDATA[
+| step | value_add | cycle_time_min | cost_usd |
+|------|-----------|----------------|----------|
+| s-01 | N         | 5              | 1.2      |
+| s-02 | N         | 12             | 2.9      |
+| s-03 | Y         | 8              | 6.0      |
+| s-04 | Y         | 6              | 4.0      |
+| s-05 | N         | 9              | 2.1      |
+| s-06 | N         | 45 (weekly avg)| 11.0     |
+]]></code>
+  </section>
+  <section title="Stage 4 — future-state diff">
+    <code lang="text"><![CDATA[
+| step | action | expected_delta |
+|------|--------|----------------|
+| s-01 | change | Mailgun webhook → -4 min, -$0.9 |
+| s-02 | cut    | n8n parses + auto-creates ERP draft → -12 min, -$2.9 |
+| s-05 | cut    | DocuSign webhook posts back to ERP → -9 min, -$2.1 |
+| s-06 | change | error-queue + Slack alert → -38 min, -$9.5 |
+]]></code>
+  </section>
+  <section title="Stage 5 — signoffs">
+    <code lang="text"><![CDATA[
+[
+  {lane: AP,      owner: Maria Lopes, ts: 2026-05-23T10:00Z, channel: pr_comment},
+  {lane: Finance, owner: Pedro Silva, ts: 2026-05-23T10:15Z, channel: email},
+  {lane: IT,      owner: José Almeida, ts: 2026-05-23T11:02Z, channel: slack_ack}
+]
+]]></code>
+  </section>
+  <section title="Outcome">
+    <p>Future-state cuts 63 minutes per invoice and $15.4 cost. Hand off future_state[] to automation team as the implementation contract.</p>
+  </section>
+</text>

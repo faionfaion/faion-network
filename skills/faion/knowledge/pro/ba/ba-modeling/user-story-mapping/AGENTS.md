@@ -3,75 +3,99 @@ slug: user-story-mapping
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Arranges user stories along two dimensions: horizontal (user journey activities and tasks in narrative verb-phrases) and vertical (priority from essential to nice-to-have).
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Arrange stories along horizontal user-journey activities + vertical priority bands (R1 walking skeleton through R4 nice-to-have) as YAML-in-git for release planning.
 content_id: "c615a84e28b6c652"
+complexity: medium
+produces: spec
+est_tokens: 4000
 tags: [user-story-mapping, release-planning, agile, user-journey, backlog]
 ---
 # User Story Mapping
 
 ## Summary
 
-**One-sentence:** Arranges user stories along two dimensions: horizontal (user journey activities and tasks in narrative verb-phrases) and vertical (priority from essential to nice-to-have).
+**One-sentence:** Arrange stories along horizontal user-journey activities + vertical priority bands (R1 walking skeleton through R4 nice-to-have) as YAML-in-git for release planning.
 
-**One-paragraph:** Arranges user stories along two dimensions: horizontal (user journey activities and tasks in narrative verb-phrases) and vertical (priority from essential to nice-to-have). The result shows the complete user experience and enables release slicing into a walking skeleton (R1) plus enhancement releases. Map lives as YAML-in-git; renderers produce Markdown, Mermaid, and Miro outputs from that single source.
+**One-paragraph:** Story-map output is a 2-D YAML structure: x-axis is the user journey (activities → tasks), y-axis is release bands (R1 = walking skeleton; R2-R4 = enhancements). Map lives in git as canonical source; renderers produce Markdown, Mermaid, and Miro outputs. Output is a `spec` for release planning: thin R1 slice plus traceable backlog items.
+
+**Ефективно для:**
+
+- Pre-roadmap scope conversation: спостерігати walking skeleton + R2-R4 slices.
+- Auditing flat Jira backlog для журнейних gaps.
+- Migration / replatform — current journey overlay → target journey.
+- Stakeholder workshop prep — draft map як стартова точка.
 
 ## Applies If (ALL must hold)
 
-- Flat backlog of 50-500 items with no journey context — agents reverse-engineer activities from titles.
-- New product or module kick-off with personas and goals but no scope yet.
-- Release planning for a 3-6 month roadmap that needs a walking-skeleton cut with thin-slice defense.
-- Migration or replatforming — current journey mapped first, target journey overlaid to surface gaps.
-- Stakeholder workshop prep — agents pre-populate a draft map so the workshop debates cuts, not vocabulary.
-- Auditing an existing Jira backlog for journey coverage gaps.
+- Flat backlog of 50-500 items lacks journey context.
+- 3-6 month roadmap needs walking-skeleton release cut.
+- Personas + goals exist but scope is undefined.
+- Cross-functional team will reference the map for release planning.
 
 ## Skip If (ANY kills it)
 
-- Single-feature work (one screen, one form) — write 3 stories with AC and ship; mapping overhead exceeds value.
-- Pure platform / API-only services with no end-user journey — use interface-analysis and use-case-modeling.
-- Hard-deadline regulated work where scope is already defined by regulation.
-- Pre-PMF zero-to-one where the journey changes weekly — prototype + customer development instead.
-- Pure infrastructure / DevOps backlogs — non-user activities do not belong on a story map.
+- Single-feature work (one screen, one form).
+- API-only service with no end-user journey.
+- Hard-deadline regulated work with scope fixed by regulation.
+- Pre-PMF zero-to-one where the journey changes weekly.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Persona list | Markdown / YAML | UX |
+| Goal statements | Markdown | product |
+| Existing backlog (if any) | CSV / Jira export | product |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[use-case-modeling]] | Downstream — story-map nodes become use-case backlog titles |
+| [[acceptance-criteria]] | Downstream — R1 stories receive AC first |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 rules: walking-skeleton R1 has end-to-end story per activity, persona-tagged, YAML-in-git canonical, ≤8 activities, vertical bands fixed | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema + examples | 800 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns: feature-list masquerading as map, R1 not walking, persona collapse, prose journey | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure | 700 |
+| `content/06-decision-tree.xml` | essential | Routing on map shape | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `journey_extraction` | sonnet | Synthesize activities from interviews + backlog. |
+| `r1_slicing` | opus | Walking-skeleton cut requires careful goal coverage. |
+| `yaml_emit` | haiku | Mechanical emission of YAML structure. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/story-map.yaml` | Canonical YAML skeleton (activities → tasks → stories with release band) |
+| `templates/_smoke-test.yaml` | Minimum viable filled map |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-user-story-mapping.py` | Validate map against output-contract | Pre-commit; before roadmap review |
 
 ## Related
 
-- parent skill: `pro/ba/ba-modeling/`
+- [[use-case-modeling]]
+- [[acceptance-criteria]]
+- [[business-process-analysis]]
+- [[ba-planning]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes on map shape (R1 walking? persona-tagged? ≤8 activities?) to the rule firing.

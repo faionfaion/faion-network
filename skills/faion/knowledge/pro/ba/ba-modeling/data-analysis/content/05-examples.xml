@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Data Analysis Worked Example" version="1.1.0" est_tokens="700" depth="reference">
+  <summary>End-to-end example: customer entity across CRM + billing.</summary>
+  <section title="Step 1 — inventory">
+    <code lang="yaml"><![CDATA[
+sources:
+  - id: crm
+    type: postgres
+    entities: [customers, contacts, accounts]
+  - id: billing
+    type: stripe-export
+    entities: [customers, subscriptions, invoices]
+]]></code>
+  </section>
+  <section title="Step 2 — normalize fields (customer entity)">
+    <code lang="text"><![CDATA[
+| name        | type     | source_system | source_ref            | nullable | pii |
+|-------------|----------|---------------|-----------------------|----------|-----|
+| customer_id | uuid     | crm           | crm.customers.id      | false    | no  |
+| email       | string   | crm           | crm.customers.email   | false    | yes |
+| stripe_id   | string   | billing       | billing.customers.id  | true     | no  |
+| created_at  | datetime | crm           | crm.customers.created | false    | no  |
+]]></code>
+  </section>
+  <section title="Step 3 — owner">
+    <p>customer owner_name: Maria Lopes, owner_role: Data Steward (Revenue domain).</p>
+  </section>
+  <section title="Step 4 — DQ baseline">
+    <code lang="text"><![CDATA[
+| dimension     | score | method |
+|---------------|-------|--------|
+| accuracy      | 92    | CRM↔billing email match on 10k sample |
+| completeness  | 88    | non-null ratio on required fields |
+| consistency   | 75    | naming-convention check across sources |
+| timeliness    | 95    | freshness window p95 < 60s |
+| validity      | 91    | regex + enum checks |
+| uniqueness    | 99    | customer_id distinct ratio |
+]]></code>
+  </section>
+  <section title="Step 5 — business rules">
+    <code lang="text"><![CDATA[
+| id    | predicate                                       | severity |
+|-------|-------------------------------------------------|----------|
+| br-01 | regex(email, '^[^@]+@[^@]+$')                   | block    |
+| br-02 | stripe_id IS NULL OR stripe_id startswith 'cus_'| warn     |
+| br-03 | created_at <= now()                             | block    |
+]]></code>
+  </section>
+  <section title="Step 6 — publish">
+    <p>version_tag v1.0.0 committed. Downstream pins to ^1.0 range.</p>
+  </section>
+</text>

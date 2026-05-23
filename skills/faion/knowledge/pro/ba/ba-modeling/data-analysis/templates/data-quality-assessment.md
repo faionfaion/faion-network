@@ -1,3 +1,9 @@
+<!-- purpose: DQ baseline skeleton scoring six dimensions per entity -->
+<!-- consumes: sample data + measurement scripts -->
+<!-- produces: dq_baseline section of the dictionary -->
+<!-- depends-on: content/01-core-rules.xml r2 -->
+<!-- token-budget-impact: ~250 tokens -->
+
 # Data Quality Assessment: [Data Domain]
 
 **Assessor:** [Name]

@@ -1,3 +1,9 @@
+<!-- purpose: decision-record skeleton (decision + options + criteria + scores + sensitivity + signoff) -->
+<!-- consumes: sponsor brief + option dossiers + evidence URLs -->
+<!-- produces: decision-record artefact conforming to 02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
+<!-- token-budget-impact: ~450 tokens loaded as template context -->
+
 # Decision Analysis: [Decision Topic]
 
 **Version:** 1.0

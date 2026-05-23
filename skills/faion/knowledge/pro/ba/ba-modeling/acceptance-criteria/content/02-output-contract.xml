@@ -1,22 +1,101 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="acceptance-criteria Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Acceptance Criteria Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema draft-07 the produced artefact must satisfy. Validator (scripts/validate-acceptance-criteria.py) enforces required keys + per-field constraints. Forbidden patterns are explicit anti-shapes the validator rejects.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/acceptance-criteria.json",
+  "type": "object",
+  "required": [
+    "story_id",
+    "acs",
+    "trace"
+  ],
+  "properties": {
+    "story_id": {
+      "type": "string"
+    },
+    "acs": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": [
+          "ac_id",
+          "shape",
+          "body"
+        ],
+        "properties": {
+          "shape": {
+            "enum": [
+              "BDD",
+              "rule"
+            ]
+          },
+          "ac_id": {
+            "type": "string",
+            "pattern": "^AC-[A-Z0-9-]+-[0-9]{2}$"
+          }
+        }
+      }
+    },
+    "trace": {
+      "type": "object",
+      "required": [
+        "spec_ref",
+        "test_ref"
+      ]
+    }
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "story_id": "STORY-AUTH-12",
+  "acs": [
+    {
+      "ac_id": "AC-AUTH-12-01",
+      "shape": "BDD",
+      "body": "Given a user with a verified email, When they click reset-password, Then they receive an email within 60s."
+    },
+    {
+      "ac_id": "AC-AUTH-12-02",
+      "shape": "rule",
+      "body": "The reset link must expire after 30 minutes."
+    }
+  ],
+  "trace": {
+    "spec_ref": "spec.md#auth-reset",
+    "test_ref": "tests/auth_reset.spec.ts"
+  }
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "acs": [
+    {
+      "ac_id": "AC1",
+      "shape": "Gherkin"
+    }
+  ]
+}
+]]></code>
+    <note>ac_id pattern violated; shape not in enum; body missing; trace missing; story_id missing.</note>
+  </example>
+
+  <forbidden>
+    <pattern id="non-testable-ac" severity="high">AC body uses vague verbs ('should be user-friendly', 'performant').</pattern>
+    <pattern id="oversized-story" severity="medium">Single story has 12+ AC; story is implicitly an epic.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-acceptance-criteria.py">Validator script (stdlib-only; --help + --self-test).</reference>
 </text>

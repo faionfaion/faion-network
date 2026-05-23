@@ -3,80 +3,100 @@ slug: ba-onboarding-week-one-template
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Five-day, artefact-driven onboarding plan that gets a BA from "first commit" to "ready to write requirements" — day-level outputs committed to a week-one-pack/ folder.
 content_id: "30b1e1ecc35a9745"
-summary: Week-one onboarding checklist for a BA joining a new project — artefact pull, stakeholder discovery script, glossary intake, tooling setup — collapsed to a single five-day plan.
+complexity: medium
+produces: checklist
+est_tokens: 4000
 tags: [business-analyst, onboarding, p4-outsource, discovery, requirements-baseline]
 ---
 # BA Week-One Onboarding Template
 
 ## Summary
 
-**One-sentence:** A five-day, artefact-driven onboarding plan that gets a BA from "first commit to project" to "ready to write requirements" without improvising the discovery sequence each time.
+**One-sentence:** Five-day, artefact-driven onboarding plan that gets a BA from "first commit" to "ready to write requirements" — day-level outputs committed to a week-one-pack/ folder.
 
-**One-paragraph:** P4 outsource BAs rotate across projects every few weeks; the cost of starting from a blank page is paid every time. This methodology fixes the sequence — Day 1 artefact pull, Day 2 stakeholder map and interview script, Day 3 glossary intake, Day 4 process baseline, Day 5 risk register and gap memo — and pins each step to a concrete output committed to the project workspace. The deliverable is a `week-one-pack/` folder the BA can hand to a PM or successor without verbal context. Replaces the abstract `ba-planning` methodology with day-level execution rules.
+**One-paragraph:** P4 outsource BAs rotate across projects; cost of starting blank is paid every time. This methodology fixes the sequence — Day 1 artefact pull, Day 2 stakeholder map + interview script, Day 3 glossary intake, Day 4 process baseline, Day 5 risk register + gap memo — and pins each step to a committed output. Output is a `checklist` artefact (`week-one-pack/` validator status) the BA can hand to a PM or successor without verbal context.
+
+**Ефективно для:**
+
+- P4 outsource BA rotation across projects every few weeks.
+- New-project handoff від PM до BA з SOW + accessible workspace.
+- Audit-ready discovery trail (compliance, retention).
+- Mid-engagement successor handover where artefact pack still valid.
 
 ## Applies If (ALL must hold)
 
-- BA is joining a project they have not previously worked on (or has been away >60 days).
-- Project has a paying client and an existing scope document (SOW, contract, brief).
-- BA has >=20% capacity for the first 5 working days (cannot run the pack at 5h/week).
-- At least one product/business owner is reachable within the first three days.
+- BA joins project they have not worked on (or returned after >60 days).
+- Project has a paying client and an existing scope document (SOW, brief).
+- BA has ≥20% capacity for first 5 working days.
+- ≥1 product/business owner reachable within first 3 days.
 
 ## Skip If (ANY kills it)
 
-- Project lifetime <2 weeks — the pack costs more than it saves on micro-engagements.
-- BA is replacing an in-flight BA mid-sprint — use a hand-off checklist instead, not a fresh discovery.
-- Pre-sales or estimation engagement — use `ops-pre-sales-discovery` methodology, scope is different.
-- Internal product where the BA is also the founder — much of the discovery has already happened informally.
+- Project lifetime <2 weeks.
+- BA replacing an in-flight BA mid-sprint — use hand-off checklist instead.
+- Pre-sales / estimation engagement — use ops-pre-sales-discovery.
+- Internal product where BA is also founder — discovery informal already.
 
 ## Prerequisites
 
-- Read access to the existing project workspace (Confluence/Notion/Drive/Jira).
-- The signed SOW or brief (PDF or markdown) — written contract, not just a Slack thread.
-- Calendar slot booked for a 60-minute kickoff with the engagement manager or PM within 48h.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Workspace read access | Confluence / Notion / Drive / Jira | engagement manager |
+| Signed SOW or brief | PDF / Markdown | sales / PM |
+| Kickoff calendar slot | 60-min within 48h | engagement manager |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/business-analyst/elicitation-techniques` | Day-2 interviews lean on standard elicitation; this methodology does not re-teach it. |
-| `pro/ba/business-analyst/requirements-documentation` | Output of week one feeds the requirements doc; format is assumed familiar. |
+| [[ba-planning]] | Companion strategy doc; week-one is execution of plan |
+| [[business-process-analysis]] | Day-4 process baseline reuses BPA diagram patterns |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Five rules: artefact-first pull, named stakeholder map, written glossary, process baseline diagram, risk memo | ~900 |
-| `content/02-output-contract.xml` | essential | Shape of `week-one-pack/` folder, required files, naming, sign-off field | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes: stakeholder-by-Slack, copy-paste glossary, missing process diagram, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | 5 rules: artefact-first, named stakeholder map, written glossary, process diagram, gap memo | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for week-one-pack manifest + examples | 700 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: stakeholder-by-Slack, copy-paste glossary, missing diagram | 900 |
+| `content/04-procedure.xml` | essential | Day-by-day 5-step procedure | 700 |
+| `content/06-decision-tree.xml` | essential | Routing on pack-state completeness | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `artefact-inventory-from-workspace` | haiku | Mechanical listing of files + metadata |
-| `stakeholder-map-extraction` | sonnet | Reads SOW / kickoff transcript, infers roles + influence — bounded judgment |
-| `gap-memo-synthesis` | opus | Cross-artefact reasoning: what is missing, what conflicts |
+| `artefact-inventory-from-workspace` | haiku | Mechanical listing of files + metadata. |
+| `stakeholder-map-extraction` | sonnet | Reads SOW / kickoff transcript, infers roles + influence. |
+| `gap-memo-synthesis` | opus | Cross-artefact reasoning: what is missing, what conflicts. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/week-one-pack-skeleton/` | Folder skeleton with empty README, stakeholders.md, glossary.md, processes.md, risks.md |
+| `templates/week-one-pack-skeleton.md` | Folder skeleton with empty README, stakeholders.md, glossary.md, processes.md, risks.md |
 | `templates/kickoff-interview-script.md` | 12 standard kickoff questions + recording-consent prompt |
+| `templates/_smoke-test.json` | Minimum viable pack manifest |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-pack.py` | Confirm all required files present in `week-one-pack/` before declaring D5 complete | End of Day 5 |
+| `scripts/validate-ba-onboarding-week-one-template.py` | Validate pack manifest against output-contract; confirm all required files present | End of Day 5 + pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/business-analyst/`
-- peer methodology: `ba-planning`, `requirements-lifecycle`, `stakeholder-analysis`
-- external: [BABOK Guide v3 §3.1](https://www.iiba.org/career-resources/babok/) (planning & monitoring KA)
+- [[ba-planning]]
+- [[business-process-analysis]]
+- [[ba-to-qa-handoff-template]]
+- [[ba-standup-script-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Routes on pack state (which day's output is missing) to the rule firing. Use when reviewing whether Day-5 sign-off is achievable.

@@ -3,21 +3,32 @@ slug: acceptance-criteria
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Acceptance criteria (AC) define the exact conditions a requirement must satisfy to be accepted as complete.
-content_id: "96fc82f8dbdd8592"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces stable, testable acceptance criteria (Given/When/Then or rule-based) with cross-reference IDs (AC-FEATURE-NN) tying spec, test-plan, and CI report.
+content_id: "bf2825eff769aa87"
+complexity: medium
+produces: spec
+est_tokens: 4300
 tags: [acceptance-criteria, spec, testing, bdd, gherkin]
 ---
 # Acceptance Criteria
 
 ## Summary
 
-**One-sentence:** Acceptance criteria (AC) define the exact conditions a requirement must satisfy to be accepted as complete.
+**One-sentence:** Produces stable, testable acceptance criteria (Given/When/Then or rule-based) with cross-reference IDs (AC-FEATURE-NN) tying spec, test-plan, and CI report.
 
-**One-paragraph:** Acceptance criteria (AC) define the exact conditions a requirement must satisfy to be accepted as complete. Each criterion is testable, behaviour-level, and carries a stable ID (AC-FEATURE-NN) that cross-references spec.md, test-plan.md, PR description, CI report, and changelog. Two formats: Given/When/Then (Gherkin/BDD) for user-facing behaviour, and rule-based checklists for system constraints.
+**One-paragraph:** Produces stable, testable acceptance criteria (Given/When/Then or rule-based) with cross-reference IDs (AC-FEATURE-NN) tying spec, test-plan, and CI report. This methodology codifies the rules, output contract, antipatterns, and decision tree so the artefact is reproducible across teams and audits.
+
+**Ефективно для:**
+
+- SDD spec.md authoring перед coding subagent'ом — AC треба stable + testable.
+- Freeform user story → testable criteria translation.
+- Regression scenarios from bug reports — definition-of-done gate перед merge.
+- Story-slicing signal: AC count > 7 — час ділити.
+- Gherkin → Cucumber/Behave/Playwright wiring, де BA review і CI ділять один артефакт.
 
 ## Applies If (ALL must hold)
 
@@ -25,7 +36,7 @@ tags: [acceptance-criteria, spec, testing, bdd, gherkin]
 - Translating a freeform user story or stakeholder note into testable criteria.
 - Generating regression scenarios from a bug report so the fix has a definition-of-done gate before merge.
 - Splitting an oversized story: when AC count exceeds 7 per story, that is the slicing signal.
-- Wiring AC to executable specs (Gherkin to Cucumber / Behave / Playwright) so BA review and CI share one artifact.
+- Wiring AC to executable specs (Gherkin to Cucumber / Behave / Playwright) so BA review and CI share one artefact.
 
 ## Skip If (ANY kills it)
 
@@ -37,40 +48,59 @@ tags: [acceptance-criteria, spec, testing, bdd, gherkin]
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| User story / requirement | Markdown / Jira / spec.md | BA / PM |
+| Domain glossary | Markdown | BA team |
+| Test framework decision (Cucumber / Behave / Playwright / Jest) | ADR | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[requirements-documentation]] | requirements feed AC authoring |
+| [[requirements-traceability]] | AC IDs feed RTM |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology guard | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree on observable signals → conclusion refs to rule ids | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `classify-ac-shape` | haiku | Pick BDD (Gherkin) vs rule-based. |
+| `author-ac` | sonnet | Write testable AC with stable IDs. |
+| `review-ac-quality` | sonnet | Audit independence + atomicity + testability. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ac-bdd.md` | Given/When/Then BDD template with stable AC ID. |
+| `templates/ac-rule-based.md` | Rule-based AC template for system constraints. |
+| `templates/prompt-authoring.xml` | LLM prompt for AC authoring. |
+| `templates/prompt-verification.xml` | LLM prompt for AC quality review. |
+| `templates/ac-coverage.sh` | Shell helper computing AC coverage across stories. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-acceptance-criteria.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/ba-modeling/`
+- [[requirements-documentation]]
+- [[requirements-traceability]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

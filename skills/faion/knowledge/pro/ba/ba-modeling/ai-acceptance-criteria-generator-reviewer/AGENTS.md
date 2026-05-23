@@ -3,76 +3,97 @@ slug: ai-acceptance-criteria-generator-reviewer
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Numeric scoring rubric for ai acceptance criteria generator reviewer that converts qualitative judgment into a comparable 0-100 (or 1-5 weighted) signal usable across cohorts.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Reviewer rubric that scores LLM-drafted acceptance criteria across happy/negative/edge/perf/a11y dimensions and gates them on evidence + frozen weights.
 content_id: "595dae9f163ff027"
-tags: [ai, ba, scorecard]
+complexity: medium
+produces: rubric
+est_tokens: 4200
+tags: [ai, ba, acceptance-criteria, scorecard, llm]
 ---
 # AI Acceptance Criteria Generator Reviewer
 
 ## Summary
 
-**One-sentence:** Numeric scoring rubric for ai acceptance criteria generator reviewer that converts qualitative judgment into a comparable 0-100 (or 1-5 weighted) signal usable across cohorts.
+**One-sentence:** Reviewer rubric that scores LLM-drafted acceptance criteria across happy/negative/edge/perf/a11y dimensions and gates them on evidence + frozen weights.
 
-**One-paragraph:** Numeric scoring rubric for ai acceptance criteria generator reviewer that converts qualitative judgment into a comparable 0-100 (or 1-5 weighted) signal usable across cohorts. pro/ba-modeling/acceptance-criteria documents G-W-T format and INVEST. It assumes a human author. Modern BAs generate ACs with an LLM and then need a structured reviewer pass (happy path + negative + edge + perf thresholds + a11y). No reviewer rubric exists. Without it, AI-generated ACs leak straight into the backlog half-baked.
+**One-paragraph:** Modern BAs generate acceptance criteria with an LLM; the failure mode is half-baked AC slipping into the backlog. This methodology codifies the reviewer pass: a numeric 0-100 rubric with anchored dimensions (happy path, negative cases, edge cases, performance thresholds, accessibility), evidence-per-score discipline, frozen pre-scoring weights, and a reconciliation step when scores diverge. Output is a `rubric` artefact: `dimensions[]` + `instance_scores[]` + `weighted_total`.
+
+**Ефективно для:**
+
+- Reviewer pass на LLM-згенерованих acceptance criteria перед merge у backlog.
+- Cohort comparison кількох AC варіантів від різних агентів / промптів.
+- Audit trail для регульованих доменів — кожен score з evidence_ref.
+- Calibration multi-rater сесії для P4 BA команди.
 
 ## Applies If (ALL must hold)
 
-- You evaluate >1 instance against the same criteria addressed by ai acceptance criteria generator reviewer (calls, vendors, candidates).
-- Scores will be used for a binary decision (advance, reject, prioritize).
+- LLM generates AC drafts at scale (≥3 stories/sprint) and a structured reviewer pass is required.
 - Each criterion has a defined 1-5 anchor; raters trained on the rubric before scoring.
-- ≥2 raters per instance for any score that gates a >$10k or strategic decision.
+- Scores will be used for a binary decision (advance to dev, reject, rework).
+- ≥2 raters per instance for any AC that gates a >$10k or strategic story.
 
 ## Skip If (ANY kills it)
 
-- n < 3 instances — gut feel is faster and accuracy is similar.
-- Decisions are single-criterion (price-only, deadline-only) — full rubric is overhead.
-- Strategic, single-shot decisions where qualitative narrative beats numeric blend.
+- n < 3 AC sets — gut feel is faster and accuracy is similar.
+- Decisions are single-criterion (deadline-only) — full rubric is overhead.
+- One-off prototype AC that will be rewritten next sprint anyway.
 
 ## Prerequisites
 
-- Rubric file or sheet with anchors written for each criterion 1-5.
-- Rater(s) trained on at least 3 calibration examples before scoring real instances.
-- Storage for scores reachable from downstream decision step (CRM, spreadsheet).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| LLM-drafted AC set | Markdown / Gherkin | upstream story generator |
+| Rubric anchors file | YAML / Markdown table | BA lead |
+| Evidence pointers | URLs, doc paragraphs, trace IDs | story author / prompt log |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/ba-modeling/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| [[acceptance-criteria]] | Canonical AC format (Gherkin / G-W-T) and INVEST checks |
+| [[ai-elicitation-prompt-patterns]] | The prompt patterns whose output this rubric scores |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 4 testable rules: anchored scales, evidence per score, ≥2 raters for high-stakes, frozen weights | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 700 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: missing evidence, weight reverse-engineering, halo, generic anchors, single-rater high-stakes | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure: define dimensions → freeze weights → score with evidence → reconcile → emit composite | 700 |
+| `content/06-decision-tree.xml` | essential | Routing on AC stakes + rater count → which rule fires | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `per_criterion_score` | sonnet | Anchored 1-5 judgment per dimension |
-| `multi_rater_reconciliation` | opus | Resolve divergent scores with rationale |
+| `per_criterion_score` | sonnet | Anchored 1-5 judgment per dimension. |
+| `evidence_extraction` | haiku | Mechanical pull of quoted evidence from drafts. |
+| `multi_rater_reconciliation` | opus | Resolve divergent scores with rationale. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/rubric.json` | Rubric skeleton with anchors_1_3_5 + weights + dimensions |
+| `templates/_smoke-test.json` | Minimum viable filled-in rubric for one AC set |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-ai-acceptance-criteria-generator-reviewer.py` | Validate emitted rubric against output-contract schema | CI on each rubric file; pre-commit gate |
 
 ## Related
 
-- parent skill: `pro/ba/ba-modeling/`
-- peer methodologies: see siblings under `pro/ba/ba-modeling/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[acceptance-criteria]]
+- [[ai-elicitation-prompt-patterns]]
+- [[ai-assisted-requirements-elicitation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes on observable signals (AC stakes value, rater count, evidence completeness) to one of the 4 core rules. Use it when in doubt whether a single-rater pass suffices or reconciliation is required.

@@ -1,3 +1,9 @@
+<!-- purpose: current-state documentation skeleton (lanes + steps + sources) -->
+<!-- consumes: SOPs, transcripts, ticket exports -->
+<!-- produces: current_state section of the 02-output-contract.xml report -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~350 tokens loaded as template context -->
+
 # Process Documentation: [Process Name]
 
 **Version:** [X.X]

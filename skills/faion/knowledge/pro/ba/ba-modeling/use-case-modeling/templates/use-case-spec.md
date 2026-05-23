@@ -1,3 +1,9 @@
+<!-- purpose: per-use-case skeleton (actor + goal + pre/post + flows) -->
+<!-- consumes: actor inventory + backlog title + glossary -->
+<!-- produces: one entry in use_cases[] -->
+<!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
+<!-- token-budget-impact: ~350 tokens loaded as template context -->
+
 # Use Case: [UC-XXX] [Verb+Noun Name]
 
 **Version:** 1.0

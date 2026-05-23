@@ -1,31 +1,88 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="AI Elicitation Prompt Patterns Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a AI Elicitation Prompt Patterns deliverable. Subagent must satisfy this before returning.</summary>
-  <output-contract>
-    <required>
-      <field name="prompt_path" format="git_path_with_sha" />
-      <field name="model_id" format="provider_model_version" />
-      <field name="budget" type="object" schema="{tokens_in,tokens_out,cost_usd}" />
-      <field name="eval_reference" format="test_file_or_id" />
-      <field name="output_schema" format="json_schema_path_or_inline" />
-    </required>
-    <forbidden>
-      <pattern id="f1">untracked prompt edits (chat-tab only)</pattern>
-      <pattern id="f2">free-text output where downstream parses</pattern>
-      <pattern id="f3">missing eval_reference</pattern>
-      <pattern id="f4">budget unset</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>Pin to provider quirk only when documented in metadata.</transformation>
-    </allowed-transformations>
-    <schema-reference path="templates/output-schema.json" />
-  </output-contract>
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="AI Elicitation Prompt Patterns Output Contract" version="1.1.0" est_tokens="750" depth="essential">
+  <summary>Pins the shape of a prompt-pattern deliverable. Subagent must satisfy this before returning.</summary>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-elicitation-prompt-pattern.json",
+  "type": "object",
+  "required": ["pattern_id", "phase", "slots", "skeleton", "output_schema_ref", "eval_reference", "budget", "version_tag"],
+  "properties": {
+    "pattern_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]+$"},
+    "phase": {"type": "string", "enum": ["interview-prep", "follow-up", "paraphrase-back", "persona-probe"]},
+    "slots": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object", "required": ["name", "type"],
+        "properties": {
+          "name": {"type": "string"},
+          "type": {"type": "string", "enum": ["string", "list", "object"]},
+          "required": {"type": "boolean", "default": true}
+        }
+      }
+    },
+    "skeleton": {"type": "string", "minLength": 32},
+    "output_schema_ref": {"type": "string", "minLength": 1},
+    "eval_reference": {"type": "string", "minLength": 1},
+    "budget": {
+      "type": "object", "required": ["tokens_in", "tokens_out"],
+      "properties": {
+        "tokens_in": {"type": "integer", "minimum": 1},
+        "tokens_out": {"type": "integer", "minimum": 1},
+        "cost_usd_cap": {"type": "number", "minimum": 0}
+      }
+    },
+    "version_tag": {"type": "string", "pattern": "^v\\d+\\.\\d+\\.\\d+$"}
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
+  <section title="Examples">
+    <example type="good" title="Valid interview-prep pattern">
+      <code lang="json"><![CDATA[
+{
+  "pattern_id": "interview-prep-v1",
+  "phase": "interview-prep",
+  "slots": [
+    {"name": "stakeholder_role", "type": "string", "required": true},
+    {"name": "project_brief", "type": "string", "required": true},
+    {"name": "prior_artefacts", "type": "list", "required": false}
+  ],
+  "skeleton": "You are preparing an elicitation interview for {{stakeholder_role}}. Brief: {{project_brief}}. Draft 8 open questions...",
+  "output_schema_ref": "templates/output-schema.json#/interview_questions",
+  "eval_reference": "evals/interview-prep-v1.jsonl",
+  "budget": {"tokens_in": 800, "tokens_out": 400, "cost_usd_cap": 0.05},
+  "version_tag": "v1.0.0"
+}
+]]></code>
+      <note>Slots typed; output schema referenced; eval set linked; budget capped; version pinned.</note>
+    </example>
+    <example type="bad" title="Invalid — free-text without schema">
+      <code lang="json"><![CDATA[
+{
+  "pattern_id": "InterviewPrep",
+  "skeleton": "Draft some questions about the project",
+  "version_tag": "latest"
+}
+]]></code>
+      <note>pattern_id wrong case, no slots, no schema, no eval, no budget, version_tag not semver.</note>
+    </example>
+  </section>
+  <section title="Forbidden patterns">
     <list>
-      <item>Prompt versioned</item>
-      <item>Eval linked</item>
-      <item>Budget set</item>
-      <item>Schema present</item>
+      <item>untracked prompt edits — every change bumps version_tag (rule r3)</item>
+      <item>free-text output without output_schema_ref (rule r2)</item>
+      <item>missing eval_reference (rule r2)</item>
+      <item>budget unset or tokens_out unbounded (rule r4)</item>
     </list>
   </section>
+  <section title="Allowed transformations">
+    <list>
+      <item>Pin to provider quirk only when documented in slots[].provider_specific_note.</item>
+    </list>
+  </section>
+  <reference path="templates/prompt-pattern.yaml"/>
+  <reference path="scripts/validate-ai-elicitation-prompt-patterns.py"/>
 </text>

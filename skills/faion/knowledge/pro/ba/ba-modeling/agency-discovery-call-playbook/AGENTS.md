@@ -3,77 +3,95 @@ slug: agency-discovery-call-playbook
 tier: pro
 group: ba
 domain: ba
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: End-to-end playbook for agency discovery call playbook that walks an operator from trigger to closed outcome with named artefacts at each step.
-content_id: "eea8a913e43d5ccb"
-tags: [agency, ba, playbook]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a 45-minute discovery-call playbook output: budget range, decision-maker, fit score, and next-step recommendation with verbatim quotes.
+content_id: "b747071d6b799df6"
+complexity: medium
+produces: report
+est_tokens: 4300
+tags: [agency, ba, discovery, sales, playbook]
 ---
 # Agency Discovery Call Playbook
 
 ## Summary
 
-**One-sentence:** End-to-end playbook for agency discovery call playbook that walks an operator from trigger to closed outcome with named artefacts at each step.
+**One-sentence:** Produces a 45-minute discovery-call playbook output: budget range, decision-maker, fit score, and next-step recommendation with verbatim quotes.
 
-**One-paragraph:** End-to-end playbook for agency discovery call playbook that walks an operator from trigger to closed outcome with named artefacts at each step. Agency founders need a service-business-shaped discovery script that surfaces budget, decision-maker, and fit in 45 minutes. Existing elicitation methodologies are BA-project-shaped, not sales-discovery-shaped.
+**One-paragraph:** Produces a 45-minute discovery-call playbook output: budget range, decision-maker, fit score, and next-step recommendation with verbatim quotes. This methodology codifies the rules, output contract, antipatterns, and decision tree so the artefact is reproducible across teams and audits.
+
+**Ефективно для:**
+
+- Agency-founder running new-client discovery — потрібен 45-min structured script.
+- Inbound lead screening: budget + decision-maker + fit за 45 хвилин.
+- Sales-discovery (не BA-discovery), де потрібен sales-shaped playbook.
+- Post-call writeup для proposal author — кваліфікований handoff.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by agency discovery call playbook end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- Agency founder running new-client discovery calls and needing repeatable structure.
+- Inbound lead screening where 45 minutes must yield budget / decision-maker / fit.
+- Sales-discovery vs BA-discovery confusion — sales context needs sales-shaped playbook.
+- Post-call writeup that downstream proposal author consumes.
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- Existing client where discovery is replaced by account management.
+- Pure inbound where lead has filled a detailed form covering budget + decision-maker.
+- Pre-discovery rapport call (no scope context yet).
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Lead intake data (form / referral note) | CRM record | sales ops |
+| Service-line catalogue | Markdown | agency partners |
+| Pricing range table | Markdown / spreadsheet | agency partners |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ba/ba-modeling/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| [[elicitation-techniques]] | interview technique base |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology guard | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid/invalid/forbidden examples | 800 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom / root-cause / fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with inputs/actions/outputs | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Decision tree on observable signals → conclusion refs to rule ids | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `input_collection` | haiku | Structured gather from inputs |
-| `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| `prep-call` | haiku | Mechanical assembly of lead intake + service catalogue. |
+| `run-call-script` | sonnet | Apply script branches against state. |
+| `writeup-findings` | opus | Synthesise narrative + recommendation. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/discovery-call-script.md` | 45-min call script with 4 phases. |
+| `templates/post-call-writeup.md` | Writeup template: budget, decision-maker, fit, next step. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-agency-discovery-call-playbook.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 
-- parent skill: `pro/ba/ba-modeling/`
-- peer methodologies: see siblings under `pro/ba/ba-modeling/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[elicitation-techniques]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

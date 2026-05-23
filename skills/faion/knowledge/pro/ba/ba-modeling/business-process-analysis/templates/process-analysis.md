@@ -1,3 +1,9 @@
+<!-- purpose: process-analysis report skeleton (current + analysis + future + signoff) -->
+<!-- consumes: process evidence (SOPs, tickets, transcripts) + named stakeholders -->
+<!-- produces: report artefact conforming to 02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
+<!-- token-budget-impact: ~400 tokens loaded as template context -->
+
 # Process Analysis: [Process Name]
 
 **Date:** [Date]

@@ -1,22 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="use-case-modeling Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Use Case Modeling Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Pins the use-case set deliverable.</summary>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/use-case-set.json",
+  "type": "object",
+  "required": ["set_id", "version_tag", "use_cases"],
+  "properties": {
+    "set_id": {"type": "string"},
+    "version_tag": {"type": "string", "pattern": "^v\\d+\\.\\d+\\.\\d+$"},
+    "use_cases": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "trace_id", "primary_actor", "goal", "preconditions", "postconditions", "main_success_scenario", "alternative_flows", "exception_flows"],
+        "properties": {
+          "id": {"type": "string"},
+          "trace_id": {"type": "string", "minLength": 2},
+          "primary_actor": {"type": "string", "minLength": 2},
+          "secondary_actors": {"type": "array", "items": {"type": "string"}},
+          "goal": {"type": "string", "minLength": 4},
+          "preconditions": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "[=!<>]"}},
+          "postconditions": {"type": "array", "minItems": 1, "items": {"type": "string", "pattern": "[=!<>]"}},
+          "main_success_scenario": {"type": "array", "minItems": 3, "items": {"type": "string"}},
+          "alternative_flows": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["id", "trigger", "steps"]}},
+          "exception_flows": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["id", "trigger", "steps"]}}
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
+  <section title="Examples">
+    <example type="good" title="Valid use case">
+      <code lang="json"><![CDATA[
+{
+  "set_id": "appointments-mvp", "version_tag": "v1.0.0",
+  "use_cases": [{
+    "id": "uc-book-appointment", "trace_id": "PROD-432",
+    "primary_actor": "Authenticated Patient",
+    "secondary_actors": ["Clinic Scheduling Service", "SMS Gateway"],
+    "goal": "Book a clinician appointment for a specific date/time",
+    "preconditions": ["session.authenticated == true", "patient.has_active_insurance == true"],
+    "postconditions": ["appointment.status == 'booked'", "sms_sent == true"],
+    "main_success_scenario": [
+      "1. Patient selects clinician + slot",
+      "2. System reserves slot",
+      "3. System dispatches SMS",
+      "4. System returns booking id"
+    ],
+    "alternative_flows": [{"id": "alt-1", "trigger": "slot becomes unavailable mid-flow", "steps": ["System surfaces next 3 slots; patient picks one"]}],
+    "exception_flows": [{"id": "exc-1", "trigger": "SMS gateway timeout", "steps": ["System persists booking; queues SMS retry"]}]
+  }]
+}
+]]></code>
+      <note>Named actor; predicates; triple flow.</note>
+    </example>
+    <example type="bad" title="Single-flow + anonymous">
+      <code lang="json"><![CDATA[
+{"set_id": "x", "version_tag": "v1.0.0", "use_cases": [
+  {"id": "uc-1", "trace_id": "", "primary_actor": "User", "goal": "Do stuff",
+   "preconditions": ["logged in"], "postconditions": ["happy"],
+   "main_success_scenario": ["one step"], "alternative_flows": [], "exception_flows": []}]}
+]]></code>
+      <note>Anonymous; prose preconditions; missing alt/exception.</note>
+    </example>
+  </section>
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>primary_actor == "User" or empty (rule r1)</item>
+      <item>main_success_scenario shorter than 3 steps (rule r2)</item>
+      <item>alternative_flows[] or exception_flows[] empty (rule r2)</item>
+      <item>preconditions/postconditions without operator [=!&lt;&gt;] (rule r3)</item>
+      <item>trace_id empty (rule r5)</item>
     </list>
   </section>
+  <reference path="templates/use-case.md"/>
+  <reference path="scripts/validate-use-case-modeling.py"/>
 </text>

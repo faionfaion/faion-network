@@ -1,39 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Ba Standup Script Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Ba Standup Script Template output. Subagent must satisfy this before returning to the caller.</summary>
-
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a &apos;no decision yet&apos; state to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/ba-standup-script-template.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="BA Standup Script Output Contract" version="1.1.0" est_tokens="750" depth="essential">
+  <summary>Pins the 3-bullet daily standup artefact shape.</summary>
+  <section title="JSON Schema (draft-07)">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ba-standup-script.json",
+  "type": "object",
+  "required": ["date", "ba_name", "clarifications_needed", "ac_ready_for_dev", "blockers"],
+  "properties": {
+    "date": {"type": "string", "format": "date"},
+    "ba_name": {"type": "string", "minLength": 2},
+    "clarifications_needed": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["story_id", "question", "stakeholder"],
+        "properties": {
+          "story_id": {"type": "string"},
+          "question": {"type": "string", "minLength": 8},
+          "stakeholder": {"type": "string", "minLength": 2}
+        }
+      }
+    },
+    "ac_ready_for_dev": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["story_id", "ac_count"],
+        "properties": {
+          "story_id": {"type": "string"},
+          "ac_count": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "blockers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["description", "owner", "raised_at"],
+        "properties": {
+          "description": {"type": "string", "minLength": 8},
+          "owner": {"type": "string", "minLength": 2},
+          "raised_at": {"type": "string", "format": "date-time"},
+          "severity": {"type": "string", "enum": ["low", "medium", "high"]}
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
+  </section>
+  <section title="Examples">
+    <example type="good" title="Valid daily standup script">
+      <code lang="json"><![CDATA[
+{
+  "date": "2026-05-23",
+  "ba_name": "Maria Lopes",
+  "clarifications_needed": [
+    {"story_id": "STORY-101", "question": "Should refunds be allowed after 30 days?", "stakeholder": "Pedro Silva"}
+  ],
+  "ac_ready_for_dev": [
+    {"story_id": "STORY-098", "ac_count": 5},
+    {"story_id": "STORY-099", "ac_count": 3}
+  ],
+  "blockers": [
+    {"description": "Waiting on DPO classification for PII fields", "owner": "Ana Rodrigues", "raised_at": "2026-05-22T10:00:00Z", "severity": "high"}
+  ]
+}
+]]></code>
+      <note>Named stakeholders + blocker owner; story-level traceability.</note>
+    </example>
+    <example type="bad" title="Invalid — anonymous blocker">
+      <code lang="json"><![CDATA[
+{"date": "2026-05-23", "ba_name": "x", "clarifications_needed": [],
+ "ac_ready_for_dev": [], "blockers": [{"description": "stuff", "owner": "team", "raised_at": "x"}]}
+]]></code>
+      <note>Anonymous owner; short description; missing severity.</note>
+    </example>
+  </section>
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/ba-standup-script-template.json</item>
+      <item>blockers[].owner == "team" or single-token (rule r3)</item>
+      <item>clarifications_needed[] missing stakeholder name (rule r3)</item>
+      <item>ac_ready_for_dev[] without story_id (rule r2)</item>
+      <item>date not ISO 8601 (rule r4)</item>
     </list>
   </section>
+  <reference path="templates/standup-script.json"/>
+  <reference path="scripts/validate-ba-standup-script-template.py"/>
 </text>
