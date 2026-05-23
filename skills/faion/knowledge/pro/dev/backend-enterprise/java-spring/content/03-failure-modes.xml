@@ -1,42 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="java-spring Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for java-spring as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Spring Boot Layered Architecture Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 antipatterns observed in real Spring Boot 3 codebases. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Controller returns entity type directly: `public User findById(Long id)` without DTO.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Lazy-loading fields serialize to null. Hibernate proxies leak into JSON. Schema changes break API contracts. Always use DTOs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Service method missing `@Transactional` on multi-step writes (save → update → delete sequence).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each JDBC call auto-commits. Partial failure leaves inconsistent state. Partial rollback impossible.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Calling another `@Transactional` method on `this` instead of injecting the bean.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Spring proxies don't wrap self-invocation. The called method runs without a transaction, silently.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Lazy-loading a collection in the controller and then serializing it: `return user.getRoles().stream()...`</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>LazyInitializationException if the session is closed after the service call. Move the fetch into the repository query or service layer.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Endpoint returning `List&lt;DTO&gt;` from `findAll()` on a 10M-row table.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>OOM, timeout, and query lock contention. Prod incident.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Loading a user, then looping over roles inside the controller and issuing a separate query per role.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>N+1 queries. 1 user + 100 roles = 101 queries. Explicit `LEFT JOIN FETCH` solves this in 1 query.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Service returning `null` or an empty Optional without throwing an exception.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Controller must null-check every result. Inconsistent error messages. Global advice cannot handle it uniformly.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="entity-leak-via-jsonignore" severity="high">
+      <symptom>Endpoint returns Hibernate proxy fields or throws `LazyInitializationException`; agent papers over with `@JsonIgnore` on the entity.</symptom>
+      <root-cause source="Internal — entity-leak audit 2026-Q1">Controller returns entity instead of DTO.</root-cause>
+      <fix>Define a Java record DTO; map via MapStruct in the service layer; remove `@JsonIgnore` from the entity.</fix>
+    </antipattern>
+
+    <antipattern id="missing-transactional" severity="high">
+      <symptom>Multi-step write succeeds partially after a runtime exception; downstream invariants broken; database in inconsistent state.</symptom>
+      <root-cause source="Spring transaction docs">Service write method missing `@Transactional`; each JDBC call auto-commits.</root-cause>
+      <fix>Annotate every write method `@Transactional`. Add a class-level `@Transactional(readOnly = true)` default; let writes override.</fix>
+    </antipattern>
+
+    <antipattern id="unbounded-findall" severity="high">
+      <symptom>Endpoint times out as table grows; profile shows full-table scan returning 5M rows.</symptom>
+      <root-cause source="Spring Data JPA docs">`findAll()` without `Pageable` "for simplicity".</root-cause>
+      <fix>Accept `Pageable` and return `Page&lt;DTO&gt;`; default size = 20. Reject list endpoints without `Pageable` in review.</fix>
+    </antipattern>
+
+    <antipattern id="mapstruct-missing-from-pom" severity="medium">
+      <symptom>Mapper interface compiles but throws `InstantiationException` at runtime: `cannot instantiate interface UserMapper`.</symptom>
+      <root-cause source="MapStruct docs">`mapstruct-processor` annotation processor missing from `pom.xml` / `build.gradle`; no impl generated.</root-cause>
+      <fix>Configure the annotation processor explicitly; verify `target/generated-sources/annotations/.../UserMapperImpl.java` is produced.</fix>
+    </antipattern>
+
+    <antipattern id="jakarta-vs-javax-mix" severity="high">
+      <symptom>Boot 3 codebase compiles locally but throws `NoSuchMethodError` in CI: a transitive dep still uses `javax.persistence.Entity`.</symptom>
+      <root-cause source="Spring Boot 3 migration guide">Imports drifted; some files still on `javax.*` after the Jakarta migration.</root-cause>
+      <fix>Run `grep -r 'javax\.persistence\|javax\.validation' src/` in CI; fail the build on any hit. Migrate all imports.</fix>
+    </antipattern>
+
+    <antipattern id="transactional-self-invocation" severity="high">
+      <symptom>`@Transactional` method called from another method on `this`; transaction never starts; rollback never happens.</symptom>
+      <root-cause source="Spring AOP docs">Self-invocation bypasses the proxy that wraps `@Transactional`.</root-cause>
+      <fix>Move the `@Transactional` method to a separate bean and inject it; or use `AopContext.currentProxy()` (with `exposeProxy=true`) as a last resort.</fix>
+    </antipattern>
+
   </section>
 </text>

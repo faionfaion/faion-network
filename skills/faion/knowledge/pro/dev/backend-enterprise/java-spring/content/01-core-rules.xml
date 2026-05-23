@@ -1,23 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="java-spring Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for java-spring. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Spring Boot Layered Architecture Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the canonical layered Spring Boot 3 pattern. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Controllers MUST be thin: receive HTTP request, call service, return `ResponseEntity`. Services MUST contain business logic and MUST annotate write methods with `@Transactional` (non-write methods default to `@Transactional(readOnly=true)` at class level). Repositories MUST be `JpaRepository` subinterfaces with custom JPQL queries only when needed; use `Specification` for complex filters. Controllers MUST NEVER return entity types; always return DTOs.</statement>
-      <rationale source="v1-source">Layering isolates database schema changes from HTTP API contracts. `@Transactional` on writes ensures multi-step operations succeed-or-rollback atomically. Testability is maximized: slice tests can mock service, unit tests can mock repository. DTOs prevent lazy-loading exceptions and Hibernate proxy leaks.</rationale>
+
+    <rule id="dto-record-never-entity" testable="true" depth="essential">
+      <statement>Controllers MUST return Java record DTOs (`public record UserResponse(...)`); they MUST NOT return JPA entities. Mapping happens via MapStruct generated mappers inside the service layer.</statement>
+      <rationale source="Internal — entity-leak audit 2026-Q1">Returning entities leaks Hibernate proxy state, lazy associations, and internal schema; `@JsonIgnore` patches the symptom, not the cause.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Entities MUST use constructor injection via `@RequiredArgsConstructor` (Lombok). Entities MUST have an `@Id` field of type `Long` and MUST use `@CreationTimestamp` / `@UpdateTimestamp` for audit columns. Entities MUST NOT be returned from controllers; always map to DTO via MapStruct. Lazy-loaded fields (e.g., `@OneToMany`) MUST be fetched explicitly via `LEFT JOIN FETCH` or converted in the service layer.</statement>
-      <rationale source="v1-source">Audit columns track data mutations for compliance and debugging. MapStruct generates efficient mapping code at compile time. Explicit fetch prevents N+1 and LazyInitializationException. Controlling what's serialized prevents information leaks.</rationale>
+
+    <rule id="transactional-on-writes" testable="true" depth="essential">
+      <statement>Every service method that performs writes MUST be annotated `@Transactional`. Class-level `@Transactional(readOnly = true)` is the default; write methods override locally.</statement>
+      <rationale source="Spring transaction docs">Without `@Transactional` on multi-step writes, each JDBC call auto-commits; a partial failure leaves the database inconsistent with no rollback.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Every list endpoint MUST accept `Pageable` as a parameter and MUST return `Page&lt;DTO&gt;`. Queries returning multiple rows MUST use `LEFT JOIN FETCH` or separate queries to prevent N+1. Missing database indexes on frequently queried columns MUST be flagged in code review.</statement>
-      <rationale source="v1-source">Pagination prevents scanning multi-million-row tables in a single query, avoiding OOM and timeout. `Pageable` leverages Spring Data's limit/offset and page size defaults. N+1 queries cause latency cascades in prod; `JOIN FETCH` solves it at the repository layer.</rationale>
+
+    <rule id="pageable-on-list" testable="true" depth="essential">
+      <statement>Every list endpoint MUST accept `Pageable` and return `Page&lt;DTO&gt;` (or `Slice`). `findAll()` without `Pageable` on growable tables is forbidden.</statement>
+      <rationale source="Spring Data JPA docs">Unbounded `findAll()` causes OOM and timeouts as tables grow; `Pageable` enforces a contract that callers paginate.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Request DTOs MUST use Bean Validation annotations (`@NotBlank`, `@Email`, `@Size`, etc.). Controllers MUST NOT manually check validation; rely on `@Valid` to trigger `MethodArgumentNotValidException`. Services MUST throw domain exceptions (e.g., `ResourceNotFoundException`, `ConflictException`). A global `@RestControllerAdvice` MUST map exceptions to `ResponseEntity` with structured error payloads (status, message, field errors).</statement>
-      <rationale source="v1-source">Bean Validation is declarative and reusable. Global advice ensures consistent error format across endpoints. Exceptions propagate intent without explicit try-catch boilerplate. Field errors in the response help clients pinpoint validation failures.</rationale>
+
+    <rule id="bcrypt-in-service" testable="true" depth="essential">
+      <statement>Passwords MUST be hashed via `PasswordEncoder` (BCrypt) inside the service layer. Controllers MUST NOT accept pre-hashed passwords from the client.</statement>
+      <rationale source="OWASP password storage cheat sheet">Client-supplied hashes let an attacker replay an old hash; server-side hashing centralises the cost factor + algorithm choice.</rationale>
     </rule>
+
+    <rule id="mapstruct-annotation-processor" testable="true" depth="essential">
+      <statement>`pom.xml` (or `build.gradle`) MUST configure the MapStruct annotation processor. Hand-coded DTO ↔ entity mappers are forbidden — they drift silently from the schema.</statement>
+      <rationale source="MapStruct docs">Annotation-processor mappers fail at compile when a property goes missing; hand-coded mappers leak old field names into runtime.</rationale>
+    </rule>
+
+    <rule id="jakarta-not-javax" testable="true" depth="essential">
+      <statement>Spring Boot 3 imports MUST be `jakarta.*` (`jakarta.persistence`, `jakarta.validation`). `javax.persistence` / `javax.validation` imports are forbidden in a Boot 3 codebase.</statement>
+      <rationale source="Spring Boot 3 migration guide">Boot 3 migrated to Jakarta EE 9+ namespaces; mixing `javax.*` produces compile errors or — worse — silent runtime failures when both jars are on the classpath.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

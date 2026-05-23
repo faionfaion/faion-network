@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: CI script verifying jakarta imports + MapStruct processor + @Transactional on writes
+# consumes: project root path
+# produces: pass/fail gate per jakarta-not-javax + mapstruct-annotation-processor rules
+# depends-on: content/01-core-rules.xml rules jakarta-not-javax, mapstruct-annotation-processor
+# token-budget-impact: ~250 tokens when loaded as context
 # check.sh — block PR if entities leak from controllers or build/style fails.
 # Usage: bash scripts/check.sh
 set -euo pipefail

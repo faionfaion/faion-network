@@ -1,39 +1,124 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Architecture Review Meeting Facilitation Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Architecture Review Meeting Facilitation output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Architecture Review Meeting Facilitation Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the playbook-step artefact this methodology produces. Validator script enforces required keys, field shapes, and forbidden patterns. Output that fails the schema is rejected.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/architecture-review-meeting-facilitation.json",
+  "title": "Architecture Review Meeting Facilitation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artefact_id",
+    "owner",
+    "step_name",
+    "inputs",
+    "actions",
+    "outputs",
+    "exit_criteria",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 2
+    },
+    "step_name": {
+      "type": "string"
+    },
+    "inputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "outputs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "exit_criteria": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">owner = &apos;team&apos; / &apos;we&apos; / &apos;us&apos; / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not &apos;no-op&apos;</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "architecture-review-meeting-facilitation-step-1",
+  "owner": "ruslan@faion.net",
+  "step_name": "scope-and-prepare",
+  "inputs": [
+    "intake-doc.md"
+  ],
+  "actions": [
+    "align on objective",
+    "list deliverables",
+    "set exit gate"
+  ],
+  "outputs": [
+    "scope memo"
+  ],
+  "exit_criteria": [
+    "scope memo signed by sponsor"
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
 
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a &apos;no decision yet&apos; state to status=&apos;pending&apos; rather than fabricating a decision.</transformation>
-    </allowed-transformations>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "BAD ID",
+  "owner": "",
+  "version": "draft"
+}
+]]></code>
+    <note>artefact_id violates pattern; owner is empty; version not semver; required fields missing.</note>
+  </example>
 
-    <schema-reference path="templates/architecture-review-meeting-facilitation.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/architecture-review-meeting-facilitation.json</item>
+      <item>owner equals "team" / "we" / "us" / empty string</item>
+      <item>rationale or evidence that does not cite at least one input artefact by name</item>
+      <item>version frozen at 1.0.0 when decision content has changed</item>
+      <item>artefact_id reuses an existing id within the same store</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-architecture-review-meeting-facilitation.py">Validator script (stdlib-only; --help + --self-test)</reference>
 </text>

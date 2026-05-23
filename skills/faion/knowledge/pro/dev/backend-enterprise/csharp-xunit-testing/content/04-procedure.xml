@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="xUnit Testing Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>6-step procedure to scaffold and harden an xUnit test suite end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="scaffold-test-project">
+      <input>Production project name, target framework</input>
+      <action>Create `&lt;ProjectName&gt;.Tests` project. Reference xUnit, Moq, FluentAssertions, Microsoft.AspNetCore.Mvc.Testing, Testcontainers, Coverlet.Collector. Mirror production folder layout (`Features/...`).</action>
+      <output>Empty test project compiling</output>
+    </step>
+
+    <step n="2" name="write-unit-tests">
+      <input>Service / validator / domain code</input>
+      <action>For each branch in the SUT, add a `[Fact]` or `[Theory]` named `MethodUnderTest_State_ExpectedBehaviour`. Use `Mock&lt;T&gt;` per dependency; `FluentAssertions` for assertions.</action>
+      <output>Unit tests per service</output>
+      <decision-gate>If a branch is uncovered, fail per `one-fact-per-branch` rule.</decision-gate>
+    </step>
+
+    <step n="3" name="write-integration-tests">
+      <input>HTTP endpoint list, auth scheme</input>
+      <action>Add `public partial class Program { }` to production. Implement `IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt;`. Replace real external deps via `ConfigureTestServices`.</action>
+      <output>Integration tests per endpoint</output>
+      <decision-gate>If any test instantiates `new HttpClient()`, fail per `webapplicationfactory-for-integration` rule.</decision-gate>
+    </step>
+
+    <step n="4" name="wire-testcontainers-for-data-layer">
+      <input>Repository / DbContext code</input>
+      <action>Create `PostgresFixture : IAsyncLifetime` that starts a Testcontainers PostgreSQL container. Share via `ICollectionFixture`. Reset schema between collections via `Respawn`.</action>
+      <output>Data-layer tests against real Postgres</output>
+      <decision-gate>If any data test uses `UseInMemoryDatabase`, fail per `testcontainers-for-db` rule.</decision-gate>
+    </step>
+
+    <step n="5" name="add-property-tests">
+      <input>Domain invariants, parsers, validators</input>
+      <action>For invariants, add FsCheck.Xunit property tests via `[Property]`. Bound the generator to realistic inputs.</action>
+      <output>Property-test coverage on invariants</output>
+    </step>
+
+    <step n="6" name="wire-coverage-gate">
+      <input>Coverage thresholds (line 70 %, branch 60 %)</input>
+      <action>Run `dotnet test --collect:"XPlat Code Coverage"`. Aggregate with ReportGenerator. Fail the build when thresholds drop.</action>
+      <output>Green coverage gate in CI</output>
+      <decision-gate>If coverage drops below the gate, BLOCK the merge per `coverage-gate-in-ci` rule.</decision-gate>
+    </step>
+
+  </section>
+</text>

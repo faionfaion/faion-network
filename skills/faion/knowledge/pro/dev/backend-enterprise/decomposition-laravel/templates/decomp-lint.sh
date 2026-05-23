@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: structural-lint script enforcing file-size budgets + namespace whitelist
+# consumes: Laravel `app/` directory
+# produces: pass/fail gate per controllers-only-call-actions + namespace-whitelist rules
+# depends-on: content/01-core-rules.xml rules controllers-only-call-actions, namespace-whitelist
+# token-budget-impact: ~250 tokens when loaded as context
 # decomp-lint.sh — fail if Laravel decomposition convention is broken.
 # Usage: decomp-lint.sh app/
 set -euo pipefail

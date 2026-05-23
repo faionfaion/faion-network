@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="csharp-dotnet-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for csharp-dotnet-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="C# Clean Architecture + CQRS Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the Clean Architecture + CQRS pattern for .NET 8/9. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="layer-direction" testable="true" depth="essential">
+      <statement>Project references point inward only: API → Application → Domain ← Infrastructure. Domain MUST have zero outward references. Application MUST NOT reference Infrastructure or `Microsoft.EntityFrameworkCore`.</statement>
+      <rationale source="Robert C. Martin — Clean Architecture">Inward dependency direction keeps Domain stable; any Application-on-Infrastructure reference collapses the layering and re-introduces a big-ball-of-mud.</rationale>
     </rule>
+
+    <rule id="behaviour-in-entities" testable="true" depth="essential">
+      <statement>Business behaviour MUST live on Domain entity methods (e.g. `user.Activate()`). Application handlers orchestrate the call but MUST NOT host the rule (no `if (user.IsActive) throw` in a handler).</statement>
+      <rationale source="DDD — aggregate invariants">Behaviour in handlers leaves entities as property bags; invariants leak and the layering's value evaporates.</rationale>
+    </rule>
+
+    <rule id="one-command-per-folder" testable="true" depth="essential">
+      <statement>Each use-case MUST live in `Application/Features/&lt;Feature&gt;/&lt;UseCase&gt;/` with a single Command/Query, a single Handler, an optional Validator, and an optional Response — one folder, one use-case.</statement>
+      <rationale source="Internal — CQRS audit Q1 2026">One-per-folder makes the agent surface area tiny; mixed folders multiply the cognitive load per change.</rationale>
+    </rule>
+
+    <rule id="validators-on-commands" testable="true" depth="essential">
+      <statement>Input validation MUST live in a FluentValidation `Validator` on the Command/Query DTO. Domain invariants stay in entity factories. DataAnnotation attributes on DTOs are forbidden.</statement>
+      <rationale source="FluentValidation docs">Three validation surfaces (annotations + validator + entity) drift; a single FluentValidation site keeps the contract testable.</rationale>
+    </rule>
+
+    <rule id="outbox-for-cross-aggregate" testable="true" depth="essential">
+      <statement>Domain events that touch other aggregates MUST be dispatched via the Outbox pattern (e.g. MassTransit Outbox) — never inline inside the same `SaveChangesAsync` transaction.</statement>
+      <rationale source="Microservices.io — Transactional Outbox">Inline cross-aggregate handlers roll back the outer transaction on a downstream failure; outbox makes the dispatch atomic with the write and retried independently.</rationale>
+    </rule>
+
+    <rule id="mediatr-reserved-for-cross-cutting" testable="true" depth="essential">
+      <statement>MediatR MUST be reserved for use-cases with cross-cutting needs (validation pipeline, auth pipeline, transaction pipeline, logging). Trivial reads (`GET /health`, simple lookups) MUST NOT be wrapped in Commands/Queries.</statement>
+      <rationale source="MediatR docs + internal perf review">Every dispatch pays handler resolution + pipeline overhead; wrapping `/health` adds latency for no benefit.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

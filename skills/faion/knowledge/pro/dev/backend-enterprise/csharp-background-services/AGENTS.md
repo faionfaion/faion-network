@@ -3,72 +3,95 @@ slug: csharp-background-services
 tier: pro
 group: dev
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Implement in-process background work via BackgroundService and Channel<T>.
-content_id: "ec2c09f61ce1154b"
-tags: [background-service, aspnet-core, csharp, hosted-service, async]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a robust BackgroundService / IHostedService implementation with graceful shutdown, retry, idempotency, and metrics.
+content_id: "f5279dc4c64dcab9"
+complexity: medium
+produces: code
+est_tokens: 4500
+tags: [csharp, background-service, ihostedservice, queue, code]
 ---
+
 # C# Background Services
 
 ## Summary
 
-**One-sentence:** Implement in-process background work via BackgroundService and Channel<T>.
+**One-sentence:** Produces a robust BackgroundService / IHostedService implementation with graceful shutdown, retry, idempotency, and metrics.
 
-**One-paragraph:** Implement in-process background work via BackgroundService and Channel<T>. Pattern covers two patterns: (1) queue consumers that bridge HTTP requests to async post-processing, and (2) periodic tasks running at fixed intervals. Always use bounded channels with explicit capacity and FullMode to prevent memory leaks. Resolve scoped dependencies (DbContext, repositories) inside ExecuteAsync via IServiceProvider.CreateScope(), never injected directly. Wrap per-item processing in try/catch and use PeriodicTimer for fixed-interval work, never Task.Delay loops.
+**One-paragraph:** Produces a robust BackgroundService / IHostedService implementation with graceful shutdown, retry, idempotency, and metrics. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness.
+
+**Ефективно для:**
+
+- Queue consumer / scheduler / file watcher з graceful shutdown і bounded drain.
+- Idempotent work units під at-least-once delivery.
+- Observability як first-class concern (metrics + tracing per work unit).
 
 ## Applies If (ALL must hold)
 
-- In-process queue consumer that bridges an HTTP request to async post-processing.
-- Periodic cleanup or sync job running every few minutes on a single replica (no leader election needed).
-- Lightweight scheduled work where Hangfire/Quartz overhead is not justified.
-- Wiring IHostApplicationLifetime, structured logging, and OpenTelemetry around background work.
+- Service runs a long-lived background loop (queue consumer, scheduler, watcher).
+- Process must shut down gracefully on SIGTERM with bounded drain time.
+- Work units must be idempotent to survive at-least-once delivery.
 
 ## Skip If (ANY kills it)
 
-- Distributed scheduling across multiple replicas — use Hangfire, Quartz.NET, or a platform CronJob (requires leader election).
-- Durable, retry-able jobs — use Hangfire, MassTransit, or a real message queue (RabbitMQ, SQS, Service Bus).
-- Long-running CPU-bound work that should not share the host thread pool — deploy a separate Worker Service.
-- Cron-style "every Tuesday at 3 AM" — PeriodicTimer is fixed-interval only; use Quartz.NET or a platform scheduler.
+- One-shot CLI / job runner — Worker Service overkill.
+- Periodic job better expressed as a cron-triggered Function / Lambda.
+- Hosted in IIS in-process — BackgroundService lifecycle does not align cleanly.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Worker scope (queue / scheduler / watcher) | markdown | product |
+| Idempotency key strategy | markdown | architecture |
+| Observability stack (metrics + tracing) | config | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[csharp-aspnet-core]] | Hosted service runs inside the same Generic Host as the API |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output per step | 1000 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-skeleton` | haiku | Mechanical template emission |
+| `wire-feature-logic` | sonnet | Per-feature judgment with bounded inputs |
+| `audit-output` | sonnet | Verify rules in 01-core-rules.xml hold |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/queue-consumer.cs` | BackgroundService queue-consumer skeleton with retry + idempotency |
+| `templates/registration.cs` | Hosted-service registration snippet for Program.cs |
+| `templates/_smoke-test.cs` | Filled-in minimal queue consumer for a Users.Created topic |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-csharp-background-services.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
 
-- parent skill: `pro/dev/backend-enterprise/`
+- [[csharp-aspnet-core]]
+- [[audit-grade-api-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.

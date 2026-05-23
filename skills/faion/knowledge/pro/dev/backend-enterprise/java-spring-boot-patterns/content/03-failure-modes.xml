@@ -1,17 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="java-spring-boot-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for java-spring-boot-patterns as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Java Spring Boot Enterprise Patterns Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 antipatterns observed in real enterprise Spring Boot 3 codebases. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>@Data on JPA entities — Lombok generates equals/hashCode using all fields.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Entity equality must be based on identity (ID), not value. @Data-generated equals causes incorrect Set behavior for managed entities and can produce infinite loops with bidirectional relationships.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Iterating over a collection and accessing a lazy-loaded relationship: users.forEach(u -&gt; u.getOrganization().getName()).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each getOrganization() triggers a separate SELECT. For N users, N+1 queries are issued. Use JOIN FETCH or @EntityGraph to load relationships in one query.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="lombok-data-on-entity" severity="high">
+      <symptom>Adding an entity to `HashSet` triggers infinite recursion; `equals` walks lazy collections and loads them.</symptom>
+      <root-cause source="Lombok docs">Author put `@Data` on a JPA entity; generated `equals` / `hashCode` traverse all fields.</root-cause>
+      <fix>Use `@Getter @Setter` only; implement `equals`/`hashCode` over a business key on top of `BaseEntity.id`.</fix>
+    </antipattern>
+
+    <antipattern id="n-plus-one-after-controller" severity="high">
+      <symptom>List endpoint executes 1 + N queries per row; profile shows N additional `SELECT` per page.</symptom>
+      <root-cause source="Hibernate fetch docs">Mapper or controller accesses a lazy association after the transaction closes.</root-cause>
+      <fix>Project to DTO inside the service `@Transactional` boundary; use `@EntityGraph` / `JOIN FETCH`. Add `n-plus-one-assertion.java` test that asserts a max query count.</fix>
+    </antipattern>
+
+    <antipattern id="missing-version-token" severity="high">
+      <symptom>Concurrent edits silently overwrite each other; audit trail shows lost updates with no exception.</symptom>
+      <root-cause source="JPA optimistic locking docs">Entity did not extend `BaseEntity`; `@Version` field missing; last-write-wins.</root-cause>
+      <fix>Inherit `BaseEntity`; catch `OptimisticLockException` in the service and surface 409 via `ProblemDetail`.</fix>
+    </antipattern>
+
+    <antipattern id="custom-error-shape" severity="medium">
+      <symptom>Each controller returns a different JSON error shape; clients implement N different parsers.</symptom>
+      <root-cause source="Spring docs — exception handling">No `@RestControllerAdvice`; each controller invents its own.</root-cause>
+      <fix>Add one `@RestControllerAdvice` mapping every domain exception → `ProblemDetail`. Delete per-controller `try/catch` for cross-cutting handling.</fix>
+    </antipattern>
+
+    <antipattern id="no-readonly-default" severity="medium">
+      <symptom>Read-heavy endpoint runs slow under load; Hibernate flushes the dirty-check cache on every method exit.</symptom>
+      <root-cause source="Spring transaction docs">Service has no class-level `@Transactional(readOnly = true)`; every method opens a writable transaction.</root-cause>
+      <fix>Add `@Transactional(readOnly = true)` at class level; override on write methods. Verify with a single integration test that read endpoints log zero `UPDATE` statements.</fix>
+    </antipattern>
+
   </section>
 </text>

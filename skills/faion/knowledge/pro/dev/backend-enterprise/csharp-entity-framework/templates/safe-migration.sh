@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: wrapper around `dotnet ef migrations script` blocking destructive ops without approval
+# consumes: migration name, project path
+# produces: SQL script + pass/fail gate per migration-sql-review rule
+# depends-on: content/01-core-rules.xml rule migration-sql-review
+# token-budget-impact: ~250 tokens when loaded as context
 # safe-migration.sh — generate migration + block on destructive SQL ops
 # Usage: bash safe-migration.sh <MigrationName> <project-path>
 # Example: bash safe-migration.sh AddUserEmailIndex src/MyApp.Data/

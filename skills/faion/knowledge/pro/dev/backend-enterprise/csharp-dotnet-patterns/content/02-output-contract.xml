@@ -1,22 +1,81 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="csharp-dotnet-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="C# Clean Architecture + CQRS Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the layered-solution manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/csharp-dotnet-patterns.json",
+  "type": "object",
+  "required": ["solution_name", "projects", "use_cases", "arch_tests_pass", "outbox_configured"],
+  "properties": {
+    "solution_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+    "projects": {
+      "type": "object",
+      "required": ["Domain", "Application", "Infrastructure", "Api"],
+      "properties": {
+        "Domain": {"type": "object", "required": ["references"], "properties": {"references": {"type": "array", "items": {"type": "string"}, "maxItems": 0}}},
+        "Application": {"type": "object", "required": ["references"], "properties": {"references": {"type": "array", "items": {"enum": ["Domain"]}}}},
+        "Infrastructure": {"type": "object", "required": ["references"], "properties": {"references": {"type": "array", "items": {"enum": ["Domain", "Application"]}}}},
+        "Api": {"type": "object", "required": ["references"], "properties": {"references": {"type": "array", "items": {"enum": ["Application", "Infrastructure"]}}}}
+      }
+    },
+    "use_cases": {"type": "array", "items": {"type": "object", "required": ["feature", "name"], "properties": {"feature": {"type": "string"}, "name": {"type": "string"}}}, "minItems": 1},
+    "arch_tests_pass": {"type": "boolean", "const": true},
+    "outbox_configured": {"type": "boolean", "const": true}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "solution_name": "Billing",
+  "projects": {
+    "Domain": {"references": []},
+    "Application": {"references": ["Domain"]},
+    "Infrastructure": {"references": ["Domain", "Application"]},
+    "Api": {"references": ["Application", "Infrastructure"]}
+  },
+  "use_cases": [
+    {"feature": "Invoices", "name": "CreateInvoice"},
+    {"feature": "Invoices", "name": "GetInvoiceById"}
+  ],
+  "arch_tests_pass": true,
+  "outbox_configured": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "solution_name": "billing",
+  "projects": {
+    "Domain": {"references": ["Infrastructure"]},
+    "Application": {"references": ["Domain", "Infrastructure"]},
+    "Infrastructure": {"references": ["Domain"]},
+    "Api": {"references": ["Application"]}
+  },
+  "use_cases": [],
+  "arch_tests_pass": false,
+  "outbox_configured": false
+}
+]]></code>
+    <note>solution_name not PascalCase; Domain depends on Infrastructure (inversion); Application depends on Infrastructure; no use-cases; arch tests failing; outbox missing.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>`using Microsoft.EntityFrameworkCore;` in the Application project.</item>
+      <item>DataAnnotation `[Required]`/`[EmailAddress]` on Commands/Queries.</item>
+      <item>`async void` on a MediatR `INotificationHandler&lt;T&gt;`.</item>
+      <item>Aggregate collection mutated externally (`user.Posts.Add(post)` instead of `user.AddPost(post)`).</item>
+      <item>`IgnoreQueryFilters()` outside an explicitly designated admin repository.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-csharp-dotnet-patterns.py">Validator script</reference>
 </text>

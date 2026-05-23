@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="java-jpa-hibernate Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for java-jpa-hibernate. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="JPA / Hibernate Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the Spring Data JPA + Hibernate methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="lazy-by-default" testable="true" depth="essential">
+      <statement>Every `@OneToMany`, `@ManyToMany`, and `@ManyToOne` association MUST set (or inherit) `FetchType.LAZY`. Eager loading MUST be opt-in per query via `JOIN FETCH` or `@EntityGraph`.</statement>
+      <rationale source="Vlad Mihalcea — High-Performance Java Persistence">EAGER fetch is global and unselective; combining two EAGER collections triggers `MultipleBagFetchException` or Cartesian explosions under load.</rationale>
     </rule>
+
+    <rule id="business-key-equality" testable="true" depth="essential">
+      <statement>Entities MUST implement `equals` and `hashCode` over a stable business key (e.g. `naturalId`, externally-assigned UUID) — never over the generated DB id and never via Lombok `@Data`.</statement>
+      <rationale source="Hibernate docs — entity equality">DB id is null before insert and changes proxy semantics; Lombok `@Data` walks lazy collections and triggers infinite recursion plus DB loads.</rationale>
+    </rule>
+
+    <rule id="flyway-migration-per-entity-change" testable="true" depth="essential">
+      <statement>Every diff to an entity (`@Column`, `@JoinColumn`, type change, rename) MUST land in the same PR as a paired Flyway migration. `spring.jpa.hibernate.ddl-auto` MUST be `validate` in `prod` profile.</statement>
+      <rationale source="Flyway docs + internal migration retro">Without paired migrations, startup `SchemaManagementException` aborts the deploy or — worse — Hibernate auto-DDL silently mutates the prod schema.</rationale>
+    </rule>
+
+    <rule id="modifying-clearautomatically" testable="true" depth="essential">
+      <statement>Bulk update / delete repositories MUST annotate `@Modifying(clearAutomatically = true, flushAutomatically = true)`. Hand-written JPQL bulk ops MUST flush+clear the persistence context.</statement>
+      <rationale source="Spring Data JPA docs">Bulk JPQL bypasses the first-level cache; without `clearAutomatically`, subsequent `findById` calls return pre-update entities and silently corrupt logic.</rationale>
+    </rule>
+
+    <rule id="datajpatest-for-repositories" testable="true" depth="essential">
+      <statement>Repository tests MUST use `@DataJpaTest` (slice) + Testcontainers. `@SpringBootTest` MUST NOT be used for pure repository tests. OSIV (`spring.jpa.open-in-view`) MUST be `false` in all profiles.</statement>
+      <rationale source="Spring Boot test slice docs">`@SpringBootTest` boots the full context; slice tests run 5-10× faster, isolate schema issues from app logic, and force the LazyInitialization discipline at test time.</rationale>
+    </rule>
+
+    <rule id="dto-projection-in-controllers" testable="true" depth="essential">
+      <statement>Controllers MUST return DTO projections, not JPA entities. Entity-to-DTO mapping MUST happen inside the transactional service layer, before the session closes.</statement>
+      <rationale source="Internal — LazyInitializationException postmortem 2026-Q1">Returning entities to controllers crashes with `LazyInitializationException` once OSIV is disabled; DTO projections fix the contract permanently.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

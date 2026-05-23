@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="java-spring-boot-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for java-spring-boot-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Java Spring Boot Enterprise Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the enterprise Spring Boot 3 patterns. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="base-entity-uuid-audit-version" testable="true" depth="essential">
+      <statement>Every domain entity MUST extend a shared `BaseEntity` superclass providing `@Id @GeneratedValue UUID id`, `@CreationTimestamp createdAt`, `@UpdateTimestamp updatedAt`, and `@Version Long version`.</statement>
+      <rationale source="Internal — entity-discipline retro 2026-Q1">Sequential `Long` ids expose enumeration; missing `@Version` allows silent lost updates; per-entity audit columns drift; a base class fixes all three with one inheritance.</rationale>
     </rule>
+
+    <rule id="record-dtos-and-mapstruct" testable="true" depth="essential">
+      <statement>API DTOs MUST be Java records distinct from entities. Mapping MUST go through MapStruct annotation processor. Hand-written mappers and `BeanUtils.copyProperties` are forbidden.</statement>
+      <rationale source="MapStruct docs + Internal entity-leak audit">Annotation-processor mappers fail at compile when a property goes missing; records guarantee immutability across the API surface.</rationale>
+    </rule>
+
+    <rule id="transactional-readonly-default" testable="true" depth="essential">
+      <statement>Service classes MUST default to `@Transactional(readOnly = true)` at the class level. Write methods override locally with `@Transactional`.</statement>
+      <rationale source="Spring transaction docs">Read-only default lets Hibernate skip dirty checking and JDBC flush — a meaningful win on read-heavy endpoints — and forces writes to be explicit.</rationale>
+    </rule>
+
+    <rule id="jpaspecificationexecutor-for-search" testable="true" depth="essential">
+      <statement>Dynamic-filter search endpoints MUST use `JpaSpecificationExecutor&lt;Entity&gt;` + composable `Specification&lt;Entity&gt;` builders. String-concatenated JPQL for filter composition is forbidden.</statement>
+      <rationale source="Spring Data JPA — Specifications docs">String-concat invites SQL injection and breaks paginator binding; Specifications give type-safe, composable filters.</rationale>
+    </rule>
+
+    <rule id="problemdetail-advice" testable="true" depth="essential">
+      <statement>Errors MUST surface as RFC 7807 `ProblemDetail` via a single `@RestControllerAdvice`. Custom JSON error shapes are forbidden.</statement>
+      <rationale source="RFC 7807 + Spring 6 docs">One contract lets every client implement a single parser; ad-hoc shapes multiply parsing logic and miss security-relevant fields.</rationale>
+    </rule>
+
+    <rule id="actuator-and-micrometer" testable="true" depth="essential">
+      <statement>Services MUST expose Actuator (`/actuator/health`, `/actuator/prometheus`) and Micrometer metrics. Spring Security MUST be on the classpath with default authentication on Actuator endpoints other than `/health`.</statement>
+      <rationale source="Spring Boot Actuator docs">Health probes drive zero-downtime deploys; Prometheus metrics drive alerting; Actuator endpoints without auth leak environment + health detail to the public internet.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

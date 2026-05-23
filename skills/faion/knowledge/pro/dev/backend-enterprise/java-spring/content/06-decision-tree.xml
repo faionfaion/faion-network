@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Spring Boot Layered Architecture Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-stack">Spring stack?</root-question>
+
+    <branch when="stack == webflux_reactive">
+      <conclusion ref="dto-record-never-entity" verdict="skip-this-methodology — apply reactive patterns (WebTestClient + StepVerifier); blocking JPA is forbidden"/>
+    </branch>
+
+    <branch when="stack == webmvc_blocking">
+      <question id="q-boot-version">Spring Boot version?</question>
+      <branch when="version &lt; 3.0">
+        <conclusion ref="jakarta-not-javax" verdict="upgrade to Boot 3 + jakarta.* imports first; do not adopt this methodology on Boot 2"/>
+      </branch>
+      <branch when="version &gt;= 3.0">
+        <question id="q-endpoint-shape">Endpoint shape?</question>
+        <branch when="shape == list">
+          <conclusion ref="pageable-on-list" verdict="accept Pageable, return Page&lt;DTO&gt;; never unbounded findAll"/>
+        </branch>
+        <branch when="shape == write">
+          <conclusion ref="transactional-on-writes" verdict="@Transactional on the service method; record DTO out via MapStruct"/>
+        </branch>
+        <branch when="shape == read_single">
+          <conclusion ref="dto-record-never-entity" verdict="return record DTO; never the entity"/>
+        </branch>
+      </branch>
+    </branch>
+
+    <branch when="stack == quarkus_or_micronaut">
+      <conclusion ref="dto-record-never-entity" verdict="skip-this-methodology — annotations differ; pattern translates conceptually but not literally"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="users-crud">
+    stack=webmvc_blocking → version=3.2 → shape=write (POST /users) → transactional-on-writes → @Transactional + MapStruct DTO + BCrypt hashing.
+  </example>
+</text>

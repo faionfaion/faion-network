@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Rails Decomposition Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the Service / Query / Form / Policy / Serializer decomposition end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="scaffold-namespaces">
+      <input>Allowed-namespace policy</input>
+      <action>Create `app/services/`, `app/queries/`, `app/forms/`, `app/policies/`, `app/serializers/`. Lock the canonical Service return shape (Result vs entity-or-raise) in `CONTRIBUTING.md`. Register the whitelist in `decomp-rails-lint.sh`.</action>
+      <output>Skeleton directories + whitelist config</output>
+    </step>
+
+    <step n="2" name="add-service-per-verb">
+      <input>Use-case catalogue</input>
+      <action>For each domain verb create `&lt;Domain&gt;::&lt;Verb&gt;Service` with one `call` method returning the canonical entity or `Result`. Constructor takes plain Ruby keyword arguments; no Service-to-Service inline calls.</action>
+      <output>One Service per verb</output>
+      <decision-gate>If `call` returns `nil`/`void`, BLOCK per `service-call-returns-result` rule.</decision-gate>
+    </step>
+
+    <step n="3" name="build-query-objects-on-scopes">
+      <input>Filter combinations needed by controllers / serializers</input>
+      <action>Identify filters that recur; encode as model scopes first. Wrap multi-scope compositions in a Query Object (`&lt;Domain&gt;::&lt;Name&gt;Query`). Re-implementing existing scopes is forbidden.</action>
+      <output>Query Object per filter composition</output>
+      <decision-gate>If a Query Object re-implements a scope, fail per `query-objects-reuse-scopes` rule.</decision-gate>
+    </step>
+
+    <step n="4" name="add-form-and-serializer">
+      <input>Input + output contracts</input>
+      <action>For each non-trivial input shape add a Form Object via `ActiveModel::Model` + `ActiveModel::Attributes`. For each output contract add a Serializer with explicit attribute lists + per-attribute tests.</action>
+      <output>Form + Serializer per use-case</output>
+      <decision-gate>If a Serializer uses `as_json` or `attributes :all`, BLOCK per `serializer-explicit-attributes` rule.</decision-gate>
+    </step>
+
+    <step n="5" name="wire-policies-and-lint">
+      <input>Authorization rules, file-size budgets</input>
+      <action>Add Pundit policies under `app/policies/`; controllers MUST use `policy_scope(Model).find(params[:id])`. Run `decomp-rails-lint.sh` in CI: enforce file-size budgets + namespace whitelist + forbidden patterns.</action>
+      <output>Authorization wired + lint gate in CI</output>
+      <decision-gate>If lint fails, BLOCK the merge.</decision-gate>
+    </step>
+
+  </section>
+</text>

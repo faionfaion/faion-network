@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="csharp-xunit-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for csharp-xunit-testing. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="xUnit Testing Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the xUnit + Moq + WAF testing methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="one-fact-per-branch" testable="true" depth="essential">
+      <statement>Every reachable branch in production code MUST be covered by at least one `[Fact]` or `[Theory]` `InlineData` row. Tests MUST name the branch via `MethodUnderTest_State_ExpectedBehaviour`.</statement>
+      <rationale source="Roy Osherove — Art of Unit Testing">Generic test names ("UserServiceTest1") hide what regression a failure represents; the convention turns CI output into a self-documenting bug report.</rationale>
     </rule>
+
+    <rule id="constructor-injection" testable="true" depth="essential">
+      <statement>Test fixtures MUST inject dependencies via the constructor — never via `[OneTimeSetUp]`/`[TestInitialize]` equivalents. State that survives across tests MUST live in an `IClassFixture&lt;T&gt;`.</statement>
+      <rationale source="xUnit docs">xUnit creates a new instance per test; constructor injection makes the lifecycle explicit and prevents hidden cross-test state.</rationale>
+    </rule>
+
+    <rule id="fluentassertions-not-assert" testable="true" depth="essential">
+      <statement>Assertions on collections, complex objects, or extracted fields MUST use FluentAssertions (`actual.Should().BeEquivalentTo(expected)`). Raw `Assert.Equal(list1, list2)` is forbidden for non-trivial structures.</statement>
+      <rationale source="FluentAssertions docs">FluentAssertions' diff is readable; `Assert.Equal` on collections emits unreadable `[1, 2, 3]` differs from `[1, 2, 4]` with no clue which element failed.</rationale>
+    </rule>
+
+    <rule id="webapplicationfactory-for-integration" testable="true" depth="essential">
+      <statement>Integration tests MUST use `WebApplicationFactory&lt;Program&gt;` (or equivalent), replacing real external dependencies via `builder.ConfigureTestServices(...)`. `HttpClient` MUST be constructed from `factory.CreateClient()` — never `new HttpClient()`.</statement>
+      <rationale source="Microsoft integration testing docs">The factory boots the actual DI graph + middleware; ad-hoc `new HttpClient` bypasses the host and tests nothing.</rationale>
+    </rule>
+
+    <rule id="testcontainers-for-db" testable="true" depth="essential">
+      <statement>Data-layer tests MUST run against the real database engine via Testcontainers (e.g. `PostgreSqlContainer`). `UseInMemoryDatabase` is forbidden for tests that exercise queries, constraints, or migrations.</statement>
+      <rationale source="EF Core docs — InMemory provider">InMemory diverges from real DBs on JSONB ops, locking, FK behaviour; tests pass in CI and fail in prod.</rationale>
+    </rule>
+
+    <rule id="coverage-gate-in-ci" testable="true" depth="essential">
+      <statement>CI MUST enforce a coverage gate: line ≥ 70 %, branch ≥ 60 %, via Coverlet + ReportGenerator. Build fails when thresholds drop.</statement>
+      <rationale source="Internal — coverage retro 2026-Q1">Coverage without a gate is advisory only; agents skip uncovered paths unless the build blocks.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

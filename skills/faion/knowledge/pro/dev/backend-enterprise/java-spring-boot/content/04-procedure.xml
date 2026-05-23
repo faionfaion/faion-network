@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Spring Boot Patterns Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to scaffold or harden a Spring Boot 3 layered service end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="convert-to-constructor-injection">
+      <input>Bean classes (services, controllers)</input>
+      <action>Replace `@Autowired` fields with `private final` + constructor. Use Lombok `@RequiredArgsConstructor` for brevity. Run an ArchUnit rule banning field injection.</action>
+      <output>Construction-injected beans</output>
+      <decision-gate>If field injection remains, BLOCK per `constructor-injection` rule.</decision-gate>
+    </step>
+
+    <step n="2" name="define-records-and-mapstruct">
+      <input>Entity model + API contract</input>
+      <action>For each entity define a request record and a response record. Add `@Mapper(componentModel = "spring") interface FooMapper`. Configure the MapStruct annotation processor in `pom.xml`.</action>
+      <output>Records + generated mappers</output>
+      <decision-gate>If hand-written mapper or `BeanUtils.copyProperties` is found, BLOCK per `mapstruct-for-mapping` rule.</decision-gate>
+    </step>
+
+    <step n="3" name="scaffold-controllers-and-services">
+      <input>Endpoint list</input>
+      <action>For each endpoint add `@RestController` (validate via `@Valid`, delegate to service, return record). `@Service` carries business logic; class-level `@Transactional(readOnly = true)` with write methods overriding.</action>
+      <output>Controllers + services per feature</output>
+      <decision-gate>If `@Transactional` lands on controller / repository, fail per `transactional-on-service` rule.</decision-gate>
+    </step>
+
+    <step n="4" name="add-problemdetail-advice">
+      <input>Domain exception list</input>
+      <action>Add a single `@RestControllerAdvice` mapping each domain exception (`ResourceNotFoundException`, `ConflictException`, `ValidationException`) to RFC 7807 `ProblemDetail` with the appropriate status.</action>
+      <output>One advice covering the whole module</output>
+      <decision-gate>If a controller catches business exceptions itself, BLOCK per `advice-not-per-controller` rule.</decision-gate>
+    </step>
+
+    <step n="5" name="harden-repository-with-pagination">
+      <input>List endpoint contracts</input>
+      <action>Repository list methods take `Pageable` and return `Page&lt;DTO&gt;` (project entity → DTO inside the service `@Transactional`). Use `@EntityGraph`/`JOIN FETCH` for required associations.</action>
+      <output>Bounded list queries + DTO projection</output>
+    </step>
+
+  </section>
+</text>

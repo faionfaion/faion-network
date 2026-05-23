@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Spring Boot JUnit Testing Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-layer">What layer is under test?</root-question>
+
+    <branch when="layer == controller">
+      <conclusion ref="layer-slice-assignment" verdict="use @WebMvcTest(Controller.class) + @MockBean service; mock only the direct collaborator"/>
+    </branch>
+
+    <branch when="layer == service">
+      <conclusion ref="layer-slice-assignment" verdict="use @ExtendWith(MockitoExtension.class); no Spring context; AssertJ for collections"/>
+    </branch>
+
+    <branch when="layer == repository">
+      <question id="q-db">Real DB engine available via Testcontainers?</question>
+      <branch when="testcontainers_available == false">
+        <conclusion ref="testcontainers-not-h2" verdict="install Docker on CI before scaffolding; H2 is forbidden"/>
+      </branch>
+      <branch when="testcontainers_available == true">
+        <conclusion ref="testcontainers-not-h2" verdict="use @DataJpaTest + @Container PostgreSQLContainer; OSIV off in application-test.yml"/>
+      </branch>
+    </branch>
+
+    <branch when="layer == cross_layer_integration">
+      <conclusion ref="layer-slice-assignment" verdict="single @SpringBootTest per module; do not scatter the annotation"/>
+    </branch>
+
+    <branch when="layer == async_or_time_sensitive">
+      <conclusion ref="awaitility-not-thread-sleep" verdict="Awaitility for async assertions; inject Clock bean for time-sensitive logic"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="user-service-tests">
+    layer=service → layer-slice-assignment → @ExtendWith(MockitoExtension.class) + AssertJ + per-branch methodUnderTest_state_expectedBehaviour.
+  </example>
+</text>

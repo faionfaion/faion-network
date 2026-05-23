@@ -2,78 +2,96 @@
 slug: arch-health-weekly-report-template
 tier: pro
 group: dev
-domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Arch Health Weekly Report Template: codified engineering practice that turns the recurring 'role-software-architect/Architecture fitness-function check (weekly)' decision into a repeatable, auditable artefact.
-content_id: "f89628fa8ef9d037"
-tags: [arch-health-weekly-report-template, dev, pro]
+domain: architecture
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Weekly arch-health report: hot-spots, debt deltas, risk register movement, one decision-needed item.
+content_id: "e3850f4edf1d14f3"
+complexity: medium
+produces: report
+est_tokens: 5400
+tags: [architecture, health, weekly, report, debt]
 ---
-# Arch Health Weekly Report Template
+
+# Architecture Health Weekly Report Template
 
 ## Summary
 
-**One-sentence:** Arch Health Weekly Report Template: codified engineering practice that turns the recurring 'role-software-architect/Architecture fitness-function check (weekly)' decision into a repeatable, auditable artefact.
+**One-sentence:** Weekly arch-health report: hot-spots, debt deltas, risk register movement, one decision-needed item.
 
-**One-paragraph:** Arch Health Weekly Report Template addresses the gap identified by the role-software-architect/Architecture fitness-function check (weekly) playbook: Architects who don't publish a weekly health signal lose visibility upward. Living-documentation methodology doesn't give the template. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Weekly arch-health report: hot-spots, debt deltas, risk register movement, one decision-needed item. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness.
+
+**Ефективно для:**
+
+- Weekly architecture report з hot-spot deltas і risk movement.
+- Single 'decision needed' item, який вимагатиме рішення комітету цього тижня.
+- Tracking debt delta тиждень-до-тижня (а не накопичений borrow).
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-software-architect/Architecture fitness-function check (weekly) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Team has ≥1 architect who owns the report.
+- Codebase has ≥6 months of history with measurable hot-spot data.
+- Leadership expects weekly visibility on architecture risk.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Codebase younger than 6 months — noise dominates the signal.
+- Team has <8 engineers — informal sync is sufficient.
+- No named architect — report has no owner.
 
 ## Prerequisites
 
-- recent context for the role-software-architect/Architecture fitness-function check (weekly) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Code-churn dataset | csv / git log | ci |
+| Incident log | markdown / ticketing | ops |
+| Risk register | markdown | architecture |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+| [[architecture-review-meeting-facilitation]] | Report feeds the weekly architecture meeting agenda |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 4-step procedure with input/action/output per step | 1000 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Template fill, bounded transformation |
+| `synthesize-decision` | sonnet | Per-instance judgment; bounded inputs |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/arch-health-weekly-report-template.json` | JSON schema for the Arch Health Weekly Report Template output contract |
-| `templates/arch-health-weekly-report-template.md` | Markdown skeleton with the required fields |
+| `templates/arch-health-weekly.md` | Weekly report skeleton with hot-spots, debt-delta, risk-register, decision-needed |
+| `templates/_smoke-test.md` | Filled-in report for a 12-engineer team mid-quarter |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-arch-health-weekly-report-template.py` | Enforce Arch Health Weekly Report Template output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-arch-health-weekly-report-template.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
 
-- parent skill: `pro/dev/`
-- upstream playbook: `role-software-architect/Architecture fitness-function check (weekly)`
+- [[architecture-review-meeting-facilitation]]
+- [[architecture-proposal-document-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="EF Core Data Layer Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-workload-shape">Workload shape on this path?</root-question>
+
+    <branch when="shape == hot_path_sub_ms">
+      <conclusion ref="entity-config-per-entity" verdict="skip-this-methodology — use Dapper / raw ADO.NET on this path; EF compile cost dominates"/>
+    </branch>
+
+    <branch when="shape == read_only_olap">
+      <conclusion ref="entity-config-per-entity" verdict="skip-this-methodology — use Dapper for OLAP; change tracking is overhead"/>
+    </branch>
+
+    <branch when="shape == transactional_oltp">
+      <question id="q-read-vs-write">Is this code path read-only?</question>
+      <branch when="read_only == true">
+        <conclusion ref="asnotracking-on-reads" verdict="apply AsNoTracking + materialised projection; no IQueryable leakage from repo"/>
+      </branch>
+      <branch when="read_only == false">
+        <question id="q-bulk-vs-single">Does this path touch &gt;100 rows in one transaction?</question>
+        <branch when="bulk_op == true">
+          <conclusion ref="bulk-execute-update-delete" verdict="use ExecuteUpdateAsync/ExecuteDeleteAsync; load-mutate-save is forbidden"/>
+        </branch>
+        <branch when="bulk_op == false">
+          <question id="q-aggregate-root">Is the entity an aggregate root?</question>
+          <branch when="is_aggregate_root == true">
+            <conclusion ref="concurrency-token-on-aggregates" verdict="require [Timestamp]/xmin token; surface 409 on DbUpdateConcurrencyException"/>
+          </branch>
+          <branch when="is_aggregate_root == false">
+            <conclusion ref="savechanges-interceptor-for-audit" verdict="rely on SaveChangesInterceptor for audit fields; no per-entity duplication"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="invoice-update">
+    shape=transactional_oltp → read_only=false → bulk_op=false → is_aggregate_root=true → concurrency-token-on-aggregates → require RowVersion + 409 on concurrency exception.
+  </example>
+</text>

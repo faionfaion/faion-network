@@ -1,22 +1,106 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="decomposition-rails Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Rails Decomposition Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the structural-lint manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/decomposition-rails.json",
+  "type": "object",
+  "required": ["ruby_version", "rails_version", "services", "query_objects", "form_objects", "namespace_whitelist_passed", "file_size_budgets"],
+  "properties": {
+    "ruby_version": {"type": "string", "pattern": "^3\\."},
+    "rails_version": {"type": "string", "pattern": "^(7|8)\\."},
+    "services": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["class", "returns"],
+        "properties": {
+          "class": {"type": "string", "pattern": "Service$"},
+          "returns": {"type": "string", "not": {"enum": ["void", "nil"]}}
+        }
+      }
+    },
+    "query_objects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["class", "reuses_scopes"],
+        "properties": {
+          "class": {"type": "string", "pattern": "Query$"},
+          "reuses_scopes": {"type": "boolean", "const": true}
+        }
+      }
+    },
+    "form_objects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["class", "base"],
+        "properties": {
+          "class": {"type": "string", "pattern": "Form$"},
+          "base": {"const": "ActiveModel::Model"}
+        }
+      }
+    },
+    "namespace_whitelist_passed": {"type": "boolean", "const": true},
+    "file_size_budgets": {
+      "type": "object",
+      "required": ["service_max", "controller_max"],
+      "properties": {
+        "service_max": {"type": "integer", "maximum": 100},
+        "controller_max": {"type": "integer", "maximum": 150}
+      }
+    },
+    "forbidden_patterns_found": {"type": "array", "items": {"type": "string"}, "maxItems": 0}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "ruby_version": "3.3",
+  "rails_version": "7.1",
+  "services": [{"class": "Users::CreateService", "returns": "User"}],
+  "query_objects": [{"class": "Users::ActiveUsersQuery", "reuses_scopes": true}],
+  "form_objects": [{"class": "Users::SignupForm", "base": "ActiveModel::Model"}],
+  "namespace_whitelist_passed": true,
+  "file_size_budgets": {"service_max": 88, "controller_max": 132},
+  "forbidden_patterns_found": []
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "ruby_version": "2.7",
+  "rails_version": "6.0",
+  "services": [{"class": "UserManager", "returns": "void"}],
+  "query_objects": [{"class": "ActiveUsers", "reuses_scopes": false}],
+  "form_objects": [{"class": "SignupForm", "base": "ActiveRecord::Base"}],
+  "namespace_whitelist_passed": false,
+  "file_size_budgets": {"service_max": 320, "controller_max": 480},
+  "forbidden_patterns_found": ["app/managers/ namespace not on whitelist"]
+}
+]]></code>
+    <note>Ruby + Rails versions out of range; Service named UserManager, returns void; query re-implements scopes; form inherits AR; whitelist fail.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Service class name not suffixed with `Service`.</item>
+      <item>`def call; ...; end` returning `nil` or `void` semantics.</item>
+      <item>Form Object inheriting from `ActiveRecord::Base` or `ActiveType::Object`.</item>
+      <item>Serializer using `attributes :all` / `model.as_json` without explicit list.</item>
+      <item>Controller calling `Model.find` without `policy_scope`.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-decomposition-rails.py">Validator script</reference>
 </text>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="C# Clean Architecture + CQRS Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>6-step procedure to scaffold a Clean Architecture + CQRS .NET solution end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="scaffold-solution">
+      <input>Bounded-context map, target framework</input>
+      <action>Create 4 projects: `Domain` (classlib), `Application` (classlib), `Infrastructure` (classlib), `Api` (webapi). Add project references inward only.</action>
+      <output>Solution with empty layered projects</output>
+      <decision-gate>If layered solution feels heavy for a CRUD app (&lt;20 endpoints), STOP and apply `csharp-dotnet` umbrella instead.</decision-gate>
+    </step>
+
+    <step n="2" name="model-domain">
+      <input>Aggregate / entity list</input>
+      <action>For each aggregate add entity with private setters, factory method, behaviour methods, value objects, domain events. Expose collections as `IReadOnlyCollection&lt;T&gt;`.</action>
+      <output>Domain project with aggregates and invariants</output>
+      <decision-gate>If domain ends up with only properties + getters, the methodology does not fit — apply `csharp-dotnet` umbrella.</decision-gate>
+    </step>
+
+    <step n="3" name="add-application-use-cases">
+      <input>Use-case catalogue</input>
+      <action>For each use-case create `Application/Features/&lt;Feature&gt;/&lt;UseCase&gt;/{Command|Query,Handler,Validator,Response}.cs`. Wire FluentValidation pipeline behaviour. Domain rules stay in entity calls.</action>
+      <output>Application project with one folder per use-case</output>
+    </step>
+
+    <step n="4" name="add-infrastructure">
+      <input>Persistence + integration deps</input>
+      <action>Implement repository interfaces from Application using EF Core in Infrastructure. Configure entity mappings with `IEntityTypeConfiguration&lt;T&gt;`. Add MassTransit Outbox for cross-aggregate events.</action>
+      <output>Infrastructure project with EF + Outbox wired</output>
+      <decision-gate>If any cross-aggregate event is dispatched without outbox, fail per `outbox-for-cross-aggregate` rule.</decision-gate>
+    </step>
+
+    <step n="5" name="add-api-composition-root">
+      <input>Endpoint list, auth scheme</input>
+      <action>Add controllers (or Minimal API endpoints) that dispatch through MediatR. Composition root (`Program.cs`) registers Application + Infrastructure DI. Reserve MediatR for use-cases with cross-cutting needs.</action>
+      <output>Api project boots and serves endpoints</output>
+    </step>
+
+    <step n="6" name="enforce-arch-fitness">
+      <input>Solution structure</input>
+      <action>Add NetArchTest test project that asserts: Domain has zero outward refs; Application has no `Microsoft.EntityFrameworkCore`; Infrastructure may reference Domain + Application. Hook into CI.</action>
+      <output>Green fitness suite + CI gate</output>
+      <decision-gate>If NetArchTest fails, BLOCK merge — fix the leakage before any other change.</decision-gate>
+    </step>
+
+  </section>
+</text>

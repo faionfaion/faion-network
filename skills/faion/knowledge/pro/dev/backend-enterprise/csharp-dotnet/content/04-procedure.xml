@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="C# .NET Core Backend Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>6-step procedure to apply the .NET Core service umbrella end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="scaffold-project">
+      <input>Service name, target framework (net8.0/net9.0)</input>
+      <action>Run `dotnet new webapi -n &lt;Name&gt; -f net8.0`. Replace top-level `Controllers/`, `Services/` with `Features/&lt;Feature&gt;/` folders.</action>
+      <output>Empty solution + first feature folder</output>
+    </step>
+
+    <step n="2" name="register-di-and-problem-details">
+      <input>Feature list, dependency list</input>
+      <action>In `Program.cs`: register `DbContext` Scoped, services Scoped, hosted services via `AddHostedService&lt;T&gt;()`, `AddProblemDetails()`. Validate Generic Host options at startup.</action>
+      <output>`Program.cs` with DI graph</output>
+      <decision-gate>If any scoped service is referenced from a singleton, STOP and apply `di-lifetimes` rule via `IServiceScopeFactory`.</decision-gate>
+    </step>
+
+    <step n="3" name="add-controllers-and-services">
+      <input>API contract</input>
+      <action>For each endpoint: add `[ApiController]` controller in the feature folder, `async Task&lt;ActionResult&lt;T&gt;&gt;` actions, `CancellationToken ct = default` as the last param threaded into the service.</action>
+      <output>Controller + service per feature</output>
+      <decision-gate>Reject any action lacking `CancellationToken` plumbing per `cancellation-token-plumbing` rule.</decision-gate>
+    </step>
+
+    <step n="4" name="add-ef-data-layer">
+      <input>Entity model</input>
+      <action>Add `AppDbContext`, `IEntityTypeConfiguration&lt;T&gt;` per entity, repositories returning materialised lists (never `IQueryable`), `AsNoTracking()` on read paths.</action>
+      <output>DbContext + configurations + repositories</output>
+      <decision-gate>If a repository returns `IQueryable`, refactor — leaked queries break the contract per `ef-asnotracking-on-reads` rule.</decision-gate>
+    </step>
+
+    <step n="5" name="add-tests">
+      <input>Controllers + services + repositories</input>
+      <action>xUnit unit tests with Moq for service-level behaviour; integration tests with `WebApplicationFactory&lt;Program&gt;` and Testcontainers for the data layer.</action>
+      <output>Test project per service + green CI</output>
+    </step>
+
+    <step n="6" name="add-background-service">
+      <input>Async work spec (queue consumer / scheduled job)</input>
+      <action>Implement `BackgroundService` that injects `IServiceScopeFactory`; resolve scoped dependencies via `CreateScope()` per work item; bound any `Channel&lt;T&gt;` with explicit capacity.</action>
+      <output>Hosted service registered via `AddHostedService&lt;T&gt;()`</output>
+      <decision-gate>If the hosted service constructor names a scoped type, fail the review — `scoped-in-singleton` antipattern.</decision-gate>
+    </step>
+
+  </section>
+</text>

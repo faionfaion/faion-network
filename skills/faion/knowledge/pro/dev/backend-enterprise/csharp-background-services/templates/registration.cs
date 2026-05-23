@@ -1,3 +1,9 @@
+// purpose: Hosted-service registration snippet for Program.cs
+// consumes: see AGENTS.md Prerequisites
+// produces: C# Background Services code
+// depends-on: content/02-output-contract.xml schema
+// token-budget-impact: ~500 tokens when filled
+
 // Program.cs — registration for Channel<T>, queue abstraction, and hosted services.
 // Adjust TItem, TQueue, and TProcessor to your domain types.
 

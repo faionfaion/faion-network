@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="decomposition-rails Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for decomposition-rails. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Rails Decomposition Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the Service / Query / Form / Policy / Serializer decomposition for Rails 7+. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="service-call-returns-result" testable="true" depth="essential">
+      <statement>Every Service Object MUST expose a single `call` (or `.call`) method that returns the canonical entity or a `Result` value object. `void` / `nil` returns are forbidden.</statement>
+      <rationale source="Avdi Grimm — Object on Rails">Consistent return shapes let downstream services and jobs compose without refetching the just-modified record.</rationale>
     </rule>
+
+    <rule id="query-objects-reuse-scopes" testable="true" depth="essential">
+      <statement>Query Objects MUST compose model scopes (`User.active.recent`) — they MUST NOT re-implement filters that already exist as `scope` definitions.</statement>
+      <rationale source="Internal — query-drift retro 2026-Q1">Duplicate filter logic drifts; fixes land in one site and miss the other, opening up bugs that take weeks to surface.</rationale>
+    </rule>
+
+    <rule id="form-uses-activemodel" testable="true" depth="essential">
+      <statement>Form Objects MUST include `ActiveModel::Model` (and optionally `ActiveModel::Attributes`). They MUST NOT inherit from `ActiveRecord::Base` or `ActiveType::Object`.</statement>
+      <rationale source="Rails edge guides">Inheriting from AR creates ghost columns + persistence confusion; `ActiveModel::Model` is the explicit "form, not DB" boundary.</rationale>
+    </rule>
+
+    <rule id="serializer-explicit-attributes" testable="true" depth="essential">
+      <statement>Serializers MUST list output attributes explicitly. `attributes :all`, `model.as_json` without a `:only`/`:except` whitelist, and `model.attributes` spread are forbidden.</statement>
+      <rationale source="Internal — field-leak audit 2026-Q1">Implicit serialisation leaks `encrypted_password`, `remember_token`, multi-tenant identifiers.</rationale>
+    </rule>
+
+    <rule id="namespace-whitelist" testable="true" depth="essential">
+      <statement>Application code MUST live in one of: `app/services`, `app/queries`, `app/forms`, `app/policies`, `app/serializers`, `app/models`, `app/controllers`, `app/jobs`. Inventing `app/managers/`, `app/operations/`, `app/lib/services/` requires an ADR.</statement>
+      <rationale source="Internal — namespace-bloat retro 2026-Q1">Ad-hoc folders fragment the convention and re-introduce the very thing decomposition fixed.</rationale>
+    </rule>
+
+    <rule id="policy-scope-on-find" testable="true" depth="essential">
+      <statement>Controllers MUST resolve records via `policy_scope(Model).find(params[:id])` — never `Model.find` followed by a separate `authorize` call.</statement>
+      <rationale source="Pundit docs">`find` before authorization leaks existence via timing differences for unauthorized IDs; `policy_scope` filters at the relation level.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

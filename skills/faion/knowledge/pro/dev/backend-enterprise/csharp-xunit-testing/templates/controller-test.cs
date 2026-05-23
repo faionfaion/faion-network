@@ -1,3 +1,8 @@
+// purpose: controller unit test skeleton with Mock<T> and FluentAssertions
+// consumes: controller name, service interface, DTO types
+// produces: xunit test class conforming to constructor-injection + fluentassertions-not-assert
+// depends-on: content/01-core-rules.xml rules constructor-injection, fluentassertions-not-assert
+// token-budget-impact: ~400 tokens when loaded as context
 // Controller unit test skeleton using xUnit + Moq + FluentAssertions
 // Replace: TService, TController, TDto, CreateDto, RouteValues as needed
 

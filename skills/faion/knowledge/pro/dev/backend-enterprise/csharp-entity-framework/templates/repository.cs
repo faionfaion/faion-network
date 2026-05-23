@@ -1,3 +1,8 @@
+// purpose: repository pattern that materialises results before returning across the boundary
+// consumes: DbContext + entity type T
+// produces: repository implementation conforming to asnotracking-on-reads rule
+// depends-on: content/01-core-rules.xml rule asnotracking-on-reads
+// token-budget-impact: ~400 tokens when loaded as context
 // IRepository interface + implementation with paged query and email lookup
 // Replace: TEntity, TDto, property names as needed
 

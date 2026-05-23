@@ -1,3 +1,8 @@
+// purpose: plain Mockito service unit test skeleton with AssertJ assertions
+// consumes: service class + collaborator interfaces
+// produces: service test conforming to assertj-over-junit-assert + naming-convention
+// depends-on: content/01-core-rules.xml rules layer-slice-assignment, assertj-over-junit-assert
+// token-budget-impact: ~450 tokens when loaded as context
 // @ExtendWith(MockitoExtension) service unit test skeleton
 // Replace: UserService, UserRepository, UserMapper, PasswordEncoder
 

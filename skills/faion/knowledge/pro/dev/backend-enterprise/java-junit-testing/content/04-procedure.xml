@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Spring Boot JUnit Testing Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the layered Spring Boot JUnit methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="assign-layer-slice">
+      <input>SUT class path</input>
+      <action>Decide the layer per SUT: controller → `@WebMvcTest`, service → plain Mockito, repository → `@DataJpaTest`, cross-layer → one `@SpringBootTest` per module.</action>
+      <output>Slice annotation per SUT</output>
+      <decision-gate>If a controller test reaches for `@SpringBootTest`, fail per `layer-slice-assignment` rule.</decision-gate>
+    </step>
+
+    <step n="2" name="author-controller-tests">
+      <input>Controller class + endpoint contract</input>
+      <action>Add `@WebMvcTest(Controller.class)`; inject `MockMvc`; mock the service via `@MockBean`. Assert HTTP status, content type, and `jsonPath("$.field")` per response shape.</action>
+      <output>Per-endpoint test class</output>
+    </step>
+
+    <step n="3" name="author-service-tests">
+      <input>Service class + branch list</input>
+      <action>`@ExtendWith(MockitoExtension.class)`; `@Mock` collaborators; `@InjectMocks` SUT. For each branch add a test named `methodUnderTest_state_expectedBehaviour`. Use AssertJ for collections.</action>
+      <output>Per-branch test methods</output>
+      <decision-gate>If `Thread.sleep` is used for async waiting, fail per `awaitility-not-thread-sleep` rule.</decision-gate>
+    </step>
+
+    <step n="4" name="author-repository-tests">
+      <input>Repository + Testcontainers DB image</input>
+      <action>`@DataJpaTest`; `@AutoConfigureTestDatabase(replace = NONE)`; `@Container static PostgreSQLContainer` shared per class. Disable OSIV via `application-test.yml`.</action>
+      <output>Per-query test methods + Testcontainers bootstrap</output>
+      <decision-gate>If H2 / HSQLDB is used, fail per `testcontainers-not-h2` rule.</decision-gate>
+    </step>
+
+    <step n="5" name="wire-jacoco-gate">
+      <input>Coverage thresholds (line 70 %, branch 60 %)</input>
+      <action>Add Jacoco plugin with `check` goal enforcing thresholds. Add Pitest module for payment/auth/billing critical paths run quarterly. Fail the build when thresholds drop.</action>
+      <output>Jacoco + Pitest gates active in CI</output>
+      <decision-gate>If thresholds lowered as a "quick fix", BLOCK per `jacoco-gate-in-ci` rule.</decision-gate>
+    </step>
+
+  </section>
+</text>

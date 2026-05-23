@@ -1,47 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="java-spring-async Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for java-spring-async as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Spring @Async Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 antipatterns observed in real Spring @Async deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using the default executor without a custom `ThreadPoolTaskExecutor` bean.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Spring's default `SimpleAsyncTaskExecutor` creates a new thread per call with no pooling. OOM and thread explosion on high load. Default executor changes between Boot versions; behavior is unpredictable.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Mixing `@Async` methods on the same bean without explicit executor names.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>All methods use the default executor. Slow email tasks starve fast cache-warm tasks. Separate executors allow independent tuning.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>`@Async` method with `void` return type and no exception handler.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Exceptions are swallowed completely. Silent failures. Caller cannot observe or retry.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Caller does not `.get()` or `.thenAccept()` on the returned `CompletableFuture`.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Fire-and-forget without visibility. If the async work fails, no one knows. Silent corruption.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Async method that calls `SecurityContextHolder.getContext()` or uses `@Transactional` without a `TaskDecorator`.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>SecurityContext is null in the new thread. `@Transactional` requires the transaction context (from Spring's `TransactionContextHolder`), also lost. Method fails with cryptic NullPointerException or `RuntimeException: not transactional`.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Wrapping an `@Async` method in `@Transactional` expecting the async work to be part of the transaction.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The async method runs in a new thread with a new transaction (or no transaction, depending on propagation). Partial failure leaves inconsistent state. Rollback is not coordinated.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Using `Thread.sleep()` in a test to wait for an async task.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Flaky on CI under load. Use `Awaitility.await().atMost(...)` instead for deterministic completion detection.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Suggesting `@Async` to "speed up" CPU-heavy computations.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Thread pools are for IO-bound work. CPU-bound parallelism requires `ForkJoinPool` or Project Reactor. `@Async` will add overhead and contention.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="unnamed-async" severity="high">
+      <symptom>OOM under load; thread dump shows thousands of `SimpleAsyncTaskExecutor` threads with no pool reuse.</symptom>
+      <root-cause source="Spring Async docs">`@Async` without an executor name falls back to `SimpleAsyncTaskExecutor`, which spawns a new thread per call.</root-cause>
+      <fix>Define a named `ThreadPoolTaskExecutor` per workload SLA; annotate every `@Async` method with the executor name.</fix>
+    </antipattern>
+
+    <antipattern id="void-async-loses-exception" severity="high">
+      <symptom>Async email never sends; no error in logs; users complain weeks later.</symptom>
+      <root-cause source="Spring Async docs">`@Async` method returns `void`; the thrown exception is swallowed because no `AsyncUncaughtExceptionHandler` is registered.</root-cause>
+      <fix>Switch to `CompletableFuture&lt;Void&gt;` and let the caller observe failure; or register `AsyncUncaughtExceptionHandler` if `void` is unavoidable.</fix>
+    </antipattern>
+
+    <antipattern id="self-invocation-bypass" severity="high">
+      <symptom>Endpoint blocks for the duration of the "async" work; profile shows the call running synchronously on the request thread.</symptom>
+      <root-cause source="Spring AOP docs">Method `foo()` calls `this.barAsync()`; the call bypasses the AOP proxy that would have switched threads.</root-cause>
+      <fix>Inject a separate bean and call its async method, or use `AopContext.currentProxy()` with `@EnableAspectJAutoProxy(exposeProxy = true)`.</fix>
+    </antipattern>
+
+    <antipattern id="mdc-loss" severity="medium">
+      <symptom>Logs in async tasks have empty `requestId`; correlation across the request breaks.</symptom>
+      <root-cause source="Spring TaskDecorator docs">Executor not wrapped in a `TaskDecorator` that copies MDC + `SecurityContext` from the calling thread.</root-cause>
+      <fix>Implement `TaskDecorator` capturing MDC + `SecurityContext` before dispatch; set it on every executor.</fix>
+    </antipattern>
+
+    <antipattern id="async-inside-transactional" severity="high">
+      <symptom>Async work runs after the parent transaction commits OR rolls back independently; partial-failure data corruption.</symptom>
+      <root-cause source="Spring transaction docs">`@Async` opens a new thread; `@Transactional` does not propagate across thread boundaries.</root-cause>
+      <fix>Move the `@Async` call outside the transaction, or use `TransactionSynchronizationManager.registerSynchronization(...)` to fire after commit.</fix>
+    </antipattern>
+
   </section>
 </text>

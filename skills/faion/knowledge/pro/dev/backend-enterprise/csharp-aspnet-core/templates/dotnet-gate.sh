@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: CI gate script enforcing async hygiene and coverage threshold
+# consumes: see AGENTS.md Prerequisites
+# produces: ASP.NET Core Patterns code
+# depends-on: content/02-output-contract.xml schema
+# token-budget-impact: ~300 tokens of agent context to invoke
 # dotnet-gate.sh — fail PR if async hygiene or coverage slips.
 # Usage: dotnet-gate.sh path/to/sln.sln [coverage_threshold]
 set -euo pipefail

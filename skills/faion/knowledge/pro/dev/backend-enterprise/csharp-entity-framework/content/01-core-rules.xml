@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="csharp-entity-framework Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for csharp-entity-framework. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="EF Core Data Layer Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the EF Core data-layer methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="entity-config-per-entity" testable="true" depth="essential">
+      <statement>Every entity MUST have a dedicated `IEntityTypeConfiguration&lt;T&gt;` class under `Data/Configurations/`. `OnModelCreating` MUST call `ApplyConfigurationsFromAssembly(...)` and contain no inline `builder.Entity&lt;T&gt;().Property(...)` calls.</statement>
+      <rationale source="Microsoft EF Core docs">Inline configuration in `OnModelCreating` grows unbounded and hides entity-specific mapping detail behind one giant method; per-entity classes keep diffs scoped.</rationale>
     </rule>
+
+    <rule id="asnotracking-on-reads" testable="true" depth="essential">
+      <statement>Every read-only query path MUST call `AsNoTracking()` (or use a projection that bypasses the change tracker). Repositories MUST NOT return `IQueryable&lt;T&gt;` — materialise with `ToListAsync`/`ToArrayAsync`/`FirstOrDefaultAsync` before crossing the layer boundary.</statement>
+      <rationale source="Microsoft EF Core performance guide">Change tracker bloats memory on read paths; leaked `IQueryable` lets callers execute queries against a disposed context.</rationale>
+    </rule>
+
+    <rule id="concurrency-token-on-aggregates" testable="true" depth="essential">
+      <statement>Every aggregate root MUST carry an optimistic-concurrency token: `[Timestamp] byte[] RowVersion` (SqlServer) or `[ConcurrencyCheck]` `xmin uint` (Postgres). Concurrent updates without a token are forbidden.</statement>
+      <rationale source="Microsoft EF Core concurrency docs">Without a token, EF's last-write-wins silently corrupts data under concurrent edits.</rationale>
+    </rule>
+
+    <rule id="bulk-execute-update-delete" testable="true" depth="essential">
+      <statement>Bulk updates and deletes MUST use `ExecuteUpdateAsync`/`ExecuteDeleteAsync` (EF Core 7+) — not load + mutate + SaveChanges loops.</statement>
+      <rationale source="Microsoft EF Core 7 release notes">Load-mutate-save round-trips a row at a time; `ExecuteUpdateAsync` runs one SQL statement and never touches the change tracker.</rationale>
+    </rule>
+
+    <rule id="savechanges-interceptor-for-audit" testable="true" depth="essential">
+      <statement>Cross-cutting audit fields (`CreatedAt`, `UpdatedAt`, `UpdatedBy`) MUST be populated by a `SaveChangesInterceptor` registered once on the `DbContext`. Per-entity configuration MUST NOT set these in every class.</statement>
+      <rationale source="EF Core interceptors docs">Per-entity duplication drifts; one interceptor enforces a single canonical implementation across the model.</rationale>
+    </rule>
+
+    <rule id="migration-sql-review" testable="true" depth="essential">
+      <statement>Migrations applied to shared dev or prod databases MUST be reviewed as SQL via `dotnet ef migrations script` BEFORE `dotnet ef database update`. Destructive operations (`DROP COLUMN`, `DROP TABLE`) require an explicit human checkpoint.</statement>
+      <rationale source="Internal — migration retro 2026-Q1">Code-level diff hides destructive SQL (e.g. cascade FK reshuffle); SQL review surfaces the actual schema delta.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

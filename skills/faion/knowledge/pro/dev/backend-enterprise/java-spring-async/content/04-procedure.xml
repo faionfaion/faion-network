@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Spring @Async Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to introduce Spring `@Async` to a service end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="define-pool-per-sla">
+      <input>Workload SLA list (latency, durability)</input>
+      <action>For each SLA define a named `@Bean ThreadPoolTaskExecutor` (`emailExecutor`, `auditExecutor`). Size with `cores × (1 + wait_ratio / compute_ratio)`. Bound the queue capacity. Set `RejectedExecutionHandler = CallerRunsPolicy`.</action>
+      <output>One executor per SLA</output>
+      <decision-gate>If no executor is defined, BLOCK per `named-executor` rule.</decision-gate>
+    </step>
+
+    <step n="2" name="install-task-decorator">
+      <input>MDC keys + SecurityContext requirement</input>
+      <action>Implement `TaskDecorator` that copies `MDC.getCopyOfContextMap()` + `SecurityContextHolder.getContext()` + tracing baggage before dispatch and restores on completion. Apply to every executor via `executor.setTaskDecorator(...)`.</action>
+      <output>Context-propagating executors</output>
+      <decision-gate>If async tasks log without `requestId`, fail per `taskdecorator-context` rule.</decision-gate>
+    </step>
+
+    <step n="3" name="annotate-methods">
+      <input>Async candidate methods</input>
+      <action>Annotate each method `@Async("&lt;executor-name&gt;")`. Change return type to `CompletableFuture&lt;T&gt;`. Inject the service into the caller (no self-invocation).</action>
+      <output>Properly annotated async methods</output>
+      <decision-gate>If self-invocation is detected, BLOCK per `no-self-invocation` rule.</decision-gate>
+    </step>
+
+    <step n="4" name="wire-graceful-shutdown">
+      <input>Deploy SLA + max in-flight task duration</input>
+      <action>Set `setWaitForTasksToCompleteOnShutdown(true)` + `setAwaitTerminationSeconds(30)` on every executor. Add an `@PreDestroy` hook for cleanup if needed.</action>
+      <output>Graceful shutdown verified</output>
+    </step>
+
+    <step n="5" name="add-tests-with-awaitility">
+      <input>Async method list</input>
+      <action>Author tests using `Awaitility.await().atMost(...)` for completion assertions. Configure tests to use a deterministic executor (`SyncTaskExecutor`) if the test focus is logic, not threading.</action>
+      <output>Deterministic test suite</output>
+      <decision-gate>If `Thread.sleep` appears in async tests, fail per the no-thread-sleep convention.</decision-gate>
+    </step>
+
+  </section>
+</text>

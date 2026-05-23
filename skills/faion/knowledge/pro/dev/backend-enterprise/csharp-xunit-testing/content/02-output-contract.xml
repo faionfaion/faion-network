@@ -1,22 +1,89 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="csharp-xunit-testing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="xUnit Testing Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the test-plan manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/csharp-xunit-testing.json",
+  "type": "object",
+  "required": ["test_project", "framework", "test_classes", "coverage", "uses_testcontainers", "uses_webapplicationfactory"],
+  "properties": {
+    "test_project": {"type": "string", "pattern": "Tests$"},
+    "framework": {"const": "xunit"},
+    "test_classes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "layer", "fact_count"],
+        "properties": {
+          "name": {"type": "string", "pattern": "Tests$"},
+          "layer": {"enum": ["unit", "integration", "data"]},
+          "fact_count": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "required": ["line", "branch", "gate_enforced_in_ci"],
+      "properties": {
+        "line": {"type": "number", "minimum": 70},
+        "branch": {"type": "number", "minimum": 60},
+        "gate_enforced_in_ci": {"type": "boolean", "const": true}
+      }
+    },
+    "uses_testcontainers": {"type": "boolean", "const": true},
+    "uses_webapplicationfactory": {"type": "boolean", "const": true},
+    "forbidden_patterns_found": {"type": "array", "items": {"type": "string"}, "maxItems": 0}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "test_project": "Billing.Tests",
+  "framework": "xunit",
+  "test_classes": [
+    {"name": "InvoiceServiceTests", "layer": "unit", "fact_count": 12},
+    {"name": "InvoicesApiTests", "layer": "integration", "fact_count": 8},
+    {"name": "InvoiceRepositoryTests", "layer": "data", "fact_count": 5}
+  ],
+  "coverage": {"line": 78.4, "branch": 65.2, "gate_enforced_in_ci": true},
+  "uses_testcontainers": true,
+  "uses_webapplicationfactory": true,
+  "forbidden_patterns_found": []
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "test_project": "billing-tests",
+  "framework": "nunit",
+  "test_classes": [],
+  "coverage": {"line": 42.0, "branch": 31.0, "gate_enforced_in_ci": false},
+  "uses_testcontainers": false,
+  "uses_webapplicationfactory": false,
+  "forbidden_patterns_found": ["Thread.Sleep(2000) in OrdersApiTests.WaitsForJob"]
+}
+]]></code>
+    <note>project name does not end in `Tests`; framework wrong; empty classes; coverage below gate; Testcontainers + WAF off; forbidden Thread.Sleep present.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>`Thread.Sleep` in any test method.</item>
+      <item>`UseInMemoryDatabase` in tests that exercise queries, constraints, or migrations.</item>
+      <item>`new HttpClient()` in an integration test.</item>
+      <item>Shared mutable state on a static field across tests.</item>
+      <item>`Assert.Equal(expected, actual)` where actual is a collection or POCO.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-csharp-xunit-testing.py">Validator script</reference>
 </text>

@@ -1,22 +1,86 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="java-jpa-hibernate Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="JPA / Hibernate Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the JPA-layer manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/java-jpa-hibernate.json",
+  "type": "object",
+  "required": ["spring_boot_version", "ddl_auto", "open_in_view", "entities", "migrations_paired", "fetch_audit"],
+  "properties": {
+    "spring_boot_version": {"type": "string", "pattern": "^3\\."},
+    "ddl_auto": {"const": "validate"},
+    "open_in_view": {"const": false},
+    "entities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["class", "business_key", "associations_lazy", "uses_lombok_data"],
+        "properties": {
+          "class": {"type": "string"},
+          "business_key": {"type": "string", "minLength": 1},
+          "associations_lazy": {"type": "boolean", "const": true},
+          "uses_lombok_data": {"type": "boolean", "const": false}
+        }
+      }
+    },
+    "migrations_paired": {"type": "boolean", "const": true},
+    "fetch_audit": {
+      "type": "object",
+      "required": ["eager_associations_found"],
+      "properties": {
+        "eager_associations_found": {"type": "array", "items": {"type": "string"}, "maxItems": 0}
+      }
+    },
+    "forbidden_patterns_found": {"type": "array", "items": {"type": "string"}, "maxItems": 0}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "spring_boot_version": "3.2.1",
+  "ddl_auto": "validate",
+  "open_in_view": false,
+  "entities": [
+    {"class": "com.acme.billing.Invoice", "business_key": "invoiceNumber", "associations_lazy": true, "uses_lombok_data": false}
+  ],
+  "migrations_paired": true,
+  "fetch_audit": {"eager_associations_found": []},
+  "forbidden_patterns_found": []
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "spring_boot_version": "2.7.0",
+  "ddl_auto": "update",
+  "open_in_view": true,
+  "entities": [{"class": "com.acme.billing.Invoice", "business_key": "", "associations_lazy": false, "uses_lombok_data": true}],
+  "migrations_paired": false,
+  "fetch_audit": {"eager_associations_found": ["Invoice.lines"]},
+  "forbidden_patterns_found": ["CascadeType.ALL on @ManyToOne in Invoice.customer"]
+}
+]]></code>
+    <note>Spring Boot 2.x; ddl-auto auto-mutates; OSIV on; no business key; @Data on entity; eager fetch + cascade ALL on ManyToOne; migrations missing.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>`@Data` (Lombok) on a JPA entity.</item>
+      <item>`FetchType.EAGER` on any association.</item>
+      <item>`cascade = CascadeType.ALL` on a `@ManyToOne` relationship.</item>
+      <item>Entity diff without a paired Flyway migration.</item>
+      <item>`@Modifying` without `clearAutomatically = true` for bulk updates/deletes.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-java-jpa-hibernate.py">Validator script</reference>
 </text>

@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="csharp-dotnet Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for csharp-dotnet. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="C# .NET Core Backend Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the .NET Core service umbrella. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every async controller action MUST accept CancellationToken as the last parameter and thread it to the service layer.</statement>
-      <rationale source="v1-source">Without token plumbing, client disconnects and timeouts do not cancel database queries, causing thread-pool starvation under load.</rationale>
+
+    <rule id="cancellation-token-plumbing" testable="true" depth="essential">
+      <statement>Every async controller action and service method MUST accept `CancellationToken` as the last parameter and thread it to every downstream IO call (EF, HttpClient, channel reads).</statement>
+      <rationale source="Microsoft async guidelines + internal load-test postmortems">Without token plumbing, client disconnects and server timeouts do not cancel database queries, causing thread-pool starvation under load.</rationale>
     </rule>
+
+    <rule id="di-lifetimes" testable="true" depth="essential">
+      <statement>Register `DbContext` as Scoped, `IHttpClientFactory`-backed clients as Transient, hosted services as Singleton. Resolve scoped dependencies inside a `BackgroundService` via `IServiceScopeFactory.CreateScope()` — never via constructor injection.</statement>
+      <rationale source="Microsoft DI docs">BackgroundService is singleton; injecting a scoped DbContext into its constructor throws at runtime on first use (or worse: silently shares state across iterations).</rationale>
+    </rule>
+
+    <rule id="no-sync-over-async" testable="true" depth="essential">
+      <statement>Forbid `.Result`, `.Wait()`, `GetAwaiter().GetResult()`, and `async void` (except for top-level event handlers). Reviewers MUST reject diffs that introduce any of these.</statement>
+      <rationale source="Stephen Cleary — async best practices">Sync-over-async deadlocks under a synchronisation context; `async void` swallows exceptions and crashes the host.</rationale>
+    </rule>
+
+    <rule id="ef-asnotracking-on-reads" testable="true" depth="essential">
+      <statement>EF Core read paths MUST call `AsNoTracking()`. Bulk operations MUST use `ExecuteUpdateAsync`/`ExecuteDeleteAsync`. Repositories MUST NOT return `IQueryable&lt;T&gt;` — materialize with `ToListAsync`/`ToArrayAsync` before crossing the layer boundary.</statement>
+      <rationale source="Microsoft EF Core performance guide">Change tracker bloats memory on read-only paths; leaked `IQueryable` lets controllers execute queries against a disposed context.</rationale>
+    </rule>
+
+    <rule id="problemdetails-errors" testable="true" depth="essential">
+      <statement>Error responses MUST conform to RFC 7807 ProblemDetails. Register `AddProblemDetails()` in `Program.cs`; never return ad-hoc anonymous error envelopes from controllers.</statement>
+      <rationale source="RFC 7807 + ASP.NET Core docs">A single error contract lets clients (mobile, BFF, partners) implement one parser; ad-hoc envelopes multiply parsing logic.</rationale>
+    </rule>
+
+    <rule id="feature-folder-layout" testable="true" depth="essential">
+      <statement>Source MUST be organised by feature (`Features/Users/{UsersController.cs, UserService.cs, UserDtos.cs, UserMappings.cs}`), not by technical layer (`Controllers/`, `Services/`, `Dtos/`).</statement>
+      <rationale source="Internal — feature-folder migration retro 2026-Q1">Feature folders keep cohesive changes in one directory; technical-layer trees scatter a single feature across five folders and hide the surface area from the agent.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

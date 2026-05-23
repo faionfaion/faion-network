@@ -1,42 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="csharp-dotnet Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for csharp-dotnet as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="C# .NET Core Backend Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>7 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>async void for event handlers — silent crashes.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>One unhandled exception inside async void crashes the host. Force async Task.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>.Result / .Wait() on async methods.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Deadlock under sync context; agent code review must reject any sync-over-async.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>AutoMapper profiles mis-registered (AddAutoMapper missing assembly).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Verify boot; MapperConfiguration.AssertConfigurationIsValid() in a unit test.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>EF queries missing await on ToListAsync().</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Caught by analyzers; ensure &lt;TreatWarningsAsErrors&gt;true&lt;/TreatWarningsAsErrors&gt;.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>DbContext or other scoped service injected into BackgroundService constructor.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>BackgroundService is singleton; scoped services throw at runtime on first use. Mandate IServiceScopeFactory pattern.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Migrations against shared dev/prod DB without human checkpoint.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Destructive — always pause before dotnet ef database update on shared DBs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Source-generated mappers (Mapperly) missing partial class keyword.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agent often forgets the partial keyword.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="async-void-handler" severity="high">
+      <symptom>Host process crashes silently mid-request; logs show `Unobserved task exception` with no stack frame in the codebase.</symptom>
+      <root-cause source="Stephen Cleary — async best practices">`async void` swallows the exception and tears down the process; the only legitimate use is a top-level event handler.</root-cause>
+      <fix>Change return type to `async Task`. Run a Roslyn analyzer (`VSTHRD100`) at CI to block reintroduction.</fix>
+    </antipattern>
+
+    <antipattern id="sync-over-async" severity="high">
+      <symptom>Endpoint deadlocks under load; thread-pool starvation visible in `dotnet-counters`.</symptom>
+      <root-cause source="Stephen Cleary — async best practices">Author called `.Result` or `.Wait()` on an async API to avoid making the caller `async`.</root-cause>
+      <fix>Propagate `async` all the way up. Reviewers must reject any new `.Result`/`.Wait()`. Roslyn analyzer `VSTHRD002` enforces this.</fix>
+    </antipattern>
+
+    <antipattern id="scoped-in-singleton" severity="high">
+      <symptom>`BackgroundService` throws `InvalidOperationException: Cannot consume scoped service 'AppDbContext'` on first iteration — or worse, silently reuses one DbContext for the process lifetime.</symptom>
+      <root-cause source="Microsoft DI docs">Author injected `AppDbContext` into a singleton hosted service constructor.</root-cause>
+      <fix>Inject `IServiceScopeFactory` instead; create a scope per work unit inside `ExecuteAsync` (`using var scope = _scopeFactory.CreateScope();`).</fix>
+    </antipattern>
+
+    <antipattern id="missing-await-tolistasync" severity="medium">
+      <symptom>Endpoint returns `Task` JSON: `{"Result":null,"Id":42,...}`.</symptom>
+      <root-cause source="Internal — async review audit">Author forgot `await` on `ToListAsync()`/`FirstOrDefaultAsync()` and returned the Task.</root-cause>
+      <fix>Set `&lt;TreatWarningsAsErrors&gt;true&lt;/TreatWarningsAsErrors&gt;` and enable `CS4014` to fail the build on un-awaited Tasks.</fix>
+    </antipattern>
+
+    <antipattern id="migrations-on-shared-db" severity="high">
+      <symptom>Dev migration drops a column that prod still depends on; outage during next deploy.</symptom>
+      <root-cause source="Internal — migration retro">Agent ran `dotnet ef database update` against a shared dev/prod DB without a human checkpoint.</root-cause>
+      <fix>Generate the SQL via `dotnet ef migrations script` for human review; gate destructive operations behind a confirmation prompt.</fix>
+    </antipattern>
+
+    <antipattern id="mapperly-non-partial" severity="low">
+      <symptom>Source-generated mapper (Mapperly) build error: `partial keyword required`.</symptom>
+      <root-cause source="Mapperly docs">Agent forgot the `partial` modifier on the mapper class declaration.</root-cause>
+      <fix>Add `partial` to the class declaration. Add a Roslyn analyzer or template snippet to enforce.</fix>
+    </antipattern>
+
+    <antipattern id="automapper-misregistered" severity="medium">
+      <symptom>Endpoint throws `AutoMapperMappingException: Missing type map` at first request after deploy.</symptom>
+      <root-cause source="AutoMapper docs">`AddAutoMapper(...)` was called without the assembly that contains the `Profile`s.</root-cause>
+      <fix>Use `services.AddAutoMapper(typeof(Program).Assembly)` and assert `MapperConfiguration.AssertConfigurationIsValid()` in a unit test.</fix>
+    </antipattern>
+
   </section>
 </text>

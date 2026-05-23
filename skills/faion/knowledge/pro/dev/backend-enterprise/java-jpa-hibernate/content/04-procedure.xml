@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="JPA / Hibernate Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the JPA / Hibernate methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="model-entity">
+      <input>Domain aggregate definition, business key field</input>
+      <action>Create entity class with `@Entity` + `@Table`. Declare all associations as `FetchType.LAZY`. Implement `equals`/`hashCode` over the business key. Use `@Getter @Setter`, never `@Data`.</action>
+      <output>Entity class + business-key documentation</output>
+      <decision-gate>If any association is `EAGER`, BLOCK per `lazy-by-default` rule.</decision-gate>
+    </step>
+
+    <step n="2" name="ship-paired-migration">
+      <input>Entity diff</input>
+      <action>For every entity diff, author a Flyway migration `V&lt;n&gt;__&lt;name&gt;.sql` in the same PR. Apply expand-contract for any rename/type change. Set `spring.jpa.hibernate.ddl-auto=validate` in `application-prod.yml`.</action>
+      <output>Paired migration on disk + validate mode active</output>
+      <decision-gate>If migration is missing, BLOCK per `flyway-migration-per-entity-change` rule.</decision-gate>
+    </step>
+
+    <step n="3" name="add-repository-with-bulk-safety">
+      <input>Repository methods needed</input>
+      <action>Define Spring Data JPA `JpaRepository`. For bulk updates/deletes, annotate `@Modifying(clearAutomatically = true, flushAutomatically = true)`. Use `@Query("... JOIN FETCH ...")` or `@EntityGraph` for opt-in eager loading.</action>
+      <output>Repository interface with safe bulk ops</output>
+    </step>
+
+    <step n="4" name="add-service-with-dto-projection">
+      <input>API contract</input>
+      <action>Implement `@Service` methods that fetch entities and map to DTOs inside a `@Transactional` boundary. Controllers consume the DTO; entities MUST NOT cross the controller boundary.</action>
+      <output>Service + DTO mapping inside transaction</output>
+      <decision-gate>If controller returns an entity, BLOCK per `dto-projection-in-controllers` rule.</decision-gate>
+    </step>
+
+    <step n="5" name="add-datajpatest-slice">
+      <input>Repository + entity</input>
+      <action>Author `@DataJpaTest` with Testcontainers (`@Container static PostgreSQLContainer ...`). Disable OSIV (`spring.jpa.open-in-view=false`) in all profiles.</action>
+      <output>Repository slice tests green + OSIV off</output>
+      <decision-gate>If repository test uses `@SpringBootTest`, fail per `datajpatest-for-repositories` rule.</decision-gate>
+    </step>
+
+  </section>
+</text>

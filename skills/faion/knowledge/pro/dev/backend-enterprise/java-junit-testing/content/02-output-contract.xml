@@ -1,22 +1,92 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="java-junit-testing Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Spring Boot JUnit Testing Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the test-plan manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/java-junit-testing.json",
+  "type": "object",
+  "required": ["module", "framework", "test_classes", "coverage", "uses_testcontainers", "springboottest_count"],
+  "properties": {
+    "module": {"type": "string", "minLength": 1},
+    "framework": {"const": "junit5"},
+    "test_classes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "layer", "slice_annotation", "test_count"],
+        "properties": {
+          "name": {"type": "string", "pattern": "Test$"},
+          "layer": {"enum": ["controller", "service", "repository", "integration"]},
+          "slice_annotation": {"enum": ["@WebMvcTest", "@ExtendWith(MockitoExtension.class)", "@DataJpaTest", "@SpringBootTest"]},
+          "test_count": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "required": ["line", "branch", "tool", "gate_enforced_in_ci"],
+      "properties": {
+        "line": {"type": "number", "minimum": 70},
+        "branch": {"type": "number", "minimum": 60},
+        "tool": {"const": "jacoco"},
+        "gate_enforced_in_ci": {"type": "boolean", "const": true}
+      }
+    },
+    "uses_testcontainers": {"type": "boolean", "const": true},
+    "springboottest_count": {"type": "integer", "maximum": 1},
+    "forbidden_patterns_found": {"type": "array", "items": {"type": "string"}, "maxItems": 0}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "module": "billing-service",
+  "framework": "junit5",
+  "test_classes": [
+    {"name": "UserControllerTest", "layer": "controller", "slice_annotation": "@WebMvcTest", "test_count": 8},
+    {"name": "UserServiceTest", "layer": "service", "slice_annotation": "@ExtendWith(MockitoExtension.class)", "test_count": 14},
+    {"name": "UserRepositoryTest", "layer": "repository", "slice_annotation": "@DataJpaTest", "test_count": 6},
+    {"name": "BillingApiIT", "layer": "integration", "slice_annotation": "@SpringBootTest", "test_count": 4}
+  ],
+  "coverage": {"line": 78.4, "branch": 64.2, "tool": "jacoco", "gate_enforced_in_ci": true},
+  "uses_testcontainers": true,
+  "springboottest_count": 1,
+  "forbidden_patterns_found": []
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "module": "billing-service",
+  "framework": "junit4",
+  "test_classes": [{"name": "user_controller", "layer": "controller", "slice_annotation": "@SpringBootTest", "test_count": 0}],
+  "coverage": {"line": 35.0, "branch": 12.0, "tool": "cobertura", "gate_enforced_in_ci": false},
+  "uses_testcontainers": false,
+  "springboottest_count": 5,
+  "forbidden_patterns_found": ["Thread.sleep(1000) in OrdersServiceTest.waitsForJob"]
+}
+]]></code>
+    <note>Wrong framework + naming; slice-controller using @SpringBootTest; H2 instead of Testcontainers; gate off; many @SpringBootTest; Thread.sleep used.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>`Thread.sleep` inside a test method.</item>
+      <item>`H2` / `HSQLDB` for repository tests.</item>
+      <item>`@SpringBootTest` used for a controller-only or repository-only slice.</item>
+      <item>Mixing Hamcrest + AssertJ + JUnit assertions in the same class.</item>
+      <item>Double-mocking (mocking both the service and its repository in a controller test).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-java-junit-testing.py">Validator script</reference>
 </text>

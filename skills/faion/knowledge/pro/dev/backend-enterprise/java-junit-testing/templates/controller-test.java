@@ -1,3 +1,8 @@
+// purpose: @WebMvcTest skeleton with MockMvc + @MockBean service + jsonPath assertions
+// consumes: controller class, service interface, request/response DTOs
+// produces: controller test conforming to layer-slice-assignment rule
+// depends-on: content/01-core-rules.xml rule layer-slice-assignment
+// token-budget-impact: ~400 tokens when loaded as context
 // @WebMvcTest controller test skeleton
 // Replace: UserController, UserService, CreateUserRequest, UserResponse
 

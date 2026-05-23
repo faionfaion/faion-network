@@ -1,3 +1,8 @@
+// purpose: service method skeleton returning CompletableFuture<T> with @Async("emailExecutor")
+// consumes: workload SLA + executor name from AsyncConfig
+// produces: async service method conforming to completablefuture-return rule
+// depends-on: content/01-core-rules.xml rules named-executor, completablefuture-return
+// token-budget-impact: ~300 tokens when loaded as context
 // @Async service method skeleton — returns CompletableFuture<Void>
 // Replace: NotificationService, emailExecutor, EmailService, Order
 

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Java Spring Boot Enterprise Patterns Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-domain-size">Domain entity count ≥ 5 with externally-exposed PKs?</root-question>
+
+    <branch when="enterprise_grade == false">
+      <conclusion ref="base-entity-uuid-audit-version" verdict="skip-this-methodology — use plain java-spring-boot; the BaseEntity inheritance overhead is unjustified"/>
+    </branch>
+
+    <branch when="enterprise_grade == true">
+      <question id="q-search-shape">Search endpoints require dynamic filters?</question>
+      <branch when="dynamic_search == true">
+        <conclusion ref="jpaspecificationexecutor-for-search" verdict="JpaSpecificationExecutor + composable Specification builders"/>
+      </branch>
+      <branch when="dynamic_search == false">
+        <question id="q-base-entity">Does every entity inherit BaseEntity (UUID + audit + @Version)?</question>
+        <branch when="base_entity_inherited == false">
+          <conclusion ref="base-entity-uuid-audit-version" verdict="introduce BaseEntity before scaffolding additional entities"/>
+        </branch>
+        <branch when="base_entity_inherited == true">
+          <question id="q-readonly">Service class-level @Transactional(readOnly = true) default present?</question>
+          <branch when="readonly_default == false">
+            <conclusion ref="transactional-readonly-default" verdict="set class-level read-only default; write methods override"/>
+          </branch>
+          <branch when="readonly_default == true">
+            <conclusion ref="actuator-and-micrometer" verdict="apply remaining rules — record DTOs + MapStruct + ProblemDetail + Actuator + Micrometer + Security"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="enterprise-billing">
+    enterprise_grade=true → dynamic_search=true → jpaspecificationexecutor-for-search → wire Specification factories per filter primitive + Pageable.
+  </example>
+</text>

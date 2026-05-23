@@ -2,78 +2,96 @@
 slug: architecture-review-meeting-facilitation
 tier: pro
 group: dev
-domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Architecture Review Meeting Facilitation: codified engineering practice that turns the recurring 'role-software-architect/Architecture review meeting facilitation' decision into a repeatable, auditable artefact.
-content_id: "562411241b2982ea"
-tags: [architecture-review-meeting-facilitation, dev, pro]
+domain: architecture
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Playbook step to facilitate the weekly architecture review: pre-read, deliberation rules, decision capture, follow-up.
+content_id: "39785272d3dca9c4"
+complexity: medium
+produces: playbook-step
+est_tokens: 4500
+tags: [architecture, meeting, facilitation, review, playbook]
 ---
+
 # Architecture Review Meeting Facilitation
 
 ## Summary
 
-**One-sentence:** Architecture Review Meeting Facilitation: codified engineering practice that turns the recurring 'role-software-architect/Architecture review meeting facilitation' decision into a repeatable, auditable artefact.
+**One-sentence:** Playbook step to facilitate the weekly architecture review: pre-read, deliberation rules, decision capture, follow-up.
 
-**One-paragraph:** Architecture Review Meeting Facilitation addresses the gap identified by the role-software-architect/Architecture review meeting facilitation playbook: trade-off-stakeholder-communication is close but doesn't script the actual meeting. Needed: ATAM-lite agenda, role assignments, scenario walkthrough script, exit criteria. P4 architects bill for these meetings and P6 architects gate releases with them. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Playbook step to facilitate the weekly architecture review: pre-read, deliberation rules, decision capture, follow-up. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness.
+
+**Ефективно для:**
+
+- Run weekly architecture review з прочитаним pre-read і structured deliberation.
+- Decision capture: записані decision + dissent + follow-ups — а не 'we agreed, sort of'.
+- Follow-up loop: previous-meeting decisions перевіряються next meeting.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-software-architect/Architecture review meeting facilitation OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Org has a recurring architecture review (weekly / biweekly).
+- Pre-read material is shared ≥24h before the meeting.
+- Named facilitator owns the agenda and the decision log.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Ad-hoc one-off meeting — use the lightweight ADR flow instead.
+- No pre-read culture — fix that first or the meeting fails.
+- Decision is already made and meeting is theater — cancel.
 
 ## Prerequisites
 
-- recent context for the role-software-architect/Architecture review meeting facilitation task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Pre-read material | markdown | proposal author |
+| Agenda | markdown | facilitator |
+| Decision log | markdown | facilitator |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+| [[architecture-proposal-document-template]] | Proposals feed the meeting agenda |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output per step | 1000 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Template fill, bounded transformation |
+| `synthesize-decision` | sonnet | Per-instance judgment; bounded inputs |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/architecture-review-meeting-facilitation.json` | JSON schema for the Architecture Review Meeting Facilitation output contract |
-| `templates/architecture-review-meeting-facilitation.md` | Markdown skeleton with the required fields |
+| `templates/review-facilitation-step.md` | Playbook step skeleton with pre-meeting / in-meeting / post-meeting phases |
+| `templates/decision-log.md` | Decision log template with decision + dissent + follow-ups |
+| `templates/_smoke-test.md` | Filled-in playbook for one review session |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-architecture-review-meeting-facilitation.py` | Enforce Architecture Review Meeting Facilitation output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-architecture-review-meeting-facilitation.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
 
-- parent skill: `pro/dev/`
-- upstream playbook: `role-software-architect/Architecture review meeting facilitation`
+- [[architecture-proposal-document-template]]
+- [[arch-health-weekly-report-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.

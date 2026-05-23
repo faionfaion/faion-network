@@ -1,3 +1,8 @@
+// purpose: WebApplicationFactory integration-test skeleton with auth + Respawn reset
+// consumes: Program entry point, endpoints under test
+// produces: xunit integration test conforming to webapplicationfactory-for-integration
+// depends-on: content/01-core-rules.xml rule webapplicationfactory-for-integration
+// token-budget-impact: ~450 tokens when loaded as context
 // Integration test skeleton using WebApplicationFactory
 // Requires: public partial class Program {} in Program.cs (minimal hosting)
 // Requires: Respawn NuGet for DB reset between tests

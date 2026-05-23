@@ -1,3 +1,8 @@
+// purpose: JPA entity skeleton with LAZY associations + business-key equals/hashCode
+// consumes: domain aggregate name, business key field, association list
+// produces: entity class conforming to lazy-by-default + business-key-equality rules
+// depends-on: content/01-core-rules.xml rules lazy-by-default, business-key-equality
+// token-budget-impact: ~450 tokens when loaded as context
 // JPA entity skeleton — explicit @Table, @Column, @Version, business-key equals
 // Replace: User, users, user_roles, Role, Order
 

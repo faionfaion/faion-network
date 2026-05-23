@@ -1,3 +1,8 @@
+// purpose: Spring Data JPA repository with @Modifying + clearAutomatically + JOIN FETCH
+// consumes: entity class + business-key type
+// produces: repository interface conforming to modifying-clearautomatically rule
+// depends-on: content/01-core-rules.xml rule modifying-clearautomatically
+// token-budget-impact: ~350 tokens when loaded as context
 // Spring Data JPA repository skeleton
 // Replace: User, Role, UserRepository
 

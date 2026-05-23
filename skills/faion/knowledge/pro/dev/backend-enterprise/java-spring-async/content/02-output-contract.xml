@@ -1,22 +1,96 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="java-spring-async Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Spring @Async Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the async-config manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/java-spring-async.json",
+  "type": "object",
+  "required": ["executors", "async_methods", "task_decorator_installed", "graceful_shutdown"],
+  "properties": {
+    "executors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "rejected_execution_handler", "core_pool_size", "queue_capacity"],
+        "properties": {
+          "name": {"type": "string", "minLength": 1},
+          "rejected_execution_handler": {"const": "CallerRunsPolicy"},
+          "core_pool_size": {"type": "integer", "minimum": 1},
+          "queue_capacity": {"type": "integer", "minimum": 1}
+        }
+      }
+    },
+    "async_methods": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["class", "method", "executor", "returns"],
+        "properties": {
+          "class": {"type": "string"},
+          "method": {"type": "string"},
+          "executor": {"type": "string", "minLength": 1},
+          "returns": {"type": "string", "pattern": "^CompletableFuture"}
+        }
+      }
+    },
+    "task_decorator_installed": {"type": "boolean", "const": true},
+    "graceful_shutdown": {
+      "type": "object",
+      "required": ["wait_for_tasks", "await_termination_seconds"],
+      "properties": {
+        "wait_for_tasks": {"type": "boolean", "const": true},
+        "await_termination_seconds": {"type": "integer", "minimum": 10}
+      }
+    },
+    "forbidden_patterns_found": {"type": "array", "items": {"type": "string"}, "maxItems": 0}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "executors": [
+    {"name": "emailExecutor", "rejected_execution_handler": "CallerRunsPolicy", "core_pool_size": 4, "queue_capacity": 256}
+  ],
+  "async_methods": [
+    {"class": "com.acme.notif.EmailService", "method": "send", "executor": "emailExecutor", "returns": "CompletableFuture<Void>"}
+  ],
+  "task_decorator_installed": true,
+  "graceful_shutdown": {"wait_for_tasks": true, "await_termination_seconds": 30},
+  "forbidden_patterns_found": []
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "executors": [{"name": "", "rejected_execution_handler": "AbortPolicy", "core_pool_size": 100, "queue_capacity": 0}],
+  "async_methods": [{"class": "com.acme.notif.EmailService", "method": "send", "executor": "", "returns": "void"}],
+  "task_decorator_installed": false,
+  "graceful_shutdown": {"wait_for_tasks": false, "await_termination_seconds": 0},
+  "forbidden_patterns_found": ["self-invocation: this.sendAsync() inside EmailService"]
+}
+]]></code>
+    <note>Executor unnamed; AbortPolicy; void return; decorator missing; no graceful shutdown; self-invocation present.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Plain `@Async` without an executor name.</item>
+      <item>`@Async` method returning `void` without `AsyncUncaughtExceptionHandler`.</item>
+      <item>`this.asyncMethod()` self-invocation.</item>
+      <item>`@Async` applied inside a `@Transactional` boundary expecting tx propagation.</item>
+      <item>`Executors.newCachedThreadPool()` / unbounded queue.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-java-spring-async.py">Validator script</reference>
 </text>

@@ -1,77 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="java-jpa-hibernate Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for java-jpa-hibernate as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="JPA / Hibernate Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 antipatterns observed in real Spring Data JPA + Hibernate deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Lombok @Data on JPA entities: generates equals/hashCode over all fields including lazy collections, causing infinite recursion and broken Set semantics.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>@Data iterates all fields for equals; lazy collection fields trigger a DB load and form a cycle. Use @Getter @Setter only and implement equals/hashCode manually on a business key.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>FetchType.EAGER on @OneToMany or @ManyToMany to "be safe": every query loads all associated records, creating Cartesian explosions when multiple collections are fetched.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>EAGER fetch cannot be selectively disabled at the query level; once declared on the mapping it applies to every find. It multiplies rows when joined with other EAGER collections, hitting MultipleBagFetchException.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>cascade = CascadeType.ALL on a @ManyToOne relationship: deleting the child cascades to the parent, wiping the parent entity and all its other children.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>CascadeType.ALL on @ManyToOne propagates persist/merge/remove up the ownership chain — semantically backwards. Cascade is appropriate on @OneToMany from parent to children, not from child to parent.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Changing an entity column type or renaming a column without a paired Flyway migration.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hibernate schema validation (spring.jpa.hibernate.ddl-auto=validate) will throw a SchemaManagementException on startup. Production deployments without migrations cause downtime or data loss on column type changes.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>@Modifying on a bulk UPDATE without clearAutomatically = true: subsequent findById returns stale entity from first-level cache.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Bulk UPDATE bypasses Hibernate's entity lifecycle; the first-level cache (L1) is not aware of the change and returns the pre-update state. clearAutomatically flushes the L1 cache after the bulk operation.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Using @SpringBootTest for repository slice tests instead of @DataJpaTest.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>@SpringBootTest loads the full application context including web layer, security, and services. @DataJpaTest slices to just the JPA layer, boots 10x faster, and isolates schema issues from application logic.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>LazyInitializationException in controllers: entity with a lazy association is serialized outside the Hibernate session after the transaction closes.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>OSIV (open-in-view) masks this problem in development by keeping the session open. With OSIV disabled (the correct setting), agents must use DTO projections or JOIN FETCH to load required associations within the transaction.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>LLM emits `@Data` (Lombok) on entities — generates `equals`/`hashCode` over all fields including collections, causing infinite loops and broken `Set` semantics.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use `@Getter @Setter` + manual `equals/hashCode` over business key.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>LLM defaults to `FetchType.EAGER` "to be safe" — kills perf.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Force `LAZY` and explicit fetch joins.</repair>
-    </failure-mode>
-    <failure-mode id="fm-10" severity="medium">
-      <description>Agent adds `cascade = CascadeType.ALL` everywhere, including on `@ManyToOne` (semantic nonsense).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Reject in review.</repair>
-    </failure-mode>
-    <failure-mode id="fm-11" severity="medium">
-      <description>`@Transactional` on `private` methods is a no-op (proxy). Self-invocation also breaks.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Static analysis should flag.</repair>
-    </failure-mode>
-    <failure-mode id="fm-12" severity="medium">
-      <description>LLM tends to skip the migration when changing entity columns.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mandate: every entity diff requires a migration diff.</repair>
-    </failure-mode>
-    <failure-mode id="fm-13" severity="medium">
-      <description>Generated tests use `@SpringBootTest` even for repository slices — slow.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Prefer `@DataJpaTest` + Testcontainers.</repair>
-    </failure-mode>
-    <failure-mode id="fm-14" severity="medium">
-      <description>Human checkpoint: any schema change touching production data (rename, type change, drop column) requires migration plan review (expand-contract pattern).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Manual review prevents data loss.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="lombok-data-on-entities" severity="high">
+      <symptom>Adding an entity to a `Set` triggers infinite recursion and a `StackOverflowError`; or `Set` semantics break (duplicates allowed).</symptom>
+      <root-cause source="Lombok docs">`@Data` generates `equals`/`hashCode` over all fields, including lazy collections; touching a collection loads it from the DB and recurses.</root-cause>
+      <fix>Replace `@Data` with `@Getter @Setter`. Implement `equals`/`hashCode` manually over a business key per `business-key-equality` rule.</fix>
+    </antipattern>
+
+    <antipattern id="eager-fetch-default" severity="high">
+      <symptom>Query returns 5MB JSON or throws `MultipleBagFetchException`; profile shows multi-million-row Cartesian join.</symptom>
+      <root-cause source="Hibernate fetch strategy docs">Author set `FetchType.EAGER` on an association "to be safe"; combined with another EAGER collection it explodes.</root-cause>
+      <fix>Switch all associations to LAZY; do per-query `JOIN FETCH` or `@EntityGraph` when callers actually need the data.</fix>
+    </antipattern>
+
+    <antipattern id="cascade-all-on-manytoone" severity="high">
+      <symptom>Deleting an `OrderLine` cascades to the parent `Order` and wipes the entire order plus all sibling lines.</symptom>
+      <root-cause source="JPA docs — cascade semantics">`CascadeType.ALL` on a `@ManyToOne` propagates persist/merge/remove up the ownership chain — semantically backwards.</root-cause>
+      <fix>Remove cascade from `@ManyToOne`. Cascade is only appropriate from parent to children on `@OneToMany`.</fix>
+    </antipattern>
+
+    <antipattern id="missing-migration" severity="high">
+      <symptom>Deploy aborts with `SchemaManagementException: missing column ...` or — worse — `ddl-auto=update` silently alters the prod schema.</symptom>
+      <root-cause source="Internal — migration retro 2026-Q1">Entity diff merged without a paired Flyway migration.</root-cause>
+      <fix>Enforce `ddl-auto=validate` in prod profile; gate PRs on a `validate-paired-migration.py` script that fails if an entity diff lands without a `db/migration/V*.sql` change.</fix>
+    </antipattern>
+
+    <antipattern id="modifying-without-clear" severity="medium">
+      <symptom>Bulk update reports `n` rows updated; subsequent `findById` returns the pre-update entity; logic that depends on the new state breaks silently.</symptom>
+      <root-cause source="Spring Data JPA docs — @Modifying">`@Modifying` JPQL bypasses Hibernate's first-level cache; without `clearAutomatically`, stale entities linger in the persistence context.</root-cause>
+      <fix>Annotate `@Modifying(clearAutomatically = true, flushAutomatically = true)` on every bulk update/delete repository method.</fix>
+    </antipattern>
+
+    <antipattern id="springboottest-for-slice" severity="medium">
+      <symptom>Repository test suite takes 90 s to boot; CI flakes when the full context cache exceeds the JVM heap.</symptom>
+      <root-cause source="Spring Boot test slice docs">Author used `@SpringBootTest` for what should be a repository-only test, loading the entire web + security context.</root-cause>
+      <fix>Switch to `@DataJpaTest` + Testcontainers; reserve `@SpringBootTest` for cross-layer integration tests where the full stack is the SUT.</fix>
+    </antipattern>
+
   </section>
 </text>

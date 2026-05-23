@@ -1,37 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="csharp-entity-framework Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for csharp-entity-framework as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="EF Core Data Layer Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 antipatterns observed in production EF Core deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using OnDelete(DeleteBehavior.Cascade) on multiple paths in SQL Server without checking the migration SQL.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>SQL Server rejects FK cycles caused by multiple cascade paths, producing a migration error only at apply time, not at code review time.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Omitting RowVersion or ConcurrencyCheck on aggregate roots.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without optimistic concurrency, last-write-wins silently corrupts data under concurrent updates.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Chaining multiple Include().ThenInclude() calls for large object graphs.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each additional level multiplies the result set rows. A 3-level Include on a 1000-row table can return 10^6 rows to the client.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Generated queries using FirstOrDefault(u =&gt; u.Email == email) without case normalization.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>SQL Server comparisons are case-insensitive by default but Postgres is not; .ToLower() on both sides is required for cross-provider consistency.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Wrapping await _context.SaveChangesAsync() inside Task.Run.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>EF SaveChangesAsync is already async I/O; wrapping in Task.Run adds a thread-pool context switch with no benefit and can cause DbContext threading violations.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Adding audit fields (CreatedAt, UpdatedBy) ad-hoc in every entity's configuration.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Cross-cutting concerns belong in a SaveChangesInterceptor, not duplicated per entity. Duplication causes inconsistent implementation and missed fields.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="multiple-cascade-paths" severity="high">
+      <symptom>Migration apply fails with `Introducing FOREIGN KEY constraint ... may cause cycles or multiple cascade paths` — only at apply time on SqlServer.</symptom>
+      <root-cause source="SqlServer FK semantics">Two relations on the same entity both use `DeleteBehavior.Cascade`; SqlServer rejects the combination.</root-cause>
+      <fix>Set `DeleteBehavior.Restrict` or `SetNull` on the secondary FK; review the migration SQL before apply per `migration-sql-review` rule.</fix>
+    </antipattern>
+
+    <antipattern id="missing-concurrency-token" severity="high">
+      <symptom>Concurrent edits silently overwrite each other; audit log shows "lost update" pattern with no exception.</symptom>
+      <root-cause source="EF Core concurrency docs">Aggregate root has no `RowVersion`/`[ConcurrencyCheck]` field; EF falls back to last-write-wins.</root-cause>
+      <fix>Add `[Timestamp] byte[] RowVersion { get; set; }` (SqlServer) or `xmin` mapping (Postgres) on every aggregate root. Catch `DbUpdateConcurrencyException` in the service layer and surface a 409 Conflict.</fix>
+    </antipattern>
+
+    <antipattern id="include-chain-cartesian-explosion" severity="high">
+      <symptom>Endpoint returns 5MB JSON; SQL profile shows a single query returning 10^6 rows for a 1000-row table.</symptom>
+      <root-cause source="EF Core query docs">Multiple `Include().ThenInclude()` chains multiply rows via Cartesian join.</root-cause>
+      <fix>Add `.AsSplitQuery()` for collection includes, or project to a DTO with explicit sub-queries.</fix>
+    </antipattern>
+
+    <antipattern id="case-sensitive-equality-bug" severity="medium">
+      <symptom>Login works on SqlServer dev environment, fails on Postgres prod for the same email "Jane@example.com".</symptom>
+      <root-cause source="Postgres docs — text equality">SqlServer is case-insensitive by default; Postgres is case-sensitive. `FirstOrDefault(u =&gt; u.Email == email)` differs per provider.</root-cause>
+      <fix>Store normalised email (`.ToLowerInvariant()`) and compare normalised on both sides; or use `EF.Functions.ILike` for explicit case-insensitive matching.</fix>
+    </antipattern>
+
+    <antipattern id="task-run-around-savechanges" severity="medium">
+      <symptom>Random `InvalidOperationException: A second operation started on this context` under load.</symptom>
+      <root-cause source="EF Core threading docs">Author wrapped `await _context.SaveChangesAsync()` in `Task.Run` "to avoid blocking", introducing concurrent DbContext access.</root-cause>
+      <fix>Remove `Task.Run` — `SaveChangesAsync` is already async IO. DbContext is not thread-safe.</fix>
+    </antipattern>
+
+    <antipattern id="audit-fields-per-entity" severity="medium">
+      <symptom>Each `Configuration` sets `CreatedAt` defaults; three entities forgot it; rows ship with `0001-01-01` timestamps.</symptom>
+      <root-cause source="EF Core interceptors docs">Cross-cutting audit fields configured per-entity instead of via a single interceptor.</root-cause>
+      <fix>Add a `SaveChangesInterceptor` that sets `CreatedAt`/`UpdatedAt`/`UpdatedBy` for any entity implementing `IAuditable`. Register once via `optionsBuilder.AddInterceptors(...)`.</fix>
+    </antipattern>
+
   </section>
 </text>

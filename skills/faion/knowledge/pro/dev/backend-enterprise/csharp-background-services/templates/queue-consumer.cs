@@ -1,3 +1,9 @@
+// purpose: BackgroundService queue-consumer skeleton with retry + idempotency
+// consumes: see AGENTS.md Prerequisites
+// produces: C# Background Services code
+// depends-on: content/02-output-contract.xml schema
+// token-budget-impact: ~500 tokens when filled
+
 // BackgroundService + bounded Channel<T> producer/consumer skeleton.
 // Replace TItem, TService, and TQueue with your domain types.
 

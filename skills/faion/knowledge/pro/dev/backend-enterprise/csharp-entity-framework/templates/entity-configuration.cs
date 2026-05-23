@@ -1,3 +1,8 @@
+// purpose: IEntityTypeConfiguration<T> skeleton for one aggregate or entity
+// consumes: domain entity name, table name, property list
+// produces: entity configuration class registered via ApplyConfigurationsFromAssembly
+// depends-on: content/01-core-rules.xml rule entity-config-per-entity
+// token-budget-impact: ~300 tokens when loaded as context
 // IEntityTypeConfiguration<T> skeleton
 // One file per entity. Replace: TEntity, table name, property names.
 

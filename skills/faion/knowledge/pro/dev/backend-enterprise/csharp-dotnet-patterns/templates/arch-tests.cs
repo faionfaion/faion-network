@@ -1,3 +1,8 @@
+// purpose: NetArchTest fitness suite enforcing Clean Architecture layer direction
+// consumes: solution layout from 02-output-contract.xml (Domain/Application/Infrastructure/Api)
+// produces: xunit test gate that fails CI on layer leakage
+// depends-on: content/01-core-rules.xml rule layer-direction
+// token-budget-impact: ~250 tokens when loaded as context
 // tests/MyApp.ArchitectureTests/LayerTests.cs
 // Run via: dotnet test — required CI gate, not optional.
 using NetArchTest.Rules;

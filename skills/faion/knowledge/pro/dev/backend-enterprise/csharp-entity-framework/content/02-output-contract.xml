@@ -1,22 +1,84 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="csharp-entity-framework Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="EF Core Data Layer Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the EF data-layer manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/csharp-entity-framework.json",
+  "type": "object",
+  "required": ["dbcontext_name", "provider", "entities", "asnotracking_audit", "concurrency_audit", "audit_interceptor", "migration_sql_reviewed"],
+  "properties": {
+    "dbcontext_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+DbContext$"},
+    "provider": {"enum": ["Npgsql", "SqlServer", "Sqlite"]},
+    "entities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "configuration_class", "is_aggregate_root"],
+        "properties": {
+          "name": {"type": "string"},
+          "configuration_class": {"type": "string", "pattern": "Configuration$"},
+          "is_aggregate_root": {"type": "boolean"},
+          "concurrency_token_field": {"type": "string"}
+        }
+      },
+      "minItems": 1
+    },
+    "asnotracking_audit": {"type": "object", "required": ["read_paths_pass"], "properties": {"read_paths_pass": {"type": "boolean", "const": true}}},
+    "concurrency_audit": {"type": "object", "required": ["aggregates_have_token"], "properties": {"aggregates_have_token": {"type": "boolean", "const": true}}},
+    "audit_interceptor": {"type": "object", "required": ["registered"], "properties": {"registered": {"type": "boolean", "const": true}}},
+    "migration_sql_reviewed": {"type": "boolean", "const": true},
+    "forbidden_patterns_found": {"type": "array", "items": {"type": "string"}, "maxItems": 0}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "dbcontext_name": "BillingDbContext",
+  "provider": "Npgsql",
+  "entities": [
+    {"name": "Invoice", "configuration_class": "InvoiceConfiguration", "is_aggregate_root": true, "concurrency_token_field": "xmin"},
+    {"name": "InvoiceLine", "configuration_class": "InvoiceLineConfiguration", "is_aggregate_root": false}
+  ],
+  "asnotracking_audit": {"read_paths_pass": true},
+  "concurrency_audit": {"aggregates_have_token": true},
+  "audit_interceptor": {"registered": true},
+  "migration_sql_reviewed": true,
+  "forbidden_patterns_found": []
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "dbcontext_name": "billing_db",
+  "provider": "MariaDB",
+  "entities": [],
+  "asnotracking_audit": {"read_paths_pass": false},
+  "concurrency_audit": {"aggregates_have_token": false},
+  "audit_interceptor": {"registered": false},
+  "migration_sql_reviewed": false,
+  "forbidden_patterns_found": ["IQueryable<Invoice> returned from InvoiceRepository.Query"]
+}
+]]></code>
+    <note>dbcontext_name not PascalCase + missing suffix; provider unsupported; no entities; AsNoTracking + concurrency audits failing; interceptor missing; SQL not reviewed.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Inline `builder.Entity&lt;T&gt;().Property(...)` calls inside `OnModelCreating` beyond `ApplyConfigurationsFromAssembly`.</item>
+      <item>`IQueryable&lt;T&gt;` returned from a repository.</item>
+      <item>Multiple `.Include().ThenInclude()` chains across &gt;2 levels without `AsSplitQuery()`.</item>
+      <item>Load-mutate-`SaveChangesAsync` loops for bulk operations.</item>
+      <item>`Task.Run(() =&gt; _context.SaveChangesAsync())`.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-csharp-entity-framework.py">Validator script</reference>
 </text>

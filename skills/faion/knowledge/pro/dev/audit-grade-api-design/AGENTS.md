@@ -2,78 +2,98 @@
 slug: audit-grade-api-design
 tier: pro
 group: dev
-domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Audit Grade Api Design: codified engineering practice that turns the recurring 'p4-outsource-specialist/Compliance-Grade Feature Delivery (FinTech / HIPAA / PCI)' decision into a repeatable, auditable artefact.
-content_id: "c0137e72f0e07379"
-tags: [audit-grade-api-design, dev, pro]
+domain: backend
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces an audit-grade API spec: contract, error taxonomy, auth model, pagination, rate-limit, versioning, deprecation policy.
+content_id: "465ef93e3c30e4f3"
+complexity: deep
+produces: spec
+est_tokens: 5400
+tags: [api, design, audit, spec, contract]
 ---
-# Audit Grade Api Design
+
+# Audit-Grade API Design
 
 ## Summary
 
-**One-sentence:** Audit Grade Api Design: codified engineering practice that turns the recurring 'p4-outsource-specialist/Compliance-Grade Feature Delivery (FinTech / HIPAA / PCI)' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces an audit-grade API spec: contract, error taxonomy, auth model, pagination, rate-limit, versioning, deprecation policy.
 
-**One-paragraph:** Audit Grade Api Design addresses the gap identified by the p4-outsource-specialist/Compliance-Grade Feature Delivery (FinTech / HIPAA / PCI) playbook: Existing api-contract-first and api-versioning sit in solo tier and cover happy-path REST. Outsource specialists in FinTech/banking-core need explicit audit-fields (actor, on_behalf_of, request_id, evidence_ref), immutable append-only event endpoints, regulator-friendly idempotency semantics, and signed-payload contracts. No methodology covers this today. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Produces an audit-grade API spec: contract, error taxonomy, auth model, pagination, rate-limit, versioning, deprecation policy. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness.
+
+**Ефективно для:**
+
+- Зовнішнє API з contractual SLA: контракт, error taxonomy, auth, pagination, rate limits — всі formal.
+- Підготовка до SOC2 / ISO аудиту: всі decisions traceable.
+- Versioning з breaking-change discipline і deprecation policy.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p4-outsource-specialist/Compliance-Grade Feature Delivery (FinTech / HIPAA / PCI) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- API is consumed by external partners or under contractual SLA.
+- Org is preparing for SOC2 / ISO / regulatory audit.
+- API will be versioned with breaking-change discipline.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Internal-only API with no external consumers.
+- Prototype / spike not yet stabilized.
+- Webhook / fire-and-forget channel without request/response semantics.
 
 ## Prerequisites
 
-- recent context for the p4-outsource-specialist/Compliance-Grade Feature Delivery (FinTech / HIPAA / PCI) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Use case list with consumer personas | markdown | product |
+| Auth model decision | markdown | security |
+| Existing contracts (OpenAPI / proto) | yaml / proto | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+| [[audit-grade-code-review-checklist]] | Reviewers will check the API code against the spec at review time |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-contract-first | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output per step | 1000 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft-inputs-summary` | haiku | Template fill, bounded transformation |
+| `synthesize-decision` | sonnet | Per-instance judgment; bounded inputs |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/audit-grade-api-design.json` | JSON schema for the Audit Grade Api Design output contract |
-| `templates/audit-grade-api-design.md` | Markdown skeleton with the required fields |
+| `templates/api-spec.md` | Audit-grade API spec skeleton with contract + auth + pagination + error sections |
+| `templates/openapi.yaml` | OpenAPI 3 skeleton matching the spec |
+| `templates/deprecation-policy.md` | Deprecation policy template |
+| `templates/_smoke-test.md` | Filled-in spec for a payments-create endpoint |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-audit-grade-api-design.py` | Enforce Audit Grade Api Design output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-audit-grade-api-design.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
 
-- parent skill: `pro/dev/`
-- upstream playbook: `p4-outsource-specialist/Compliance-Grade Feature Delivery (FinTech / HIPAA / PCI)`
+- [[audit-grade-code-review-checklist]]
+- [[architecture-proposal-document-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.

@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="java-spring-boot Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for java-spring-boot. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Spring Boot Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the Spring Boot 3 layered architecture. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="constructor-injection" testable="true" depth="essential">
+      <statement>Beans MUST receive dependencies via constructor injection (`@RequiredArgsConstructor` or hand-written). Field injection (`@Autowired private Foo foo;`) and setter injection are forbidden.</statement>
+      <rationale source="Spring docs — DI styles">Constructor injection enables immutability + final fields + easy testing without Spring; field injection hides cycles and makes unit tests reach for reflection.</rationale>
     </rule>
+
+    <rule id="dto-record-separate-from-entity" testable="true" depth="essential">
+      <statement>Request / response DTOs MUST be Java records distinct from JPA entities. Entities MUST NOT cross controller boundaries.</statement>
+      <rationale source="Internal — entity-leak audit 2026-Q1">Sharing entity + DTO leaks Hibernate proxy state + soft-delete columns; records guarantee immutability across the API surface.</rationale>
+    </rule>
+
+    <rule id="mapstruct-for-mapping" testable="true" depth="essential">
+      <statement>DTO ↔ entity mapping MUST use MapStruct via the annotation processor. Hand-coded mappers and `BeanUtils.copyProperties` are forbidden.</statement>
+      <rationale source="MapStruct docs">Annotation-processor mappers fail at compile when a property goes missing; hand-coded mappers and reflection-based copy drift silently.</rationale>
+    </rule>
+
+    <rule id="problemdetail-for-errors" testable="true" depth="essential">
+      <statement>Errors MUST be returned as RFC 7807 `ProblemDetail` via a single `@RestControllerAdvice`. Custom JSON error shapes are forbidden.</statement>
+      <rationale source="RFC 7807 + Spring 6 docs">One contract lets clients implement a single parser; ad-hoc shapes multiply parsing logic.</rationale>
+    </rule>
+
+    <rule id="transactional-on-service" testable="true" depth="essential">
+      <statement>`@Transactional` MUST live on `@Service` methods, not on controllers or repositories. Service classes default to `@Transactional(readOnly = true)`; writes override locally.</statement>
+      <rationale source="Spring transaction docs">Transactions on controllers blur the boundary; transactions on repositories make composition impossible.</rationale>
+    </rule>
+
+    <rule id="advice-not-per-controller" testable="true" depth="essential">
+      <statement>Cross-cutting concerns (auth, logging, tracing, error handling) MUST live in filters, interceptors, or `@RestControllerAdvice`. Per-controller `try/catch` duplication for these concerns is forbidden.</statement>
+      <rationale source="Spring AOP docs">Advice keeps the controller readable + the cross-cutting policy centralised; per-controller duplication drifts.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

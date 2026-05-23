@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: structural-lint enforcing file-size budgets + namespace whitelist for Rails
+# consumes: Rails `app/` directory
+# produces: pass/fail gate per namespace-whitelist + file-size budgets
+# depends-on: content/01-core-rules.xml rule namespace-whitelist
+# token-budget-impact: ~250 tokens when loaded as context
 # decomp-rails-lint.sh — fail if Rails decomposition convention is broken.
 # Usage: decomp-rails-lint.sh app/
 set -euo pipefail

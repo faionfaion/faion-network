@@ -1,22 +1,79 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="csharp-dotnet Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="C# .NET Core Backend Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the project-skeleton manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/csharp-dotnet.json",
+  "type": "object",
+  "required": ["project_name", "target_framework", "feature_folders", "di_lifetimes", "uses_problem_details", "cancellation_token_audit"],
+  "properties": {
+    "project_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+    "target_framework": {"enum": ["net8.0", "net9.0"]},
+    "feature_folders": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+    "di_lifetimes": {
+      "type": "object",
+      "required": ["DbContext", "BackgroundServices"],
+      "properties": {
+        "DbContext": {"const": "Scoped"},
+        "BackgroundServices": {"const": "Singleton"}
+      }
+    },
+    "uses_problem_details": {"type": "boolean", "const": true},
+    "cancellation_token_audit": {
+      "type": "object",
+      "required": ["controllers_pass", "services_pass"],
+      "properties": {
+        "controllers_pass": {"type": "boolean", "const": true},
+        "services_pass": {"type": "boolean", "const": true}
+      }
+    },
+    "forbidden_patterns_found": {"type": "array", "items": {"type": "string"}, "maxItems": 0}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "project_name": "BillingApi",
+  "target_framework": "net8.0",
+  "feature_folders": ["Features/Invoices", "Features/Customers", "Features/Payments"],
+  "di_lifetimes": {"DbContext": "Scoped", "BackgroundServices": "Singleton"},
+  "uses_problem_details": true,
+  "cancellation_token_audit": {"controllers_pass": true, "services_pass": true},
+  "forbidden_patterns_found": []
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "project_name": "billing_api",
+  "target_framework": "net6.0",
+  "feature_folders": [],
+  "di_lifetimes": {"DbContext": "Singleton", "BackgroundServices": "Singleton"},
+  "uses_problem_details": false,
+  "cancellation_token_audit": {"controllers_pass": false, "services_pass": true},
+  "forbidden_patterns_found": [".Result on async call in UserService.GetById"]
+}
+]]></code>
+    <note>project_name not PascalCase; target_framework EOL; no feature folders; DbContext as Singleton; ProblemDetails off; CancellationToken audit fails on controllers; forbidden pattern present.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>`.Result` / `.Wait()` / `GetAwaiter().GetResult()` on any async call.</item>
+      <item>`async void` outside top-level event handlers.</item>
+      <item>`IQueryable&lt;T&gt;` returned from a repository method.</item>
+      <item>`DbContext` injected directly into a controller constructor.</item>
+      <item>Scoped service injected into a `BackgroundService` constructor.</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-csharp-dotnet.py">Validator script</reference>
 </text>

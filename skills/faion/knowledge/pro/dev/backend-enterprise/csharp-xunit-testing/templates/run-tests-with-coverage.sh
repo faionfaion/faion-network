@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: CI wrapper that runs xUnit tests + collects Coverlet JSON + enforces thresholds
+# consumes: test project path, line/branch coverage thresholds
+# produces: TRX results + coverage report + pass/fail gate per coverage-gate-in-ci
+# depends-on: content/01-core-rules.xml rule coverage-gate-in-ci
+# token-budget-impact: ~250 tokens when loaded as context
 # run-tests-with-coverage.sh — agent entry point for test + coverage loop
 # Usage: bash run-tests-with-coverage.sh <test-project-path> [threshold]
 # Example: bash run-tests-with-coverage.sh MyApp.Tests/ 80

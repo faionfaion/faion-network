@@ -1,3 +1,8 @@
+// purpose: test assertion enforcing Hibernate query-count budget on a list endpoint
+// consumes: SessionFactory statistics, test class wiring
+// produces: pass/fail gate per n-plus-one-after-controller failure mode
+// depends-on: content/03-failure-modes.xml antipattern n-plus-one-after-controller
+// token-budget-impact: ~300 tokens when loaded as context
 // N+1 detection helper for Spring Boot integration tests using Hibernate Statistics.
 // Wire in a @TestConfiguration that enables statistics, then call in @Test methods.
 //

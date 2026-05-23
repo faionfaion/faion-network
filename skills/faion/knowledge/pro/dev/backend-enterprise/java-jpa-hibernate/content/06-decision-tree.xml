@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="JPA / Hibernate Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-workload">Workload shape?</root-question>
+
+    <branch when="shape == read_heavy_analytics">
+      <conclusion ref="lazy-by-default" verdict="skip-this-methodology — use Spring Data JDBC / jOOQ for reporting"/>
+    </branch>
+
+    <branch when="shape == hot_path_sub_ms">
+      <conclusion ref="lazy-by-default" verdict="skip-this-methodology — use jOOQ / native queries; JPA proxy cost dominates"/>
+    </branch>
+
+    <branch when="shape == transactional_oltp">
+      <question id="q-entity-diff">PR modifies an entity (@Column / @JoinColumn / type / rename)?</question>
+      <branch when="entity_diff == true">
+        <conclusion ref="flyway-migration-per-entity-change" verdict="ship paired Flyway migration in the same PR; expand-contract for rename/type"/>
+      </branch>
+      <branch when="entity_diff == false">
+        <question id="q-bulk-op">Repository method uses @Modifying bulk update/delete?</question>
+        <branch when="bulk_op == true">
+          <conclusion ref="modifying-clearautomatically" verdict="annotate @Modifying(clearAutomatically=true, flushAutomatically=true)"/>
+        </branch>
+        <branch when="bulk_op == false">
+          <question id="q-test-layer">Repository test?</question>
+          <branch when="test_layer == repository_slice">
+            <conclusion ref="datajpatest-for-repositories" verdict="use @DataJpaTest + Testcontainers; OSIV off"/>
+          </branch>
+          <branch when="test_layer == service_or_controller">
+            <conclusion ref="dto-projection-in-controllers" verdict="return DTOs from controllers; map inside transactional service"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="invoice-aggregate-add">
+    shape=transactional_oltp → entity_diff=true → flyway-migration-per-entity-change → ship V12__add_invoice_status.sql with the entity change.
+  </example>
+</text>

@@ -3,77 +3,95 @@ slug: audit-grade-code-review-checklist
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Audit Grade Code Review Checklist: codified engineering practice that turns the recurring 'p4-outsource-specialist/Audit-grade code review for compliance client' decision into a repeatable, auditable artefact.
-content_id: "c3de641ae3155590"
-tags: [audit-grade-code-review-checklist, dev, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Per-PR audit-grade checklist: contract conformance, error handling, secret hygiene, auth scope, logging, performance, tests.
+content_id: "932aef1c0a0e1a06"
+complexity: medium
+produces: checklist
+est_tokens: 4500
+tags: [code-review, checklist, audit, pr, soc2]
 ---
-# Audit Grade Code Review Checklist
+
+# Audit-Grade Code Review Checklist
 
 ## Summary
 
-**One-sentence:** Audit Grade Code Review Checklist: codified engineering practice that turns the recurring 'p4-outsource-specialist/Audit-grade code review for compliance client' decision into a repeatable, auditable artefact.
+**One-sentence:** Per-PR audit-grade checklist: contract conformance, error handling, secret hygiene, auth scope, logging, performance, tests.
 
-**One-paragraph:** Audit Grade Code Review Checklist addresses the gap identified by the p4-outsource-specialist/Audit-grade code review for compliance client playbook: Existing code-review methodologies are at solo/team scale. None addresses the 'this PR may be evidence in a regulator audit' lens specific to banking/health/payments outsourcing. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Per-PR audit-grade checklist: contract conformance, error handling, secret hygiene, auth scope, logging, performance, tests. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness.
+
+**Ефективно для:**
+
+- Defensible PR review evidence для SOC2 / ISO audit.
+- Inter-reviewer consistency через checklist (а не 'looks fine to me').
+- Розширення junior reviewers до audit-grade рівня через явні check items.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p4-outsource-specialist/Audit-grade code review for compliance client OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Codebase is under SOC2 / ISO scope or has external SLA.
+- Org wants traceable PR review evidence for audit.
+- Reviewer pool is ≥2 to enable independent verification.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Throwaway prototype / spike branch.
+- Documentation-only PRs (still review, but lightweight).
+- Single-reviewer setup — checklist value is reduced.
 
 ## Prerequisites
 
-- recent context for the p4-outsource-specialist/Audit-grade code review for compliance client task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| API spec (if applicable) | markdown / openapi | audit-grade-api-design |
+| Logging + secret-handling policy | markdown | security |
+| Test coverage target | policy | engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+| [[audit-grade-api-design]] | Checklist references the API contract for conformance items |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output per step | 1000 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `fill-template` | haiku | Mechanical template fill with bounded inputs |
+| `apply-rubric` | sonnet | Per-instance judgment against calibrated anchors |
+| `cross-check-evidence` | sonnet | Verify each claim cites an input artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/audit-grade-code-review-checklist.json` | JSON schema for the Audit Grade Code Review Checklist output contract |
-| `templates/audit-grade-code-review-checklist.md` | Markdown skeleton with the required fields |
+| `templates/review-checklist.md` | Per-PR audit checklist with sections per concern |
+| `templates/review-evidence-log.md` | Log capturing reviewer + timestamp + check pass/fail per PR |
+| `templates/_smoke-test.md` | Filled-in checklist for a small payments PR |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-audit-grade-code-review-checklist.py` | Enforce Audit Grade Code Review Checklist output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-audit-grade-code-review-checklist.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
 
-- parent skill: `pro/dev/`
-- upstream playbook: `p4-outsource-specialist/Audit-grade code review for compliance client`
+- [[audit-grade-api-design]]
+- [[architecture-review-meeting-facilitation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.

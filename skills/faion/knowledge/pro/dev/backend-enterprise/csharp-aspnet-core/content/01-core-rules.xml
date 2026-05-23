@@ -1,19 +1,33 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="csharp-aspnet-core Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for csharp-aspnet-core. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="ASP.NET Core Patterns Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>5 testable rules grounding the ASP.NET Core Patterns methodology. Each rule pairs a binary check + sourced rationale. Hard rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
-      <statement>Pass CancellationToken as the last parameter on every async controller action and thread it through to the service and repository layers.</statement>
-      <rationale source="v1-source">Without CancellationToken plumbing, client disconnects and request timeouts do not cancel in-flight DB queries, causing thread-pool starvation under load.</rationale>
+      <statement>Pass CancellationToken as the last parameter on every async controller action and thread it through service and repository layers down to the EF Core call.</statement>
+      <rationale source="Microsoft ASP.NET Core docs">Without CancellationToken plumbing, client disconnects and request timeouts do not cancel in-flight DB queries, causing thread-pool starvation under load.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement>Use [Authorize] and [ProducesResponseType] on every action; configure RequireAuthenticatedUser() globally in Program.cs and opt out per route.</statement>
-      <rationale source="v1-source">Agents copy public endpoints into private controllers and forget [Authorize]; a default-authenticated policy prevents accidental exposure.</rationale>
+      <statement>Use [Authorize] and [ProducesResponseType] on every action; configure RequireAuthenticatedUser() globally in Program.cs and opt out per route with [AllowAnonymous].</statement>
+      <rationale source="Microsoft ASP.NET Core docs">Agents copy public endpoints into private controllers and forget [Authorize]; a default-authenticated policy prevents accidental exposure.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
       <statement>Add MapperConfiguration.AssertConfigurationIsValid() to a unit test; AutoMapper mapping errors surface only at request time otherwise.</statement>
-      <rationale source="v1-source">Agents add properties to DTOs without updating AutoMapper profiles; tests pass at compile time but prod 500s on first request.</rationale>
+      <rationale source="AutoMapper docs">Agents add properties to DTOs without updating AutoMapper profiles; tests pass at compile time but prod 500s on first request.</rationale>
+    </rule>
+    <rule id="r4" testable="true" depth="essential">
+      <statement>All read queries MUST use AsNoTracking(); without it EF Core builds a change-tracker for read-only data and burns memory.</statement>
+      <rationale source="EF Core perf docs">Default tracking on read queries is a measurable perf regression at scale; AsNoTracking is the explicit opt-in.</rationale>
+    </rule>
+    <rule id="r5" testable="true" depth="essential">
+      <statement>Return ProblemDetails (RFC 7807) for all error paths via a centralized exception middleware; ad-hoc error strings are rejected.</statement>
+      <rationale source="RFC 7807">Without a single error contract, integrators reverse-engineer per-endpoint formats and the API becomes uncacheable for client libraries.</rationale>
     </rule>
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: CI wrapper that parses Jacoco XML and enforces line/branch thresholds
+# consumes: path to jacoco.xml + threshold args
+# produces: pass/fail gate per jacoco-gate-in-ci rule
+# depends-on: content/01-core-rules.xml rule jacoco-gate-in-ci
+# token-budget-impact: ~250 tokens when loaded as context
 # jacoco-gate.sh — fail CI if Jacoco coverage drops below thresholds.
 # Usage: jacoco-gate.sh path/to/jacoco.xml [LINE_PCT] [BRANCH_PCT]
 # Defaults: LINE=70, BRANCH=60

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="C# Clean Architecture + CQRS Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-domain-richness">Does the domain have ≥3 aggregate roots with non-CRUD business rules?</root-question>
+
+    <branch when="aggregates &lt; 3">
+      <conclusion ref="layer-direction" verdict="skip-this-methodology — use `csharp-dotnet` umbrella; Clean Architecture is overhead for shallow CRUD"/>
+    </branch>
+
+    <branch when="aggregates &gt;= 3">
+      <question id="q-deploy">Deploy target tolerates 100-300ms cold start?</question>
+      <branch when="cold_start_budget == low">
+        <conclusion ref="layer-direction" verdict="skip-this-methodology — Minimal API + direct DbContext fits Lambda/Functions; layering adds cold-start cost"/>
+      </branch>
+      <branch when="cold_start_budget == high">
+        <question id="q-behaviour-location">Does business behaviour live on Domain entities (not handlers)?</question>
+        <branch when="behaviour_on_entities == false">
+          <conclusion ref="behaviour-in-entities" verdict="move rules from handlers onto entity methods before scaffolding more handlers"/>
+        </branch>
+        <branch when="behaviour_on_entities == true">
+          <question id="q-cross-aggregate-events">Are cross-aggregate domain events dispatched inline inside SaveChangesAsync?</question>
+          <branch when="inline_dispatch == true">
+            <conclusion ref="outbox-for-cross-aggregate" verdict="install MassTransit Outbox + relay; persist event rows in same transaction"/>
+          </branch>
+          <branch when="inline_dispatch == false">
+            <conclusion ref="mediatr-reserved-for-cross-cutting" verdict="apply remaining rules — one-command-per-folder, FluentValidation on Commands, NetArchTest fitness in CI"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="billing-bounded-context">
+    aggregates=4 → cold_start_budget=high → behaviour_on_entities=true → inline_dispatch=false → apply remaining rules → FluentValidation pipeline + NetArchTest assertions in CI.
+  </example>
+</text>

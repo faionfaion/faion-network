@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Spring @Async Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-durability">Does the work need to survive a JVM crash?</root-question>
+
+    <branch when="durability_required == true">
+      <conclusion ref="named-executor" verdict="skip-this-methodology — use Kafka / RabbitMQ / Spring Batch; in-memory executor loses work on crash"/>
+    </branch>
+
+    <branch when="durability_required == false">
+      <question id="q-work-type">CPU-bound or IO-bound?</question>
+      <branch when="work_type == cpu_bound">
+        <conclusion ref="named-executor" verdict="skip-this-methodology — use ForkJoinPool / Reactor; @Async pools are sized for IO"/>
+      </branch>
+      <branch when="work_type == io_bound">
+        <question id="q-tx-context">Is the caller already inside @Transactional that should propagate?</question>
+        <branch when="tx_propagation_required == true">
+          <conclusion ref="no-self-invocation" verdict="restructure — call @Async after commit via TransactionSynchronizationManager"/>
+        </branch>
+        <branch when="tx_propagation_required == false">
+          <question id="q-context-needed">Does the async method use MDC / SecurityContext / tracing?</question>
+          <branch when="context_required == true">
+            <conclusion ref="taskdecorator-context" verdict="install TaskDecorator before annotating any @Async method"/>
+          </branch>
+          <branch when="context_required == false">
+            <conclusion ref="completablefuture-return" verdict="apply remaining rules — named executor + CompletableFuture return + graceful shutdown"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="audit-log-fire-and-forget">
+    durability_required=false → work_type=io_bound → tx_propagation_required=false → context_required=true → install TaskDecorator + named auditExecutor + CompletableFuture&lt;Void&gt; return.
+  </example>
+</text>

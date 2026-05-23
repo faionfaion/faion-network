@@ -1,22 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="decomposition-laravel Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Laravel Decomposition Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema for the structural-lint manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/decomposition-laravel.json",
+  "type": "object",
+  "required": ["php_version", "actions", "controllers", "namespace_whitelist_passed", "file_size_budgets"],
+  "properties": {
+    "php_version": {"type": "string", "pattern": "^8\\.(1|2|3|4)"},
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["class", "verb", "returns"],
+        "properties": {
+          "class": {"type": "string", "pattern": "Action$"},
+          "verb": {"type": "string"},
+          "returns": {"type": "string", "not": {"const": "void"}}
+        }
+      }
+    },
+    "controllers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["class", "loc"],
+        "properties": {
+          "class": {"type": "string", "pattern": "Controller$"},
+          "loc": {"type": "integer", "maximum": 150}
+        }
+      }
+    },
+    "namespace_whitelist_passed": {"type": "boolean", "const": true},
+    "file_size_budgets": {
+      "type": "object",
+      "required": ["controller_max", "action_max", "dto_max"],
+      "properties": {
+        "controller_max": {"type": "integer", "maximum": 150},
+        "action_max": {"type": "integer", "maximum": 100},
+        "dto_max": {"type": "integer", "maximum": 40}
+      }
+    },
+    "forbidden_patterns_found": {"type": "array", "items": {"type": "string"}, "maxItems": 0}
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "php_version": "8.2",
+  "actions": [
+    {"class": "App\\Actions\\CreateUserAction", "verb": "create", "returns": "App\\Models\\User"},
+    {"class": "App\\Actions\\MarkInvoicePaidAction", "verb": "markPaid", "returns": "App\\Models\\Invoice"}
+  ],
+  "controllers": [{"class": "App\\Http\\Controllers\\UserController", "loc": 88}],
+  "namespace_whitelist_passed": true,
+  "file_size_budgets": {"controller_max": 142, "action_max": 76, "dto_max": 32},
+  "forbidden_patterns_found": []
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "php_version": "7.4",
+  "actions": [{"class": "UserManager", "verb": "manage", "returns": "void"}],
+  "controllers": [{"class": "App\\Http\\Controllers\\UserController", "loc": 412}],
+  "namespace_whitelist_passed": false,
+  "file_size_budgets": {"controller_max": 412, "action_max": 230, "dto_max": 88},
+  "forbidden_patterns_found": ["App\\Managers namespace not on whitelist"]
+}
+]]></code>
+    <note>PHP version too old; class name not Action-suffixed; void return; controller LOC over budget; whitelist failed.</note>
+  </example>
+
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>Action class name not suffixed with `Action`.</item>
+      <item>`public function execute(): void` on an Action.</item>
+      <item>`$this-&gt;all()` / `$this-&gt;toArray()` / `...$attributes` inside a Resource.</item>
+      <item>Controller method &gt; 150 lines.</item>
+      <item>Namespace outside the whitelist (`App\Managers`, `App\Coordinators`, `App\Handlers`).</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-decomposition-laravel.py">Validator script</reference>
 </text>

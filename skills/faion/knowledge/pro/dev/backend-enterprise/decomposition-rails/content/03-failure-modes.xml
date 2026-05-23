@@ -1,102 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="decomposition-rails Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for decomposition-rails as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Rails Decomposition Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 antipatterns observed in real Rails codebases applying the decomposition pattern. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Service-object explosion. Every controller action gets its own `Users::CreateService`, `Users::UpdateService`, `Users::DeleteService`; agents copy boilerplate without consolidating.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Consolidate variations into a single service with conditional logic for CRUD variants on the same aggregate. Multiple services should represent distinct domain operations, not HTTP verbs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>No standard return shape. Some services return the record, some return a Result monad, some raise. Agents inconsistent across files.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Pick Result or entity + raise, document it in CONTRIBUTING.md, and enforce in code review. Consistency prevents agents from writing fragile error-handling logic.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Concerns become dumping grounds. `Searchable`, `Authenticatable`, `Sluggable` end up with cross-concern logic; LLMs can't reason about model behavior without reading every concern.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Concerns should be narrow mixins (1–20 LOC) for single cross-cutting behavior. Complex logic belongs in services or query objects.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Form object vs Service object overlap. Both validate; agents pick whichever they saw last.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Form objects validate input shape; services validate business rules. If they overlap, refactor into a single shape contract.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Query object drift from `scope`. Same filter exists in both; agents fix one site and forget the other.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Reuse scopes in query objects via `relation.active`. Don't duplicate filter logic.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Convention not enforced by Rails. `app/services/` is a folder convention only; the next agent introduces `app/lib/services/` or `app/operations/`.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Add a linter that fails CI if files exist outside the canonical folders (`services/`, `queries/`, `forms/`, `policies/`, `serializers/`).</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Rails callbacks still fire. Decomposing into services doesn't remove `before_save` magic; agents assume "service-only flow" and break audit logs.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Document when callbacks fire and when they're bypassed. Tag services that skip callbacks with a comment: `# @warning bypasses callbacks`.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Pattern collapse under deadline pressure. When asked to "just add an endpoint quickly," agents skip the service layer.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Lock convention in CONTRIBUTING.md and reference in every system prompt.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>Form-object/service-object validation drift. Agent adds a field to the form, forgets the service's internal invariant check.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Centralize: form validates input shape, service validates business rules.</repair>
-    </failure-mode>
-    <failure-mode id="fm-10" severity="medium">
-      <description>Service calling service in same request. Acceptable if explicit; not acceptable if a deep chain spans transactions.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Force agents to declare orchestration in the docblock.</repair>
-    </failure-mode>
-    <failure-mode id="fm-11" severity="medium">
-      <description>Query objects re-implementing scopes. Agents add `where(active: true)` inside a query object that's already a `scope :active` on the model.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Reuse scopes in query objects via `relation.active`.</repair>
-    </failure-mode>
-    <failure-mode id="fm-12" severity="medium">
-      <description>Test-per-service ignored. Agents assume the controller spec covers the service; it doesn't cover edge cases.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Require `services/*/*.rb` ↔ `spec/services/*/*_spec.rb` parity.</repair>
-    </failure-mode>
-    <failure-mode id="fm-13" severity="medium">
-      <description>Service skipping callbacks via `update_columns`. Agents reach for it for "performance"; counter caches and audit logs silently break.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Document which callbacks exist and when they fire. Flag `update_columns` in code review.</repair>
-    </failure-mode>
-    <failure-mode id="fm-14" severity="medium">
-      <description>Agents invent new layers. "Manager", "Coordinator", "Workflow" classes appear after a refactor.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Whitelist namespaces (`services/`, `queries/`, `forms/`, `policies/`, `serializers/`) and block PRs introducing new ones without an ADR.</repair>
-    </failure-mode>
-    <failure-mode id="fm-15" severity="medium">
-      <description>Decomposition without DI. Agents `Users::CreateService.new(params: ...).call` everywhere; mocking is awkward.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Standardize on dependency-injected services or use `dry-system`.</repair>
-    </failure-mode>
-    <failure-mode id="fm-16" severity="medium">
-      <description>Service returns void. Agent emits `def call; @user.save!; end` — downstream code can't compose.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always return the canonical entity or Result.</repair>
-    </failure-mode>
-    <failure-mode id="fm-17" severity="medium">
-      <description>Policy bypass via `find` instead of policy scope. Agents `User.find(params[:id])` then check policy; multi-tenant data leaks via timing attack on `find`.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use `policy_scope(User).find(...)`.</repair>
-    </failure-mode>
-    <failure-mode id="fm-18" severity="medium">
-      <description>Form object inheriting from ActiveRecord. Agents reach for `ActiveType::Object` or similar to "save like a model"; produces ghost columns and confusing schema.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use `ActiveModel::Model` + plain attributes only.</repair>
-    </failure-mode>
-    <failure-mode id="fm-19" severity="medium">
-      <description>Serializer leaks fields. Agent uses `attributes :all` or `model.as_json` inside a serializer.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Always explicit attribute lists.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="service-explosion" severity="medium">
+      <symptom>`Users::CreateService`, `Users::UpdateService`, `Users::DeleteService` — three nearly-identical service classes copied from a template.</symptom>
+      <root-cause source="Internal — service-bloat retro">Agents created one service per HTTP verb instead of consolidating CRUD variants.</root-cause>
+      <fix>Consolidate variations into a single `Users::PersistenceService` with conditional logic; reserve multiple services for distinct domain operations, not HTTP verbs.</fix>
+    </antipattern>
+
+    <antipattern id="return-shape-drift" severity="high">
+      <symptom>Some services return `User`, some return `Result.new(ok:, errors:)`, some raise; controllers handle each pattern differently and miss edge cases.</symptom>
+      <root-cause source="Avdi Grimm — Object on Rails">No canonical return shape locked in `CONTRIBUTING.md`.</root-cause>
+      <fix>Pick one (Result vs entity-or-raise), document it, and enforce via code review + a static check (`bundle exec rubocop --only ServiceReturnShape`).</fix>
+    </antipattern>
+
+    <antipattern id="concern-dumping-ground" severity="medium">
+      <symptom>`app/models/concerns/searchable.rb` is 320 LOC and mixes search, slug, soft-delete, audit logic.</symptom>
+      <root-cause source="DHH — Concerns blog post">Concerns used as a dumping ground for unrelated cross-cutting logic.</root-cause>
+      <fix>Concerns stay narrow mixins (1-20 LOC) for one single cross-cutting behaviour. Complex logic belongs in services or query objects.</fix>
+    </antipattern>
+
+    <antipattern id="form-service-overlap" severity="medium">
+      <symptom>The same validation appears in both `Users::SignupForm` and `Users::CreateService`; agents update one and miss the other.</symptom>
+      <root-cause source="Internal — validation-drift retro">No clear contract between form-shape validation and business-rule validation.</root-cause>
+      <fix>Form Objects validate input shape only (presence, format). Services validate business rules. Refactor overlaps into a single shape contract.</fix>
+    </antipattern>
+
+    <antipattern id="scope-drift" severity="medium">
+      <symptom>`User.where(active: true)` inside a query object AND `scope :active` on the model; one site updates, the other doesn't.</symptom>
+      <root-cause source="Internal — query-drift retro 2026-Q1">Query Object re-implemented an existing scope.</root-cause>
+      <fix>Query Objects compose existing scopes (`User.active.recent.where(...)`); no inline filter duplication.</fix>
+    </antipattern>
+
+    <antipattern id="update-columns-bypass" severity="high">
+      <symptom>Counter caches stale; audit log missing entries; agent reached for `update_columns` "for performance".</symptom>
+      <root-cause source="Rails docs — update_columns warning">Service bypassed callbacks via `update_columns`, breaking cross-cutting behaviour.</root-cause>
+      <fix>Document which callbacks fire on which methods. Flag `update_columns` / `update_all` in code review; require an explicit `# @warning bypasses callbacks` comment.</fix>
+    </antipattern>
+
   </section>
 </text>

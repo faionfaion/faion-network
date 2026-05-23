@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Spring Boot Patterns Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-stack">Spring stack?</root-question>
+
+    <branch when="stack == webflux_reactive">
+      <conclusion ref="constructor-injection" verdict="skip-this-methodology — apply reactive patterns; blocking JPA is forbidden"/>
+    </branch>
+
+    <branch when="stack == quarkus_micronaut">
+      <conclusion ref="constructor-injection" verdict="skip-this-methodology — annotations differ; pattern translates conceptually but not literally"/>
+    </branch>
+
+    <branch when="stack == webmvc_blocking">
+      <question id="q-injection">Field injection found in any bean?</question>
+      <branch when="field_injection == true">
+        <conclusion ref="constructor-injection" verdict="convert to constructor injection before anything else"/>
+      </branch>
+      <branch when="field_injection == false">
+        <question id="q-entity-leak">Controller returns a JPA entity?</question>
+        <branch when="entity_leak == true">
+          <conclusion ref="dto-record-separate-from-entity" verdict="introduce record DTO + MapStruct mapper"/>
+        </branch>
+        <branch when="entity_leak == false">
+          <question id="q-error-shape">Custom error shape in any handler?</question>
+          <branch when="custom_error == true">
+            <conclusion ref="problemdetail-for-errors" verdict="add single @RestControllerAdvice mapping to ProblemDetail"/>
+          </branch>
+          <branch when="custom_error == false">
+            <conclusion ref="transactional-on-service" verdict="apply remaining rules — @Transactional on service + advice-not-per-controller"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="legacy-controller-refactor">
+    stack=webmvc_blocking → field_injection=true → constructor-injection → flip @Autowired fields to constructor before touching anything else.
+  </example>
+</text>

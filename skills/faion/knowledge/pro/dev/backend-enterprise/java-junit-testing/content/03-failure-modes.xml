@@ -1,47 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="java-junit-testing Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for java-junit-testing as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Spring Boot JUnit Testing Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 antipatterns observed in real Spring Boot test suites. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Mixing `@SpringBootTest` with `@MockBean` on every test class in the suite.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each `@SpringBootTest` boots a new context; adding `@MockBean` invalidates the cache. Build time balloons from 10s to 5+ minutes. CI quota gets consumed.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using H2 in-memory database for repository tests.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>H2 behavior diverges from PostgreSQL on SQL syntax, transactions, and type coercion. Tests pass with H2 and fail in prod. Always use Testcontainers with the target database.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Test names like `test1()`, `testUserService()`, or nested assertions without clear Arrange/Act/Assert.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>CI logs become unreadable. Agents cannot infer what failed. Human debugging takes 3x longer.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Coverage gate set but not enforced; agents generate tests that pass the gate but fail mutation testing.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Mutation testing would reveal empty assertions and missing edge cases. Without it, tests look good but hide behavior changes.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Mocking both UserRepository and UserService in the same controller test.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Controller logic path is entirely stubbed; the test never exercises real service code or repository contract. Controller → mocked service is correct; controller → real service → mocked repo is also correct. Never both.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Using `mockStatic(LocalDateTime.class)` without `try-with-resources`, leaving the mock active across tests.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Subsequent tests inherit the stubbed time. Test order dependence, flakiness, and CI intermittency result.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Calling an `@Async` method in a test without `Awaitility` — just checking results immediately after the call.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Race condition. Test passes locally (single-threaded), flakes in CI under load.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Test-only `application-test.yml` with different config than production (e.g., `spring.flyway.enabled=false` in test but true in prod).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Tests pass in test config, features break in prod config. Catch this by running smoke tests with production config.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="mocking-wrong-layer" severity="high">
+      <symptom>Controller test passes with no real code exercised: both `UserService` and `UserRepository` are mocked; the controller's only real work is reading mocked output.</symptom>
+      <root-cause source="Internal — controller-test audit 2026-Q1">Agent over-stubbed dependencies in a `@WebMvcTest` slice.</root-cause>
+      <fix>In a `@WebMvcTest` slice mock only the direct collaborator (the service). To test service-repository interaction, use a separate service-layer test class with `@ExtendWith(MockitoExtension.class)`.</fix>
+    </antipattern>
+
+    <antipattern id="argument-matcher-mixing" severity="medium">
+      <symptom>`InvalidUseOfMatchersException: Misplaced or misused argument matcher detected here` on a `verify(svc).save(user, any())` call.</symptom>
+      <root-cause source="Mockito docs">Mockito requires all arguments to be matchers OR all to be literals — mixing is illegal.</root-cause>
+      <fix>Wrap the literal with `eq(value)` when any other arg uses a matcher: `verify(svc).save(eq(user), any())`.</fix>
+    </antipattern>
+
+    <antipattern id="mockbean-on-non-bean" severity="medium">
+      <symptom>Spring context fails to start: `No qualifying bean of type 'UtilityClass' available`.</symptom>
+      <root-cause source="Spring Boot test docs">Agent used `@MockBean` on a non-Spring-managed class (utility / value object).</root-cause>
+      <fix>Use plain `@Mock` (no Spring context) for non-bean classes. `@MockBean` is only for Spring-managed dependencies.</fix>
+    </antipattern>
+
+    <antipattern id="springboottest-everywhere" severity="high">
+      <symptom>Test module boots 90 s; each new test class blows the context cache; CI quota explodes.</symptom>
+      <root-cause source="Spring Boot test slice docs">Agent used `@SpringBootTest` for every test, including controller-only / repository-only cases.</root-cause>
+      <fix>Use the right slice annotation: `@WebMvcTest` / `@DataJpaTest` / plain Mockito. Reserve a single `@SpringBootTest` per module for cross-layer smoke.</fix>
+    </antipattern>
+
+    <antipattern id="mockedstatic-leak" severity="high">
+      <symptom>Tests pass individually, flake when run in a specific order; later tests inherit a stale `LocalDateTime.now()` stub.</symptom>
+      <root-cause source="Mockito docs — MockedStatic">`mockStatic` was used without `try-with-resources`; the mock lingers.</root-cause>
+      <fix>Always wrap `MockedStatic` in `try (MockedStatic&lt;T&gt; ms = mockStatic(T.class)) { ... }`. Better: inject a `Clock` bean and avoid static mocking.</fix>
+    </antipattern>
+
+    <antipattern id="missing-rollback" severity="medium">
+      <symptom>`@SpringBootTest` repository test runs twice on CI; second run fails with `DuplicateKeyException` on seed data.</symptom>
+      <root-cause source="Spring Boot test docs">`@SpringBootTest` does not roll back per test by default; seed inserts persist.</root-cause>
+      <fix>Add `@Transactional` (rolls back per test) or `@Sql(executionPhase=AFTER_TEST_METHOD)` for explicit cleanup.</fix>
+    </antipattern>
+
   </section>
 </text>

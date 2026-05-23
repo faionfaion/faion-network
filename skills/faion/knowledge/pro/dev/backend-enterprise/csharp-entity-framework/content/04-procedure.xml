@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="EF Core Data Layer Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply the EF Core data-layer methodology end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="scope-dbcontext">
+      <input>Domain entity list, target provider</input>
+      <action>Create one `DbContext` per bounded context (not per service). Register as `Scoped`. Add `optionsBuilder.AddInterceptors(...)` for the audit interceptor.</action>
+      <output>DbContext class + DI registration</output>
+    </step>
+
+    <step n="2" name="add-entity-configurations">
+      <input>Entity model</input>
+      <action>For each entity create `Data/Configurations/&lt;Entity&gt;Configuration.cs` implementing `IEntityTypeConfiguration&lt;T&gt;`. `OnModelCreating` calls `modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly)` — and nothing else.</action>
+      <output>One configuration class per entity</output>
+      <decision-gate>If `OnModelCreating` contains inline `builder.Entity&lt;T&gt;()` calls, refactor per `entity-config-per-entity` rule.</decision-gate>
+    </step>
+
+    <step n="3" name="add-repositories-with-asnotracking">
+      <input>Entity configurations</input>
+      <action>Implement repositories that materialise results before returning. Read paths call `AsNoTracking()` (or projection). Bulk paths call `ExecuteUpdateAsync`/`ExecuteDeleteAsync`.</action>
+      <output>Repository classes per aggregate</output>
+      <decision-gate>If a repository method returns `IQueryable&lt;T&gt;`, fail per `asnotracking-on-reads` rule.</decision-gate>
+    </step>
+
+    <step n="4" name="add-audit-interceptor-and-concurrency-tokens">
+      <input>Aggregate root list, audit field policy</input>
+      <action>Add `[Timestamp]`/`xmin` to every aggregate root. Implement `SaveChangesInterceptor` that fills `CreatedAt`/`UpdatedAt`/`UpdatedBy` on entities implementing `IAuditable`.</action>
+      <output>Interceptor registered + tokens on aggregates</output>
+      <decision-gate>If any aggregate lacks a concurrency token, BLOCK per `concurrency-token-on-aggregates` rule.</decision-gate>
+    </step>
+
+    <step n="5" name="generate-and-review-migration">
+      <input>Model snapshot, target environment</input>
+      <action>Run `dotnet ef migrations add &lt;Name&gt;`. Run `dotnet ef migrations script` to emit SQL for review. Block destructive operations behind an explicit human checkpoint.</action>
+      <output>Migration + reviewed SQL file</output>
+      <decision-gate>If migration SQL contains `DROP COLUMN`/`DROP TABLE` and no human approval is logged, BLOCK per `migration-sql-review` rule.</decision-gate>
+    </step>
+
+  </section>
+</text>

@@ -1,23 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="java-spring-async Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for java-spring-async. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Spring @Async Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the Spring `@Async` methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Projects MUST define at least one named `ThreadPoolTaskExecutor` bean (e.g., "emailExecutor", "taskExecutor") via `@Configuration`. The executor MUST set `RejectedExecutionHandler` to `CallerRunsPolicy` for backpressure. Core pool size MUST be calculated as cores × (1 + wait/compute ratio), with sensible defaults (4 for email, 8 for general tasks). Graceful shutdown MUST be enabled: `setWaitForTasksToCompleteOnShutdown(true)` and `setAwaitTerminationSeconds(30)`. Every `@Async` method MUST explicitly name its executor: `@Async("emailExecutor")`. Omitting the name falls back to Spring's default, which changes between Boot versions.</statement>
-      <rationale source="v1-source">Named executors prevent contention and allow independent tuning. `CallerRunsPolicy` provides backpressure when the queue is full, preventing unbounded memory growth. Pool sizing prevents thread explosion. Graceful shutdown ensures in-flight tasks complete before the app stops. Explicit naming makes executor choice visible in the code and stable across versions.</rationale>
+
+    <rule id="named-executor" testable="true" depth="essential">
+      <statement>Every `@Async` method MUST name its executor explicitly: `@Async("emailExecutor")`. Plain `@Async` is forbidden. Each named executor lives in `@Configuration` as a `ThreadPoolTaskExecutor` bean.</statement>
+      <rationale source="Spring Async docs">The default executor changes between Boot versions (SimpleAsyncTaskExecutor in Boot 3.2+ with virtual threads enabled); unnamed `@Async` silently picks up the wrong pool.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every `@Async` method MUST return `CompletableFuture&lt;T&gt;` (not `Future&lt;T&gt;`, not `void`). The method body MUST wrap the computation in a try-catch or use `CompletableFuture.supplyAsync()` to ensure exceptions reach the caller. Callers MUST NOT assume fire-and-forget; they MUST `.get()` or `.thenAccept()` to observe completion and errors. If fire-and-forget is truly desired, the error handling MUST be explicit (logged, sent to Sentry, etc.).</statement>
-      <rationale source="v1-source">`CompletableFuture&lt;T&gt;` allows callers to compose (`.thenCombine()`, `.allOf()`) and observe exceptions. `void` methods swallow exceptions unless an `AsyncUncaughtExceptionHandler` is registered, and even then, only uncaught exceptions — caught exceptions inside the method vanish silently. `Future&lt;T&gt;` is older API; `CompletableFuture` is composable and more flexible.</rationale>
+
+    <rule id="caller-runs-backpressure" testable="true" depth="essential">
+      <statement>Every `ThreadPoolTaskExecutor` MUST set `RejectedExecutionHandler` to `CallerRunsPolicy`. Queue capacity MUST be bounded explicitly.</statement>
+      <rationale source="ThreadPoolExecutor docs">The default `AbortPolicy` throws under load; `CallerRunsPolicy` slows the caller thread instead of dropping work or unbounded growing the queue.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>ThreadPoolTaskExecutor MUST use a `TaskDecorator` to capture and restore MDC (Mapped Diagnostic Context, used for request-id) and `SecurityContext` (authentication principal). Without a decorator, logs in the async thread lose correlation with the original request, and authenticated endpoints called inside async methods throw `AuthenticationException`.</statement>
-      <rationale source="v1-source">Request tracing relies on request-id propagation via MDC. Async threads starting fresh have empty MDC, breaking correlation. Security operations inside async methods need the authenticated principal; `SecurityContextHolder` is ThreadLocal and empty in a new thread. The decorator pattern is the standard way to propagate context.</rationale>
+
+    <rule id="completablefuture-return" testable="true" depth="essential">
+      <statement>`@Async` methods MUST return `CompletableFuture&lt;T&gt;` (or `Mono`/`Flux` on reactive stacks). `void` and legacy `Future&lt;T&gt;` returns are forbidden. If `void` is necessary, register an `AsyncUncaughtExceptionHandler`.</statement>
+      <rationale source="Spring Async docs">`void` swallows exceptions; `Future` lacks composition; `CompletableFuture` lets callers observe failures and chain (`thenCombine`, `allOf`).</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>CRITICAL: Do NOT call an `@Async` method from the same bean (self-invocation). Spring proxies only wrap external calls; self-invocation bypasses the proxy and runs synchronously. If self-invocation is necessary, inject the bean into itself or use `AopContext.currentProxy()`. Code review MUST flag any self-invocation. No `@Async` method inside `@Transactional` — the outer transaction does not propagate to the async thread; rollback is not coordinated. If async work is conditional on a transaction, move the `@Async` call outside the transaction boundary.</statement>
-      <rationale source="v1-source">Self-invocation is a well-known Spring AOP gotcha. The caller gets back the result immediately (blocking), defeating the purpose of `@Async`. The proxy pattern requires external method calls. `@Transactional` with `@Async` is even more insidious: the caller thinks the async work is within the transaction boundary, but it runs in a new thread with a new transaction (if any), silently causing data corruption on partial failure.</rationale>
+
+    <rule id="taskdecorator-context" testable="true" depth="essential">
+      <statement>Executors MUST install a `TaskDecorator` that propagates MDC, `SecurityContext`, and OpenTelemetry baggage. Async tasks running with empty MDC are forbidden.</statement>
+      <rationale source="Spring TaskDecorator docs">Async threads start with empty `ThreadLocal`; without a decorator, request-id and authenticated principal vanish.</rationale>
     </rule>
+
+    <rule id="graceful-shutdown" testable="true" depth="essential">
+      <statement>Executors MUST set `setWaitForTasksToCompleteOnShutdown(true)` + `setAwaitTerminationSeconds(30)`. Without graceful shutdown, JVM termination aborts in-flight tasks.</statement>
+      <rationale source="ThreadPoolTaskExecutor docs">Silent data loss on email / audit / webhook tasks during deploys.</rationale>
+    </rule>
+
+    <rule id="no-self-invocation" testable="true" depth="essential">
+      <statement>`@Async` methods MUST NOT be called from another method on the same bean (`this.foo()`). Inject a separate bean or use `AopContext.currentProxy()` with `@EnableAspectJAutoProxy(exposeProxy = true)`. `@Async` MUST NOT be applied inside a `@Transactional` boundary that expects the outer transaction to propagate.</statement>
+      <rationale source="Spring AOP docs">Self-invocation bypasses the proxy; the call runs synchronously without warning. `@Transactional` does not propagate across a thread boundary.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

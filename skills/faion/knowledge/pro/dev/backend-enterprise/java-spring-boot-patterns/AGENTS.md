@@ -3,73 +3,97 @@ slug: java-spring-boot-patterns
 tier: pro
 group: dev
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Layered Spring Boot 3.
-content_id: "0eeda30a3c35a8b3"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Enterprise Spring Boot 3 patterns — BaseEntity (UUID PK + audit + @Version), record DTOs, MapStruct, @Transactional(readOnly=true) default, JpaSpecificationExecutor search, ProblemDetail errors, Actuator+Micrometer wired.
+content_id: "4d2a57c8a756e624"
+complexity: deep
+produces: code
+est_tokens: 4400
 tags: [java, spring-boot, enterprise, jpa, patterns]
 ---
 # Java Spring Boot Patterns
 
 ## Summary
 
-**One-sentence:** Layered Spring Boot 3.
+**One-sentence:** Enterprise Spring Boot 3 patterns — BaseEntity (UUID PK + audit + @Version), record DTOs, MapStruct, @Transactional(readOnly=true) default, JpaSpecificationExecutor search, ProblemDetail errors, Actuator+Micrometer wired.
 
-**One-paragraph:** Layered Spring Boot 3.x architecture with BaseEntity providing UUID primary key, auditing via @CreationTimestamp/@UpdateTimestamp, optimistic locking via @Version, and entities extending this superclass. DTOs as Java records. MapStruct mappers for entity conversion. @Transactional(readOnly = true) as class-level default, @Transactional on write methods. @RestControllerAdvice returning ProblemDetail (RFC 7807). Never expose entities directly from controllers. Prevent N+1 queries with JOIN FETCH or @EntityGraph.
+**One-paragraph:** Enterprise-grade Spring Boot 3.x layered architecture. A `BaseEntity` superclass provides a UUID `@Id`, `@CreationTimestamp`/`@UpdateTimestamp` audit columns, and `@Version` for optimistic locking. DTOs are Java records mapped via MapStruct; controllers never return entities. The service layer defaults to `@Transactional(readOnly = true)`; write methods override locally. Dynamic search endpoints use `JpaSpecificationExecutor` + `Pageable`. Global error handling via a single `@RestControllerAdvice` returning RFC 7807 `ProblemDetail`. Actuator endpoints + Micrometer metrics + OpenAPI/Swagger + Spring Security defaults are wired before the first endpoint ships.
+
+**Ефективно для:**
+
+- Greenfield Spring Boot 3.x service standing up the full enterprise toolbox (entity base class, audit, search, security, observability).
+- Refactoring legacy Spring app onto records + MapStruct + ProblemDetail + `@Transactional` discipline.
+- Adding dynamic search via Specifications + paginated results.
+- Wiring Actuator, Micrometer, OpenAPI / Swagger, Spring Security defaults.
 
 ## Applies If (ALL must hold)
 
-- Greenfield Spring Boot 3.x service following the layered architecture (controller → service → repository) with JPA/Hibernate.
-- Refactoring a legacy Spring app to use records for DTOs, MapStruct mappers, @Transactional(readOnly = true) defaults, and ProblemDetail exception handling.
-- Adding @RestControllerAdvice global exception handlers and Bean Validation (@Valid, @NotBlank).
-- Wiring Specifications (JpaSpecificationExecutor) for dynamic search endpoints and pageable results.
-- Standing up Actuator, Micrometer, OpenAPI/Swagger, and Spring Security defaults.
+- Spring Boot 3.x on Java 17+, blocking (Servlet) stack.
+- Multi-entity domain that benefits from a shared `BaseEntity` superclass.
+- Need for dynamic search endpoints (`q=name~%foo%&status=ACTIVE&sort=-created`).
 
 ## Skip If (ANY kills it)
 
-- Reactive stack (WebFlux) — patterns like blocking JPA repos, @Transactional, and ResponseEntity semantics differ; use a reactive-specific knowledge base.
-- Tiny CLI tools — Spring Boot's startup cost and DI overhead are unjustified.
-- Functions/serverless deployments where cold start matters; prefer Quarkus or Micronaut.
-- Legacy Spring 4.x / Java 8 — record types, sealed types, ProblemDetail, and Jakarta namespace are not available.
+- Reactive stack (WebFlux) — patterns differ.
+- Tiny CLI tools — Spring Boot startup is unjustified.
+- Functions / serverless where cold start dominates — prefer Quarkus / Micronaut.
+- Legacy Spring 4.x / Java 8 — records, sealed types, ProblemDetail, Jakarta namespace are not available.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Input artifact | Format | Source |
+|---|---|---|
+| Entity model | ERD or Markdown table | data modelling |
+| Search filter contract | text / JSON | product / API design |
+| Observability targets (Prometheus / OTel) | text | platform team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[java-spring-boot]] | Sibling for the core layered shape. |
+| [[java-jpa-hibernate]] | Persistence discipline (LAZY, business-key, migrations). |
+| [[java-junit-testing]] | Test layering. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 rules: base-entity-uuid-audit-version, record-dtos-and-mapstruct, transactional-readonly-default, jpaspecificationexecutor-for-search, problemdetail-advice, actuator-and-micrometer | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the enterprise-service manifest + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: lombok-data-on-entity, n-plus-one-after-controller, missing-version-token, custom-error-shape, no-readonly-default | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure: BaseEntity + audit → DTO + MapStruct → service Tx defaults → Specification + Pageable → Actuator + ProblemDetail | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `add-base-entity` | sonnet | Audit + version + UUID design choices. |
+| `wire-search-with-specifications` | opus | Dynamic filter composition reasoning. |
+| `audit-n-plus-one` | haiku | Mechanical scan via assertion script. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/n-plus-one-assertion.java` | Test assertion enforcing query count budget on a list endpoint. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-java-spring-boot-patterns.py` | Validate the enterprise-service manifest against the JSON Schema. | Pre-commit; CI on every methodology PR. |
 
 ## Related
 
-- parent skill: `pro/dev/backend-enterprise/`
+- [[java-spring-boot]]
+- [[java-spring]]
+- [[java-jpa-hibernate]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (domain richness, search shape, observability target) to a rule from `01-core-rules.xml`. Use it before standing up new service infrastructure.

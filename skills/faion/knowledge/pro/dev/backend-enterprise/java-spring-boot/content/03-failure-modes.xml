@@ -1,32 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="java-spring-boot Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for java-spring-boot as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Spring Boot Patterns Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5 antipatterns observed in real Spring Boot 3 codebases. Each pairs symptom + root cause + concrete fix.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Controllers placing business logic directly in the handler method or returning JPA entities.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Business logic in controllers violates separation of concerns and makes unit testing harder. Returning entities causes LazyInitializationException and leaks internal state.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Placing business logic in controllers instead of services or calling private transactional methods via this.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Services are the proper encapsulation layer for business rules and transactional boundaries. Private method calls bypass the proxy.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Using the same class for both entity and DTO or passing raw entities through API boundaries.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Entities should never be exposed over HTTP. The API contract (DTO) must be independent of the internal persistence model.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Returning custom JSON shapes for errors or allowing exceptions to propagate uncaught to the client.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Custom error shapes fragment the API contract. Uncaught exceptions expose stack traces and internal details. RFC 7807 ProblemDetail is the standardized format.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Iterating over a collection and accessing lazy relationships: for (User u : users) { System.out.println(u.getOrganization().getName()); }</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Each getOrganization() triggers a SELECT. For N users, N+1 queries are issued (one to fetch users, N to fetch each organization).</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="logic-in-controller" severity="high">
+      <symptom>Controller method 200 lines long, computing business rules, formatting dates, hashing passwords.</symptom>
+      <root-cause source="Internal — fat-controller retro 2026-Q1">Author skipped the service layer "for speed".</root-cause>
+      <fix>Move logic into `@Service`; controller stays thin (validate, delegate, return DTO). Enforce a line-of-code budget in CI.</fix>
+    </antipattern>
+
+    <antipattern id="entity-as-dto" severity="high">
+      <symptom>Endpoint leaks `passwordHash`, `deletedAt`, lazy proxy artefacts in the JSON response.</symptom>
+      <root-cause source="Internal — entity-leak audit 2026-Q1">Same class used as JPA entity and API DTO.</root-cause>
+      <fix>Define a Java record DTO; map via MapStruct inside the service. Add a feature test asserting response keys match the expected set.</fix>
+    </antipattern>
+
+    <antipattern id="custom-error-shape" severity="medium">
+      <symptom>Some endpoints return `{"error": "..."}`, others `{"message": "..."}`, others 500 with a raw stack trace.</symptom>
+      <root-cause source="Internal — error-contract retro 2026-Q1">No `@RestControllerAdvice`; each controller invents its own shape.</root-cause>
+      <fix>Add one `@RestControllerAdvice` mapping every domain exception to RFC 7807 `ProblemDetail`.</fix>
+    </antipattern>
+
+    <antipattern id="n-plus-one-in-controller" severity="high">
+      <symptom>List endpoint executes 200 SQL queries for 200 results; profile shows one query per row.</symptom>
+      <root-cause source="Hibernate fetch docs">Controller iterates entities and touches lazy associations after the transaction closes.</root-cause>
+      <fix>Move iteration inside the service `@Transactional` boundary and use `JOIN FETCH` / `@EntityGraph`. Map to DTO inside the transaction.</fix>
+    </antipattern>
+
+    <antipattern id="field-injection" severity="medium">
+      <symptom>Unit test cannot instantiate the bean without booting Spring; refactor that changes the constructor breaks tests.</symptom>
+      <root-cause source="Spring docs — DI styles">Author used `@Autowired private Foo foo;`.</root-cause>
+      <fix>Switch to constructor injection; declare fields `private final`. Add a static-analysis rule (`ArchUnit`) banning `@Autowired` on fields.</fix>
+    </antipattern>
+
   </section>
 </text>

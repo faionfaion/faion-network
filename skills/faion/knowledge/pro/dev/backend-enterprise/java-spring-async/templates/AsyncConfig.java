@@ -1,3 +1,8 @@
+// purpose: ThreadPoolTaskExecutor config with CallerRunsPolicy + graceful shutdown + TaskDecorator
+// consumes: workload SLA + pool size inputs + MDC keys
+// produces: @Configuration beans conforming to named-executor + caller-runs-backpressure rules
+// depends-on: content/01-core-rules.xml rules named-executor, caller-runs-backpressure, taskdecorator-context, graceful-shutdown
+// token-budget-impact: ~450 tokens when loaded as context
 // AsyncConfig.java — Spring @Async executor configuration skeleton
 // Replace pool sizes with profiled values: cores * (1 + wait/compute) for IO-bound
 

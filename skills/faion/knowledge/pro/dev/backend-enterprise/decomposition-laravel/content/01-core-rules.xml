@@ -1,11 +1,45 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="decomposition-laravel Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for decomposition-laravel. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Laravel Decomposition Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules grounding the Action/DTO/FormRequest/Resource/Policy decomposition for Laravel. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="one-verb-per-action" testable="true" depth="essential">
+      <statement>Each Action class MUST express exactly one verb (`CreateUserAction`, `MarkInvoicePaidAction`). The Action's single public method `execute()` MUST do that verb and nothing else.</statement>
+      <rationale source="freek.dev — Laravel Beyond CRUD">One verb = one diff surface; multi-verb Actions become mini-services and lose the testability + reuse story.</rationale>
     </rule>
+
+    <rule id="dto-readonly-from-formrequest" testable="true" depth="essential">
+      <statement>DTOs MUST use PHP 8.1+ readonly constructor promotion. DTOs MUST be constructed from FormRequests via a single factory method `::fromRequest(FormRequest $r)` — controllers MUST NOT hand-build DTOs from `$request-&gt;input()`.</statement>
+      <rationale source="PHP RFC — readonly properties">Readonly DTOs are tamper-proof inside a request lifecycle; one factory site keeps the mapping testable and consistent.</rationale>
+    </rule>
+
+    <rule id="controllers-only-call-actions" testable="true" depth="essential">
+      <statement>Controller methods MUST be ≤150 lines and MUST only: validate via FormRequest, build DTO via `::fromRequest`, dispatch to one Action, return a Resource. Business logic MUST NOT live in controllers.</statement>
+      <rationale source="Internal — fat-controller retro 2026-Q1">Fat controllers explode the surface area that LLM agents must re-read on every change; thin controllers keep diffs scoped.</rationale>
+    </rule>
+
+    <rule id="explicit-resource-fields" testable="true" depth="essential">
+      <statement>API Resources MUST list every output field explicitly. `$this-&gt;all()`, `$this-&gt;toArray()`, and spread operators are forbidden.</statement>
+      <rationale source="Internal — field-leak audit 2026-Q1">Implicit field lists leak `password_hash`, `remember_token`, soft-delete columns when the model adds a field; explicit lists fail loudly on missing fields.</rationale>
+    </rule>
+
+    <rule id="namespace-whitelist" testable="true" depth="essential">
+      <statement>Code MUST live in one of: `App\Actions\*`, `App\DTOs\*`, `App\Http\Controllers\*`, `App\Http\Requests\*`, `App\Http\Resources\*`, `App\Policies\*`, `App\Services\*`, `App\Repositories\*`, `App\Models\*`. Inventing `Manager`, `Coordinator`, `Handler` requires an ADR.</statement>
+      <rationale source="Internal — layer-bloat retro 2026-Q1">Ad-hoc layers fragment the convention and re-introduce the very thing decomposition was meant to fix.</rationale>
+    </rule>
+
+    <rule id="action-returns-result" testable="true" depth="essential">
+      <statement>`execute()` MUST return the canonical entity (`User`, `Order`) or a result object (`InvoiceCreatedResult`). `void` return is forbidden.</statement>
+      <rationale source="Internal — pipeline composition retro">Queue jobs and console commands compose Actions; void breaks composition and forces refetching the just-created entity from the DB.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

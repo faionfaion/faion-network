@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Spring Boot Layered Architecture Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to scaffold a Spring Boot 3 layered service end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="add-controller">
+      <input>API contract</input>
+      <action>Add `@RestController` under `Features/&lt;Feature&gt;/`. Annotate inputs with `@Valid` + Bean Validation. Inject the service; return record DTOs.</action>
+      <output>Per-endpoint controller method</output>
+      <decision-gate>If a method returns an entity, BLOCK per `dto-record-never-entity` rule.</decision-gate>
+    </step>
+
+    <step n="2" name="add-service-with-transactional">
+      <input>Endpoint behaviour spec</input>
+      <action>Add `@Service` class; annotate class `@Transactional(readOnly = true)`; override on writes with `@Transactional`. Inject `PasswordEncoder` for password hashing.</action>
+      <output>Service with correct transaction discipline</output>
+      <decision-gate>If a write method lacks `@Transactional`, BLOCK per `transactional-on-writes` rule.</decision-gate>
+    </step>
+
+    <step n="3" name="add-repository">
+      <input>Entity model</input>
+      <action>Add `JpaRepository&lt;Entity, Long&gt;` subinterface. Add custom JPQL only where derived queries fall short. Use `Specification` for complex filters. List queries return `Page&lt;Entity&gt;`.</action>
+      <output>Repository interface</output>
+      <decision-gate>If list query returns `List` without `Pageable`, BLOCK per `pageable-on-list` rule.</decision-gate>
+    </step>
+
+    <step n="4" name="wire-mapstruct-and-dto">
+      <input>API response shape</input>
+      <action>Define record DTO; add `@Mapper(componentModel = "spring") interface FooMapper`. Verify the MapStruct annotation processor is configured. Map inside service before returning.</action>
+      <output>DTO + MapStruct mapper compiling</output>
+      <decision-gate>If `target/generated-sources/.../FooMapperImpl.java` missing, fail per `mapstruct-annotation-processor` rule.</decision-gate>
+    </step>
+
+    <step n="5" name="add-global-exception-advice-and-tests">
+      <input>Domain exception list</input>
+      <action>Add `@RestControllerAdvice` mapping `ResourceNotFoundException` → 404, `ValidationException` → 400, etc., into RFC 7807 ProblemDetail. Add controller/service tests per `java-junit-testing`.</action>
+      <output>Consistent error responses + green tests</output>
+    </step>
+
+  </section>
+</text>

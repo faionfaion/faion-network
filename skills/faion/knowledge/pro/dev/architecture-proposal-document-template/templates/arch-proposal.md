@@ -1,0 +1,35 @@
+<!--
+purpose: Proposal skeleton with problem/constraints/options/decision/consequences/rollback
+consumes: see AGENTS.md Prerequisites
+produces: Architecture Proposal Document Template spec
+depends-on: content/02-output-contract.xml schema
+token-budget-impact: ~400 tokens when filled
+-->
+
+# Architecture Proposal Document Template — arch-proposal.md
+
+> Replace bracketed placeholders before use.
+
+**Artefact id:** `[stable-slug]`
+**Owner:** `[name <email> or role]`
+**Version:** `1.0.0`
+**Last reviewed:** `2026-05-23`
+
+---
+
+## Inputs
+
+| Name | Format | Source |
+|------|--------|--------|
+| [input-1] | [format] | [source] |
+
+## Body
+
+[Fill the spec-shaped content here per content/02-output-contract.xml.]
+
+## Self-check
+
+- [ ] Every required field populated.
+- [ ] No forbidden pattern matches.
+- [ ] Owner is a named human or role-with-rotation.
+- [ ] Version + last_reviewed advanced on every material edit.

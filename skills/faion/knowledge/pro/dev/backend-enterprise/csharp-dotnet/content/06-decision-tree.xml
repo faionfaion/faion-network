@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="C# .NET Core Backend Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-service-shape">Service shape?</root-question>
+
+    <branch when="shape == cli_utility_under_200_lines">
+      <conclusion ref="feature-folder-layout" verdict="skip-this-methodology — use `dotnet new console`; no Controller/Service/Repository imposition"/>
+    </branch>
+
+    <branch when="shape == http_api">
+      <question id="q-cancellation">Does every async controller action carry CancellationToken threaded to IO?</question>
+      <branch when="cancellation_threaded == false">
+        <conclusion ref="cancellation-token-plumbing" verdict="block diff until every async action accepts CancellationToken"/>
+      </branch>
+      <branch when="cancellation_threaded == true">
+        <question id="q-di-lifetimes">Does any singleton (BackgroundService) inject a scoped service via constructor?</question>
+        <branch when="scoped_in_singleton == true">
+          <conclusion ref="di-lifetimes" verdict="refactor singleton to inject IServiceScopeFactory + CreateScope per work unit"/>
+        </branch>
+        <branch when="scoped_in_singleton == false">
+          <question id="q-ef-reads">Do repositories return IQueryable or skip AsNoTracking on reads?</question>
+          <branch when="ef_violations == true">
+            <conclusion ref="ef-asnotracking-on-reads" verdict="materialize lists inside repo + add AsNoTracking on reads"/>
+          </branch>
+          <branch when="ef_violations == false">
+            <conclusion ref="problemdetails-errors" verdict="apply remaining rules — feature folders + ProblemDetails + ban sync-over-async"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+
+    <branch when="shape == event_sourced_or_cqrs_core">
+      <conclusion ref="feature-folder-layout" verdict="skip-this-methodology — use MediatR + Marten/EventStore directly; this umbrella's Repository pattern fights the grain"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="billing-api-scaffold">
+    shape=http_api → cancellation_threaded=true → scoped_in_singleton=false → ef_violations=false → apply remaining rules → ProblemDetails on + feature folders + no sync-over-async.
+  </example>
+</text>
