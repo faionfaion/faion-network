@@ -1,31 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="systemd-user-services Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for systemd-user-services. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="systemd User Services Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the systemd User Services methodology. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Place application unit files in ~/.config/systemd/user/ and control them with systemctl --user. Never run application code as root via system services.</statement>
-      <rationale source="v1-source">User services are scoped to one user account, need no sudo to manage, and are isolated from system services. They work with the deploy script (rsync + venv) pattern and produce logs in journalctl --user -u name.</rationale>
+
+    <rule id="r1-linger-required" testable="true" depth="essential">
+      <statement>User systemd services REQUIRE `loginctl enable-linger &lt;user&gt;`. Without it, units die at logout.</statement>
+      <rationale source="systemd-logind.service(8)">systemd --user is bound to active sessions by default; linger is the explicit always-on flag.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every unit file has [Unit] (metadata + dependencies), [Service] (execution + limits), and [Install] (boot integration). ExecStart must use an absolute path.</statement>
-      <rationale source="v1-source">systemd resolves ExecStart before starting the service and rejects relative paths. A relative path silently fails with an uninformative error. Always use the full path from the venv: /srv/nero/nero-core/.venv/bin/celery.</rationale>
+
+    <rule id="r2-restart-on-failure" testable="true" depth="essential">
+      <statement>Long-running units use Restart=on-failure (NOT Restart=always). RestartSec=5s. StartLimitBurst=5 StartLimitIntervalSec=60.</statement>
+      <rationale source="systemd.service(5) + Red Hat guidance">Restart=always loops on intentional `systemctl stop`; on-failure respects the operator&apos;s intent. Burst+interval prevents thrash storms.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Run loginctl enable-linger once per user account. Without it, user services stop when the last login session ends and do not start at boot.</statement>
-      <rationale source="v1-source">By default, the user's systemd manager exits when the last login session (SSH, TTY, sudo) ends. Linger keeps a permanent user session alive from boot to shutdown, regardless of login state.</rationale>
+
+    <rule id="r3-environmentfile-not-inline" testable="true" depth="essential">
+      <statement>Secrets load via EnvironmentFile=/etc/&lt;svc&gt;.env (chmod 600). NEVER `Environment=SECRET=...` inline.</statement>
+      <rationale source="secrets-management methodology">Inline values leak through `systemctl show`; EnvironmentFile is gated by file permissions.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Set MemoryMax, MemoryHigh, CPUQuota, and LimitNOFILE on every production service. Without limits, a runaway worker can starve all other services on the VPS.</statement>
-      <rationale source="v1-source">MemoryHigh triggers memory reclaim before the hard cap; the service is throttled but not killed. MemoryMax is the hard backstop. LimitNOFILE=65536 ensures the limit is applied even if PAM is misconfigured.</rationale>
+
+    <rule id="r4-named-owner" testable="true" depth="essential">
+      <statement>UnitPlan names a single owner. &apos;team&apos; / &apos;we&apos; / &apos;&apos; are forbidden.</statement>
+      <rationale source="RACI">Plural ownership = no ownership.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use systemd timer units instead of cron for scheduled tasks. Timers log to journald, support Persistent=true (catch up after downtime), and can be managed with systemctl --user.</statement>
-      <rationale source="v1-source">cron sends output to email (usually lost) and silently misses runs after reboots. Persistent=true on a timer runs the missed execution once after boot. journalctl --user -u backup.service gives the full run history with timestamps.</rationale>
+
+    <rule id="r5-journal-standardoutput" testable="true" depth="essential">
+      <statement>StandardOutput=journal + StandardError=journal. NEVER pipe to a log file managed by the app.</statement>
+      <rationale source="systemd.exec(5)">journalctl + log retention is the system&apos;s job; app-managed log files miss rotation + need cleanup cron.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>When a service fails to start, check journalctl --user -u name -n 50 --no-pager first, then systemctl --user status name. Most startup failures are captured in the last 10 log lines.</statement>
-      <rationale source="v1-source">The status output truncates logs. journalctl shows the full stderr/stdout from ExecStart, including Python tracebacks and missing module errors.</rationale>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in AGENTS.md &quot;Applies If&quot; do not all hold, OR any &quot;Skip If&quot; disqualifier is true, do not run this methodology — route to the named alternative.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Methodologies are pre-condition gated; running them out-of-scope produces noise and burns the agent&apos;s context budget.</rationale>
     </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold, execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-systemd-user-services.py` before returning.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Tying the entry rule to the validator script closes the loop between policy and machine check.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

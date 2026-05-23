@@ -1,35 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="swap-memory-management Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for swap-memory-management. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Swap &amp; Memory Management Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the Swap &amp; Memory Management methodology. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>For a server with 16–32 GB RAM, create a 4 GB swap file. Swap is a safety net — it prevents OOM kills under burst conditions but should rarely be used during normal operation.</statement>
-      <rationale source="v1-source">Large swap on a RAM-rich server does not improve performance. With swappiness=10, the kernel will only start using swap when RAM is nearly exhausted, so 4 GB covers burst situations without wasting disk on idle swap space.</rationale>
+
+    <rule id="r1-swap-size-bounded" testable="true" depth="essential">
+      <statement>Swap size = min(2 × RAM, 16GB). Always have SOME swap — even 2GB beats none on a 4GB box.</statement>
+      <rationale source="kernel.org swap recommendations + Red Hat guidance">No swap = OOM-killer triggers at the worst possible time; &gt;16GB swap is wasted disk + thrashing risk.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use fallocate to create the swap file; set chmod 600 before mkswap; add to /etc/fstab; verify with findmnt --verify to guard against a typo that prevents boot.</statement>
-      <rationale source="v1-source">A swap file with world-readable permissions leaks RAM content to unprivileged users. An invalid /etc/fstab entry can render the server unbootable. findmnt --verify catches syntax errors before reboot.</rationale>
+
+    <rule id="r2-swappiness-10-ssd" testable="true" depth="essential">
+      <statement>vm.swappiness=10 on SSD-backed hosts (default 60 is for spinning disk). vm.vfs_cache_pressure=50.</statement>
+      <rationale source="kernel.org sysctl docs + Postgres tuning guides">Higher swappiness on SSD wastes IO; 10 keeps swap for true memory pressure, not page-cache trimming.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Set vm.swappiness = 10 on servers with 8 GB+ RAM. Never set it to 0 — value 0 means the kernel will not swap at all and may OOM-kill instead of using the swap safety net.</statement>
-      <rationale source="v1-source">Default swappiness=60 causes the kernel to start swapping when 40% of RAM is used, creating latency spikes during LLM API calls. Value 10 delays swapping until RAM is almost full while still keeping the swap safety valve functional.</rationale>
+
+    <rule id="r3-memoryhigh-per-unit" testable="true" depth="essential">
+      <statement>Every memory-hungry systemd unit declares MemoryHigh (soft cap) AND MemoryMax (hard cap) in a drop-in. Default + &apos;just one service&apos; patterns are forbidden.</statement>
+      <rationale source="systemd.resource-control(5)">Without cgroup limits, one runaway process OOM-kills the host. MemoryHigh throttles; MemoryMax stops.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Pair swappiness tuning with vm.dirty_ratio=15, vm.dirty_background_ratio=5, and vm.vfs_cache_pressure=50 for stable I/O behavior and longer inode/dentry cache retention.</statement>
-      <rationale source="v1-source">dirty_background_ratio=5 starts background writeback early, preventing a sudden I/O spike when dirty_ratio=15 is reached. vfs_cache_pressure=50 tells the kernel to reclaim page cache before dentry/inode caches, keeping filesystem metadata resident.</rationale>
+
+    <rule id="r4-named-owner" testable="true" depth="essential">
+      <statement>MemoryPlan names a single owner. &apos;team&apos; / &apos;we&apos; / &apos;&apos; are forbidden.</statement>
+      <rationale source="RACI">Plural ownership = no ownership.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Set OOMScoreAdjust in systemd unit files to control kill order. Databases: −900. Core API: −300. Celery workers: 0. Static file servers: +100. Never set −1000 for application services — reserve that for kernel threads.</statement>
-      <rationale source="v1-source">Without explicit OOM priorities the kernel picks victims by memory usage alone, often killing the database instead of a worker. Explicit priorities ensure that if OOM must kill something, it kills the least critical service first, in a deterministic order.</rationale>
+
+    <rule id="r5-pressure-alert" testable="true" depth="essential">
+      <statement>Alert on PSI (Pressure Stall Information) `memory.full &gt; 10s/min` for ≥3 consecutive minutes — NOT just on OOM-kill.</statement>
+      <rationale source="kernel.org PSI docs">PSI catches degraded service before OOM-killer fires; OOM-only alerts are post-incident.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Set MemoryMax (hard kill limit) and MemoryHigh (soft throttle limit) on every service. Without limits, a Celery worker processing a large context window grows unbounded and triggers the kernel OOM killer against the wrong process.</statement>
-      <rationale source="v1-source">MemoryHigh causes the kernel to throttle the cgroup and activate memory reclaim before hitting MemoryMax. This gives the service a chance to release memory gracefully. MemoryMax is the hard backstop — the process receives SIGKILL when it exceeds this.</rationale>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in AGENTS.md &quot;Applies If&quot; do not all hold, OR any &quot;Skip If&quot; disqualifier is true, do not run this methodology — route to the named alternative.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Methodologies are pre-condition gated; running them out-of-scope produces noise and burns the agent&apos;s context budget.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Monitor cgroup memory usage via systemctl status and the cgroup fs at /sys/fs/cgroup/. Use systemd-cgtop for a live overview of all services.</statement>
-      <rationale source="v1-source">High-water-mark memory usage is not visible in free -h — it is scoped to the cgroup. Checking memory.peak (if available) or watching memory.current reveals whether a service is regularly approaching its MemoryHigh limit and needs an increase.</rationale>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold, execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-swap-memory-management.py` before returning.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Tying the entry rule to the validator script closes the loop between policy and machine check.</rationale>
     </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

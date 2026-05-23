@@ -1,22 +1,103 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ssl-tls-management Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="SSL/TLS Management Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ssl-tls-management.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "domain",
+    "mode",
+    "cert_path",
+    "key_path",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "domain": {
+      "type": "string"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "cloudflare-origin",
+        "letsencrypt",
+        "self-signed"
+      ]
+    },
+    "cert_path": {
+      "type": "string"
+    },
+    "key_path": {
+      "type": "string"
+    },
+    "expiry_monitor_cron": {
+      "type": "string"
+    },
+    "renewal_hook": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <pattern id="f1">owner == &apos;team&apos; / &apos;we&apos; / &apos;&apos; / null.</pattern>
+      <pattern id="f2">mode not in [cloudflare-origin, letsencrypt, self-signed].</pattern>
+      <pattern id="f3">Cloudflare SSL mode == &apos;Flexible&apos; for this domain (r1 violation).</pattern>
+      <pattern id="f4">mode == letsencrypt AND expiry_monitor_cron empty (r2 violation).</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "tls-faion-net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "domain": "faion.net",
+  "mode": "letsencrypt",
+  "cert_path": "/etc/letsencrypt/live/faion.net/fullchain.pem",
+  "key_path": "/etc/letsencrypt/live/faion.net/privkey.pem",
+  "expiry_monitor_cron": "0 6 * * * /usr/local/bin/check-cert-expiry.sh",
+  "renewal_hook": "systemctl reload nginx",
+  "owner": "@ruslan"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "domain": "faion.net",
+  "mode": "flexible",
+  "owner": "team"
+}
+]]></code>
+    <note>mode=flexible not in enum + violates r1; owner=team; missing artefact_id, version, last_reviewed, cert_path, key_path.</note>
+  </example>
+
+  <reference path="scripts/validate-ssl-tls-management.py">Schema validator (stdlib only).</reference>
 </text>

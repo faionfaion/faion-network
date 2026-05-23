@@ -1,11 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="nginx-reverse-proxy Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for nginx-reverse-proxy. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="nginx Reverse Proxy Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the nginx Reverse Proxy methodology. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-proxy-pass-no-trailing-slash" testable="true" depth="essential">
+      <statement>When stripping a URL prefix, use `rewrite ^/prefix/(.*) /$1 break; proxy_pass http://upstream;` — NEVER `proxy_pass http://upstream/;` with a trailing slash on multi-segment locations.</statement>
+      <rationale source="nginx core docs + multi-year regression cohort">Trailing-slash proxy_pass collapses to URI-rewrite semantics with edge cases on multi-segment paths; explicit rewrite+break is deterministic.</rationale>
     </rule>
+
+    <rule id="r2-websocket-upgrade-map" testable="true" depth="essential">
+      <statement>Declare `map $http_upgrade $connection_upgrade { default upgrade; &apos;&apos; close; }` in the http context; reference `$connection_upgrade` in WebSocket locations via a snippet — never inline.</statement>
+      <rationale source="nginx WebSocket proxy docs">The map MUST live in http; inlining the literal `Connection upgrade` header drops requests when the client sends `Upgrade: &apos;&apos;`.</rationale>
+    </rule>
+
+    <rule id="r3-forwarded-proto-https" testable="true" depth="essential">
+      <statement>All proxy locations set `proxy_set_header X-Forwarded-Proto https;` when Cloudflare full(strict) terminates TLS — never echo $scheme.</statement>
+      <rationale source="Cloudflare proxy semantics + Django SECURE_PROXY_SSL_HEADER docs">Cloudflare sends HTTP to origin; $scheme is `http` and breaks Django CSRF, FastAPI redirects, secure-cookie issuance.</rationale>
+    </rule>
+
+    <rule id="r4-csp-per-site" testable="true" depth="essential">
+      <statement>Content-Security-Policy is declared per-vhost — never in a global snippet shared across apps.</statement>
+      <rationale source="OWASP CSP guidance">Each app has its own allow-list; a shared CSP either blocks functionality or is too permissive to matter.</rationale>
+    </rule>
+
+    <rule id="r5-ratelimit-in-http-context" testable="true" depth="essential">
+      <statement>`limit_req_zone` lives in http context; `limit_req zone=... burst=...` lives in the location — declaring the zone inside a server block is rejected by nginx -t.</statement>
+      <rationale source="nginx ngx_http_limit_req_module docs">nginx parses zones once globally; per-server declarations either silently inherit or fail config-test.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in AGENTS.md &quot;Applies If&quot; do not all hold, OR any &quot;Skip If&quot; disqualifier is true, do not run this methodology — route to the named alternative.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Methodologies are pre-condition gated; running them out-of-scope produces noise and burns the agent&apos;s context budget.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold, execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-nginx-reverse-proxy.py` before returning.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Tying the entry rule to the validator script closes the loop between policy and machine check.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

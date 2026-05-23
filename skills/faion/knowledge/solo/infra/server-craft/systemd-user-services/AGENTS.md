@@ -3,73 +3,102 @@ slug: systemd-user-services
 tier: solo
 group: infra
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Run applications as systemd user services (without root) with proper restart policies, resource limits, environment variables, and boot persistence.
-content_id: "4203c589bba7bf3c"
-tags: [systemd, services, user-services, deployment, logging]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a systemd --user unit + drop-in plan (Restart, MemoryMax, EnvironmentFile, journal) for a long-running solo service — gated by `loginctl enable-linger`.
+content_id: "78c891698cd43af9"
+complexity: medium
+produces: config
+est_tokens: 4500
+tags: ["systemd", "user-services", "linger", "journal", "drop-in"]
 ---
 # systemd User Services
 
 ## Summary
 
-**One-sentence:** Run applications as systemd user services (without root) with proper restart policies, resource limits, environment variables, and boot persistence.
+**One-sentence:** Generates a systemd --user unit + drop-in plan (Restart, MemoryMax, EnvironmentFile, journal) for a long-running solo service — gated by `loginctl enable-linger`.
 
-**One-paragraph:** Run applications as systemd user services (without root) with proper restart policies, resource limits, environment variables, and boot persistence. Enable linger, use absolute paths in ExecStart, set MemoryMax/MemoryHigh/CPUQuota, and replace cron with timer units for scheduled tasks.
+**One-paragraph:** Running services as a non-root operator via `systemd --user` is the simplest way to avoid `nohup`, `screen`, or root-owned units. This methodology pins the unit template (Restart=on-failure, RestartSec=5s, MemoryMax, EnvironmentFile, StandardOutput=journal), the linger requirement, timer pairs for periodic jobs, and a per-unit drop-in convention. Output: a UnitPlan + .service file.
+
+**Ефективно для:**
+
+- Long-running Python/Node apps owned by a non-root operator.
+- Periodic jobs that outgrow cron (need restart-on-failure, journal logs).
+- Multi-service VPS where unit drop-ins are easier than root systemctl edits.
+- Replacing tmux-based 'just keep this open' patterns.
 
 ## Applies If (ALL must hold)
 
-- Deploying Python/Node/Go applications that must restart on crash and start at boot
-- Managing multiple per-user services (Celery, FastAPI, Telegram bot) independently
-- Applying MemoryMax/CPUQuota resource limits to a service that has been OOM-killed
-- Adding scheduled tasks with better logging than cron (timer units)
-- Replacing screen/nohup patterns with proper lifecycle management
+- Service runs ≥10 minutes per session OR continuously.
+- Operator is a non-root user with linger enabled.
+- Output should be journaled (not log-file-rotation-by-hand).
+- Restart-on-failure semantics needed.
 
 ## Skip If (ANY kills it)
 
-- Services that must bind ports below 1024 — use nginx reverse proxy instead
-- Containerized workloads managed by Docker Compose — compose restart policies replace unit files
-- One-shot scripts run on demand — use cron or explicit invocation
-- When sudo -u or su is used to run the service — systemctl --user requires an active user session or explicit XDG_RUNTIME_DIR
+- Service runs <1 minute and is invoked ad-hoc.
+- Container runtime managing process lifecycle.
+- Requires capabilities only root systemd can grant (e.g. binding port 80).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Service binary path + working dir | absolute paths | operator inventory |
+| EnvironmentFile path (per secrets-management) | absolute path | secrets plan |
+| Memory budget | MemoryHigh + MemoryMax | memory plan |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| secrets-management | EnvironmentFile path comes from secrets plan. |
+| swap-memory-management | MemoryHigh/Max from memory plan. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-linger-required, r2-restart-on-failure, r3-environmentfile-not-inline, r4-named-owner, r5-journal-standardoutput | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the systemd User Services artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: no-linger-dies-on-logout, restart-always-spins, inline-environment-leaks, no-memory-bound | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure for end-to-end application | 800 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-unit` | sonnet | Per-service template fill with safety checks. |
+| `audit-existing-units` | sonnet | Diff against rule-set. |
+| `render-timer-pair` | haiku | Mechanical template fill. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/systemd-user-services.json` | UnitPlan JSON skeleton. |
+| `templates/systemd-user-services.md` | Human-readable audit trail. |
+| `templates/fastapi.service` | Reference unit for a FastAPI app. |
+| `templates/celery-worker.service` | Reference unit for a Celery worker. |
+| `templates/telegram-bot.service` | Reference unit for a Telegram bot. |
+| `templates/target.service` | Reference target grouping multiple units. |
+| `templates/timer-pair.service` | Reference .service + .timer pair for periodic jobs. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-systemd-user-services.py` | Validate UnitPlan JSON against the schema. | Pre-install + post-edit. |
 
 ## Related
 
-- parent skill: `solo/infra/server-craft/`
+- [[secrets-management]]
+- [[swap-memory-management]]
+- [[monitoring-logging]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

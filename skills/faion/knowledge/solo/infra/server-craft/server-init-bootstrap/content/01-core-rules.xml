@@ -1,11 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="server-init-bootstrap Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for server-init-bootstrap. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Server Init Bootstrap Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the Server Init Bootstrap methodology. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-verify-user-login-first" testable="true" depth="essential">
+      <statement>Phase order is fixed: (1) create user, (2) install operator pubkey, (3) verify login as user in a second terminal, (4) disable root + password auth. NEVER disable root before step 3 succeeds.</statement>
+      <rationale source="Internal — lockout postmortems">A typo in sshd_config that survives the operator session locks the host. Verification in a second terminal catches it.</rationale>
     </rule>
+
+    <rule id="r2-loginctl-linger" testable="true" depth="essential">
+      <statement>User systemd services REQUIRE `loginctl enable-linger &lt;user&gt;` so they survive logout. Without it, services die at logout.</statement>
+      <rationale source="systemd.exec(5) + Arch wiki">systemd user manager is bound to active sessions by default; lingering is the explicit opt-in.</rationale>
+    </rule>
+
+    <rule id="r3-fail2ban-before-internet" testable="true" depth="essential">
+      <statement>fail2ban + UFW MUST be active before any service is bound to the public interface; the SSH brute-force window opens at first boot.</statement>
+      <rationale source="Honeypot data + Hetzner abuse desk">Botnets scan IPv4 within minutes of allocation; an unprotected sshd on a fresh host is hit immediately.</rationale>
+    </rule>
+
+    <rule id="r4-named-hostname" testable="true" depth="essential">
+      <statement>Hostname MUST match the operator&apos;s naming convention (e.g. faion-net-01) — not `ubuntu` or `localhost`. Set via `hostnamectl set-hostname` AND /etc/hosts.</statement>
+      <rationale source="Postfix + monitoring tooling docs">Default hostnames break mail (HELO), monitoring grouping, and SSH-config Host blocks.</rationale>
+    </rule>
+
+    <rule id="r5-cloud-init-idempotent" testable="true" depth="essential">
+      <statement>cloud-init user-data MUST be idempotent — re-running it on a half-bootstrapped host must converge, not error.</statement>
+      <rationale source="cloud-init documentation">Bootstrap interruptions happen (network, power); re-runs are the recovery path.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in AGENTS.md &quot;Applies If&quot; do not all hold, OR any &quot;Skip If&quot; disqualifier is true, do not run this methodology — route to the named alternative.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Methodologies are pre-condition gated; running them out-of-scope produces noise and burns the agent&apos;s context budget.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold, execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-server-init-bootstrap.py` before returning.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Tying the entry rule to the validator script closes the loop between policy and machine check.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

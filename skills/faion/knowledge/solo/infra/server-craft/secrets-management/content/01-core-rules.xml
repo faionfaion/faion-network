@@ -1,11 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="secrets-management Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for secrets-management. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Secrets Management Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the Secrets Management methodology. Each pairs a binary check with a sourced rationale; HARD rules — user-supplied input cannot override.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-no-secrets-in-git" testable="true" depth="essential">
+      <statement>.env / *.key / *.pem / id_rsa / credentials.json / service-account*.json MUST be in .gitignore and rejected by pre-commit. History scan (git log --all -p | grep) MUST find zero matches against secret patterns.</statement>
+      <rationale source="GitHub Advanced Security + OWASP SCRA guidance">Once pushed, a secret is compromised — even after rebase. Pre-commit is the only reliable boundary.</rationale>
     </rule>
+
+    <rule id="r2-systemd-env-file" testable="true" depth="essential">
+      <statement>Service units load secrets via `EnvironmentFile=/etc/&lt;service&gt;.env` — never `Environment=` with the secret value inline. The file is referenced once per service.</statement>
+      <rationale source="systemd.exec(5) + Red Hat security guidance">Inline Environment= values leak via `systemctl show`; EnvironmentFile is readable only by root + the unit&apos;s User.</rationale>
+    </rule>
+
+    <rule id="r3-file-perms-600" testable="true" depth="essential">
+      <statement>.env files and EnvironmentFile= paths have mode 0600 owned by the service&apos;s User. `find /etc -name &apos;*.env&apos; -perm /o+r` MUST return empty.</statement>
+      <rationale source="CIS Benchmark + internal incident log">World-readable env files defeat the whole point; other-readable allows local privilege escalation.</rationale>
+    </rule>
+
+    <rule id="r4-named-rotation-owner" testable="true" depth="essential">
+      <statement>Every secret class (DB, API key, JWT) has a single named owner accountable for rotation. &apos;team&apos; / &apos;we&apos; / &apos;&apos; are forbidden.</statement>
+      <rationale source="RACI practice">Plural ownership = no ownership. Rotation calendars stall without a named human.</rationale>
+    </rule>
+
+    <rule id="r5-rotation-on-leak" testable="true" depth="essential">
+      <statement>On a known leak, the secret is rotated within 24h across every consumer named in the SecretsPlan. Plan validity is verified post-rotation.</statement>
+      <rationale source="Internal — leak postmortems">Rotating in one place and forgetting consumers is the standard incident-postmortem finding.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If preconditions in AGENTS.md &quot;Applies If&quot; do not all hold, OR any &quot;Skip If&quot; disqualifier is true, do not run this methodology — route to the named alternative.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Methodologies are pre-condition gated; running them out-of-scope produces noise and burns the agent&apos;s context budget.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>If preconditions hold, execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-secrets-management.py` before returning.</statement>
+      <rationale source="faion-network methodology DoD (F-066)">Tying the entry rule to the validator script closes the loop between policy and machine check.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -4,72 +4,98 @@ tier: solo
 group: infra
 domain: backend
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Lightweight monitoring and logging for solo developer VPS platforms using journald, health-check scripts, and Telegram alerts without Prometheus/Grafana.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Monitoring + logging for solo VPS without Prometheus/Grafana: journald with log rotation, health-check scripts, Telegram digest, single-line summaries per service per day, alert-only on failure."
 content_id: "6194411184922df4"
+complexity: medium
+produces: report
+est_tokens: 6000
 tags: [monitoring, logging, journald, health-check, alerting]
 ---
-# Monitoring and Logging
+# Lightweight Monitoring + Logging
 
 ## Summary
 
-**One-sentence:** Lightweight monitoring and logging for solo developer VPS platforms using journald, health-check scripts, and Telegram alerts without Prometheus/Grafana.
+**One-sentence:** Monitoring + logging for solo VPS without Prometheus/Grafana: journald with log rotation, health-check scripts, Telegram digest, single-line summaries per service per day, alert-only on failure.
 
-**One-paragraph:** Lightweight monitoring and logging for solo developer VPS platforms using journald, health-check scripts, and Telegram alerts without Prometheus/Grafana. Provides journalctl query patterns, log rotation config, FLOW-style autonomous hourly/daily reports, and status dashboard.
+**One-paragraph:** Prometheus + Grafana is overkill for 1-5 services; the operator-attention cost exceeds the value. This methodology produces a minimal stack: journald with rotation + per-service health-check + daily TG digest + alert-on-failure. The output is a verified config that emits one Telegram message per day with one line per service + one alert per incident.
 
 ## Applies If (ALL must hold)
 
-- Setting up observability from scratch on a solo-developer VPS
-- A service went down silently and you need alerting before it happens again
-- Writing a health-check script for a cron job or FLOW guardian
-- Building an autonomous monitoring loop that sends Telegram alerts on anomalies
-- Investigating a production incident retroactively via journalctl
+- VPS with 1-10 services where Prometheus would be overkill.
+- Operator wants a once-a-day digest, not a dashboard.
+- Telegram bot configured for alerts.
 
 ## Skip If (ANY kills it)
 
-- Multi-server environments where Prometheus/Grafana/Loki is justified (use pro/infra/devops-engineer)
-- Kubernetes clusters (use Datadog, Grafana Loki, or similar)
-- Compliance-heavy environments requiring tamper-proof audit-trail log storage
-- High-frequency trading or sub-second SLOs where journald latency is unacceptable
+- More than ~10 services or multiple hosts — graduate to Prometheus.
+- Compliance requires structured metrics ingestion (Datadog, Splunk).
+- Operator needs second-level granularity — journald digest is daily.
+
+**Ефективно для:**
+
+- Solo VPS-фаундери що не хочуть Grafana-stack.
+- FLOW-style: hourly silent health + daily digest у TG.
+- Indie hackers що читають один TG-feed замість трьох дашбордів.
+- Compliance-light: 30-day log retention з journald rotation.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/infra/server-craft/cron-automation` | Digest runs from cron. |
+| `solo/infra/server-craft/health-checks-autoheal` | Health-check feeds the alert path. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology | 900 |
+| `content/05-examples.xml` | essential | Worked example from input to verified artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-report` | haiku | Template fill from inventory. |
+| `populate-evidence` | sonnet | Per-row evidence link + verification. |
+| `outcome-synthesis` | opus | Cross-step synthesis of outcome impact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Monitoring audit listing journald + digest + alert routing. |
+| `templates/_smoke-test.md` | Minimum viable filled-in monitoring audit. |
+| `templates/digest.sh` | Daily digest builder: one line per service, sent to TG at 07:00. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-monitoring-logging.py` | Validate artefact against the JSON Schema in content/02-output-contract.xml. Stdlib-only. | On artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/infra/server-craft/`
+- [[cron-automation]]
+- [[health-checks-autoheal]]
+- [[secrets-management]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, status of prerequisites) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

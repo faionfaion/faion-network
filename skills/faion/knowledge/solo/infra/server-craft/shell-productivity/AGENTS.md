@@ -3,72 +3,98 @@ slug: shell-productivity
 tier: solo
 group: infra
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Modern CLI toolkit for Ubuntu/Debian servers replacing traditional Unix utilities with faster, more informative alternatives: bat (cat), eza (ls), fd (find), ripgrep (grep), delta (git diff), starship (prompt), zoxide (cd), fzf (fuzzy finder), btop (top), duf (df), dust (du).
-content_id: "fd8b8728ef94586f"
-tags: [shell, cli-tools, productivity, ubuntu, fzf]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Generates a per-host shell-productivity bundle (fzf + ripgrep + bat + starship + zoxide) with shell config + alias file, gated by an idempotent installer.
+content_id: "a44bcd2e0636fab3"
+complexity: light
+produces: config
+est_tokens: 3800
+tags: ["shell", "fzf", "starship", "zoxide", "bash", "zsh"]
 ---
 # Shell Productivity
 
 ## Summary
 
-**One-sentence:** Modern CLI toolkit for Ubuntu/Debian servers replacing traditional Unix utilities with faster, more informative alternatives: bat (cat), eza (ls), fd (find), ripgrep (grep), delta (git diff), starship (prompt), zoxide (cd), fzf (fuzzy finder), btop (top), duf (df), dust (du).
+**One-sentence:** Generates a per-host shell-productivity bundle (fzf + ripgrep + bat + starship + zoxide) with shell config + alias file, gated by an idempotent installer.
 
-**One-paragraph:** Modern CLI toolkit for Ubuntu/Debian servers replacing traditional Unix utilities with faster, more informative alternatives: bat (cat), eza (ls), fd (find), ripgrep (grep), delta (git diff), starship (prompt), zoxide (cd), fzf (fuzzy finder), btop (top), duf (df), dust (du). Covers installation from apt and GitHub releases, Ubuntu naming conflicts (batcat/fdfind), shell integration, and fzf/bat/fd cross-wiring.
+**One-paragraph:** Solo devs live in the terminal; small ergonomic gains compound. This methodology pins the tool list (fzf, ripgrep, bat, starship, zoxide, eza), shell wiring (bash/zsh), and starship preset. Output: a ShellPlan + install-cli-tools.sh that converges to the same end state when re-run.
+
+**Ефективно для:**
+
+- Long-lived SSH sessions where fuzzy-find + history search cut keystrokes.
+- Multi-host tmux workflows that need the same prompt + aliases.
+- Onboarding a new server with a 30-second 'feels like home' setup.
+- Replacing legacy ~/.bashrc cruft with a versioned config.
 
 ## Applies If (ALL must hold)
 
-- Setting up a new Ubuntu VPS where default shell tools slow down daily admin
-- Server rebuild: restoring the developer's modern tool stack alongside dotfiles
-- Improving agent-generated shell pipelines with tools that have better output formats
-- Auditing which tools are installed before writing scripts that depend on them
+- Operator works in interactive shell ≥1h/day.
+- Setting up shell on a fresh server or workstation.
+- Standardising shell across multiple hosts.
+- Replacing ad-hoc dotfiles with a versioned bundle.
 
 ## Skip If (ANY kills it)
 
-- Minimal containers or CI environments where image size matters (stick to POSIX tools)
-- Scripts that must run on arbitrary servers without knowing what tools are installed
-- Environments with strict package policy (air-gapped, compliance-hardened)
-- Scripts checked into shared repos where others may not have the same tools
+- Read-only / production hosts where operator login is rare.
+- Containers / CI runners — install overhead not worth it.
+- Locked-down environments where third-party binaries are blocked.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Operator shell preference | bash|zsh | operator |
+| Tool list | list of CLI tools | ShellPlan inventory |
+| Starship preset choice | preset name | starship.toml |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| dotfiles-management | Shell configs are part of the dotfiles repo; this methodology delegates storage. |
+| tmux-power-user | tmux pairs with the shell config; shared prompt expectations. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 rules: r1-idempotent-installer, r2-versioned-rc, r3-no-secrets-in-rc, r4-named-owner, r5-history-shared | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the Shell Productivity artefact + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: rc-overwrite-clobbers, secrets-in-bashrc, slow-prompt-blocks-shell, history-not-shared | 800 |
+| `content/06-decision-tree.xml` | essential | Maps observable inputs to rule ids in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-shell-plan` | sonnet | Tool selection + shell wiring. |
+| `render-installer` | haiku | Template fill from plan. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/shell-productivity.json` | ShellPlan JSON skeleton (tool list, shell, starship preset). |
+| `templates/shell-productivity.md` | Human-readable audit trail. |
+| `templates/install-cli-tools.sh` | Idempotent installer for the chosen tool list. |
+| `templates/fzf-config.sh` | fzf key-bindings + completion source block. |
+| `templates/starship.toml` | starship preset with concise prompt. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-shell-productivity.py` | Validate ShellPlan JSON against the schema. | Before applying installer to a host. |
 
 ## Related
 
-- parent skill: `solo/infra/server-craft/`
+- [[dotfiles-management]]
+- [[tmux-power-user]]
+- [[bash-aliases]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.

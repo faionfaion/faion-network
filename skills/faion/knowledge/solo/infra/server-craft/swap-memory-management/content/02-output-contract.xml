@@ -1,22 +1,102 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="swap-memory-management Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Swap &amp; Memory Management Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/swap-memory-management.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "ram_gb",
+    "swap_gb",
+    "swappiness",
+    "units",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "ram_gb": {
+      "type": "integer"
+    },
+    "swap_gb": {
+      "type": "integer"
+    },
+    "swappiness": {
+      "type": "integer"
+    },
+    "units": {
+      "type": "array"
+    },
+    "alert_path": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+  </section>
 
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <pattern id="f1">owner == &apos;team&apos; / &apos;we&apos; / &apos;&apos; / null.</pattern>
+      <pattern id="f2">swap_gb == 0 on host with RAM &lt; 16GB (r1).</pattern>
+      <pattern id="f3">swap_gb &gt; 16 (cap).</pattern>
+      <pattern id="f4">any unit with workload_class=&apos;heavy&apos; missing MemoryHigh + MemoryMax (r3).</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "memory-nero-prod",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "ram_gb": 32,
+  "swap_gb": 16,
+  "swappiness": 10,
+  "units": [
+    {
+      "unit": "claude@.service",
+      "MemoryHigh": "8G",
+      "MemoryMax": "12G"
+    }
+  ],
+  "alert_path": "tg-send admin",
+  "owner": "@ruslan"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "ram_gb": 8,
+  "swap_gb": 0,
+  "swappiness": 60,
+  "units": [],
+  "owner": "team"
+}
+]]></code>
+    <note>swap_gb=0 (r1 violation); swappiness=60 on SSD (r2 violation); units empty; owner=team; missing artefact_id, version, last_reviewed.</note>
+  </example>
+
+  <reference path="scripts/validate-swap-memory-management.py">Schema validator (stdlib only).</reference>
 </text>

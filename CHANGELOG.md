@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-066 refactor: harvest +115 files (batch 2).
 - F-066 refactor: harvest +145 files (batch 1).
 - F-066 refactor: harvest +138 files (batch 0).
 - F-066 refactor: harvest +81 files (batch 1).
