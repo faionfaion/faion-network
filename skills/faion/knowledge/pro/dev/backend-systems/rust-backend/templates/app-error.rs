@@ -1,3 +1,8 @@
+// purpose: AppError enum with IntoResponse mapping to RFC 7807
+// consumes: handler return values
+// produces: HTTP response with RFC 7807 ProblemDetail
+// depends-on: scripts/validate-rust-backend.py
+// token-budget-impact: ~250 tokens
 // templates/app-error.rs
 // AppError enum with IntoResponse mapping to RFC 7807 ProblemDetail.
 // Import and extend; every variant must appear in the match arm below.

@@ -1,12 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="nosql-redis-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for nosql-redis-patterns as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Writing cache keys with no TTL using SET instead of SETEX.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Under memory pressure Redis silently evicts data. If the eviction policy is noeviction, writes fail. Key leaks are invisible until the OOM event.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Redis Data Structure Patterns Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Antipatterns observed in real nosql-redis-patterns deployments. Each pairs symptom + root-cause + fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="string-with-json-blob" severity="medium">
+      <symptom>User object stored as JSON string; HINCRBY impossible; every field update rewrites the whole JSON.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author defaulted to GET/SET + JSON for object storage.</root-cause>
+      <fix>Use Hash type for objects; HINCRBY and HSET work field-by-field.</fix>
+    </antipattern>
+    <antipattern id="fixed-window-rate-limit" severity="high">
+      <symptom>Rate limit allows 2× the configured rate at window boundaries; abusive bursts pass the gate.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author implemented rate limit with INCR + EXPIRE (fixed window).</root-cause>
+      <fix>Sliding-window with Sorted Set: ZREMRANGEBYSCORE to drop expired + ZADD + ZCARD + EXPIRE.</fix>
+    </antipattern>
+    <antipattern id="no-ttl-on-key" severity="high">
+      <symptom>Cache keys without TTL accumulate; memory hits maxmemory; LRU evicts live keys; silent data loss.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author wrote SET without EX / EXPIRE.</root-cause>
+      <fix>Every write uses SETEX / EXPIRE / px / ex; document TTL per namespace.</fix>
+    </antipattern>
+    <antipattern id="pubsub-when-streams-needed" severity="medium">
+      <symptom>Subscriber disconnects briefly; all messages lost; consumer cannot catch up.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author defaulted to pub/sub for durable event delivery.</root-cause>
+      <fix>Use Streams with XADD / XREADGROUP + XACK; consumer groups preserve pending entries.</fix>
+    </antipattern>
   </section>
 </text>

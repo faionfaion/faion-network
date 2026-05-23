@@ -3,73 +3,96 @@ slug: nosql-mongodb-patterns
 tier: pro
 group: dev
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Design MongoDB schemas around access patterns, not entity diagrams.
-content_id: "c9559486c88e6576"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Access-pattern-driven MongoDB schema: embedding vs referencing decision, index plan from query filters, schemaVersion field + migration scripts, TTL indexes for ephemeral data.
+content_id: "25f0728ed05d5bea"
+complexity: medium
+produces: spec
+est_tokens: 4400
 tags: [mongodb, nosql, document-store, data-modeling, indexing]
 ---
 # MongoDB Document Design Patterns
 
 ## Summary
 
-**One-sentence:** Design MongoDB schemas around access patterns, not entity diagrams.
+**One-sentence:** Access-pattern-driven MongoDB schema: embedding vs referencing decision, index plan from query filters, schemaVersion field + migration scripts, TTL indexes for ephemeral data.
 
-**One-paragraph:** Design MongoDB schemas around access patterns, not entity diagrams. Choose embedding for 1:few relationships accessed together, referencing for 1:many or many:many. Use the bucket pattern for time-series. Always index query fields and add a schemaVersion field for evolution.
+**One-paragraph:** Design MongoDB schemas around access patterns, not entity diagrams. Embed when the child is fetched with the parent and the count is bounded; reference when the child is queried independently or the list is unbounded. Every query filter / sort / range field needs an index; every collection carries a schemaVersion integer and migration scripts move documents forward+backward. Output is a collection schema bundle + index plan + migration scripts.
+
+**Ефективно для:**
+
+- New service designs where MongoDB is the chosen primary store.
+- Migrating a relational schema to MongoDB without dragging the foreign-key graph along.
+- Adding TTL cleanup to session / cache collections so they self-prune.
+- Designing rolling migrations that do not lock the collection.
 
 ## Applies If (ALL must hold)
 
-- Hierarchical or nested data structures where parent and children are always accessed together (1:few embedding).
-- High-volume document workloads with flexible or evolving schemas.
-- Time-series or sensor data where the bucket pattern aggregates measurements per time window.
-- Full-text search requirements co-located with document data (text indexes).
-- Session storage, content management, catalog systems with heterogeneous attributes.
+- Workload uses MongoDB (Atlas, self-hosted, or DocumentDB).
+- Access patterns can be enumerated at design time.
+- Team can index by access pattern (storage + write cost budget present).
+- Migrations can be rolled forward incrementally.
 
 ## Skip If (ANY kills it)
 
-- Strong-consistency multi-document transactions that touch many collections — Postgres handles this without two-phase commit overhead.
-- Ad-hoc analytical queries with unknown access patterns — warehouse/lakehouse is a better fit.
-- Small datasets (<100 GB, low QPS) where Postgres + JSONB provides the same flexibility without an extra engine.
-- Reporting and BI surfaces — operational MongoDB stores should not serve analytical queries directly.
+- Workload is heavy relational with multi-collection JOINs at scale — use Postgres.
+- Strong cross-document transactions required (MongoDB supports multi-doc transactions but at cost).
+- Embedded full-text search is the dominant access pattern — use Elasticsearch.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Access-pattern list | yaml / md | team |
+| Document size estimate | doc | team |
+| Index storage budget | yaml | DBA |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | This methodology has no upstream dependencies. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns (symptom / root-cause / fix) | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-embed-vs-ref` | sonnet | Decision needs judgement on cardinality + access. |
+| `draft-schema` | sonnet | Schema authoring benefits from sonnet. |
+| `validate-output` | haiku | Schema check is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/schema.json` | Mongo collection schema + index plan skeleton |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-nosql-mongodb-patterns.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/backend-systems/`
+- Parent: `pro/dev/backend-systems/`
+- [[nosql-cassandra-patterns]]
+- [[nosql-redis-patterns]]
+- [[nosql-neo4j-patterns]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

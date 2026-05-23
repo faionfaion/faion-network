@@ -1,17 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="nosql-cassandra-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for nosql-cassandra-patterns as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Hot partition: using a single low-cardinality value as the partition key (e.g., status='active', region='us-east', or a single tenant_id for a multi-tenant table).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>All writes for that value route to the same replica set. One node becomes a bottleneck while the rest of the cluster is idle. Symptoms: p99 write latency spikes, compaction backlog, eventual timeout errors on that node.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using a raw timestamp or auto-increment ID as the sole partition key.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Monotonically increasing keys map to sequential token ranges. All recent writes hit the same node (the one owning the current token range). This is called a "write hotspot" and is a classic Cassandra deployment failure mode.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Cassandra Wide-Column Modeling Patterns Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Antipatterns observed in real nosql-cassandra-patterns deployments. Each pairs symptom + root-cause + fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="monotonic-partition-key" severity="high">
+      <symptom>Partition key is timestamp / auto-increment ID alone; sequential writes hit one token range; cluster hot-spots.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author treated Cassandra like a wide-column relational DB.</root-cause>
+      <fix>Combine high-cardinality entity ID with time bucket: (entity_id, date) — keeps partition size bounded.</fix>
+    </antipattern>
+    <antipattern id="allow-filtering-in-production" severity="high">
+      <symptom>Query uses ALLOW FILTERING; latency degrades from sub-ms to seconds as the table grows.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author added ALLOW FILTERING to bypass missing access pattern.</root-cause>
+      <fix>Design table-per-access-pattern; reject ALLOW FILTERING in CI.</fix>
+    </antipattern>
+    <antipattern id="secondary-index-on-high-cardinality" severity="medium">
+      <symptom>Secondary index on UUID column; queries fan out to every node; latency worse than full table scan.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author defaulted to relational-style secondary indexes.</root-cause>
+      <fix>Use materialized views or denormalised tables; avoid secondary indexes on high-cardinality columns.</fix>
+    </antipattern>
+    <antipattern id="lwt-on-hot-path" severity="medium">
+      <symptom>Every write uses INSERT IF NOT EXISTS; latency is 4× regular write due to Paxos.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author applied LWT broadly to avoid race conditions.</root-cause>
+      <fix>LWT only for true compare-and-swap; use COUNTER columns for atomic increment; document why LWT is required when used.</fix>
+    </antipattern>
   </section>
 </text>

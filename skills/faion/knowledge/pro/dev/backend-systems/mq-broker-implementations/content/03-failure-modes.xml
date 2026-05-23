@@ -1,17 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="mq-broker-implementations Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for mq-broker-implementations as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Opening a new pika BlockingConnection per published message inside a request handler.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>The RabbitMQClient above opens the connection lazily on every channel access. Under load this thrashes TCP connections. Hold one connection per process and reconnect only on disconnect.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Not using long polling (WaitTimeSeconds=0) on SQS receive_message calls.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Short polling returns immediately even when the queue is empty, producing thousands of empty API calls per hour. Long polling (WaitTimeSeconds up to 20) blocks until a message arrives or the timeout expires, dramatically reducing API cost and CPU burn.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Message Broker Implementations Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Antipatterns observed in real mq-broker-implementations deployments. Each pairs symptom + root-cause + fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="no-publisher-confirms" severity="high">
+      <symptom>Producer calls basic_publish but never registers a confirm callback; broker restart loses in-flight messages silently.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author copy-pasted a basic example missing publisher_confirms_select() or its equivalent.</root-cause>
+      <fix>Enable publisher confirms on the channel; treat unconfirmed messages as a fail and resend.</fix>
+    </antipattern>
+    <antipattern id="ack-before-commit" severity="high">
+      <symptom>Consumer acks the message before committing the DB write; DB fail then drops the side-effect with no retry.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author treated ack as 'received' rather than 'processed'.</root-cause>
+      <fix>Always ack AFTER the side-effect is committed. On commit failure, nack with requeue.</fix>
+    </antipattern>
+    <antipattern id="no-dlq-wired" severity="high">
+      <symptom>Poison message blocks the queue or is dropped on max-retries with no audit trail.</symptom>
+      <root-cause source="v1-source + faion-net curation">DLQ planning deferred to 'phase 2'.</root-cause>
+      <fix>DLQ + 5-min alert wired before the queue goes live; non-negotiable.</fix>
+    </antipattern>
   </section>
 </text>

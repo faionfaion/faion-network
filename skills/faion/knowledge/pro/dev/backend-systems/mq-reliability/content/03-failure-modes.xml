@@ -1,22 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="mq-reliability Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for mq-reliability as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>DLQ with no alert and no replay runbook — the common "set it and forget it" configuration.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>DLQ messages are production incidents in slow motion. Without an alert, no one knows they are accumulating. Without a runbook, the replay is ad-hoc and risky. Both are required before a queue goes live.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Naive while True retry loop without backoff or ceiling on broker hiccup.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>All consumers retry simultaneously with zero delay, flooding the broker with requests at the exact moment it is recovering. This produces a retry storm that extends the outage. Use exponential backoff with jitter and a hard retry ceiling.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Adding a required field to a message schema without a version bump and consumer migration.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Old consumers that do not know the new required field fail on every message after the schema change. Deploy consumer first (backward-compatible, ignores new field), then deploy producer that sends the new field, then bump the schema version and make the field required.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Message Queue Reliability Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Antipatterns observed in real mq-reliability deployments. Each pairs symptom + root-cause + fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="ack-before-flush" severity="high">
+      <symptom>Broker advertises 'message published' before it is written to a durable queue; broker crash drops messages.</symptom>
+      <root-cause source="v1-source + faion-net curation">Publisher confirms disabled; default fire-and-forget assumed reliable.</root-cause>
+      <fix>Enable publisher confirms (RabbitMQ) / acks=all (Kafka); treat unconfirmed messages as failed.</fix>
+    </antipattern>
+    <antipattern id="dlq-without-alert" severity="high">
+      <symptom>DLQ exists but no alert; messages accumulate; business operation breaks silently for hours.</symptom>
+      <root-cause source="v1-source + faion-net curation">DLQ wired without monitoring.</root-cause>
+      <fix>Alert on DLQ depth &gt; 0 sustained 5 minutes; replay runbook on hand.</fix>
+    </antipattern>
+    <antipattern id="no-prefetch-limit" severity="medium">
+      <symptom>One slow consumer gobbles the entire queue; sibling consumers starve.</symptom>
+      <root-cause source="v1-source + faion-net curation">Prefetch_count not configured; default is unbounded.</root-cause>
+      <fix>Set prefetch_count (10 as starting point); tune by processing time + consumer count.</fix>
+    </antipattern>
+    <antipattern id="retry-without-jitter" severity="medium">
+      <symptom>Broker hiccup → all consumers retry simultaneously → thundering herd extends the outage.</symptom>
+      <root-cause source="v1-source + faion-net curation">Backoff implemented without jitter.</root-cause>
+      <fix>Exponential backoff + 20-50% jitter; hard ceiling on retries before DLQ.</fix>
+    </antipattern>
+    <antipattern id="no-schema-registry" severity="medium">
+      <symptom>Producer renames a field; consumer deserialization fails silently; messages flow to DLQ.</symptom>
+      <root-cause source="v1-source + faion-net curation">Schemas live in code, not a registry; no compatibility check at publish time.</root-cause>
+      <fix>Register every schema; producer publish checks compat; consumer pins schema version.</fix>
+    </antipattern>
   </section>
 </text>

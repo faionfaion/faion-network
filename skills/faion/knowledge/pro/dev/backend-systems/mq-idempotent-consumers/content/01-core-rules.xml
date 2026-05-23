@@ -1,23 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="mq-idempotent-consumers Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for mq-idempotent-consumers. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Idempotent Message Queue Consumers Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules for mq-idempotent-consumers. Each rule pairs binary check + sourced rationale. Last rule is the terminal skip-this-methodology guard.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
+    <rule id="idempotency-key-in-payload" testable="true" depth="essential">
       <statement>Every published message MUST carry an idempotency_key field — a stable, unique identifier for the event (not the message envelope). The consumer uses this key to deduplicate. If the producer cannot generate a natural key (e.g., from the business entity ID + event type + timestamp), it MUST generate a UUID and embed it in the message body, not the broker envelope.</statement>
-      <rationale source="v1-source">Broker message IDs (RabbitMQ delivery_tag, SQS MessageId) change on retry. A stable idempotency_key that survives redelivery is the only reliable deduplication anchor.</rationale>
+      <rationale source="v1-source + faion-net curation">Broker message IDs (RabbitMQ delivery_tag, SQS MessageId) change on retry. A stable idempotency_key that survives redelivery is the only reliable deduplication anchor.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
+    <rule id="reserve-before-execute" testable="true" depth="essential">
       <statement>Consumers MUST verify idempotency before any side-effect and after the deduplication check passes. The deduplication store MUST be set atomically before the side-effect begins (optimistic lock), not after the side-effect completes, to prevent concurrent duplicate processing.</statement>
-      <rationale source="v1-source">Setting the dedup marker after the side-effect creates a race window: two workers receive the same message simultaneously, both see "not seen", both execute the side-effect. The atomic reserve-before-execute pattern closes this window.</rationale>
+      <rationale source="v1-source + faion-net curation">Setting the dedup marker after the side-effect creates a race window: two workers receive the same message simultaneously, both see "not seen", both execute the side-effect. The atomic reserve-before-execute pattern closes this window.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
+    <rule id="ack-after-commit" testable="true" depth="essential">
       <statement>Consumers MUST ack (acknowledge) a message only after the side-effect is committed to the database or durable store. Acking before commit is the primary source of message loss: the broker considers the message processed; if the DB write fails, no retry occurs.</statement>
-      <rationale source="v1-source">The ack signals "I am done with this message and you can delete it." If the DB commit fails after ack, the message is gone and the business operation is lost silently.</rationale>
+      <rationale source="v1-source + faion-net curation">The ack signals "I am done with this message and you can delete it." If the DB commit fails after ack, the message is gone and the business operation is lost silently.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
+    <rule id="outbox-for-atomic-producer" testable="true" depth="essential">
       <statement>Producers MUST NOT publish a message directly inside a DB transaction if the business operation and the publish must be atomic. Instead, write the message to an outbox table inside the same transaction, and have a separate relay process publish from the outbox and delete on broker confirm. This is the transactional outbox pattern.</statement>
-      <rationale source="v1-source">A message published inside a DB transaction before commit can reach the consumer before the DB commit completes. If the DB rolls back, the consumer sees a phantom event — an order that does not exist. Conversely, a message published after a DB commit may not be published if the process crashes between commit and publish. The outbox pattern makes the two operations atomic.</rationale>
+      <rationale source="v1-source + faion-net curation">A message published inside a DB transaction before commit can reach the consumer before the DB commit completes. If the DB rolls back, the consumer sees a phantom event — an order that does not exist. Conversely, a message published after a DB commit may not be published if the process crashes between commit and publish. The outbox pattern makes the two operations atomic.</rationale>
+    </rule>
+    <rule id="dedup-store-ttl-bounded" testable="true" depth="essential">
+      <statement>Deduplication store entries MUST have a TTL or compaction policy at least as long as the maximum end-to-end retry horizon plus a safety margin.</statement>
+      <rationale source="v1-source + faion-net curation">Permanent dedup entries grow unbounded; too-short TTLs allow a late retry to slip past dedup.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the preconditions in `Applies If` fail or any of the `Skip If` conditions is true, return `skipped` and apply no further rules.</statement>
+      <rationale source="v1-source + faion-net curation">Methodologies are not universal; running them outside their fit-window wastes effort and produces wrong outputs.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

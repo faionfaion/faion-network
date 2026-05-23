@@ -1,3 +1,8 @@
+# purpose: Multi-stage distroless Dockerfile for Go services
+# consumes: Go source + go.mod
+# produces: distroless OCI image
+# depends-on: scripts/validate-go-project-structure.py
+# token-budget-impact: ~200 tokens
 # Multi-stage distroless Dockerfile for Go services.
 # Build stage
 FROM golang:1.22-alpine AS builder

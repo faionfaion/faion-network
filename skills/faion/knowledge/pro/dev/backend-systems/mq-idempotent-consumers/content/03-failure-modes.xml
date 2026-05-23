@@ -1,37 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="mq-idempotent-consumers Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for mq-idempotent-consumers as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Setting the deduplication marker after the side-effect instead of before.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Two workers receiving the same message simultaneously both pass the "not seen" check and both execute the side-effect. nx=True before execution is the only way to prevent concurrent duplicate execution.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using a TTL shorter than the maximum message retention period of the broker plus the DLQ replay window.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A 1-hour dedup TTL on a queue with 4-day message retention means replayed DLQ messages are no longer deduplicated after 1 hour. Set TTL to at least the broker retention period plus the expected replay lag.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>LLMs default to auto_ack=True because SDK examples use it. This silently loses messages on consumer crash.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Force auto_ack=False in every consumer. The cost of an extra ack call is negligible; the cost of silent message loss is a production incident.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Agents publish inside the DB transaction before commit, producing phantom events when the transaction rolls back.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use the transactional outbox pattern. Never publish directly inside a DB transaction.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Agents claim Kafka EOS (exactly-once semantics) gives exactly-once without enabling the required configs: enable.idempotence=true, transactional producer, and read_committed isolation on the consumer.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Force a config audit before accepting exactly-once claims. Kafka EOS requires coordinated config on both producer and consumer; a single misconfigured setting silently reverts to at-least-once.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Schemas drift: agents add fields to message payloads without bumping the schema version, causing old consumers to crash on deserialization.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Block field additions without a migration note and a version bump in the schema registry. Require backward-compatible schema changes: add optional fields only, never remove or rename existing fields without a version fence.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Idempotent Message Queue Consumers Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Antipatterns observed in real mq-idempotent-consumers deployments. Each pairs symptom + root-cause + fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="idempotency-key-on-envelope" severity="high">
+      <symptom>Consumer dedupes by broker delivery_tag / MessageId; tags change on retry; same business event processed twice.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author confused broker envelope IDs with payload-stable IDs.</root-cause>
+      <fix>Embed idempotency_key in the payload; dedup by that key, not the envelope ID.</fix>
+    </antipattern>
+    <antipattern id="dedup-marker-after-side-effect" severity="high">
+      <symptom>Two workers receive the same message simultaneously; both see 'not seen'; both execute the side-effect; deduplication never fires.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author wrote the dedup marker AFTER the side-effect, missing the race window.</root-cause>
+      <fix>Reserve-before-execute: atomic SETNX before any side-effect; release on commit; cleanup on failure.</fix>
+    </antipattern>
+    <antipattern id="ack-before-commit" severity="high">
+      <symptom>Consumer acks the broker before the DB commit; commit fails; message is gone; the business event is silently lost.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author treated ack as 'received' rather than 'processed'.</root-cause>
+      <fix>Always ack AFTER the DB commit completes. On commit failure nack with requeue.</fix>
+    </antipattern>
+    <antipattern id="publish-inside-db-transaction" severity="medium">
+      <symptom>Producer publishes the event before committing the DB transaction; consumer sees an order that does not exist in the DB.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author tried to make publish + DB atomic by ordering inside the transaction.</root-cause>
+      <fix>Transactional outbox: write the message to an outbox table inside the transaction; a relay publishes from the outbox after commit.</fix>
+    </antipattern>
   </section>
 </text>

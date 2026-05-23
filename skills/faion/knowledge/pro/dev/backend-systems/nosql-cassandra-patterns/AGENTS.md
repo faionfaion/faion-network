@@ -3,72 +3,96 @@ slug: nosql-cassandra-patterns
 tier: pro
 group: dev
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Cassandra and DynamoDB schemas are driven entirely by query patterns.
-content_id: "0d6606e8b73637cd"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Query-driven schema for Cassandra / DynamoDB: high-cardinality partition keys, one table per access pattern, time-bucketed partitions, LWT/counters tuned to traffic.
+content_id: "f5afca73f6150c4e"
+complexity: deep
+produces: spec
+est_tokens: 4500
 tags: [cassandra, dynamodb, wide-column, partition-key, time-series]
 ---
 # Cassandra Wide-Column Modeling Patterns
 
 ## Summary
 
-**One-sentence:** Cassandra and DynamoDB schemas are driven entirely by query patterns.
+**One-sentence:** Query-driven schema for Cassandra / DynamoDB: high-cardinality partition keys, one table per access pattern, time-bucketed partitions, LWT/counters tuned to traffic.
 
-**One-paragraph:** Cassandra and DynamoDB schemas are driven entirely by query patterns. Partition keys determine data distribution and must have high cardinality to avoid hot nodes. Clustering columns determine sort order within a partition. Time-bucketed partition keys prevent unbounded partitions in time-series workloads. Materialized views and duplicate tables serve different access patterns without application-side joins.
+**One-paragraph:** Cassandra and DynamoDB schemas are driven entirely by query patterns. Each access pattern gets a dedicated table; partition keys are high-cardinality and combined with time buckets to cap partition size; secondary indexes and ALLOW FILTERING are forbidden; lightweight transactions (LWT) and counters are reserved for true compare-and-swap or atomic-increment paths. Output is a table schema bundle naming partition key + clustering keys + per-table query.
+
+**Ефективно для:**
+
+- Modelling time-series data (telemetry, IoT, logs) without growing one partition per device forever.
+- DynamoDB designs where every access pattern needs its own table or GSI.
+- Counter-heavy workloads (likes, views) avoiding read-modify-write races.
+- Migrating from a relational schema where JOINs are the dominant pattern.
 
 ## Applies If (ALL must hold)
 
-- Write-heavy time-series workloads (IoT sensor data, metrics, logs, events) at high throughput.
-- Horizontally scalable storage where Postgres or MongoDB cannot sustain the write rate.
-- Multi-region active-active deployments where last-write-wins or LWT (lightweight transactions) are acceptable.
-- Known, stable access patterns — Cassandra schema design assumes you will not add arbitrary ad-hoc queries later.
+- Workload uses Apache Cassandra, ScyllaDB, or AWS DynamoDB.
+- Access patterns are predictable and can be enumerated up front.
+- Schema can be designed table-per-query without hitting prohibitive storage costs.
+- Team is willing to denormalise to optimise reads.
 
 ## Skip If (ANY kills it)
 
-- Ad-hoc or analytical queries — ALLOW FILTERING is an antipattern and a performance hazard; use a warehouse instead.
-- Strong-consistency multi-row transactions — Cassandra LWT (BATCH with IF conditions) is expensive and not equivalent to ACID transactions.
-- Small datasets or low write rates where Postgres handles the workload without distributed overhead.
-- Workloads where access patterns are unknown or evolve frequently — schema changes in Cassandra require duplicate tables and migration runs.
+- Workload is OLAP / analytical scans — use a columnar store (BigQuery, Snowflake) instead.
+- Access patterns are exploratory / ad-hoc — use Postgres + indexes.
+- Data fits comfortably in a single relational DB with no JOIN performance issues.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Access-pattern list | yaml / md | team — every query shape + QPS |
+| Data-volume estimate | doc | team — rows per partition, total bytes |
+| Consistency budget | yaml | team — ONE / LOCAL_QUORUM / LWT per query |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| none | This methodology has no upstream dependencies. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns (symptom / root-cause / fix) | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `enumerate-access-patterns` | sonnet | Discovering query shapes needs judgement. |
+| `design-schema` | sonnet | Partition key + clustering design requires nuance. |
+| `validate-output` | haiku | Schema check is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/schema.cql` | Cassandra CQL schema skeleton |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-nosql-cassandra-patterns.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/backend-systems/`
+- Parent: `pro/dev/backend-systems/`
+- [[nosql-mongodb-patterns]]
+- [[nosql-redis-patterns]]
+- [[nosql-neo4j-patterns]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

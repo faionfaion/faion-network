@@ -1,11 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="mq-broker-implementations Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for mq-broker-implementations. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Message Broker Implementations Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules for mq-broker-implementations. Each rule pairs binary check + sourced rationale. Last rule is the terminal skip-this-methodology guard.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+    <rule id="pick-broker" testable="true" depth="essential">
+      <statement>Pick the broker matching the dominant constraint: throughput → Kafka (out of scope); AWS-native → SQS; Python workflows → Celery; existing Redis → Streams; complex routing → RabbitMQ.</statement>
+      <rationale source="v1-source + faion-net curation">Each broker has a sweet spot; mismatch produces operational pain (retry storms, message loss, unbounded latency).</rationale>
+    </rule>
+    <rule id="publisher-confirms-required" testable="true" depth="essential">
+      <statement>Every published message MUST go through publisher confirms (RabbitMQ) / acks=all (Kafka) / SendMessage response (SQS) / Celery apply_async result check. Treat fire-and-forget as a bug.</statement>
+      <rationale source="v1-source + faion-net curation">Without confirms, 'published' means 'in the TCP send buffer'; broker crashes drop the message silently.</rationale>
+    </rule>
+    <rule id="ack-after-commit" testable="true" depth="essential">
+      <statement>Consumer MUST ack the broker AFTER committing the side-effect to the database, not before. Pre-ack creates silent message loss on DB failure.</statement>
+      <rationale source="v1-source + faion-net curation">Acks before commit hand the broker permission to delete the message; the consumer then crashes and the side-effect is lost.</rationale>
+    </rule>
+    <rule id="dlq-on-poison" testable="true" depth="essential">
+      <statement>Every queue MUST have a DLQ wired before going live; max_retries reached → message goes to DLQ, alert fires.</statement>
+      <rationale source="v1-source + faion-net curation">Without a DLQ, poison messages either block the queue forever or are dropped silently.</rationale>
+    </rule>
+    <rule id="idempotency-key-on-payload" testable="true" depth="essential">
+      <statement>Every message body MUST carry a stable idempotency_key field, not rely on broker-assigned message IDs.</statement>
+      <rationale source="v1-source + faion-net curation">Broker-assigned IDs change on retry; only payload-embedded keys deduplicate reliably.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the preconditions in `Applies If` fail or any of the `Skip If` conditions is true, return `skipped` and apply no further rules.</statement>
+      <rationale source="v1-source + faion-net curation">Methodologies are not universal; running them outside their fit-window wastes effort and produces wrong outputs.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,22 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="nosql-cassandra-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Cassandra Wide-Column Modeling Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) + valid/invalid examples + forbidden patterns for nosql-cassandra-patterns output.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/nosql-cassandra-patterns.json",
+  "type": "object",
+  "required": [
+    "tables",
+    "queries",
+    "partition_keys_high_cardinality",
+    "no_allow_filtering"
+  ],
+  "properties": {
+    "tables": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "partition_key",
+          "clustering_keys"
+        ]
+      },
+      "minItems": 1
+    },
+    "queries": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "partition_keys_high_cardinality": {
+      "type": "boolean",
+      "const": true
+    },
+    "no_allow_filtering": {
+      "type": "boolean",
+      "const": true
+    }
+  }
+}
+]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "tables": [
+    {
+      "name": "telemetry_by_sensor_day",
+      "partition_key": [
+        "sensor_id",
+        "date"
+      ],
+      "clustering_keys": [
+        "timestamp"
+      ]
+    }
+  ],
+  "queries": [
+    "SELECT * FROM telemetry_by_sensor_day WHERE sensor_id = ? AND date = ?"
+  ],
+  "partition_keys_high_cardinality": true,
+  "no_allow_filtering": true
+}
+]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "tables": [
+    {
+      "name": "all_events",
+      "partition_key": [
+        "day"
+      ]
+    }
+  ],
+  "no_allow_filtering": false
+}
+]]></code>
+    <note>monotonic partition key (day alone); clustering_keys missing; queries missing; partition_keys_high_cardinality missing; ALLOW FILTERING permitted.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>missing required fields</item>
+      <item>wildcard / placeholder values where enum or pattern is required</item>
+      <item>values outside numeric / enum / pattern bounds</item>
     </list>
   </section>
+  <reference path="scripts/validate-nosql-cassandra-patterns.py">Validator script (--help, --self-test)</reference>
 </text>

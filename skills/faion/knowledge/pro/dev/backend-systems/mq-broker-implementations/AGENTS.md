@@ -3,21 +3,31 @@ slug: mq-broker-implementations
 tier: pro
 group: dev
 domain: backend
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Production-ready Python implementations for the four most common message brokers: RabbitMQ (pika), Redis Streams (redis-py), Celery (task queue with chains/groups/chords), and AWS SQS (boto3).
-content_id: "2008697d50f64d41"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Production-ready Python implementations for the four most common message brokers: RabbitMQ (pika), Redis Streams (redis-py), Celery, and AWS SQS (boto3).
+content_id: "63bdfc5ba37f9322"
+complexity: medium
+produces: code
+est_tokens: 4400
 tags: [rabbitmq, redis-streams, celery, sqs, message-queues]
 ---
 # Message Broker Implementations
 
 ## Summary
 
-**One-sentence:** Production-ready Python implementations for the four most common message brokers: RabbitMQ (pika), Redis Streams (redis-py), Celery (task queue with chains/groups/chords), and AWS SQS (boto3).
+**One-sentence:** Production-ready Python implementations for the four most common message brokers: RabbitMQ (pika), Redis Streams (redis-py), Celery, and AWS SQS (boto3).
 
-**One-paragraph:** Production-ready Python implementations for the four most common message brokers: RabbitMQ (pika), Redis Streams (redis-py), Celery (task queue with chains/groups/chords), and AWS SQS (boto3). Each includes queue declaration, persistent publishing, consumer with explicit ack/nack, and DLQ wiring.
+**One-paragraph:** Production-ready Python implementations for the four most common message brokers: RabbitMQ (pika), Redis Streams (redis-py), Celery (task queue with chains/groups/chords), and AWS SQS (boto3). Each implementation covers queue declaration, persistent publishing with confirms, consumer with explicit ack/nack, and DLQ wiring. Output is a Python module plus a deployment manifest naming the broker + topology + DLQ + alert thresholds.
+
+**Ефективно для:**
+
+- Standing up RabbitMQ with publisher confirms and topic routing for cross-team events.
+- Building a Redis Streams consumer group with replayable history on existing Redis.
+- Migrating ad-hoc cron jobs to Celery chains/groups with proper DLQ + retry policy.
+- Wiring AWS SQS with FIFO ordering or DLQ-on-poison for serverless workloads.
 
 ## Applies If (ALL must hold)
 
@@ -35,40 +45,56 @@ tags: [rabbitmq, redis-streams, celery, sqs, message-queues]
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Broker choice + topology | yaml / md | team — picked via mq-patterns |
+| Connection credentials | secret manager ref | vault |
+| DLQ + alert thresholds | yaml / config | team SLO catalog |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/dev/backend-systems/mq-patterns/AGENTS.md` | topology decision precedes implementation |
+| `pro/dev/backend-systems/mq-reliability/AGENTS.md` | reliability practices apply to every impl |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | Antipatterns (symptom / root-cause / fix) | ~900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `pick-broker` | sonnet | Decision tree application against constraints. |
+| `draft-impl` | sonnet | Each broker requires light judgement on retry + ack timing. |
+| `validate-output` | haiku | Schema check is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/config.yaml` | Broker connection + topology + DLQ + alert manifest |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-mq-broker-implementations.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/backend-systems/`
+- Parent: `pro/dev/backend-systems/`
+- [[mq-patterns]]
+- [[mq-reliability]]
+- [[mq-idempotent-consumers]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

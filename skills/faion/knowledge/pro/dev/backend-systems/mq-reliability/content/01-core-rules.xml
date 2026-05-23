@@ -1,39 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="mq-reliability Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for mq-reliability. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Message Queue Reliability Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules for mq-reliability. Each rule pairs binary check + sourced rationale. Last rule is the terminal skip-this-methodology guard.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
+    <rule id="publisher-confirms-mandatory" testable="true" depth="essential">
       <statement>Producers MUST use publisher confirms (RabbitMQ) or acks=all (Kafka) before treating a message as published. Without confirms, "published" means "written to the local TCP send buffer" — a broker crash before flush loses the message with no indication of failure.</statement>
-      <rationale source="v1-source">RabbitMQ publisher confirms are asynchronous broker acks sent after the message is written to the durable queue. Kafka acks=all requires the leader and all in-sync replicas to acknowledge. Without either, the message is acknowledged by the broker's TCP stack, not its storage engine.</rationale>
+      <rationale source="v1-source + faion-net curation">RabbitMQ publisher confirms are asynchronous broker acks sent after the message is written to the durable queue. Kafka acks=all requires the leader and all in-sync replicas to acknowledge. Without either, the message is acknowledged by the broker's TCP stack, not its storage engine.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
+    <rule id="dlq-with-alert-mandatory" testable="true" depth="essential">
       <statement>Every queue that can receive a failure MUST have a DLQ configured before going live, and DLQ depth MUST trigger an alert when non-zero for more than 5 minutes. A DLQ without an alert is equivalent to no DLQ.</statement>
-      <rationale source="v1-source">Without a DLQ, failed messages either retry forever (blocking the queue and consuming worker capacity) or are silently lost (nack without requeue). Without an alert, the DLQ becomes a graveyard — messages accumulate unnoticed while the business process stops working.</rationale>
+      <rationale source="v1-source + faion-net curation">Without a DLQ, failed messages either retry forever (blocking the queue and consuming worker capacity) or are silently lost (nack without requeue). Without an alert, the DLQ becomes a graveyard — messages accumulate unnoticed while the business process stops working.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
+    <rule id="dlq-replay-runbook" testable="true" depth="essential">
       <statement>Every DLQ deployment MUST include a replay runbook (script or documented procedure) that: reads messages from the DLQ, applies the fix, republishes to the main queue, and deletes from the DLQ. The runbook must be tested before the queue goes live.</statement>
-      <rationale source="v1-source">A DLQ without a replay path is a write-only dead end. The messages carry the evidence of what failed; the replay is how you recover. Teams that skip the runbook discover they cannot replay safely under production pressure.</rationale>
+      <rationale source="v1-source + faion-net curation">A DLQ without a replay path is a write-only dead end. The messages carry the evidence of what failed; the replay is how you recover. Teams that skip the runbook discover they cannot replay safely under production pressure.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
+    <rule id="exponential-backoff-with-jitter" testable="true" depth="essential">
       <statement>Retry policies MUST specify: max retries (hard ceiling), initial backoff interval, backoff multiplier, maximum backoff interval, and jitter (randomization ±20-50% of the computed delay). Infinite retry without a DLQ ceiling is forbidden.</statement>
-      <rationale source="v1-source">Without a hard ceiling, a poison message retries forever, consumes a worker, and blocks the queue. Without jitter, all consumers retrying after a broker hiccup fire simultaneously at the same instant, producing a thundering-herd that extends the outage.</rationale>
+      <rationale source="v1-source + faion-net curation">Without a hard ceiling, a poison message retries forever, consumes a worker, and blocks the queue. Without jitter, all consumers retrying after a broker hiccup fire simultaneously at the same instant, producing a thundering-herd that extends the outage.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
+    <rule id="prefetch-limit-required" testable="true" depth="essential">
       <statement>Set prefetch_count (RabbitMQ) or max.poll.records (Kafka) to limit the number of in-flight messages per consumer. A slow consumer without a prefetch limit gobbles the queue and starves sibling consumers, concentrating all unprocessed messages on one worker.</statement>
-      <rationale source="v1-source">Without prefetch limits, a broker dispatches all available messages to the first available consumer. If that consumer is slow or fails, all messages are blocked. Prefetch_count=10 is a safe starting point; tune based on message processing time and consumer count.</rationale>
+      <rationale source="v1-source + faion-net curation">Without prefetch limits, a broker dispatches all available messages to the first available consumer. If that consumer is slow or fails, all messages are blocked. Prefetch_count=10 is a safe starting point; tune based on message processing time and consumer count.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
+    <rule id="queue-length-limit-required" testable="true" depth="essential">
       <statement>Set queue length limits on the broker (RabbitMQ x-max-length, SQS MessageRetentionPeriod, Kafka log.retention.bytes) to prevent OOM when producers outpace consumers. Combine with producer-side acks to propagate backpressure to the producer.</statement>
-      <rationale source="v1-source">Producers without flow control fill brokers indefinitely. A queue with no length limit and a slow consumer is a time bomb. Length limits force the system to shed load visibly rather than silently accumulating unbounded backlogs.</rationale>
+      <rationale source="v1-source + faion-net curation">Producers without flow control fill brokers indefinitely. A queue with no length limit and a slow consumer is a time bomb. Length limits force the system to shed load visibly rather than silently accumulating unbounded backlogs.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
+    <rule id="schema-registry-required" testable="true" depth="essential">
       <statement>Message schemas MUST be registered in a schema registry (Avro, Protobuf, or JSON Schema) and versioned. Consumers MUST be backward-compatible across at least one schema version. Adding optional fields is allowed without a version bump; removing or renaming existing fields requires a new version with a migration fence.</statement>
-      <rationale source="v1-source">Schema drift is the most common source of deserialization failures in production. Without a registry, agents add fields without bumping the version, old consumers crash on the unknown field, and the failure cascades silently to the DLQ before anyone notices.</rationale>
+      <rationale source="v1-source + faion-net curation">Schema drift is the most common source of deserialization failures in production. Without a registry, agents add fields without bumping the version, old consumers crash on the unknown field, and the failure cascades silently to the DLQ before anyone notices.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
+    <rule id="exactly-once-verified-end-to-end" testable="true" depth="essential">
       <statement>Do NOT rely on broker-advertised exactly-once delivery without verifying all required configurations are active: Kafka requires enable.idempotence=true on the producer, a transactional producer session, and isolation.level=read_committed on the consumer. RabbitMQ requires publisher confirms plus application-level deduplication. A single missing config silently reverts to at-least-once.</statement>
-      <rationale source="v1-source">Exactly-once is the hardest guarantee in distributed systems. All major brokers that claim it require specific, non-default configuration on both sides of the pipe. Agents frequently enable one side but not the other, producing silent duplicates in production.</rationale>
+      <rationale source="v1-source + faion-net curation">Exactly-once is the hardest guarantee in distributed systems. All major brokers that claim it require specific, non-default configuration on both sides of the pipe. Agents frequently enable one side but not the other, producing silent duplicates in production.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the preconditions in `Applies If` fail or any of the `Skip If` conditions is true, return `skipped` and apply no further rules.</statement>
+      <rationale source="v1-source + faion-net curation">Methodologies are not universal; running them outside their fit-window wastes effort and produces wrong outputs.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

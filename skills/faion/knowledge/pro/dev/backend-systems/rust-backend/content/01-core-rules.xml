@@ -1,55 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="rust-backend Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for rust-backend. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Rust Backend (Axum) Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules for rust-backend. Each rule pairs binary check + sourced rationale. Last rule is the terminal skip-this-methodology guard.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Organise source into routes/, handlers/, services/, models/, db/, middleware/, error.rs, config.rs. Each layer depends only on the layer below it.</statement>
-      <rationale source="v1-source">Vertical consistency across services lets any engineer find files without reading a README. The compiler enforces the dependency direction.</rationale>
+    <rule id="app-error-into-response" testable="true" depth="essential">
+      <statement>Service MUST define one AppError enum implementing IntoResponse that maps every variant to an RFC 7807 problem detail with stable error codes.</statement>
+      <rationale source="v1-source + faion-net curation">Without a single AppError, error handling fragments across handlers and 500-leak risk increases.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Wrap all heavy fields in Arc. Pass State(state): State&lt;AppState&gt; to handlers — never individual sub-fields. Keep AppState Clone-cheap.</statement>
-      <rationale source="v1-source">Axum clones AppState per request. Wrapping Database, Config, etc. in Arc makes the clone O(1) and avoids accidental copies of connection pools.</rationale>
+    <rule id="appstate-arc-shared" testable="true" depth="essential">
+      <statement>Shared resources MUST live behind Arc&lt;AppState&gt;; clone the Arc into every handler, never pass raw owned types.</statement>
+      <rationale source="v1-source + faion-net curation">Cheap clones; clear ownership; multiple handlers can hold the state concurrently.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Handlers return Result&lt;impl IntoResponse, AppError&gt;. Extract State, Path, Query, Json as typed parameters. Validate with the validator crate before calling the service.</statement>
-      <rationale source="v1-source">Axum calls IntoResponse on the Ok and Err variants. A typed AppError that implements IntoResponse keeps HTTP mapping out of service code.</rationale>
+    <rule id="spawn-blocking-for-cpu" testable="true" depth="essential">
+      <statement>CPU-bound work (hashing, image processing, regex over large strings) MUST run on spawn_blocking, never inline in async handlers.</statement>
+      <rationale source="v1-source + faion-net curation">Tokio worker threads are few; blocking them starves the runtime and tails latency for everyone.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use tokio::try_join! to run independent DB queries concurrently rather than awaiting them sequentially.</statement>
-      <rationale source="v1-source">Sequential awaits for count + fetch add latency proportional to one RTT. try_join! runs both in parallel and fails fast on the first error.</rationale>
+    <rule id="vertical-slice-first" testable="true" depth="essential">
+      <statement>Every new resource MUST land as one PR: model + db + service + handler + route + tests, not layer-by-layer commits.</statement>
+      <rationale source="v1-source + faion-net curation">Layer-by-layer commits leave half-wired resources; a vertical slice proves end-to-end before merge.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Run CPU-intensive work (Argon2, bcrypt, large serialisation) via tokio::task::spawn_blocking. Never block the async executor with synchronous CPU loops.</statement>
-      <rationale source="v1-source">Async runtimes use a small thread pool. A blocking call on an async thread starves other tasks waiting for their poll.</rationale>
+    <rule id="graceful-shutdown-on-signal" testable="true" depth="essential">
+      <statement>Service MUST handle SIGTERM/SIGINT by stopping accept, draining in-flight requests, closing DB pool, then exiting.</statement>
+      <rationale source="v1-source + faion-net curation">Without graceful shutdown Kubernetes SIGTERMs cause request drops and connection leaks.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Define a DatabaseTrait (or Repository trait) abstraction and mock it with mockall::mock!. Never mock a concrete struct whose methods use sqlx::query! macros — those embed file paths at compile time.</statement>
-      <rationale source="v1-source">sqlx::query! macros require DATABASE_URL at compile time. Mocking the concrete Database struct breaks when these macros are present. A trait abstraction separates the DB interface from the implementation.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Every variant of AppError must appear in the IntoResponse match arm. Adding a new variant without updating IntoResponse compiles but panics at runtime via the unreachable default.</statement>
-      <rationale source="v1-source">Rust does not force exhaustive matching when the fallback arm is present. A missing variant silently returns 500 with an empty body instead of the intended status code.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Map validator::ValidationErrors to per-field error arrays in the response. Never return the raw ValidationErrors debug string — it leaks field names in an uncontrolled format.</statement>
-      <rationale source="v1-source">The default Display for ValidationErrors is not RFC 7807 compatible. Clients receive an opaque string instead of a structured errors array.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Clone an sqlx::Pool to share across tasks — cloning is O(1) (Arc internally). Never call Pool::connect per request to "fix" Send issues.</statement>
-      <rationale source="v1-source">Pool::connect opens a new TCP connection. Calling it per request exhausts file descriptors under load. Pool clone shares the existing connection pool cheaply.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Layer middleware in this order, outer to inner: TraceLayer, request-id, CORS, auth, rate-limit, app router. Adding layers in wrong order silently misses authentication.</statement>
-      <rationale source="v1-source">Axum applies middleware from outermost to innermost. Auth middleware added after the route handler is never reached.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Run sqlx prepare and commit the .sqlx/ directory so CI builds without requiring DATABASE_URL at compile time.</statement>
-      <rationale source="v1-source">sqlx::query! macros verify SQL against a live DB at compile time. Without cached query data, offline builds and CI without a DB fail.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Every variant of AppError must have an IntoResponse arm. Use exhaustive matching on enum variants, not wildcard defaults.</statement>
-      <rationale source="v1-source">Missing IntoResponse arms compile (via default catch-all) but panic at runtime with 500 + empty body instead of the intended status.</rationale>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the preconditions in `Applies If` fail or any of the `Skip If` conditions is true, return `skipped` and apply no further rules.</statement>
+      <rationale source="v1-source + faion-net curation">Methodologies are not universal; running them outside their fit-window wastes effort and produces wrong outputs.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

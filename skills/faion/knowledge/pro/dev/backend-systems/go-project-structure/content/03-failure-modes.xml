@@ -1,72 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="go-project-structure Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for go-project-structure as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Defining the interface in the repository package and importing it in the service.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Inverts the dependency — service must import repository. Idiomatic Go reverses this.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>var DB *sql.DB at package level, accessed directly from handlers.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Global state is untestable (cannot inject a mock), causes data races when reset between tests, and makes the dependency graph invisible.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Creating a pkg/ directory for internal helpers, business logic, or service code that no external module imports.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>pkg/ signals public API. Once there, consumers depend on it. Renaming to internal/ is a breaking change. Reject pkg/ without a named external consumer.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Package A imports B, package B imports A — produces compile error: import cycle not allowed.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Cyclic imports reveal a design flaw: shared logic should move to a third package that neither A nor B owns.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>LLMs reflexively create a pkg/ directory and put helpers there.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>This leaks internals once anyone imports the module. Reject pkg/ without a named external consumer.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Generated cmd/api/main.go often skips defer srv.Shutdown(ctx) or shuts down the DB pool before draining requests.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Require an audit checklist. Graceful shutdown must close DB, drain queues, cancel contexts in the right order.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>Agents drop graceful shutdown for worker binaries entirely.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Require a select { case &lt;-quit: case &lt;-ctx.Done(): } pattern in every long-running goroutine.</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>LLMs use package-level var DB *sql.DB; this works for tutorials and breaks for tests.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Insist on constructor injection. Global state prevents parallel test execution and mocking.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>Agents propose cyclic imports (handler → service → handler) when extracting interfaces.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Require a dependency graph review before commit. Cyclic imports reveal design flaws.</repair>
-    </failure-mode>
-    <failure-mode id="fm-10" severity="medium">
-      <description>Generated getEnvInt and similar helpers silently return defaults on parse error.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Require an explicit error-on-malformed mode. A missing PORT should fail startup, not default silently.</repair>
-    </failure-mode>
-    <failure-mode id="fm-11" severity="medium">
-      <description>An agent migrating from flat layout often rewrites import paths globally and breaks vendored modules.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Require a go build ./... proof and a check for replace directives in go.mod.</repair>
-    </failure-mode>
-    <failure-mode id="fm-12" severity="medium">
-      <description>Any move into internal/ from a previously exported path is a public-API break.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Agents underestimate this. Require a human checkpoint before breaking public APIs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-13" severity="medium">
-      <description>Agents emit Dockerfile without USER nobody and without distroless base.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Review for prod-readiness. No binaries should run as root.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Go Project Structure Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Antipatterns observed in real go-project-structure deployments. Each pairs symptom + root-cause + fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="interface-at-producer" severity="medium">
+      <symptom>Interface UserRepository defined inside internal/repository; service must import repository just to depend on it.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author inverted Go idiom — interface lives at producer, not consumer.</root-cause>
+      <fix>Move the interface to the service file. Repository package only provides concrete impl.</fix>
+    </antipattern>
+    <antipattern id="package-level-globals" severity="high">
+      <symptom>var DB *sql.DB at package level; handlers reach for the global directly; tests cannot mock.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author copy-pasted tutorial code that uses globals for brevity.</root-cause>
+      <fix>Constructor injection. Pass *sql.DB into handlers via struct field; parallel tests get isolated instances.</fix>
+    </antipattern>
+    <antipattern id="pkg-dumping-ground" severity="medium">
+      <symptom>pkg/ directory holds private helpers and business logic that no external module imports.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author treats pkg/ as 'public-by-convention'; once code is there, moving it to internal/ is a breaking change.</root-cause>
+      <fix>Reject pkg/ unless an external module is named that imports from it. Default to internal/.</fix>
+    </antipattern>
+    <antipattern id="incomplete-graceful-shutdown" severity="high">
+      <symptom>main.go calls srv.Shutdown(ctx) but leaks worker goroutines and the DB pool stays open.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author treated srv.Shutdown as a complete shutdown signal.</root-cause>
+      <fix>Drain background goroutines via ctx.Done(); db.Close() after; signal each consumer to quit explicitly.</fix>
+    </antipattern>
+    <antipattern id="container-as-root" severity="high">
+      <symptom>Dockerfile lacks USER directive; binary runs as root in the runtime stage.</symptom>
+      <root-cause source="v1-source + faion-net curation">Generated Dockerfile copied without prod hardening.</root-cause>
+      <fix>Add USER nobody:nobody; switch runtime stage to distroless or scratch.</fix>
+    </antipattern>
   </section>
 </text>

@@ -1,3 +1,8 @@
+# purpose: build / run / test / lint / tidy targets for Go service
+# consumes: Go source
+# produces: compiled binary + lint report
+# depends-on: scripts/validate-go-project-structure.py
+# token-budget-impact: ~150 tokens
 .PHONY: build run test lint fmt tidy clean docker-build
 
 BINARY_NAME ?= api

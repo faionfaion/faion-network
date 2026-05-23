@@ -1,35 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="go-project-structure Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for go-project-structure. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="Go Project Structure Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules for go-project-structure. Each rule pairs binary check + sourced rationale. Last rule is the terminal skip-this-methodology guard.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Default to cmd+internal. Add pkg/ only when you can name an external module that imports code from it. Add a second cmd/&lt;name&gt; only when a real second binary exists.</statement>
-      <rationale source="v1-source">pkg/ is routinely misused as a dumping ground. Once code is in pkg/ it is technically importable; moving it to internal/ later is a breaking change for external consumers.</rationale>
+    <rule id="cmd-internal-default" testable="true" depth="essential">
+      <statement>Default to cmd+internal. Add pkg/ only when you can name an external module that imports code from it. Add a second cmd/&amp;amp;amp;amp;amp;lt;name&amp;amp;amp;amp;amp;gt; only when a real second binary exists.</statement>
+      <rationale source="v1-source + faion-net curation">pkg/ is routinely misused as a dumping ground. Once code is in pkg/ it is technically importable; moving it to internal/ later is a breaking change for external consumers.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
+    <rule id="graceful-shutdown-complete" testable="true" depth="essential">
       <statement>Graceful shutdown must close DB pools, drain queue consumers, and cancel contexts — not just call srv.Shutdown. Every long-running goroutine needs a select on quit or ctx.Done.</statement>
-      <rationale source="v1-source">Agents stop at srv.Shutdown and leave background goroutines running. Under Kubernetes SIGTERM, this causes in-flight requests to be abandoned and queued messages to be reprocessed.</rationale>
+      <rationale source="v1-source + faion-net curation">Agents stop at srv.Shutdown and leave background goroutines running. Under Kubernetes SIGTERM, this causes in-flight requests to be abandoned and queued messages to be reprocessed.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
+    <rule id="typed-config-loader" testable="true" depth="essential">
       <statement>Use a typed config loader (envconfig, koanf, viper) rather than hand-rolled getEnv helpers. Hand-rolled helpers silently return defaults on type-parse failures.</statement>
-      <rationale source="v1-source">A getEnv that returns "" on missing PORT instead of an error lets the server start on the wrong port silently. Typed loaders fail loudly at startup.</rationale>
+      <rationale source="v1-source + faion-net curation">A getEnv that returns "" on missing PORT instead of an error lets the server start on the wrong port silently. Typed loaders fail loudly at startup.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
+    <rule id="interface-at-consumer" testable="true" depth="essential">
       <statement>Define interfaces at the consumer (the service), not the producer (the repository). The service file owns UserRepository interface; the repository package provides the concrete impl.</statement>
-      <rationale source="v1-source">This is idiomatic Go: the interface lives with the code that uses it, not the code that satisfies it. It avoids forcing all consumers to import the repository package just to get an interface.</rationale>
+      <rationale source="v1-source + faion-net curation">This is idiomatic Go: the interface lives with the code that uses it, not the code that satisfies it. It avoids forcing all consumers to import the repository package just to get an interface.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
+    <rule id="goroutine-quit-channel" testable="true" depth="essential">
       <statement>Every long-running goroutine (queue consumer, ticker, watcher) must select on a quit channel or context cancellation. srv.Shutdown alone does not stop background goroutines.</statement>
-      <rationale source="v1-source">Agents generate worker loops without exit conditions. Under SIGTERM, srv.Shutdown returns immediately but the goroutine leaks, processing messages against a closed DB pool.</rationale>
+      <rationale source="v1-source + faion-net curation">Agents generate worker loops without exit conditions. Under SIGTERM, srv.Shutdown returns immediately but the goroutine leaks, processing messages against a closed DB pool.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
+    <rule id="container-non-root" testable="true" depth="essential">
       <statement>Dockerfile must include USER nobody:nobody and use a distroless or minimal base image for the runtime stage. Never run Go binaries as root in production containers.</statement>
-      <rationale source="v1-source">Agents emit Dockerfiles without USER directives, leaving the binary running as root — a container escape vulnerability.</rationale>
+      <rationale source="v1-source + faion-net curation">Agents emit Dockerfiles without USER directives, leaving the binary running as root — a container escape vulnerability.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Generate an end-to-end vertical slice for at least one resource to prove the layout works. The slice should span cmd/&lt;name&gt;/main.go → internal/handler → internal/service → internal/repository → internal/model with tests at each layer.</statement>
-      <rationale source="v1-source">Agents generate empty directories and skip the actual implementation. A working CRUD endpoint proves package boundaries are correct.</rationale>
+    <rule id="vertical-slice-proves-layout" testable="true" depth="essential">
+      <statement>Generate an end-to-end vertical slice for at least one resource to prove the layout works. The slice should span cmd/&amp;amp;amp;amp;amp;lt;name&amp;amp;amp;amp;amp;gt;/main.go → internal/handler → internal/service → internal/repository → internal/model with tests at each layer.</statement>
+      <rationale source="v1-source + faion-net curation">Agents generate empty directories and skip the actual implementation. A working CRUD endpoint proves package boundaries are correct.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the preconditions in `Applies If` fail or any of the `Skip If` conditions is true, return `skipped` and apply no further rules.</statement>
+      <rationale source="v1-source + faion-net curation">Methodologies are not universal; running them outside their fit-window wastes effort and produces wrong outputs.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

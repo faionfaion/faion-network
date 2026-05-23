@@ -1,22 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="nosql-mongodb-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for nosql-mongodb-patterns as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Unbounded embedded arrays — appending events, log entries, or tags to the same document indefinitely.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>MongoDB documents have a 16 MB size cap. Once hit, writes fail. Queries that load the full document become progressively slower. Use referencing, the bucket pattern, or capped collections instead. Document the array cap in the schema file.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Over-embedding: duplicating deeply nested sub-documents that are updated independently.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>When an embedded sub-document changes frequently and is referenced from many parent documents, every update requires touching multiple parents. This creates write amplification and consistency risks. Reference instead.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Missing indexes on query fields — especially on high-cardinality fields used in filters on large collections.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>A COLLSCAN on a 10M-document collection can take seconds. MongoDB's explain()'s IXSCAN vs COLLSCAN is the definitive test; run it before every production query.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="MongoDB Document Design Patterns Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Antipatterns observed in real nosql-mongodb-patterns deployments. Each pairs symptom + root-cause + fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="embed-unbounded-children" severity="high">
+      <symptom>User document embeds an unbounded list of orders; document grows past 16 MB; updates rewrite the entire doc.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author defaulted to embedding without checking child cardinality.</root-cause>
+      <fix>Embed only when count is bounded (&lt;100); reference + index when unbounded.</fix>
+    </antipattern>
+    <antipattern id="missing-index-on-filter" severity="high">
+      <symptom>Production query takes seconds; explain shows COLLSCAN; collection has millions of documents.</symptom>
+      <root-cause source="v1-source + faion-net curation">Index plan deferred to 'optimize later'.</root-cause>
+      <fix>Index every filter / sort / range field at design time; review explain output.</fix>
+    </antipattern>
+    <antipattern id="no-schema-version-field" severity="medium">
+      <symptom>Rolling migration cannot distinguish old-shape from new-shape documents; partial migration corrupts data.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author skipped the schemaVersion convention.</root-cause>
+      <fix>Add schemaVersion integer to every collection; migration scripts increment it; queries can target version.</fix>
+    </antipattern>
   </section>
 </text>

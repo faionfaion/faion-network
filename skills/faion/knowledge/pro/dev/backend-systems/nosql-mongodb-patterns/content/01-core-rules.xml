@@ -1,19 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="nosql-mongodb-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for nosql-mongodb-patterns. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="MongoDB Document Design Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules for nosql-mongodb-patterns. Each rule pairs binary check + sourced rationale. Last rule is the terminal skip-this-methodology guard.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Write the access-pattern list (query shape, filters, sort, QPS, latency budget) BEFORE choosing embedding vs referencing. Embedding is correct when the child is always fetched with the parent and the child count is bounded (&lt;100). Referencing is correct when the child is queried independently, the list is unbounded, or many-to-many relationships exist.</statement>
-      <rationale source="v1-source">The embedding vs referencing decision determines whether reads are single-document (fast) or require multiple round-trips (slow). Without a written access-pattern list, agents default to relational normalization and propose cross-collection lookups that MongoDB cannot perform in one query.</rationale>
+    <rule id="embed-when-bounded-and-cofetched" testable="true" depth="essential">
+      <statement>Write the access-pattern list (query shape, filters, sort, QPS, latency budget) BEFORE choosing embedding vs referencing. Embedding is correct when the child is always fetched with the parent and the child count is bounded (&amp;amp;amp;amp;amp;lt;100). Referencing is correct when the child is queried independently, the list is unbounded, or many-to-many relationships exist.</statement>
+      <rationale source="v1-source + faion-net curation">The embedding vs referencing decision determines whether reads are single-document (fast) or require multiple round-trips (slow). Without a written access-pattern list, agents default to relational normalization and propose cross-collection lookups that MongoDB cannot perform in one query.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
+    <rule id="index-every-filter-and-sort" testable="true" depth="essential">
       <statement>Every field that appears in a query filter, sort, or range scan MUST have an index. Compound indexes must match the query's field order (equality fields first, range fields last, sort fields last). Add a TTL index on any collection that stores sessions, caches, or ephemeral data; set expireAfterSeconds at creation time.</statement>
-      <rationale source="v1-source">Missing indexes cause collection scans (COLLSCAN in explain output), which degrade from O(index entries) to O(total documents) as the collection grows. TTL indexes automate cleanup; agents forget to add expiry logic otherwise.</rationale>
+      <rationale source="v1-source + faion-net curation">Missing indexes cause collection scans (COLLSCAN in explain output), which degrade from O(index entries) to O(total documents) as the collection grows. TTL indexes automate cleanup; agents forget to add expiry logic otherwise.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
+    <rule id="schema-version-field-required" testable="true" depth="essential">
       <statement>Every MongoDB collection document MUST include a schemaVersion integer field. Migration agents that change document shape MUST increment schemaVersion and write both a forward migration script and a backward (rollback) script. The version field must be indexed if queries use it to filter during incremental migrations.</statement>
-      <rationale source="v1-source">Without schemaVersion, agents cannot distinguish old-shape from new-shape documents during rolling migrations. Incremental background migrations read schemaVersion to skip already-migrated documents and process the rest in batches without locking the collection.</rationale>
+      <rationale source="v1-source + faion-net curation">Without schemaVersion, agents cannot distinguish old-shape from new-shape documents during rolling migrations. Incremental background migrations read schemaVersion to skip already-migrated documents and process the rest in batches without locking the collection.</rationale>
+    </rule>
+    <rule id="reference-when-independent-or-unbounded" testable="true" depth="essential">
+      <statement>Use referencing (ObjectId pointer + lookup) when the child is queried independently OR the list is unbounded OR many-to-many.</statement>
+      <rationale source="v1-source + faion-net curation">Embedding unbounded lists blows past the 16 MB document limit and slows every read.</rationale>
+    </rule>
+    <rule id="ttl-on-ephemeral-collections" testable="true" depth="essential">
+      <statement>Sessions, caches, tokens, and other ephemeral data MUST use a TTL index (expireAfterSeconds).</statement>
+      <rationale source="v1-source + faion-net curation">Without TTL, ephemeral collections grow unbounded and pollute working set.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the preconditions in `Applies If` fail or any of the `Skip If` conditions is true, return `skipped` and apply no further rules.</statement>
+      <rationale source="v1-source + faion-net curation">Methodologies are not universal; running them outside their fit-window wastes effort and produces wrong outputs.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

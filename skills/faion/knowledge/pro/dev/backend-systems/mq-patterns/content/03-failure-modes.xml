@@ -1,22 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="mq-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for mq-patterns as failure modes. Add detector + repair clauses where missing.</summary>
-
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Using request/reply queues for latency-sensitive operations under 50 ms, such as authentication token validation or read-heavy API lookups.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Queue round-trip adds broker serialization latency on top of network latency. For sub-50 ms requirements, direct synchronous gRPC or HTTP is the correct choice.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Fan-out without per-consumer queues — broadcasting to a single shared queue that all consumers read from.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Competing consumers on a shared queue produce work-queue semantics, not fan-out. Each consumer gets only a fraction of messages. Use a broker-level exchange (RabbitMQ topic/fanout) or SNS topic to create one queue per consumer group.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Missing correlation IDs — publishing messages without a stable trace identifier across services.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Without a correlation ID, a message cannot be traced through the system when it fails. Debugging becomes a log-grepping exercise across multiple services with no join key.</repair>
-    </failure-mode>
+<text id="03-failure-modes" title="Message Queue Patterns Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Antipatterns observed in real mq-patterns deployments. Each pairs symptom + root-cause + fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="topology-by-accident" severity="medium">
+      <symptom>Service uses pub/sub when it should be work-queue (or vice versa); messages processed by the wrong consumer set.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author skipped the topology decision and copied the first example found.</root-cause>
+      <fix>Write the topology contract first; one message → one consumer is work-queue; one message → every subscriber is fan-out.</fix>
+    </antipattern>
+    <antipattern id="missing-dlq-on-failure" severity="high">
+      <symptom>Poison message blocks the queue (infinite retry) or is dropped on max-retries with no audit trail.</symptom>
+      <root-cause source="v1-source + faion-net curation">DLQ planning skipped or deferred.</root-cause>
+      <fix>Every queue that can receive failure has a DLQ + alert before going live.</fix>
+    </antipattern>
+    <antipattern id="no-idempotency-strategy" severity="high">
+      <symptom>At-least-once delivery + non-idempotent consumer = double-charge / duplicate emails in production.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author assumed exactly-once delivery from the broker.</root-cause>
+      <fix>Always design consumers for idempotency; pick payload-key / natural-key / broker-key + dedup store.</fix>
+    </antipattern>
   </section>
 </text>

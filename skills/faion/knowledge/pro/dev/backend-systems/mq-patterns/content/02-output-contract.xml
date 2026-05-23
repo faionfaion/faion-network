@@ -1,22 +1,89 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="mq-patterns Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
-
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
+<text id="02-output-contract" title="Message Queue Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) + valid/invalid examples + forbidden patterns for mq-patterns output.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/mq-patterns.json",
+  "type": "object",
+  "required": [
+    "topology",
+    "queue_name",
+    "schema_ref",
+    "retry_policy",
+    "dlq_target",
+    "idempotency_strategy"
+  ],
+  "properties": {
+    "topology": {
+      "enum": [
+        "work-queue",
+        "fan-out",
+        "request-reply",
+        "dlq"
+      ]
+    },
+    "queue_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schema_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "retry_policy": {
+      "type": "object",
+      "required": [
+        "max_retries",
+        "backoff"
+      ]
+    },
+    "dlq_target": {
+      "type": "string",
+      "minLength": 1
+    },
+    "idempotency_strategy": {
+      "enum": [
+        "payload-key",
+        "natural-key",
+        "broker-key"
+      ]
+    }
+  }
+}
+]]></code>
+  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "topology": "work-queue",
+  "queue_name": "orders.fulfill.v1",
+  "schema_ref": "schemas/orders/fulfill/v1.avsc",
+  "retry_policy": {
+    "max_retries": 5,
+    "backoff": "exponential+jitter"
+  },
+  "dlq_target": "orders.fulfill.v1.dlq",
+  "idempotency_strategy": "payload-key"
+}
+]]></code>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "topology": "scatter-gather",
+  "queue_name": ""
+}
+]]></code>
+    <note>topology not in enum; queue_name empty; schema_ref/retry_policy/dlq_target/idempotency_strategy missing.</note>
+  </example>
+  <section title="Forbidden patterns">
     <list>
-      <item>TBD — first checkable invariant</item>
+      <item>missing required fields</item>
+      <item>wildcard / placeholder values where enum or pattern is required</item>
+      <item>values outside numeric / enum / pattern bounds</item>
     </list>
   </section>
+  <reference path="scripts/validate-mq-patterns.py">Validator script (--help, --self-test)</reference>
 </text>

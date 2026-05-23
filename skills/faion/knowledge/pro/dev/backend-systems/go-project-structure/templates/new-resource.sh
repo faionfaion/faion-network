@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+# purpose: scaffold handler/service/repository/model for a new Go resource
+# consumes: resource name (arg 1)
+# produces: 4 stub Go files
+# depends-on: scripts/validate-go-project-structure.py
+# token-budget-impact: ~120 tokens
 # Scaffold handler/service/repository/model for a new resource.
 # Usage: bash scripts/new-resource.sh users
 set -euo pipefail
