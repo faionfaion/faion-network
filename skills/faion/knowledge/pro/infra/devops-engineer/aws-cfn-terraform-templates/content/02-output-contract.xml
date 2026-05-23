@@ -1,22 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="aws-cfn-terraform-templates Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="AWS IaC Templates Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the parameterised IaC template bundle artefact plus valid / invalid / forbidden examples.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/aws-cfn-terraform-templates.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "template_pattern",
+    "region",
+    "account_id",
+    "encryption_at_rest",
+    "deletion_protection",
+    "iam_least_privilege",
+    "mandatory_tags_present",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "description": "stable id"
+    },
+    "template_pattern": {
+      "type": "string",
+      "description": "enum: vpc | ecs-fargate | lambda-api | rds-postgres"
+    },
+    "region": {
+      "type": "string",
+      "description": "AWS region code"
+    },
+    "account_id": {
+      "type": "string",
+      "description": "12-digit AWS account id"
+    },
+    "encryption_at_rest": {
+      "type": "boolean",
+      "description": "true for production"
+    },
+    "deletion_protection": {
+      "type": "boolean",
+      "description": "true for production stateful resources"
+    },
+    "iam_least_privilege": {
+      "type": "boolean",
+      "description": "true (no Resource: '*' or Action: '*')"
+    },
+    "mandatory_tags_present": {
+      "type": "array",
+      "description": "must contain ['Project', 'Environment', 'Owner', 'CostCenter', 'ManagedBy']"
+    },
+    "owner": {
+      "type": "string",
+      "description": "single named handle"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <section title="Forbidden patterns">
+    <pattern id="forbidden-1">encryption_at_rest == false in production environment</pattern>
+    <pattern id="forbidden-2">iam_least_privilege == false (wildcards present)</pattern>
+    <pattern id="forbidden-3">mandatory_tags_present missing any required tag</pattern>
+    <pattern id="forbidden-4">deletion_protection == false on RDS / S3 user-data resources</pattern>
+  </section>
+
+  <example valid="true" title="ECS Fargate production template">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "ecs-fargate-prod-eu",
+  "template_pattern": "ecs-fargate",
+  "region": "eu-central-1",
+  "account_id": "123456789012",
+  "encryption_at_rest": true,
+  "deletion_protection": true,
+  "iam_least_privilege": true,
+  "mandatory_tags_present": [
+    "Project",
+    "Environment",
+    "Owner",
+    "CostCenter",
+    "ManagedBy"
+  ],
+  "owner": "platform-lead"
+}
+]]></code>
+  </example>
+
+  <example valid="false" title="Plaintext storage + wildcard IAM">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "bad",
+  "template_pattern": "rds-postgres",
+  "region": "us-east-1",
+  "account_id": "1",
+  "encryption_at_rest": false,
+  "deletion_protection": false,
+  "iam_least_privilege": false,
+  "mandatory_tags_present": [],
+  "owner": "team"
+}
+]]></code>
+    <note>Multiple forbidden patterns triggered; reject and re-request.</note>
+  </example>
+
+  <reference path="scripts/validate-aws-cfn-terraform-templates.py">Validator script that enforces this contract.</reference>
 </text>

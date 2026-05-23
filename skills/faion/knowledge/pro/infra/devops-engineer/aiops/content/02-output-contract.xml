@@ -1,22 +1,117 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="aiops Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="AIOps Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the AIOps platform config artefact plus valid / invalid / forbidden examples.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/aiops.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "baseline_window_days",
+    "anomaly_algorithms",
+    "dynamic_thresholds_tied_to_slo",
+    "auto_remediation_risk_policy",
+    "approval_matrix",
+    "rca_output_includes",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "description": "stable id for this AIOps config snapshot"
+    },
+    "baseline_window_days": {
+      "type": "integer",
+      "description": ">= 14"
+    },
+    "anomaly_algorithms": {
+      "type": "array",
+      "description": "non-empty subset of [isolation-forest, prophet, lstm]"
+    },
+    "dynamic_thresholds_tied_to_slo": {
+      "type": "boolean",
+      "description": "true"
+    },
+    "auto_remediation_risk_policy": {
+      "type": "object",
+      "description": "{low:'auto', medium:'notify-then-timeout', high:'require-approval'}"
+    },
+    "approval_matrix": {
+      "type": "object",
+      "description": "{p1: 'require-human', p2: 'require-human', p3: 'optional', p4: 'optional'}"
+    },
+    "rca_output_includes": {
+      "type": "array",
+      "description": "must contain ['ranked_causes', 'timeline', 'scope', 'logs_traces']"
+    },
+    "owner": {
+      "type": "string",
+      "description": "single named handle"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <section title="Forbidden patterns">
+    <pattern id="forbidden-1">baseline_window_days &lt; 14</pattern>
+    <pattern id="forbidden-2">approval_matrix.p1 != 'require-human'</pattern>
+    <pattern id="forbidden-3">dynamic_thresholds_tied_to_slo == false (static thresholds in production AIOps rejected)</pattern>
+    <pattern id="forbidden-4">rca_output_includes missing any of [ranked_causes, timeline, scope, logs_traces]</pattern>
+  </section>
+
+  <example valid="true" title="Production AIOps config">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "aiops-prod-2026Q2",
+  "baseline_window_days": 21,
+  "anomaly_algorithms": [
+    "isolation-forest",
+    "prophet"
+  ],
+  "dynamic_thresholds_tied_to_slo": true,
+  "auto_remediation_risk_policy": {
+    "low": "auto",
+    "medium": "notify-then-timeout",
+    "high": "require-approval"
+  },
+  "approval_matrix": {
+    "p1": "require-human",
+    "p2": "require-human",
+    "p3": "optional",
+    "p4": "optional"
+  },
+  "rca_output_includes": [
+    "ranked_causes",
+    "timeline",
+    "scope",
+    "logs_traces"
+  ],
+  "owner": "ruslan@faion.net"
+}
+]]></code>
+  </example>
+
+  <example valid="false" title="Static threshold + auto p1 (forbidden)">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "bad",
+  "baseline_window_days": 7,
+  "anomaly_algorithms": [],
+  "dynamic_thresholds_tied_to_slo": false,
+  "auto_remediation_risk_policy": {},
+  "approval_matrix": {
+    "p1": "auto"
+  },
+  "rca_output_includes": [],
+  "owner": "team"
+}
+]]></code>
+    <note>Multiple forbidden patterns triggered; reject and re-request.</note>
+  </example>
+
+  <reference path="scripts/validate-aiops.py">Validator script that enforces this contract.</reference>
 </text>

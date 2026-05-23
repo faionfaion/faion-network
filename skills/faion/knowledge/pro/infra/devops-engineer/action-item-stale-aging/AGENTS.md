@@ -3,77 +3,98 @@ slug: action-item-stale-aging
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: End-to-end playbook for action item stale aging that walks an operator from trigger to closed outcome with named artefacts at each step.
-content_id: "dd3e18c88a5521e0"
-tags: [action, infra, playbook]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces an aging report on open retro action-items with explicit aging counter and escalation matrix per item.
+content_id: "43fb6c0c1a87707e"
+complexity: medium
+produces: playbook-step
+est_tokens: 4500
+tags: [retros, action-items, aging, escalation, devops]
 ---
 # Action Item Stale Aging
 
 ## Summary
 
-**One-sentence:** End-to-end playbook for action item stale aging that walks an operator from trigger to closed outcome with named artefacts at each step.
+**One-sentence:** Produces an aging report on open retro action-items with explicit aging counter and escalation matrix per item.
 
-**One-paragraph:** End-to-end playbook for action item stale aging that walks an operator from trigger to closed outcome with named artefacts at each step. Action items from retros become zombies. No methodology defines the aging + escalation rules.
+**One-paragraph:** Action items from retros become zombies. `retro-basics` defines capture, nothing defines aging + escalation. This methodology pins a per-item aging counter, an explicit escalation threshold (default 3 cycles open → escalate; 5 cycles → drop with rationale), a deviation log so unprocessed items still get rationalised, and a named playbook owner who can amend. Output: a per-cycle aging report that surfaces structural problems (missing capability, wrong owner) rather than blaming the individual.
+
+**Ефективно для:**
+
+- retro action-items стають зомбі без owners та escalation — потрібен aging playbook.
+- tier=pro команд із >=3 квартальними retros, де відкритих items накопичилось >=20.
+- deviations from playbook потрібно логувати з rationale у next retro.
+- одна людина named як playbook owner з повноваженням amendment.
 
 ## Applies If (ALL must hold)
 
-- You are executing the cross-cutting workflow addressed by action item stale aging end to end.
-- All inputs the playbook calls for are reachable (people, data, artefacts).
-- The output is consumed by a named downstream owner with a deadline.
-- Deviations from the steps are logged with a one-line rationale.
+- Retro action-items have a single backing tracker (issue tracker, doc, board) the agent can read.
+- Each item has an owner, even if owner field is currently `unassigned`.
+- Cycle cadence is defined (sprint / monthly / quarterly retros).
+- A named playbook owner exists and can authorise amendments.
 
 ## Skip If (ANY kills it)
 
-- Highly contextual one-shot work where playbook constrains the wrong axes.
-- Pre-discovery — playbook assumes the problem is named.
-- Teams already running a well-tuned variant — re-tooling friction outweighs upside.
+- Retros do not produce action items (the gap is upstream — fix retros first).
+- Tracker for action items is not queryable (paper / Slack-only retros).
+- Cycle cadence is undefined — establish cadence before aging.
+- Team has fewer than 5 open action-items — manual review is cheaper.
 
 ## Prerequisites
 
-- Stakeholders, owners, and deadlines named in advance.
-- Inputs (data, briefs, accounts) reachable at start.
-- Storage location for each step's output decided.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Action-item tracker | issue tracker URL | retro tooling |
+| Cycle cadence | weekly / monthly / quarterly | team norms |
+| Owner map | YAML / wiki | engineering lead |
+| Playbook owner | named handle | team norms |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
+| `pro/infra/devops-engineer` | parent role skill |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | The 4 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with statement + rationale + source (5+ rules, includes r5-bound-scope) | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom/root-cause/fix | ~1000 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `input_collection` | haiku | Structured gather from inputs |
-| `decision_steps` | sonnet | Apply playbook branches against state |
-| `synthesis_writeup` | opus | Final artefact authoring |
+| `input_collection` | haiku | Structured pull from tracker |
+| `decision_steps` | sonnet | Apply aging + escalation thresholds |
+| `synthesis_writeup` | opus | Final artefact authoring with structural-cause flags |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/skeleton.md` | Aging report skeleton with escalation matrix |
+| `templates/skeleton.json` | JSON schema for the aging artefact |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-action-item-stale-aging.py` | Validate produced artefact against the 02-output-contract.xml schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
-- peer methodologies: see siblings under `pro/infra/devops-engineer/`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[retro-basics]]
+- [[agency-year-end-close-checklist]]
+- [[oncall-rotation-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, owner, downstream consumer) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before applying the Action Item Stale Aging methodology when in doubt about scope or fit.

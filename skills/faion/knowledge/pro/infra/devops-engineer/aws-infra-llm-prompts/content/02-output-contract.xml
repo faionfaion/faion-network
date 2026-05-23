@@ -1,22 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="aws-infra-llm-prompts Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="AWS LLM Prompts Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the parameterised prompt artefact artefact plus valid / invalid / forbidden examples.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/aws-infra-llm-prompts.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "prompt_intent",
+    "context_elicitation_present",
+    "output_schema_declared",
+    "constraints_pinned",
+    "compliance_claim_check",
+    "provider_key_scope",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "description": "stable prompt id"
+    },
+    "prompt_intent": {
+      "type": "string",
+      "description": "enum: design | review | iam-policy | dr-runbook | migration-plan"
+    },
+    "context_elicitation_present": {
+      "type": "boolean",
+      "description": "true (workload shape + latency + region + compliance + budget all present)"
+    },
+    "output_schema_declared": {
+      "type": "boolean",
+      "description": "true"
+    },
+    "constraints_pinned": {
+      "type": "boolean",
+      "description": "true"
+    },
+    "compliance_claim_check": {
+      "type": "boolean",
+      "description": "true (no certification claims in prompt or expected output)"
+    },
+    "provider_key_scope": {
+      "type": "string",
+      "description": "enum: project-specific | shared (project-specific required)"
+    },
+    "owner": {
+      "type": "string",
+      "description": "single named handle"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <section title="Forbidden patterns">
+    <pattern id="forbidden-1">context_elicitation_present == false</pattern>
+    <pattern id="forbidden-2">output_schema_declared == false</pattern>
+    <pattern id="forbidden-3">compliance_claim_check == false (prompt or expected output contains compliance certification claim)</pattern>
+    <pattern id="forbidden-4">provider_key_scope == 'shared' (project-specific keys required for cost attribution + context isolation)</pattern>
+  </section>
+
+  <example valid="true" title="Design prompt for new serverless API">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "design-serverless-api-2026Q2",
+  "prompt_intent": "design",
+  "context_elicitation_present": true,
+  "output_schema_declared": true,
+  "constraints_pinned": true,
+  "compliance_claim_check": true,
+  "provider_key_scope": "project-specific",
+  "owner": "ruslan@faion.net"
+}
+]]></code>
+  </example>
+
+  <example valid="false" title="Free-form prompt with compliance claim">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "bad",
+  "prompt_intent": "design",
+  "context_elicitation_present": false,
+  "output_schema_declared": false,
+  "constraints_pinned": false,
+  "compliance_claim_check": false,
+  "provider_key_scope": "shared",
+  "owner": "team"
+}
+]]></code>
+    <note>Multiple forbidden patterns triggered; reject and re-request.</note>
+  </example>
+
+  <reference path="scripts/validate-aws-infra-llm-prompts.py">Validator script that enforces this contract.</reference>
 </text>

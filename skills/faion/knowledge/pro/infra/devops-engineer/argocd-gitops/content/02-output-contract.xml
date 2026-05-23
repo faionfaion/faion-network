@@ -1,22 +1,108 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="argocd-gitops Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="ArgoCD GitOps Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the ArgoCD GitOps config bundle artefact plus valid / invalid / forbidden examples.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/argocd-gitops.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "environments_modeled_as",
+    "self_heal_enabled",
+    "application_management",
+    "appproject_per_team",
+    "sync_waves_set",
+    "notifications_wired",
+    "revision_history_limit",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "description": "stable id"
+    },
+    "environments_modeled_as": {
+      "type": "string",
+      "description": "enum: folders | branches | branches"
+    },
+    "self_heal_enabled": {
+      "type": "boolean",
+      "description": "true"
+    },
+    "application_management": {
+      "type": "string",
+      "description": "enum: app-of-apps | applicationset | manual"
+    },
+    "appproject_per_team": {
+      "type": "boolean",
+      "description": "true (no default project for production)"
+    },
+    "sync_waves_set": {
+      "type": "boolean",
+      "description": "true"
+    },
+    "notifications_wired": {
+      "type": "array",
+      "description": "non-empty: ['on-sync-failed', 'on-health-degraded']"
+    },
+    "revision_history_limit": {
+      "type": "integer",
+      "description": ">= 5"
+    },
+    "owner": {
+      "type": "string",
+      "description": "single named handle"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <section title="Forbidden patterns">
+    <pattern id="forbidden-1">environments_modeled_as == 'branches' (folders are mandatory)</pattern>
+    <pattern id="forbidden-2">application_management == 'manual' for production</pattern>
+    <pattern id="forbidden-3">self_heal_enabled == false in production</pattern>
+    <pattern id="forbidden-4">appproject_per_team == false in production</pattern>
+  </section>
+
+  <example valid="true" title="ArgoCD config for production EU cluster">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "argocd-eu-prod-2026Q2",
+  "environments_modeled_as": "folders",
+  "self_heal_enabled": true,
+  "application_management": "applicationset",
+  "appproject_per_team": true,
+  "sync_waves_set": true,
+  "notifications_wired": [
+    "on-sync-failed",
+    "on-health-degraded"
+  ],
+  "revision_history_limit": 10,
+  "owner": "platform-lead"
+}
+]]></code>
+  </example>
+
+  <example valid="false" title="Branches + manual apps">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "bad",
+  "environments_modeled_as": "branches",
+  "self_heal_enabled": false,
+  "application_management": "manual",
+  "appproject_per_team": false,
+  "sync_waves_set": false,
+  "notifications_wired": [],
+  "revision_history_limit": 1,
+  "owner": "team"
+}
+]]></code>
+    <note>Multiple forbidden patterns triggered; reject and re-request.</note>
+  </example>
+
+  <reference path="scripts/validate-argocd-gitops.py">Validator script that enforces this contract.</reference>
 </text>

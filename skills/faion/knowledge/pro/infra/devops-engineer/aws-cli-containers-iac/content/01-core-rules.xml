@@ -1,11 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="aws-cli-containers-iac Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for aws-cli-containers-iac. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AWS CLI Containers + IaC Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5+ testable rules grounding the methodology. Each rule pairs a binary check + sourced rationale. Includes the skip-this-methodology rule that the decision-tree maps to.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-change-set-discipline" testable="true" depth="essential">
+      <statement>CloudFormation mutations MUST use `create-change-set` + `describe-change-set` + `execute-change-set`. Direct `update-stack` in production is FORBIDDEN. Change-set output MUST be reviewed before execution.</statement>
+      <rationale source="AWS CloudFormation docs; AWS post-mortem patterns">Change-sets surface the actual delta CloudFormation will apply, including IAM diffs, deletions, and replacement-causing changes. `update-stack` skips this and has caused production outages.</rationale>
     </rule>
+    <rule id="r2-iam-rollback-pair" testable="true" depth="essential">
+      <statement>Every IAM mutation script MUST be paired with a documented rollback script (or rollback command sequence in comments). IAM changes without a tested rollback are FORBIDDEN in production.</statement>
+      <rationale source="AWS security best practices; incident-response retros">IAM changes that lock out the operator are not self-recoverable from inside the account. Pre-tested rollback is the only safe way to apply IAM changes under load.</rationale>
+    </rule>
+    <rule id="r3-ecs-deployment-bounds" testable="true" depth="essential">
+      <statement>ECS service updates MUST set `minimumHealthyPercent &gt;= 50` and `maximumPercent &lt;= 200` and use rolling deployments. `force-new-deployment` without bounds is FORBIDDEN for production services.</statement>
+      <rationale source="AWS ECS docs; AWS Well-Architected">Unbounded ECS deployments can drain all tasks before new ones become healthy, causing total outage. Bounded deployments preserve a working baseline during rollout.</rationale>
+    </rule>
+    <rule id="r4-cloudwatch-alarm-on-mutation" testable="true" depth="essential">
+      <statement>Every CloudFormation `update-stack` or `execute-change-set` operation MUST be paired with a CloudWatch alarm or dashboard URL the operator watches during rollout. Mutations without an observability anchor are FORBIDDEN in production.</statement>
+      <rationale source="AWS operational excellence pillar">Mutations without monitoring are mutations into the void. The observability anchor provides the rollback trigger when the mutation goes wrong.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Apply scripts to one service / cluster / stack per pass. Cross-account or cross-region mutations MUST be split. Skip when the operation is repeatable infrastructure — use aws-cfn-terraform-templates instead of CLI.</statement>
+      <rationale source="F-066 content-completion; sibling methodology routing">Anti-conflation: cross-region mutations have inconsistent failure modes and partial-completion states that are hard to reason about.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,11 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="aws-cli-compute Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for aws-cli-compute. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AWS CLI Compute Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5+ testable rules grounding the methodology. Each rule pairs a binary check + sourced rationale. Includes the skip-this-methodology rule that the decision-tree maps to.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-explicit-profile-region" testable="true" depth="essential">
+      <statement>Every script MUST set `--profile` and `--region` explicitly (or rely on `AWS_PROFILE` + `AWS_REGION` env vars that the script asserts are present). Default-profile + inherited-region operations are forbidden in shared scripts.</statement>
+      <rationale source="AWS CLI v2 docs; faion-net ops practice">Default-profile scripts cause silent cross-account or cross-region operations during incidents. Explicit profile + region make blast radius visible to the operator at command-read time.</rationale>
     </rule>
+    <rule id="r2-json-output" testable="true" depth="essential">
+      <statement>Scripts MUST emit JSON output (`--output json` or `--query` projections) for any value consumed downstream. Human-formatted (`text` / `table`) output is forbidden for piped consumption.</statement>
+      <rationale source="AWS CLI output reference">Text/table output breaks downstream JSON parsers and varies across AWS CLI versions. JSON is stable and parser-friendly.</rationale>
+    </rule>
+    <rule id="r3-waiters-not-sleep" testable="true" depth="essential">
+      <statement>Scripts MUST use `aws ec2 wait` / `aws lambda wait` / `aws s3api wait` instead of `sleep N` between state transitions. Custom polling loops require a fail-after-N-attempts gate.</statement>
+      <rationale source="AWS CLI waiters reference">`sleep` either over-pauses (slow scripts) or under-pauses (race condition). Waiters poll the actual API state and exit promptly when the condition is reached.</rationale>
+    </rule>
+    <rule id="r4-no-embedded-credentials" testable="true" depth="essential">
+      <statement>Scripts MUST NOT contain inline credentials (access key, secret key, session token). Credentials come from named profile, IAM role assumption via OIDC, or instance profile. `--secret-access-key` flag is FORBIDDEN.</statement>
+      <rationale source="AWS security best practices; GitHub OIDC for AWS">Embedded credentials leak into version control and CI logs. OIDC + named profiles + role assumption are the modern AWS authentication baseline.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Apply AWS CLI scripts to one operation type per script (EC2 OR S3 OR Lambda). Multi-service operations MUST be split. Skip when scripted automation should run as IaC instead — use aws-cfn-terraform-templates.</statement>
+      <rationale source="F-066 content-completion; sibling methodology routing">Anti-conflation: multi-service scripts hide failure modes per service and complicate retry semantics. CLI is for ephemeral / one-shot ops; IaC handles repeatable deployments.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

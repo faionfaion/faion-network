@@ -1,11 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="aws-cfn-terraform-templates Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for aws-cfn-terraform-templates. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AWS IaC Templates Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5+ testable rules grounding the methodology. Each rule pairs a binary check + sourced rationale. Includes the skip-this-methodology rule that the decision-tree maps to.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-encryption-default" testable="true" depth="essential">
+      <statement>Stateful resources (RDS, S3, EBS, EFS, DynamoDB) MUST default to encryption-at-rest with a customer-managed KMS key in production templates. Encryption disabled requires explicit `encryption_disabled_rationale` parameter set by the operator.</statement>
+      <rationale source="AWS Well-Architected Framework security pillar">Default-encrypted resources prevent accidental plaintext storage. KMS rotation + IAM auditability are baseline SOC2 / ISO27001 controls.</rationale>
     </rule>
+    <rule id="r2-least-privilege-iam" testable="true" depth="essential">
+      <statement>IAM roles in templates MUST follow least-privilege: explicit resource ARNs (no `Resource: '*'`), specific actions (no `Action: '*'`), permission boundaries on team-created roles. Wildcard policies are blocked by `cfn-lint` / `tflint` rules.</statement>
+      <rationale source="AWS Security Best Practices; OWASP Top 10 cloud">Wildcard IAM grants are the #1 cause of cross-service privilege escalation in AWS. Permission boundaries cap the maximum effective permissions even when a team creates over-broad role policies.</rationale>
+    </rule>
+    <rule id="r3-deletion-protection" testable="true" depth="essential">
+      <statement>Stateful resources MUST set `deletion_protection = true` and `prevent_destroy = true` in production templates. Stack-level `DeletionPolicy: Retain` for RDS, DynamoDB, S3 buckets that store user data.</statement>
+      <rationale source="AWS RDS docs; Terraform lifecycle docs">Accidental `terraform destroy` or stack-delete on production stateful resources causes irreversible data loss. Deletion protection forces a deliberate two-step removal.</rationale>
+    </rule>
+    <rule id="r4-tagging-discipline" testable="true" depth="essential">
+      <statement>Every resource MUST carry mandatory tags: `Project`, `Environment`, `Owner`, `CostCenter`, `ManagedBy`. Templates use a `local.common_tags` map; resources merge that map into their tags block.</statement>
+      <rationale source="FinOps Foundation tagging principles">Untagged resources break cost attribution, ownership lookup, and incident response. Mandatory tags enforced at template level prevent the `we'll-tag-it-later` debt.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Apply the templates to one stack / module per pass. Multi-pattern stacks (VPC + ECS + RDS in one template) MUST be split into composable modules. Skip when the workload mismatches every template — fork the pattern, do not force-fit.</statement>
+      <rationale source="F-066 content-completion; Terraform module composition pattern">Anti-conflation: monolith templates hide blast radius and slow change-set review. Force-fitting a template guarantees hardened defaults work against the workload.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

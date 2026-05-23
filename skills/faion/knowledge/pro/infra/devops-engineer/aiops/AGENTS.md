@@ -3,72 +3,100 @@ slug: aiops
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: AIOps applies ML and LLM-powered analysis to IT operations to automate anomaly detection, root cause analysis, and incident remediation.
-content_id: "fa4838d8ad1a0cbb"
-tags: [aiops, observability, incident-response, machine-learning, self-healing]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces an AIOps platform config (anomaly detection params, RCA pipeline, auto-remediation risk policy with approval matrix) wired through OpenTelemetry.
+content_id: "3746128199b2d58f"
+complexity: deep
+produces: config
+est_tokens: 4500
+tags: [aiops, observability, incident-response, ml, self-healing]
 ---
 # AIOps: ML-Powered Incident Detection and Auto-Remediation
 
 ## Summary
 
-**One-sentence:** AIOps applies ML and LLM-powered analysis to IT operations to automate anomaly detection, root cause analysis, and incident remediation.
+**One-sentence:** Produces an AIOps platform config (anomaly detection params, RCA pipeline, auto-remediation risk policy with approval matrix) wired through OpenTelemetry.
 
-**One-paragraph:** AIOps applies ML and LLM-powered analysis to IT operations to automate anomaly detection, root cause analysis, and incident remediation. The five capabilities are: anomaly detection, root cause analysis, predictive alerts, auto-remediation, and capacity planning. Every auto-remediation action must be classified by risk level and gated by a human-approval policy for P1/P2 incidents.
+**One-paragraph:** AIOps applies ML and LLM-powered analysis to IT operations to automate anomaly detection, root cause analysis, and incident remediation. Five capabilities: anomaly detection, RCA, predictive alerts, auto-remediation, capacity planning. Every auto-remediation action is classified by risk level and gated by a human-approval policy for P1/P2 incidents. Anomaly detection requires >=2 weeks of baseline data and dynamic thresholds tied to SLO error-budget burn rates, not static CPU > 80% thresholds.
+
+**Ефективно для:**
+
+- reducing MTTR by automating triage and RCA across metrics, logs, traces.
+- alert noise reduction — raw event stream too high for manual triage.
+- building self-healing systems with human-approval gates for risky actions.
+- establishing SLO-aware alerting based on error-budget burn rates.
 
 ## Applies If (ALL must hold)
 
-- Reducing MTTR by automating triage and RCA across metrics, logs, and traces.
-- Alert noise reduction — raw event stream too high for manual triage.
-- Building self-healing systems with human-approval gates for risky actions.
-- Establishing SLO-aware alerting based on error-budget burn rates.
+- Service has >= 2 weeks of metrics + logs + traces collected through OpenTelemetry or equivalent.
+- SLOs are defined with explicit error budgets per service.
+- Auto-remediation actions can be classified by risk level (low / medium / high).
+- Human-approval workflow exists for medium and high-risk actions (chatops, ticket, paging).
 
 ## Skip If (ANY kills it)
 
 - Teams without an observability foundation (Prometheus + structured logs + traces) — collect data first.
 - Organizations that have not defined SLOs — anomaly detection without SLOs produces meaningless alerts.
 - Small services with predictable failure modes — static runbooks and on-call rotation are sufficient.
-- When explainability/audit requirements are strict and ML model decisions cannot be logged with reasoning.
+- When explainability / audit requirements are strict and ML model decisions cannot be logged with reasoning.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| OpenTelemetry Collector config | YAML | platform |
+| SLO definitions per service | YAML / doc | product + platform |
+| Auto-remediation risk classification | table | platform + security |
+| Human-approval channel | chatops / ticket / paging | team norms |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/infra/devops-engineer/prometheus-monitoring` | metric collection assumed |
+| `pro/infra/devops-engineer/sli-slo-definition` | SLO definitions feed dynamic thresholds |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules with statement + rationale + source (5+ rules, includes skip-this-methodology) | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom/root-cause/fix | ~1000 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~900 |
+| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `define-anomaly-detector` | sonnet | Choose Isolation Forest / Prophet / LSTM per signal |
+| `wire-rca-pipeline` | sonnet | Bind change events + topology + traces into RCA output |
+| `risk-classify-actions` | opus | Map remediation actions to low/medium/high with approval policy |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/aiops-policy.yaml` | Risk-tier + approval-matrix policy |
+| `templates/auto-remediation-action.json` | Single auto-remediation action record |
+| `templates/rca-output.json` | RCA structured output skeleton |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-aiops.py` | Validate produced artefact against the 02-output-contract.xml schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
+- [[prometheus-monitoring]]
+- [[alert-deduplication-playbook]]
+- [[sli-slo-definition]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, owner, downstream consumer) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before applying the AIOps: ML-Powered Incident Detection and Auto-Remediation methodology when in doubt about scope or fit.

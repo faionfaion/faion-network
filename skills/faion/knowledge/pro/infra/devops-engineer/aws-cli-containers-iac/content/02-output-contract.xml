@@ -1,22 +1,94 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="aws-cli-containers-iac Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="AWS CLI Containers + IaC Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the shell script artefact artefact plus valid / invalid / forbidden examples.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/aws-cli-containers-iac.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "operation_type",
+    "change_set_discipline",
+    "rollback_path_documented",
+    "ecs_deployment_bounds_set",
+    "cloudwatch_anchor_set",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "description": "stable script id"
+    },
+    "operation_type": {
+      "type": "string",
+      "description": "enum: ecs | eks | rds | cloudformation | iam | cloudwatch"
+    },
+    "change_set_discipline": {
+      "type": "boolean",
+      "description": "true for CloudFormation mutations"
+    },
+    "rollback_path_documented": {
+      "type": "boolean",
+      "description": "true for IAM mutations"
+    },
+    "ecs_deployment_bounds_set": {
+      "type": "object",
+      "description": "{minimumHealthyPercent>=50, maximumPercent<=200} when operation_type==ecs"
+    },
+    "cloudwatch_anchor_set": {
+      "type": "string",
+      "description": "URL of dashboard or alarm to watch during rollout (required for production mutations)"
+    },
+    "owner": {
+      "type": "string",
+      "description": "single named handle"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <section title="Forbidden patterns">
+    <pattern id="forbidden-1">operation_type==cloudformation AND change_set_discipline==false</pattern>
+    <pattern id="forbidden-2">operation_type==iam AND rollback_path_documented==false</pattern>
+    <pattern id="forbidden-3">operation_type==ecs AND deployment bounds missing or out of range</pattern>
+    <pattern id="forbidden-4">cloudwatch_anchor_set empty for production mutation</pattern>
+  </section>
+
+  <example valid="true" title="ECS service rolling update">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "ecs-update-payments-2026-05-23",
+  "operation_type": "ecs",
+  "change_set_discipline": true,
+  "rollback_path_documented": true,
+  "ecs_deployment_bounds_set": {
+    "minimumHealthyPercent": 50,
+    "maximumPercent": 200
+  },
+  "cloudwatch_anchor_set": "https://console.aws.amazon.com/cloudwatch/...payments",
+  "owner": "ruslan@faion.net"
+}
+]]></code>
+  </example>
+
+  <example valid="false" title="No change-set + no rollback + no anchor">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "bad",
+  "operation_type": "cloudformation",
+  "change_set_discipline": false,
+  "rollback_path_documented": false,
+  "ecs_deployment_bounds_set": {},
+  "cloudwatch_anchor_set": "",
+  "owner": "team"
+}
+]]></code>
+    <note>Multiple forbidden patterns triggered; reject and re-request.</note>
+  </example>
+
+  <reference path="scripts/validate-aws-cli-containers-iac.py">Validator script that enforces this contract.</reference>
 </text>

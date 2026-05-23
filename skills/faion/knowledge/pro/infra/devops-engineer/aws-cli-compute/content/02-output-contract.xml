@@ -1,22 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="aws-cli-compute Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="AWS CLI Compute Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the shell script artefact artefact plus valid / invalid / forbidden examples.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/aws-cli-compute.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "operation_type",
+    "profile_explicit",
+    "region_explicit",
+    "output_format",
+    "uses_waiters_not_sleep",
+    "embedded_credentials_present",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "description": "stable script id"
+    },
+    "operation_type": {
+      "type": "string",
+      "description": "enum: ec2 | s3 | lambda"
+    },
+    "profile_explicit": {
+      "type": "boolean",
+      "description": "true (--profile or AWS_PROFILE assertion present)"
+    },
+    "region_explicit": {
+      "type": "boolean",
+      "description": "true"
+    },
+    "output_format": {
+      "type": "string",
+      "description": "enum: json"
+    },
+    "uses_waiters_not_sleep": {
+      "type": "boolean",
+      "description": "true"
+    },
+    "embedded_credentials_present": {
+      "type": "boolean",
+      "description": "must be false"
+    },
+    "owner": {
+      "type": "string",
+      "description": "single named handle"
+    }
+  }
+}
+]]></code>
   </section>
+
+  <section title="Forbidden patterns">
+    <pattern id="forbidden-1">embedded_credentials_present == true</pattern>
+    <pattern id="forbidden-2">output_format != 'json' (text/table forbidden for piped consumption)</pattern>
+    <pattern id="forbidden-3">uses_waiters_not_sleep == false (sleep N polling forbidden)</pattern>
+    <pattern id="forbidden-4">operation_type spans multiple services (split required)</pattern>
+  </section>
+
+  <example valid="true" title="S3 backup sync script">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "s3-backup-sync-2026-05",
+  "operation_type": "s3",
+  "profile_explicit": true,
+  "region_explicit": true,
+  "output_format": "json",
+  "uses_waiters_not_sleep": true,
+  "embedded_credentials_present": false,
+  "owner": "ruslan@faion.net"
+}
+]]></code>
+  </example>
+
+  <example valid="false" title="Embedded creds + sleep polling">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "bad",
+  "operation_type": "ec2",
+  "profile_explicit": false,
+  "region_explicit": false,
+  "output_format": "text",
+  "uses_waiters_not_sleep": false,
+  "embedded_credentials_present": true,
+  "owner": "team"
+}
+]]></code>
+    <note>Multiple forbidden patterns triggered; reject and re-request.</note>
+  </example>
+
+  <reference path="scripts/validate-aws-cli-compute.py">Validator script that enforces this contract.</reference>
 </text>
