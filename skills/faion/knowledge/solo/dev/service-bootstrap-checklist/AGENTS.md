@@ -4,67 +4,100 @@ tier: solo
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: "Day-0 greenfield service bootstrap checklist consolidating layout, CI, AGENTS.md, container, observability stubs, secrets, and release into a single ship-ready artefact."
+summary: A 12-item bootstrap checklist for a new service: repo, CI, logging, metrics, healthcheck, runbook, on-call, dashboards, alerts, secrets, deploy, postmortem template.
 content_id: "e22544a7079db040"
-tags: [service-bootstrap-checklist, dev, solo]
+complexity: medium
+produces: checklist
+est_tokens: 5000
+tags: [service, bootstrap, checklist, scaffold, day-one]
 ---
 # Service Bootstrap Checklist
 
 ## Summary
 
-**One-sentence:** A day-0 consolidated checklist that turns an empty repo into a deployable, observable, AGENTS.md-documented service in a single sitting.
+**One-sentence:** A 12-item bootstrap checklist for a new service: repo, CI, logging, metrics, healthcheck, runbook, on-call, dashboards, alerts, secrets, deploy, postmortem template.
 
-**One-paragraph:** Greenfield repo bootstrap touches a dozen topics — layout, CI, AGENTS.md, containerisation, observability stubs, secrets, release notes, deploy pattern — and only `github-repo-bootstrap` covers it at the free tier, in a way that misses the production-readiness floor. Solo builders need a single checklist that produces a service which can ship to production on day 1, not just compile. This methodology bundles the canonical floor into eight gates, each with a binary pass criterion, and emits a `BOOTSTRAP.md` record signed by the operator. Greenfield velocity is bottlenecked by forgetting one of these gates and discovering it during the first incident.
+**One-paragraph:** A 12-item bootstrap checklist for a new service: repo, CI, logging, metrics, healthcheck, runbook, on-call, dashboards, alerts, secrets, deploy, postmortem template. Day-one checklist a new service must satisfy before traffic. Each item has a binary 'done' criterion and an owner. Missing items block traffic, not just deployment. Decision tree, output contract, failure modes, and a procedure (when complexity ≥ medium), and a worked example live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- New service being stood up that will take production traffic within 30 days.
+- Greenfield repo or extracted-from-monolith service without standardised observability.
+- Want a defensible day-one floor reviewable by SRE / platform.
+- Output produces `checklist` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- you are creating a new repo / service from scratch (not extending an existing service)
-- the service will ship to production (not a throwaway spike)
-- you are the operator AND the future on-call (solo or small-team context)
-- tier == solo or higher
+- New service being stood up that will take production traffic within 30 days.
+- Greenfield repo or extracted-from-monolith service without standardised observability.
+- Want a defensible day-one floor reviewable by SRE / platform.
 
 ## Skip If (ANY kills it)
 
-- the service is a private spike with no production target (use a lighter scaffold)
-- the org has an enterprise scaffold tool that already enforces these gates
-- the repo is a library / package (not a runnable service) — different bootstrap concerns
+- Short-lived spike not destined for production.
+- Service replicates an existing inheriting all bootstrap from a parent platform template (use template version instead).
+- Internal cron job with no externally observable contract.
 
 ## Prerequisites
 
-- a name for the service and target deployment surface (Vercel / Fly / Railway / k8s / VPS)
-- a chosen language / framework
-- credentials access to the deploy provider
-- a chosen secrets store (even Vercel env or `.env.local` for solo)
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Repo creation rights | GitHub/GitLab perm | platform |
+| Observability stack access | Prometheus/Grafana | ops |
+| Secrets backend | vault/op | security |
+| CI templates | yaml | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `free/dev/github-repo-bootstrap` | parent — covers the empty-repo step this checklist extends |
-| `solo/dev/automation-tooling` | sibling — CI patterns |
-| `solo/dev/deploy-notes-template-with-rollback` | downstream — release notes template |
+| [[logging-patterns]] | Structured logging applied at bootstrap. |
+| [[qa-rollback-trigger-canon]] | Rollback triggers wired before traffic. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 8 testable bootstrap gates + 1 worked BOOTSTRAP.md example | ~1000 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 7-step end-to-end procedure with input/action/output per step | 900 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end with the trace and the resulting artefact | 700 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold_repo_layout` | haiku | template instantiation |
-| `generate_ci_pipeline` | sonnet | per-framework CI yaml |
-| `wire_observability` | sonnet | per-deploy-surface Sentry/OTel stub |
-| `produce_bootstrap_record` | sonnet | summary doc with sign-off |
+| `scaffold-from-template` | sonnet | Mechanical: instantiate template. |
+| `verify-checklist` | haiku | Per-item binary check. |
+| `write-runbook` | opus | Cross-cutting: synthesise the service contract into a runbook. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/bootstrap_checklist.json` | JSON template scaffolding the artefact contract. |
+| `templates/runbook.md` | Markdown skeleton for the artefact. |
+| `templates/dashboards.json` | JSON template scaffolding the artefact contract. |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-service-bootstrap-checklist.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/`
-- `free/dev/github-repo-bootstrap`
-- `solo/dev/automation-tooling`
-- upstream playbook: `role-software-developer/Greenfield service from scaffold to first production deploy (8 weeks, P6 product team)`
+- [[logging-patterns]]
+- [[qa-rollback-trigger-canon]]
+- [[decomposition-django]]
+- [[django-celery]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Is this a new production-bound service that will take traffic within 30 days?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

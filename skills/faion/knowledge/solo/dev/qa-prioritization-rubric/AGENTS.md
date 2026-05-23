@@ -4,81 +4,92 @@ tier: solo
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: A 4-tier severity rubric (S0..S3) with concrete blast-radius, frequency, and workaround thresholds for triaging bugs deterministically.
 content_id: "97815e81e011c90b"
-summary: QA Prioritization Rubric — pinned rubric for the QA engineer: fixed shape + named owner + evidence anchors + outcome review, so modernize a 2018-era qa suite into ai-augmented test ops stops being folklore and starts being a reviewable operating tool.
-tags: [dev, solo, rubric, prioritization]
+complexity: light
+produces: rubric
+est_tokens: 3400
+tags: [qa, prioritization, severity, rubric, triage]
 ---
 # QA Prioritization Rubric
 
 ## Summary
 
-**One-sentence:** QA Prioritization Rubric — pinned rubric for the QA engineer: fixed shape + named owner + evidence anchors + outcome review, so modernize a 2018-era qa suite into ai-augmented test ops stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** A 4-tier severity rubric (S0..S3) with concrete blast-radius, frequency, and workaround thresholds for triaging bugs deterministically.
 
-**One-paragraph:** In software development, the QA engineer runs modernize a 2018-era qa suite into ai-augmented test ops on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Risk-based test prioritization (risk × frequency × cost) for both test-writing and bug-fix triage. Currently QA engineers cargo-cult coverage targets or chase whatever PM yells loudest. A rubric makes the tradeoff explicit. `qa-prioritization-rubric` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the QA engineer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored rubric committed to the team's knowledge space.
+**One-paragraph:** A 4-tier severity rubric (S0..S3) with concrete blast-radius, frequency, and workaround thresholds for triaging bugs deterministically. S0/S1/S2/S3 mapped to blast-radius, occurrence rate, and workaround availability. Each tier names the SLO for first response and resolution. Decision tree, output contract, failure modes, and the decision tree live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Bug backlog has > 30 open issues with inconsistent severities.
+- Multiple triagers assign different severities to similar bugs.
+- Need a defensible rubric for SLA reporting.
+- Output produces `rubric` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-qa-engineer/Modernize a 2018-era QA suite into AI-augmented test ops`
-- the QA engineer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Bug backlog has > 30 open issues with inconsistent severities.
+- Multiple triagers assign different severities to similar bugs.
+- Need a defensible rubric for SLA reporting.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Single-developer project — informal triage works fine.
+- Org already enforces a rubric (Atlassian, Jira default, FedRAMP) — adopt theirs.
+- Backlog < 30 — rubric overhead > benefit.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the QA engineer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Current bug backlog | tracker export | Jira/Linear |
+| Workaround inventory | list | support team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| [[qa-bug-bash-runbook]] | Bug bash output is triaged against this rubric. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `apply-rubric` | sonnet | Map bug attributes to S0..S3. |
+| `flag-disagreement` | haiku | Detect cases where reporter and triager picked different tiers. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/rubric.json` | JSON template scaffolding the artefact contract. |
+| `templates/triage_form.md` | Markdown skeleton for the artefact. |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-qa-prioritization-rubric.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[qa-bug-bash-runbook]]
+- [[qa-rollback-trigger-canon]]
+- [[release-qa-cycle-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Are bugs being triaged with consistent severities across triagers?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

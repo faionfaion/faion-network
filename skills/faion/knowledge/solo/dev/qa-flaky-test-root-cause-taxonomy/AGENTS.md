@@ -4,81 +4,92 @@ tier: solo
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: A closed 8-category taxonomy for classifying flaky tests (time, order, network, concurrency, environment, randomness, external-state, infrastructure) with detectors and canonical fixes.
 content_id: "e66cbb9eb4b3dfb6"
-summary: QA Flaky Test Root Cause Taxonomy — pinned taxonomy for the QA engineer: fixed shape + named owner + evidence anchors + outcome review, so daily flaky-test triage (morning queue) stops being folklore and starts being a reviewable operating tool.
-tags: [dev, solo, taxonomy, flaky, test, root, cause]
+complexity: light
+produces: rubric
+est_tokens: 3400
+tags: [qa, flaky-test, taxonomy, root-cause, stability]
 ---
-# QA Flaky Test Root Cause Taxonomy
+# QA Flaky Test Root-Cause Taxonomy
 
 ## Summary
 
-**One-sentence:** QA Flaky Test Root Cause Taxonomy — pinned taxonomy for the QA engineer: fixed shape + named owner + evidence anchors + outcome review, so daily flaky-test triage (morning queue) stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** A closed 8-category taxonomy for classifying flaky tests (time, order, network, concurrency, environment, randomness, external-state, infrastructure) with detectors and canonical fixes.
 
-**One-paragraph:** In software development, the QA engineer runs daily flaky-test triage (morning queue) on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. There is no canonical taxonomy in faion for classifying flake causes (race / shared state / external dep / time / data leak). Without it, daily triage devolves into 'retry passed, close ticket' — exactly the pain the user named. `qa-flaky-test-root-cause-taxonomy` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the QA engineer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored taxonomy committed to the team's knowledge space.
+**One-paragraph:** A closed 8-category taxonomy for classifying flaky tests (time, order, network, concurrency, environment, randomness, external-state, infrastructure) with detectors and canonical fixes. One enum, eight categories. Each entry lists detector signals and the canonical fix family. Flake ledger references this taxonomy via root_cause attribute. Decision tree, output contract, failure modes, and the decision tree live under `content/`. Templates in `templates/` start with a 5-line `__faion_header__` block; the validator script in `scripts/` is stdlib-only with `--help` and `--self-test`.
+
+**Ефективно для:**
+
+- Flake ledger exists or about to exist; needs a stable enum.
+- Engineers re-investigate the same symptom because no shared taxonomy exists.
+- Test stability KPI needs root-cause-level breakdown for prioritisation.
+- Output produces `rubric` matching the schema in `content/02-output-contract.xml`.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-qa-engineer/Daily flaky-test triage (morning queue)`
-- the QA engineer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Flake ledger exists or about to exist; needs a stable enum.
+- Engineers re-investigate the same symptom because no shared taxonomy exists.
+- Test stability KPI needs root-cause-level breakdown for prioritisation.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Suite is < 50 tests; per-test ad-hoc investigation is fine.
+- Org enforces a different (e.g. Google) taxonomy — adopt theirs.
+- Tests are all UI E2E; specialist UI flake taxonomy is more useful.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the QA engineer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Recent flake samples | list of failing test logs | CI / flake ledger |
+| Existing root-cause label set | list | if any |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/dev/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| [[qa-flake-ledger-template]] | Ledger that consumes this taxonomy enum. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
+| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `classify-failure` | sonnet | Map log signals to one of the 8 categories. |
+| `propose-fix-family` | sonnet | Recommend the canonical fix family for the chosen category. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/taxonomy.json` | JSON template scaffolding the artefact contract. |
+| `templates/classify.py` | Python scaffold realising the artefact in code. |
+| `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-qa-flaky-test-root-cause-taxonomy.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
 
-- parent skill: `solo/dev/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[qa-flake-ledger-template]]
+- [[qa-suite-health-metrics-canon]]
+- [[qa-rollback-trigger-canon]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. Root question: *Are we classifying flakes by root cause to drive remediation?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.

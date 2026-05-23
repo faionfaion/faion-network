@@ -1,43 +1,93 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="QA Test Data Catalog — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>A method artefact: trigger named, output shape fixed, evidence anchored, owner accountable, and reviewed against outcomes at a published cadence.</summary>
-
-  <section title="Required fields">
-    <list>
-      <item>trigger (event / threshold / schedule)</item>
-      <item>output.shape (template / schema / artefact path)</item>
-      <item>conclusion.evidence_links</item>
-      <item>owner (named)</item>
-      <item>review.cadence + review.last_run_at</item>
-    </list>
+<text id="02-output-contract" title="QA Test Data Catalog Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the spec artefact this methodology produces. Validator in scripts/validate-qa-test-data-catalog.py enforces required keys, enum bounds, and pattern constraints.</summary>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/qa-test-data-catalog.json",
+  "type": "object",
+  "title": "QA Test Data Catalog",
+  "required": [
+    "catalog_id",
+    "fixtures",
+    "blocked_patterns",
+    "stale_threshold_days",
+    "last_reviewed"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "catalog_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Catalog identifier."
+    },
+    "fixtures": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "description": "List of {id, owner_service, refresh \u2208 [test,function,module,session,persistent], contains_pii, factory_path, consumers}."
+    },
+    "blocked_patterns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Regex patterns of forbidden direct ORM creates."
+    },
+    "stale_threshold_days": {
+      "type": "integer",
+      "description": "Days of zero-consumer triggering removal flag; \u226490."
+    },
+    "last_reviewed": {
+      "type": "string",
+      "minLength": 1,
+      "description": "ISO date."
+    }
+  }
+}
+]]></code>
   </section>
-
-  <section title="Forbidden patterns">
-    <antipattern>
-      <description>trigger &apos;when needed&apos;</description>
-      <reason>Either fires constantly or never.</reason>
-    </antipattern>
-    <antipattern>
-      <description>free-form output</description>
-      <reason>One-off and unreusable.</reason>
-    </antipattern>
-    <antipattern>
-      <description>unevidenced conclusions</description>
-      <reason>Demote to hypothesis.</reason>
-    </antipattern>
-    <antipattern>
-      <description>no outcome review</description>
-      <reason>Methodology becomes folklore.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Trigger named and concrete.</item>
-      <item>Output shape fixed.</item>
-      <item>Each conclusion has evidence links.</item>
-      <item>Owner accountable for next actions.</item>
-      <item>Outcome review run at published cadence.</item>
-    </list>
-  </section>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "catalog_id": "test-data-v3",
+  "fixtures": [
+    {
+      "id": "order-paid-eur",
+      "owner_service": "orders",
+      "refresh": "function",
+      "contains_pii": false,
+      "factory_path": "apps.orders.tests.factories.PaidOrderEurFactory",
+      "consumers": [
+        "apps/orders/tests/test_refund.py",
+        "apps/payments/tests/test_payout.py"
+      ]
+    }
+  ],
+  "blocked_patterns": [
+    "Order\\.objects\\.create",
+    "User\\.objects\\.create_user"
+  ],
+  "stale_threshold_days": 60,
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+    <note>All required keys present; enums and patterns satisfied.</note>
+  </example>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "catalog_id": "test-data-v3",
+  "fixtures": [
+    {
+      "id": "weird"
+    }
+  ]
+}
+]]></code>
+    <note>Forbidden traits: fixture without owner_service/refresh/contains_pii/factory_path; refresh not in enum; stale_threshold_days&gt;90.</note>
+  </example>
+  <reference path="scripts/validate-qa-test-data-catalog.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>
