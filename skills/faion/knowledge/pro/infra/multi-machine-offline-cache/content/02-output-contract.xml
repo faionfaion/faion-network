@@ -1,44 +1,103 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Multi-Machine Offline Cache Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Multi-Machine Offline Cache output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Multi-Machine Offline Cache Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) describing the spec artefact this methodology produces, plus valid + invalid + forbidden examples enforced by `scripts/validate-multi-machine-offline-cache.py`.</summary>
 
-  <output-contract>
-    <required>
-      <field name="machines" type="list" required="true">[{id, role, last_activated_at}]</field>
-      <field name="cache_dir_per_machine" type="string" required="true">absolute path pattern</field>
-      <field name="cas_algorithm" type="string" required="true">sha-256</field>
-      <field name="offline_grace_days" type="integer" required="true">7</field>
-      <field name="activation_limit" type="integer" required="true">per license tier</field>
-      <field name="post_expiration_purge_days" type="integer" required="true">≤30</field>
-      <field name="owner" type="string" required="true">named CLI maintainer</field>
-    </required>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/multi-machine-offline-cache.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artefact_id",
+    "produces",
+    "owner",
+    "version",
+    "last_reviewed",
+    "inputs_used",
+    "decision",
+    "rationale",
+    "trace_refs"
+  ],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]+$"},
+    "produces": {"type": "string", "const": "spec"},
+    "owner": {"type": "string", "minLength": 2, "pattern": "^(?!team$|we$|us$).+"},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "source"],
+        "properties": {
+          "name": {"type": "string"},
+          "source": {"type": "string", "format": "uri-reference"}
+        }
+      }
+    },
+    "decision": {"type": "string", "minLength": 1},
+    "rationale": {"type": "string", "minLength": 40},
+    "trace_refs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string"}
+    },
+    "status": {"type": "string", "enum": ["draft", "active", "review", "deprecated"]}
+  }
+}
+]]></code>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">shared cache via Dropbox/iCloud across machines</pattern>
-      <pattern id="f2">cache uses timestamp-based invalidation (not CAS)</pattern>
-      <pattern id="f3">offline_grace_days &gt; 30</pattern>
-      <pattern id="f4">no post-expiration purge</pattern>
-    </forbidden>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "multi-machine-offline-cache-2026q2-acme",
+  "produces": "spec",
+  "owner": "ruslan@faion.net",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "inputs_used": [
+    {"name": "trigger-context", "source": "tickets/INFRA-1234"},
+    {"name": "team-roster", "source": "wiki/team-roster"}
+  ],
+  "decision": "Run the procedure; promote to active after 7-day soak.",
+  "rationale": "All Applies-If preconditions hold (owner named, storage available, prior cycle exists). No Skip-If predicate triggered.",
+  "trace_refs": ["tickets/INFRA-1234", "wiki/team-roster"],
+  "status": "active"
+}
+]]></code>
+  </example>
 
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "X",
+  "produces": "wrong-shape",
+  "owner": "team",
+  "version": "v1",
+  "last_reviewed": "yesterday",
+  "inputs_used": [],
+  "decision": "",
+  "rationale": "obvious",
+  "trace_refs": []
+}
+]]></code>
+    <note>artefact_id not kebab-case; produces wrong; owner == 'team' (rule r3); version not semver; date not ISO; inputs empty; decision empty; rationale &lt; 40 chars; trace_refs empty (rule r5).</note>
+  </example>
 
-    <schema-reference path="templates/multi-machine-offline-cache.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>machines populated with a typed value</item>
-      <item>cache_dir_per_machine populated with a typed value</item>
-      <item>cas_algorithm populated with a typed value</item>
-      <item>offline_grace_days populated with a typed value</item>
-      <item>activation_limit populated with a typed value</item>
-      <item>post_expiration_purge_days populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
+      <item>owner in {"team","we","us","",null} (violates r3)</item>
+      <item>version not matching ^\d+\.\d+\.\d+$ (violates r4)</item>
+      <item>last_reviewed older than today - 90 days without a refresh flag (violates r4)</item>
+      <item>inputs_used empty AND decision != "no-op" (violates r5)</item>
+      <item>rationale that does not name any item in inputs_used (violates r5)</item>
+      <item>duplicate artefact_id within the same store (violates r1)</item>
     </list>
   </section>
+
+  <reference path="scripts/validate-multi-machine-offline-cache.py">Validator script (stdlib + --help + --self-test)</reference>
 </text>

@@ -3,73 +3,100 @@ slug: terraform-state
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Remote state configuration, locking, encryption, import, and migration patterns for Terraform.
-content_id: "522b86188f29045a"
-tags: [terraform, state-management, remote-backend, iac, import]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Remote state architecture spec: backend choice (S3+DynamoDB, GCS, Terraform Cloud), locking, encryption, import/mv/rm operations, moved blocks, state file recovery.
+content_id: "d59f1a0ccc72a95b"
+complexity: deep
+produces: spec
+est_tokens: 4300
+tags: [terraform, state, backend, locking, iac]
 ---
 # Terraform State
 
 ## Summary
 
-**One-sentence:** Remote state configuration, locking, encryption, import, and migration patterns for Terraform.
+**One-sentence:** Remote state architecture spec: backend choice (S3+DynamoDB, GCS, Terraform Cloud), locking, encryption, import/mv/rm operations, moved blocks, state file recovery.
 
-**One-paragraph:** Remote state configuration, locking, encryption, import, and migration patterns for Terraform. The concrete rule is: always use a remote backend with locking enabled (S3+DynamoDB for AWS, GCS for GCP); separate state files per environment and per component to minimize blast radius; prefer import blocks (Terraform 1.5+) and moved blocks over CLI state commands for declarative refactoring.
+**One-paragraph:** Remote state architecture spec: backend choice (S3+DynamoDB, GCS, Terraform Cloud), locking, encryption, import/mv/rm operations, moved blocks, state file recovery. Output is a versioned artefact a downstream agent or human reviewer can consume without re-deriving the rationale. Hard rules are pinned in `content/01-core-rules.xml`; the JSON Schema contract in `content/02-output-contract.xml` gates downstream consumption; failure modes in `content/03-failure-modes.xml` block the common antipatterns observed in real deployments.
+
+**Ефективно для:**
+
+- Команда переходить з local state на remote — треба обрати backend і ввімкнути locking.
+- Існуючий ресурс створено вручну у консолі — треба terraform import без destroy/create.
+- Рефакторинг modules ламає state — треба moved {} блоки замість state mv-команд.
+- Стан зламано після concurrent apply без locking — потрібен план recovery + backfill.
 
 ## Applies If (ALL must hold)
 
-- Setting up a remote backend for a new project or migrating from local state.
-- Importing existing cloud resources into Terraform management.
-- Refactoring resource names or moving resources between modules.
-- Recovering from state corruption or lock issues.
-- Designing multi-environment state isolation strategy.
+- Choosing or migrating remote state backend (S3+DynamoDB vs GCS vs Terraform Cloud)
+- Setting up state locking + encryption + versioning
+- Running terraform import / mv / rm to fix or restructure state
+- Using moved {} blocks to refactor module structure without resource recreation
+- Recovering from a corrupted or out-of-sync state file
 
 ## Skip If (ANY kills it)
 
-- Basic HCL syntax or provider configuration — use terraform-basics instead.
-- CI/CD pipeline design — use terraform (advanced methodology) instead.
-- Module structure design — use terraform-modules instead.
-- Emergency force-unlock without understanding lock cause — diagnose first, unlock last resort.
+- HCL syntax basics — use terraform-basics
+- Pipeline plan/apply controls — use terraform (advanced)
+- Module development — use terraform-modules-* methodologies
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Trigger context | Markdown / ticket / transcript | upstream task |
+| Named owner | string (handle, email, role) | team roster |
+| Storage location | URL / repo path | artefact store |
+| Prior cycle artefact (if any) | this methodology's output | last run |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/infra/AGENTS.md` | parent group context (vocabulary, neighbouring methodologies) |
+| `solo/sdd/sdd` | SDD discipline for artefact lifecycle (status flow, owners, review) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + run-the-checklist + skip-this-methodology conclusions | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid + invalid + forbidden examples | ~800 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom / root-cause / fix | ~700 |
+| `content/04-procedure.xml` | essential | step-by-step procedure (input/action/output/decision-gate) | ~700 |
+| `content/05-examples.xml` | essential | one worked end-to-end example with inputs and final artefact | ~700 |
+| `content/06-decision-tree.xml` | essential | root-question + branches + conclusion refs to 01-core-rules | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft_inputs_summary` | haiku | template fill, bounded transformation |
+| `synthesize_decision` | sonnet | per-instance judgment over bounded inputs |
+| `review_for_compliance` | opus | cross-input synthesis when stakes are high or evidence chain is required |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/spec.md` | working skeleton matching the `produces=spec` shape |
+| `templates/_smoke-test.md` | minimum-viable filled-in smoke-test fixture |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-terraform-state.py` | enforce `02-output-contract.xml` JSON Schema | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
+- parent skill: `pro/infra/`
+- peer methodology: see other entries in `skills/faion/knowledge/pro/infra/`
+- external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Does the task involve a Terraform backend, locking, encryption, or state surgery?` and routes to one of the 5 conclusions referencing rules in `01-core-rules.xml` (run-the-checklist, skip-this-methodology, defer-to-upstream, escalate-to-owner, schedule-recompute). Use it when in doubt about applicability or scope.

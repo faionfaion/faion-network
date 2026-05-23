@@ -3,77 +3,98 @@ slug: manual-override-ledger
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Manual Override Ledger: codified infra practice that turns the recurring 'role-devops-engineer/Config drift sweep' decision into a repeatable, auditable artefact.
-content_id: "7594dcaf56d28bbd"
-tags: [manual-override-ledger, infra, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Decision-record ledger for every config drift override: who, what, why, time-to-revert, link to upstream PR. Turns ad-hoc out-of-band changes into auditable records.
+content_id: "6cbba71749597cca"
+complexity: medium
+produces: decision-record
+est_tokens: 3600
+tags: [manual-override, drift, ledger, audit, infra]
 ---
 # Manual Override Ledger
 
 ## Summary
 
-**One-sentence:** Manual Override Ledger: codified infra practice that turns the recurring 'role-devops-engineer/Config drift sweep' decision into a repeatable, auditable artefact.
+**One-sentence:** Decision-record ledger for every config drift override: who, what, why, time-to-revert, link to upstream PR. Turns ad-hoc out-of-band changes into auditable records.
 
-**One-paragraph:** Manual Override Ledger addresses the gap identified by the role-devops-engineer/Config drift sweep playbook: Some resources legitimately live outside IaC; teams need a registered ledger so drift sweeps stop flagging them. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Decision-record ledger for every config drift override: who, what, why, time-to-revert, link to upstream PR. Turns ad-hoc out-of-band changes into auditable records. Output is a versioned artefact a downstream agent or human reviewer can consume without re-deriving the rationale. Hard rules are pinned in `content/01-core-rules.xml`; the JSON Schema contract in `content/02-output-contract.xml` gates downstream consumption; failure modes in `content/03-failure-modes.xml` block the common antipatterns observed in real deployments.
+
+**Ефективно для:**
+
+- Інцидент закрили швидким fix у консолі — потрібен запис, інакше IaC drift зростатиме.
+- Audit consumer (SOC2/ISO) вимагає trail кожного manual change — ad-hoc Slack-повідомлення не йде.
+- Команда планує переходити drift→IaC щотижня, але немає списку 'що треба переводити'.
+- Один інженер часто робить overrides без записів — потрібен ledger + owner accountability.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-devops-engineer/Config drift sweep OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Operator just did an out-of-band cloud-console change to fix incident
+- Override is expected to be reverted to IaC within a known window
+- An audit consumer (SOC2, ISO, internal sec review) requires a written trail
+- A named owner is accountable for closing the override
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- No team owner exists — ledger becomes orphan
+- Override is part of normal automation flow (e.g. autoscaling) — not 'manual'
+- Org policy already forbids manual overrides — record refusal instead
 
 ## Prerequisites
 
-- recent context for the role-devops-engineer/Config drift sweep task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Trigger context | Markdown / ticket / transcript | upstream task |
+| Named owner | string (handle, email, role) | team roster |
+| Storage location | URL / repo path | artefact store |
+| Prior cycle artefact (if any) | this methodology's output | last run |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer` | parent role skill — provides the operating context for this methodology |
+| `pro/infra/AGENTS.md` | parent group context (vocabulary, neighbouring methodologies) |
+| `solo/sdd/sdd` | SDD discipline for artefact lifecycle (status flow, owners, review) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + run-the-checklist + skip-this-methodology conclusions | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid + invalid + forbidden examples | ~800 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom / root-cause / fix | ~700 |
+| `content/04-procedure.xml` | essential | step-by-step procedure (input/action/output/decision-gate) | ~700 |
+| `content/06-decision-tree.xml` | essential | root-question + branches + conclusion refs to 01-core-rules | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft_inputs_summary` | haiku | template fill, bounded transformation |
+| `synthesize_decision` | sonnet | per-instance judgment over bounded inputs |
+| `review_for_compliance` | opus | cross-input synthesis when stakes are high or evidence chain is required |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/manual-override-ledger.json` | JSON schema for the Manual Override Ledger output contract |
-| `templates/manual-override-ledger.md` | Markdown skeleton with the required fields |
+| `templates/decision-record.md` | working skeleton matching the `produces=decision-record` shape |
+| `templates/_smoke-test.md` | minimum-viable filled-in smoke-test fixture |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-manual-override-ledger.py` | Enforce Manual Override Ledger output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-manual-override-ledger.py` | enforce `02-output-contract.xml` JSON Schema | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
-- upstream playbook: `role-devops-engineer/Config drift sweep`
+- parent skill: `pro/infra/`
+- peer methodology: see other entries in `skills/faion/knowledge/pro/infra/`
+- external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Was an out-of-band manual change made that needs an auditable record with a named owner?` and routes to one of the 5 conclusions referencing rules in `01-core-rules.xml` (run-the-checklist, skip-this-methodology, defer-to-upstream, escalate-to-owner, schedule-recompute). Use it when in doubt about applicability or scope.

@@ -1,57 +1,103 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="K8S Version Upgrade Runbook Template Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid K8S Version Upgrade Runbook Template artefact. Subagent must satisfy this before returning.</summary>
-  <section title="Required fields">
-    <list>
-      <item>artefact_id — stable identifier (slug + ISO date or UUID).</item>
-      <item>template_version — semver matching the methodology's version frontmatter.</item>
-      <item>owner — single named person or team, never blank.</item>
-      <item>last_touched — ISO-8601 timestamp at write time.</item>
-      <item>trigger — the activity / event that justified producing this artefact.</item>
-      <item>fields — structured payload defined by templates/output-schema.json.</item>
-      <item>evidence — list of {source, citation} pairs anchoring every non-trivial field.</item>
-      <item>status — draft / ready_for_review / approved / archived.</item>
-      <item>next_action — single named next step with owner and due-cycle.</item>
-    </list>
+<text id="02-output-contract" title="K8s Version Upgrade Runbook Template Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON Schema (draft-07) describing the spec artefact this methodology produces, plus valid + invalid + forbidden examples enforced by `scripts/validate-k8s-version-upgrade-runbook-template.py`.</summary>
+
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/k8s-version-upgrade-runbook-template.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "artefact_id",
+    "produces",
+    "owner",
+    "version",
+    "last_reviewed",
+    "inputs_used",
+    "decision",
+    "rationale",
+    "trace_refs"
+  ],
+  "properties": {
+    "artefact_id": {"type": "string", "pattern": "^[a-z][a-z0-9-]+$"},
+    "produces": {"type": "string", "const": "spec"},
+    "owner": {"type": "string", "minLength": 2, "pattern": "^(?!team$|we$|us$).+"},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["name", "source"],
+        "properties": {
+          "name": {"type": "string"},
+          "source": {"type": "string", "format": "uri-reference"}
+        }
+      }
+    },
+    "decision": {"type": "string", "minLength": 1},
+    "rationale": {"type": "string", "minLength": 40},
+    "trace_refs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string"}
+    },
+    "status": {"type": "string", "enum": ["draft", "active", "review", "deprecated"]}
+  }
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "k8s-version-upgrade-runbook-template-2026q2-acme",
+  "produces": "spec",
+  "owner": "ruslan@faion.net",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "inputs_used": [
+    {"name": "trigger-context", "source": "tickets/INFRA-1234"},
+    {"name": "team-roster", "source": "wiki/team-roster"}
+  ],
+  "decision": "Run the procedure; promote to active after 7-day soak.",
+  "rationale": "All Applies-If preconditions hold (owner named, storage available, prior cycle exists). No Skip-If predicate triggered.",
+  "trace_refs": ["tickets/INFRA-1234", "wiki/team-roster"],
+  "status": "active"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "X",
+  "produces": "wrong-shape",
+  "owner": "team",
+  "version": "v1",
+  "last_reviewed": "yesterday",
+  "inputs_used": [],
+  "decision": "",
+  "rationale": "obvious",
+  "trace_refs": []
+}
+]]></code>
+    <note>artefact_id not kebab-case; produces wrong; owner == 'team' (rule r3); version not semver; date not ISO; inputs empty; decision empty; rationale &lt; 40 chars; trace_refs empty (rule r5).</note>
+  </example>
+
   <section title="Forbidden patterns">
-    <antipattern id="f1">
-      <description>artefact emitted with template_version empty or unknown.</description>
-      <reason>downstream parsers cannot reconcile schema drift.</reason>
-    </antipattern>
-    <antipattern id="f2">
-      <description>evidence array empty for non-trivial fields.</description>
-      <reason>fields without verbatim anchor are fabrication risks.</reason>
-    </antipattern>
-    <antipattern id="f3">
-      <description>owner field literally "team", "us", "tbd", or "n/a".</description>
-      <reason>un-owned artefacts are not actionable.</reason>
-    </antipattern>
-    <antipattern id="f4">
-      <description>status auto-set to "approved" by the agent without a named human reviewer.</description>
-      <reason>self-approval defeats the human checkpoint and the audit trail.</reason>
-    </antipattern>
-    <antipattern id="f5">
-      <description>prose paragraph stuffed into a field declared as a list/dict in templates/output-schema.json.</description>
-      <reason>schema-typed consumers (dashboards, exports) break silently.</reason>
-    </antipattern>
-  </section>
-  <section title="Allowed transformations">
     <list>
-      <item>Trim verbatim citations for length while preserving specifics (numbers, named tools, dates).</item>
-      <item>Group near-duplicate evidence items, but record group_size and a representative citation.</item>
-      <item>Carry forward unchanged values from the prior cycle's artefact when source-of-truth shows no delta.</item>
+      <item>owner in {"team","we","us","",null} (violates r3)</item>
+      <item>version not matching ^\d+\.\d+\.\d+$ (violates r4)</item>
+      <item>last_reviewed older than today - 90 days without a refresh flag (violates r4)</item>
+      <item>inputs_used empty AND decision != "no-op" (violates r5)</item>
+      <item>rationale that does not name any item in inputs_used (violates r5)</item>
+      <item>duplicate artefact_id within the same store (violates r1)</item>
     </list>
   </section>
-  <section title="Self-check checklist">
-    <list>
-      <item>template_version populated and matches the methodology frontmatter.</item>
-      <item>owner is a single named entity.</item>
-      <item>Every non-trivial field has >=1 evidence entry.</item>
-      <item>status is one of the allowed enum values.</item>
-      <item>Output validates against templates/output-schema.json.</item>
-      <item>next_action has an owner and a due-cycle.</item>
-    </list>
-  </section>
-  <reference href="templates/output-schema.json">JSON Schema for the methodology's required output.</reference>
+
+  <reference path="scripts/validate-k8s-version-upgrade-runbook-template.py">Validator script (stdlib + --help + --self-test)</reference>
 </text>

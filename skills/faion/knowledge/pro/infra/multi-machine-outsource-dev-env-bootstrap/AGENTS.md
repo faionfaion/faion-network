@@ -3,77 +3,99 @@ slug: multi-machine-outsource-dev-env-bootstrap
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Multi Machine Outsource Dev Env Bootstrap: codified infra practice that turns the recurring 'p4-outsource-specialist/New-project machine setup (laptop + desktop)' decision into a repeatable, auditable artefact.
-content_id: "007b4bbe4f8df456"
-tags: [multi-machine-outsource-dev-env-bootstrap, infra, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Spec for bootstrapping a senior outsource specialist's multi-machine dev env (laptop + desktop + VDI) per engagement, with isolation per client.
+content_id: "2f5cb4c7f4780758"
+complexity: medium
+produces: spec
+est_tokens: 4300
+tags: [dev-env, bootstrap, multi-machine, outsource, infra]
 ---
-# Multi Machine Outsource Dev Env Bootstrap
+# Multi-Machine Outsource Dev Env Bootstrap
 
 ## Summary
 
-**One-sentence:** Multi Machine Outsource Dev Env Bootstrap: codified infra practice that turns the recurring 'p4-outsource-specialist/New-project machine setup (laptop + desktop)' decision into a repeatable, auditable artefact.
+**One-sentence:** Spec for bootstrapping a senior outsource specialist's multi-machine dev env (laptop + desktop + VDI) per engagement, with isolation per client.
 
-**One-paragraph:** Multi Machine Outsource Dev Env Bootstrap addresses the gap identified by the p4-outsource-specialist/New-project machine setup (laptop + desktop) playbook: Dotfiles-management is single-machine. Senior with laptop + desktop + occasional VDI per engagement needs a multi-machine bootstrap pattern that keeps engagements isolated. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Spec for bootstrapping a senior outsource specialist's multi-machine dev env (laptop + desktop + VDI) per engagement, with isolation per client. Output is a versioned artefact a downstream agent or human reviewer can consume without re-deriving the rationale. Hard rules are pinned in `content/01-core-rules.xml`; the JSON Schema contract in `content/02-output-contract.xml` gates downstream consumption; failure modes in `content/03-failure-modes.xml` block the common antipatterns observed in real deployments.
+
+**Ефективно для:**
+
+- Senior бере 2+ engagements паралельно — без ізоляції credentials легко зливаються.
+- Новий desktop або client laptop треба підняти до working state менш ніж за 2 години.
+- Dotfiles живуть single-machine — на другій машині все треба робити з нуля.
+- VDI-сесії додають третю площину, де треба ті ж самі tools, але без особистих secrets.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p4-outsource-specialist/New-project machine setup (laptop + desktop) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Engineer takes on a new client engagement
+- Engineer uses >=2 personal machines (laptop + desktop) + occasionally a VDI
+- Engagements must remain isolated (no leakage of client A creds onto client B host)
+- Dotfiles + tool versions + secrets must be reproducible on a fresh machine in <2 hours
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Single-machine engineer with one client — overkill
+- Engagement allows shared global config (rare) — no isolation needed
+- All work happens in client-issued VDI only — different bootstrap model
 
 ## Prerequisites
 
-- recent context for the p4-outsource-specialist/New-project machine setup (laptop + desktop) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Trigger context | Markdown / ticket / transcript | upstream task |
+| Named owner | string (handle, email, role) | team roster |
+| Storage location | URL / repo path | artefact store |
+| Prior cycle artefact (if any) | this methodology's output | last run |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer` | parent role skill — provides the operating context for this methodology |
+| `pro/infra/AGENTS.md` | parent group context (vocabulary, neighbouring methodologies) |
+| `solo/sdd/sdd` | SDD discipline for artefact lifecycle (status flow, owners, review) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + run-the-checklist + skip-this-methodology conclusions | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid + invalid + forbidden examples | ~800 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom / root-cause / fix | ~700 |
+| `content/04-procedure.xml` | essential | step-by-step procedure (input/action/output/decision-gate) | ~700 |
+| `content/05-examples.xml` | essential | one worked end-to-end example with inputs and final artefact | ~700 |
+| `content/06-decision-tree.xml` | essential | root-question + branches + conclusion refs to 01-core-rules | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft_inputs_summary` | haiku | template fill, bounded transformation |
+| `synthesize_decision` | sonnet | per-instance judgment over bounded inputs |
+| `review_for_compliance` | opus | cross-input synthesis when stakes are high or evidence chain is required |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/multi-machine-outsource-dev-env-bootstrap.json` | JSON schema for the Multi Machine Outsource Dev Env Bootstrap output contract |
-| `templates/multi-machine-outsource-dev-env-bootstrap.md` | Markdown skeleton with the required fields |
+| `templates/spec.md` | working skeleton matching the `produces=spec` shape |
+| `templates/_smoke-test.md` | minimum-viable filled-in smoke-test fixture |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-multi-machine-outsource-dev-env-bootstrap.py` | Enforce Multi Machine Outsource Dev Env Bootstrap output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-multi-machine-outsource-dev-env-bootstrap.py` | enforce `02-output-contract.xml` JSON Schema | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
-- upstream playbook: `p4-outsource-specialist/New-project machine setup (laptop + desktop)`
+- parent skill: `pro/infra/`
+- peer methodology: see other entries in `skills/faion/knowledge/pro/infra/`
+- external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Does the engineer use >=2 machines + needs per-client isolation + <2h bootstrap?` and routes to one of the 5 conclusions referencing rules in `01-core-rules.xml` (run-the-checklist, skip-this-methodology, defer-to-upstream, escalate-to-owner, schedule-recompute). Use it when in doubt about applicability or scope.

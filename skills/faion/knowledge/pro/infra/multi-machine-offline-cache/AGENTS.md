@@ -3,68 +3,99 @@ slug: multi-machine-offline-cache
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Per-machine cache, deterministic offline fallback, license-aware re-activation for the faion CLI on outsource-specialist setups (laptop + workstation + client laptop).
-content_id: "8d939f0d7c04ecd5"
-tags: [multi-machine-offline-cache, infra, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Spec for faion CLI per-machine cache, deterministic offline fallback, license-aware re-activation across laptop + workstation + client-issued device.
+content_id: "0a064cb86a7d9dca"
+complexity: medium
+produces: spec
+est_tokens: 4300
+tags: [faion-cli, offline, cache, multi-machine, infra]
 ---
-
 # Multi-Machine Offline Cache
 
 ## Summary
 
-**One-sentence:** Per-machine cache, deterministic offline fallback, license-aware re-activation for the faion CLI on outsource-specialist setups (laptop + workstation + client laptop).
+**One-sentence:** Spec for faion CLI per-machine cache, deterministic offline fallback, license-aware re-activation across laptop + workstation + client-issued device.
 
-**One-paragraph:** Outsource specialists work from laptop + workstation + sometimes client-issued machine. Faion CLI must support per-machine cache, deterministic offline fallback, license-aware re-activation. Methodology + CLI capability missing. Output: cache layout + sync protocol + license rules.
+**One-paragraph:** Spec for faion CLI per-machine cache, deterministic offline fallback, license-aware re-activation across laptop + workstation + client-issued device. Output is a versioned artefact a downstream agent or human reviewer can consume without re-deriving the rationale. Hard rules are pinned in `content/01-core-rules.xml`; the JSON Schema contract in `content/02-output-contract.xml` gates downstream consumption; failure modes in `content/03-failure-modes.xml` block the common antipatterns observed in real deployments.
+
+**Ефективно для:**
+
+- Спеціаліст працює з laptop + desktop + іноді client-issued machine — без єдиної схеми cache синхронізації.
+- Літак / no-internet client site трапляються частіше ніж раз на місяць — потрібен offline-first fallback.
+- License-модель з per-machine activation count — без правил re-activation легко вилетіти за ліміт.
+- Команда переходить між робочими сесіями — стан cache має бути deterministic, не 'latest wins'.
 
 ## Applies If (ALL must hold)
 
-- user works on ≥2 machines
-- user expects CLI to function offline (flight, no-internet client site)
-- license model includes per-machine activation count
+- User works on >=2 machines (laptop + workstation + occasional client laptop)
+- User expects CLI to function offline (flights, no-internet client site)
+- License model includes per-machine activation count
+- Refresh token + license token storage spec exists
 
 ## Skip If (ANY kills it)
 
-- single-machine user — out of scope
-- fully cloud-hosted dev environment (Codespaces / Devbox) — different sync model
-- license is unlimited devices — no activation logic needed
+- Single-machine user — out of scope
+- Fully cloud-hosted dev environment (Codespaces, Devbox) — different sync model
+- License is unlimited devices — no activation logic needed
 
 ## Prerequisites
 
-- list of machines + roles (primary, secondary, client)
-- CLI version supporting offline cache
-- license token / refresh-token storage spec
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Trigger context | Markdown / ticket / transcript | upstream task |
+| Named owner | string (handle, email, role) | team roster |
+| Storage location | URL / repo path | artefact store |
+| Prior cycle artefact (if any) | this methodology's output | last run |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer` | parent skill — provides operating context for this methodology |
-| `solo/infra/server-craft` | peer methodology — produces inputs or consumes outputs |
-| `pro/sec/secrets-rotation-end-to-end` | peer methodology — produces inputs or consumes outputs |
+| `pro/infra/AGENTS.md` | parent group context (vocabulary, neighbouring methodologies) |
+| `solo/sdd/sdd` | SDD discipline for artefact lifecycle (status flow, owners, review) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules | ~900 |
-| `content/02-output-contract.xml` | essential | required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + run-the-checklist + skip-this-methodology conclusions | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid + invalid + forbidden examples | ~800 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom / root-cause / fix | ~700 |
+| `content/04-procedure.xml` | essential | step-by-step procedure (input/action/output/decision-gate) | ~700 |
+| `content/05-examples.xml` | essential | one worked end-to-end example with inputs and final artefact | ~700 |
+| `content/06-decision-tree.xml` | essential | root-question + branches + conclusion refs to 01-core-rules | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
 | `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `synthesize_decision` | sonnet | per-instance judgment over bounded inputs |
+| `review_for_compliance` | opus | cross-input synthesis when stakes are high or evidence chain is required |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/spec.md` | working skeleton matching the `produces=spec` shape |
+| `templates/_smoke-test.md` | minimum-viable filled-in smoke-test fixture |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-multi-machine-offline-cache.py` | enforce `02-output-contract.xml` JSON Schema | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
-- peer methodology: `solo/infra/server-craft`
-- peer methodology: `pro/sec/secrets-rotation-end-to-end`
-- external: https://github.com/sigstore/cosign (offline verification); https://en.wikipedia.org/wiki/Software_license_management
+- parent skill: `pro/infra/`
+- peer methodology: see other entries in `skills/faion/knowledge/pro/infra/`
+- external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Does the user work on >=2 machines with a license that counts activations + needs offline mode?` and routes to one of the 5 conclusions referencing rules in `01-core-rules.xml` (run-the-checklist, skip-this-methodology, defer-to-upstream, escalate-to-owner, schedule-recompute). Use it when in doubt about applicability or scope.

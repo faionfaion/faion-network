@@ -3,77 +3,99 @@ slug: opentelemetry-collector-architecture
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Opentelemetry Collector Architecture: codified infra practice that turns the recurring 'role-devops-engineer/Unified observability stack (logs + metrics + traces) in one weekend' decision into a repeatable, auditable artefact.
-content_id: "fb6a983797aacc68"
-tags: [opentelemetry-collector-architecture, infra, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Architecture spec for OTel Collector deployment: agent vs gateway tier, receivers/processors/exporters pipeline, batching + retry, mTLS, capacity sizing.
+content_id: "4ba70d765be10e4e"
+complexity: deep
+produces: spec
+est_tokens: 4300
+tags: [opentelemetry, otel, collector, architecture, infra]
 ---
-# Opentelemetry Collector Architecture
+# OpenTelemetry Collector Architecture
 
 ## Summary
 
-**One-sentence:** Opentelemetry Collector Architecture: codified infra practice that turns the recurring 'role-devops-engineer/Unified observability stack (logs + metrics + traces) in one weekend' decision into a repeatable, auditable artefact.
+**One-sentence:** Architecture spec for OTel Collector deployment: agent vs gateway tier, receivers/processors/exporters pipeline, batching + retry, mTLS, capacity sizing.
 
-**One-paragraph:** Opentelemetry Collector Architecture addresses the gap identified by the role-devops-engineer/Unified observability stack (logs + metrics + traces) in one weekend playbook: Search returns ZERO hits for opentelemetry across 1300 methodologies. ELK stack is covered but the actual 2024-2026 industry default (OTel + Collector + OTLP) is absent. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Architecture spec for OTel Collector deployment: agent vs gateway tier, receivers/processors/exporters pipeline, batching + retry, mTLS, capacity sizing. Output is a versioned artefact a downstream agent or human reviewer can consume without re-deriving the rationale. Hard rules are pinned in `content/01-core-rules.xml`; the JSON Schema contract in `content/02-output-contract.xml` gates downstream consumption; failure modes in `content/03-failure-modes.xml` block the common antipatterns observed in real deployments.
+
+**Ефективно для:**
+
+- 100+ сервісів випускають OTel — без gateway tier upstream вендор тоне в RPS.
+- Потрібно >=2 експортерів (metrics → Prom, traces → Tempo, logs → S3) з різними тарифами.
+- Безпекова політика вимагає mTLS між agent і gateway — інакше трафік просто заблокують.
+- Capacity planning: треба знати скільки RAM / CPU дає collector на 10k spans/sec.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-devops-engineer/Unified observability stack (logs + metrics + traces) in one weekend OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Team is deploying OTel Collector at scale (>=100 services)
+- Architecture must decide agent-only vs agent+gateway tier
+- Multiple exporters needed (Prometheus + Tempo + S3 / Datadog)
+- Network/security constraints require mTLS between tiers
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Team uses a vendor agent (Datadog Agent, Splunk UF) — collector not in scope
+- Single-service deployment with no aggregation — direct SDK export is fine
+- Instrumentation strategy still being chosen — use opentelemetry-instrumentation-playbook first
 
 ## Prerequisites
 
-- recent context for the role-devops-engineer/Unified observability stack (logs + metrics + traces) in one weekend task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Trigger context | Markdown / ticket / transcript | upstream task |
+| Named owner | string (handle, email, role) | team roster |
+| Storage location | URL / repo path | artefact store |
+| Prior cycle artefact (if any) | this methodology's output | last run |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer` | parent role skill — provides the operating context for this methodology |
+| `pro/infra/AGENTS.md` | parent group context (vocabulary, neighbouring methodologies) |
+| `solo/sdd/sdd` | SDD discipline for artefact lifecycle (status flow, owners, review) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + run-the-checklist + skip-this-methodology conclusions | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid + invalid + forbidden examples | ~800 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom / root-cause / fix | ~700 |
+| `content/04-procedure.xml` | essential | step-by-step procedure (input/action/output/decision-gate) | ~700 |
+| `content/05-examples.xml` | essential | one worked end-to-end example with inputs and final artefact | ~700 |
+| `content/06-decision-tree.xml` | essential | root-question + branches + conclusion refs to 01-core-rules | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft_inputs_summary` | haiku | template fill, bounded transformation |
+| `synthesize_decision` | sonnet | per-instance judgment over bounded inputs |
+| `review_for_compliance` | opus | cross-input synthesis when stakes are high or evidence chain is required |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/opentelemetry-collector-architecture.json` | JSON schema for the Opentelemetry Collector Architecture output contract |
-| `templates/opentelemetry-collector-architecture.md` | Markdown skeleton with the required fields |
+| `templates/spec.md` | working skeleton matching the `produces=spec` shape |
+| `templates/_smoke-test.md` | minimum-viable filled-in smoke-test fixture |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-opentelemetry-collector-architecture.py` | Enforce Opentelemetry Collector Architecture output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-opentelemetry-collector-architecture.py` | enforce `02-output-contract.xml` JSON Schema | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
-- upstream playbook: `role-devops-engineer/Unified observability stack (logs + metrics + traces) in one weekend`
+- parent skill: `pro/infra/`
+- peer methodology: see other entries in `skills/faion/knowledge/pro/infra/`
+- external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Is the team deploying OTel Collector at >=100 services with multiple exporters + mTLS?` and routes to one of the 5 conclusions referencing rules in `01-core-rules.xml` (run-the-checklist, skip-this-methodology, defer-to-upstream, escalate-to-owner, schedule-recompute). Use it when in doubt about applicability or scope.

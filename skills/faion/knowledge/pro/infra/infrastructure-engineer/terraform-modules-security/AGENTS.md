@@ -3,70 +3,98 @@ slug: terraform-modules-security
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Terraform modules must never embed secrets, must follow IAM and network least-privilege, and must be tested with terraform validate, terraform test (native), and optionally Terratest before release.
-content_id: "a64b52eccd97f559"
-tags: [terraform, modules, security, testing, cicd]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Per-module security checklist: sensitive var marking, no hardcoded secrets, encryption-by-default, least-privilege IAM, tfsec/checkov in module CI.
+content_id: "4e7ad6d3e8f08025"
+complexity: medium
+produces: checklist
+est_tokens: 3600
+tags: [terraform, modules, security, iac, tfsec]
 ---
-# Terraform Module Security and Testing
+# Terraform Modules — Security
 
 ## Summary
 
-**One-sentence:** Terraform modules must never embed secrets, must follow IAM and network least-privilege, and must be tested with terraform validate, terraform test (native), and optionally Terratest before release.
+**One-sentence:** Per-module security checklist: sensitive var marking, no hardcoded secrets, encryption-by-default, least-privilege IAM, tfsec/checkov in module CI.
 
-**One-paragraph:** Terraform modules must never embed secrets, must follow IAM and network least-privilege, and must be tested with terraform validate, terraform test (native), and optionally Terratest before release. A CI/CD pipeline with format check, validation, lint, security scan, plan, and gated apply stages is the minimum quality bar for production modules.
+**One-paragraph:** Per-module security checklist: sensitive var marking, no hardcoded secrets, encryption-by-default, least-privilege IAM, tfsec/checkov in module CI. Output is a versioned artefact a downstream agent or human reviewer can consume without re-deriving the rationale. Hard rules are pinned in `content/01-core-rules.xml`; the JSON Schema contract in `content/02-output-contract.xml` gates downstream consumption; failure modes in `content/03-failure-modes.xml` block the common antipatterns observed in real deployments.
+
+**Ефективно для:**
+
+- Модуль має параметри типу db_password, api_key — потрібно явно sensitive = true.
+- Модуль створює S3 / RDS / EBS — треба перевірити encryption at-rest за замовчуванням.
+- tfsec / checkov ще не запускаються на модулі — публікація в registry без сканування заборонена.
+- IAM policy у модулі має wildcard Action або Resource — треба урізати до least privilege.
 
 ## Applies If (ALL must hold)
 
-- Writing or reviewing a Terraform module that manages IAM, networking, encryption, or secret references.
-- Setting up a CI/CD pipeline for a Terraform module or environment.
-- Adding tests to an existing module that lacks automated validation.
-- Conducting a security review of a module before promoting it to production.
+- Module exposes resources that store data (S3, RDS, EBS, Secrets Manager)
+- Module contains IAM policies or security group rules
+- Module accepts sensitive input variables (DB passwords, API keys)
+- Module is published to a registry consumed by external teams
 
 ## Skip If (ANY kills it)
 
-- Prototype or throwaway environments — apply a lighter checklist; skip Terratest.
-- Read-only modules that only expose data sources — security scan for secrets is still required.
+- Module composition wiring — use terraform-modules-composition
+- Module versioning + registry — use terraform-modules-versioning
+- Module internal layout — use terraform-modules-structure
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Trigger context | Markdown / ticket / transcript | upstream task |
+| Named owner | string (handle, email, role) | team roster |
+| Storage location | URL / repo path | artefact store |
+| Prior cycle artefact (if any) | this methodology's output | last run |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/infra/AGENTS.md` | parent group context (vocabulary, neighbouring methodologies) |
+| `solo/sdd/sdd` | SDD discipline for artefact lifecycle (status flow, owners, review) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + run-the-checklist + skip-this-methodology conclusions | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid + invalid + forbidden examples | ~800 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom / root-cause / fix | ~700 |
+| `content/04-procedure.xml` | essential | step-by-step procedure (input/action/output/decision-gate) | ~700 |
+| `content/06-decision-tree.xml` | essential | root-question + branches + conclusion refs to 01-core-rules | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft_inputs_summary` | haiku | template fill, bounded transformation |
+| `synthesize_decision` | sonnet | per-instance judgment over bounded inputs |
+| `review_for_compliance` | opus | cross-input synthesis when stakes are high or evidence chain is required |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/checklist.md` | working skeleton matching the `produces=checklist` shape |
+| `templates/_smoke-test.md` | minimum-viable filled-in smoke-test fixture |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-terraform-modules-security.py` | enforce `02-output-contract.xml` JSON Schema | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
+- parent skill: `pro/infra/`
+- peer methodology: see other entries in `skills/faion/knowledge/pro/infra/`
+- external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Does this module create data-at-rest resources, IAM policies, or accept sensitive variables?` and routes to one of the 5 conclusions referencing rules in `01-core-rules.xml` (run-the-checklist, skip-this-methodology, defer-to-upstream, escalate-to-owner, schedule-recompute). Use it when in doubt about applicability or scope.

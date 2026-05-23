@@ -3,77 +3,99 @@ slug: pci-dss-vendor-evidence-pack
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Pci Dss Vendor Evidence Pack: codified infra practice that turns the recurring 'p4-outsource-specialist/FinTech / HIPAA compliance audit prep (4 weeks)' decision into a repeatable, auditable artefact.
-content_id: "4a13e29062a6d912"
-tags: [pci-dss-vendor-evidence-pack, infra, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Audit-ready evidence pack template for PCI-DSS vendor assessments: scope statement, SAQ type, AoC, network diagrams, key-management proof, quarterly ASV scan, pen-test summary.
+content_id: "edddd39e08b38b35"
+complexity: deep
+produces: report
+est_tokens: 4300
+tags: [pci-dss, vendor, evidence, audit, compliance, infra]
 ---
-# Pci Dss Vendor Evidence Pack
+# PCI-DSS Vendor Evidence Pack
 
 ## Summary
 
-**One-sentence:** Pci Dss Vendor Evidence Pack: codified infra practice that turns the recurring 'p4-outsource-specialist/FinTech / HIPAA compliance audit prep (4 weeks)' decision into a repeatable, auditable artefact.
+**One-sentence:** Audit-ready evidence pack template for PCI-DSS vendor assessments: scope statement, SAQ type, AoC, network diagrams, key-management proof, quarterly ASV scan, pen-test summary.
 
-**One-paragraph:** Pci Dss Vendor Evidence Pack addresses the gap identified by the p4-outsource-specialist/FinTech / HIPAA compliance audit prep (4 weeks) playbook: FinTech vendors keep rebuilding the same evidence pack. A reusable, AI-agent-friendly evidence template per PCI DSS 4.0 requirement does not exist in faion. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Audit-ready evidence pack template for PCI-DSS vendor assessments: scope statement, SAQ type, AoC, network diagrams, key-management proof, quarterly ASV scan, pen-test summary. Output is a versioned artefact a downstream agent or human reviewer can consume without re-deriving the rationale. Hard rules are pinned in `content/01-core-rules.xml`; the JSON Schema contract in `content/02-output-contract.xml` gates downstream consumption; failure modes in `content/03-failure-modes.xml` block the common antipatterns observed in real deployments.
+
+**Ефективно для:**
+
+- Вендор обробляє CHD або токени — без evidence pack QSA розгортає аудит.
+- Аудит у наступні 12 місяців — pack має бути готовий за 30 днів, а не за тиждень до due date.
+- QSA вже відмовив у попередньому pack за неповноту scope statement — треба структурований template.
+- Power-user не хоче переробляти діаграми мережі кожні 6 місяців — потрібен живий evidence ledger.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p4-outsource-specialist/FinTech / HIPAA compliance audit prep (4 weeks) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Vendor handles, stores, or processes cardholder data
+- PCI-DSS audit (QSA or self-assessment SAQ) is required within next 12 months
+- Evidence pack must be assembled in a defensible, auditor-ready form
+- Owner of evidence pack is named + accountable
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Org does not handle cardholder data (CHD) and is not in PCI scope
+- Vendor is fully outside CDE and there's a contractual carve-out
+- QSA already has a current evidence pack covering this scope
 
 ## Prerequisites
 
-- recent context for the p4-outsource-specialist/FinTech / HIPAA compliance audit prep (4 weeks) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Trigger context | Markdown / ticket / transcript | upstream task |
+| Named owner | string (handle, email, role) | team roster |
+| Storage location | URL / repo path | artefact store |
+| Prior cycle artefact (if any) | this methodology's output | last run |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/infra/devops-engineer` | parent role skill — provides the operating context for this methodology |
+| `pro/infra/AGENTS.md` | parent group context (vocabulary, neighbouring methodologies) |
+| `solo/sdd/sdd` | SDD discipline for artefact lifecycle (status flow, owners, review) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + run-the-checklist + skip-this-methodology conclusions | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema draft-07 + valid + invalid + forbidden examples | ~800 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom / root-cause / fix | ~700 |
+| `content/04-procedure.xml` | essential | step-by-step procedure (input/action/output/decision-gate) | ~700 |
+| `content/05-examples.xml` | essential | one worked end-to-end example with inputs and final artefact | ~700 |
+| `content/06-decision-tree.xml` | essential | root-question + branches + conclusion refs to 01-core-rules | ~500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `draft_inputs_summary` | haiku | template fill, bounded transformation |
+| `synthesize_decision` | sonnet | per-instance judgment over bounded inputs |
+| `review_for_compliance` | opus | cross-input synthesis when stakes are high or evidence chain is required |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/pci-dss-vendor-evidence-pack.json` | JSON schema for the Pci Dss Vendor Evidence Pack output contract |
-| `templates/pci-dss-vendor-evidence-pack.md` | Markdown skeleton with the required fields |
+| `templates/report.md` | working skeleton matching the `produces=report` shape |
+| `templates/_smoke-test.md` | minimum-viable filled-in smoke-test fixture |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-pci-dss-vendor-evidence-pack.py` | Enforce Pci Dss Vendor Evidence Pack output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-pci-dss-vendor-evidence-pack.py` | enforce `02-output-contract.xml` JSON Schema | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/infra/devops-engineer/`
-- upstream playbook: `p4-outsource-specialist/FinTech / HIPAA compliance audit prep (4 weeks)`
+- parent skill: `pro/infra/`
+- peer methodology: see other entries in `skills/faion/knowledge/pro/infra/`
+- external: industry references cited inline in `content/01-core-rules.xml`
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts at `Does the vendor handle CHD + need an auditor-ready PCI-DSS evidence pack within 12 months?` and routes to one of the 5 conclusions referencing rules in `01-core-rules.xml` (run-the-checklist, skip-this-methodology, defer-to-upstream, escalate-to-owner, schedule-recompute). Use it when in doubt about applicability or scope.
