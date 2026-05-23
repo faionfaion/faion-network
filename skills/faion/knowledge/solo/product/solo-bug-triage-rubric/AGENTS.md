@@ -4,54 +4,95 @@ tier: solo
 group: product
 domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
+summary: 5-question rubric mapping a bug to one of three queues (drop-everything / next-sprint / accept) within 5 minutes; named owner, retest threshold, and a decay rule for accepted bugs.
 content_id: "01ab9ca12583631f"
-summary: P0/P1/P2 + impact-reach scoring scaled for an ARR-honest solo founder — separates "fix now" from "fix never" in under 60 seconds per bug.
+complexity: light
+produces: rubric
+est_tokens: 2900
+tags: [bug-triage, solo, rubric, support-ops]
 ---
 # Solo Bug Triage Rubric
 
 ## Summary
 
-**One-sentence:** A two-axis triage rubric (severity × reach) tuned for solo founders, where every bug gets a P0/P1/P2 label, an action verdict, and a kill-or-keep call inside one minute.
+**One-sentence:** 5-question rubric mapping a bug to one of three queues (drop-everything / next-sprint / accept) within 5 minutes; named owner, retest threshold, and a decay rule for accepted bugs.
 
-**One-paragraph:** Team triage rubrics inherit from large-org severity definitions (P0 = "production-down, 50+ engineers paged"). Solo founders running on real ARR cannot afford that calibration: a P0 in their universe is "any paying customer cannot use the core flow"; many "P2"s in team-speak are kill-it items at solo scale. This methodology defines the solo rubric: a fixed severity ladder with concrete revenue and reach criteria, plus a forcing question ("is anyone affected paying?") that bypasses long debates. Anchored to "Friday bug-bash & tech-debt triage hour" — the rubric runs in the 60 minutes of triage every Friday.
+**One-paragraph:** 5-question rubric mapping a bug to one of three queues (drop-everything / next-sprint / accept) within 5 minutes; named owner, retest threshold, and a decay rule for accepted bugs. The methodology pins the artefact: a fixed shape, a named owner, evidence anchors, and a published review cadence. It is loaded when the role named in the trigger starts the block and produces a committed artefact reviewed against outcomes at the next iteration.
+
+**Ефективно для:**
+
+- Operators who run Solo Bug Triage Rubric on a recurring cadence and need a reviewable operating tool.
+- Solo founders who need a defensible artefact for stakeholder pressure.
+- Teams syncing outcome work across PM, design, and engineering.
+- Audit / review surface: every artefact has an owner, evidence anchors, and a decay date.
 
 ## Applies If (ALL must hold)
 
-- Solo founder with a live revenue-bearing product (≥1 paying customer).
-- Bug backlog exists in a tracker (Linear, GitHub Issues, plain markdown).
-- You can identify paying-customer vs free-user impact per bug (segment data accessible).
-- Friday (or weekly) triage cadence is in place or will be.
+- Solo SaaS handles ≥3 bug reports per week.
+- No team to delegate to — owner triages everything.
+- Bugs come from ≥2 channels (email, Discord, in-app).
+- Owner wants a defensible kill / accept policy under stakeholder pressure.
 
 ## Skip If (ANY kills it)
 
-- Pre-revenue prototype — everything is P2 by definition; use a different filter (does this block the demo?).
-- Team product with on-call rotation — adopt a team-scale rubric instead.
-- Operating in safety-critical domain (med, finance, life-systems) — use the regulated-domain severity ladder, not this one.
+- Incident-grade outage — incident response runs the show.
+- Single-user enterprise contract with SLA — use SLA matrix.
+- Pre-launch with no users — bugs are dev tasks.
+- Team of ≥3 — formal bug-triage process applies.
 
 ## Prerequisites
 
-- Bug tracker with a `priority` field (or labels equivalent).
-- A way to filter bug reporters by `is_paying` status (Stripe/segment join).
-- A weekly triage block on the calendar.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Inbound bug channels mapped | table | Support |
+| Owner with triage authority | @handle | Self |
+| Severity / scope dimensions | matrix | Internal |
+| Test environment for retest | staging URL | Engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/product/AGENTS.md` | Parent group context |
-| `solo/product/kill-or-keep-criteria` if present | Sibling rubric for feature-scope kill calls |
+| `solo/dev/code-quality/bug-reporting` | Provides the bug report intake shape. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules every triage pass enforces | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `draft-solo-bug-triage-rubric` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-solo-bug-triage-rubric` | haiku | Schema check + threshold checks; deterministic. |
+| `review-solo-bug-triage-rubric` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/solo-bug-triage-rubric.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/solo-bug-triage-rubric.md` | Markdown skeleton for human-readable artefact rendering. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-solo-bug-triage-rubric.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/`
-- triggering activity: `p1-solo-saas-builder/Friday bug-bash & tech-debt triage hour`
-- adjacent: `solo/product/kill-or-keep-criteria`, `solo/product/friction-to-backlog`
+- [[solo-go-no-go-criteria]]
+- [[support-tool-pm-triage-spec]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

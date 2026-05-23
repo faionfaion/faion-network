@@ -4,71 +4,98 @@ tier: solo
 group: product
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Product discovery is a time-boxed process (1–4 weeks) for de-risking an idea before committing build resources.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Time-boxed (1-4w) de-risking of an idea across the four product risks (value, usability, feasibility, viability) before committing build resources, producing a discovery report with a go / hold / no-op verdict.
 content_id: "54103633f8df5e44"
-tags: [product-discovery, risk-framework, experiments, validation, product-management]
+complexity: medium
+produces: report
+est_tokens: 4200
+tags: [product-discovery, risk-framework, value-usability-feasibility-viability, pre-build]
 ---
 # Product Discovery
 
 ## Summary
 
-**One-sentence:** Product discovery is a time-boxed process (1–4 weeks) for de-risking an idea before committing build resources.
+**One-sentence:** Time-boxed (1-4w) de-risking of an idea across the four product risks (value, usability, feasibility, viability) before committing build resources, producing a discovery report with a go / hold / no-op verdict.
 
-**One-paragraph:** Product discovery is a time-boxed process (1–4 weeks) for de-risking an idea before committing build resources. It tests four risk types — value (will customers buy/use it?), usability (can they figure it out?), feasibility (can we build it?), and business viability (does it work for the business?) — using the cheapest technique that gives sufficient confidence at each stage.
+**One-paragraph:** Time-boxed (1-4w) de-risking of an idea across the four product risks (value, usability, feasibility, viability) before committing build resources, producing a discovery report with a go / hold / no-op verdict. The methodology pins the artefact: a fixed shape, a named owner, evidence anchors, and a published review cadence. It is loaded when the role named in the trigger starts the block and produces a committed artefact reviewed against outcomes at the next iteration.
+
+**Ефективно для:**
+
+- Operators who run Product Discovery on a recurring cadence and need a reviewable operating tool.
+- Solo founders who need a defensible artefact for stakeholder pressure.
+- Teams syncing outcome work across PM, design, and engineering.
+- Audit / review surface: every artefact has an owner, evidence anchors, and a decay date.
 
 ## Applies If (ALL must hold)
 
-- Pre-build validation of any significant feature or product idea.
-- High-risk assumptions that would kill the idea if wrong (value risk, feasibility risk).
-- Before committing to a 4+ week development effort.
-- When the team disagrees on whether users actually have the problem being solved.
+- Idea backed by ≥1 stakeholder request but no validated demand signal.
+- Build effort would exceed 2 weeks if the idea were committed today.
+- ≥5 representative users reachable for interviews / prototype tests.
+- Time-box of 1-4 weeks available before the build decision.
 
 ## Skip If (ANY kills it)
 
-- Tiny bug fixes or incremental improvements with known user impact — just ship.
-- Compliance or security requirements with no alternative — no discovery needed, build it.
-- Post-PMF continuous learning — use continuous-discovery instead (recurring cadence vs one-time deep dive).
-- Discovery that would take longer than the build itself — run a spike instead.
+- Already-validated idea with paying customers — skip discovery, scope MVP.
+- Pure refactor / infra / compliance work with no user-facing risk.
+- No reachable target users — go do problem-validation first.
+- Discovery would exceed the cost of building (small / cheap features).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Idea brief | 1-page doc | Stakeholder |
+| Target segment | persona + reachability proof | CRM / Discord |
+| Discovery budget | 1-4 week time-box | Planning |
+| Risk hypothesis list | value/usability/feasibility/viability | Team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/product/product-planning/continuous-discovery` | Provides ongoing customer voice; this scopes a time-boxed instance. |
+| `solo/product/product-planning/mvp-scoping` | Downstream consumer of the discovery verdict. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-product-discovery` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-product-discovery` | haiku | Schema check + threshold checks; deterministic. |
+| `review-product-discovery` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/product-discovery.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/product-discovery.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-product-discovery.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-planning/`
+- [[continuous-discovery]]
+- [[mvp-scoping]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

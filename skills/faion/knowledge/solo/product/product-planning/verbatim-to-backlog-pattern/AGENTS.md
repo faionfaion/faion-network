@@ -4,84 +4,98 @@ tier: solo
 group: product
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Four-step transform (extract → cluster → frame → prioritise) bridging Mom-Test verbatim customer quotes to RICE-scored Job-Story backlog cards with verbatim attached to every card.
 content_id: "5f41f355a092bf27"
-summary: Bridges Mom-Test verbatim customer quotes to prioritised backlog cards via a 4-step transform (extract → cluster → frame → prioritise) that keeps the customer's words attached to every story.
+complexity: medium
+produces: spec
+est_tokens: 4200
 tags: [continuous-discovery, mom-test, backlog, prioritisation, solo-saas]
 ---
-
-# Verbatim to Backlog Pattern
+# Verbatim To Backlog Pattern
 
 ## Summary
 
-**One-sentence:** Bridges Mom-Test verbatim customer quotes to prioritised backlog cards via a 4-step transform (extract → cluster → frame → prioritise) that keeps the customer's words attached to every story.
+**One-sentence:** Four-step transform (extract → cluster → frame → prioritise) bridging Mom-Test verbatim customer quotes to RICE-scored Job-Story backlog cards with verbatim attached to every card.
 
-**One-paragraph:** Continuous-discovery methodologies tell solo SaaS builders to "talk to users"; backlog-management methodologies tell them to "prioritise by value". Nothing connects the two — so verbatim customer pain quotes turn into vague PM-language cards ("improve onboarding") that lose the original signal. This methodology codifies a 4-step transform: (1) EXTRACT pain statements from interview/inbox/Discord with timestamps, (2) CLUSTER similar pains by embedding similarity, (3) FRAME each cluster as a backlog card in Job-Story format with ≥ 2 verbatim quotes attached, (4) PRIORITISE by frequency × severity × strategic fit. Output: `BacklogCard` records with verbatim attachment links + RICE score.
+**One-paragraph:** Four-step transform (extract → cluster → frame → prioritise) bridging Mom-Test verbatim customer quotes to RICE-scored Job-Story backlog cards with verbatim attached to every card. The methodology pins the artefact: a fixed shape, a named owner, evidence anchors, and a published review cadence. It is loaded when the role named in the trigger starts the block and produces a committed artefact reviewed against outcomes at the next iteration.
+
+**Ефективно для:**
+
+- Operators who run Verbatim To Backlog Pattern on a recurring cadence and need a reviewable operating tool.
+- Solo founders who need a defensible artefact for stakeholder pressure.
+- Teams syncing outcome work across PM, design, and engineering.
+- Audit / review surface: every artefact has an owner, evidence anchors, and a decay date.
 
 ## Applies If (ALL must hold)
 
-- solo SaaS post-launch with ≥ 5 paying / active users
-- ≥ 20 customer touchpoints in trailing 60 days (interviews, support tickets, Discord)
-- backlog tool with custom-field support (Linear, GitHub Projects, Notion DB)
-- operator wants prioritisation defensible by quote evidence
+- Solo SaaS post-launch with ≥5 paying / active users.
+- ≥20 customer touchpoints (interviews, support tickets, Discord) in trailing 60 days.
+- Backlog tool with custom-field support (Linear / GitHub Projects / Notion).
+- Operator wants prioritisation defensible by quote evidence.
 
 ## Skip If (ANY kills it)
 
-- pre-launch (no real customer voice yet) — use problem-validation, not this
-- internal tool / no external users — backlog driven by stakeholders, not pattern
-- single-user / wedge B2B engagement — N=1 doesn't cluster
-- operator already has &gt; 200 cards in backlog — clean backlog first; this adds noise
+- Pre-launch — no real customer voice; use problem-validation.
+- Internal tool with no external users — backlog driven by stakeholders.
+- Single-customer wedge B2B engagement — N=1 doesn't cluster.
+- Operator has >200 cards in backlog — clean backlog first.
 
 ## Prerequisites
 
-- collection of customer touchpoints (transcripts, support tickets, Discord exports, DM threads)
-- backlog tool with verbatim quote field (Linear's description, Notion DB column)
-- embedding model API access (OpenAI, Voyage, Anthropic-via-Claude)
-- prior 30 days of historical touchpoints for baseline
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Touchpoint corpus | transcripts / tickets / DMs | Inbox / Discord / Intercom |
+| Backlog tool with quote field | config | Linear / Notion |
+| Embedding model access | API key | OpenAI / Voyage / Anthropic |
+| ≥30d historical touchpoints | archive | Inbox |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/product/product-planning/continuous-discovery` | Provides the touchpoint stream this methodology consumes |
-| `pro/product/product-manager/backlog-management` | Provides the destination backlog format |
-| `pro/research/researcher/jobs-to-be-done` | Job-Story framing borrowed from JTBD |
+| `solo/product/product-planning/continuous-discovery` | Provides the touchpoint stream this consumes. |
+| `pro/product/product-manager/backlog-management` | Destination format. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: 4-step transform, verbatim attachment, cluster threshold, RICE prioritisation, anti-PM-language | ~1000 |
-| `content/02-output-contract.xml` | essential | `BacklogCard` + cluster schemas | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 modes: lossy paraphrase, cluster collapse, PM-rewrite, etc. | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `pain_extraction_from_transcripts` | sonnet | Quote-mining bounded by Mom-Test r1 |
-| `cluster_pains_by_embedding` | haiku | Mechanical embedding + clustering |
-| `job_story_framing` | sonnet | Synthesis bounded by template |
-| `rice_score_compute` | sonnet | Numeric model with explicit inputs |
+| `draft-verbatim-to-backlog-pattern` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-verbatim-to-backlog-pattern` | haiku | Schema check + threshold checks; deterministic. |
+| `review-verbatim-to-backlog-pattern` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/backlog-card.json` | Output schema |
-| `templates/job-story.md` | "When &lt;trigger&gt;, I want &lt;motivation&gt;, so I can &lt;outcome&gt;" frame |
+| `templates/verbatim-to-backlog-pattern.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/verbatim-to-backlog-pattern.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/weekly-extract-cluster.py` | Process week's touchpoints into pain clusters | Cron Mon 10:00 |
-| `scripts/backlog-card-pr.py` | Compose PR adding cards to backlog tool | After clustering |
+| `scripts/validate-verbatim-to-backlog-pattern.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-planning/`
-- peer methodologies: `continuous-discovery`, `backlog-management`, `jobs-to-be-done`
-- external: [Rob Fitzpatrick — The Mom Test](https://momtestbook.com/) · [Teresa Torres — Continuous Discovery Habits](https://www.producttalk.org/continuous-discovery-habits/) · [Sean McBride / Marty Cagan on opportunity solution trees](https://www.svpg.com/) · [Intercom — Job Stories vs User Stories](https://www.intercom.com/blog/jobs-to-be-done-product-design/)
+- [[continuous-discovery]]
+- [[backlog-management]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

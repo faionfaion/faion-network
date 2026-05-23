@@ -4,72 +4,98 @@ tier: solo
 group: product
 domain: pm
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Six-step process for deciding what goes into each release, when it ships, and how it is communicated.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Six-step release plan (goal → contents → readiness → communication → execution → post-release) with rollback gate, named owner per channel, and a 14-day stability check.
 content_id: "68460e3733a2e87f"
-tags: [release-planning, release-management, versioning, rollback, release-notes, semver, changelog]
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: [release-planning, release-management, rollback, communication]
 ---
 # Release Planning
 
 ## Summary
 
-**One-sentence:** Six-step process for deciding what goes into each release, when it ships, and how it is communicated.
+**One-sentence:** Six-step release plan (goal → contents → readiness → communication → execution → post-release) with rollback gate, named owner per channel, and a 14-day stability check.
 
-**One-paragraph:** Six-step process for deciding what goes into each release, when it ships, and how it is communicated. Covers release-type taxonomy (major/minor/patch/hotfix per SemVer 2.0), readiness checklists, rollback requirements, and audience-specific communication plans. Concrete rule: every release needs a goal statement, a one-command rollback plan, and a communication plan before code touches production.
+**One-paragraph:** Six-step release plan (goal → contents → readiness → communication → execution → post-release) with rollback gate, named owner per channel, and a 14-day stability check. The methodology pins the artefact: a fixed shape, a named owner, evidence anchors, and a published review cadence. It is loaded when the role named in the trigger starts the block and produces a committed artefact reviewed against outcomes at the next iteration.
+
+**Ефективно для:**
+
+- Operators who run Release Planning on a recurring cadence and need a reviewable operating tool.
+- Solo founders who need a defensible artefact for stakeholder pressure.
+- Teams syncing outcome work across PM, design, and engineering.
+- Audit / review surface: every artefact has an owner, evidence anchors, and a decay date.
 
 ## Applies If (ALL must hold)
 
-- Planning what to include in an upcoming version (major, minor, patch, or hotfix).
-- Coordinating release timing across engineering, support, and marketing for a SaaS or library.
-- Writing release notes for an existing set of merged changes that have not yet shipped.
-- Setting up a repeatable release cadence for a solo founder or small team.
-- Triggers: tag matches `v*`, CHANGELOG `[Unreleased]` is non-empty, milestone closes, customer-visible breaking change is queued.
+- Release contains ≥1 user-visible change (not a silent infra deploy).
+- Release affects ≥1 stakeholder group (customers, partners, support).
+- Owner has authority over ship / rollback decision.
+- Instrumentation captures error rate + key business metric.
 
 ## Skip If (ANY kills it)
 
-- Continuous deployment with feature flags — individual flag rollouts replace release bundling.
-- Pre-launch products with no users — use a task list, not a release plan.
-- Emergency hotfixes under time pressure — jump straight to the hotfix subset (steps 3, 5, 6 only).
-- Internal-only refactors with no observable surface area — push through the regular CI/CD pipeline.
+- Silent infra change behind a flag — use feature-flag playbook.
+- Hotfix during incident — incident-response runs the show.
+- Pre-PMF iteration where every commit is a 'release'.
+- Single-customer custom build — handoff playbook applies.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Release scope | ticket list | Backlog |
+| Readiness checklist | test, docs, support | QA |
+| Communication plan | channel + audience matrix | Marketing / support |
+| Rollback runbook | steps + owner | Engineering |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/product/product-planning/product-launch` | Major releases that are also launches. |
+| `pro/infra/cicd-engineer/release-engineering` | Pipeline that ships the release. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-release-planning` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-release-planning` | haiku | Schema check + threshold checks; deterministic. |
+| `review-release-planning` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/release-planning.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/release-planning.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-release-planning.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-planning/`
+- [[product-launch]]
+- [[roadmap-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

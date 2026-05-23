@@ -4,40 +4,95 @@ tier: solo
 group: product
 domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
+summary: RICE reweighted for solo SaaS: Reach in absolute small-number users (80 is signal), Effort in dev-days for one person, Confidence collapsed to 3 levels, and WIP-1 framing — the top of the list is the ONLY bet of the week.
 content_id: "3c12d266af805e7f"
-summary: "RICE adjusted for the solo SaaS builder: Reach baselined to a small absolute user count, Effort in dev-days not dev-weeks, Confidence forced to three discrete levels, and a WIP-1 framing that forces a single bet per Sunday roadmap ritual instead of a ranked stack of parallel work."
-tags: [product, solo, p1-solo-saas, rice, prioritization, wip-1, sunday-roadmap]
+complexity: light
+produces: rubric
+est_tokens: 2900
+tags: [product, solo, rice, prioritization, wip-1, sunday-roadmap]
 ---
-# RICE for One-Person Cheatsheet
+# Rice For One Person Cheatsheet
 
 ## Summary
 
-Classic RICE assumes a team-sized Reach baseline (10k+ monthly active users), an Effort estimate in dev-weeks across multiple people, and a 4-level Confidence vibe scale that produces noise when one operator does all four roles. The solo SaaS builder needs the discipline of RICE but with the math reweighted: Reach in absolute small-number user counts (because 80 active users is a real signal at solo scale), Effort in dev-days for one person (because dev-weeks blurs the solo bottleneck), Confidence collapsed to three discrete levels so the operator stops self-grading "70%", and a WIP-1 framing in the Sunday roadmap ritual — top of the ranked list is the only bet of the week. The cheatsheet picks one thing, not a stack.
+**One-sentence:** RICE reweighted for solo SaaS: Reach in absolute small-number users (80 is signal), Effort in dev-days for one person, Confidence collapsed to 3 levels, and WIP-1 framing — the top of the list is the ONLY bet of the week.
 
-## Applies If
+**One-paragraph:** RICE reweighted for solo SaaS: Reach in absolute small-number users (80 is signal), Effort in dev-days for one person, Confidence collapsed to 3 levels, and WIP-1 framing — the top of the list is the ONLY bet of the week. The methodology pins the artefact: a fixed shape, a named owner, evidence anchors, and a published review cadence. It is loaded when the role named in the trigger starts the block and produces a committed artefact reviewed against outcomes at the next iteration.
 
-- The operator is a solo or two-person SaaS builder running a Sunday roadmap or weekly shaping ritual.
-- A backlog exists with at least 5 candidate items competing for the same operator's hours.
-- Active-user count, paying-customer count, or another concrete usage metric is measurable.
-- The operator has authority to commit to a single weekly bet and to defer the rest.
+**Ефективно для:**
 
-## Skip If
+- Operators who run Rice For One Person Cheatsheet on a recurring cadence and need a reviewable operating tool.
+- Solo founders who need a defensible artefact for stakeholder pressure.
+- Teams syncing outcome work across PM, design, and engineering.
+- Audit / review surface: every artefact has an owner, evidence anchors, and a decay date.
 
-- The team has &gt; 3 people who can work in parallel — use the standard RICE then; WIP-1 framing wastes parallelism.
-- No usage metric is yet available (pre-MVP) — Reach has no data, score by ICE or anti-roadmap instead.
-- The bet is regulator-imposed or contractual (must ship anyway) — prioritisation is moot.
+## Applies If (ALL must hold)
 
-## Content
+- Solo SaaS operator running a Sunday roadmap ritual.
+- Active user base ≥10 but <10k (solo scale).
+- One operator wears all four roles (PM, design, eng, support).
+- Confidence judgements span discovery / metrics / gut at different fidelity.
 
-| File | Depth | What's inside |
-|------|-------|---------------|
-| `content/01-core-rules.xml` | essential | Five testable rules adjusting Reach, Impact, Confidence, Effort for the solo case, plus the WIP-1 weekly bet rule |
+## Skip If (ANY kills it)
+
+- Team of ≥3 — use full RICE.
+- Reach ≥10k — solo cheat sheet undercounts.
+- Multi-stream operator with formal product board — use OKR cascade.
+- Pre-launch — no reach to ground on.
+
+## Prerequisites
+
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Backlog of candidate bets | list | Linear / Notion |
+| Active-user count (small-N) | integer | Analytics |
+| Effort estimate per bet (dev-days) | number | Self |
+| Confidence level (3pt) | high/med/low | Evidence |
+
+## Assumes Loaded
+
+| Methodology | Why |
+|-------------|-----|
+| `solo/product/product-operations/feature-prioritization-rice` | Parent RICE; this is the solo-reweighted variant. |
+
+## Content (load on demand)
+
+| File | Depth | What's inside | Est. tokens |
+|------|-------|---------------|-------------|
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `draft-rice-for-one-person-cheatsheet` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-rice-for-one-person-cheatsheet` | haiku | Schema check + threshold checks; deterministic. |
+| `review-rice-for-one-person-cheatsheet` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/rice-for-one-person-cheatsheet.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/rice-for-one-person-cheatsheet.md` | Markdown skeleton for human-readable artefact rendering. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-rice-for-one-person-cheatsheet.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/`
-- triggering activity: `Sunday roadmap & week-shaping ritual`
-- neighbouring: `solo/product/anti-roadmap-template`, `solo/product/rice-for-design`, `solo/product/kano-prioritization`
+- [[feature-prioritization-rice]]
+- [[rfc-lite-pm-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

@@ -4,56 +4,95 @@ tier: solo
 group: product
 domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: Roadmap Drift Detection Checklist: a weekly PM-side diagnostic that scores roadmap-vs-actual drift before it silently erodes credibility.
+summary: Monthly checklist that catches roadmap drift before the quarter ends: tagged-vs-untagged work ratio, outcome-orphan tickets, stale candidate solutions, and confidence label decay — emits a drift report with action items.
 content_id: "99463176e9ce4be7"
-tags: [roadmap-drift-detection-checklist, product, solo]
+complexity: light
+produces: checklist
+est_tokens: 2900
+tags: [roadmap, drift, monthly-review, audit]
 ---
 # Roadmap Drift Detection Checklist
 
 ## Summary
 
-**One-sentence:** A weekly 15-minute pulse-review checklist that scores roadmap-vs-actual drift across scope, schedule, and confidence and produces a delta record before drift becomes a stakeholder surprise.
+**One-sentence:** Monthly checklist that catches roadmap drift before the quarter ends: tagged-vs-untagged work ratio, outcome-orphan tickets, stale candidate solutions, and confidence label decay — emits a drift report with action items.
 
-**One-paragraph:** Roadmap-vs-actual drift is the silent killer of PM credibility; by the time stakeholders feel the gap, multiple weeks of compounding silent slippage have already happened. No existing methodology gives a PM a weekly diagnostic. This methodology fills the gap with a five-axis check (committed-vs-shipped scope, milestone date delta, confidence-band delta, dependency-status delta, and "narrative" delta — what the team is now saying vs. what the roadmap still says). Output is a single typed drift record per cycle that becomes the agenda for the Monday roadmap pulse review.
+**One-paragraph:** Monthly checklist that catches roadmap drift before the quarter ends: tagged-vs-untagged work ratio, outcome-orphan tickets, stale candidate solutions, and confidence label decay — emits a drift report with action items. The methodology pins the artefact: a fixed shape, a named owner, evidence anchors, and a published review cadence. It is loaded when the role named in the trigger starts the block and produces a committed artefact reviewed against outcomes at the next iteration.
+
+**Ефективно для:**
+
+- Operators who run Roadmap Drift Detection Checklist on a recurring cadence and need a reviewable operating tool.
+- Solo founders who need a defensible artefact for stakeholder pressure.
+- Teams syncing outcome work across PM, design, and engineering.
+- Audit / review surface: every artefact has an owner, evidence anchors, and a decay date.
 
 ## Applies If (ALL must hold)
 
-- there is a published roadmap (any format: doc, board, Gantt) covering the next 4–12 weeks
-- at least one full reporting cycle has elapsed since the last drift check (default: 1 week)
-- the PM has read access to current sprint/board status, shipped-changelog, and any active risk log
-- tier == solo or higher
+- Outcome-based roadmap is in place.
+- Engineering backlog tags initiatives with outcome IDs.
+- Monthly review cadence is scheduled.
+- Owner has authority to re-prioritise or kill drifted bets.
 
 ## Skip If (ANY kills it)
 
-- the roadmap was published <7 days ago (nothing to drift against yet)
-- the project is in an explicit "no-roadmap" discovery phase
-- a formal change-control board already produces a weekly variance report covering the same axes — do not duplicate
+- No outcome roadmap — nothing to drift from.
+- Pure execution sprint — re-prioritisation off the table.
+- Pre-PMF — drift is part of discovery.
+- Single-bet operator — drift is just 'last week's idea'.
 
 ## Prerequisites
 
-- last week's drift record (or "n/a — first cycle")
-- current roadmap snapshot (doc/board export, link, or version pin)
-- shipped-this-week list (PRs merged, releases tagged, tasks moved to done)
-- current risk / dependency log if one exists
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Outcome roadmap (current quarter) | doc | Roadmap |
+| Engineering backlog export | CSV | Linear / Jira |
+| Sprint completion data | metrics | Backlog tool |
+| Outcome metric dashboard | URL | BI |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/product/product-manager` | parent role skill — provides operating context |
-| `solo/product/product-planning` | roadmap-format conventions and confidence bands |
+| `solo/product/product-planning/outcome-based-roadmaps` | Roadmap under audit. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: cycle-cadence, five-axis-coverage, named-owner-per-delta, signed-confidence-delta, escalation-threshold | ~1100 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `draft-roadmap-drift-detection-checklist` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-roadmap-drift-detection-checklist` | haiku | Schema check + threshold checks; deterministic. |
+| `review-roadmap-drift-detection-checklist` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/roadmap-drift-detection-checklist.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/roadmap-drift-detection-checklist.md` | Markdown skeleton for human-readable artefact rendering. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-roadmap-drift-detection-checklist.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/product-manager`
-- upstream playbook: `role-product-manager/Monday roadmap pulse review`
-- sibling methodology: `solo/product/backlog-hygiene-cron-checklist`
+- [[outcome-based-roadmaps]]
+- [[okr-setting]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

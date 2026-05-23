@@ -4,55 +4,96 @@ tier: solo
 group: product
 domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
+summary: Pre-ship go / hold / no-op gate with five concrete questions (build-quality, scope-vs-promise, comms-ready, rollback-tested, success-metric-instrumented) — produces a signed go/no-go record before any release.
 content_id: "8db522ea00795e0e"
-summary: Pre-written kill/go rubric the solo founder commits to before validation begins — verdict at decision time follows the rubric, not the founder's attachment to the idea.
+complexity: light
+produces: checklist
+est_tokens: 2900
+tags: [release, go-no-go, solo, pre-ship-gate]
 ---
 # Solo Go No Go Criteria
 
 ## Summary
 
-**One-sentence:** A pre-committed rubric (written before any validation evidence comes in) that converts research signal into an unambiguous go-vs-kill verdict at decision time — removing the "let's wait another week" trap.
+**One-sentence:** Pre-ship go / hold / no-op gate with five concrete questions (build-quality, scope-vs-promise, comms-ready, rollback-tested, success-metric-instrumented) — produces a signed go/no-go record before any release.
 
-**One-paragraph:** Existing problem-validation methodologies tell the solo founder how to collect signal. None of them define the kill threshold up front, which is why so many MVP ideas survive validation despite clearly failing it. This methodology forces a pre-decision: before the first interview, before the landing page goes up, the founder writes four numeric thresholds (problem-frequency, willingness-to-pay, channel-cost, founder-fit). At decision time, the actual data is compared against the pre-written thresholds — if any threshold fails, it is a kill. If all pass, it is a go. No re-litigation. Anchored to "Idea → Validated MVP launch" for the solo SaaS builder.
+**One-paragraph:** Pre-ship go / hold / no-op gate with five concrete questions (build-quality, scope-vs-promise, comms-ready, rollback-tested, success-metric-instrumented) — produces a signed go/no-go record before any release. The methodology pins the artefact: a fixed shape, a named owner, evidence anchors, and a published review cadence. It is loaded when the role named in the trigger starts the block and produces a committed artefact reviewed against outcomes at the next iteration.
+
+**Ефективно для:**
+
+- Operators who run Solo Go No Go Criteria on a recurring cadence and need a reviewable operating tool.
+- Solo founders who need a defensible artefact for stakeholder pressure.
+- Teams syncing outcome work across PM, design, and engineering.
+- Audit / review surface: every artefact has an owner, evidence anchors, and a decay date.
 
 ## Applies If (ALL must hold)
 
-- Solo founder evaluating a new product idea (not a feature inside an existing product).
-- Validation work is upcoming — interviews, landing page, smoke test.
-- The founder has at least 4 weeks of runway dedicated to the validation phase.
-- The founder is willing to commit to the rubric BEFORE collecting data.
+- Solo SaaS ships ≥1 release per month.
+- Releases touch user-visible surface area.
+- Owner is sole signer (no committee).
+- Owner wants a kill switch the day-of.
 
 ## Skip If (ANY kills it)
 
-- Already past validation and building — the rubric was for upstream.
-- Internal tool / hobby project with no commercial intent — kill criteria are different.
-- The founder cannot articulate WHO the customer is — go back one step, the rubric needs an ICP.
+- Hotfix during incident — incident runs the gate.
+- Pre-launch iteration where every commit ships.
+- Silent infra deploy behind a flag.
+- Team of ≥3 with a release manager — formal RFC applies.
 
 ## Prerequisites
 
-- Idea statement (one paragraph: who, what, why now).
-- ICP hypothesis (who you think will pay).
-- An honest assessment of available runway (calendar weeks + capital).
-- Willingness to spend 30 minutes writing the criteria document BEFORE validation.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Release scope frozen | ticket list | Backlog |
+| Readiness checklist completed | doc | QA |
+| Rollback runbook tested | log | Engineering |
+| Instrumentation green | dashboard URL | BI |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/product/AGENTS.md` | Parent group context |
-| `solo/product/kill-or-keep-criteria` if present | Sibling — same family, different stage (kill-or-keep is for live products) |
+| `solo/product/product-planning/release-planning` | Parent release plan. |
+| `solo/dev/code-quality/pre-merge-checks` | Build quality upstream. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules every go-no-go decision enforces | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `draft-solo-go-no-go-criteria` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-solo-go-no-go-criteria` | haiku | Schema check + threshold checks; deterministic. |
+| `review-solo-go-no-go-criteria` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/solo-go-no-go-criteria.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/solo-go-no-go-criteria.md` | Markdown skeleton for human-readable artefact rendering. |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-solo-go-no-go-criteria.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/`
-- triggering activity: `p1-solo-saas-builder/Idea → Validated MVP launch`
-- adjacent: `solo/product/kill-criteria-template`, `solo/product/kill-or-keep-criteria`
+- [[release-planning]]
+- [[solo-bug-triage-rubric]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

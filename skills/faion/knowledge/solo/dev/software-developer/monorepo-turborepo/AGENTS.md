@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Run a JS/TS monorepo with Turborepo: pnpm workspaces, pinned versions, declared task pipeline, content-hash cache, and remote cache for CI.
-content_id: "5c20a5f49e87d519"
+content_id: "913c059de626fb0c"
 complexity: medium
 produces: config
 est_tokens: 4000

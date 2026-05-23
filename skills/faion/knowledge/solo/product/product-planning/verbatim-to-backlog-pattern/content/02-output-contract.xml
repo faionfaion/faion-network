@@ -1,71 +1,96 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Verbatim → Backlog — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of `BacklogCard` and the cluster intermediate.</summary>
+<text id="02-output-contract" title="Verbatim To Backlog Pattern Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces, plus one valid and one invalid example, and a closed list of forbidden patterns the validator must reject.</summary>
 
-  <section title="BacklogCard required fields">
-    <list>
-      <item>`card_id` — string</item>
-      <item>`title_job_story` — string in "When ..., I want ..., so I can ..." format</item>
-      <item>`cluster_id` — string</item>
-      <item>`quotes_attached` — array (≥ 2) of `{source_id, source_type, source_url, timestamp, body_verbatim}`</item>
-      <item>`rice` — object `{reach_pct, impact_1_to_3, confidence_pct, effort_tshirt, score}`</item>
-      <item>`evidence_status` — enum {sufficient, insufficient, single-source-risk}</item>
-      <item>`opportunity_solution_tree_node` — string (parent opportunity if structured)</item>
-      <item>`added_at` — ISO-8601</item>
-    </list>
-  </section>
-
-  <section title="Cluster required fields">
-    <list>
-      <item>`cluster_id` — string</item>
-      <item>`statement_count` — integer</item>
-      <item>`cosine_similarity_mean` — number 0-1</item>
-      <item>`status` — enum {watchlist, ready, split-needed}</item>
-      <item>`representative_statement` — verbatim text closest to centroid</item>
-    </list>
+  <section title="JSON Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/verbatim-to-backlog-pattern.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "version",
+    "last_reviewed",
+    "card_id",
+    "job_story",
+    "verbatim_quotes",
+    "rice_score",
+    "source_cluster_id",
+    "owner"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "card_id": {
+      "type": "string"
+    },
+    "job_story": {
+      "type": "string"
+    },
+    "verbatim_quotes": {
+      "type": "array"
+    },
+    "rice_score": {
+      "type": "number"
+    },
+    "source_cluster_id": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
   </section>
 
   <section title="Forbidden patterns">
-    <antipattern>
-      <description>BacklogCard with `quotes_attached.length &lt; 2`.</description>
-      <reason>Violates r2.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`title_job_story` lacking one of: "When", "I want", "so I can".</description>
-      <reason>Violates r4 framing.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`title_job_story` references a persona ("As a user / manager / founder...").</description>
-      <reason>Violates r4 anti-persona rule.</reason>
-    </antipattern>
-    <antipattern>
-      <description>`rice.confidence_pct &gt; 80` AND `quotes_attached.length &lt; 3`.</description>
-      <reason>Inflated confidence; the rule requires both quote count + recency to drive confidence.</reason>
-    </antipattern>
-    <antipattern>
-      <description>Quotes paraphrased or summarised in `body_verbatim`.</description>
-      <reason>Violates r2 verbatim attachment.</reason>
-    </antipattern>
-  </section>
-
-  <section title="Allowed transformations">
     <list>
-      <item>Trim quotes &gt; 500 chars to first 200 + "[...]" + last 50, preserving specifics.</item>
-      <item>Anonymise source_user names while keeping source_id.</item>
-      <item>Aggregate multiple Discord messages from same user into one source entry with thread_url.</item>
+      <pattern id="f1">missing any required field — violates the contract</pattern>
+      <pattern id="f2">owner == &apos;team&apos; / &apos;we&apos; / &apos;&apos; / null</pattern>
+      <pattern id="f3">version not semver MAJOR.MINOR.PATCH</pattern>
     </list>
   </section>
 
-  <reference path="templates/backlog-card.json">BacklogCard JSON Schema.</reference>
-  <reference path="templates/job-story.md">Job-Story template.</reference>
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "verbatim-to-backlog-pattern-example",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "card_id": "card_id value",
+  "job_story": "job_story value",
+  "verbatim_quotes": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "rice_score": 1.0,
+  "source_cluster_id": "source_cluster_id value",
+  "owner": "@solo-founder"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
 
-  <section title="Self-check checklist">
-    <list>
-      <item>Card title in Job-Story format.</item>
-      <item>≥ 2 verbatim quotes with source URLs.</item>
-      <item>RICE fields all sourced.</item>
-      <item>Cluster status drives card creation (watchlist clusters do NOT generate cards).</item>
-      <item>Cards link back to their cluster.</item>
-    </list>
-  </section>
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "version": "not-semver"
+}
+]]></code>
+    <note>Invalid — required fields missing AND semver violated.</note>
+  </example>
+
+  <reference path="scripts/validate-verbatim-to-backlog-pattern.py">Schema validator (stdlib only).</reference>
 </text>

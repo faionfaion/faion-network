@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Build with Next.js 14+ App Router using server components by default, server actions for mutations, and explicit `'use client'` boundaries.
-content_id: "307eeb4aa296acea"
+content_id: "fdc9b008dcb7413c"
 complexity: medium
 produces: code
 est_tokens: 4200

@@ -4,81 +4,97 @@ tier: solo
 group: product
 domain: product
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Opinionated short RFC-lite template (problem → evidence → scope → open questions) that engineering will actually read; produces a versioned, owner-signed feature brief with evidence anchors and an outcome-review date.
 content_id: "aa882584982cf9df"
-summary: RFC Lite PM Template — pinned template for the product manager: fixed shape + named owner + evidence anchors + outcome review, so feature brief (rfc-lite) writing session stops being folklore and starts being a reviewable operating tool.
-tags: [product, solo, template, rfc, lite]
+complexity: light
+produces: spec
+est_tokens: 3500
+tags: [product, rfc, template, spec-writing]
 ---
-# RFC Lite PM Template
+# Rfc Lite Pm Template
 
 ## Summary
 
-**One-sentence:** RFC Lite PM Template — pinned template for the product manager: fixed shape + named owner + evidence anchors + outcome review, so feature brief (rfc-lite) writing session stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Opinionated short RFC-lite template (problem → evidence → scope → open questions) that engineering will actually read; produces a versioned, owner-signed feature brief with evidence anchors and an outcome-review date.
 
-**One-paragraph:** In product management, the product manager runs feature brief (rfc-lite) writing session on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. spec-writing methodology is generic; PMs need an opinionated short RFC-lite template (problem, evidence, scope, open questions) that engineering will actually read. `rfc-lite-pm-template` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the product manager starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored template committed to the team's knowledge space.
+**One-paragraph:** Opinionated short RFC-lite template (problem → evidence → scope → open questions) that engineering will actually read; produces a versioned, owner-signed feature brief with evidence anchors and an outcome-review date. The methodology pins the artefact: a fixed shape, a named owner, evidence anchors, and a published review cadence. It is loaded when the role named in the trigger starts the block and produces a committed artefact reviewed against outcomes at the next iteration.
+
+**Ефективно для:**
+
+- Operators who run Rfc Lite Pm Template on a recurring cadence and need a reviewable operating tool.
+- Solo founders who need a defensible artefact for stakeholder pressure.
+- Teams syncing outcome work across PM, design, and engineering.
+- Audit / review surface: every artefact has an owner, evidence anchors, and a decay date.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-product-manager/Feature brief (RFC-lite) writing session`
-- the product manager owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- PM writes ≥1 feature brief per week and the corpus has none today.
+- Engineering has refused to read previous specs (too long / vague).
+- Specs are not tied to outcome IDs and become orphaned.
+- Owner has authority to enforce a template and review cadence.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- RFCs need full ADR depth (security, architecture) — use ADR template.
+- Pre-discovery work — no problem statement yet.
+- Single-line backlog ticket — RFC-lite is overkill.
+- Team already has a working spec template they enforce.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the product manager.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Feature problem statement | 1-2 sentences | Discovery |
+| Evidence anchors | transcripts / metrics / tickets | Inbox / Linear |
+| Outcome ID this serves | OKR / outcome doc reference | Roadmap |
+| Named owner + reviewer | @handle pair | Team |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/product/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `solo/product/product-planning/spec-writing` | Generic spec craft; this pins the lite shape. |
+| `solo/product/product-planning/outcome-based-roadmaps` | Source of outcome IDs. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `draft-rfc-lite-pm-template` | sonnet | Per-instance judgement; bounded inputs. |
+| `validate-rfc-lite-pm-template` | haiku | Schema check + threshold checks; deterministic. |
+| `review-rfc-lite-pm-template` | opus | Cross-cycle synthesis; high-stakes changes to policy / cadence. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/rfc-lite-pm-template.json` | JSON skeleton conforming to the output contract schema. |
+| `templates/rfc-lite-pm-template.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-rfc-lite-pm-template.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/product/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[spec-writing]]
+- [[outcome-based-roadmaps]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

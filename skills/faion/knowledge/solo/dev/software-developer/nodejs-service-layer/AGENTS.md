@@ -8,7 +8,7 @@ status: active
 last_reviewed: 2026-05-23
 maintainers: [faion-network]
 summary: Layer a Node.js TypeScript service into controller / service / repository with HTTP types confined to controller and persistence to repository.
-content_id: "876064ba4999df8f"
+content_id: "8bf6531b5e0cbe39"
 complexity: medium
 produces: code
 est_tokens: 4200
