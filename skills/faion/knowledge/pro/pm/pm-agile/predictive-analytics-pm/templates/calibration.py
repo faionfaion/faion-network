@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+"""
+purpose: Reference script computing calibration score against prior forecasts.
+consumes: see content/02-output-contract.xml inputs for predictive-analytics-pm
+produces: report
+depends-on: content/01-core-rules.xml + content/02-output-contract.xml
+token-budget-impact: ~200-1000 tokens when loaded as context
+"""
+
+
 """calibration.py — check predicted-probability calibration on a holdout set.
 
 Usage: python calibration.py holdout.parquet

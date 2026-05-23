@@ -3,71 +3,104 @@ slug: pm-tools-comparison
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A structured framework for evaluating and selecting project management tools through a weighted scoring matrix (Core Features 30%, Usability 25%, Integrations 20%, Enterprise 15%, Cost 10%), a two-week proof-of-concept protocol, total cost of ownership (TCO) analysis, and an ADR template for recording the decision.
-content_id: "16634738c92634c0"
-tags: [tool-evaluation, pm-tools, decision-making, adr, weighted-scoring]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Comparison report scoring 2-5 PM tools on a weighted matrix (Core Features 30%, Usability 25%, Integrations 20%, Enterprise 15%, Cost 10%) plus 2-week PoC + TCO + ADR."
+content_id: "e6342976e168c22d"
+complexity: medium
+produces: report
+est_tokens: 4600
+tags: [tool-evaluation, pm-tools, weighted-scoring, tco, adr]
 ---
 # PM Tools Comparison
 
 ## Summary
 
-**One-sentence:** A structured framework for evaluating and selecting project management tools through a weighted scoring matrix (Core Features 30%, Usability 25%, Integrations 20%, Enterprise 15%, Cost 10%), a two-week proof-of-concept protocol, total cost of ownership (TCO) analysis, and an ADR template for recording the decision.
+**One-sentence:** Comparison report scoring 2-5 PM tools on a weighted matrix (Core Features 30%, Usability 25%, Integrations 20%, Enterprise 15%, Cost 10%) plus 2-week PoC + TCO + ADR.
 
-**One-paragraph:** A structured framework for evaluating and selecting project management tools through a weighted scoring matrix (Core Features 30%, Usability 25%, Integrations 20%, Enterprise 15%, Cost 10%), a two-week proof-of-concept protocol, total cost of ownership (TCO) analysis, and an ADR template for recording the decision. Covers Jira, Linear, ClickUp, GitHub Projects, GitLab Boards, Azure DevOps, Notion, Trello, and Asana.
+**One-paragraph:** PM Tools Comparison defines the testable methodology that turns the recurring work named in this skill into a repeatable, auditable artefact. The methodology is grounded in 6 core rules (see `content/01-core-rules.xml`), a JSON-Schema output contract, 4 catalogued failure modes, a 5-step procedure, and a decision tree whose leaves all reference a rule id.
+
+**Ефективно для:**
+
+- Teams replacing a PM tool (migration off Jira / Asana / Trello).
+- New programs choosing their first PM tool with multi-stakeholder buy-in.
+- PMOs needing a defensible record of why tool X was chosen over Y.
+- Budget owners requiring TCO over 3 years before approving a tool purchase.
 
 ## Applies If (ALL must hold)
 
-- Selecting an initial PM tool for a new team or product.
-- Re-evaluating an existing tool when pain points (speed, cost, integrations) accumulate.
-- Building an ADR for a board or leadership review with quantitative scoring.
-- Mid-migration sanity check: confirm the chosen tool actually scores higher on what mattered.
+- >=2 candidate tools that can be trialled in a 2-week PoC.
+- Budget exists for a paid tier of each candidate during PoC.
+- Team can dedicate 5-10h/person across 2 weeks for the PoC.
+- Named decision owner has authority to ratify the ADR.
 
 ## Skip If (ANY kills it)
 
-- Single-person projects — overhead exceeds gain; use whatever is already available.
-- When the org has a mandated tool (e.g., Jira via enterprise contract) and switching is not on the table.
-- Hotfix or firefighting periods — tool selection should not be the response to delivery problems.
+- Only one tool is feasible (compliance / vendor lock-in) — write a single-choice ADR, skip comparison.
+- Team size <5 — overhead exceeds value, pick the cheapest viable.
+- PoC budget cannot be secured — comparison without PoC is theoretical and untrustworthy.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source-of-truth data | tool export / sheet / API | upstream system named in this methodology |
+| Prior cycle's artefact (if any) | json / md | repo / wiki where artefacts persist |
+| Named consumer | person / agent | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft 2020-12) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | 800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example with trace | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `pm-tools-comparison_template_fill` | haiku | Bounded template fill, no judgement. |
+| `pm-tools-comparison_evidence_check` | sonnet | Bounded comparison + judgement on anchored evidence. |
+| `pm-tools-comparison_synthesis` | opus | Cross-input synthesis + final write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-schema.json` | JSON Schema (draft 2020-12) for the PM tools comparison report artefact. |
+| `templates/evaluation-scorecard.md` | Markdown skeleton for the per-tool scorecard with criteria + evidence. |
+| `templates/tco.yaml` | YAML template for 3-year TCO per tool. |
+| `templates/weighted_score.py` | Reference script computing weighted totals from the scorecard. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-pm-tools-comparison.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/pm/pm-agile/`
+- parent skill: `pro/pm/` (see neighbouring methodologies).
+- [[launch-raci-template]]
+- [[reporting-basics]]
+- external: industry references cited inline in `content/01-core-rules.xml`.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input
+preconditions, source-of-truth access, named-consumer presence) onto a concrete
+verdict — apply the methodology, downgrade to draft, or skip — with each leaf
+referencing a rule id from `content/01-core-rules.xml`.

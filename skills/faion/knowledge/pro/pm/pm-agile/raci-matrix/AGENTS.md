@@ -3,73 +3,103 @@ slug: raci-matrix
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A RACI matrix assigns exactly one of four roles — Responsible, Accountable, Consulted, Informed — to each stakeholder for each task or deliverable.
-content_id: "61eafa56ea2ad28c"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Generic cross-functional RACI matrix assigning exactly one of R / A / C / I per stakeholder per task, with one Accountable per row and explicit C-vs-I discipline."
+content_id: "e1bb82f0d465b97b"
+complexity: medium
+produces: spec
+est_tokens: 4400
 tags: [raci-matrix, accountability, stakeholder-management, cross-functional, ownership]
 ---
 # RACI Matrix
 
 ## Summary
 
-**One-sentence:** A RACI matrix assigns exactly one of four roles — Responsible, Accountable, Consulted, Informed — to each stakeholder for each task or deliverable.
+**One-sentence:** Generic cross-functional RACI matrix assigning exactly one of R / A / C / I per stakeholder per task, with one Accountable per row and explicit C-vs-I discipline.
 
-**One-paragraph:** A RACI matrix assigns exactly one of four roles — Responsible, Accountable, Consulted, Informed — to each stakeholder for each task or deliverable. The single testable rule: every task row must have exactly one Accountable and at least one Responsible. Multiple Accountables on a single task is the most common failure mode and re-creates the "no clear owner" problem the matrix was designed to solve.
+**One-paragraph:** RACI Matrix defines the testable methodology that turns the recurring work named in this skill into a repeatable, auditable artefact. The methodology is grounded in 6 core rules (see `content/01-core-rules.xml`), a JSON-Schema output contract, 4 catalogued failure modes, a 5-step procedure, and a decision tree whose leaves all reference a rule id.
+
+**Ефективно для:**
+
+- Cross-functional initiative with >=3 disciplines (eng / design / marketing / ops).
+- Recurring confusion about 'who owns this' or 'who should I tell'.
+- PM running an audit before a milestone with multiple gates.
+- Onboarding new lead who needs the accountability map for the program.
 
 ## Applies If (ALL must hold)
 
-- Multi-role projects with more than 3 roles and more than 10 deliverables.
-- Solopreneur engagements with contractors or agencies where one human plus outsourced parties need clear per-task ownership.
-- Onboarding a new hire or contractor — encodes "who owns what" in one readable table.
-- Pre-mortem or kickoff for cross-functional features (PM + Eng + Design + QA + DevOps) before sprint zero.
-- Incident response retros where "no one owned X" was a root cause — bake the new RACI into the runbook.
+- Tasks / deliverables can be enumerated (rows of the matrix).
+- Stakeholders can be enumerated (columns of the matrix).
+- A lead exists who can ratify ambiguous assignments.
+- Authority to publish + maintain the RACI is granted.
 
 ## Skip If (ANY kills it)
 
-- Solo work with no external collaborators — overhead with zero return.
-- Self-organizing Scrum teams where Definition of Done plus collective code ownership already covers accountability — RACI can undermine team agency.
-- Hyper-dynamic discovery work where tasks change weekly — the matrix goes stale faster than it can be maintained.
-- Senior autonomous teams operating under DACI, Advice Process, or RAPID — those frameworks fit decision rights better.
+- Solo work — RACI is not meaningful with one person.
+- Highly volatile scope where tasks rotate weekly — RACI rots within the cycle.
+- Use launch-raci-template for launches specifically; this generic RACI is for ongoing work.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source-of-truth data | tool export / sheet / API | upstream system named in this methodology |
+| Prior cycle's artefact (if any) | json / md | repo / wiki where artefacts persist |
+| Named consumer | person / agent | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft 2020-12) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | 800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example with trace | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `raci-matrix_template_fill` | haiku | Bounded template fill, no judgement. |
+| `raci-matrix_evidence_check` | sonnet | Bounded comparison + judgement on anchored evidence. |
+| `raci-matrix_synthesis` | opus | Cross-input synthesis + final write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-schema.json` | JSON Schema (draft 2020-12) for the RACI matrix artefact. |
+| `templates/raci-template.md` | Markdown skeleton for the RACI matrix table. |
+| `templates/raci-lint.py` | Reference script enforcing one-A-per-row + non-empty R. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-raci-matrix.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/pm/pm-agile/`
+- parent skill: `pro/pm/` (see neighbouring methodologies).
+- [[launch-raci-template]]
+- [[reporting-basics]]
+- external: industry references cited inline in `content/01-core-rules.xml`.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input
+preconditions, source-of-truth access, named-consumer presence) onto a concrete
+verdict — apply the methodology, downgrade to draft, or skip — with each leaf
+referencing a rule id from `content/01-core-rules.xml`.

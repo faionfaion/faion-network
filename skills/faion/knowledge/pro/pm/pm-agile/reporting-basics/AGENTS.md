@@ -3,74 +3,103 @@ slug: reporting-basics
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Effective reporting transforms raw project data into actionable insights.
-content_id: "030a69512f7c0f9e"
-tags: [reporting, dashboards, metrics, kpi, visibility]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Weekly / monthly project reporting basics: actionable KPI selection, dashboard wireframe, narrative summary, escalation flags, distribution list."
+content_id: "7f592704b46bc51b"
+complexity: medium
+produces: report
+est_tokens: 4200
+tags: [reporting, dashboards, metrics, kpi, stakeholder-visibility]
 ---
 # Reporting Basics
 
 ## Summary
 
-**One-sentence:** Effective reporting transforms raw project data into actionable insights.
+**One-sentence:** Weekly / monthly project reporting basics: actionable KPI selection, dashboard wireframe, narrative summary, escalation flags, distribution list.
 
-**One-paragraph:** Effective reporting transforms raw project data into actionable insights. This methodology covers metrics framework, dashboard types, and key performance indicators for project visibility.
+**One-paragraph:** Reporting Basics defines the testable methodology that turns the recurring work named in this skill into a repeatable, auditable artefact. The methodology is grounded in 6 core rules (see `content/01-core-rules.xml`), a JSON-Schema output contract, 4 catalogued failure modes, a 5-step procedure, and a decision tree whose leaves all reference a rule id.
+
+**Ефективно для:**
+
+- PM building the first reporting cadence for a new program.
+- Coaches helping a team move from 'status email' to a measurable dashboard.
+- Stakeholders who want a uniform weekly snapshot they can scan in 60 seconds.
+- PMOs standardising reporting structure across portfolios.
 
 ## Applies If (ALL must hold)
 
-- Setting up new project visibility systems.
-- Improving existing reporting capabilities.
-- Creating stakeholder-specific dashboards.
-- Selecting key metrics and KPIs.
-- Replacing ad-hoc status emails with a recurring, audience-tailored dashboard.
-- Establishing a metrics framework before introducing OKRs / NorthStar reporting.
-- Auditing existing dashboards: which are read, which are stale, which to retire.
+- Team has at least 4 weeks of measurable activity (issues, sprints, releases).
+- A reporting tool (dashboard / spreadsheet / wiki) is available.
+- Stakeholders agree to read the report (named distribution list).
+- Author has authority to publish on the cadence.
 
 ## Skip If (ANY kills it)
 
-- The team has fewer than ~5 issues per week — manual updates are faster than dashboards.
-- Highly research / discovery work where outputs are documents not tickets.
-- Pre-revenue founder mode: a daily Slack message is cheaper.
+- Stakeholders ignore reports — fix the engagement first.
+- No measurable activity yet — reporting is theatre.
+- Existing reporting is working — don't add a parallel cadence.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source-of-truth data | tool export / sheet / API | upstream system named in this methodology |
+| Prior cycle's artefact (if any) | json / md | repo / wiki where artefacts persist |
+| Named consumer | person / agent | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft 2020-12) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | 800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example with trace | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `reporting-basics_template_fill` | haiku | Bounded template fill, no judgement. |
+| `reporting-basics_evidence_check` | sonnet | Bounded comparison + judgement on anchored evidence. |
+| `reporting-basics_synthesis` | opus | Cross-input synthesis + final write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-schema.json` | JSON Schema (draft 2020-12) for the weekly/monthly report artefact. |
+| `templates/report.md` | Markdown skeleton for the report with KPI table + narrative + escalation flags. |
+| `templates/kpi-thresholds.yaml` | YAML template for KPI definitions + thresholds + sources. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-reporting-basics.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/pm/pm-agile/`
+- parent skill: `pro/pm/` (see neighbouring methodologies).
+- [[launch-raci-template]]
+- [[reporting-basics]]
+- external: industry references cited inline in `content/01-core-rules.xml`.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input
+preconditions, source-of-truth access, named-consumer presence) onto a concrete
+verdict — apply the methodology, downgrade to draft, or skip — with each leaf
+referencing a rule id from `content/01-core-rules.xml`.

@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+"""
+purpose: Reference script enforcing one-A-per-row + non-empty R.
+consumes: see content/02-output-contract.xml inputs for raci-matrix
+produces: spec
+depends-on: content/01-core-rules.xml + content/02-output-contract.xml
+token-budget-impact: ~200-1000 tokens when loaded as context
+"""
+
+
 """raci-lint.py — validate a Markdown RACI table from stdin.
 
 Rules enforced:

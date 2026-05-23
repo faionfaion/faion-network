@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# purpose: Shell helper that scaffolds an empty ADR markdown for the 5 focus areas.
+# consumes: see content/02-output-contract.xml inputs for pm-framework-focus-areas
+# produces: decision-record
+# depends-on: content/01-core-rules.xml + content/02-output-contract.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
+
+
 # scaffold_focus_areas.sh — Create a docs/ tree with one folder and default
 # artifacts per PMBOK 8 focus area.
 #

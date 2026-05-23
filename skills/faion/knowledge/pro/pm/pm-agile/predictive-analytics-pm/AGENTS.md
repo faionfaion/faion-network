@@ -3,77 +3,103 @@ slug: predictive-analytics-pm
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: The application of ML-based forecasting to project management: schedule delay early warning, budget overrun detection, resource utilization optimization, and risk pattern mining from issue tracker data.
-content_id: "77a993decd968d13"
-tags: [predictive-analytics, forecasting, ml, project-management, risk-management]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Forecast report applying ML-based prediction to schedule delay, budget overrun, resource utilisation, and risk pattern mining from issue tracker data, with calibration metrics."
+content_id: "fbb62d16d1726dde"
+complexity: medium
+produces: report
+est_tokens: 4500
+tags: [predictive-analytics, forecasting, ml, risk-management, pm]
 ---
-# Predictive Analytics in PM
+# Predictive Analytics for PM
 
 ## Summary
 
-**One-sentence:** The application of ML-based forecasting to project management: schedule delay early warning, budget overrun detection, resource utilization optimization, and risk pattern mining from issue tracker data.
+**One-sentence:** Forecast report applying ML-based prediction to schedule delay, budget overrun, resource utilisation, and risk pattern mining from issue tracker data, with calibration metrics.
 
-**One-paragraph:** The application of ML-based forecasting to project management: schedule delay early warning, budget overrun detection, resource utilization optimization, and risk pattern mining from issue tracker data. Requires a deterministic data pipeline (extract → feature-build → classical ML model) with an LLM layer only for plain-language briefs. The LLM never produces the point forecast; a calibrated model does.
+**One-paragraph:** Predictive Analytics for PM defines the testable methodology that turns the recurring work named in this skill into a repeatable, auditable artefact. The methodology is grounded in 6 core rules (see `content/01-core-rules.xml`), a JSON-Schema output contract, 4 catalogued failure modes, a 5-step procedure, and a decision tree whose leaves all reference a rule id.
+
+**Ефективно для:**
+
+- Programs with >=12 weeks of issue-tracker history (statistical signal exists).
+- PMs who want a defensible early-warning signal beyond gut feel.
+- Portfolio leads benchmarking multiple programs on uniform metrics.
+- Risk owners wanting pattern-mining over historical issues.
 
 ## Applies If (ALL must hold)
 
-- Backlogs and historical data large enough (at least 200 closed items, 6+ months) for forecasting to beat naive baselines.
-- Schedule risk early-warning: detect sprint misses 3–5 days before the burn-down does.
-- Budget overrun detection: compare run-rate trends with planned spend.
-- Resource utilization optimization across multi-team programs.
-- Risk pattern mining: find leading indicators (epic age, comment sentiment, churn) of late delivery.
-- Material/vendor cost forecasting where commodity prices drive a meaningful share of project cost.
-- Pair with value-stream-management (DORA + Flow Metrics input data), jira-workflow-management (data source), dora-metrics.
+- >=12 weeks of clean issue tracker data with timestamps + state changes.
+- A data engineer or analyst can implement the forecasting pipeline.
+- Calibration history available (prior forecasts + actual outcomes).
+- Decision owner accepts probabilistic forecasts (not point estimates).
 
 ## Skip If (ANY kills it)
 
-- Small teams or new projects without historical data — models will overfit or underperform expert estimation.
-- Hand-managed spreadsheets without consistent fields — data quality kills the signal.
-- Decision-making needing explainability you cannot provide (regulated procurement, public-sector audits).
-- "AI dashboards" stakeholders cannot read — predictive output without a human translator becomes shelf-ware.
-- One-off projects without comparable history to learn from.
-- When the underlying issue is organizational (priorities flip weekly) — no model fixes leadership decisions.
+- Issue tracker data is dirty (state transitions missing, no timestamps) — fix data first.
+- Project lifetime <12 weeks — too little data to forecast.
+- Decision owner insists on deterministic estimates — predictive analytics will be rejected on delivery.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source-of-truth data | tool export / sheet / API | upstream system named in this methodology |
+| Prior cycle's artefact (if any) | json / md | repo / wiki where artefacts persist |
+| Named consumer | person / agent | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft 2020-12) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | 800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example with trace | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `predictive-analytics-pm_template_fill` | haiku | Bounded template fill, no judgement. |
+| `predictive-analytics-pm_evidence_check` | sonnet | Bounded comparison + judgement on anchored evidence. |
+| `predictive-analytics-pm_synthesis` | opus | Cross-input synthesis + final write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-schema.json` | JSON Schema (draft 2020-12) for the predictive analytics forecast artefact. |
+| `templates/calibration.py` | Reference script computing calibration score against prior forecasts. |
+| `templates/forecast-report.md` | Markdown skeleton for the forecast report with predictions table + calibration block. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-predictive-analytics-pm.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/pm/pm-agile/`
+- parent skill: `pro/pm/` (see neighbouring methodologies).
+- [[launch-raci-template]]
+- [[reporting-basics]]
+- external: industry references cited inline in `content/01-core-rules.xml`.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input
+preconditions, source-of-truth access, named-consumer presence) onto a concrete
+verdict — apply the methodology, downgrade to draft, or skip — with each leaf
+referencing a rule id from `content/01-core-rules.xml`.

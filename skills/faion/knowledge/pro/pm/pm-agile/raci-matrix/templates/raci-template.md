@@ -1,3 +1,9 @@
+<!-- purpose: Markdown skeleton for the RACI matrix table. -->
+<!-- consumes: see content/02-output-contract.xml inputs for raci-matrix -->
+<!-- produces: spec -->
+<!-- depends-on: content/01-core-rules.xml + content/02-output-contract.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
+
 # RACI Matrix — [Project Name]
 
 **Version:** 1.0  

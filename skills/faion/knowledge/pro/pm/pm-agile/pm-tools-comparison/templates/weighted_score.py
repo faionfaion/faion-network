@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+"""
+purpose: Reference script computing weighted totals from the scorecard.
+consumes: see content/02-output-contract.xml inputs for pm-tools-comparison
+produces: report
+depends-on: content/01-core-rules.xml + content/02-output-contract.xml
+token-budget-impact: ~200-1000 tokens when loaded as context
+"""
+
+
 """Compute weighted scores for PM tool comparison from a YAML scorecard.
 
 Usage:

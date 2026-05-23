@@ -1,3 +1,9 @@
+<!-- purpose: Markdown skeleton for the per-tool scorecard with criteria + evidence. -->
+<!-- consumes: see content/02-output-contract.xml inputs for pm-tools-comparison -->
+<!-- produces: report -->
+<!-- depends-on: content/01-core-rules.xml + content/02-output-contract.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
+
 # Tool Evaluation Scorecard: [Tool Name]
 
 **Evaluated by:** [Name]
