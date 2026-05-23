@@ -1,23 +1,51 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="aws-vpc-three-tier Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for aws-vpc-three-tier. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AWS VPC Three-Tier Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6 testable rules every application of `AWS VPC Three-Tier` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Production VPCs MUST span at least 3 Availability Zones with 3 subnet tiers each (public, private, database) totaling 9 subnets. CIDR blocks MUST be planned to avoid overlaps with other VPCs to permit future Transit Gateway or VPC peering. Enable DNS hostnames and DNS support on every VPC.</statement>
-      <rationale source="v1-source">3 AZs provides N+2 redundancy. Public/private/database isolation is required by PCI-DSS and SOC 2. Non-overlapping CIDRs are a hard requirement for Transit Gateway routing; retrofitting is expensive.</rationale>
+
+    <rule id="three-tier-tiers" testable="true" depth="essential">
+      <statement>VPC MUST have public + private (app) + data subnets per AZ. Workloads MUST live in the private (app) tier; databases in the data tier; only ALB + NAT in public.</statement>
+      <rationale source="AWS VPC Design Best Practices">Mixing tiers eliminates the defence-in-depth value; three-tier is the auditable web baseline.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Production environments MUST deploy one NAT gateway per Availability Zone (one_nat_gateway_per_az=true). Dev/staging MAY use a single NAT gateway to reduce cost. NAT gateways MUST be deployed in public subnets only. Each private subnet's route table MUST point to the NAT gateway in the same AZ.</statement>
-      <rationale source="v1-source">A single NAT gateway is a single point of failure and routes all AZ cross-traffic through one AZ (incurring data transfer charges). Per-AZ NAT gateways cost ~$32/month each but eliminate the cross-AZ charge and the SPOF.</rationale>
+
+    <rule id="sg-by-role" testable="true" depth="essential">
+      <statement>Security groups MUST be defined by role: `alb-sg` (inbound 443 from 0.0.0.0/0), `app-sg` (inbound from alb-sg only), `data-sg` (inbound from app-sg only). Wildcard SGs forbidden.</statement>
+      <rationale source="AWS Security Group Best Practices">Role-based SGs eliminate inbound 0.0.0.0/0 in app + data tiers; wildcard SGs leak across services.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>All VPCs MUST have a Gateway endpoint for S3 (free) attached to all private route tables. Interface endpoints for ECR (ecr.api + ecr.dkr) and Secrets Manager MUST be created in private subnets when containers or instances pull images or fetch secrets — this eliminates NAT gateway charges for those traffic flows and removes the public internet from the path.</statement>
-      <rationale source="v1-source">S3 Gateway endpoint is free and eliminates S3 traffic from NAT gateway bandwidth billing. ECR interface endpoints save ~$0.09/GB vs NAT for image pulls. Secrets Manager via interface endpoint keeps credentials fetches entirely private.</rationale>
+
+    <rule id="multi-az-mandatory" testable="true" depth="essential">
+      <statement>Production three-tier VPC MUST span ≥ 2 AZs; ALB + NAT per AZ; RDS Multi-AZ.</statement>
+      <rationale source="AWS Reliability Pillar">Single-AZ three-tier is a partial fix; Multi-AZ closes the AZ-outage vector.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Application Load Balancers serving production traffic MUST: be internet-facing with HTTPS listener using TLS 1.2+ (ELBSecurityPolicy-TLS13-1-2-2021-06), have an HTTP listener that redirects to HTTPS, and use ACM-managed certificates. VPC Flow Logs MUST be enabled on all production VPCs, writing to CloudWatch Logs with 30-day retention minimum.</statement>
-      <rationale source="v1-source">HTTP-only ALBs transmit credentials and session tokens in cleartext. TLS policy enforcement prevents TLS 1.0/1.1 downgrade attacks. Flow logs are mandatory for incident investigation and compliance evidence.</rationale>
+
+    <rule id="data-tier-no-nat" testable="true" depth="essential">
+      <statement>Data subnet MUST NOT have NAT route; outbound internet from data tier is forbidden.</statement>
+      <rationale source="AWS VPC Design Best Practices; PCI-DSS 4.0">DB outbound internet = exfil path; no-NAT data tier closes it; managed services (S3 / Secrets) reach via VPC endpoints.</rationale>
     </rule>
+
+    <rule id="no-cross-tier-shortcut" testable="true" depth="essential">
+      <statement>Direct inbound from public to data tier MUST be denied at SG + NACL. Public-to-private allowed only via ALB; private-to-data only via app-sg.</statement>
+      <rationale source="Defence-in-depth principle">Cross-tier shortcuts collapse the architecture into a flat VPC; explicit denies enforce the boundary.</rationale>
+    </rule>
+
+    <rule id="alb-tls-only" testable="true" depth="essential">
+      <statement>ALB listener MUST be HTTPS (443) with SSL policy `ELBSecurityPolicy-TLS13-1-2-2021-06`; HTTP (80) MUST redirect to HTTPS.</statement>
+      <rationale source="AWS ALB security guide; PCI-DSS">HTTP listeners leak credentials in transit; TLS 1.3 disables weak ciphers.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

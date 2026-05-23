@@ -1,3 +1,8 @@
+# purpose: terraform Lambda + SQS trigger + DLQ + idempotency table
+# consumes: see ../AGENTS.md ## Prerequisites + content/02-output-contract.xml
+# produces: provisioned AWS resources conforming to the methodology spec
+# depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+# token-budget-impact: ~600-1500 tokens when loaded as context
 resource "aws_sqs_queue" "main" {
   name                       = "${local.name_prefix}-queue"
   visibility_timeout_seconds = 360  # >= 6x function timeout

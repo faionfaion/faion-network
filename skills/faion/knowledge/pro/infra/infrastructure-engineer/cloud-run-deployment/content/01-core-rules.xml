@@ -1,11 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="cloud-run-deployment Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for cloud-run-deployment. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Cloud Run Deployment Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>8 testable rules every application of `Cloud Run Deployment` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="revisions-tagged" testable="true" depth="essential">
+      <statement>Every deploy MUST create a tagged revision (`--tag &lt;semver&gt;`); untagged deploys forbidden because they cannot be referenced for rollback.</statement>
+      <rationale source="Cloud Run Revisions docs">Untagged revisions cannot be addressed by URL; tags make canary + rollback addressable.</rationale>
     </rule>
+
+    <rule id="canary-traffic-split" testable="true" depth="essential">
+      <statement>Production deploys MUST go via traffic split (10% → 50% → 100% over ≥ 15 min) for non-trivial changes; instant 100% allowed only for hotfixes with named approver.</statement>
+      <rationale source="Canary deployment best practices; GCP deployment guides">Instant 100% is high risk; canary catches regressions on a fraction of traffic before full rollout.</rationale>
+    </rule>
+
+    <rule id="service-account-least-priv" testable="true" depth="essential">
+      <statement>Cloud Run service MUST have a dedicated service account with least-privilege IAM; default Compute Engine service account is forbidden.</statement>
+      <rationale source="GCP IAM Best Practices; CIS GCP Benchmark">Default Compute SA has broad permissions; per-service SAs bound blast radius.</rationale>
+    </rule>
+
+    <rule id="secrets-via-secret-manager" testable="true" depth="essential">
+      <statement>Secrets MUST come from Secret Manager mounts (env var or volume); plain-text env vars with credentials forbidden.</statement>
+      <rationale source="Cloud Run Secret Manager integration docs">Env vars are visible in console + logs + revision YAML; Secret Manager keeps secrets out of revision metadata.</rationale>
+    </rule>
+
+    <rule id="artifact-registry-pinned" testable="true" depth="essential">
+      <statement>Container images MUST come from Artifact Registry (not Docker Hub / public registries) and MUST be pinned by digest (sha256:..), not by tag.</statement>
+      <rationale source="Cloud Run + Artifact Registry docs; supply-chain best practices">Tag-pinned images drift; mutable upstreams have been compromised (SolarWinds-style); digest pinning is reproducible.</rationale>
+    </rule>
+
+    <rule id="ingress-controls" testable="true" depth="essential">
+      <statement>Ingress MUST be set per service: `internal` for internal services, `internal-and-cloud-load-balancing` for fronted services, `all` only for explicitly public services.</statement>
+      <rationale source="Cloud Run Ingress Controls docs">Default `all` exposes private services publicly; explicit ingress is the defensible baseline.</rationale>
+    </rule>
+
+    <rule id="cloud-build-or-gha-with-approval" testable="true" depth="essential">
+      <statement>Deploys MUST go through Cloud Build / GitHub Actions with a named approval gate for production. Manual `gcloud run deploy` from a developer machine forbidden for prod.</statement>
+      <rationale source="GCP CI/CD best practices">Manual deploys skip review + audit trail; CI-with-approval gates make every deploy reviewable.</rationale>
+    </rule>
+
+    <rule id="structured-logs-and-trace" testable="true" depth="essential">
+      <statement>Cloud Run logs MUST be JSON-structured with trace + span IDs; Cloud Trace + Cloud Profiler MUST be enabled for production services.</statement>
+      <rationale source="Cloud Run observability docs">Without structured logs + tracing, cross-service debugging falls back to grep; observability is the auditor surface.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

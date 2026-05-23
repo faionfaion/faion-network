@@ -3,70 +3,97 @@ slug: aws-vpc-three-tier
 tier: pro
 group: infra
 domain: infra
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Build a production three-tier VPC: 9 subnets (3 AZs x public/private/database), per-AZ NAT gateways, free S3 gateway endpoint, interface endpoints for ECR and Secrets Manager, an internet-facing Application Load Balancer with HTTPS, VPC Flow Logs, and Transit Gateway attachment for multi-VPC connectivity.
-content_id: "c3858e72c3a25def"
-tags: [aws, vpc, networking, nat-gateway]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Three-tier VPC reference architecture spec: public subnet (ALB + NAT) \u2192 private subnet (app workloads) \u2192 data subnet (RDS + ElastiCache), security groups by role, Multi-AZ, no cross-tier inbound shortcuts."
+content_id: "3710bd78a8fe5337"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [aws, vpc, three-tier, public, private, data, infra]
 ---
-# AWS VPC Three-Tier Architecture: Subnets, NAT, Endpoints, ALB, Transit Gateway
+# AWS VPC Three-Tier
 
 ## Summary
 
-**One-sentence:** Build a production three-tier VPC: 9 subnets (3 AZs x public/private/database), per-AZ NAT gateways, free S3 gateway endpoint, interface endpoints for ECR and Secrets Manager, an internet-facing Application Load Balancer with HTTPS, VPC Flow Logs, and Transit Gateway attachment for multi-VPC connectivity.
+**One-sentence:** Three-tier VPC reference architecture spec: public subnet (ALB + NAT) → private subnet (app workloads) → data subnet (RDS + ElastiCache), security groups by role, Multi-AZ, no cross-tier inbound shortcuts.
 
-**One-paragraph:** Build a production three-tier VPC: 9 subnets (3 AZs x public/private/database), per-AZ NAT gateways, free S3 gateway endpoint, interface endpoints for ECR and Secrets Manager, an internet-facing Application Load Balancer with HTTPS, VPC Flow Logs, and Transit Gateway attachment for multi-VPC connectivity. All CLI commands are reproducible and environment-parameterized.
+**One-paragraph:** Three-tier VPC reference architecture spec: public subnet (ALB + NAT) → private subnet (app workloads) → data subnet (RDS + ElastiCache), security groups by role, Multi-AZ, no cross-tier inbound shortcuts. The methodology pins the discipline that turns folklore into a reviewable, owned, version-controlled operating artefact: rule-bound output contract, evidence anchors, named owner, published review cadence. Outputs of the wrong shape are rejected at review; outputs without evidence are demoted to hypotheses; outputs without owners are tagged stale.
 
 ## Applies If (ALL must hold)
 
-- Setting up a new production VPC from scratch.
-- Adding private and database subnet tiers to an existing single-tier VPC.
-- Connecting multiple VPCs (prod, staging, shared-services) via Transit Gateway.
-- Reducing NAT gateway costs by adding S3 and ECR VPC endpoints.
+- Workload is a web app (ALB → app → DB) OR worker pattern.
+- Named platform-lead can sign off on the reference architecture.
+- VPC + subnets are owned by the team applying this.
 
 ## Skip If (ANY kills it)
 
-- Proof-of-concept or dev-only environments — a single public subnet with restrictive security groups is sufficient; NAT gateway costs $32/month minimum.
-- Serverless-only workloads (Lambda + API Gateway + DynamoDB) with no VPC dependency — attaching Lambda to a VPC adds cold start latency and requires NAT for internet access.
+- Workload is serverless-only (Lambda + DynamoDB) — VPC tiering moot.
+- Workload is event-driven (SQS / EventBridge) with no inbound traffic.
+- VPC already follows the pattern + has named owner.
+
+**Ефективно для:**
+
+- Стандартний web-tier застосунок з ALB / app / DB.
+- Onboarding нових сервісів у проєктовану VPC topology.
+- Replatform-проєкти з flat VPC на tiered.
+- Compliance вимоги (PCI / HIPAA) до tier isolation.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/dev` | Parent role context. |
+| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology end-to-end | 800 |
+| `content/05-examples.xml` | essential | Worked example from input to filled artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-spec` | haiku | Template fill from header + section list. |
+| `populate-decisions` | sonnet | Per-section judgment + tradeoff selection. |
+| `review-tradeoffs` | opus | Cross-decision synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). |
+| `templates/_smoke-test.md` | Minimum viable filled-in instance. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-aws-vpc-three-tier.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/infra/infrastructure-engineer/`
+- [[code-review-checklist]]
+- [[sdd-document-templates]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

@@ -1,15 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="aws-multi-account-landing-zone Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for aws-multi-account-landing-zone. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AWS Multi-Account Landing Zone Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules every application of `AWS Multi-Account Landing Zone` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>The management account MUST contain no workloads. It is used only for AWS Organizations, consolidated billing, and IAM Identity Center. All application workloads MUST live in member accounts under the Workloads OU. The management account MUST NOT have access keys for human users — only federated access via IAM Identity Center.</statement>
-      <rationale source="v1-source">The management account has elevated trust across the organization. A compromised management account can modify SCPs and create new accounts. Keeping it workload-free minimizes the attack surface and satisfies compliance requirements that mandate management plane separation.</rationale>
+
+    <rule id="ou-hierarchy-pinned" testable="true" depth="essential">
+      <statement>OU hierarchy MUST include at minimum: Security, Infrastructure, Workloads (Prod / Non-Prod / Sandbox sub-OUs), Suspended. Mixed prod / non-prod in a single OU is forbidden.</statement>
+      <rationale source="AWS Landing Zone Accelerator; CIS Benchmark">Mixed OUs break SCP scoping; clear hierarchy makes guardrails crisp.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>SCPs MUST be applied at the OU level, not at individual accounts. The OU structure MUST include at minimum: Security OU (log-archive account, security-tooling account), Infrastructure OU (network account, shared-services account), Workloads OU (nested Prod and Non-Prod OUs), Sandbox OU, and Suspended OU for decommissioned accounts.</statement>
-      <rationale source="v1-source">OU-level SCPs ensure that every account created under that OU inherits the policy automatically. Account-level SCP attachments require manual maintenance and are easily missed when provisioning new accounts via Account Factory.</rationale>
+
+    <rule id="control-tower-or-equivalent" testable="true" depth="essential">
+      <statement>LZ MUST use AWS Control Tower OR a homegrown LZ Accelerator + AWS Config + GuardDuty + Security Hub + CloudTrail org-trail. Ad-hoc accounts without baseline are forbidden.</statement>
+      <rationale source="AWS Control Tower docs; AWS LZ Accelerator">Manual baselines drift; Control Tower / LZA enforces baseline on every new account.</rationale>
     </rule>
+
+    <rule id="scp-floor" testable="true" depth="essential">
+      <statement>Org root SCP MUST deny: leave-org, disable-CloudTrail, disable-GuardDuty, modify-root, public-S3 (regulated OUs). Tested against canary OU first.</statement>
+      <rationale source="CIS AWS Benchmark; AWS SCP docs">Without SCPs, compromised admin = compromised everything; SCPs are the org-level guardrail.</rationale>
+    </rule>
+
+    <rule id="identity-center-permission-sets" testable="true" depth="essential">
+      <statement>Human access MUST flow through IAM Identity Center permission sets, mapped to AD / Okta groups. Per-account IAM users forbidden for humans.</statement>
+      <rationale source="AWS Identity Center; CIS Benchmark">Per-account IAM users = key sprawl + offboarding gap; SSO permission sets centralise.</rationale>
+    </rule>
+
+    <rule id="logging-audit-accounts" testable="true" depth="essential">
+      <statement>Dedicated `log-archive` and `audit` accounts MUST receive CloudTrail org-trail logs, Config recordings, GuardDuty findings, Security Hub aggregation. Cross-account access tightly scoped.</statement>
+      <rationale source="AWS LZ best practices">Co-locating logs with workloads makes log tampering trivial; isolated accounts are the auditor-friendly pattern.</rationale>
+    </rule>
+
+    <rule id="account-vending-automated" testable="true" depth="essential">
+      <statement>New account creation MUST go through automated vending (Control Tower Account Factory, Service Catalog Custom AFT, or equivalent). Console-clicked accounts forbidden.</statement>
+      <rationale source="AWS Control Tower Account Factory; AFT docs">Manual accounts skip baseline; automated vending applies guardrails + tags + network hooks consistently.</rationale>
+    </rule>
+
+    <rule id="network-hub-pattern" testable="true" depth="essential">
+      <statement>Multi-account networking MUST use Transit Gateway (or AWS Cloud WAN) hub-and-spoke from a Network account; flat per-account VPC peering forbidden.</statement>
+      <rationale source="AWS Transit Gateway docs; LZ Accelerator">Full-mesh VPC peering scales O(n²) and breaks at ~20 accounts; TGW hub gives O(n).</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,23 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="aws-iam-security-foundations Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for aws-iam-security-foundations. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AWS IAM Security Foundations Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>8 testable rules every application of `AWS IAM Security Foundations` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>IAM Identity Center MUST be the only human entry point to AWS accounts. Long-lived IAM user access keys MUST NOT exist for human users. Root accounts MUST have MFA enabled and root access management enabled for all member accounts. All human sessions use temporary credentials via IAM Identity Center role assumption with a maximum session duration of 1–8 hours depending on the permission set sensitivity.</statement>
-      <rationale source="v1-source">Long-lived access keys are the primary vector for credential compromise — they don't expire, they get checked into git, they are copied to laptops. IAM Identity Center sessions are time-bounded and federated from the IdP (Okta, Entra ID, Google Workspace), so revoking an employee in the IdP immediately revokes AWS access. Root account MFA prevents org-level takeover.</rationale>
+
+    <rule id="root-hardened" testable="true" depth="essential">
+      <statement>Root account MUST have hardware MFA enabled, no access keys, contact info up to date, billing alerts configured, and last login &gt; 30 days. Root usage MUST emit a CloudWatch alarm.</statement>
+      <rationale source="CIS AWS Benchmark; AWS root account best practices">Root credentials compromise = entire org compromise; hardening + alarms shrink that surface to near-zero.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>EKS pod workloads MUST use IRSA (IAM Roles for Service Accounts) — an OIDC provider configured for the cluster, with service account annotations pointing to a scoped IAM role. Instance profiles MUST NOT be used for pod-level AWS access. IAM policies attached to IRSA roles MUST scope Resource to specific ARNs — no Resource: "*" in production IRSA policies.</statement>
-      <rationale source="v1-source">Instance profiles grant all pods on a node the same permissions, violating least privilege. IRSA binds a specific IAM role to a specific Kubernetes service account in a specific namespace; a compromised pod cannot steal another pod's credentials. Scoped resources prevent lateral movement within the account if one pod is compromised.</rationale>
+
+    <rule id="cloudtrail-orgwide" testable="true" depth="essential">
+      <statement>CloudTrail MUST be an organisation-wide multi-region trail with log file validation on; KMS-encrypted log delivery to a logging-account S3 bucket with MFA-delete.</statement>
+      <rationale source="CIS AWS Benchmark; SOC2 CC7.2">Per-account / single-region trails miss cross-account or non-default-region actions; org-wide multi-region closes that.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>All storage at rest MUST be encrypted: S3 default encryption enabled, EBS encryption by default enabled at the account level, RDS and Aurora storage encryption enabled at cluster creation. Customer-managed KMS keys (CMKs) MUST be used for all sensitive data — do not use AWS-managed keys for data classified as confidential or restricted. Key rotation MUST be enabled on all CMKs.</statement>
-      <rationale source="v1-source">AWS-managed keys are shared across accounts in the same region; customer-managed keys give exclusive control and a per-key audit trail in CloudTrail. Key rotation reduces the blast radius of a key compromise. EBS default encryption ensures no developer accidentally creates an unencrypted volume.</rationale>
+
+    <rule id="guardduty-everywhere" testable="true" depth="essential">
+      <statement>GuardDuty MUST be enabled in every account + every region with S3 Protection + Kubernetes Protection + Malware Protection on; findings delegated to a security-tools account.</statement>
+      <rationale source="AWS GuardDuty docs; CIS Benchmark">Threat detection per-account is fragmented; org-wide GuardDuty surfaces lateral movement.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>All credentials and sensitive configuration MUST be stored in Secrets Manager with automatic rotation configured. No secrets in environment variables, no secrets in code, no secrets in Parameter Store standard tier (which has no encryption at rest). ALBs MUST enforce TLS 1.2 as the minimum protocol. Database connections from applications MUST use TLS.</statement>
-      <rationale source="v1-source">Environment variables are visible in ECS task definitions, CloudFormation templates, and container inspection commands. Secrets Manager encrypts at rest with KMS, audits every access in CloudTrail, and automates rotation for RDS, Redshift, and Elasticsearch without downtime.</rationale>
+
+    <rule id="password-policy" testable="true" depth="essential">
+      <statement>Account password policy MUST require length ≥ 14, all four character classes, password reuse-prevention ≥ 24, max age ≤ 90 days for IAM users (if any exist).</statement>
+      <rationale source="CIS AWS Benchmark v3.0">Weak password policies are the #1 manual-access failure mode; strict policy + SSO removes 95% of the surface.</rationale>
     </rule>
+
+    <rule id="mfa-on-everyone" testable="true" depth="essential">
+      <statement>Every IAM user MUST have MFA; users without MFA are auto-disabled after 7 days. SSO users MUST have MFA enforced via Identity Center.</statement>
+      <rationale source="AWS IAM Best Practices; CIS Benchmark">Phished IAM credentials without MFA = full access; MFA enforcement closes that.</rationale>
+    </rule>
+
+    <rule id="access-key-rotation" testable="true" depth="essential">
+      <statement>Long-lived access keys (if any exist) MUST be rotated ≤ 90 days; keys older than 90d are auto-flagged + scheduled for rotation.</statement>
+      <rationale source="CIS AWS Benchmark; SOC2">90+ day keys accumulate exposure surface; rotation policy keeps blast radius bounded.</rationale>
+    </rule>
+
+    <rule id="config-rules-baseline" testable="true" depth="essential">
+      <statement>AWS Config MUST be enabled in every account + region with the CIS-AWS-Foundations conformance pack deployed; non-compliant resources flagged + remediated within 30 days.</statement>
+      <rationale source="AWS Config Conformance Packs">Drift from baseline is invisible without Config; conformance pack is the cheapest CIS gate.</rationale>
+    </rule>
+
+    <rule id="security-hub-aggregator" testable="true" depth="essential">
+      <statement>Security Hub MUST be enabled with org-wide aggregation in a dedicated security-tools account; CIS AWS Foundations + AWS Foundational Security Best Practices standards on.</statement>
+      <rationale source="AWS Security Hub docs">Per-account Security Hub is noisy; org-wide aggregation is the single pane of glass auditors need.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

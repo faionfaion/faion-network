@@ -1,71 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="aws-s3-storage Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for aws-s3-storage. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AWS S3 Storage Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>8 testable rules every application of `AWS S3 Storage` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Block all public access at both account level (S3 Block Public Access) and individual bucket level; set Object Ownership to BucketOwnerEnforced (disables ACLs); never grant public read via bucket policy.</statement>
-      <rationale source="v1-source">S3 misconfiguration (public access) is among the top causes of cloud data breaches. Account-level blocking provides a backstop even if per-bucket settings are misconfigured. ACLs are a legacy mechanism superseded by bucket policies.</rationale>
+
+    <rule id="block-public-access-on" testable="true" depth="essential">
+      <statement>Block Public Access MUST be enabled at account level AND bucket level; opening public access requires explicit ADR + security-lead sign-off.</statement>
+      <rationale source="AWS S3 Block Public Access docs; CIS Benchmark">Public S3 buckets are the most common data-leak class; account-level block is the defensible default.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Enable SSE-KMS with a customer-managed KMS key for buckets containing sensitive, regulated, or production data; use SSE-S3 (AES-256) for general non-sensitive buckets; enable S3 Bucket Keys to reduce KMS API call cost by up to 99%.</statement>
-      <rationale source="v1-source">SSE-KMS provides audit trails of key usage (CloudTrail), key rotation, and access policy control. SSE-S3 is free and requires no key management. Bucket Keys batch multiple object operations into a single KMS call.</rationale>
+
+    <rule id="sse-kms-default" testable="true" depth="essential">
+      <statement>Bucket default encryption MUST be SSE-KMS (customer-managed key) for production data; SSE-S3 acceptable only for low-sensitivity logs.</statement>
+      <rationale source="AWS S3 Encryption docs; HIPAA + SOC2 reqs">SSE-KMS gives per-bucket key rotation + audit trail; SSE-S3 is opaque to auditors.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Starting April 2026: SSE-C (customer-provided keys) is disabled by default for new buckets. If SSE-C is required, explicitly enable it via PutBucketEncryption API before any SSE-C upload.</statement>
-      <rationale source="v1-source">AWS changed the default to prevent misconfigured SSE-C usage where key management falls entirely on the customer with no AWS-side recovery. Teams migrating workloads must re-enable it explicitly.</rationale>
+
+    <rule id="versioning-and-mfa-delete" testable="true" depth="essential">
+      <statement>Buckets holding critical data MUST have versioning + MFA-delete on; permanent delete requires MFA token.</statement>
+      <rationale source="AWS S3 Versioning docs">Accidental + malicious deletes are the #1 data-loss vector; versioning + MFA-delete is the recovery floor.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Add a bucket policy denying all s3:* actions where aws:SecureTransport is false; this enforces HTTPS for all access including IAM principals with s3:GetObject permission.</statement>
-      <rationale source="v1-source">HTTP requests to S3 transmit data and credentials in cleartext. The SecureTransport condition denies HTTP even if IAM policies grant access, enforcing encryption in transit at the bucket level.</rationale>
+
+    <rule id="lifecycle-tiered" testable="true" depth="essential">
+      <statement>Bucket policies MUST tier objects: hot (Standard) → IA after 30d → Glacier Deep Archive after 180d. Indefinite Standard storage forbidden for non-hot data.</statement>
+      <rationale source="AWS S3 Lifecycle docs; FinOps benchmark">Untiered S3 spend is 40-80% above tiered; lifecycle is the cheapest cost optimisation.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Use VPC Gateway endpoints for S3 access from EC2, ECS, Lambda, and EKS; configure endpoint policies to restrict access to specific bucket ARNs.</statement>
-      <rationale source="v1-source">Gateway endpoints are free and route S3 traffic over the AWS backbone rather than the public internet. Endpoint policies prevent the endpoint from being used to access unauthorized buckets.</rationale>
+
+    <rule id="bucket-policy-explicit-deny" testable="true" depth="essential">
+      <statement>Bucket policies MUST contain explicit deny for `aws:SecureTransport = false` (HTTP) and for unintended cross-account principals.</statement>
+      <rationale source="AWS S3 Security Best Practices; CIS Benchmark">Without explicit deny, HTTP access + cross-account writes can slip through allow-list logic.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Always add a lifecycle rule to abort incomplete multipart uploads after 7 days; add rules to expire non-current object versions and delete expired object delete markers.</statement>
-      <rationale source="v1-source">Incomplete multipart uploads accumulate indefinitely without a cleanup rule, silently adding storage cost. Non-current versions from versioned buckets accumulate without expiration rules — one bucket can grow to 10x the logical object size.</rationale>
+
+    <rule id="object-lock-immutable" testable="true" depth="essential">
+      <statement>Buckets subject to WORM compliance (SEC 17a-4, HIPAA, FedRAMP) MUST have Object Lock in Compliance mode with retention period matching policy.</statement>
+      <rationale source="AWS S3 Object Lock docs">Compliance retention requires immutability; governance-mode locks are reversible by admin and may fail audit.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Transition objects to Standard-IA after 30 days (minimum), Glacier Instant Retrieval after 90 days, and Glacier Deep Archive after 365 days for logs and audit data; respect the 30-day minimum between transitions.</statement>
-      <rationale source="v1-source">Standard-IA costs 58% less than Standard but charges per GB retrieval and has a 30-day minimum storage charge. Transitioning too early (under 30 days) incurs early deletion fees that exceed the savings.</rationale>
+
+    <rule id="replication-for-dr" testable="true" depth="essential">
+      <statement>Production data MUST be cross-region replicated to a DR account / region; replication metrics MUST be monitored + alarms set on lag &gt; 15 min.</statement>
+      <rationale source="AWS S3 Replication docs">Without replication, regional outage = data loss; lag-alarm catches replication breaks before audit.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Enable S3 Intelligent-Tiering for buckets with unknown or unpredictable access patterns; enable the Archive and Deep Archive tiers for additional cost reduction on rarely accessed data.</statement>
-      <rationale source="v1-source">Intelligent-Tiering monitors access patterns and automatically moves objects between tiers with no retrieval charges. It eliminates the need to predict access patterns for lifecycle rules.</rationale>
+
+    <rule id="access-logs-on" testable="true" depth="essential">
+      <statement>S3 buckets holding sensitive data MUST have server access logging or CloudTrail data events on, with logs in a separate audit account.</statement>
+      <rationale source="AWS S3 Access Logging docs; CIS Benchmark">Without access logs, forensics on read/write events is impossible; CloudTrail data events are the auditor-friendly surface.</rationale>
     </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Enable versioning on all buckets containing production data or Terraform state; enable MFA Delete for buckets with compliance or financial data to prevent accidental version deletion.</statement>
-      <rationale source="v1-source">Versioning protects against accidental overwrites and deletes. MFA Delete adds a second factor to permanent version deletion — without it, a compromised access key can delete all versions permanently.</rationale>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
     </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Enable CRR (Cross-Region Replication) for disaster recovery buckets with Replication Time Control (RTC) when RPO is under 15 minutes; source and destination must both have versioning enabled; configure an IAM replication role with least-privilege.</statement>
-      <rationale source="v1-source">Without RTC, replication time is best-effort (typically under 15 minutes but not guaranteed). RTC provides a 99.99% SLA for 15-minute replication, required for compliance-driven RPO targets.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Configure delete marker replication only when you need deletes to propagate to the replica; by default, delete markers are not replicated, preserving the replica as an independent backup.</statement>
-      <rationale source="v1-source">By default, CRR does not replicate delete markers — if a source object is deleted, the replica remains intact. This is correct for DR buckets. Enable delete marker replication only for active-active synchronization scenarios.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Verify on every new bucket: Block Public Access enabled (4 settings), Object Ownership = BucketOwnerEnforced, default encryption configured (SSE-KMS or SSE-S3), bucket policy with aws:SecureTransport = false deny rule.</statement>
-      <rationale source="v1-source">These four settings are the minimum security baseline for any S3 bucket. Missing any one creates a vulnerability: public access, ACL-based data leaks, unencrypted objects, or plaintext HTTP access.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>For production buckets: enable versioning, enable S3 access logging to a separate audit bucket, enable CloudTrail data events, verify SSE-KMS with customer-managed key and S3 Bucket Keys enabled.</statement>
-      <rationale source="v1-source">Versioning enables point-in-time recovery. Access logging and CloudTrail data events are required for compliance audits (SOC2, PCI) to prove access to specific objects at specific times.</rationale>
-    </rule>
-    <rule id="r14" testable="true" depth="essential">
-      <statement>Configure at minimum: abort incomplete multipart uploads after 7 days, transition non-current versions to Standard-IA after 30 days, expire non-current versions after 90 days, delete expired object delete markers.</statement>
-      <rationale source="v1-source">These four lifecycle rules prevent unbounded bucket growth from three common accumulation patterns: aborted uploads, old versions, and orphaned delete markers.</rationale>
-    </rule>
-    <rule id="r15" testable="true" depth="essential">
-      <statement>For SSE-C: verify it is explicitly enabled via PutBucketEncryption after April 2026 for any buckets that require customer-provided keys; audit existing SSE-C buckets before the deadline.</statement>
-      <rationale source="v1-source">AWS disabled SSE-C by default for new buckets starting April 2026. Teams migrating or creating new buckets requiring SSE-C must explicitly opt in — silent failure otherwise.</rationale>
-    </rule>
-    <rule id="r16" testable="true" depth="essential">
-      <statement>For CRR: confirm versioning on source and destination, IAM replication role with s3:ReplicateObject and s3:ReplicateDelete, destination bucket policy allowing the source role, KMS key sharing if encrypted.</statement>
-      <rationale source="v1-source">CRR silently fails if any prerequisite is missing — there is no blocking error at configuration time. Replication metrics and CloudWatch alarms on replication failures are required to detect misconfiguration.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

@@ -1,23 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="aws-iam-practical-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for aws-iam-practical-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AWS IAM Practical Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules every application of `AWS IAM Practical Patterns` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>IAM policies for application workloads MUST scope every Action to the minimum set required and every Resource to the specific ARN or ARN prefix (not "*"). Add Condition blocks to restrict to specific resource tags (aws:ResourceTag) or account paths. Never allow Action: "*" or Resource: "*" in application policies.</statement>
-      <rationale source="v1-source">Wildcard actions on wildcard resources grant an attacker full account access if the credential is compromised. Resource-level constraints limit the blast radius to only the resources the service legitimately touches.</rationale>
+
+    <rule id="sso-permission-sets" testable="true" depth="essential">
+      <statement>Human access MUST come through IAM Identity Center permission sets, not direct IAM users. Direct IAM users are reserved for service identities with documented justification.</statement>
+      <rationale source="AWS Identity Center; CIS AWS Benchmark">Direct IAM users with long-lived keys are the leaked-credentials class; SSO + STS scoped tokens close that.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Every EC2 instance MUST have an IAM instance role (not access keys) that includes at minimum AmazonSSMManagedInstanceCore. Attach CloudWatchAgentServerPolicy for metrics/logs. Add application-specific inline policies scoped to the resources the instance actually needs. Create an instance profile and associate it with the role before attaching to an instance.</statement>
-      <rationale source="v1-source">Instance roles provide auto-rotating credentials via IMDS. Access keys embedded in instances never rotate automatically and survive AMI copies. SSM Core policy enables Session Manager, Patch Manager, and Run Command without SSH.</rationale>
+
+    <rule id="permissions-boundary-dev" testable="true" depth="essential">
+      <statement>Developer / engineer permission sets MUST have a Permissions Boundary capping max effective permissions, even if attached policies are temporarily broadened.</statement>
+      <rationale source="AWS IAM Permissions Boundaries docs">Without boundary, a temporary `*` policy attachment becomes effective `*`; boundary is the org-level safety net.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Cross-account AssumeRole trust policies MUST require MFA (aws:MultiFactorAuthPresent: true) for human access and MUST include a unique ExternalId condition for third-party tool access. The source account principal MUST be scoped to a specific role ARN or account, never "arn:aws:iam::*:root".</statement>
-      <rationale source="v1-source">Without MFA enforcement, a compromised long-term credential in the source account can assume cross-account roles. ExternalId prevents the confused deputy problem where a third-party SaaS tool is tricked into accessing the wrong customer account.</rationale>
+
+    <rule id="scp-deny-floor" testable="true" depth="essential">
+      <statement>Org-level SCP MUST deny: leaving the org, disabling CloudTrail, disabling GuardDuty, modifying root credentials, S3 public buckets in regulated accounts. SCPs MUST be tested against a canary OU before prod rollout.</statement>
+      <rationale source="AWS Organizations SCP docs; CIS AWS Benchmark">Account-level IAM cannot prevent destructive actions if root or admin is compromised; SCP is the only org-level guardrail.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>When delegating IAM role creation to a team, attach a permission boundary to every role they create. The boundary MUST explicitly Deny iam:CreateUser, iam:DeleteUser, iam:CreateRole, iam:DeleteRole, iam:AttachRolePolicy, iam:DetachRolePolicy, iam:PutRolePermissionsBoundary, iam:DeleteRolePermissionsBoundary, and all organizations:* actions. The delegated admin SCP or IAM policy MUST require iam:PermissionsBoundary on role creation.</statement>
-      <rationale source="v1-source">A delegated admin without a permission boundary can create a role with AdministratorAccess and assume it, escaping all delegation constraints. The boundary is the only hard limit on effective permissions.</rationale>
+
+    <rule id="conditional-policies" testable="true" depth="essential">
+      <statement>Sensitive actions (delete, key rotation, security-config changes) MUST require MFA condition (`aws:MultiFactorAuthPresent`) + source-IP or VPC condition where applicable.</statement>
+      <rationale source="AWS IAM Conditions docs; SOC2 audit findings">Phished credentials without MFA = full access; MFA condition + IP-pinning shrinks blast radius.</rationale>
     </rule>
+
+    <rule id="access-analyzer-review" testable="true" depth="essential">
+      <statement>IAM Access Analyzer MUST be enabled in every account; findings MUST be reviewed within 7 days with named owner + decision (`fix | accepted-with-rationale | false-positive`).</statement>
+      <rationale source="AWS IAM Access Analyzer docs">Access Analyzer surfaces external-shared resources; un-triaged findings hide real data-exposure.</rationale>
+    </rule>
+
+    <rule id="session-tags-attribution" testable="true" depth="essential">
+      <statement>STS / SSO session tags MUST propagate user identity into CloudTrail (via `sts:SetSourceIdentity` or session_name = email) for action attribution.</statement>
+      <rationale source="AWS STS SourceIdentity docs">Shared-role audit trails read `AssumedRole/X/Y` with no human attribution; session tags restore traceability.</rationale>
+    </rule>
+
+    <rule id="no-managed-admin-on-humans" testable="true" depth="essential">
+      <statement>AWS-managed `AdministratorAccess` policy MUST NOT be attached to human roles; use custom least-privilege permission sets with quarterly review.</statement>
+      <rationale source="AWS IAM Best Practices">AdministratorAccess on humans nullifies every other control; quarterly-reviewed custom policies are the only defensible baseline.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

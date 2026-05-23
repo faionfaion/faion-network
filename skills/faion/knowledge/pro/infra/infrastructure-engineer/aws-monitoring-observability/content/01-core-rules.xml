@@ -1,11 +1,61 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="aws-monitoring-observability Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for aws-monitoring-observability. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="AWS Monitoring + Observability Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>8 testable rules every application of `AWS Monitoring + Observability` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="slo-driven-alarms" testable="true" depth="essential">
+      <statement>Production alarms MUST be derived from SLOs (availability, latency, error rate) using multi-window burn-rate (5min + 1h windows minimum). Static thresholds without SLO grounding are forbidden.</statement>
+      <rationale source="Google SRE Workbook ch. 5; AWS Alarms Best Practices">Threshold-based alarms either over-page (noise) or under-page (miss real degradation); SLO-burn alarms are mathematically grounded.</rationale>
     </rule>
+
+    <rule id="structured-logs-required" testable="true" depth="essential">
+      <statement>Application logs MUST be JSON-structured with request_id + service + trace_id; CloudWatch Logs Insights queries MUST be saved per service.</statement>
+      <rationale source="AWS Logs Insights docs">Free-text logs cannot be queried at scale; JSON logs power Insights dashboards + alarms.</rationale>
+    </rule>
+
+    <rule id="xray-tracing-on" testable="true" depth="essential">
+      <statement>Inter-service calls MUST emit X-Ray traces; sampling rate ≥ 5% for prod, 100% for critical paths.</statement>
+      <rationale source="AWS X-Ray docs; OpenTelemetry guidance">Without distributed tracing, debugging cross-service latency is impossible; X-Ray + OTLP gives the dependency map.</rationale>
+    </rule>
+
+    <rule id="metrics-namespace-discipline" testable="true" depth="essential">
+      <statement>Custom CloudWatch metrics MUST live under a per-service namespace `&lt;Team&gt;/&lt;Service&gt;`; emitting to `AWS/*` namespaces is forbidden.</statement>
+      <rationale source="CloudWatch namespace docs">Polluting AWS namespaces hides custom metrics; per-service namespace makes ownership + cost attribution clean.</rationale>
+    </rule>
+
+    <rule id="dashboards-per-service" testable="true" depth="essential">
+      <statement>Each production service MUST have a CloudWatch / Grafana dashboard with: SLI gauges (availability, p50/p95/p99 latency, error rate), saturation panels (CPU / memory / connection pool), and a deploy-marker overlay.</statement>
+      <rationale source="Google SRE Workbook; AWS dashboard examples">No dashboard = blind during incident; standard dashboard accelerates triage.</rationale>
+    </rule>
+
+    <rule id="logs-retention-tiered" testable="true" depth="essential">
+      <statement>Log retention MUST be tiered: 30d hot in CloudWatch, 90-365d in S3 (subscription filter), &gt; 1y in Glacier. Indefinite retention is flagged as cost finding.</statement>
+      <rationale source="AWS Logs lifecycle docs">Default infinite retention dominates CloudWatch Logs cost; tiered retention is 80%+ cheaper.</rationale>
+    </rule>
+
+    <rule id="container-insights-on" testable="true" depth="essential">
+      <statement>ECS / EKS clusters MUST have Container Insights enabled; node + pod-level metrics MUST flow into a unified dashboard.</statement>
+      <rationale source="AWS Container Insights docs">Without Container Insights, pod-level investigations require shell access; metrics-first model is auditable.</rationale>
+    </rule>
+
+    <rule id="opentelemetry-collector" testable="true" depth="essential">
+      <statement>New services MUST emit OpenTelemetry (OTLP) traces + metrics; AWS Distro for OpenTelemetry collector deployed per cluster / per VPC.</statement>
+      <rationale source="AWS Distro for OTel docs">Vendor-locking observability to a single SaaS is expensive long-term; OTel preserves portability.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume review cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
