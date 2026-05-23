@@ -1,3 +1,9 @@
+# purpose: Sidekiq Background Jobs template (job.rb)
+# consumes: Prerequisites bundle (see AGENTS.md)
+# produces: artefact conforming to content/02-output-contract.xml (code)
+# depends-on: content/01-core-rules.xml + content/02-output-contract.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
+
 # app/jobs/process_order_job.rb
 # Required: include Sidekiq::Job, sidekiq_options, idempotency, primitive args, retry backoff.
 

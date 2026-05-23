@@ -4,58 +4,97 @@ tier: pro
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
+summary: Incremental framework-upgrade pattern that grows the new system route-by-route beside the legacy one, avoiding the big-bang branch.
 content_id: "d424428bec41642f"
-summary: Named, stepped-out incremental-migration pattern for framework upgrades (Vue 2→3, Next pages→app router, Rails major, Django major) that avoids the big-bang branch.
-tags: [strangler-fig, migration, framework-upgrade, refactor, pro, dev]
+complexity: deep
+produces: playbook-step
+est_tokens: 4100
+tags: [strangler-fig, migration, framework-upgrade, refactor]
 ---
 # Strangler Fig Migration Pattern
 
 ## Summary
 
-**One-sentence:** The canonical incremental-migration pattern, named and stepped out for common framework-upgrade scenarios (Vue 2→3, Next pages→app router, Rails major, Django major), to survive a major upgrade without a big-bang branch.
+**One-sentence:** Incremental framework-upgrade pattern that grows the new system route-by-route beside the legacy one, avoiding the big-bang branch.
 
-**One-paragraph:** Trunk-based content references the pattern obliquely ("don't fork main"). This methodology names it and gives the developer a recipe: wrap the legacy boundary with a router or adapter, build new functionality in the target framework BESIDE the legacy code, redirect routes one-by-one to the new implementation, and delete the legacy code only when all routes have been redirected. The result: main stays releasable every day, no long-running branch, no all-or-nothing cutover, no team blocked by a single mega-PR. Four scenario-specific recipes are included: Vue 2→3 (vue-demi compatibility layer), Next.js pages→app router (route-by-route move), Rails major (engine isolation), Django major (URL-include split).
+**One-paragraph:** Incremental framework-upgrade pattern that grows the new system route-by-route beside the legacy one, avoiding the big-bang branch. The methodology pins the artefact shape via a JSON Schema (see `content/02-output-contract.xml`), ties every conclusion in the decision tree to a rule id in `content/01-core-rules.xml`, and gates output via `scripts/validate-strangler-fig-migration-pattern.py` (stdlib-only, `--self-test` available). Apply when preconditions in Applies-If hold; route to `skip-this-methodology` otherwise. The output artefact is versioned (semver), owner-signed (named human, never 'team' / 'we'), and consumable by a downstream agent or human reviewer without re-deriving the rationale.
+
+**Ефективно для:**
+
+- Vue 2→3, Next pages→app router, Rails major upgrade, Django major upgrade.
+- Active product з прод-юзерами — big-bang refactor неприпустимий.
+- Кодова база ≥30k LOC, де ROI rewrite < ROI incremental cutover.
+- CI/CD здатне deployити обидва системи паралельно за route prefix або feature flag.
 
 ## Applies If (ALL must hold)
 
-- Codebase is on a framework version with a known major upgrade path AND continued business need.
-- Team has &gt;1 person (the pattern relies on parallel work on legacy + new).
-- The build system can serve both old and new code paths simultaneously (router-level routing, feature-flag system, or framework support).
-- The deprecated version has an OS / security window of at least 6 months (less → emergency upgrade methodology applies instead).
+- Active product with paying users — downtime/regression budget tight
+- Routable seam exists (HTTP routes, RPC endpoints, or feature flags) for traffic split
+- Both legacy and new framework can run side-by-side in production
+- Team can dedicate a multi-sprint commitment to walk the routes
 
 ## Skip If (ANY kills it)
 
-- Codebase is small enough that a big-bang upgrade in a week is cheaper than the pattern overhead (rule of thumb: ≤30 files, ≤200 commits).
-- Framework upgrade is incompatible with parallel operation (rare; e.g. monolithic global runtime change with no isolation primitive).
-- Business cannot tolerate ANY mixed state (regulated compliance contexts where dual-stack is a control failure).
-- The "upgrade" is actually a full rewrite — different methodology (`microservice-extraction-decision-tree` or full rewrite playbook).
+- Greenfield rewrite — no legacy to strangle; ship the new system directly
+- ≤5k LOC monolith — full rewrite cheaper than process overhead of strangler
+- No routable seam — monolith cannot be split route-by-route
+- Team won't freeze legacy post-cutover — strangler half-finished is worse than legacy
 
 ## Prerequisites
 
-- A migration backlog: list of routes / modules / components in legacy, each tagged with size + risk.
-- An "outermost router" or boundary that can dispatch between legacy and new (e.g. nginx, Next.js middleware, Rails Rack stack, Django URLconf).
-- A feature-flag or environment-variable mechanism to gate per-route routing.
-- CI capable of running both stacks side-by-side on the same PR.
+| Trigger artefact | format | author / source |
+|---|---|---|
+| Task brief | Markdown | requester |
+| Named owner | string | requester / RACI |
+| Prior artefact (if updating) | repo path | artefact store |
+| Constraint inputs (budget, SLA, compliance) | structured | requester / policy |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-developer/codemod-recipe-library` | Codemods automate the mechanical portion of each move. |
-| `pro/dev/software-developer/contract-testing-consumer-driven` | Contract tests verify the new implementation matches legacy at the boundary. |
-| `geek/dev/software-developer/dual-write-shadow-read-template` | Useful when the migration includes a backend store. |
+| `pro/dev/INDEX.xml` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: boundary first, new code beside legacy, route-by-route cutover, legacy frozen post-cutover, completion-by-deletion | ~1300 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-this-methodology, each with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `decide-skip-vs-apply` | sonnet | Decision-tree application — light judgement on preconditions vs skip-if. |
+| `draft-strangler-fig-migration-pattern` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/skeleton.json` | JSON instance matching the output contract |
+| `templates/skeleton.md` | Markdown skeleton with the required fields |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-strangler-fig-migration-pattern.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
-- peer methodologies: `codemod-recipe-library`, `contract-testing-consumer-driven`, `microservice-extraction-decision-tree`
-- external: [Martin Fowler — StranglerFigApplication](https://martinfowler.com/bliki/StranglerFigApplication.html) · [Next.js App Router Migration Guide](https://nextjs.org/docs/app) · [Vue 3 Migration Guide](https://v3-migration.vuejs.org/)
+- Parent: `pro/dev/INDEX.xml`
+- [[v1-to-v2-migration-playbook]]
+- [[test-pyramid-rebalance-playbook]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

@@ -4,58 +4,97 @@ tier: pro
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
+summary: Converts Storybook into the design-system Source of Truth: story-per-state, a11y CI gate, tokens-only styling, Figma generated from Storybook.
 content_id: "9c3770b6ee29fd0f"
-summary: Codifies Storybook as the canonical Source of Truth for a design system — story-per-state discipline, a11y addon enforcement, token-first composition, and the tokens → Storybook → Figma library → PR governance loop.
-tags: [storybook, design-system, ux, frontend, a11y, pro, dev]
+complexity: deep
+produces: config
+est_tokens: 4100
+tags: [storybook, design-system, ux, frontend, a11y]
 ---
 # Storybook as Source of Truth
 
 ## Summary
 
-**One-sentence:** Establishes Storybook as the canonical Source of Truth (SoT) for a design system, with mandatory story-per-state coverage, the a11y addon as a CI gate, and a tokens → Storybook → Figma library → PR governance loop.
+**One-sentence:** Converts Storybook into the design-system Source of Truth: story-per-state, a11y CI gate, tokens-only styling, Figma generated from Storybook.
 
-**One-paragraph:** Most teams ship Storybook and stop there — it becomes a stale documentation site. This methodology converts Storybook into the SoT for the design system: every visual state of every component is encoded as a story, the a11y addon runs in CI, design tokens are the only colour/spacing/typography source, and Figma libraries are generated FROM Storybook (not the other way around). Storybook becomes the artifact that PRs are reviewed against, the Figma sync happens via Storybook addons, and any deviation in product code is a PR comment, not a discussion. Pairs with the design-system contribution model (PR governance for new components).
+**One-paragraph:** Converts Storybook into the design-system Source of Truth: story-per-state, a11y CI gate, tokens-only styling, Figma generated from Storybook. The methodology pins the artefact shape via a JSON Schema (see `content/02-output-contract.xml`), ties every conclusion in the decision tree to a rule id in `content/01-core-rules.xml`, and gates output via `scripts/validate-storybook-as-source-of-truth.py` (stdlib-only, `--self-test` available). Apply when preconditions in Applies-If hold; route to `skip-this-methodology` otherwise. The output artefact is versioned (semver), owner-signed (named human, never 'team' / 'we'), and consumable by a downstream agent or human reviewer without re-deriving the rationale.
+
+**Ефективно для:**
+
+- Shared design system на ≥2 product surfaces (web + native, або marketing + app).
+- Frontend stack з Storybook 8+ та CI здатна гонити storybook build + a11y addon.
+- Design tokens (Style Dictionary, design-tokens JSON, CSS custom props) визначені та консумуються компонентами.
+- PR governance вже існує — Storybook lint може блокувати merge на новій a11y violation.
 
 ## Applies If (ALL must hold)
 
-- Codebase has a shared design system used across ≥2 product surfaces (or planned to within 1 quarter).
-- A frontend framework with Storybook 8+ support (React, Vue, Angular, Svelte, Lit, web components).
-- Design tokens exist OR can be defined as the first migration step (Style Dictionary, design-tokens JSON, CSS custom properties).
-- Team has CI capable of running headless story builds and the a11y addon.
+- Design system shared across ≥2 product surfaces (or planned within 1 quarter)
+- Frontend with Storybook 8+ support
+- Design tokens exist OR can be defined as first migration step
+- CI capable of running headless story builds + a11y addon
 
 ## Skip If (ANY kills it)
 
-- Single-app project with no plan for reuse — Storybook becomes maintenance debt without a payoff.
-- Team owns no design tokens and cannot get them defined — adopting Storybook without tokens makes it a screenshot gallery.
-- Design lead refuses to treat Storybook as the SoT (Figma remains canonical) — political prerequisite is missing; resolve before adoption.
-- Tooling forbids open-source dependencies large enough to host Storybook (rare; flagged here for compliance contexts).
+- Single-app project with no plan for reuse — Storybook becomes debt without payoff
+- Team owns no design tokens and cannot get them defined
+- Design lead refuses to treat Storybook as SoT (Figma remains canonical)
+- Compliance forbids open-source dependencies large enough to host Storybook
 
 ## Prerequisites
 
-- Storybook 8+ installed with the framework's official integration.
-- Design tokens defined in a single file/package (e.g. `@my-org/tokens`) imported by component CSS.
-- The `@storybook/addon-a11y` installed.
-- A CI job that runs `storybook build` + `test-storybook` (or play-function tests) on every PR.
+| Trigger artefact | format | author / source |
+|---|---|---|
+| Task brief | Markdown | requester |
+| Named owner | string | requester / RACI |
+| Prior artefact (if updating) | repo path | artefact store |
+| Constraint inputs (budget, SLA, compliance) | structured | requester / policy |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ux/ux-ui-designer/design-tokens-architecture` (if present) | Token model is the upstream input. |
-| `pro/dev/software-developer/component-library-versioning` (if present) | Versioning policy for the SoT package. |
-| `geek/dev/software-developer/fitness-function-suite-bootstrap` | A11y addon results feed into fitness functions. |
+| `pro/dev/INDEX.xml` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: story-per-state, a11y addon CI gate, tokens-only styling, Figma generated from Storybook, deviation = PR comment | ~1300 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-this-methodology, each with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `decide-skip-vs-apply` | sonnet | Decision-tree application — light judgement on preconditions vs skip-if. |
+| `draft-storybook-as-source-of-truth` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/config.json` | JSON instance matching the output contract |
+| `templates/config.yaml` | YAML config skeleton matching the output contract |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-storybook-as-source-of-truth.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
-- peer methodologies: `audit-grade-api-design`, `audit-grade-code-review-checklist`
-- external: [Storybook 8 Docs](https://storybook.js.org/) · [Storybook a11y Addon](https://storybook.js.org/addons/@storybook/addon-a11y) · [Style Dictionary](https://amzn.github.io/style-dictionary/) · [Design Tokens W3C Community Group](https://www.designtokens.org/)
+- Parent: `pro/dev/INDEX.xml`
+- [[wcag-severity-rubric]]
+- [[visual-regression-baselining]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

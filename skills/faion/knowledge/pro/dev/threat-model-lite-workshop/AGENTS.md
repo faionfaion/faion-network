@@ -4,77 +4,97 @@ tier: pro
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: 60-minute threat-model lite workshop facilitation: data-flow whiteboard, STRIDE-Lite per element, top-5 prioritised threats, named mitigation owners.
 content_id: "2ee157ca5886079e"
-summary: "Threat Model Lite Workshop: produces a versioned, owner-signed artefact that closes the gap 'role-qa-engineer/Security testing program rollout'."
-tags: [threat-model-lite-workshop, dev, pro]
+complexity: medium
+produces: playbook-step
+est_tokens: 4100
+tags: [threat-model, workshop, security, qa, lite]
 ---
 # Threat Model Lite Workshop
 
 ## Summary
 
-**One-sentence:** Threat Model Lite Workshop: produces a versioned, owner-signed artefact that closes the gap 'role-qa-engineer/Security testing program rollout'.
+**One-sentence:** 60-minute threat-model lite workshop facilitation: data-flow whiteboard, STRIDE-Lite per element, top-5 prioritised threats, named mitigation owners.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-qa-engineer/Security testing program rollout': Full STRIDE is heavy; product teams need a 'threat-model lite' 90-minute workshop pattern QAs can facilitate. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a threat model lite workshop artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** 60-minute threat-model lite workshop facilitation: data-flow whiteboard, STRIDE-Lite per element, top-5 prioritised threats, named mitigation owners. The methodology pins the artefact shape via a JSON Schema (see `content/02-output-contract.xml`), ties every conclusion in the decision tree to a rule id in `content/01-core-rules.xml`, and gates output via `scripts/validate-threat-model-lite-workshop.py` (stdlib-only, `--self-test` available). Apply when preconditions in Applies-If hold; route to `skip-this-methodology` otherwise. The output artefact is versioned (semver), owner-signed (named human, never 'team' / 'we'), and consumable by a downstream agent or human reviewer without re-deriving the rationale.
+
+**Ефективно для:**
+
+- QA engineer rollout security-testing program у середній команді (5-15 devs).
+- New feature scoped для launch, нема full TM workshop часу.
+- Cross-functional (eng + product + QA) education на STRIDE basics.
+- Recurring cadence (per quarter / per major feature) where Lite scales > Full.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-qa-engineer/Security testing program rollout' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Team ≥5 people willing to spend 60 minutes on threat-modelling
+- New feature or service-edge scoped within session
+- Data-flow diagram can be drawn on whiteboard in <15 min
+- Mitigation owners can be named within the session
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working threat model lite workshop artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Compliance context needs full STRIDE TM, not Lite
+- <5 attendees — workshop dynamics break down
+- Team has no shared security vocabulary — workshop becomes 101 lecture
+- No follow-up ownership — workshop output dies in slides
 
 ## Prerequisites
 
-- recent context for the 'role-qa-engineer/Security testing program rollout' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Trigger artefact | format | author / source |
+|---|---|---|
+| Task brief | Markdown | requester |
+| Named owner | string | requester / RACI |
+| Prior artefact (if updating) | repo path | artefact store |
+| Constraint inputs (budget, SLA, compliance) | structured | requester / policy |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/dev` | parent domain group — provides operating context for Threat Model Lite Workshop |
+| `pro/dev/INDEX.xml` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-this-methodology, each with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application — light judgement on preconditions vs skip-if. |
+| `draft-threat-model-lite-workshop` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/threat-model-lite-workshop.json` | JSON schema for the Threat Model Lite Workshop output contract |
-| `templates/threat-model-lite-workshop.md` | Markdown skeleton with the required fields |
+| `templates/skeleton.json` | JSON instance matching the output contract |
+| `templates/skeleton.md` | Markdown skeleton with the required fields |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-threat-model-lite-workshop.py` | Enforce Threat Model Lite Workshop output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-threat-model-lite-workshop.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/`
-- upstream playbook: `role-qa-engineer/Security testing program rollout`
-- pro/dev/role-qa-engineer
+- Parent: `pro/dev/INDEX.xml`
+- [[stride-lite-checklist-for-architects]]
+- [[threat-model-as-code]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

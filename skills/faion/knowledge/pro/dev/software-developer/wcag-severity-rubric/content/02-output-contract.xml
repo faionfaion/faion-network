@@ -1,62 +1,85 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="WCAG Severity Rubric Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Defines the schema of a triaged a11y finding and the audit-level severity distribution report.</summary>
+<text id="02-output-contract" title="WCAG Severity Rubric Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the artefact this methodology produces. Validator script enforces required keys, types, and per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="triaged_findings" format="list">
-        <subfield name="findings[].finding_id" type="string"/>
-        <subfield name="findings[].wcag_sc" type="string" pattern="^[0-9]\.[0-9]\.[0-9]+ .+"/>
-        <subfield name="findings[].wcag_level" enum="1,2,3" mapping="AAA=1,AA=2,A=3"/>
-        <subfield name="findings[].user_impact" enum="0,1,2,3"/>
-        <subfield name="findings[].at_population" enum="0,1,2,3"/>
-        <subfield name="findings[].axes_sum" type="integer" min="0" max="9"/>
-        <subfield name="findings[].severity" enum="blocker,serious,moderate,minor"/>
-        <subfield name="findings[].at_validation" type="string" required_if="at_population &gt;= 1"/>
-        <subfield name="findings[].sla" enum="next_deploy,one_sprint,one_quarter,wontfix_with_rationale"/>
-      </field>
-      <field name="severity_distribution" format="dict">
-        <subfield name="blocker_count" type="integer"/>
-        <subfield name="serious_count" type="integer"/>
-        <subfield name="moderate_count" type="integer"/>
-        <subfield name="minor_count" type="integer"/>
-      </field>
-      <field name="sample_validation_record" format="dict">
-        <subfield name="samples_resocored" type="integer" min="10"/>
-        <subfield name="match_rate" type="float" min="0.80" max="1.00"/>
-      </field>
-      <field name="critical_journey_impact" format="list">
-        <subfield name="journeys[].journey_name" type="string"/>
-        <subfield name="journeys[].blocker_count_on_journey" type="integer"/>
-      </field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">finding with severity == "blocker" AND user_impact &lt; 3 (and no override condition met)</pattern>
-      <pattern id="f2">finding with at_population ≥ 1 AND at_validation missing or "untested"</pattern>
-      <pattern id="f3">severity_distribution where blocker_count / total_findings &gt; 0.30 — almost certainly over-tagged</pattern>
-      <pattern id="f4">sample_validation_record.match_rate &lt; 0.80 — rubric un-calibrated, re-triage required</pattern>
-      <pattern id="f5">finding with sla == "wontfix_with_rationale" but rationale field empty</pattern>
-      <pattern id="f6">automated tool output piped through without AT validation step</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>"Override" rule: any finding with user_impact == 3 (task-block) AND at_population ≥ 2 is severity=blocker, ignoring axes_sum.</transformation>
-      <transformation>For products with regulated WCAG-AAA target, all wcag_level == 1 (AAA) findings escalate one tier (minor → moderate, moderate → serious).</transformation>
-      <transformation>Root-cause clustering: 15 findings sharing a single root cause may be tracked as 1 work item with severity = max(clustered_severities).</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/triaged-finding.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>every finding has all 3 axes scored (no nulls)</item>
-      <item>every at_population ≥ 1 finding has AT validation evidence</item>
-      <item>severity_distribution.blocker_count / total ≤ 0.30 (typical 5-15%)</item>
-      <item>sample_validation_record.match_rate ≥ 0.80</item>
-      <item>critical_journey_impact section identifies top 3 user journeys with their blocker count</item>
-      <item>any wontfix_with_rationale findings have rationale ≥ 30 words</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/wcag-severity-rubric.json",
+  "title": "WCAG Severity Rubric",
+  "type": "object",
+  "required": ["artefact_id", "owner", "axes", "scoring", "rationale", "inputs_used", "version", "last_reviewed"],
+  "properties": {
+    "artefact_id": { "type": "string", "minLength": 1 },
+    "owner": { "type": "string", "minLength": 1, "not": { "enum": ["team", "we", "us", "TBD", ""] } },
+    "axes": { "type": "array", "minItems": 1 },
+    "scoring": { "type": "object" },
+    "rationale": { "type": "string", "minLength": 1 },
+    "inputs_used": { "type": "array", "minItems": 1 },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "last_reviewed": { "type": "string", "format": "date" }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "wcag-severity-rubric-2026Q2-001",
+  "owner": "ruslan@faion.net",
+  "axes": [
+    {
+      "name": "cost",
+      "weight": 0.4,
+      "score": 7
+    },
+    {
+      "name": "latency",
+      "weight": 0.3,
+      "score": 8
+    },
+    {
+      "name": "ops",
+      "weight": 0.3,
+      "score": 6
+    }
+  ],
+  "scoring": {
+    "method": "weighted-sum",
+    "total": 7.0
+  },
+  "rationale": "Closes the gap surfaced by the parent skill — input artefact 'task-brief.md' explicitly names the constraint set; output ties decisions to rule r1.",
+  "inputs_used": [
+    "task-brief.md",
+    "constitution.md"
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "",
+  "owner": "team",
+  "version": "latest"
+}
+]]></code>
+    <note>Missing required fields; owner = 'team' is forbidden; placeholder values 'TBD' / 'TODO' / 'FIXME' rejected. Validator returns explicit violation list.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <pattern>any field with value 'TBD' / 'TODO' / 'FIXME'</pattern>
+    <pattern>'team' / 'we' / 'us' as owner</pattern>
+    <pattern>free-form prose where a structured field is required</pattern>
+    <pattern>empty arrays for required list-typed fields</pattern>
+    <pattern>version that is not semver (e.g. 'latest', '0', 'rc')</pattern>
+  </section>
+
+  <reference path="scripts/validate-wcag-severity-rubric.py">Validator script enforcing this schema</reference>
 </text>

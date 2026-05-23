@@ -4,85 +4,97 @@ tier: pro
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Three-axis triage rubric (assistive-tech blocker × WCAG level × user-journey criticality) that buckets a11y findings into blocker / serious / moderate / minor with SLAs.
 content_id: "1353ca83c993209e"
-summary: Triage rubric for accessibility audit findings into blocker / serious / moderate / minor with assistive-tech, WCAG level, and user-journey criteria.
+complexity: medium
+produces: rubric
+est_tokens: 4100
 tags: [accessibility, a11y, wcag, severity, triage, audit, rubric]
 ---
-# WCAG Severity Triage Rubric
+# WCAG Severity Rubric
 
 ## Summary
 
-**One-sentence:** Triage rubric for accessibility audit findings into blocker / serious / moderate / minor with assistive-tech, WCAG level, and user-journey criteria.
+**One-sentence:** Three-axis triage rubric (assistive-tech blocker × WCAG level × user-journey criticality) that buckets a11y findings into blocker / serious / moderate / minor with SLAs.
 
-**One-paragraph:** Accessibility audits surface 30-300 findings; without a shared severity rubric every finding becomes "p1" and the backlog stalls. Mechanism: each finding is scored on 3 axes — (a) WCAG conformance level (A / AA / AAA), (b) user impact (blocks task vs. degrades vs. annoyance), (c) assistive-tech population affected (screen reader, keyboard-only, low vision, cognitive). The cross-product collapses to a 4-tier severity (blocker / serious / moderate / minor), each with an SLA. Aligns Deque / WebAIM / axe-core severity definitions so a designer, dev, and QA all triage the same way. Primary output: triaged audit report ready for sprint planning.
+**One-paragraph:** Three-axis triage rubric (assistive-tech blocker × WCAG level × user-journey criticality) that buckets a11y findings into blocker / serious / moderate / minor with SLAs. The methodology pins the artefact shape via a JSON Schema (see `content/02-output-contract.xml`), ties every conclusion in the decision tree to a rule id in `content/01-core-rules.xml`, and gates output via `scripts/validate-wcag-severity-rubric.py` (stdlib-only, `--self-test` available). Apply when preconditions in Applies-If hold; route to `skip-this-methodology` otherwise. The output artefact is versioned (semver), owner-signed (named human, never 'team' / 'we'), and consumable by a downstream agent or human reviewer without re-deriving the rationale.
+
+**Ефективно для:**
+
+- Post-audit triage коли VPAT/ACR returns 200+ findings і треба швидко вибрати fix order.
+- Procurement / compliance gates (Section 508, EAA, ADA) з SLA per severity tier.
+- QA-engineer організовує bug board і потрібен консистентний severity mapping.
+- Roadmap-planning, де accessibility findings конкурують з feature work за пріоритет.
 
 ## Applies If (ALL must hold)
 
-- an a11y audit (manual or automated) has produced raw findings without severity
-- the product targets WCAG 2.1 AA or higher conformance
-- multiple roles (PM, dev, designer, QA) will touch the backlog — triage must be reproducible
-- you have a fix-effort estimate column or can produce one per finding
+- Audit produced ≥20 findings that need prioritisation
+- Team has WCAG knowledge (2.0 or 2.1, AA or AAA target)
+- Findings include at-population context (which user journey, which AT, which device)
+- Bug tracker supports severity field used by triage process
 
 ## Skip If (ANY kills it)
 
-- single finding or &lt; 5 findings — just fix them
-- product targets only screen-reader users (specialist tool) — use a deeper population-weighted rubric
-- regulatory-driven (ADA Title II 2026, EAA 2025) — the legal threshold replaces this rubric for "must fix"
-- VPAT writeup — severity-by-tier is a different lens; use `regulatory-compliance-2026`
-- AAA-targeted product (gov, healthcare) — all findings are blocker by definition
+- <20 findings — triage by hand is faster than rubric overhead
+- No assistive-technology testing was done — can't apply the AT-blocker axis
+- Procurement context where the rubric must match the buyer's (use the buyer's)
+- Pre-audit scoping phase — rubric is for outputs, not inputs
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- raw audit findings with: WCAG SC reference, location (page + selector), reproduction steps
-- the product's WCAG target level (AA is standard)
-- the target population breakdown (estimate %screen-reader, %keyboard-only, %low-vision, %cognitive)
-- a fix-effort scale (1-5 or t-shirt sizes)
+| Trigger artefact | format | author / source |
+|---|---|---|
+| Task brief | Markdown | requester |
+| Named owner | string | requester / RACI |
+| Prior artefact (if updating) | repo path | artefact store |
+| Constraint inputs (budget, SLA, compliance) | structured | requester / policy |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/ux/accessibility-specialist/wcag-22-compliance` | Source of SC mapping used by the rubric |
-| `pro/ux/accessibility-specialist/a11y-testing` | Source of reproduction steps and AT validation |
-| `pro/ux/ux-ui-designer/a11y-annotation-pattern-library` | Used during fix design to prevent re-occurrence |
+| `pro/dev/INDEX.xml` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: 3-axis scoring, blocker = task-block, AT-population gate, SLA per tier, sample-validate triage | ~900 |
-| `content/02-output-contract.xml` | essential | Triaged finding schema, severity-distribution report, forbidden patterns | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (everything-p1, AT-erasure, fix-effort confound, automated-only, stale rubric, regression backlog) | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-this-methodology, each with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `per_finding_severity_score` | sonnet | Bounded 3-axis scoring with deterministic outputs |
-| `audit_summary_report` | sonnet | Roll-up of severity distribution + critical-journey impact |
-| `cross-finding_dedup` | opus | Detect that 15 findings share a root cause (e.g., a single missing alt-text pattern) |
-| `sla_assignment_per_finding` | haiku | Template fill: severity → SLA window from a table |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application — light judgement on preconditions vs skip-if. |
+| `draft-wcag-severity-rubric` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/triaged-finding.json` | Per-finding schema with severity, axes scores, SLA |
-| `templates/severity-distribution-report.md` | Audit roll-up table for stakeholder review |
-| `templates/sla-table.md` | Severity → fix-by date and gating policy |
+| `templates/rubric.json` | JSON instance with axis scores |
+| `templates/rubric.md` | Rubric skeleton with weighted axes |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/triage-findings.py` | Apply rubric to raw axe-core / WAVE / Lighthouse output | Right after raw audit |
-| `scripts/cluster-by-root-cause.py` | Group findings by likely shared root cause | After triage, before sprint planning |
+| `scripts/validate-wcag-severity-rubric.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
-- peer methodologies: `wcag-22-compliance`, `a11y-testing`, `a11y-annotation-pattern-library`
-- external: [Deque - axe-core impact](https://docs.deque.com/axe/4.0/devtools-extension/#impact) · [WebAIM Million](https://webaim.org/projects/million/) · [W3C - WCAG Conformance Levels](https://www.w3.org/WAI/WCAG21/Understanding/conformance.html)
+- Parent: `pro/dev/INDEX.xml`
+- [[storybook-as-source-of-truth]]
+- [[test-suite-audit-rubric]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

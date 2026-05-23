@@ -4,77 +4,97 @@ tier: pro
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Encode team conventions (naming, file layout, test required-coverage, PR-template fields) as enforced lint rules / pre-commit hooks / CI gates, not Confluence pages.
 content_id: "34629d3793205a48"
-summary: "Team Conventions As Code: produces a versioned, owner-signed artefact that closes the gap 'role-software-developer/Make Production Readiness a PR-Level Concern'."
-tags: [team-conventions-as-code, dev, pro]
+complexity: medium
+produces: config
+est_tokens: 4100
+tags: [conventions, linting, automation, PR-gate]
 ---
-# Team Conventions As Code
+# Team Conventions as Code
 
 ## Summary
 
-**One-sentence:** Team Conventions As Code: produces a versioned, owner-signed artefact that closes the gap 'role-software-developer/Make Production Readiness a PR-Level Concern'.
+**One-sentence:** Encode team conventions (naming, file layout, test required-coverage, PR-template fields) as enforced lint rules / pre-commit hooks / CI gates, not Confluence pages.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-software-developer/Make Production Readiness a PR-Level Concern': Pro tier expects 'team patterns' (DDD/CQRS/microservices) without naming the meta-pattern: encode the team's conventions as enforceable rules (custom ESLint rules, ruff plugins, CODEOWNERS, danger.js, conventional-commits hook, AGENTS.md as machine-readable). Right now lint floor lives at geek/sdlc-ai/ and is out of tier reach. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a team conventions as code artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Encode team conventions (naming, file layout, test required-coverage, PR-template fields) as enforced lint rules / pre-commit hooks / CI gates, not Confluence pages. The methodology pins the artefact shape via a JSON Schema (see `content/02-output-contract.xml`), ties every conclusion in the decision tree to a rule id in `content/01-core-rules.xml`, and gates output via `scripts/validate-team-conventions-as-code.py` (stdlib-only, `--self-test` available). Apply when preconditions in Applies-If hold; route to `skip-this-methodology` otherwise. The output artefact is versioned (semver), owner-signed (named human, never 'team' / 'we'), and consumable by a downstream agent or human reviewer without re-deriving the rationale.
+
+**Ефективно для:**
+
+- Team ≥4 devs з конвенціями, що drift щомісяця через PRs.
+- Production-readiness gates на PR level (test coverage, ADR-link, security checklist).
+- Onboarding bottleneck: new devs ламають конвенції бо не прочитали Confluence.
+- CI infrastructure (GitHub Actions, GitLab CI) здатна gate'ити merge на violations.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-software-developer/Make Production Readiness a PR-Level Concern' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Team ≥3 devs and conventions drift across PRs
+- CI infrastructure can block merge on lint / hook / gate failures
+- Conventions are non-trivial (>5 rules) and re-explained in PR reviews
+- Existing Confluence/wiki conventions doc that nobody reads
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working team conventions as code artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Solo dev / pair team — convention drift solved by direct conversation
+- Conventions still in flux (changing weekly) — code them once stable
+- No CI gate authority — encoding without enforcement is theatre
+- Convention is a one-time choice (e.g. license header) — set it once, no automation needed
 
 ## Prerequisites
 
-- recent context for the 'role-software-developer/Make Production Readiness a PR-Level Concern' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Trigger artefact | format | author / source |
+|---|---|---|
+| Task brief | Markdown | requester |
+| Named owner | string | requester / RACI |
+| Prior artefact (if updating) | repo path | artefact store |
+| Constraint inputs (budget, SLA, compliance) | structured | requester / policy |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/dev` | parent domain group — provides operating context for Team Conventions As Code |
+| `pro/dev/INDEX.xml` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-this-methodology, each with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application — light judgement on preconditions vs skip-if. |
+| `draft-team-conventions-as-code` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/team-conventions-as-code.json` | JSON schema for the Team Conventions As Code output contract |
-| `templates/team-conventions-as-code.md` | Markdown skeleton with the required fields |
+| `templates/config.json` | JSON instance matching the output contract |
+| `templates/config.yaml` | YAML config skeleton matching the output contract |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-team-conventions-as-code.py` | Enforce Team Conventions As Code output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-team-conventions-as-code.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/`
-- upstream playbook: `role-software-developer/Make Production Readiness a PR-Level Concern`
-- pro/dev/role-software-developer
+- Parent: `pro/dev/INDEX.xml`
+- [[team-rfc-process-for-devs]]
+- [[test-suite-audit-rubric]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

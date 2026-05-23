@@ -4,56 +4,98 @@ tier: pro
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: Trade-off framing methodology for an outsource senior dev writing an ADR inside a client-mandated stack — names the constraint as policy, frames options within the stack, and uses costed mitigations instead of "we recommend a different stack" language.
+summary: ADR framing for an outsource senior dev writing inside a client-mandated stack: name the mandate, frame options within it, attach costed mitigations instead of stack-replacement language.
 content_id: "c068944ac0e39f29"
-tags: [software-architect, adr, stack-mandate, outsource, p4-outsource, tradeoff, client-architecture]
+complexity: medium
+produces: spec
+est_tokens: 4800
+tags: [software-architect, adr, stack-mandate, outsource, tradeoff, client-architecture]
 ---
 # Stack Mandate Trade-off Frame
 
 ## Summary
 
-**One-sentence:** An ADR-writing methodology for senior outsource devs operating inside a client-mandated stack: frame trade-offs as options *within* the mandate (not against it), cite the mandate as policy, and propose costed mitigations rather than stack replacement.
+**One-sentence:** ADR framing for an outsource senior dev writing inside a client-mandated stack: name the mandate, frame options within it, attach costed mitigations instead of stack-replacement language.
 
-**One-paragraph:** Generic quality-attribute methodologies (e.g., ATAM, QAW) assume the architect has freedom to pick the stack. Outsource senior devs almost never do — the client has standardised on AWS-EKS-Java-Postgres, or Azure-Functions-C#-SQL, and that decision is non-negotiable. Writing an ADR that says "consider switching to X" gets the dev disqualified from future engagements. This methodology codifies the different reasoning style needed: cite the mandate as an explicit constraint at the top, enumerate options whose first axis is "within mandate", show trade-offs in the language the client already uses (e.g., "additional EKS node groups" not "consider Nomad"), and where a trade-off is genuinely painful, propose costed mitigations the client can buy rather than implying their stack is wrong. The ADR is judged by a client architect, not the team — its job is to persuade inside the client's worldview, not from outside it.
+**One-paragraph:** ADR framing for an outsource senior dev writing inside a client-mandated stack: name the mandate, frame options within it, attach costed mitigations instead of stack-replacement language. The methodology pins the artefact shape via a JSON Schema (see `content/02-output-contract.xml`), ties every conclusion in the decision tree to a rule id in `content/01-core-rules.xml`, and gates output via `scripts/validate-stack-mandate-tradeoff-frame.py` (stdlib-only, `--self-test` available). Apply when preconditions in Applies-If hold; route to `skip-this-methodology` otherwise. The output artefact is versioned (semver), owner-signed (named human, never 'team' / 'we'), and consumable by a downstream agent or human reviewer without re-deriving the rationale.
+
+**Ефективно для:**
+
+- P4 outsource senior dev пише ADR у client-mandated stack (EKS+Java21+PG16 чи аналогічно).
+- Trade-off реальний (latency, cost, complexity), але stack-replacement не на столі.
+- Client architect read ADR і політична tone matters більше за технічну зміну.
+- Costed mitigation paths існують (більший instance, support tier) у procurement channel клієнта.
 
 ## Applies If (ALL must hold)
 
-- Client has documented or verbally established a mandated stack (vendor, language, infra) the engagement MUST use.
-- The dev is producing an ADR or decision memo that goes to a client architect or CTO.
-- A genuine trade-off exists (latency vs cost, complexity vs delivery date, etc.) — not a pure implementation memo.
-- The dev has at least 3 viable options *within* the mandated stack.
+- Outsource engagement with explicit stack mandate (ENG standard, RFP requirement)
+- Real trade-off in chosen stack worth documenting in an ADR
+- Costed mitigation exists (vendor support, larger instance, infrastructure addition)
+- Client architect reviews ADRs and decides procurement
 
 ## Skip If (ANY kills it)
 
-- Greenfield internal product where the dev picks the stack — use `quality-attributes-analysis` instead.
-- Client has invited an explicit stack-review engagement — different deliverable, different framing.
-- Decision is reversible at low cost (e.g., a config flag) — over-engineered for the value.
-- Only one option exists within the mandate — there is no trade-off to frame; write an implementation note.
+- Greenfield project with no stack mandate — write a normal ADR
+- Internal engagement (no client politics) — standard tradeoff-frame is enough
+- Mandate change IS on the table — write a stack-replacement proposal, not this ADR
+- Trade-off is trivial (<5% latency / cost delta) — ADR overhead not justified
 
 ## Prerequisites
 
-- Written or quotable statement of the client's stack mandate.
-- List of 3+ candidate options inside the mandate.
-- Quality attribute the trade-off acts on (latency, cost, security, etc.), with a target value if known.
+| Trigger artefact | format | author / source |
+|---|---|---|
+| Task brief | Markdown | requester |
+| Named owner | string | requester / RACI |
+| Prior artefact (if updating) | repo path | artefact store |
+| Constraint inputs (budget, SLA, compliance) | structured | requester / policy |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/architecture-proposal-document-template` | ADR baseline structure this specialises. |
-| `geek/sdd/adr-consequence-evidence-binding` | ADR consequence-evidence linking conventions. |
+| `pro/dev/INDEX.xml` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Five rules: mandate-as-constraint, options-within-mandate axis, client-lexicon enforcement, costed-mitigation pattern, no-replacement-suggestion. | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-this-methodology, each with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/05-examples.xml` | medium | One worked example end-to-end (filled artefact) | ~700 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
+
+## Task Routing
+
+| Sub-task | Model | Rationale |
+|----------|-------|-----------|
+| `decide-skip-vs-apply` | sonnet | Decision-tree application — light judgement on preconditions vs skip-if. |
+| `draft-stack-mandate-tradeoff-frame` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/skeleton.json` | JSON instance matching the output contract |
+| `templates/skeleton.md` | Markdown skeleton with the required fields |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-stack-mandate-tradeoff-frame.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/software-architect/`
-- peer: `architecture-proposal-document-template`, `technology-evaluation-rubric`, `cost-modeling-at-design-time`
-- external: ATAM (Architecture Tradeoff Analysis Method) — generic baseline being specialised here for mandated stacks
+- Parent: `pro/dev/INDEX.xml`
+- [[technology-evaluation-rubric]]
+- [[team-rfc-process-for-devs]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.

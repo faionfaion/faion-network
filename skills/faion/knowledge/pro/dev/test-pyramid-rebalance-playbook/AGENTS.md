@@ -4,77 +4,97 @@ tier: pro
 group: dev
 domain: dev
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Test-shape measurement + rebalance plan: classify current shape (pyramid / ice-cream-cone / hourglass), target shape per architecture, what to delete / push down.
 content_id: "2dbba572cb04e2ca"
-summary: "Test Pyramid Rebalance Playbook: produces a versioned, owner-signed artefact that closes the gap 'role-qa-engineer/Modernize a 2018-era QA suite into AI-augmented test ops'."
-tags: [test-pyramid-rebalance-playbook, dev, pro]
+complexity: deep
+produces: playbook-step
+est_tokens: 4100
+tags: [test-pyramid, qa, rebalance, AI-augmented-testing]
 ---
 # Test Pyramid Rebalance Playbook
 
 ## Summary
 
-**One-sentence:** Test Pyramid Rebalance Playbook: produces a versioned, owner-signed artefact that closes the gap 'role-qa-engineer/Modernize a 2018-era QA suite into AI-augmented test ops'.
+**One-sentence:** Test-shape measurement + rebalance plan: classify current shape (pyramid / ice-cream-cone / hourglass), target shape per architecture, what to delete / push down.
 
-**One-paragraph:** Addresses the gap surfaced by 'role-qa-engineer/Modernize a 2018-era QA suite into AI-augmented test ops': Faion's testing-patterns mentions Test Pyramid as a pattern but never as a system to manage. Real teams arrive ice-cream-cone-shaped (heavy E2E, anaemic unit/integration). A QA engineer needs a rebalance methodology: how to measure shape, what target shape fits which architecture (monolith vs micro vs LLM-augmented), what to delete, what to push down. Mechanism: bounded inputs → contract-checked transformation → versioned output that downstream agents or humans can consume without re-deriving the rationale. Primary output: a test pyramid rebalance playbook artefact (decision record, checklist, score sheet, or report).
+**One-paragraph:** Test-shape measurement + rebalance plan: classify current shape (pyramid / ice-cream-cone / hourglass), target shape per architecture, what to delete / push down. The methodology pins the artefact shape via a JSON Schema (see `content/02-output-contract.xml`), ties every conclusion in the decision tree to a rule id in `content/01-core-rules.xml`, and gates output via `scripts/validate-test-pyramid-rebalance-playbook.py` (stdlib-only, `--self-test` available). Apply when preconditions in Applies-If hold; route to `skip-this-methodology` otherwise. The output artefact is versioned (semver), owner-signed (named human, never 'team' / 'we'), and consumable by a downstream agent or human reviewer without re-deriving the rationale.
+
+**Ефективно для:**
+
+- QA engineer modernизує 2018-era suite — ice-cream cone heavy E2E, anaemic unit.
+- AI-augmented test ops migration (LLM-generated unit tests, mutation testing).
+- Architecture shift (monolith → microservices) — pyramid shape must shift теж.
+- Slow CI signal (>15 min) caused by E2E heaviness; rebalance unlocks dev velocity.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of 'role-qa-engineer/Modernize a 2018-era QA suite into AI-augmented test ops' or a closely-adjacent variant
-- operator has the artefacts named in Prerequisites before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Existing test suite ≥500 tests across ≥2 layers
+- CI run-time observable per layer (unit vs integration vs E2E)
+- Team has authority to delete redundant tests
+- Target architecture is known (monolith, microservices, LLM-augmented)
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working test pyramid rebalance playbook artefact — replace, do not duplicate
-- the change is greenfield prototype with no production users
-- regulatory / compliance context overrides in-methodology guidance (defer to legal)
+- Greenfield project — write the right pyramid the first time
+- Test suite <100 tests — rebalance overhead unjustified
+- Team won't delete tests (test-coverage politics) — rebalance stalls
+- Architecture in flux — rebalance to a moving target wastes effort
 
 ## Prerequisites
 
-- recent context for the 'role-qa-engineer/Modernize a 2018-era QA suite into AI-augmented test ops' task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Trigger artefact | format | author / source |
+|---|---|---|
+| Task brief | Markdown | requester |
+| Named owner | string | requester / RACI |
+| Prior artefact (if updating) | repo path | artefact store |
+| Constraint inputs (budget, SLA, compliance) | structured | requester / policy |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/dev` | parent domain group — provides operating context for Test Pyramid Rebalance Playbook |
+| `pro/dev/INDEX.xml` | Parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules grounded in the cited gap | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-this-methodology, each with rationale + source | ~900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end with decision gates | ~900 |
+| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | template fill, bounded transformation |
-| `synthesize_decision` | sonnet | per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | cross-input synthesis when stakes are high |
+| `decide-skip-vs-apply` | sonnet | Decision-tree application — light judgement on preconditions vs skip-if. |
+| `draft-test-pyramid-rebalance-playbook` | sonnet | Output drafting needs structure + light judgement. |
+| `validate-output` | haiku | Schema validation is mechanical. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/test-pyramid-rebalance-playbook.json` | JSON schema for the Test Pyramid Rebalance Playbook output contract |
-| `templates/test-pyramid-rebalance-playbook.md` | Markdown skeleton with the required fields |
+| `templates/skeleton.json` | JSON instance matching the output contract |
+| `templates/skeleton.md` | Markdown skeleton with the required fields |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-test-pyramid-rebalance-playbook.py` | Enforce Test Pyramid Rebalance Playbook output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-test-pyramid-rebalance-playbook.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
 
-- parent skill: `pro/dev/`
-- upstream playbook: `role-qa-engineer/Modernize a 2018-era QA suite into AI-augmented test ops`
-- pro/dev/role-qa-engineer
+- Parent: `pro/dev/INDEX.xml`
+- [[test-suite-audit-rubric]]
+- [[visual-regression-baselining]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
