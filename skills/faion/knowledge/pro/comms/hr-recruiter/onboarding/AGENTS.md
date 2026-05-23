@@ -3,73 +3,98 @@ slug: onboarding
 tier: pro
 group: comms
 domain: hr
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: An end-to-end framework for designing and operating a repeatable new-hire onboarding program: preboarding, Day 1 orientation, buddy pairing, 30-60-90 day progression, feedback loops, manager guides, and remote adaptations.
-content_id: "b7b8ad65713e77c1"
-tags: [onboarding, new-hire, employee-experience, retention, recruitment]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: End-to-end repeatable onboarding program: preboarding, Day 1 orientation, buddy pairing, 30-60-90 progression, feedback loops, manager guides, remote adaptations.
+content_id: "760dc853263a24c3"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [onboarding, new-hire, employee-experience, retention, hr]
 ---
 # Onboarding Program Design
 
 ## Summary
 
-**One-sentence:** An end-to-end framework for designing and operating a repeatable new-hire onboarding program: preboarding, Day 1 orientation, buddy pairing, 30-60-90 day progression, feedback loops, manager guides, and remote adaptations.
+**One-sentence:** End-to-end repeatable onboarding program: preboarding, Day 1 orientation, buddy pairing, 30-60-90 progression, feedback loops, manager guides, remote adaptations.
 
-**One-paragraph:** An end-to-end framework for designing and operating a repeatable new-hire onboarding program: preboarding, Day 1 orientation, buddy pairing, 30-60-90 day progression, feedback loops, manager guides, and remote adaptations. Targets organizations hiring at a pace where ad-hoc handoffs produce inconsistent ramp.
+**One-paragraph:** End-to-end repeatable onboarding program: preboarding, Day 1 orientation, buddy pairing, 30-60-90 progression, feedback loops, manager guides, remote adaptations. The methodology codifies the rules, output contract, and decision tree so two operators applying it independently produce comparable artefacts. Output is a versioned spec artefact a downstream agent or human reviewer can sign off without re-deriving the rationale.
+
+**Ефективно для:**
+
+- standing up repeatable onboarding program replacing tribal knowledge.
+- hiring velocity ≥1 hire/week — ad-hoc diverges.
+- rolling out remote-first onboarding де in-office Day-1 не translate.
+- after 90-day retention drop or new-hire eNPS decline.
+- M&A integration — два onboarding cultures convergence.
 
 ## Applies If (ALL must hold)
 
-- Standing up a repeatable onboarding program for the first time (replacing tribal knowledge).
-- Hiring velocity of one or more hires per week where ad-hoc approaches diverge.
-- Rolling out remote-first onboarding where in-office Day-1 rituals do not translate.
-- After a 90-day-retention drop or new-hire eNPS decline.
-- M&A integration requiring two onboarding cultures to converge.
+- standing up a repeatable onboarding program for the first time (replacing tribal knowledge).
+- hiring velocity of one or more hires per week where ad-hoc approaches diverge.
+- rolling out remote-first onboarding where in-office Day-1 rituals do not translate.
+- after a 90-day-retention drop or new-hire eNPS decline.
 
 ## Skip If (ANY kills it)
 
-- One or two hires per year — a checklist suffices; a full program is not worth the maintenance.
+- one or two hires per year — a checklist suffices; a full program is not worth the maintenance.
 - C-suite or executive onboarding — bespoke, board-driven; this framework does not apply.
-- Contractor or agency placements under 90 days — limit to access provisioning and safety.
-- Crisis backfills replacing a critical departure — collapse into knowledge transfer, not program onboarding.
+- contractor or agency placements under 90 days — limit to access provisioning and safety.
+- crisis backfills replacing a critical departure — collapse into knowledge transfer.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering activity context | recent notes / tickets | operator's inbox / ticket tracker |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/comms/hr-recruiter/` | parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the spec artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-inputs-summary` | haiku | Mechanical template fill, no judgement. |
+| `synthesize-decision` | sonnet | Per-instance judgement against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/onboarding.md` | Working spec skeleton with 5-line header |
+| `templates/_smoke-test.md` | Minimum viable filled-in version for smoke testing |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-onboarding.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/comms/hr-recruiter/`
+- [[onboarding-30-day]]
+- [[30-60-90-day-plan]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (presence of named consumer, scope cap, prior artefact, regulatory context) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

@@ -1,3 +1,11 @@
+<!--
+purpose: Hiring-manager-facing summary of the STAR method
+consumes: see AGENTS.md Prerequisites
+produces: STAR Interview Method playbook-step
+depends-on: content/02-output-contract.xml schema
+token-budget-impact: ~400 tokens when filled
+-->
+
 # STAR Interview Guide for Hiring Managers
 
 ## Before the Interview

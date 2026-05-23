@@ -3,73 +3,94 @@ slug: star-interview-examples
 tier: pro
 group: comms
 domain: hr
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Worked examples of strong, weak, and red-flag STAR responses paired with probing scripts for each failure mode, plus an interviewer training module and quality assurance checklist.
-content_id: "254241e1b2a3b95f"
-tags: [star, interviews, behavioral, training, hiring]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Per-competency STAR question bank with calibration anchors — a vetted reusable interviewer checklist.
+content_id: "8bded25ac92325b6"
+complexity: light
+produces: checklist
+est_tokens: 3500
+tags: [star, interview, questions, calibration, competencies]
 ---
-# STAR Interview Examples and Implementation
+
+# STAR Interview — Example Question Bank
 
 ## Summary
 
-**One-sentence:** Worked examples of strong, weak, and red-flag STAR responses paired with probing scripts for each failure mode, plus an interviewer training module and quality assurance checklist.
+**One-sentence:** Per-competency STAR question bank with calibration anchors — a vetted reusable interviewer checklist.
 
-**One-paragraph:** Worked examples of strong, weak, and red-flag STAR responses paired with probing scripts for each failure mode, plus an interviewer training module and quality assurance checklist. The testable rule: agents must never accept a hypothetical ("I would...") as a STAR response — only actual past behavior qualifies; missing components trigger prescribed probing follow-ups.
+**One-paragraph:** Per-competency STAR question bank with calibration anchors — a vetted reusable interviewer checklist. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness.
+
+**Ефективно для:**
+
+- Старт нового interview kit з question bank, прив'язаним до competencies, а не до загальних 'tell me about'.
+- Onboarding нового інтервюера: ready-made калібрувальні приклади.
+- Заміна питань у kit з низькою inter-rater agreement.
 
 ## Applies If (ALL must hold)
 
-- Calibrating new interviewers on STAR using strong/weak/red-flag response pairs.
-- Generating role-specific STAR question banks per competency and seniority level.
-- Post-debrief calibration: compare interviewer scores on the same response and flag divergence greater than 1 point for committee discussion.
-- Producing reference-check questions tied to specific STAR claims from the interview.
-- Building interviewer training materials for a 2-hour calibration workshop.
+- Interview kit needs question seeds tied to specific competencies.
+- New interviewer onboarding needs calibration examples.
+- Existing kit has shown low inter-rater agreement and needs replacement questions.
 
 ## Skip If (ANY kills it)
 
-- Live, fully-automated candidate screening without a human interviewer present — creates legal exposure (EEOC, GDPR, EU AI Act high-risk classification).
-- Personality or culture-fit assessment — STAR measures past behavior on competencies, not values or interpersonal "vibe."
-- Early-career candidates with no equivalent experience — use work-sample tests instead.
-- Jurisdictions requiring bias audits and candidate disclosure (NYC AEDT, Illinois AIVIA, EU AI Act) without those controls in place.
+- Kit already passes ≥0.6 inter-rater agreement — do not change tools that work.
+- Role is so specialized that off-the-shelf questions do not map (research science, founding-engineer).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Role scorecard with named competencies | markdown | hiring manager |
+| Calibration anchors per competency | markdown | interview lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[star-interview-method]] | Need the underlying STAR scoring rubric to interpret each question |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules + rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `fill-template` | haiku | Mechanical template fill with bounded inputs |
+| `apply-rubric` | sonnet | Per-instance judgment against calibrated anchors |
+| `cross-check-evidence` | sonnet | Verify each claim cites an input artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/star-question-bank.md` | Question bank skeleton: competency → question → calibration anchor |
+| `templates/interviewer-training-agenda.md` | Agenda for the 60-minute interviewer-onboarding session |
+| `templates/scorecard-qa-checklist.md` | Pre-debrief QA checklist for completed scorecards |
+| `templates/_smoke-test.md` | Filled-in question bank for 'communication' competency |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-star-interview-examples.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
 
-- parent skill: `pro/comms/hr-recruiter/`
+- [[star-interview-method]]
+- [[star-interview-framework]]
+- [[structured-interview-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.

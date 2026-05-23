@@ -1,3 +1,9 @@
+# purpose: Helper to score STAR completeness from a transcript
+# consumes: see AGENTS.md Prerequisites
+# produces: STAR Interview Method playbook-step
+# depends-on: content/02-output-contract.xml schema
+# token-budget-impact: ~300 tokens of agent context to invoke
+
 #!/usr/bin/env python3
 """
 star-completeness.py — Deterministic STAR component detection.

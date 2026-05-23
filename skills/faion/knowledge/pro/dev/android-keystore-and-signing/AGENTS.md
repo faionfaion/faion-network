@@ -3,77 +3,94 @@ slug: android-keystore-and-signing
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Android Keystore and Signing: codified engineering practice that turns the recurring 'role-software-developer/Ship a Mobile Build on iOS and Android' decision into a repeatable, auditable artefact.
-content_id: "2e740d77828e27de"
-tags: [android-keystore-and-signing, dev, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a signing config: keystore policy, Play App Signing decision, upload-key handling, debug-key separation.
+content_id: "8c5747dd00a21d7a"
+complexity: medium
+produces: config
+est_tokens: 4500
+tags: [android, signing, keystore, play-store, config]
 ---
+
 # Android Keystore and Signing
 
 ## Summary
 
-**One-sentence:** Android Keystore and Signing: codified engineering practice that turns the recurring 'role-software-developer/Ship a Mobile Build on iOS and Android' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a signing config: keystore policy, Play App Signing decision, upload-key handling, debug-key separation.
 
-**One-paragraph:** Android Keystore and Signing addresses the gap identified by the role-software-developer/Ship a Mobile Build on iOS and Android playbook: Play App Signing, upload key vs signing key, debug.keystore pitfalls. Missing. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Produces a signing config: keystore policy, Play App Signing decision, upload-key handling, debug-key separation. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness.
+
+**Ефективно для:**
+
+- Прийняття рішення Play App Signing vs self-managed і документація рішення з owner.
+- Конфіг для CI з reproducible signed builds.
+- Відокремлення debug.keystore від upload key — щоб не зливати в Slack.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-software-developer/Ship a Mobile Build on iOS and Android OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Shipping an Android app via the Play Store or a managed enterprise channel.
+- Migrating from legacy app-signed builds to Play App Signing.
+- CI must produce reproducible signed builds.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Pure web app or PWA — no Android signing surface.
+- iOS-only roadmap.
+- Internal-only enterprise rollout via MDM with a different signing flow.
 
 ## Prerequisites
 
-- recent context for the role-software-developer/Ship a Mobile Build on iOS and Android task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Play Console access | credential | release manager |
+| Keystore secret store | vault path | platform / security |
+| CI signing config | yaml / script | platform |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/dev/software-developer` | parent role skill — provides the operating context for this methodology |
+| [[app-store-and-play-store-release]] | Signing is one stage of the release pipeline |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 4 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 4-step procedure with input/action/output per step | 1000 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `scaffold-skeleton` | haiku | Mechanical template emission |
+| `wire-feature-logic` | sonnet | Per-feature judgment with bounded inputs |
+| `audit-output` | sonnet | Verify rules in 01-core-rules.xml hold |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/android-keystore-and-signing.json` | JSON schema for the Android Keystore and Signing output contract |
-| `templates/android-keystore-and-signing.md` | Markdown skeleton with the required fields |
+| `templates/signing-config.gradle.kts` | Gradle Kotlin DSL signing config skeleton with build-type separation |
+| `templates/signing-policy.md` | Markdown policy + decision record for the signing approach |
+| `templates/_smoke-test.gradle.kts` | Minimum-viable filled-in signing config |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-android-keystore-and-signing.py` | Enforce Android Keystore and Signing output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-android-keystore-and-signing.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
 
-- parent skill: `pro/dev/`
-- upstream playbook: `role-software-developer/Ship a Mobile Build on iOS and Android`
+- [[app-store-and-play-store-release]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.

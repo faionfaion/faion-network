@@ -1,3 +1,11 @@
+<!--
+purpose: Structured interview spec skeleton with round map + competency assignment
+consumes: see AGENTS.md Prerequisites
+produces: Structured Interview Design spec
+depends-on: content/02-output-contract.xml schema
+token-budget-impact: ~400 tokens when filled
+-->
+
 # Structured Interview Design: [Role Title]
 
 ## Role Overview

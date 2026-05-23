@@ -3,71 +3,97 @@ slug: structured-interview-design
 tier: pro
 group: comms
 domain: hr
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A six-step process for building a consistent, predictive interview process: define 4-6 competencies, write standardized behavioral and situational questions, build a scored rubric with behavioral anchors, train interviewers, execute identically for every candidate, and debrief with independent scores before discussion.
-content_id: "26562ff140f18ee7"
-tags: [interview-design, hiring-process, structured-hiring, interview-rubric, competency-assessment]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a structured interview spec: round map, competency-to-round assignment, scorecard, debrief contract.
+content_id: "9273752cdb2617d0"
+complexity: medium
+produces: spec
+est_tokens: 5400
+tags: [interview, structured, design, spec, calibration]
 ---
+
 # Structured Interview Design
 
 ## Summary
 
-**One-sentence:** A six-step process for building a consistent, predictive interview process: define 4-6 competencies, write standardized behavioral and situational questions, build a scored rubric with behavioral anchors, train interviewers, execute identically for every candidate, and debrief with independent scores before discussion.
+**One-sentence:** Produces a structured interview spec: round map, competency-to-round assignment, scorecard, debrief contract.
 
-**One-paragraph:** A six-step process for building a consistent, predictive interview process: define 4-6 competencies, write standardized behavioral and situational questions, build a scored rubric with behavioral anchors, train interviewers, execute identically for every candidate, and debrief with independent scores before discussion. Studies show structured interviews are 2x more predictive of job performance than unstructured ones.
+**One-paragraph:** Produces a structured interview spec: round map, competency-to-round assignment, scorecard, debrief contract. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness.
+
+**Ефективно для:**
+
+- Дизайн нового interview process з нуля для нової role family.
+- Заміна kit з низькою correlation hire-success.
+- Defensible structure для diversity audit і pay-equity review.
 
 ## Applies If (ALL must hold)
 
-- Designing interview processes for any role with two or more interview rounds.
-- Calibrating a new hiring team on a role for the first time.
-- Reducing offer-to-hire variance caused by inconsistent interviewer standards.
-- Post-mortem after a bad hire traced back to subjective evaluation.
+- Designing the interview process for a new role family.
+- Existing interview kit shows low hire-success correlation.
+- Leadership wants a defensible structure for diversity audits.
 
 ## Skip If (ANY kills it)
 
-- Highly exploratory or research roles where competencies are not yet defined — define them first.
-- One-off contract roles where a single screen is sufficient.
-- Roles where the assessment is a pure technical test (take-home, live coding) with no behavioral component.
+- Single-interview hire (e.g., contractor for <60 days).
+- Reuse of a working kit from an adjacent role (modify, do not rebuild).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Role scorecard | markdown | hiring manager |
+| Pool of interviewers + calendars | list | recruiting |
+| Time budget per round | constraint | hiring manager |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[star-interview-framework]] | Behavioral rounds will use the calibrated STAR rubric |
+| [[recruiting-process]] | Structured interview is one stage in the full-cycle pipeline |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output per step | 1000 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-inputs-summary` | haiku | Template fill, bounded transformation |
+| `synthesize-decision` | sonnet | Per-instance judgment; bounded inputs |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/interview-design-doc.md` | Structured interview spec skeleton with round map + competency assignment |
+| `templates/scorecard.md` | Per-round scorecard template tied to the design doc competencies |
+| `templates/_smoke-test.md` | Filled-in spec for a Senior Engineer role with 4 rounds |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-structured-interview-design.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
 
-- parent skill: `pro/comms/hr-recruiter/`
+- [[star-interview-framework]]
+- [[star-interview-method]]
+- [[recruiting-process]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.

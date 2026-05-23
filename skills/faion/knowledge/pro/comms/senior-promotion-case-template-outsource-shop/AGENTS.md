@@ -2,65 +2,97 @@
 slug: senior-promotion-case-template-outsource-shop
 tier: pro
 group: comms
-domain: comms
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
+domain: hr
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
 maintainers: [faion-network]
-summary: "Promotion case template tailored to outsource shops (SoftServe/EPAM/Globant/Andela) — combines technical scope, revenue impact, and utilization on the same rubric."
-content_id: "f2f75d776e746000"
-tags: [senior-promotion-case-template-outsource-shop, comms, pro]
+summary: Produces a defensible promotion case for senior-track promotions in an outsource/agency context with client-billable evidence.
+content_id: "368b60d6b75f7a4d"
+complexity: medium
+produces: spec
+est_tokens: 5400
+tags: [promotion, senior, outsource, spec, evidence]
 ---
+
 # Senior Promotion Case Template (Outsource Shop)
 
 ## Summary
 
-**One-sentence:** A promotion-case template tuned for outsource-services companies, where promotion rubrics weight technical scope, revenue-to-account, and billable utilization together.
+**One-sentence:** Produces a defensible promotion case for senior-track promotions in an outsource/agency context with client-billable evidence.
 
-**One-paragraph:** STAR works for interviews; outsource shops (SoftServe, EPAM, Globant, Andela, GlobalLogic, Infopulse, N-iX, …) run internal promotion reviews on a tri-axis rubric that pure STAR doesn't address — promoters need to show technical contribution AND revenue/account expansion AND utilization rate. This methodology gives the candidate a structured artefact: scope evidence (commits, design docs, client-visible deliverables), revenue evidence (account growth, scope-creep won, salvage stories), and utilization evidence (billable %, bench avoidance). Output is a 4-6 page case PDF the promotion committee can score line-by-line.
+**One-paragraph:** Produces a defensible promotion case for senior-track promotions in an outsource/agency context with client-billable evidence. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness.
+
+**Ефективно для:**
+
+- Defensible promotion case для senior-track в outsource shop з billable rate ladder.
+- Evidence з ≥2 client engagements (а не з internal projects).
+- Reuseable pattern для всіх кандидатів циклу — однакова форма + якірі.
 
 ## Applies If (ALL must hold)
 
-- you work at a services / outsource / consulting firm with formal promotion windows
-- the firm uses a multi-axis rubric (technical + business + utilization) for senior+ promotions
-- you have ≥ 6 months of measurable client work to cite
-- tier == pro or higher
+- Promotion track is up-or-stay (no down) in an outsource shop with billable rate ladder.
+- Promotion committee requires evidence of impact across ≥2 client engagements.
+- Candidate has ≥18 months tenure in the prior level.
 
 ## Skip If (ANY kills it)
 
-- you work at a product company (use a standard performance-review template instead)
-- the promotion is mandatory / automatic by tenure (no case needed)
-- your firm explicitly bans self-promotion cases (must follow internal alternative)
+- Product / in-house promotion — different ladder semantics.
+- Lateral move, not promotion — use scope-change template instead.
+- Candidate is <12 months in the prior level — table the case.
 
 ## Prerequisites
 
-- access to your billing/utilization dashboard
-- list of accounts/projects you've contributed to in the window
-- manager pre-alignment on which rubric axes matter most for your role
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Candidate self-assessment | markdown | candidate |
+| Manager calibration notes | markdown | manager |
+| Client-billable evidence per engagement | markdown / tickets / artefacts | delivery records |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/comms/hr-recruiter` | parent role/operating context |
-| `pro/comms/executive-stakeholder-demo-narrative-frame` | sibling narrative-framing methodology |
+| [[structured-interview-design]] | Promotion committee uses similar calibrated scoring patterns as hiring |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules + 1 worked rubric example | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules + rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 4-step procedure with input/action/output per step | 1000 |
+| `content/05-examples.xml` | reference | One full worked example end-to-end | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `extract_evidence` | sonnet | structured pull from candidate's notes / dashboards |
-| `draft_case_narrative` | sonnet | bounded narrative around rubric axes |
-| `committee_devil_review` | opus | adversarial pre-review against rubric |
+| `draft-inputs-summary` | haiku | Template fill, bounded transformation |
+| `synthesize-decision` | sonnet | Per-instance judgment; bounded inputs |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/promotion-case-spec.md` | Promotion case skeleton: scope/impact/judgment/leadership × engagement |
+| `templates/evidence-tracker.md` | Per-engagement evidence tracker for live data collection |
+| `templates/_smoke-test.md` | Filled-in case for a Mid → Senior Engineer promotion |
+
+## Scripts
+
+| File | Purpose | When to call |
+|------|---------|--------------|
+| `scripts/validate-senior-promotion-case-template-outsource-shop.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
 
-- parent skill: `pro/comms/`
-- `pro/comms/hr-recruiter`
-- upstream playbook: `p4-outsource-specialist/Senior promotion case prep (every 6 months)`
+- [[structured-interview-design]]
+- [[star-interview-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.

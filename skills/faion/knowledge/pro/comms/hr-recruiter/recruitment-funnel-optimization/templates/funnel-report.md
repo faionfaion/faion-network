@@ -1,3 +1,11 @@
+<!--
+purpose: Funnel diagnosis report skeleton with bottleneck section + experiment plan
+consumes: see AGENTS.md Prerequisites
+produces: Recruitment Funnel Optimization report
+depends-on: content/02-output-contract.xml schema
+token-budget-impact: ~400 tokens when filled
+-->
+
 # Recruitment Funnel Report: [Month/Quarter]
 
 ## Overall Metrics

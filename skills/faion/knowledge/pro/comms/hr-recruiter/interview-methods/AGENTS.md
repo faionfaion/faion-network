@@ -3,72 +3,98 @@ slug: interview-methods
 tier: pro
 group: comms
 domain: hr
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Bundle of structured-interview methodologies covering competency definition, STAR behavioral questions, scorecards, technical assessments, culture-fit assessment, reference checks, and hiring-committee debrief.
-content_id: "bf24f7fec55bedd6"
-tags: [structured-interview, hiring, behavioral-interview, competencies, recruitment]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Structured-interview bundle (competencies → questions → scorecards → debrief): cap competencies at 4-6, behavioral anchors observable verbs only.
+content_id: "de8c6812cf983c95"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [structured-interview, hiring, behavioral-interview, competencies, hr]
 ---
 # Interview Methods
 
 ## Summary
 
-**One-sentence:** Bundle of structured-interview methodologies covering competency definition, STAR behavioral questions, scorecards, technical assessments, culture-fit assessment, reference checks, and hiring-committee debrief.
+**One-sentence:** Structured-interview bundle (competencies → questions → scorecards → debrief): cap competencies at 4-6, behavioral anchors observable verbs only.
 
-**One-paragraph:** Bundle of structured-interview methodologies covering competency definition, STAR behavioral questions, scorecards, technical assessments, culture-fit assessment, reference checks, and hiring-committee debrief. The testable rule: cap competencies at 4-6 with weights summing to 100% — more dilutes predictive signal; behavioral anchors must be observable verbs, never traits ("driven", "strong").
+**One-paragraph:** Structured-interview bundle (competencies → questions → scorecards → debrief): cap competencies at 4-6, behavioral anchors observable verbs only. The methodology codifies the rules, output contract, and decision tree so two operators applying it independently produce comparable artefacts. Output is a versioned spec artefact a downstream agent or human reviewer can sign off without re-deriving the rationale.
+
+**Ефективно для:**
+
+- standing up interview process from scratch for a new role family.
+- audit existing process з interview-to-offer rate поза 15-25% band.
+- calibration інтерв'юерів через географії, де in-person impractical.
+- rollout structured interviews after hiring-manager change.
+- competencies cap 4-6 з вагами, що сумуються до 100%.
 
 ## Applies If (ALL must hold)
 
-- Standing up an interview process from scratch for a new role family: competencies → questions → scorecards → debrief flow.
-- Auditing an existing process whose interview-to-offer rate falls outside the 15-25% band.
-- Calibrating interviewers across geographies where in-person calibration is impractical.
-- Rolling out structured interviews after a hiring-manager change before legacy bias re-anchors.
+- standing up an interview process from scratch for a new role family.
+- auditing an existing process whose interview-to-offer rate falls outside the 15-25% band.
+- calibrating interviewers across geographies where in-person calibration is impractical.
+- rolling out structured interviews after a hiring-manager change.
 
 ## Skip If (ANY kills it)
 
-- Single-hire one-off (founder hiring a co-founder, exec search) — overhead exceeds benefit; use a 2-step trust-and-reference loop.
-- Roles where the only valid signal is portfolio review (illustrators, cinematographers).
-- Volume retail or hourly hiring at scale — use realistic job previews, not panel interviews.
-- Statutorily-fixed questionnaires (clinical, legal regulated roles).
+- single-hire one-off (founder hiring a co-founder, exec search).
+- roles where the only valid signal is portfolio review (illustrators, cinematographers).
+- volume retail or hourly hiring at scale — use realistic job previews.
+- statutorily-fixed questionnaires (clinical, legal regulated roles).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering activity context | recent notes / tickets | operator's inbox / ticket tracker |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/comms/hr-recruiter/` | parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the spec artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-inputs-summary` | haiku | Mechanical template fill, no judgement. |
+| `synthesize-decision` | sonnet | Per-instance judgement against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/interview-methods.md` | Working spec skeleton with 5-line header |
+| `templates/_smoke-test.md` | Minimum viable filled-in version for smoke testing |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-interview-methods.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/comms/hr-recruiter/`
+- [[30-60-90-day-plan]]
+- [[employee-value-proposition]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (presence of named consumer, scope cap, prior artefact, regulatory context) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

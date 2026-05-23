@@ -1,3 +1,11 @@
+<!--
+purpose: Per-question scorecard with STAR evidence rows + competency rating
+consumes: see AGENTS.md Prerequisites
+produces: STAR Interview Method playbook-step
+depends-on: content/02-output-contract.xml schema
+token-budget-impact: ~400 tokens when filled
+-->
+
 # STAR Interview Scorecard: [Candidate Name] — [Role]
 
 **Interviewer:** [Name]

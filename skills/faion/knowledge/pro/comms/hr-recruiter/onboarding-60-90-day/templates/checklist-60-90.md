@@ -1,3 +1,11 @@
+<!--
+purpose: Day-60 and day-90 milestone checklist with artifact slots
+consumes: see AGENTS.md Prerequisites
+produces: 60-90 Day Onboarding Phases checklist
+depends-on: content/02-output-contract.xml schema
+token-budget-impact: ~400 tokens when filled
+-->
+
 # 60-90 Day Onboarding Checklist
 
 **Hire:** [Name]

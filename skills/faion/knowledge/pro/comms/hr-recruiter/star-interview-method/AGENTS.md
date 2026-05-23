@@ -3,73 +3,98 @@ slug: star-interview-method
 tier: pro
 group: comms
 domain: hr
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: The STAR framework (Situation-Task-Action-Result) is a behavioral-interview method for extracting evidence of past performance and structuring post-interview analysis.
-content_id: "956d3da0e97fd74f"
-tags: [behavioral-interview, star, hiring, structured-hiring, hiring-methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: STAR method playbook step: how to probe Situation/Task/Action/Result completeness in real time and produce evidence-anchored notes.
+content_id: "6bede93333a1435b"
+complexity: medium
+produces: playbook-step
+est_tokens: 4500
+tags: [star, interview, behavioral, evidence, playbook]
 ---
+
 # STAR Interview Method
 
 ## Summary
 
-**One-sentence:** The STAR framework (Situation-Task-Action-Result) is a behavioral-interview method for extracting evidence of past performance and structuring post-interview analysis.
+**One-sentence:** STAR method playbook step: how to probe Situation/Task/Action/Result completeness in real time and produce evidence-anchored notes.
 
-**One-paragraph:** The STAR framework (Situation-Task-Action-Result) is a behavioral-interview method for extracting evidence of past performance and structuring post-interview analysis. Every STAR question must use past-tense behavioral framing ("Tell me about a time...") — never hypothetical framing ("How would you..."); hypothetical answers have near-zero predictive validity and must be blocked with a prescribed probe.
+**One-paragraph:** STAR method playbook step: how to probe Situation/Task/Action/Result completeness in real time and produce evidence-anchored notes. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness.
+
+**Ефективно для:**
+
+- Реальний run behavioral round з probing на STAR completeness.
+- Збір evidence-anchored нотаток для debrief, а не general impressions.
+- Кілька competencies в одному 45-60 хв slot.
 
 ## Applies If (ALL must hold)
 
-- Behavioral interview rounds for any role where past behavior is the dominant performance predictor: managerial, cross-functional, customer-facing roles.
-- Calibrating an interviewer team that drifts into hypothetical questions.
-- Generating tailored STAR question banks per competency from a JD or leveling rubric.
-- Post-interview transcript analysis: STAR-component tagging and missing-component flagging.
-- Coaching internal candidates preparing for promotion panels.
+- Interviewer is conducting a behavioral round.
+- Notes must be evidence-anchored for downstream debrief.
+- Multiple competencies will be probed in a single 45-60 minute session.
 
 ## Skip If (ANY kills it)
 
-- Pure technical screens where the signal lives in code, system design, or work samples — STAR adds noise, not signal.
-- Roles with fewer than 2 years of experience: candidates lack a STAR repertoire; use situational + work-sample combinations.
-- Cultures where narrative storytelling style is unfamiliar without controlling for it in scoring (some EU/EE/JP contexts).
-- Crisis or urgency screens where only real-time problem-solving is a valid signal.
+- Round is purely technical / coding — STAR adds noise.
+- Candidate has <2 years of experience to draw stories from — fall back to hypothetical scenarios.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Calibrated STAR scorecard | markdown | star-interview-framework |
+| Question seeds per competency | markdown | star-interview-examples |
+| Note-taking template | markdown | interview lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[star-interview-framework]] | Provides the scorecard the notes will populate |
+| [[structured-interview-design]] | Interview kit defines the round structure this step lives inside |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 4-step procedure with input/action/output per step | 1000 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-inputs-summary` | haiku | Template fill, bounded transformation |
+| `synthesize-decision` | sonnet | Per-instance judgment; bounded inputs |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/star-playbook-step.md` | Per-question STAR probing playbook with probe prompts + note-slots |
+| `templates/star-scorecard.md` | Per-question scorecard with STAR evidence rows + competency rating |
+| `templates/hiring-manager-guide.md` | Hiring-manager-facing summary of the STAR method |
+| `templates/star-completeness.py` | Helper to score STAR completeness from a transcript |
+| `templates/_smoke-test.md` | Filled-in playbook for a single competency × question |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-star-interview-method.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
 
-- parent skill: `pro/comms/hr-recruiter/`
+- [[star-interview-framework]]
+- [[star-interview-examples]]
+- [[structured-interview-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.

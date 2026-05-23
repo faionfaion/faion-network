@@ -2,78 +2,96 @@
 slug: paid-test-task-scoring-rubric
 tier: pro
 group: comms
-domain: comms
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Paid Test Task Scoring Rubric: codified comms practice that turns the recurring 'p5-micro-agency-founder/Hire and onboard a new contractor (3–5 weeks)' decision into a repeatable, auditable artefact.
-content_id: "5b945bd316b29424"
-tags: [paid-test-task-scoring-rubric, comms, pro]
+domain: hr
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Produces a calibrated rubric for scoring paid test tasks with anti-bias controls and pay-on-completion contract.
+content_id: "1ed516f318ee6e60"
+complexity: medium
+produces: rubric
+est_tokens: 4500
+tags: [test-task, rubric, scoring, pay-on-completion, bias]
 ---
-# Paid Test Task Scoring Rubric
+
+# Paid Test-Task Scoring Rubric
 
 ## Summary
 
-**One-sentence:** Paid Test Task Scoring Rubric: codified comms practice that turns the recurring 'p5-micro-agency-founder/Hire and onboard a new contractor (3–5 weeks)' decision into a repeatable, auditable artefact.
+**One-sentence:** Produces a calibrated rubric for scoring paid test tasks with anti-bias controls and pay-on-completion contract.
 
-**One-paragraph:** Paid Test Task Scoring Rubric addresses the gap identified by the p5-micro-agency-founder/Hire and onboard a new contractor (3–5 weeks) playbook: Interview methodology exists but the paid-test-task pattern (real-shaped paid screen, ~$100–$300) is missing and is the highest-signal screen for contractors. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Produces a calibrated rubric for scoring paid test tasks with anti-bias controls and pay-on-completion contract. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness.
+
+**Ефективно для:**
+
+- Calibrated rubric для платної test task від кількох reviewers.
+- Anti-bias controls: blind scoring, dimension-level anchors, pay-on-completion.
+- Захист legal/EU AI Act exposure при автоматичному скорингу.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p5-micro-agency-founder/Hire and onboard a new contractor (3–5 weeks) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Test task lasts ≥3 hours and is paid at market hourly rate.
+- Multiple candidates will complete the same task in the same hiring window.
+- At least two reviewers will score every submission.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Task is <1 hour — use a take-home screener instead.
+- Task is real production work — never ship a hiring task to prod.
+- Single-reviewer process — rubric calibration is moot.
 
 ## Prerequisites
 
-- recent context for the p5-micro-agency-founder/Hire and onboard a new contractor (3–5 weeks) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Test task brief | markdown | hiring manager |
+| Pay rate + payment mechanism | policy | people ops |
+| Reviewer pool | list | interview lead |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/comms/hr-recruiter` | parent role skill — provides the operating context for this methodology |
+| [[structured-interview-design]] | Rubric is one component of the broader interview kit |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output per step | 1000 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `fill-template` | haiku | Mechanical template fill with bounded inputs |
+| `apply-rubric` | sonnet | Per-instance judgment against calibrated anchors |
+| `cross-check-evidence` | sonnet | Verify each claim cites an input artefact |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/paid-test-task-scoring-rubric.json` | JSON schema for the Paid Test Task Scoring Rubric output contract |
-| `templates/paid-test-task-scoring-rubric.md` | Markdown skeleton with the required fields |
+| `templates/test-task-rubric.md` | Per-dimension rubric skeleton with 5-level anchors and evidence slots |
+| `templates/payment-tracker.md` | Per-candidate payment tracker tied to completion |
+| `templates/_smoke-test.md` | Filled-in rubric for a frontend take-home |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-paid-test-task-scoring-rubric.py` | Enforce Paid Test Task Scoring Rubric output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-paid-test-task-scoring-rubric.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
 
-- parent skill: `pro/comms/hr-recruiter/`
-- upstream playbook: `p5-micro-agency-founder/Hire and onboard a new contractor (3–5 weeks)`
+- [[structured-interview-design]]
+- [[star-interview-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.

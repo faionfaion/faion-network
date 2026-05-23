@@ -3,73 +3,98 @@ slug: employer-branding
 tier: pro
 group: comms
 domain: hr
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Strategy and execution methodology for building and maintaining an employer brand across Glassdoor, LinkedIn, careers page, employee testimonials, and content calendars.
-content_id: "b014ab2b980ad3ef"
-tags: [employer-branding, recruitment, brand, content-strategy, recruiting]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Strategy + execution for an employer brand (Glassdoor, LinkedIn, careers page, testimonials, content calendar) where every external asset traces to a named EVP pillar.
+content_id: "e676ce83b76af5e6"
+complexity: medium
+produces: spec
+est_tokens: 5000
+tags: [employer-branding, recruitment, brand, content-strategy, hr]
 ---
 # Employer Branding
 
 ## Summary
 
-**One-sentence:** Strategy and execution methodology for building and maintaining an employer brand across Glassdoor, LinkedIn, careers page, employee testimonials, and content calendars.
+**One-sentence:** Strategy + execution for an employer brand (Glassdoor, LinkedIn, careers page, testimonials, content calendar) where every external asset traces to a named EVP pillar.
 
-**One-paragraph:** Strategy and execution methodology for building and maintaining an employer brand across Glassdoor, LinkedIn, careers page, employee testimonials, and content calendars. Requires a completed EVP as input. The testable rule: every external-facing brand asset must trace back to a named EVP pillar, and no asset containing DEI claims, compensation data, or employee quotes may be published without human approval.
+**One-paragraph:** Strategy + execution for an employer brand (Glassdoor, LinkedIn, careers page, testimonials, content calendar) where every external asset traces to a named EVP pillar. The methodology codifies the rules, output contract, and decision tree so two operators applying it independently produce comparable artefacts. Output is a versioned spec artefact a downstream agent or human reviewer can sign off without re-deriving the rationale.
+
+**Ефективно для:**
+
+- annual / quarterly employer-brand audit — scrape reviews, benchmark vs competitors.
+- 4-12 week content calendar across LinkedIn, Instagram, careers blog.
+- employee testimonials with quote attribution + redacted PII per legal.
+- Glassdoor / Indeed review response within 48h SLA.
+- talent community nurturing з rejected-but-strong кандидатами.
 
 ## Applies If (ALL must hold)
 
-- Annual or quarterly employer-brand audit: scrape reviews, benchmark vs. competitors, identify perception-reality gaps.
-- Producing a 4-12 week content calendar across LinkedIn, Instagram, careers blog.
-- Drafting and rotating employee testimonials from employee-supplied raw material.
-- Monitoring and responding to Glassdoor/Indeed/Comparably reviews within 48h SLA.
-- Building and nurturing a talent community (rejected-but-strong candidates).
+- annual or quarterly employer-brand audit: scrape reviews, benchmark vs. competitors, identify perception-reality gaps.
+- producing a 4-12 week content calendar across LinkedIn, Instagram, careers blog.
+- drafting and rotating employee testimonials from employee-supplied raw material.
+- monitoring and responding to Glassdoor/Indeed/Comparably reviews within 48h SLA.
 
 ## Skip If (ANY kills it)
 
-- No EVP or culture document exists — do `employee-value-proposition` methodology first.
-- Crisis comms (layoffs, PR incident) — switch to crisis-communication workflow; brand agents produce tone-deaf copy during crises.
-- Highly regulated industries where every external post requires compliance review before agents can draft but not publish.
-- Sub-30-employee companies — the founder's voice is the brand; structured calendars are overkill.
+- no EVP or culture document exists — do `employee-value-proposition` methodology first.
+- crisis comms (layoffs, PR incident) — switch to crisis-communication workflow.
+- highly regulated industries where every external post requires compliance review before publication.
+- sub-30-employee companies — the founder's voice is the brand.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Triggering activity context | recent notes / tickets | operator's inbox / ticket tracker |
+| Named consumer (human or agent) | name + handle | engagement charter |
+| Source-of-truth for inputs | doc / dashboard / repo path | system of record |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/comms/hr-recruiter/` | parent domain context (vocabulary, neighbouring methodologies) |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the spec artefact + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input / action / output / decision-gate | 800 |
+| `content/05-examples.xml` | essential | One worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-inputs-summary` | haiku | Mechanical template fill, no judgement. |
+| `synthesize-decision` | sonnet | Per-instance judgement against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/employer-branding.md` | Working spec skeleton with 5-line header |
+| `templates/_smoke-test.md` | Minimum viable filled-in version for smoke testing |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-employer-branding.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/comms/hr-recruiter/`
+- [[employee-value-proposition]]
+- [[30-60-90-day-plan]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (presence of named consumer, scope cap, prior artefact, regulatory context) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

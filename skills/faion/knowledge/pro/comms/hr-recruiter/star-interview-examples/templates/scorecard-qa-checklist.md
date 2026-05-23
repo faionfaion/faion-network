@@ -1,3 +1,11 @@
+<!--
+purpose: Pre-debrief QA checklist for completed scorecards
+consumes: see AGENTS.md Prerequisites
+produces: STAR Interview — Example Question Bank checklist
+depends-on: content/02-output-contract.xml schema
+token-budget-impact: ~400 tokens when filled
+-->
+
 # Scorecard QA Checklist — Pre-Submit Review
 
 Complete before submitting scorecard to the debrief channel.

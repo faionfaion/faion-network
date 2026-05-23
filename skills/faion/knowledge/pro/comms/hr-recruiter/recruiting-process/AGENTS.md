@@ -3,71 +3,96 @@ slug: recruiting-process
 tier: pro
 group: comms
 domain: hr
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A full-cycle talent acquisition framework covering ten methodologies from multi-channel sourcing through offer management.
-content_id: "6c9b3ebddce8ac60"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Full-cycle hiring playbook step covering sourcing, JD, screening, interview, offer, with metric-anchored gates.
+content_id: "f3c1f1eb8740c561"
+complexity: deep
+produces: playbook-step
+est_tokens: 4500
 tags: [recruiting, full-cycle, talent-acquisition, sourcing, hiring-process]
 ---
+
 # Recruiting Process (Full-Cycle)
 
 ## Summary
 
-**One-sentence:** A full-cycle talent acquisition framework covering ten methodologies from multi-channel sourcing through offer management.
+**One-sentence:** Full-cycle hiring playbook step covering sourcing, JD, screening, interview, offer, with metric-anchored gates.
 
-**One-paragraph:** A full-cycle talent acquisition framework covering ten methodologies from multi-channel sourcing through offer management. Each sub-methodology addresses a specific pipeline bottleneck: sourcing breadth, JD quality, candidate personas, passive outreach, ATS optimization, AI tooling, and metrics dashboards.
+**One-paragraph:** Full-cycle hiring playbook step covering sourcing, JD, screening, interview, offer, with metric-anchored gates. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness.
+
+**Ефективно для:**
+
+- Запуск нової ролі або вакансії з потребою побудувати воронку з нуля.
+- Аудит JD, ATS workflow або outreach-послідовності для існуючої ролі.
+- Впровадження тижневих / місячних метрик recruiting-функції.
 
 ## Applies If (ALL must hold)
 
 - Building a sourcing strategy for a new role type or market.
-- Diagnosing why a specific stage is underperforming (see recruitment-funnel-optimization for diagnosis).
+- Diagnosing why a specific stage is underperforming (after funnel diagnosis).
 - Designing or auditing a JD, ATS workflow, or candidate outreach sequence.
-- Implementing metrics reporting for a recruiting function.
+- Implementing metric reporting for the recruiting function.
 
 ## Skip If (ANY kills it)
 
 - Executive search where a retained firm is running the process — overlap creates confusion.
-- Single-hire, one-time role where building pipelines and personas is overhead, not value.
-- Compliance-audit contexts — use retention-compliance methodology instead.
+- Single-hire, one-time role where building pipelines and personas is overhead.
+- Compliance-audit context — use retention-compliance methodology instead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Open requisition | ATS record | hiring manager |
+| Role scorecard with 5-7 must-haves | markdown | hiring manager |
+| Sourcing channel list | list | recruiting ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[recruitment-funnel-optimization]] | Funnel metrics define which stage needs intervention before applying full-cycle changes |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 11 testable rules + rationale + source | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
+| `content/04-procedure.xml` | essential | 7-step procedure with input/action/output per step | 1000 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-inputs-summary` | haiku | Template fill, bounded transformation |
+| `synthesize-decision` | sonnet | Per-instance judgment; bounded inputs |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/recruiting-playbook-step.md` | Full-cycle step skeleton with inputs/outputs/exit-criteria per stage |
+| `templates/_smoke-test.md` | Filled-in example for a single Senior Engineer requisition |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-recruiting-process.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
 
-- parent skill: `pro/comms/hr-recruiter/`
+- [[recruitment-funnel-optimization]]
+- [[structured-interview-design]]
+- [[star-interview-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.

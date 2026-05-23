@@ -1,3 +1,11 @@
+<!--
+purpose: Scorecard skeleton: competency × scale × behavior anchor + evidence slot
+consumes: see AGENTS.md Prerequisites
+produces: STAR Interview Framework rubric
+depends-on: content/02-output-contract.xml schema
+token-budget-impact: ~400 tokens when filled
+-->
+
 # STAR Interview Scorecard
 
 **Candidate:** [Name]
