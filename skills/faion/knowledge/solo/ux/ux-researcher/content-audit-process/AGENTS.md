@@ -3,72 +3,100 @@ slug: content-audit-process
 tier: solo
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A structured 6-step process for systematically inventorying and evaluating all content assets, assigning each item an action (Keep/Update/Consolidate/Rewrite/Remove/Review), and producing a prioritized report.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Six-step inventory and evaluation of every content asset: crawl/inventory, classify by type, score by multiple criteria, assign action (Keep / Update / Consolidate / Rewrite / Remove / Review), prioritise, output an action plan."
 content_id: "dbd4b14420f726d3"
-tags: [content-audit, content-strategy, inventory, seo, governance]
+complexity: medium
+produces: spec
+est_tokens: 4800
+tags: ["content-audit", "content-strategy", "inventory", "seo", "governance"]
 ---
 # Content Audit Process
 
 ## Summary
 
-**One-sentence:** A structured 6-step process for systematically inventorying and evaluating all content assets, assigning each item an action (Keep/Update/Consolidate/Rewrite/Remove/Review), and producing a prioritized report.
+**One-sentence:** Six-step inventory and evaluation of every content asset: crawl/inventory, classify by type, score by multiple criteria, assign action (Keep / Update / Consolidate / Rewrite / Remove / Review), prioritise, output an action plan.
 
-**One-paragraph:** A structured 6-step process for systematically inventorying and evaluating all content assets, assigning each item an action (Keep/Update/Consolidate/Rewrite/Remove/Review), and producing a prioritized report. Triggers a crawler-based or manual inventory, applies multi-criteria scoring, and outputs concrete migration or cleanup recommendations.
+**One-paragraph:** Without a content audit, sites accumulate broken pages, duplicated explanations, outdated information, and SEO drag that no single team owns. This methodology pins the six-step process: (1) crawl inventory all content URLs; (2) classify by type (landing / docs / blog / product / legal); (3) score per multi-criterion rubric (accuracy, traffic, conversion, freshness, SEO, brand fit); (4) assign one of six actions (Keep / Update / Consolidate / Rewrite / Remove / Review); (5) prioritise by impact × effort; (6) output an action plan spec. Downstream consumers (content marketing, SEO, dev / migration) read the plan.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за JSON Schema — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Before a site migration or CMS switch — avoid importing bad content to the new platform.
-- When SEO is underperforming and the cause is unclear — old or duplicate content may be to blame.
-- When users report finding outdated information — audit scope starts at the affected content type.
-- After significant product or pricing changes — detect pages that reference stale information.
-- Annually as content governance to prevent slow decay.
+- Pre-redesign content cleanup when the new IA will not absorb the old volume.
+- Quarterly SEO health pass on a content-heavy site.
+- Post-merger / post-rebrand consolidation.
+- Migration to a new CMS where every page needs an action decision.
 
 ## Skip If (ANY kills it)
 
-- For a single-page or micro-site with fewer than 20 content items — a full audit adds overhead without payoff; a manual review suffices.
-- When there is no plan to act on findings — audit data decays quickly; run only when there is owner commitment to execute the action list.
-- Mid-sprint as a reactive measure — plan as a dedicated project with tooling and stakeholder buy-in.
+- The site has fewer than ~20 pages — manual review is cheaper than the audit overhead.
+- A current audit < 6 months old exists.
+- The team has no authority to remove pages (legal hold) — Remove cannot be exercised; the audit becomes documentation.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Crawl access | sitemap or crawler permissions | devops |
+| Analytics data | page-level traffic + conversion | analytics tool |
+| SEO data | keyword rankings + backlinks | SEO tool |
+| Named accountable owner | name + email | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ux-researcher/competitive-analysis` | supplies competitive benchmarks for content depth |
+| `solo/ux/ux-researcher/consistency-standards` | supplies verbal-layer consistency criteria |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | ~700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/content-audit-process.json` | JSON skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-content-audit-process.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-content-audit-process.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/ux/ux-researcher/`
+- [[competitive-analysis]]
+- [[consistency-standards]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, segment scope) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

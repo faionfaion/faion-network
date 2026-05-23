@@ -3,74 +3,100 @@ slug: ab-testing
 tier: solo
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Design decisions based on opinions create debates without resolution.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Run a controlled experiment comparing one variant against control on a pre-declared primary metric, with sample-size and guardrail definitions, and emit a stop / ship / iterate decision with statistical confidence."
 content_id: "b7f4b22564934e1d"
-tags: [ab-testing, quantitative-research, experimentation, statistics, conversion-optimization]
+complexity: deep
+produces: spec
+est_tokens: 4800
+tags: ["ab-testing", "quantitative-research", "experimentation", "statistics", "conversion-optimization"]
 ---
 # A/B Testing
 
 ## Summary
 
-**One-sentence:** Design decisions based on opinions create debates without resolution.
+**One-sentence:** Run a controlled experiment comparing one variant against control on a pre-declared primary metric, with sample-size and guardrail definitions, and emit a stop / ship / iterate decision with statistical confidence.
 
-**One-paragraph:** Design decisions based on opinions create debates without resolution. A/B testing (controlled experimentation) compares a control version against a variant by randomly assigning users to each, measuring conversion or engagement impact, and determining statistical significance. Use when you have a specific metric to measure, enough traffic to reach significance within a reasonable timeframe, and need to validate that a change does not harm secondary or guardrail metrics.
+**One-paragraph:** Design decisions made on opinion produce debates without resolution. This methodology pins the A/B test plan: one primary metric (declared before the test), one variant against control (multi-variant tests are split or use a different methodology), pre-computed sample size for the minimum detectable effect, guardrail metrics that cannot regress, an end-date that does not slide, and a typed decision (SHIP | KILL | ITERATE) read from the result. Output: an experiment spec artefact downstream analysts and engineers consume without re-deriving the design.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за JSON Schema — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- You have a specific, measurable conversion metric (sign-ups, click-through, checkout completion) and want to validate a design change improves it.
-- A design debate cannot be resolved by expert judgment and a quantitative answer is needed.
-- You have enough traffic to reach statistical significance within a reasonable run time (typically 1-2 weeks).
-- You are iterating on a proven flow to optimize incrementally—not when redesigning from scratch.
-- You want to validate that a change helps the primary metric without harming secondary or guardrail metrics.
+- Conversion-optimisation experiments on a live product with sufficient traffic.
+- Pricing or packaging tests where revenue impact can be measured.
+- Onboarding flow changes where a primary activation metric is well-defined.
+- Validating a UX hypothesis after qualitative research suggested a directional change.
 
 ## Skip If (ANY kills it)
 
-- On low-traffic pages where reaching statistical significance would take months or years—qualitative research is faster.
-- During major product redesigns where user mental models differ—test user understanding first with qualitative research (interviews, usability testing).
-- When you need to understand why users behave differently, not just whether they do—use session recordings and interviews instead.
-- For complex multi-step flows where the winning variant on step 1 may harm completion on step 5—funnel analysis with holdout groups is needed.
-- On pages with high seasonal variance without adjusting for the cycle.
+- Traffic is too low to reach significance within a reasonable window — use qualitative testing or analytics interpretation instead.
+- The change is regulatory or accessibility-mandated — ship without A/B; testing is theatre.
+- Multiple uncontrolled changes are launching simultaneously — A/B confounds will swamp signal.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Primary metric definition | event + filter rules | success-metrics spec |
+| Baseline conversion rate | 4-week average | analytics export |
+| Sample-size calculation | inputs: baseline, MDE, power, alpha | pre-test computation |
+| Named accountable owner | name + email | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/user-researcher/success-metrics-definition` | supplies the primary + guardrail metrics |
+| `solo/ux/ux-researcher/heuristic-evaluation` | sibling lens — qualitative complement to quantitative experiments |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | ~700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/ab-testing.json` | JSON skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-ab-testing.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ab-testing.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/ux/ux-researcher/`
+- [[success-metrics-definition]]
+- [[heuristic-evaluation]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, segment scope) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

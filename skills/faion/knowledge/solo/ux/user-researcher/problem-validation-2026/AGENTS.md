@@ -3,71 +3,99 @@ slug: problem-validation-2026
 tier: solo
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A focused variant of the problem-validation methodology adding a 5-step interview opener (Vision → Framing → Weakness → Pedestal → Ask), a commitment signal taxonomy (Time / Reputation / Money), a Mom Test replacement question table, and the 2026 principle that validation is a recurring weekly loop during discovery, not a one-time gate.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "2026 variant of problem validation: 5-step interview opener (Vision → Framing → Weakness → Pedestal → Ask), commitment signal taxonomy (Time / Reputation / Money), Mom Test replacement question table, validation as a recurring weekly loop during discovery."
 content_id: "c9bc1d5454ed7076"
-tags: [problem-validation, interview-opener, commitment-signals, mom-test, discovery]
+complexity: medium
+produces: spec
+est_tokens: 4800
+tags: ["problem-validation", "interview-opener", "commitment-signals", "mom-test", "discovery"]
 ---
 # Problem Validation 2026
 
 ## Summary
 
-**One-sentence:** A focused variant of the problem-validation methodology adding a 5-step interview opener (Vision → Framing → Weakness → Pedestal → Ask), a commitment signal taxonomy (Time / Reputation / Money), a Mom Test replacement question table, and the 2026 principle that validation is a recurring weekly loop during discovery, not a one-time gate.
+**One-sentence:** 2026 variant of problem validation: 5-step interview opener (Vision → Framing → Weakness → Pedestal → Ask), commitment signal taxonomy (Time / Reputation / Money), Mom Test replacement question table, validation as a recurring weekly loop during discovery.
 
-**One-paragraph:** A focused variant of the problem-validation methodology adding a 5-step interview opener (Vision → Framing → Weakness → Pedestal → Ask), a commitment signal taxonomy (Time / Reputation / Money), a Mom Test replacement question table, and the 2026 principle that validation is a recurring weekly loop during discovery, not a one-time gate.
+**One-paragraph:** The 2026 variant supplements the canonical problem-validation methodology with three updates: (1) a 5-step interview opener (Vision-state → Framing-honesty → Weakness-admit → Pedestal-knock → Ask for help) that lowers interviewee performance pressure; (2) a commitment-signal taxonomy tying each evidence tier to observable signal type (Time signals = engagement; Reputation = referrals; Money = pre-orders / contracts); (3) the principle that problem validation is a weekly recurring loop during discovery, not a one-time gate. Output: a validation artefact carrying signals per tier, opener-applied flag, and next-iteration plan.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за JSON Schema — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Before any discovery interview: use the 5-step opener verbatim to set up a non-selling conversation
-- After an interview: classify evidence by commitment signal type (Time / Reputation / Money) before deciding PROCEED
-- When reviewing a validation plan: apply the recurring loop principle to check if validation is scheduled as a weekly task
-- Quickly reframing a set of interview questions to remove hypothetical framing (use the Mom Test replacement table)
+- Discovery sprints that need a weekly cadence rather than a single validation gate.
+- Founders whose interview style triggers performance answers from interviewees.
+- Replacing legacy lean-startup style validation with current commitment-signal practice (2026 update).
 
 ## Skip If (ANY kills it)
 
-- As a replacement for problem-validation — this file adds specific techniques, not a full methodology
-- When n < 5 interviews — the commitment signal taxonomy requires a pattern across multiple conversations
-- When all evidence consists of compliments and hypotheticals — that is negative validation; stop and pivot regardless of opener quality
+- Engagement is post-MVP and the question is feature-prioritisation, not problem-existence.
+- Team already runs the canonical problem-validation methodology effectively; the 2026 update adds friction.
+- No live discovery loop exists (team can only run interviews once a quarter).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Problem statement draft | one paragraph | founder / PM notes |
+| Interview list | recruited segment | audience-segmentation output |
+| Cadence commitment | weekly schedule | team calendar |
+| Named accountable owner | name + email | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/user-researcher/problem-validation` | canonical methodology this variant extends |
+| `solo/ux/user-researcher/pain-point-research` | companion lens for pain evidence |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | ~700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/problem-validation-2026.json` | JSON skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-problem-validation-2026.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-problem-validation-2026.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/ux/user-researcher/`
+- [[problem-validation]]
+- [[pain-point-research]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, segment scope) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

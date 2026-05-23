@@ -3,70 +3,99 @@ slug: consistency-standards
 tier: solo
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Nielsen's Usability Heuristic #4: users should not have to wonder whether different words, situations, or actions mean the same thing.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Apply Nielsen Heuristic #4 across five layers (internal, external, visual, functional, verbal) via a design system and consistency audits; produce an audit spec artefact counting distinct variations per UI element and recommending consolidation."
 content_id: "053ef7e57ea7ee24"
-tags: [consistency, design-system, usability, heuristics, audit]
+complexity: medium
+produces: spec
+est_tokens: 4800
+tags: ["consistency", "design-system", "usability", "heuristics", "audit"]
 ---
 # Consistency and Standards
 
 ## Summary
 
-**One-sentence:** Nielsen's Usability Heuristic #4: users should not have to wonder whether different words, situations, or actions mean the same thing.
+**One-sentence:** Apply Nielsen Heuristic #4 across five layers (internal, external, visual, functional, verbal) via a design system and consistency audits; produce an audit spec artefact counting distinct variations per UI element and recommending consolidation.
 
-**One-paragraph:** Nielsen's Usability Heuristic #4: users should not have to wonder whether different words, situations, or actions mean the same thing. Apply in five layers — internal, external, visual, functional, and verbal — prioritizing industry conventions over product-specific ones. Enforce through a design system and regular consistency audits that count distinct variations of each UI element.
+**One-paragraph:** Users should not have to wonder whether different words, situations, or actions mean the same thing. This methodology applies Nielsen's Heuristic #4 across five layers: internal (same product), external (industry conventions), visual (colour, typography, spacing), functional (interaction patterns), and verbal (terminology). Output is a consistency-audit spec artefact counting distinct variations per UI element (e.g., '7 different button styles for the same action'), prioritising consolidations by user impact, and recommending design-system codification.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за JSON Schema — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- When starting a design system from scratch — define the consistency hierarchy before building components.
-- When auditing an existing product for usability issues — inconsistency is often the root cause of user confusion.
-- When onboarding a new designer or developer — the design system is the reference.
-- Before a brand refresh — audit all touchpoints against the new standards before shipping.
+- Pre-design-system audit when the product has grown without a system.
+- Quarterly consistency check on a mature design system.
+- Onboarding a new designer who needs the canonical variation inventory.
+- Post-merger / post-acquisition unification work.
 
 ## Skip If (ANY kills it)
 
-- When intentional differentiation is the goal — e.g., a destructive action that must look visually distinct from standard actions. Purposeful inconsistency for contrast is valid.
-- In early-stage exploration where standards have not been established — do not prematurely lock in patterns before validating with users.
+- The product is < 3 months old and the design system has not yet been seeded.
+- A current consistency audit < 90 days old exists for the same surface.
+- The change is a single-page polish — full audit is overkill.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| UI surface inventory | list of screens / components | design ops |
+| Industry convention reference | platform guidelines (iOS HIG, Material, WCAG) | public docs |
+| Named accountable owner | name + email | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ux-researcher/heuristic-evaluation` | parent Nielsen heuristics methodology |
+| `solo/ux/ux-researcher/content-audit-process` | sibling lens for verbal/content consistency |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | ~700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/consistency-standards.json` | JSON skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-consistency-standards.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-consistency-standards.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/ux/ux-researcher/`
+- [[heuristic-evaluation]]
+- [[content-audit-process]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, segment scope) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

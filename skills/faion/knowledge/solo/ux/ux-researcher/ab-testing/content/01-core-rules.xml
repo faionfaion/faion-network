@@ -1,35 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ab-testing Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ab-testing. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="A/B Testing Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>5 testable rules every A/B Testing application MUST enforce, plus a skip-this-methodology fallback. These are HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Write the hypothesis and success criteria before implementation. Commit to the primary metric and acceptable trade-offs on secondary metrics in writing.</statement>
-      <rationale source="v1-source">Post-hoc metric selection inflates false positive rates. Teams unconsciously add metrics after seeing results, turning the test into a fishing expedition. Pre-commitment prevents this.</rationale>
+
+    <rule id="r1-pre-declared-primary" testable="true" depth="essential">
+      <statement>The primary metric MUST be declared before the test starts. Post-hoc primary-metric switching is rejected.</statement>
+      <rationale source="F-066 wave-31 chunk-03 grounding">Post-hoc primary switching guarantees PROCEED somewhere; pre-declaration is the only defence against p-hacking.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Run for at least one full business cycle (7-14 days minimum) regardless of when statistical significance is reached. Do not stop early just because results look promising.</statement>
-      <rationale source="v1-source">Early stopping is p-hacking. Day-of-week effects are real: Monday visitors behave differently than Friday visitors. Weekend vs. weekday traffic patterns differ. Running fewer than 7 days captures only a partial cycle and produces fragile results.</rationale>
+
+    <rule id="r2-sample-size-computed" testable="true" depth="essential">
+      <statement>Sample size MUST be computed before the test starts (baseline rate, MDE, power ≥0.8, alpha ≤0.05). Under-powered tests are rejected.</statement>
+      <rationale source="F-066 wave-31 chunk-03 grounding">Under-powered tests produce noise; ending early on a "winner" with insufficient sample is the most common A/B failure.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Check sample ratio mismatch (SRM) first: if the control and variant have significantly different sample sizes despite a 50/50 split, the randomization is broken and the entire test is invalid.</statement>
-      <rationale source="v1-source">SRM indicates that something is wrong with the assignment mechanism (sticky cookie, bot exclusion rules applied unequally, user dropout tied to variant). A test with SRM cannot be trusted.</rationale>
+
+    <rule id="r3-guardrails-named" testable="true" depth="essential">
+      <statement>Guardrail metrics MUST be declared and watched. A guardrail regression (&gt;threshold) overrides the primary win and forces KILL.</statement>
+      <rationale source="F-066 wave-31 chunk-03 grounding">Wins on the primary that tank secondary metrics ship net-negative; guardrails prevent that.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Always analyze key segments before concluding (new vs. returning, mobile vs. desktop, geography if relevant). Aggregate results can hide important reversals: desktop users prefer variant A while mobile users prefer variant B.</statement>
-      <rationale source="v1-source">Simpson's paradox: aggregate results point one direction while segment-level results point another. Shipping the aggregate winner may harm the largest segment. Segment analysis surfaces these conflicts.</rationale>
+
+    <rule id="r4-no-peeking" testable="true" depth="essential">
+      <statement>The decision MUST be read at the pre-declared sample size or end-date. Early peeking with stop-on-win is rejected unless sequential testing was pre-declared.</statement>
+      <rationale source="F-066 wave-31 chunk-03 grounding">Peeking inflates false-positive rate; stopping on the first p&lt;0.05 is a known statistical failure mode.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>For multivariate tests (2+ changes), either use a factorial design with sufficient sample size to detect interactions, or run sequential tests (test one variable, hold winner, test next variable).</statement>
-      <rationale source="v1-source">Factorial designs require exponentially larger sample sizes. Sequential testing is faster but may miss interactions (color + size may have a joint effect that neither has alone). Choose based on traffic volume.</rationale>
+
+    <rule id="r5-typed-decision" testable="true" depth="essential">
+      <statement>The test result MUST emit exactly one of: SHIP | KILL | ITERATE. Soft outcomes ("maybe", "trend positive") are rejected.</statement>
+      <rationale source="F-066 wave-31 chunk-03 grounding">Typed decisions force commitment; soft decisions let the variant ship by default.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>When testing multiple variables or multiple primary metrics, apply multiple comparison correction (Bonferroni or false discovery rate control) to adjust the significance threshold.</statement>
-      <rationale source="v1-source">Testing 10 metrics at 95% confidence gives a 40% false positive rate on at least one metric. Correction maintains family-wise error rate.</rationale>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If any Applies-If precondition fails OR any Skip-If condition triggers, do NOT apply this methodology. Emit a skip-record naming the failed precondition / triggered skip, and route the task to the correct methodology (or none).</statement>
+      <rationale source="F-066 wave-31 chunk-03 grounding">Methodology hygiene: mis-application produces worse artefacts than no methodology because downstream consumers trust the schema; the skip-record makes non-application traceable.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use standardized plan and results templates for every test to ensure the same information is captured consistently.</statement>
-      <rationale source="v1-source">Standardized templates enable comparison across tests over time. Ad-hoc documentation prevents learning from past tests and makes it hard to assess whether test maturity is improving.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

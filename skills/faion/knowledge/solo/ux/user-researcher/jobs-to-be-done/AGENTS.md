@@ -3,73 +3,99 @@ slug: jobs-to-be-done
 tier: solo
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Framework for understanding why customers hire products.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Produces a job-statement artefact (functional + emotional + social dimensions, forces of progress, 8-stage job map) revealing why customers hire the product."
 content_id: "8ec6f0d653b43606"
-tags: [jobs-to-be-done, jtbd, user-research, product-positioning, customer-motivation]
+complexity: medium
+produces: spec
+est_tokens: 4800
+tags: ["jobs-to-be-done", "jtbd", "user-research", "product-positioning", "customer-motivation"]
 ---
 # Jobs to Be Done (JTBD)
 
 ## Summary
 
-**One-sentence:** Framework for understanding why customers hire products.
+**One-sentence:** Produces a job-statement artefact (functional + emotional + social dimensions, forces of progress, 8-stage job map) revealing why customers hire the product.
 
-**One-paragraph:** Framework for understanding why customers hire products. Produces job statements with functional, emotional, social dimensions and forces analysis. Jobs are stable; solutions evolve. 8-stage job map reveals where the job breaks down.
+**One-paragraph:** Customers buy products to make progress in their lives — they 'hire' the product to do a 'job'. This methodology pins the job statement format ('When [situation], I want to [motivation], so I can [expected outcome]'), maps the four forces of progress (push, pull, anxiety, habit), and walks the 8-stage job map (define → locate → prepare → confirm → execute → monitor → modify → conclude) to reveal where the job breaks down. Output: a JTBD spec artefact downstream consumers (positioning, value-proposition design, switch interviews) read without re-doing the customer research.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за JSON Schema — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Repositioning a product that has low conversion despite apparent feature completeness.
-- Designing a new product category where obvious competitors don't exist yet.
-- Understanding why customers churn when they "should" be satisfied.
-- Rewriting positioning copy to speak to motivation, not features.
-- Planning a switching campaign by mapping forces of progress for a competitor's customers.
+- Positioning a product against alternatives users currently 'hire' for the same job.
+- Designing onboarding around the job, not the feature taxonomy.
+- Diagnosing why a feature has high signup but low retention — the job context differs from the feature flow.
+- Preparing the input for switch-interview / Mom Test sessions.
 
 ## Skip If (ANY kills it)
 
-- Usability testing: JTBD explains why someone hired the product; usability testing explains why the product failed on the job.
-- Quantitative feature prioritization: JTBD is qualitative and requires synthesis, not voting.
-- When you have fewer than 5 recent switcher interviews — the framework needs pattern recognition across cases.
-- When a LLM-generated job statement hasn't been validated with actual customers — synthetic JTBD is fiction.
+- The product has no live users yet — JTBD requires real switch evidence; use problem-validation first.
+- A current JTBD artefact for the same primary user segment exists < 6 months old.
+- The decision being made is a UI polish issue, not a product-strategy question — JTBD is overkill.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Switch interviews | transcripts (≥5 per segment) | recruited switchers from research repository |
+| Primary user segment | segment definition | audience-segmentation output |
+| Named accountable owner | name + email | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/user-researcher/problem-validation` | upstream evidence that the problem matters |
+| `solo/ux/user-researcher/value-proposition-design` | downstream consumer of the JTBD output |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | ~700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/jobs-to-be-done.json` | JSON skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-jobs-to-be-done.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-jobs-to-be-done.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/ux/user-researcher/`
+- [[problem-validation]]
+- [[value-proposition-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, segment scope) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

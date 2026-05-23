@@ -3,73 +3,100 @@ slug: value-proposition-design
 tier: solo
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Products fail because they don't clearly articulate why someone should buy.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Design a value proposition using the Strategyzer Canvas: map customer jobs / pains / gains against products & services / pain relievers / gain creators, score fit, and emit a positioning statement."
 content_id: "7ebc8fd1babade87"
-tags: [value-proposition, positioning, canvas, strategy, customer-research]
+complexity: medium
+produces: spec
+est_tokens: 4800
+tags: ["value-proposition", "positioning", "canvas", "strategy", "customer-research"]
 ---
 # Value Proposition Design
 
 ## Summary
 
-**One-sentence:** Products fail because they don't clearly articulate why someone should buy.
+**One-sentence:** Design a value proposition using the Strategyzer Canvas: map customer jobs / pains / gains against products & services / pain relievers / gain creators, score fit, and emit a positioning statement.
 
-**One-paragraph:** Products fail because they don't clearly articulate why someone should buy. Value Proposition Design is a systematic process for designing a compelling value proposition using the Value Proposition Canvas from Strategyzer. The canvas maps customer jobs, pains, and gains against product features, pain relievers, and gain creators to achieve fit and articulate why customers should choose you over alternatives.
+**One-paragraph:** Products fail because they do not clearly articulate why a customer should choose them over alternatives. This methodology applies the Strategyzer Value Proposition Canvas: on the customer side map jobs, pains, gains (anchored on JTBD evidence); on the offer side map products & services, pain relievers, gain creators; check fit by pairing each pain to a reliever and each gain to a creator; produce a single positioning statement (Geoffrey Moore format) that downstream marketing and onboarding copy reuse. Output: a canvas + positioning statement spec artefact.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за JSON Schema — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Pre-launch positioning: before writing landing page copy or running ads
-- After user research: translating raw interview findings into a structured Jobs/Pains/Gains canvas
-- Competitive repositioning: when a new competitor enters and the current pitch no longer differentiates
-- Investor pitch prep: the value proposition canvas maps directly to the "Why us?" slide
-- Feature prioritization: pain relievers and gain creators ranked by severity guide the roadmap
+- Pre-launch positioning when the team can describe features but not the value to a target segment.
+- Quarterly refresh after major segment, feature, or competitor moves.
+- Marketing handoff — supplying canonical canvas to copywriters / paid acquisition / sales decks.
+- Pivot positioning — when the segment changes and old copy stops converting.
 
 ## Skip If (ANY kills it)
 
-- Before any user research — without customer evidence, the canvas is self-flattering fiction
-- When the product is pivoting mid-development and the customer segment has not been re-validated
-- As a one-time exercise — value propositions require iteration as the market responds; a canvas frozen at launch is a liability
-- When the team cannot agree on the primary customer segment — resolve segmentation first
+- A current canvas < 6 months old exists with the same primary segment.
+- The team has no JTBD evidence yet — run JTBD first; a canvas without evidence is fiction.
+- The change is an internal-only feature (no customer-facing positioning needed).
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| JTBD artefact | customer jobs / pains / gains | jobs-to-be-done output |
+| Feature inventory | list with descriptions | product spec |
+| Competitor positioning samples | 3-5 examples | competitive-analysis output |
+| Named accountable owner | name + email | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/user-researcher/jobs-to-be-done` | supplies the customer-side canvas inputs |
+| `solo/ux/ux-researcher/competitive-analysis` | supplies competitor positioning context |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | ~700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/value-proposition-design.json` | JSON skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-value-proposition-design.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-value-proposition-design.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/ux/user-researcher/`
+- [[jobs-to-be-done]]
+- [[competitive-analysis]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, segment scope) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

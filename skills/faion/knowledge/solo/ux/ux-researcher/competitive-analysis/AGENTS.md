@@ -3,74 +3,100 @@ slug: competitive-analysis
 tier: solo
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Without competitive analysis, design teams reinvent solved problems, miss user expectations set by other products in the market, and cannot answer stakeholder questions like "what do competitors do?" Analyzing direct competitors surfaces the baseline users already expect; analyzing indirect competitors reveals alternative approaches; analyzing aspirational examples (best-in-class UX from adjacent industries) reveals what "best practice" looks like.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Examine 3-5 direct + 2-3 indirect + 1-2 aspirational competitors against pre-defined UX criteria; produce a feature matrix, per-competitor profile, and Must/Should/Could/Avoid recommendation set."
 content_id: "4fb6bb2338696437"
-tags: [competitive-analysis, competitor-research, market-research, ux-design, strategy]
+complexity: medium
+produces: spec
+est_tokens: 4800
+tags: ["competitive-analysis", "competitor-research", "market-research", "ux-design", "strategy"]
 ---
 # Competitive Analysis (UX)
 
 ## Summary
 
-**One-sentence:** Without competitive analysis, design teams reinvent solved problems, miss user expectations set by other products in the market, and cannot answer stakeholder questions like "what do competitors do?" Analyzing direct competitors surfaces the baseline users already expect; analyzing indirect competitors reveals alternative approaches; analyzing aspirational examples (best-in-class UX from adjacent industries) reveals what "best practice" looks like.
+**One-sentence:** Examine 3-5 direct + 2-3 indirect + 1-2 aspirational competitors against pre-defined UX criteria; produce a feature matrix, per-competitor profile, and Must/Should/Could/Avoid recommendation set.
 
-**One-paragraph:** Without competitive analysis, design teams reinvent solved problems, miss user expectations set by other products in the market, and cannot answer stakeholder questions like "what do competitors do?" Analyzing direct competitors surfaces the baseline users already expect; analyzing indirect competitors reveals alternative approaches; analyzing aspirational examples (best-in-class UX from adjacent industries) reveals what "best practice" looks like. The structured output converts observations into actionable prioritization: must-have (table stakes), should-have (competitive parity), could differentiate (opportunity gaps), and avoid (observed failure modes).
+**One-paragraph:** Without competitive analysis, design teams reinvent solved problems, miss user expectations set by other products, and cannot answer 'what do competitors do?' This methodology pins the competitor set (3-5 direct, 2-3 indirect, 1-2 aspirational), defines evaluation criteria in advance (UX heuristics, feature parity, onboarding patterns, friction points), and converts findings into actionable Must-have (table stakes) / Should-have (parity) / Could (differentiation opportunities) / Avoid (observed failure modes) recommendations. Output: a competitive analysis spec artefact consumed by feature discovery, value-proposition design, and design critique.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за JSON Schema — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Trigger: starting a new product or feature where baseline expectations are unclear — run before opening Figma.
-- Trigger: entering a new market segment or geo where user expectations are unknown — run during discovery.
-- Trigger: a competitor ships a significant update (changelog, press release, App Store update note) — run a focused delta-check within 1 week.
-- Trigger: stakeholder asks "what do others do?" and the answer is blocking a design decision — run a 1-day focused pass on the specific flow.
-- Trigger: scheduled cadence — major refresh annually, minor refresh quarterly, focused delta on competitor-update events.
+- Pre-design sprint for a new product when the competitive landscape is uncharted.
+- Quarterly refresh after major competitor launches or category shifts.
+- Positioning work — feeding differentiation candidates into value-proposition design.
+- Stakeholder defence — having the canonical competitor profile ready before review meetings.
 
 ## Skip If (ANY kills it)
 
-- Do not substitute competitive analysis for user research — competitors' choices may also be wrong; validate with your own users before adopting patterns.
-- Do not analyze more than 8 competitors in a single pass — depth of analysis degrades; narrow scope or run multiple focused rounds.
-- Do not treat findings as requirements — use them as input to design decisions, not as specifications.
-- When your product targets a problem with no direct competitors — use analogous domain research instead.
-- When the competitive landscape changes faster than you can act (e.g., fast-moving AI tools) — snapshot analysis becomes stale within weeks; update frequently or choose a slower-moving domain.
+- A < 6-month-old competitive analysis already covers the same competitor set.
+- The product is in an entirely new category with no comparable competitors.
+- The decision is a UI polish, not a strategic positioning move — competitive analysis is overkill.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Competitor candidate list | 6-10 names | market scan |
+| Evaluation criteria | UX + feature + friction | design-critique heuristics |
+| Account access | free / trial / purchased | research operations |
+| Named accountable owner | name + email | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ux-researcher/heuristic-evaluation` | supplies the evaluation rubric per competitor |
+| `solo/ux/user-researcher/value-proposition-design` | downstream consumer of differentiation recommendations |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | ~700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/competitive-analysis.json` | JSON skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-competitive-analysis.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-competitive-analysis.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/ux/ux-researcher/`
+- [[heuristic-evaluation]]
+- [[value-proposition-design]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, segment scope) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.

@@ -3,73 +3,99 @@ slug: use-case-mapping
 tier: solo
 group: ux
 domain: ux
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Use case mapping is documenting specific ways users interact with your product to achieve goals.
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Document specific ways users interact with the product to achieve goals: enumerate use cases, name actor + goal + trigger + flow + alternate flows + edge cases, produce a use-case spec artefact downstream design and QA read."
 content_id: "6bb75b23c66cb654"
-tags: [use-cases, research, requirements, user-flows]
+complexity: medium
+produces: spec
+est_tokens: 4800
+tags: ["use-cases", "research", "requirements", "user-flows", "discovery"]
 ---
 # Use Case Mapping
 
 ## Summary
 
-**One-sentence:** Use case mapping is documenting specific ways users interact with your product to achieve goals.
+**One-sentence:** Document specific ways users interact with the product to achieve goals: enumerate use cases, name actor + goal + trigger + flow + alternate flows + edge cases, produce a use-case spec artefact downstream design and QA read.
 
-**One-paragraph:** Use case mapping is documenting specific ways users interact with your product to achieve goals. It answers: "What exactly will users do with this?" This methodology helps teams understand critical user workflows, identify missing features, and ensure comprehensive product design.
+**One-paragraph:** Products get built without a shared understanding of how users will actually use them; features ship disconnected from real workflows, critical paths are missed, edge cases surface only in production. This methodology pins the use-case format (actor, goal, trigger, preconditions, main flow, alternate flows, edge cases, success criteria), enumerates the top use cases per primary actor, and ranks them by frequency × business impact. Output: a use-case spec artefact downstream design, QA, and engineering all anchor on.
+
+**Ефективно для:**
+
+- паст-готова основа для повторюваної задачі — без винаходу велосипеда.
+- контракт виходу пинить за JSON Schema — downstream-агент може спожити без re-derive.
+- rule-set + decision tree відсіюють варіанти, де методологія НЕ підходить.
+- validator-скрипт ловить дрейф артефакту до того, як він потрапить у downstream.
+- версіонована, з named-owner — артефакт не стає folklore через 6 місяців.
 
 ## Applies If (ALL must hold)
 
-- Requirements elicitation: translating stakeholder conversations into structured system behavior
-- Before writing tickets: ensuring features cover all actors and alternative flows, not just the happy path
-- API design: mapping use cases to endpoints before writing any code
-- QA test planning: use cases map 1:1 to test scenarios and edge case coverage
-- Onboarding new engineers: use case specifications are faster to parse than code for understanding what a system does
+- Before scoping a new feature when the user flow is not yet shared between design and engineering.
+- QA test plan generation — use cases become test cases.
+- Onboarding a new engineer who needs the canonical actor / flow map.
+- Pre-spec gate when the requirements doc reads as a feature list, not a usage map.
 
 ## Skip If (ANY kills it)
 
-- During early ideation when scope is still fluid — formalized use cases lock in assumptions too early
-- For pure UI/visual design tasks where user flow diagrams (journey maps) communicate better
-- For internal batch jobs or background processes with no human actor
-- When the team is using BDD with Gherkin — use cases and Gherkin scenarios overlap; pick one to avoid double documentation
+- The change is a UI polish / visual refresh — use cases do not change.
+- An existing use-case spec < 6 months old already covers the actor set.
+- The team is doing pure discovery and does not yet know who the actors are — run audience-segmentation first.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Primary actor list | segment doc | audience-segmentation output |
+| Product capability inventory | feature list | product spec |
+| Named accountable owner | name + email | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/user-researcher/jobs-to-be-done` | jobs supply the actor + goal pairs use cases enumerate |
+| `solo/ux/user-researcher/success-metrics-definition` | downstream consumer mapping success criteria to metrics |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + skip-this-methodology fallback | ~1000 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | ~800 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output/decision-gate per step | ~800 |
+| `content/05-examples.xml` | essential | One full worked example end-to-end (anonymised) | ~700 |
+| `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
+| `draft-inputs-summary` | haiku | Mechanical template fill, bounded transformation. |
+| `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
+| `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/use-case-mapping.json` | JSON skeleton conforming to the output contract |
+| `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-use-case-mapping.py --self-test` |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-use-case-mapping.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
 
-- parent skill: `solo/ux/user-researcher/`
+- [[jobs-to-be-done]]
+- [[success-metrics-definition]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, segment scope) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
