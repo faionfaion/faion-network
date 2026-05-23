@@ -1,39 +1,136 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Pattern Bank Tagging Schema Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Pattern Bank Tagging Schema output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Pattern Bank Tagging Schema Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) pinning the shape of a valid artefact, plus one valid example, one invalid example, and a closed list of forbidden patterns the validator rejects.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
+  <section title="JSON Schema (draft-07)">
+    <schema format="json-schema-draft-07">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/pattern-bank-tagging-schema.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "version",
+    "last_reviewed",
+    "entry_id",
+    "surface",
+    "intent",
+    "pattern_type",
+    "severity",
+    "source_link"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "entry_id": {
+      "type": "string"
+    },
+    "surface": {
+      "type": "string",
+      "enum": [
+        "auth",
+        "checkout",
+        "dashboard",
+        "nav",
+        "onboarding",
+        "settings",
+        "profile",
+        "search",
+        "content",
+        "empty-state",
+        "error",
+        "a11y"
+      ]
+    },
+    "intent": {
+      "type": "string",
+      "enum": [
+        "educate",
+        "persuade",
+        "confirm",
+        "warn",
+        "delight",
+        "navigate",
+        "input",
+        "feedback"
+      ]
+    },
+    "pattern_type": {
+      "type": "string",
+      "enum": [
+        "anti",
+        "good",
+        "neutral"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4"
+      ]
+    },
+    "source_link": {
+      "type": "string"
+    }
+  }
+}
+]]></code>
+    </schema>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/pattern-bank-tagging-schema.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/pattern-bank-tagging-schema.json</item>
+      <pattern id="f1">surface / intent / pattern_type value not in closed vocabulary.</pattern>
+      <pattern id="f2">severity not in 0..4.</pattern>
+      <pattern id="f3">source_link missing OR not a URL / repo path.</pattern>
+      <pattern id="f4">owner is a plural pronoun or empty.</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "pattern-bank-tagging-schema-example",
+  "owner": "@solo-founder",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "entry_id": "entry_id value",
+  "surface": "auth",
+  "intent": "educate",
+  "pattern_type": "anti",
+  "severity": "0",
+  "source_link": "source_link value"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "version": "not-semver"
+}
+]]></code>
+    <note>Invalid — required fields missing OR forbidden patterns matched (e.g. version not semver).</note>
+  </example>
+
+  <reference path="scripts/validate-pattern-bank-tagging-schema.py">Stdlib-only validator implementing this schema.</reference>
 </text>

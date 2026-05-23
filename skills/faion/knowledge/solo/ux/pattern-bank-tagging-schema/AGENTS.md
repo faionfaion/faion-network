@@ -4,76 +4,97 @@ tier: solo
 group: ux
 domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Pattern Bank Tagging Schema: codified ux practice that turns the recurring 'role-ux-ui-designer/Inspiration + patterns capture (30min/week)' decision into a repeatable, auditable artefact.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Closed-vocabulary tagging schema for the inspiration / patterns bank so future retrieval is deterministic and AI agents can pre-filter by surface, intent, and severity.
 content_id: "402ed90fcf2e92e6"
-tags: [pattern-bank-tagging-schema, ux, solo]
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["pattern-bank", "tagging", "schema", "ux", "retrieval"]
 ---
 # Pattern Bank Tagging Schema
 
 ## Summary
 
-**One-sentence:** Pattern Bank Tagging Schema: codified ux practice that turns the recurring 'role-ux-ui-designer/Inspiration + patterns capture (30min/week)' decision into a repeatable, auditable artefact.
+**One-sentence:** Closed-vocabulary tagging schema for the inspiration / patterns bank so future retrieval is deterministic and AI agents can pre-filter by surface, intent, and severity.
 
-**One-paragraph:** Pattern Bank Tagging Schema addresses the gap identified by the role-ux-ui-designer/Inspiration + patterns capture (30min/week) playbook: Captured inspiration is useless without retrieval; problem-space tagging beats source-based tagging for actual use. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Inspiration banks rot when tags are free-text. This schema pins a closed vocabulary: surface (auth | checkout | dashboard | nav | onboarding | settings), intent (educate | persuade | confirm | warn | delight | navigate), pattern_type (anti | good | neutral), severity (0..4), and source (real-product URL | competitor screenshot | research paper). Every bank entry carries the four tags; agents pre-filter by tag before reading the full entry.
+
+**Ефективно для:**
+
+- Solo founder running weekly inspiration sweeps who needs deterministic recall after 6 months.
+- AI agent doing competitive-design synthesis that must pre-filter the bank by tag.
+- Design-review rituals where 'find me all the checkout anti-patterns' needs to return in <30s.
+- Onboarding handoff where the new agent must browse the bank by surface.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-ux-ui-designer/Inspiration + patterns capture (30min/week) OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == solo or higher (gating enforced by tier-manifest)
+- Pattern bank exists or is being created with ≥10 entries.
+- At least one downstream consumer (designer, agent, search) will retrieve by tag.
+- A canonical source for surface / intent / pattern_type lists exists or can be defined.
+- Bank is editable in a structured format (JSON, YAML, Notion DB).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Bank is freeform Pinterest board with no structured retrieval need.
+- Single-author bank with <10 entries — overhead exceeds benefit.
+- Bank is being deprecated; do not invest in tagging.
 
 ## Prerequisites
 
-- recent context for the role-ux-ui-designer/Inspiration + patterns capture (30min/week) task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Pattern bank entries list | array | Bank repository (Notion, JSON, repo) |
+| Surface vocabulary list | array | Product taxonomy |
+| Intent vocabulary list | array | Design-intent taxonomy |
+| Severity rubric | rubric | heuristic-eval-severity-rubric output |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/ux/ui-designer` | parent role skill — provides the operating context for this methodology |
+| `solo/ux/anti-pattern-rationale-template` | Anti-pattern entries are bank-shape consumers. |
+| `solo/ux/heuristic-eval-severity-rubric` | Severity values reused from the rubric. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | End-to-end worked example | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `tag-entry` | sonnet | Per-entry judgement on surface / intent / pattern-type. |
+| `dedupe-tag-coverage` | haiku | Deterministic coverage check across entries. |
+| `vocabulary-refresh` | opus | Quarterly review of vocabulary against bank growth. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/pattern-bank-tagging-schema.json` | JSON schema for the Pattern Bank Tagging Schema output contract |
-| `templates/pattern-bank-tagging-schema.md` | Markdown skeleton with the required fields |
+| `templates/pattern-bank-tagging-schema.json` | JSON skeleton conforming to the output-contract schema. |
+| `templates/pattern-bank-tagging-schema.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-pattern-bank-tagging-schema.py` | Enforce Pattern Bank Tagging Schema output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-pattern-bank-tagging-schema.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/ui-designer/`
-- upstream playbook: `role-ux-ui-designer/Inspiration + patterns capture (30min/week)`
+- [[anti-pattern-rationale-template]]
+- [[heuristic-eval-severity-rubric]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

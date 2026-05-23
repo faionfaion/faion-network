@@ -2,74 +2,98 @@
 slug: tailwind-design-tokens
 tier: solo
 group: ux
-domain: frontend
+domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Integrating design tokens into Tailwind CSS by mapping token values to CSS custom properties and referencing them in `tailwind.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Bridges Tailwind config to a governed design-token layer so Tailwind utilities resolve to semantic tokens (color.feedback.error → bg-error-500) instead of magic numbers.
 content_id: "015e97fab8369c86"
-tags: [tailwind, design-tokens, css-variables, theming, style-dictionary]
+complexity: medium
+produces: code
+est_tokens: 3600
+tags: ["tailwind", "design-tokens", "css", "design-systems", "tooling"]
 ---
-# Tailwind + Design Tokens
+# Tailwind Design Tokens
 
 ## Summary
 
-**One-sentence:** Integrating design tokens into Tailwind CSS by mapping token values to CSS custom properties and referencing them in `tailwind.
+**One-sentence:** Bridges Tailwind config to a governed design-token layer so Tailwind utilities resolve to semantic tokens (color.feedback.error → bg-error-500) instead of magic numbers.
 
-**One-paragraph:** Integrating design tokens into Tailwind CSS by mapping token values to CSS custom properties and referencing them in `tailwind.config.js` — using RGB channel syntax for color tokens to preserve opacity modifier functionality (`bg-primary/50`), and extending (not replacing) the default theme.
+**One-paragraph:** Tailwind utility classes drift into magic numbers (text-[#FF6633], p-[12px]) without governance. This methodology pins a tokens-first Tailwind config: a script generates tailwind.config.js from a tokens.json (Style Dictionary or equivalent), Tailwind theme.colors / spacing / fontSize keys mirror the semantic tier, arbitrary value syntax (bracket notation) is CI-blocked. Tailwind utilities become a thin renderer of the token system, not a parallel source of truth.
+
+**Ефективно для:**
+
+- Solo founder using Tailwind + needing dark-mode / theming without rebuilding from scratch.
+- Designer + AI agent pair where the agent emits Tailwind classes and must stay within tokens.
+- Migrating an existing Tailwind project from arbitrary values to governed tokens.
+- Adding a CI lint that blocks arbitrary value syntax.
 
 ## Applies If (ALL must hold)
 
-- Bootstrapping a new Tailwind project that must support theming (dark mode, brand variants, white-label)
-- Migrating an existing Tailwind codebase from hardcoded utility values to CSS-variable-backed tokens
-- Generating `tailwind.config.js` theme overrides from a Style Dictionary token build output
-- Auditing a Tailwind codebase for arbitrary values (`text-[#...]`, `p-[...]`) that should become tokens
-- Setting up a Storybook token documentation layer alongside a Tailwind component library
+- Project uses Tailwind v3.x or v4.x.
+- Design tokens.json or equivalent is the source-of-truth.
+- Build pipeline can run a tokens → tailwind.config.js generation step.
+- CI can enforce a no-arbitrary-value rule.
 
 ## Skip If (ANY kills it)
 
-- Projects not using Tailwind — use Style Dictionary + CSS custom properties directly
-- Pure CSS/SCSS codebases where Tailwind migration is not planned
-- When design tokens are not yet defined or stable — generating config before taxonomy is finalized creates throwaway work
-- Utility-class-only projects with zero theming requirements — CSS variable indirection adds complexity without payoff
+- Project uses CSS-in-JS or vanilla CSS only — no Tailwind path.
+- No tokens source — establish design-tokens-fundamentals first.
+- Tailwind v2 or older — generator script targets v3+.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| tokens.json | JSON | Style Dictionary output |
+| tailwind.config.js or v4 CSS-first config | JS / CSS | Frontend repo |
+| CI lint config | yaml | Repo CI |
+| Build tool (Vite / Next / Astro) | string | Frontend repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ui-designer/design-tokens-fundamentals` | Token tiers consumed by the generator. |
+| `solo/ux/handoff-spec-template` | Spec references Tailwind classes that resolve to tokens. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `generate-tailwind-config` | sonnet | Per-project judgement on token-to-theme mapping. |
+| `lint-arbitrary-values` | haiku | Deterministic regex scan for bracket syntax. |
+| `multi-project-tokens-rollout` | opus | Cross-project synthesis for monorepos. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/tailwind-design-tokens.json` | JSON skeleton conforming to the output-contract schema. |
+| `templates/tailwind-design-tokens.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-tailwind-design-tokens.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/ui-designer/`
+- [[design-tokens-fundamentals]]
+- [[handoff-spec-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

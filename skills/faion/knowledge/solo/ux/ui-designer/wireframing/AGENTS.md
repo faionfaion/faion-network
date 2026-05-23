@@ -2,75 +2,99 @@
 slug: wireframing
 tier: solo
 group: ux
-domain: frontend
+domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Wireframes are low-fidelity structural representations of a UI — boxes, labels, and annotations without colors, images, or final copy — used to validate layout, hierarchy, and interaction behavior before any visual design begins.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Builds the lowest-fidelity-that-still-answers-the-question wireframe in 30-60 minutes: information hierarchy, layout grid, primary actions, and content slots — explicitly stripped of visual polish to keep stakeholder feedback on structure not aesthetics.
 content_id: "149f32cedf514639"
-tags: [wireframing, ui-design, prototyping, user-testing, interaction-design]
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["wireframing", "low-fidelity", "structure", "layout", "ux"]
 ---
 # Wireframing
 
 ## Summary
 
-**One-sentence:** Wireframes are low-fidelity structural representations of a UI — boxes, labels, and annotations without colors, images, or final copy — used to validate layout, hierarchy, and interaction behavior before any visual design begins.
+**One-sentence:** Builds the lowest-fidelity-that-still-answers-the-question wireframe in 30-60 minutes: information hierarchy, layout grid, primary actions, and content slots — explicitly stripped of visual polish to keep stakeholder feedback on structure not aesthetics.
 
-**One-paragraph:** Wireframes are low-fidelity structural representations of a UI — boxes, labels, and annotations without colors, images, or final copy — used to validate layout, hierarchy, and interaction behavior before any visual design begins. Jumping directly to high-fidelity design conflates structure decisions with aesthetic decisions, making both harder to evaluate. Wireframes keep feedback focused on "does this layout serve the user goal?" and allow cheap iteration before stakeholder attention locks in on visual details.
+**One-paragraph:** Wireframes fail when designers polish them before alignment is reached. This methodology pins a four-section format (information hierarchy, layout grid, primary actions, content slots) and a deliberate low-fidelity treatment (grayscale, system font, no imagery). The 30-60 minute time-box prevents premature polish; wireframes graduate to medium-fidelity only after the structure is signed off.
+
+**Ефективно для:**
+
+- Solo designer needing to align on structure before investing visual time.
+- Founder + remote stakeholder where Figma high-fidelity sends wrong signal.
+- AI agent generating wireframe variants where polish would mislead reviewers.
+- Pre-mortem on a screen where the team is debating layout vs aesthetics.
 
 ## Applies If (ALL must hold)
 
-- Translating a product spec or user story into a structural layout before visual design begins.
-- Rapid exploration of multiple layout alternatives for a new page or feature.
-- Generating annotated wireframe documentation from existing designs for developer handoff.
-- Producing content hierarchy maps to align stakeholders on structure before aesthetics.
-- Auditing existing screens for missing states (empty, error, loading) and documenting them.
+- A new screen or flow needs structural alignment before visual design.
+- Stakeholders are available for a 30-min wireframe review.
+- 30-60 minute time-box can be respected.
+- Wireframe will graduate to higher-fidelity AFTER structure sign-off.
 
 ## Skip If (ANY kills it)
 
-- After visual design has already been approved — retroactive wireframing is documentation theater.
-- For micro-interactions and animations — wireframes convey structure, not motion.
-- As a replacement for user research — wireframing answers "how to lay it out," not "what to build".
-- When the deliverable requires interactive prototype testing — proceed directly to interactive prototypes.
-- One-screen fixes or copy changes where layout is already established.
+- Structure is already signed off — go to medium-fidelity directly.
+- Single-component micro-change with no structural impact.
+- High-stakes investor demo where wireframes send wrong signal.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Screen or flow brief | doc | PM / designer |
+| Layout grid spec | tokens or grid system | Design system |
+| Content inventory | list | Content design / PM |
+| Time-box (30-60 min) | integer | Designer calendar |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ui-designer/design-tokens-fundamentals` | Grid + spacing tokens used as guides. |
+| `solo/ux/stakeholder-walkthrough-script` | Structured walkthrough for sign-off. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | End-to-end worked example | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-wireframe` | sonnet | Per-screen judgement on hierarchy + action placement. |
+| `validate-fidelity-discipline` | haiku | Deterministic check on grayscale + no-imagery rule. |
+| `multi-screen-flow-audit` | opus | Cross-screen synthesis for a flow. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/wireframing.json` | JSON skeleton conforming to the output-contract schema. |
+| `templates/wireframing.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-wireframing.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/ui-designer/`
+- [[design-tokens-fundamentals]]
+- [[stakeholder-walkthrough-script]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

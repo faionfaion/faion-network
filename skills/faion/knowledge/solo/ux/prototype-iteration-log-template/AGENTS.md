@@ -4,81 +4,96 @@ tier: solo
 group: ux
 domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Pinned per-flow iteration log with fixed shape (problem → hypothesis → variant → evidence → outcome → next) so prototype work stops being folklore and starts being a reviewable operating tool.
 content_id: "f3bba5f49f36895e"
-summary: Prototype Iteration Log Template — pinned template for the UX/UI designer: fixed shape + named owner + evidence anchors + outcome review, so prototype iteration on one flow (1–3hr) stops being folklore and starts being a reviewable operating tool.
-tags: [ux, solo, template, prototype, iteration, log]
+complexity: medium
+produces: decision-record
+est_tokens: 3600
+tags: ["prototype", "iteration", "log", "ux", "evidence"]
 ---
 # Prototype Iteration Log Template
 
 ## Summary
 
-**One-sentence:** Prototype Iteration Log Template — pinned template for the UX/UI designer: fixed shape + named owner + evidence anchors + outcome review, so prototype iteration on one flow (1–3hr) stops being folklore and starts being a reviewable operating tool.
+**One-sentence:** Pinned per-flow iteration log with fixed shape (problem → hypothesis → variant → evidence → outcome → next) so prototype work stops being folklore and starts being a reviewable operating tool.
 
-**One-paragraph:** In UX / UI design, the UX/UI designer runs prototype iteration on one flow (1–3hr) on a recurring cadence — but the corpus only covers the upstream concepts, not the artefact that closes the loop. Without logged rationale, prototype history becomes a graveyard of versions with no learning trail; blocks meaningful retros. `prototype-iteration-log-template` pins the artefact: a fixed shape, named owner, evidence anchors, and a published review cadence. It is loaded when the UX/UI designer starts the block named in the trigger and produces a committed artefact reviewed against outcomes at the next iteration. Mechanism: rule-bound output contract + per-application evidence + outcome review. Primary output: a versioned, owned, evidence-anchored template committed to the team's knowledge space.
+**One-paragraph:** Solo designers iterate prototypes in 1-3 hour sprints and forget the why next week. This template forces a per-flow log row: problem statement, hypothesis under test, variant shipped, evidence collected (5-user test, click-through metric, internal review), outcome (kept | rolled-back | shipped-with-changes), and next iteration. Rows are append-only and signed by a named owner.
+
+**Ефективно для:**
+
+- Solo designer running 1-3hr prototype sprints multiple times per week.
+- AI agent generating prototype variants that need a log to track outcome.
+- Handoff to a new designer who must understand why the prototype state is what it is.
+- Pre-mortem on a stalled prototype where the chain of decisions is unclear.
 
 ## Applies If (ALL must hold)
 
-- the block this methodology unblocks is on the operating cadence: - `role-ux-ui-designer/Prototype iteration on one flow (1–3hr)`
-- the UX/UI designer owns the artefact (or escalates ownership to a named role).
-- the team uses a version-controlled or wiki-style space where the artefact lives.
-- the methodology's trigger event fires at a published cadence (event, threshold, or schedule).
+- Active prototype with at least 1 variant tested in the last 14 days.
+- Evidence collection mechanism exists (user test, metric, review).
+- Owner has 15 minutes per iteration to log the row.
+- Downstream consumer (designer, PM, agent) will read the log.
 
 ## Skip If (ANY kills it)
 
-- one-shot work with no recurrence — write a single doc, not a versioned artefact.
-- team has < 3 instances per year — the review cadence costs more than it returns.
-- regulated context that mandates a different shape (use the regulator's template instead).
-- no named owner is available — defer until ownership is resolved; an anonymous artefact rots.
+- Throwaway sketch with no test cycle.
+- Production design (not prototype) — log via design-decision-log instead.
+- No evidence collection — log becomes opinion log, low value.
 
 ## Prerequisites
 
-- access to the repository / knowledge space that will host the artefact.
-- a named owner accountable for refresh and outcome review.
-- the upstream methodologies in `Assumes Loaded` are already routine for the UX/UI designer.
-- the trigger event is observable (alert, ticket, calendar slot, threshold crossing).
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Prototype flow URL | Figma / Codepen / live URL | Prototype tool |
+| Hypothesis statement | string | Author memory |
+| Evidence collection method | string | Test plan |
+| Owner handle | string | Designer / agent registry |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/ux/<upstream-canon>` | Upstream concept; this methodology consumes its output without re-teaching it. |
-| `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
+| `solo/ux/ui-designer/prototyping` | Prototype methodology this log sits inside. |
+| `solo/ux/design-decision-log-template` | Stable decisions graduate to the decision log. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules — fixed shape, evidence anchors, named owner, version + last_reviewed, outcome review | ~1000 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, self-check checklist | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 known failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `scaffold-artefact` | haiku | Template fill from header + section list, low cost. |
-| `populate-evidence-fields` | sonnet | Per-section judgment: select correct evidence, summarise without losing specifics. |
-| `outcome-review-synthesis` | opus | Cross-cycle synthesis: does the artefact change behaviour? |
+| `draft-iteration-row` | sonnet | Per-iteration judgement on hypothesis and outcome. |
+| `dedupe-and-status` | haiku | Deterministic similarity check across rows. |
+| `sprint-retro-pass` | opus | Cross-row pattern detection across a sprint. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
+| `templates/prototype-iteration-log-template.json` | JSON skeleton conforming to the output-contract schema. |
+| `templates/prototype-iteration-log-template.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-fill.py` | Validate that filled artefact matches canonical schema + carries evidence links | Pre-merge |
-| `scripts/staleness-check.py` | Flag artefacts whose `last_reviewed` exceeds the published window | Weekly cron |
+| `scripts/validate-prototype-iteration-log-template.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/`
-- peer methodology: `<related-canonical-from-the-corpus>`
-- external: see Christensen, Gawande, Kahneman, Allspaw and the empirical sources cited in `content/01-core-rules.xml`.
+- [[design-decision-log-template]]
+- [[scope-creep-park-list-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

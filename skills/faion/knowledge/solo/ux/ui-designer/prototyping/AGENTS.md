@@ -2,74 +2,100 @@
 slug: prototyping
 tier: solo
 group: ux
-domain: frontend
+domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Prototyping is the practice of building interactive representations of a product — from paper sketches to code — at the fidelity level required to answer a specific learning objective before committing to production development.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Build the smallest interactive prototype that can falsify a single hypothesis in 1-3 hours, then use evidence-collection to decide kept / rolled-back / shipped-with-changes.
 content_id: "f5bac879df67c033"
-tags: [prototyping, interaction-design, usability-testing, design-validation, figma]
+complexity: medium
+produces: report
+est_tokens: 4200
+tags: ["prototyping", "ux", "iteration", "hypothesis-testing", "evidence"]
 ---
 # Prototyping
 
 ## Summary
 
-**One-sentence:** Prototyping is the practice of building interactive representations of a product — from paper sketches to code — at the fidelity level required to answer a specific learning objective before committing to production development.
+**One-sentence:** Build the smallest interactive prototype that can falsify a single hypothesis in 1-3 hours, then use evidence-collection to decide kept / rolled-back / shipped-with-changes.
 
-**One-paragraph:** Prototyping is the practice of building interactive representations of a product — from paper sketches to code — at the fidelity level required to answer a specific learning objective before committing to production development. Static designs cannot convey how interactions behave, which means usability issues remain hidden until expensive development is underway. Prototypes surface these issues early, align stakeholders on expected behavior, and provide a testable artifact for usability research — at a fraction of the cost of discovering the problem in production.
+**One-paragraph:** Prototyping fails when scope is undefined and outcome is opinion-based. This methodology pins a four-step loop: scope to one falsifiable hypothesis, build the smallest possible variant (Figma click-through or low-code), collect evidence (5-user test, click metric, internal review), decide outcome. Each loop produces a log row via prototype-iteration-log-template. Loops longer than 3 hours are split.
+
+**Ефективно для:**
+
+- Solo designer with 1-3hr sprints multiple times per week.
+- Founder running pre-build prototype rounds before committing eng time.
+- AI agent generating prototype variants where the human must judge outcome.
+- Pre-launch design where last-mile prototypes inform final scope cuts.
 
 ## Applies If (ALL must hold)
 
-- Validating interaction flows before writing production code
-- Presenting design concepts to stakeholders who cannot read wireframes
-- Running usability tests when no real product exists yet
-- Deciding between two competing UX patterns before committing to development
-- Documenting expected behavior for handoff to engineers
+- A falsifiable hypothesis exists (IF / THEN form).
+- A prototyping tool is available (Figma, Codepen, Framer, no-code builder).
+- Evidence collection mechanism exists (5-user test / metric / review).
+- 1-3 hour time budget can be blocked.
 
 ## Skip If (ANY kills it)
 
-- When the feature scope is a single static content page with no interaction
-- When a fully working staging environment already exists and can be tested directly
-- When the only unknown is visual aesthetics — use static mockups instead
-- When the timeline is so compressed that prototype iteration would delay the actual build
+- Hypothesis not falsifiable — refine first.
+- Production design (not prototype) — use design-to-dev-handoff instead.
+- No evidence mechanism — prototype produces opinion only.
+- Time budget > 8 hours — split into multiple iterations.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Falsifiable hypothesis | string (IF / THEN) | Researcher / designer / agent |
+| Prototyping tool URL | URL | Figma / Codepen / Framer |
+| Evidence-collection method | string | Test plan |
+| Time-box (1-3 hr) | integer | Designer calendar |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/prototype-iteration-log-template` | Log row produced per iteration. |
+| `solo/ux/critical-issue-triage-protocol` | Findings from the prototype triage feed downstream. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | End-to-end worked example | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-prototype-plan` | sonnet | Per-iteration judgement on scope + variant choice. |
+| `validate-iteration-output` | haiku | Deterministic check that log row + evidence link are present. |
+| `sprint-retro-pass` | opus | Cross-iteration pattern detection across a sprint. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/prototyping.json` | JSON skeleton conforming to the output-contract schema. |
+| `templates/prototyping.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-prototyping.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/ui-designer/`
+- [[prototype-iteration-log-template]]
+- [[critical-issue-triage-protocol]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

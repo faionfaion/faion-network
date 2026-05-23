@@ -2,90 +2,99 @@
 slug: insight-to-design-ticket
 tier: solo
 group: ux
-domain: frontend
+domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: A bridge protocol that converts research insights (interview tags, friction map findings) into ranked, design-ready backlog tickets.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Translates a research insight into a properly-scoped design ticket with hypothesis, success metric, design constraints, and a draft acceptance criteria so the design sprint starts with no ambiguity.
 content_id: "10eb2145dba12f56"
-tags: [ux,research,backlog,insight,ticket,design,prioritization]
+complexity: medium
+produces: spec
+est_tokens: 4200
+tags: ["insight", "design-ticket", "hypothesis", "research-to-design", "ux"]
 ---
-# Insight to Design Ticket
+# Insight-to-Design-Ticket
 
 ## Summary
 
-**One-sentence:** A bridge protocol that converts research insights (interview tags, friction map findings) into ranked, design-ready backlog tickets.
+**One-sentence:** Translates a research insight into a properly-scoped design ticket with hypothesis, success metric, design constraints, and a draft acceptance criteria so the design sprint starts with no ambiguity.
 
-**One-paragraph:** Research insights frequently die between the synthesis report and the backlog because no one translates "users feel anxious during checkout" into a sized, prioritized ticket designers can pick up tomorrow. This methodology defines the format of a "design ticket" output: one insight per ticket, evidence quote, affected user moment, severity, suggested-not-mandated direction, and a one-line acceptance criterion. Mechanism: a closed insight-to-ticket transformation with required fields, an ICE-shaped prioritization vote with the PM/researcher pair, and a "loss horizon" that retires un-pulled tickets after 90 days so the backlog doesn't become a graveyard. Primary output: a per-insight ticket in the design backlog with a documented chain back to the research evidence.
+**One-paragraph:** Insights die between research and design when nobody writes the ticket. This methodology pins a four-section ticket: insight (the observed user behaviour), hypothesis (IF / THEN form), success metric (measurable target), design constraints (tokens / brand / a11y). The ticket has a draft AC that engineering will refine at handoff time; the designer commits to the AC at ticket creation, not later.
+
+**Ефективно для:**
+
+- Solo founder converting research notes into actionable design tickets.
+- Researcher + designer handoff where the researcher writes the ticket.
+- AI agent generating design tickets from session transcripts.
+- Pre-sprint planning where backlog must contain only well-formed tickets.
 
 ## Applies If (ALL must hold)
 
-- research artifacts (interview transcripts, friction maps, usability findings) exist for a feature
-- operator can author tickets in the team's tracker (Linear, Jira, GitHub, Notion)
-- design backlog exists as a distinct queue OR will be created
-- ≥ 1 designer has bandwidth to pull tickets from the backlog
-- PM or product owner participates in prioritization
+- A research insight exists with observable user-behaviour evidence.
+- Design will act on the insight in the next 1-3 sprints.
+- A measurable success metric can be defined (or 'no-metric' explicitly accepted).
+- Designer or agent will own the resulting ticket.
 
 ## Skip If (ANY kills it)
 
-- research is ongoing and synthesis hasn't been done — wait for completion
-- single-designer single-PM team that already direct-edits — overhead exceeds value
-- pure visual-polish project with no behavioral hypotheses
-- crisis hotfix flow where insights skip directly to design (no backlog handoff needed)
-- regulated-design workflow (FDA, medical) — needs heavier traceability than this provides
+- Insight is too early — needs more sessions to confirm.
+- Insight already addressed in an open design ticket — link to it instead.
+- Insight is opinion / preference, not behaviour-based — discard or re-investigate.
 
-## Prerequisites (must be true before starting)
+## Prerequisites
 
-- tagged insights from research synthesis (each insight has ≥ 3 evidence quotes)
-- list of affected user moments / personas
-- ticket-tracker permissions for the converter
-- agreed-upon ICE rubric (Impact / Confidence / Ease per insight)
-- 90-day loss horizon policy approved by team
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Research insight + evidence link | string + URL | research notebook |
+| Backlog tool URL | URL | Sprint board |
+| Success-metric source | metric system or 'no-metric' decision | Analytics or PM |
+| Designer / agent handle | string | Team directory |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `solo/research/researcher/user-interviews` | Source of tagged insights |
-| `pro/ux/ux-researcher/journey-mapping` | Affected user-moment context |
-| `pro/marketing/growth-marketer/growth-experiment-design` | Optional: insights with hypothesis hooks may also become experiments |
+| `solo/ux/critical-issue-triage-protocol` | Triage feeds prioritised insights to this methodology. |
+| `solo/ux/handoff-spec-template` | Ticket AC consumed at handoff time. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: one insight per ticket, evidence required, suggested-not-mandated direction, ICE before queue, 90-day loss horizon | ~1000 |
-| `content/02-output-contract.xml` | essential | Ticket schema, required fields, forbidden patterns | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 failure modes (solution-as-insight, evidence loss, graveyard backlog, etc.) | ~1100 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | End-to-end worked example | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `insight_extractor` | sonnet | Parse synthesis report into discrete insights |
-| `ticket_draft_per_insight` | sonnet | Convert each insight into ticket fields |
-| `ice_scoring_synth` | sonnet | Score Impact / Confidence / Ease with documented rationale |
-| `loss_horizon_sweeper` | haiku | Tag tickets older than 90 days as "retire_candidate" |
+| `draft-ticket` | sonnet | Per-insight judgement on hypothesis + constraints. |
+| `dedupe-ticket-bank` | haiku | Deterministic similarity check against existing tickets. |
+| `sprint-batch-write` | opus | Batch of 5+ tickets from a single research sprint. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/design-ticket-skeleton.md` | One-insight-per-ticket template |
-| `templates/ice-rubric.md` | Impact / Confidence / Ease scale per insight type |
-| `templates/loss-horizon-policy.md` | Retirement criteria + appeal process |
-| `templates/evidence-link-format.md` | How to reference transcript IDs + timestamps |
+| `templates/insight-to-design-ticket.json` | JSON skeleton conforming to the output-contract schema. |
+| `templates/insight-to-design-ticket.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/insight-to-ticket.py` | Generate tickets from tagged-insight JSON | After research synthesis |
-| `scripts/backlog-graveyard-sweep.py` | Identify tickets past loss horizon | Quarterly |
+| `scripts/validate-insight-to-design-ticket.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/ui-designer/`
-- peer methodology: `solo/research/researcher/user-interviews`, `pro/ux/ux-researcher/journey-mapping`
-- external: [Erika Hall, Just Enough Research](https://abookapart.com/products/just-enough-research) · [Tomer Sharon, validating insights](https://www.tomersharon.com/)
+- [[critical-issue-triage-protocol]]
+- [[handoff-spec-template]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.

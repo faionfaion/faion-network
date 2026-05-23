@@ -1,62 +1,113 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Insight to Design Ticket Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a design-backlog ticket. Subagent must satisfy this before queueing.</summary>
+<text id="02-output-contract" title="Insight-to-Design-Ticket Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) pinning the shape of a valid artefact, plus one valid example, one invalid example, and a closed list of forbidden patterns the validator rejects.</summary>
 
-  <output-contract>
-    <required>
-      <field name="ticket_id" type="string" format="T-NNNN"/>
-      <field name="title" type="string" max_length="80"/>
-      <field name="insight" type="string" max_length="320"/>
-      <field name="evidence" type="array_object"
-             min="2"
-             item_required_keys="source_type,source_id,timestamp_or_node"
-             source_type_enum="transcript,journey_map,survey,session_recording"/>
-      <field name="affected_user_moment" type="string"/>
-      <field name="severity" type="closed_enum"
-             value="blocker,major,moderate,minor"/>
-      <field name="direction_suggested" type="string"
-             constraint="NOT prescriptive (no specific UI elements named) — describes hypothesis space"/>
-      <field name="ice_score" type="object"
-             required_keys="impact,confidence,ease,rationale"
-             constraint="impact between 1 and 10; confidence between 1 and 10; ease between 1 and 10"/>
-      <field name="signed_by" type="object"
-             required_keys="researcher,pm"
-             constraint="both fields populated"/>
-      <field name="acceptance" type="string"
-             constraint="references designer output AND evidence-fit recheck"/>
-      <field name="created_date" type="date"/>
-      <field name="loss_horizon_date" type="date"
-             constraint="created_date + 90 days"/>
-      <field name="status" type="closed_enum"
-             value="queued,in_design,blocked,shipped,retired"/>
-    </required>
+  <section title="JSON Schema (draft-07)">
+    <schema format="json-schema-draft-07">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/insight-to-design-ticket.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "version",
+    "last_reviewed",
+    "ticket_id",
+    "insight",
+    "evidence_link",
+    "hypothesis",
+    "success_metric",
+    "design_constraints",
+    "draft_acceptance_criteria"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "ticket_id": {
+      "type": "string"
+    },
+    "insight": {
+      "type": "string"
+    },
+    "evidence_link": {
+      "type": "string"
+    },
+    "hypothesis": {
+      "type": "string"
+    },
+    "success_metric": {
+      "type": "string"
+    },
+    "design_constraints": {
+      "type": "array"
+    },
+    "draft_acceptance_criteria": {
+      "type": "array"
+    }
+  }
+}
+]]></code>
+    </schema>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">More than one insight in a single ticket (violates r1)</pattern>
-      <pattern id="f2">evidence array length &lt; 2 OR any evidence missing source_id (violates r2)</pattern>
-      <pattern id="f3">direction_suggested containing specific UI elements (button, modal, dropdown) or specific tech (Tailwind, MUI) — that's a solution, not a direction (violates r3)</pattern>
-      <pattern id="f4">ice_score missing OR rationale field empty (violates r4)</pattern>
-      <pattern id="f5">signed_by.researcher == signed_by.pm (same person both roles)</pattern>
-      <pattern id="f6">status == queued past loss_horizon_date without retire_candidate tag (violates r5)</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Re-validate a retire_candidate ticket by attaching new evidence with fresh ICE score; resets loss_horizon_date.</transformation>
-      <transformation>Promote a ticket to "experiment" status (linked to growth-experiment-design methodology) when the hypothesis becomes testable.</transformation>
-      <transformation>Add a "decision_link" field after design completes, pointing to the chosen direction's spec.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/design-ticket-skeleton.md"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
+  <section title="Forbidden patterns">
     <list>
-      <item>Exactly one insight in the ticket</item>
-      <item>≥ 2 evidence references with source_ids</item>
-      <item>direction_suggested is hypothesis-space, not prescriptive</item>
-      <item>ICE scored with rationale</item>
-      <item>Researcher AND PM both signed (different people)</item>
-      <item>loss_horizon_date set to created_date + 90 days</item>
+      <pattern id="f1">hypothesis does not contain &apos;IF&apos; AND &apos;THEN&apos;.</pattern>
+      <pattern id="f2">evidence_link empty.</pattern>
+      <pattern id="f3">design_constraints array length &lt; 2.</pattern>
+      <pattern id="f4">owner is a plural pronoun or empty.</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "insight-to-design-ticket-example",
+  "owner": "@solo-founder",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "ticket_id": "ticket_id value",
+  "insight": "insight value",
+  "evidence_link": "evidence_link value",
+  "hypothesis": "hypothesis value",
+  "success_metric": "success_metric value",
+  "design_constraints": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "draft_acceptance_criteria": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ]
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "version": "not-semver"
+}
+]]></code>
+    <note>Invalid — required fields missing OR forbidden patterns matched (e.g. version not semver).</note>
+  </example>
+
+  <reference path="scripts/validate-insight-to-design-ticket.py">Stdlib-only validator implementing this schema.</reference>
 </text>

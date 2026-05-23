@@ -1,46 +1,99 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Edge Case Checklist — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the per-screen resolution-record shape. Designer or supporting agent must satisfy this before handoff or AC commitment.</summary>
+<text id="02-output-contract" title="Edge-Case Checklist Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) pinning the shape of a valid artefact, plus one valid example, one invalid example, and a closed list of forbidden patterns the validator rejects.</summary>
 
-  <output-contract>
-    <required>
-      <field name="screen_id" format="screen_slug_or_route"/>
-      <field name="product_in_scope_list" required_keys="dark_mode,rtl,offline,rate_limited,additional_items"
-             value_type="boolean_per_item"/>
-      <field name="items" min="12" required_keys="item_id,item_name,resolution,evidence_link_or_copy_or_reason"/>
-      <field name="resolution" format="enum: state-rendered | copy-rule-only | n/a-with-reason"/>
-      <field name="evidence_link_or_copy_or_reason" condition="required_per_resolution_type" format="link_OR_copy_text_OR_one_sentence_reason"/>
-      <field name="cross_screen_audit_status" format="enum: not-checked | consistent-with-siblings | divergent-with-rationale"/>
-    </required>
+  <section title="JSON Schema (draft-07)">
+    <schema format="json-schema-draft-07">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/edge-case-checklist.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "version",
+    "last_reviewed",
+    "component_name",
+    "answers",
+    "handoff_status"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "component_name": {
+      "type": "string"
+    },
+    "answers": {
+      "type": "object"
+    },
+    "debt_accepted": {
+      "type": "array"
+    },
+    "handoff_status": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "blocked"
+      ]
+    }
+  }
+}
+]]></code>
+    </schema>
+  </section>
 
-    <forbidden>
-      <pattern id="f1">items.length &lt; 12 (silent omission per r1)</pattern>
-      <pattern id="f2">any item with resolution=null or evidence_link_or_copy_or_reason=null</pattern>
-      <pattern id="f3">resolution=n/a-with-reason where the reason does not reference product_in_scope_list OR a product-specific characteristic (per r4)</pattern>
-      <pattern id="f4">copy-rule-only item with copy text matching /lorem ipsum|TBD|see Figma|TODO/</pattern>
-      <pattern id="f5">state-rendered item with evidence_link unreachable or pointing to deleted Figma node</pattern>
-      <pattern id="f6">error / empty resolution with copy that includes raw HTTP codes / stack traces / debugging info (user-visible)</pattern>
-      <pattern id="f7">product_in_scope_list missing — every project MUST declare its in-scope edge cases up front</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Group multiple edge items that share a single copy rule (e.g., empty and empty-after-search share illustration) but record both items separately.</transformation>
-      <transformation>Reference an existing pattern from the product's edge-case library if an identical resolution applies elsewhere ("uses copy-pattern P-007").</transformation>
-      <transformation>Mark items as n/a-with-reason via product_in_scope_list if the project doesn't support that case (e.g., RTL).</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/resolution-record.json"/>
-  </output-contract>
-
-  <section title="Self-check (run before declaring handoff complete)">
+  <section title="Forbidden patterns">
     <list>
-      <item>All 12 items have resolution + evidence/copy/reason populated (r1, r2)</item>
-      <item>Copy strings are real text, not placeholder (r3)</item>
-      <item>N/A reasons trace back to product_in_scope_list (r4)</item>
-      <item>state-rendered evidence links are fetchable (r5)</item>
-      <item>Error / empty copy does not leak technical details to users (f6)</item>
-      <item>Cross-screen audit performed if 2+ similar screens shipped in this batch</item>
-      <item>Output validates against templates/resolution-record.json</item>
+      <pattern id="f1">answers object missing any of the 10 canonical case keys.</pattern>
+      <pattern id="f2">any case value not in {YES, NO, N/A}.</pattern>
+      <pattern id="f3">any N/A answer without a reason.</pattern>
+      <pattern id="f4">owner is a plural pronoun or empty.</pattern>
     </list>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "edge-case-checklist-example",
+  "owner": "@solo-founder",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "component_name": "component_name value",
+  "answers": {
+    "key": "value"
+  },
+  "debt_accepted": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "handoff_status": "ready"
+}
+]]></code>
+    <note>Minimum viable conformant output — every required field present, no forbidden pattern matched.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "version": "not-semver"
+}
+]]></code>
+    <note>Invalid — required fields missing OR forbidden patterns matched (e.g. version not semver).</note>
+  </example>
+
+  <reference path="scripts/validate-edge-case-checklist.py">Stdlib-only validator implementing this schema.</reference>
 </text>

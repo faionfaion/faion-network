@@ -2,74 +2,99 @@
 slug: spatial-ux-fundamentals
 tier: solo
 group: ux
-domain: frontend
+domain: ux
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Design principles for 3D/XR interfaces: place UI elements in near (0-1m), mid (1-3m), and far (3m+) field zones; specify element sizes in world units (meters) at placement distance; assign interaction modalities per platform constraints; and validate every layout in a physical headset before development begins.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Designing for spatial (XR / Vision Pro / Quest) starts with three primitives — comfort zones, spatial affordances, and depth hierarchy — that prevent user fatigue and disorientation in the first 10 minutes of use.
 content_id: "845db2e8bdce2a5f"
-tags: [xr, spatial-design, ergonomics, 3d-ui, vision-pro]
+complexity: deep
+produces: spec
+est_tokens: 4200
+tags: ["spatial-ux", "xr", "vision-pro", "quest", "primitives"]
 ---
 # Spatial UX Fundamentals
 
 ## Summary
 
-**One-sentence:** Design principles for 3D/XR interfaces: place UI elements in near (0-1m), mid (1-3m), and far (3m+) field zones; specify element sizes in world units (meters) at placement distance; assign interaction modalities per platform constraints; and validate every layout in a physical headset before development begins.
+**One-sentence:** Designing for spatial (XR / Vision Pro / Quest) starts with three primitives — comfort zones, spatial affordances, and depth hierarchy — that prevent user fatigue and disorientation in the first 10 minutes of use.
 
-**One-paragraph:** Design principles for 3D/XR interfaces: place UI elements in near (0-1m), mid (1-3m), and far (3m+) field zones; specify element sizes in world units (meters) at placement distance; assign interaction modalities per platform constraints; and validate every layout in a physical headset before development begins.
+**One-paragraph:** Spatial UX fails when 2D heuristics are ported into 3D. This methodology pins three primitives: comfort zones (arm-reach inner, working-distance middle, peripheral outer with field-of-view limits), spatial affordances (depth + occlusion + parallax communicate interactivity, not just color/shape), and depth hierarchy (z-distance maps to attention, not just z-index). Every spatial UI component answers these three before motion and aesthetics layer on.
+
+**Ефективно для:**
+
+- Solo designer building first Vision Pro / Quest app and needing primitive guardrails.
+- Founder evaluating whether to ship a spatial version of an existing 2D product.
+- AI agent generating spatial UI variants that need primitive constraints baked in.
+- Cross-platform design where 2D handoff must adapt to spatial without redesign.
 
 ## Applies If (ALL must hold)
 
-- Designing UI for Apple Vision Pro, Meta Quest, or other XR headsets
-- Planning spatial layout of panels, menus, and work surfaces in a 3D environment
-- Auditing an existing XR app for ergonomic violations
-- Specifying spatial interaction patterns for a development team new to XR
-- Creating documentation for a spatial design system (scale, reach zones, field-of-view constraints)
+- Target device is a spatial headset (Vision Pro, Quest, Mixed-Reality).
+- First-time spatial design — primitives are not assumed knowledge.
+- Designer or agent will produce spatial UI variants in the next 30 days.
+- Design tool supports 3D / Z-depth output (Reality Composer, Figma plugin, Unity).
 
 ## Skip If (ANY kills it)
 
-- Flat 2D web or mobile interfaces — spatial principles introduce unnecessary complexity
-- Early product ideation before target hardware is confirmed — comfort zones vary across headsets
-- Accessibility audits without XR-specific assistive technology expertise
-- When the development team has no XR SDK experience — specs cannot be implemented without platform capability
+- Mobile or desktop 2D project — primitives do not apply.
+- Late-stage spatial polish where primitives are already established.
+- Voice-only XR — use voice-ui-basics methodology instead.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Target device + field of view | string + degrees | Device manufacturer spec |
+| Use-case duration estimate | minutes | Product design |
+| User-physical-context model | seated / standing / mobile | Session research |
+| 3D design tool URL | URL | Tool picker |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/ux/ui-designer/spatial-design-tools` | Tools used to author the primitives. |
+| `solo/ux/edge-case-checklist` | Edge cases consumed at handoff. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | >=5 testable rules + skip + run rules | 800 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | >=3 antipatterns with symptom + root-cause + fix | 700 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
+| `content/05-examples.xml` | essential | End-to-end worked example | 600 |
+| `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id from 01-core-rules.xml | 500 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `draft-comfort-zone` | sonnet | Per-flow judgement on comfort-zone placement. |
+| `validate-spatial-spec` | haiku | Deterministic check on z-distance + FoV thresholds. |
+| `multi-flow-spatial-audit` | opus | Cross-flow synthesis for an app. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/spatial-ux-fundamentals.json` | JSON skeleton conforming to the output-contract schema. |
+| `templates/spatial-ux-fundamentals.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-spatial-ux-fundamentals.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
 
-- parent skill: `solo/ux/ui-designer/`
+- [[voice-ui-basics]]
+- [[edge-case-checklist]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable inputs (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
