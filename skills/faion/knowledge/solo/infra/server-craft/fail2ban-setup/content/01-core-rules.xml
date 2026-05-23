@@ -1,51 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="fail2ban-setup Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for fail2ban-setup. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Fail2ban Setup for Ubuntu 24 Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules every application of `Fail2ban Setup for Ubuntu 24` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use backend=systemd for services that log to journald (sshd on Ubuntu 24.04). Use backend=auto for services with explicit log files (nginx). Never set logpath when using backend=systemd — it is silently ignored.</statement>
-      <rationale source="v1-source">The systemd backend reads the journal directly; there is no log file path. Including logpath with backend=systemd triggers a warning and may prevent the jail from starting correctly.</rationale>
+
+    <rule id="r1-correct-sshd-port" testable="true" depth="essential">
+      <statement>fail2ban sshd jail port MUST match actual sshd port (often 22022, not 22). Mismatched port = REJECT.</statement>
+      <rationale source="fail2ban deploy corpus">Default jail watches port 22; if sshd runs on 22022 the jail bans no one (no auth attempts on 22) while real attacks slip through.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Never edit jail.conf or fail2ban.conf. Create all customizations in jail.local (global defaults) and jail.d/*.conf (per-jail drop-ins). These survive package upgrades.</statement>
-      <rationale source="v1-source">jail.conf is overwritten on package upgrade. jail.local and jail.d/ files are preserved. This mirrors the sshd_config.d/ pattern.</rationale>
+
+    <rule id="r2-nftables-backend" testable="true" depth="essential">
+      <statement>On Ubuntu 24, jail backend MUST be `nftables` (not iptables-legacy). Wrong backend = REJECT.</statement>
+      <rationale source="Ubuntu 24 default">Ubuntu 24 ships nftables-native; iptables-legacy is a compat shim and may not persist bans on reboot.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Set banaction=nftables and banaction_allports=nftables[type=allports] in [DEFAULT]. Ubuntu 24.04 uses nftables as the default firewall backend; mixing iptables and nftables rules causes conflicts.</statement>
-      <rationale source="v1-source">fail2ban defaults to iptables on older systems. Ubuntu 24.04 uses nftables via UFW. Setting the nftables banaction explicitly ensures fail2ban's bans integrate correctly with the existing ruleset.</rationale>
+
+    <rule id="r3-escalating-bantime" testable="true" depth="essential">
+      <statement>bantime MUST escalate via `bantime.increment = true` + `bantime.factor`. Flat bantime = REJECT.</statement>
+      <rationale source="Brute-force pattern corpus">Flat bantime lets persistent attackers come back the same evening; escalating bans (1h → 4h → 1d → 1w) make repeat attacks expensive.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use fail2ban-client reload (not restart) after config changes. reload preserves existing ban state; restart clears all bans.</statement>
-      <rationale source="v1-source">Restarting fail2ban unbans all currently banned IPs, giving active attackers an immediate window to reconnect.</rationale>
+
+    <rule id="r4-whitelist-wireguard" testable="true" depth="essential">
+      <statement>Operator's WireGuard subnet MUST be whitelisted via `ignoreip`. Missing = REJECT.</statement>
+      <rationale source="Self-lockout corpus">Operator running fail2ban locally during VPN reconnect can trip own jail; whitelist prevents self-lockout.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Always whitelist localhost, Docker networks (172.16.0.0/12, 10.0.0.0/8), your static IP, VPN subnet, and all Cloudflare IP ranges BEFORE enabling any jail. A misconfigured whitelist bans you immediately on first nginx scan.</statement>
-      <rationale source="v1-source">fail2ban bans based on log patterns without geographic awareness. Your own monitoring tools, Docker containers, and Cloudflare proxy IPs all generate traffic that matches scanner patterns.</rationale>
+
+    <rule id="r5-action-with-alert" testable="true" depth="essential">
+      <statement>Jail MUST use an action that pings Telegram (or webhook) on ban so operator sees real attack patterns. Silent bans = REJECT for solo ops.</statement>
+      <rationale source="Operator visibility corpus">Silent bans give a false sense of safety; an alert lets the operator notice when patterns shift (e.g. CN ↔ RU swap).</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Configure SSH jail with maxretry=3, findtime=600, bantime=3600. Use filter=sshd[mode=aggressive] to catch invalid user attempts in addition to failed passwords.</statement>
-      <rationale source="v1-source">3 failures in 10 minutes is aggressive enough to block brute-force (which tries hundreds per minute) while allowing legitimate multi-key authentication failures without permanent lockout.</rationale>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume cycles and produce false confidence.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Configure the recidive jail: if an IP is banned 3 times in 24 hours, ban it for 1 week on ALL ports using banaction=nftables[type=allports]. recidive requires /var/log/fail2ban.log to exist — logtarget must not be set to journal-only.</statement>
-      <rationale source="v1-source">Short bans (1h) do not deter persistent scanners. Recidive escalates to a week-long all-ports block for IPs that return after being banned, effectively removing persistent attackers.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Enable bantime.increment=true in [DEFAULT] with bantime.factor=2 and bantime.maxtime=604800 to automatically double ban time for repeat offenders within the same jail, up to 1 week maximum.</statement>
-      <rationale source="v1-source">Linear ban times do not deter automated scanners. Exponential escalation per IP makes repeated attempts progressively more costly without manual intervention.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Place custom filters in /etc/fail2ban/filter.d/&lt;name&gt;.conf with a [Definition] section containing failregex patterns. Use &lt;HOST&gt; as the placeholder for the IP address. Test every filter with fail2ban-regex before enabling the jail.</statement>
-      <rationale source="v1-source">An unmatched filter silently produces zero bans — there is no error. fail2ban-regex validates the pattern against real logs before deployment, showing match count and sample matched lines.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Run fail2ban-regex against the actual log file before enabling any jail. Check that the match count is non-zero and that the IP capture group works (shows actual IPs, not empty). A zero exit code does not mean matches were found — check stdout.</statement>
-      <rationale source="v1-source">fail2ban-regex returns exit 0 even if no matches are found. Agents and operators must read the match count line explicitly.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>When nginx is behind Cloudflare, configure nginx real_ip module with Cloudflare's IP ranges and real_ip_header CF-Connecting-IP so nginx logs the actual client IP. Without this, fail2ban bans Cloudflare proxy IPs, blocking all traffic through that proxy.</statement>
-      <rationale source="v1-source">Cloudflare forwards traffic from a small set of well-known IP ranges. If nginx logs the Cloudflare proxy IP instead of the real client IP, fail2ban will ban Cloudflare itself, disrupting all CDN-proxied traffic.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

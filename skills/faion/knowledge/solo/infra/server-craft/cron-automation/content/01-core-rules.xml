@@ -1,11 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="cron-automation Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for cron-automation. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Cron Automation for VPS Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules every application of `Cron Automation for VPS` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-script-set-euo-pipefail" testable="true" depth="essential">
+      <statement>Every cron script MUST start with `set -euo pipefail`. Missing strict mode = REJECT.</statement>
+      <rationale source="Bash production patterns">Without strict mode, a failed pipe in step 3 silently continues; script exits 0 despite broken state.</rationale>
     </rule>
+
+    <rule id="r2-flock-for-long-jobs" testable="true" depth="essential">
+      <statement>Jobs &gt; 1 minute MUST run inside `flock -n /var/lock/&lt;job&gt;.lock`. Missing flock = REJECT for long jobs.</statement>
+      <rationale source="Cron race-condition corpus">Hourly cron can fire while previous run still executes; two backups racing = corrupted dump.</rationale>
+    </rule>
+
+    <rule id="r3-explicit-path-env" testable="true" depth="essential">
+      <statement>Every cron entry MUST export PATH + relevant env vars at the top of the entry or via SHELL=/bin/bash + a wrapper script. Implicit env = REJECT.</statement>
+      <rationale source="Cron environment patterns">Cron runs under sh with PATH=/usr/bin:/bin; tools at /usr/local/bin or user-installed (mise, nvm) are missing.</rationale>
+    </rule>
+
+    <rule id="r4-log-then-summarize" testable="true" depth="essential">
+      <statement>Every cron job MUST write a per-run log file (rotated daily) AND emit a single-line summary on completion. Logs-only OR summary-only = REJECT.</statement>
+      <rationale source="Operator visibility patterns">Logs let you debug; summaries let the operator notice without reading every line. Both are required for self-driving infra.</rationale>
+    </rule>
+
+    <rule id="r5-alert-on-failure-not-success" testable="true" depth="essential">
+      <statement>Failure alerts MUST fire once per failed run via Telegram/webhook. Success messages MUST be silent (FLOW style). Inverted = REJECT.</statement>
+      <rationale source="Alert-fatigue corpus">If success spams the channel, real failures get lost in the noise. Silent-on-success forces attention to failures.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

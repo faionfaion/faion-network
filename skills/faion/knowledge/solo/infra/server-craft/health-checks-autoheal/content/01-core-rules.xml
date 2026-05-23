@@ -1,15 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="health-checks-autoheal Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for health-checks-autoheal. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Health Checks + Auto-Heal Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules every application of `Health Checks + Auto-Heal` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Always return 503 when any critical dependency is unhealthy, not 200 with an error body.</statement>
-      <rationale source="v1-source">Load balancers and health check scripts check HTTP status codes, not body content. A 200 with {"status":"error"} will be treated as healthy.</rationale>
+
+    <rule id="r1-real-health-endpoint" testable="true" depth="essential">
+      <statement>Health endpoint MUST exercise a real dependency (DB ping + cache ping + critical lib import), not just return 200. Synthetic-200 = REJECT.</statement>
+      <rationale source="Health-check incident corpus">A `/health` that returns 200 without touching DB lies; service appears healthy while Postgres is unreachable.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Send watchdog notification at WatchdogSec/2 interval, not WatchdogSec. This provides a safety margin before systemd triggers the kill.</statement>
-      <rationale source="v1-source">If the notification thread hangs right after sending at exactly WatchdogSec, the next cycle may be too late. Sending at half the interval provides one missed cycle before restart.</rationale>
+
+    <rule id="r2-systemd-onfailure-hook" testable="true" depth="essential">
+      <statement>Every long-running service unit MUST declare `Restart=on-failure` AND `OnFailure=service-failed@%i.service` for escalation. Missing OnFailure = REJECT.</statement>
+      <rationale source="systemd escalation patterns">Restart=on-failure handles process crashes; OnFailure escalates to the alerting service after N retries.</rationale>
     </rule>
+
+    <rule id="r3-n-retries-then-escalate" testable="true" depth="essential">
+      <statement>Auto-heal loop MUST retry up to N (e.g. 3) before escalating to Telegram. Infinite retry = REJECT.</statement>
+      <rationale source="Restart-storm corpus">Infinite restart on a broken deploy creates a restart storm that hides the root cause; bounded retries make failure visible.</rationale>
+    </rule>
+
+    <rule id="r4-silent-success" testable="true" depth="essential">
+      <statement>Health-check script MUST be silent on success (no log spam, no Telegram). Inverted = REJECT.</statement>
+      <rationale source="Alert fatigue corpus">Success-spam trains operators to ignore the channel; real failures get lost.</rationale>
+    </rule>
+
+    <rule id="r5-time-boxed-curl" testable="true" depth="essential">
+      <statement>Every health-check curl MUST have `--max-time 5` (or equivalent). Unbounded = REJECT.</statement>
+      <rationale source="Hang patterns">Unbounded curl hangs forever on a stuck service; the health loop itself wedges.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

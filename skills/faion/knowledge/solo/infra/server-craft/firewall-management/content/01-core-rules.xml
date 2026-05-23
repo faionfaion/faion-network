@@ -1,19 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="firewall-management Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for firewall-management. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Firewall Management with UFW Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules every application of `Firewall Management with UFW` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Set deny incoming, allow outgoing, and deny routed before adding any allow rules.</statement>
-      <rationale source="v1-source">Routed traffic must be explicitly denied or Docker VPN forwarding can pass through unfiltered. The order matters — defaults apply after user rules.</rationale>
+
+    <rule id="r1-deny-routed-first" testable="true" depth="essential">
+      <statement>`ufw default deny routed` MUST be set before any allow rule. Missing = REJECT.</statement>
+      <rationale source="UFW + Docker corpus">Docker FORWARD chain can pass through unfiltered traffic; default deny routed forces explicit allow.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Always add the SSH rule before running ufw enable.</statement>
-      <rationale source="v1-source">UFW applies rules immediately on enable. Missing SSH rule = instant lockout from the server.</rationale>
+
+    <rule id="r2-ssh-allow-before-enable" testable="true" depth="essential">
+      <statement>Allow rule for the actual sshd port MUST be added BEFORE `ufw enable`. Missing = REJECT (operator lockout).</statement>
+      <rationale source="UFW lockout corpus">ufw applies rules immediately on enable; missing SSH rule = instant disconnect with no recovery path.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Never publish Docker ports to 0.0.0.0 on a production server. Always bind to 127.0.0.1.</statement>
-      <rationale source="v1-source">Binding to 0.0.0.0 publishes the port to all interfaces, bypassing UFW entirely. 127.0.0.1 restricts access to the host loopback — only processes on the same machine can connect.</rationale>
+
+    <rule id="r3-docker-bind-127" testable="true" depth="essential">
+      <statement>Docker publishes MUST bind to 127.0.0.1 (or specific internal interface), never 0.0.0.0. Wildcard = REJECT.</statement>
+      <rationale source="Docker + UFW corpus">0.0.0.0 publishes the port to all interfaces; iptables rules inserted by Docker land ABOVE UFW chain, bypassing it entirely.</rationale>
     </rule>
+
+    <rule id="r4-rate-limit-ssh" testable="true" depth="essential">
+      <statement>sshd port MUST have `ufw limit` rate-limit (default 6 connections / 30s). Plain allow = REJECT.</statement>
+      <rationale source="Brute-force defence corpus">Plain allow lets unlimited connections; limit slows automated scanners without blocking legitimate use.</rationale>
+    </rule>
+
+    <rule id="r5-no-allow-from-anywhere-for-stateful" testable="true" depth="essential">
+      <statement>Stateful service ports (Postgres, Redis, RabbitMQ) MUST NOT be allowed from 0.0.0.0/0 in UFW. Wildcard allow = REJECT.</statement>
+      <rationale source="Data-exposure corpus">If Docker binds to 0.0.0.0 AND UFW allows the port, the database is internet-exposed; both controls must fail-closed.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

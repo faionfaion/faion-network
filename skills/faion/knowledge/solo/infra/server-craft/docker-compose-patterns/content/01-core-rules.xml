@@ -1,11 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="docker-compose-patterns Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for docker-compose-patterns. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Docker Compose Patterns for Solo VPS Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules every application of `Docker Compose Patterns for Solo VPS` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-bind-127" testable="true" depth="essential">
+      <statement>Stateful services in compose MUST bind ports to `127.0.0.1:` not `0.0.0.0:`. Wildcard binds bypass UFW = REJECT.</statement>
+      <rationale source="Docker + UFW corpus">Docker publishes ports by binding to 0.0.0.0 which inserts iptables rules ABOVE UFW; the port is publicly reachable despite UFW deny-by-default.</rationale>
     </rule>
+
+    <rule id="r2-healthcheck-required" testable="true" depth="essential">
+      <statement>Every container MUST declare a `healthcheck` block (interval, timeout, retries). Missing healthcheck = REJECT for stateful services.</statement>
+      <rationale source="Compose orchestration patterns">Without healthcheck, `docker compose ps` shows 'running' even when Postgres is mid-init; depends_on cannot gate.</rationale>
+    </rule>
+
+    <rule id="r3-depends-on-condition" testable="true" depth="essential">
+      <statement>depends_on MUST use `condition: service_healthy` for stateful dependencies. Plain depends_on = REJECT.</statement>
+      <rationale source="Race-condition incidents">Plain `depends_on` only waits for container start, not readiness; app crashes connecting to mid-init Postgres.</rationale>
+    </rule>
+
+    <rule id="r4-named-volumes" testable="true" depth="essential">
+      <statement>Persistent data MUST use named volumes, not bind mounts or anonymous volumes. Anonymous = REJECT.</statement>
+      <rationale source="Volume management corpus">Anonymous volumes accumulate untracked after recreate; named volumes are inspectable and backuppable.</rationale>
+    </rule>
+
+    <rule id="r5-restart-unless-stopped" testable="true" depth="essential">
+      <statement>restart policy MUST be `unless-stopped` for stateful services. `no` or `always` = REJECT.</statement>
+      <rationale source="VPS restart patterns">`always` restarts after manual `docker stop` (annoying); `no` doesn't restart after host reboot. `unless-stopped` is the middle ground.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

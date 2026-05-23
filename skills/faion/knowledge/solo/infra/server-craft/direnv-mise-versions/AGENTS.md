@@ -4,71 +4,99 @@ tier: solo
 group: infra
 domain: backend
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Per-project environment management on Ubuntu 24.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Per-project environment management on Ubuntu 24: direnv for auto-load on cd, mise (formerly rtx) for Python/Node/Go/Ruby versions, .envrc + .mise.toml committed to repo, no global pollution."
 content_id: "b1d3f1ccef0242aa"
+complexity: medium
+produces: report
+est_tokens: 6000
 tags: [direnv, mise, python, environment, versioning]
 ---
-# direnv + mise Version Management
+# Direnv + Mise for Per-Project Environments
 
 ## Summary
 
-**One-sentence:** Per-project environment management on Ubuntu 24.
+**One-sentence:** Per-project environment management on Ubuntu 24: direnv for auto-load on cd, mise (formerly rtx) for Python/Node/Go/Ruby versions, .envrc + .mise.toml committed to repo, no global pollution.
 
-**One-paragraph:** Per-project environment management on Ubuntu 24.04 with direnv (auto-loads .envrc on directory entry) and mise (polyglot runtime manager replacing pyenv/nvm/asdf). Key pattern: `use mise` + `layout python-venv .venv` in .envrc auto-activates the correct Python version and virtualenv when entering a project directory. Shell integration order is critical: mise hook must come BEFORE direnv hook in .bashrc.
+**One-paragraph:** Solo developers juggle Python 3.10 (legacy), 3.12 (current), and 3.13 (experimental) plus Node 18 LTS and 22 across 5+ repos. Without per-project env, the global PATH gets polluted, `pip install` lands in the wrong venv, and `node --version` lies about which runtime your service uses. This methodology produces a committed `.mise.toml` (versions pinned) + `.envrc` (direnv auto-load) + a verified report that each repo's runtime matches expectation.
 
 ## Applies If (ALL must hold)
 
-- Multiple Python/Node projects on the same server needing different runtime versions
-- Automatically activating virtualenvs when entering project directories
-- Loading project-specific .env variables securely without shell leakage
-- Setting up a new development server with reproducible runtime environments
+- Operator has >2 repos with different language versions.
+- Linux/macOS with bash/zsh shell that supports direnv hook.
+- Operator can install mise (one curl line) and direnv (apt/brew).
 
 ## Skip If (ANY kills it)
 
-- Single-project servers where a single system Python or one venv is sufficient
-- Managed platforms (Heroku, Railway) that provide runtime isolation at the container level
-- When the project already uses Docker for isolation — runtime pinning is handled in the image
-- Production systemd services — pin the venv path explicitly in ExecStart, don't rely on direnv
+- Single-language single-version environment; defaults are fine.
+- CI-only workflow; direnv has no effect in non-interactive shells.
+- Containerized dev (devcontainers); the container pins versions.
+
+**Ефективно для:**
+
+- Соло-devs з Python 3.10 + 3.12 одночасно у різних репо.
+- Команди де новачок не може запустити `python manage.py` через wrong version.
+- Replace pyenv + nvm + rbenv одним інструментом.
+- CI-parity: однакові версії на dev і на прод.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/infra/server-craft/dotfiles-management` | .envrc and .mise.toml are dotfile-managed. |
+| `solo/infra/server-craft/shell-productivity` | Shell hook for direnv lives in shell init. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology | 900 |
+| `content/05-examples.xml` | essential | Worked example from input to verified artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-report` | haiku | Template fill from inventory. |
+| `populate-evidence` | sonnet | Per-row evidence link + verification. |
+| `outcome-synthesis` | opus | Cross-step synthesis of outcome impact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Per-project env audit listing .mise.toml + .envrc + verify steps. |
+| `templates/_smoke-test.md` | Minimum viable filled-in env audit. |
+| `templates/.mise.toml` | mise.toml manifest pinning languages for the repo. |
+| `templates/.envrc` | direnv envrc that activates mise + repo-local venv. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-direnv-mise-versions.py` | Validate artefact against the JSON Schema in content/02-output-contract.xml. Stdlib-only. | On artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/infra/server-craft/`
+- [[dotfiles-management]]
+- [[shell-productivity]]
+- [[bash-aliases]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, status of prerequisites) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

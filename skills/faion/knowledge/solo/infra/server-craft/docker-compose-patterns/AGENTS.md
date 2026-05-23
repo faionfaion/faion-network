@@ -4,70 +4,98 @@ tier: solo
 group: infra
 domain: backend
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Docker Compose V2 patterns for running stateful infrastructure services (PostgreSQL, Redis, RabbitMQ) on a single VPS alongside systemd application services.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Docker Compose V2 patterns for stateful infra (Postgres, Redis, RabbitMQ) on a single VPS alongside systemd services: bind-to-127.0.0.1 (UFW bypass guard), healthchecks, depends_on with condition, named volumes, restart policy."
 content_id: "e974483129e23915"
+complexity: medium
+produces: report
+est_tokens: 6000
 tags: [docker, docker-compose, infrastructure, vps, postgres]
 ---
-# Docker Compose Patterns
+# Docker Compose Patterns for Solo VPS
 
 ## Summary
 
-**One-sentence:** Docker Compose V2 patterns for running stateful infrastructure services (PostgreSQL, Redis, RabbitMQ) on a single VPS alongside systemd application services.
+**One-sentence:** Docker Compose V2 patterns for stateful infra (Postgres, Redis, RabbitMQ) on a single VPS alongside systemd services: bind-to-127.0.0.1 (UFW bypass guard), healthchecks, depends_on with condition, named volumes, restart policy.
 
-**One-paragraph:** Docker Compose V2 patterns for running stateful infrastructure services (PostgreSQL, Redis, RabbitMQ) on a single VPS alongside systemd application services. Bind database ports to 127.0.0.1 to prevent Docker from bypassing UFW. Every service referenced by depends_on: condition: service_healthy must have a healthcheck block — without it the condition is silently ignored. Use named volumes (not bind mounts) for all database data.
+**One-paragraph:** Docker Compose on a single-VPS solo stack is a natural fit but has three traps: ports binding to 0.0.0.0 bypass UFW, `depends_on` without `condition: service_healthy` races the parent service against unready dependencies, and unnamed volumes accumulate as untracked anonymous mounts. This methodology produces a verified compose file with all three controls: 127.0.0.1 binds, condition-gated depends_on, named volumes per service.
 
 ## Applies If (ALL must hold)
 
-- Running PostgreSQL, Redis, RabbitMQ, or monitoring tools on a single server.
-- Multi-service development stack where services need to discover each other by name.
-- Infrastructure that should survive application deploys (DB persists across deploy.sh runs).
-- Adding optional services (monitoring, pgadmin) via compose profiles.
+- Operator runs ≥1 stateful service in Docker on a single VPS.
+- Application services connect to those containers from systemd (not Docker).
+- Operator uses UFW or other host firewall.
 
 ## Skip If (ANY kills it)
 
-- Running application code (Python, Node.js apps) in containers when they are deployed via rsync — adds complexity without benefit.
-- Multi-host deployments — use Kubernetes or Docker Swarm.
-- When the application requires direct access to /proc or host namespaces.
+- Full stack runs in Docker (including app) — use docker compose only.
+- Kubernetes / Nomad / Swarm — compose is dev-only there.
+- Single ephemeral container — `docker run` is simpler.
+
+**Ефективно для:**
+
+- Solo SaaS з Postgres + Redis у Docker, додатком на systemd.
+- Setups де UFW deny-by-default але Docker слив порти.
+- Команди що мігрують з docker run на compose.
+- Аудит compose-файлу перед прод-релізом.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/infra/server-craft/firewall-management` | 127.0.0.1 binds depend on UFW deny-by-default. |
+| `solo/infra/server-craft/health-checks-autoheal` | healthcheck patterns shared. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology | 900 |
+| `content/05-examples.xml` | essential | Worked example from input to verified artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-report` | haiku | Template fill from inventory. |
+| `populate-evidence` | sonnet | Per-row evidence link + verification. |
+| `outcome-synthesis` | opus | Cross-step synthesis of outcome impact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Compose audit report listing bind / healthcheck / depends_on / volumes. |
+| `templates/_smoke-test.md` | Minimum viable filled-in compose audit. |
+| `templates/docker-compose.yml` | Compose template with 127.0.0.1 binds + healthchecks + named volumes. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-docker-compose-patterns.py` | Validate artefact against the JSON Schema in content/02-output-contract.xml. Stdlib-only. | On artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/infra/server-craft/`
+- [[firewall-management]]
+- [[health-checks-autoheal]]
+- [[systemd-user-services]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, status of prerequisites) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

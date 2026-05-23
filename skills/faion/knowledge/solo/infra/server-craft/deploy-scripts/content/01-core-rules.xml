@@ -1,11 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="deploy-scripts Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for deploy-scripts. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Deploy Scripts for Solo VPS Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules every application of `Deploy Scripts for Solo VPS` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="r1-atomic-switch" testable="true" depth="essential">
+      <statement>Deploy MUST rsync into a staging directory then atomic-switch via `mv`. Direct rsync into runtime dir = REJECT.</statement>
+      <rationale source="Partial-deploy incident corpus">rsync over a live runtime leaves half-old / half-new files; atomic mv makes the switch instantaneous and reversible.</rationale>
     </rule>
+
+    <rule id="r2-pre-deploy-gate" testable="true" depth="essential">
+      <statement>Deploy MUST run lint + tests on the source before rsync. Failing tests = REJECT (exit non-zero).</statement>
+      <rationale source="Bad-deploy patterns">Shipping known-broken code is the most expensive way to find a bug; a 30s lint+test gate saves a 30-minute rollback.</rationale>
+    </rule>
+
+    <rule id="r3-post-deploy-smoke" testable="true" depth="essential">
+      <statement>Deploy MUST call the health endpoint after systemd reload and require HTTP 200 within 30s. No-smoke deploy = REJECT.</statement>
+      <rationale source="Reload race patterns">systemd reload returns before the new process is actually serving; smoke check is the only honest signal.</rationale>
+    </rule>
+
+    <rule id="r4-rollback-one-command" testable="true" depth="essential">
+      <statement>Deploy MUST keep `current` symlink pointing at the new release dir and `previous` symlink at the prior one. Rollback = one mv. Missing symlink scheme = REJECT.</statement>
+      <rationale source="Deploy rollback patterns">Without the symlink scheme, rollback means re-rsyncing the old tag — slow and error-prone.</rationale>
+    </rule>
+
+    <rule id="r5-exit-codes-propagate" testable="true" depth="essential">
+      <statement>Every step MUST propagate exit codes; `set -euo pipefail` mandatory. Background tasks must `wait`. Missing propagation = REJECT.</statement>
+      <rationale source="Bash production patterns">A failed pip install in step 3 must abort step 4 (systemd reload); without propagation the script ships broken code and exits 0.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume cycles and produce false confidence.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

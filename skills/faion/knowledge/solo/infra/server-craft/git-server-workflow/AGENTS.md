@@ -4,71 +4,97 @@ tier: solo
 group: infra
 domain: backend
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Workspace/runtime separation pattern for solo VPS deployments: source code lives in `~/workspace/repos/`, services run from `/srv/project/`.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Workspace/runtime separation pattern: source in ~/workspace/repos/<name>, runtime in /srv/<project>, rsync as the deploy boundary, no live edits in /srv, git-tagged releases, deploy.sh as the single deploy entrypoint."
 content_id: "775c0c871927405d"
+complexity: medium
+produces: report
+est_tokens: 6000
 tags: [git, deploy, workflow, vps, rsync]
 ---
-# Git Server Workflow
+# Git Server Workflow (Workspace ↔ Runtime)
 
 ## Summary
 
-**One-sentence:** Workspace/runtime separation pattern for solo VPS deployments: source code lives in `~/workspace/repos/`, services run from `/srv/project/`.
+**One-sentence:** Workspace/runtime separation pattern: source in ~/workspace/repos/<name>, runtime in /srv/<project>, rsync as the deploy boundary, no live edits in /srv, git-tagged releases, deploy.sh as the single deploy entrypoint.
 
-**One-paragraph:** Workspace/runtime separation pattern for solo VPS deployments: source code lives in `~/workspace/repos/`, services run from `/srv/project/`. Deploy with rsync (not `git pull` to runtime). Rollback by checking out a previous commit in the workspace repo and redeploying. Git worktrees enable parallel agent work on the same repository without branch conflicts.
+**One-paragraph:** The biggest solo-ops mistake is editing files directly in /srv (the runtime); the change works for an hour, the next deploy clobbers it, and the only record of what changed lives in muscle memory. This methodology codifies the separation: source code lives in ~/workspace/repos/<name>, runtime lives in /srv/<project>, every change crosses the boundary via deploy.sh + rsync, and the runtime is never edited live.
 
 ## Applies If (ALL must hold)
 
-- Solo VPS with multiple services (Python/Node apps + shared SDK)
-- Need to deploy from workspace to server without CI/CD
-- Need quick rollback (`git checkout HEAD~1 && deploy.sh service`)
-- Running multiple parallel Claude Code agents on the same repo (worktrees)
-- Push-to-deploy via post-receive hook on a bare server repo
+- Single-VPS deploy where source + runtime share the same host.
+- Operator deploys ≥1 service per week (frequent enough to justify discipline).
+- Services include any state worth preserving across deploys.
 
 ## Skip If (ANY kills it)
 
-- Multi-server deployments — rsync from one machine to many is unwieldy; use Ansible or Capistrano
-- When the team uses Docker for the application (use image tags + `docker compose up` instead)
-- Monorepos where workspace and runtime are the same directory (no separation needed)
+- Container-only deploys (everything is rebuilt from Dockerfile).
+- Managed PaaS — Vercel / Railway handles the boundary.
+- Read-only servers (golden image + image swap).
+
+**Ефективно для:**
+
+- Solo VPS-фаундери що ловили 'працювало вчора' bugs.
+- Команди де новачок 'просто змінив у /srv' і ламав release.
+- Reproducible-build discipline для compliance.
+- Onboarding doc: де source vs де runtime.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/infra/server-craft/deploy-scripts` | deploy.sh is the boundary tool. |
+| `solo/infra/server-craft/dotfiles-management` | ~/workspace conventions. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology | 900 |
+| `content/05-examples.xml` | essential | Worked example from input to verified artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-report` | haiku | Template fill from inventory. |
+| `populate-evidence` | sonnet | Per-row evidence link + verification. |
+| `outcome-synthesis` | opus | Cross-step synthesis of outcome impact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Workspace/runtime separation audit report. |
+| `templates/_smoke-test.md` | Minimum viable filled-in workflow audit. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-git-server-workflow.py` | Validate artefact against the JSON Schema in content/02-output-contract.xml. Stdlib-only. | On artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/infra/server-craft/`
+- [[deploy-scripts]]
+- [[dotfiles-management]]
+- [[systemd-user-services]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, status of prerequisites) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

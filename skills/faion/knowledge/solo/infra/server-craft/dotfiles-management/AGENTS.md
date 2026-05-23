@@ -4,71 +4,98 @@ tier: solo
 group: infra
 domain: backend
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Git-based dotfiles management using GNU stow for symlink creation.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Git-based dotfiles using GNU stow for symlinks: per-tool subdir (bash/, vim/, tmux/), .stowrc for ignore patterns, install procedure on fresh machine, secret separation (private repo vs public)."
 content_id: "dbe0c4f370723158"
+complexity: medium
+produces: report
+est_tokens: 6000
 tags: [dotfiles, stow, git, shell, developer-environment]
 ---
-# Dotfiles Management
+# Dotfiles Management with GNU Stow
 
 ## Summary
 
-**One-sentence:** Git-based dotfiles management using GNU stow for symlink creation.
+**One-sentence:** Git-based dotfiles using GNU stow for symlinks: per-tool subdir (bash/, vim/, tmux/), .stowrc for ignore patterns, install procedure on fresh machine, secret separation (private repo vs public).
 
-**One-paragraph:** Git-based dotfiles management using GNU stow for symlink creation. Covers repository structure with per-category packages (bash, git, tmux, vim, ssh, scripts), machine-specific overrides (machine-server/machine-workstation), bootstrap scripts for new machines, and strict privacy rules about what must never be committed.
+**One-paragraph:** Dotfiles drift between machines is the root of 'works on my laptop' bugs; manual symlinking is error-prone. GNU stow turns a git repo into per-machine reproducible config in two commands (`git clone && stow -t ~ */`). This methodology produces a verified dotfiles repo report: stow-able directory shape, secret separation, install runbook, and rollback path (`stow -D`).
 
 ## Applies If (ALL must hold)
 
-- Setting up a new server and need to deploy the developer's standard config.
-- Rebuilding a server after data loss — dotfiles bootstrap restores the dev environment.
-- Standardizing configuration across multiple machines (workstation + VPS).
-- Version-controlling shell/editor configs for reproducibility and change tracking.
+- Operator uses >1 machine (laptop + VPS + maybe second laptop).
+- Operator can use git + GNU stow (`apt install stow`).
+- Configurations are file-based (not GUI / OS-keychain).
 
 ## Skip If (ANY kills it)
 
-- Configs containing secrets (SSH private keys, .env files, .bash_history) — never in dotfiles.
-- Environments managed by Ansible/Puppet where dotfiles deployment conflicts with CM.
-- Shared servers where one developer's dotfiles pollute others' environments.
-- Disposable containers where the filesystem is ephemeral.
+- Single machine, no plans for second.
+- All config managed via Ansible / Chef / Nix.
+- Configs include too many machine-specific paths to template.
+
+**Ефективно для:**
+
+- Solo-розробники з laptop + VPS + рідко-MacBook setup.
+- Onboard new machine за 5 хвилин: `git clone && stow */`.
+- Розділення public dotfiles (на GitHub) від приватних (1Password vault).
+- Команди що хочуть team-shared base dotfiles + personal overrides.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/infra/server-craft/bash-aliases` | .bash_aliases is a dotfile. |
+| `solo/infra/server-craft/secrets-management` | Secrets live OUTSIDE dotfiles repo. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology | 900 |
+| `content/05-examples.xml` | essential | Worked example from input to verified artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-report` | haiku | Template fill from inventory. |
+| `populate-evidence` | sonnet | Per-row evidence link + verification. |
+| `outcome-synthesis` | opus | Cross-step synthesis of outcome impact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Dotfiles audit listing layout + secret separation + install + override. |
+| `templates/_smoke-test.md` | Minimum viable filled-in dotfiles audit. |
+| `templates/install.sh` | Dotfiles install script: stow per-tool with conflict-aware backups. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-dotfiles-management.py` | Validate artefact against the JSON Schema in content/02-output-contract.xml. Stdlib-only. | On artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/infra/server-craft/`
+- [[bash-aliases]]
+- [[secrets-management]]
+- [[shell-productivity]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, status of prerequisites) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

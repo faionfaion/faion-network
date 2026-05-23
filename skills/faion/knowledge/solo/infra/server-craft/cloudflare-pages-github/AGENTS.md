@@ -4,73 +4,96 @@ tier: solo
 group: infra
 domain: backend
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Connect a GitHub repository to Cloudflare Pages so every push to the production branch publishes to the global CDN and every pull request gets its own preview URL.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Connect a GitHub repo to Cloudflare Pages so production-branch pushes deploy to the global CDN and every PR gets a preview URL. Includes build env vars, wrangler local preview, custom domain, branch deploy rules."
 content_id: "ea301b0e8ef20ac9"
-tags: [cloudflare, pages, static-site, github, cdn, wrangler, preview-deploys]
+complexity: medium
+produces: report
+est_tokens: 6000
+tags: [cloudflare, pages, static-site, github, cdn, preview-deploys]
 ---
-# Cloudflare Pages from a GitHub Repo
+# Cloudflare Pages + GitHub
 
 ## Summary
 
-**One-sentence:** Connect a GitHub repository to Cloudflare Pages so every push to the production branch publishes to the global CDN and every pull request gets its own preview URL.
+**One-sentence:** Connect a GitHub repo to Cloudflare Pages so production-branch pushes deploy to the global CDN and every PR gets a preview URL. Includes build env vars, wrangler local preview, custom domain, branch deploy rules.
 
-**One-paragraph:** Connect a GitHub repository to Cloudflare Pages so every push to the production branch publishes to the global CDN and every pull request gets its own preview URL. Configure framework preset, build command, output directory, environment variables (split production vs preview), custom domain with SSL Full Strict, `_headers` and `_redirects` files, optional Pages Functions for edge logic, and Wrangler CLI for local parity.
+**One-paragraph:** Cloudflare Pages turns a static-site repo into a globally CDN-fronted product with zero ops: every production push deploys in ~30 seconds and every PR gets an isolated preview URL for review. This methodology produces a verified Pages deployment report with build settings + env vars + custom-domain mapping + branch rules + preview URL evidence from at least one PR.
 
 ## Applies If (ALL must hold)
 
-- Astro / Next.js (static export) / Gatsby / Hugo / Vite SPA / SvelteKit static repo on GitHub.
-- You want a global CDN with a generous free tier (unlimited bandwidth, 500 builds/month).
-- You want automatic preview-per-PR with a unique URL on `*.pages.dev`.
-- You need edge handlers for redirects, A/B tests, geo-routing, or lightweight APIs (Pages Functions).
-- You serve a custom domain with managed SSL and want CF-Cache-Status on every response.
+- Repo is a static-site builder (Gatsby, Astro, Next.js export, Hugo, Eleventy, plain HTML).
+- Operator wants per-PR preview URLs without standing up own infra.
+- Custom domain is on Cloudflare DNS or can be moved there.
 
 ## Skip If (ANY kills it)
 
-- Heavy server-side runtime that needs a custom Node version not on the Pages-supported matrix — use a regular VPS or Workers.
-- Monorepo where the build takes longer than 20 minutes — Pages caps build time; switch to GitHub Actions + Wrangler direct deploy.
-- Traffic that exceeds the free tier without a billing plan — switch to paid plan or migrate to Workers + R2.
-- Server-rendered Next.js without the `@cloudflare/next-on-pages` adapter — runtime errors at the edge.
-- Apps that need long-running background jobs — Functions hit the 30-second CPU limit; use Workers Queues / Cron Triggers.
+- Site needs a long-running server / API surface (Pages is static + Functions only).
+- Build > 20 minutes or > 25 MB single file — Cloudflare Pages limits.
+- Closed-source repo + Pages free tier requires public or paid plan.
+
+**Ефективно для:**
+
+- Marketing-сайти на Gatsby / Astro з PR-preview-флоу.
+- Open-source docs під теплою CDN без власних серверів.
+- Команди де PM хоче 'покажи на staging' за 5 хвилин.
+- Соло-фаундери що хочуть Pages-функції без Vercel-замку.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/infra/server-craft/cloudflare-domain-dns` | Custom domain attached to Pages requires DNS already on Cloudflare. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology | 900 |
+| `content/05-examples.xml` | essential | Worked example from input to verified artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-report` | haiku | Template fill from inventory. |
+| `populate-evidence` | sonnet | Per-row evidence link + verification. |
+| `outcome-synthesis` | opus | Cross-step synthesis of outcome impact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Pages deploy report listing project + env + domain + preview evidence. |
+| `templates/_smoke-test.md` | Minimum viable filled-in Pages deploy report. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-cloudflare-pages-github.py` | Validate artefact against the JSON Schema in content/02-output-contract.xml. Stdlib-only. | On artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/infra/server-craft/`
+- [[cloudflare-domain-dns]]
+- [[deploy-scripts]]
+- [[git-server-workflow]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, status of prerequisites) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

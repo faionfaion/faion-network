@@ -1,43 +1,46 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="git-server-workflow Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for git-server-workflow. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Git Server Workflow (Workspace ↔ Runtime) Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules every application of `Git Server Workflow (Workspace ↔ Runtime)` must enforce. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Keep source code in `~/workspace/repos/` and deployed runtime in `/srv/project/`. Never run git operations (checkout, pull, merge) in the runtime directory.</statement>
-      <rationale source="v1-source">Git operations in the runtime directory can interrupt running services, change files mid-request, and leave the directory in a partially-updated state.</rationale>
+
+    <rule id="r1-no-live-edit" testable="true" depth="essential">
+      <statement>Files under /srv/&lt;project&gt;/current/ MUST NOT be edited live. Any live edit = REJECT.</statement>
+      <rationale source="Live-edit incident corpus">Live edits get clobbered on next deploy; the only record of the fix lives in operator memory.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use `rsync -a --delete` with explicit excludes for `.git/`, `__pycache__/`, `.venv/`, `.env`, and `node_modules/`. Never rsync these directories to the runtime.</statement>
-      <rationale source="v1-source">`--delete` removes files from runtime that no longer exist in workspace. Without excludes it would delete the `.venv` managed separately and expose secrets via `.env`.</rationale>
+
+    <rule id="r2-rsync-is-the-boundary" testable="true" depth="essential">
+      <statement>The ONLY path source → runtime is `deploy.sh` (which calls rsync). Manual scp / cp / git pull in runtime = REJECT.</statement>
+      <rationale source="Boundary discipline">Multiple deploy paths = state divergence; one path = one diff to review.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Deploy shared libraries (SDK, shared models) before services that depend on them. Define an explicit ordered array in the deploy script.</statement>
-      <rationale source="v1-source">If a service restarts before the SDK it imports is updated, it starts against the old library code, causing version mismatches until the next restart.</rationale>
+
+    <rule id="r3-git-tag-per-release" testable="true" depth="essential">
+      <statement>Every deploy MUST git-tag the source before rsync. Untagged deploy = REJECT.</statement>
+      <rationale source="Reproducibility patterns">Without tags, 'what shipped at 14:23' becomes an archaeological dig; tags are the cheapest forensic record.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Avoid reinstalling pip dependencies on every deploy. Compare requirements files between workspace and last deployed state.</statement>
-      <rationale source="v1-source">Dependency installs add several seconds to every deploy. Checking if requirements changed is instant and can skip the install step in 90% of deploys.</rationale>
+
+    <rule id="r4-source-in-workspace" testable="true" depth="essential">
+      <statement>Source repos MUST live in `~/workspace/repos/&lt;name&gt;` (or `~/workspace/projects/&lt;name&gt;`). Source in /srv/ = REJECT.</statement>
+      <rationale source="Mental-model discipline">/srv/ is for runtime; mixing source there blurs the boundary and invites live edits.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>To roll back a service, check out the previous commit (or a tag) in the workspace repo, then re-run the deploy script. Never manually edit files in the runtime directory.</statement>
-      <rationale source="v1-source">Rolling back via the deploy script ensures the runtime is brought to a consistent state: correct source files, correct pip dependencies, and a clean systemd restart. Ad-hoc manual edits in the runtime diverge from the workspace and break the next normal deploy.</rationale>
+
+    <rule id="r5-clean-tree-before-deploy" testable="true" depth="essential">
+      <statement>deploy.sh MUST verify `git status` is clean (no uncommitted changes) before rsync. Dirty tree = REJECT.</statement>
+      <rationale source="Reproducibility patterns">Deploying a dirty tree ships untracked changes that can't be reverted via git; first principle is `deploy = git checkout + rsync`.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Tag every production release with `git tag v&lt;major&gt;.&lt;minor&gt;.&lt;patch&gt;` before deploying. Push tags to origin.</statement>
-      <rationale source="v1-source">Untagged history requires `git log` forensics to find a safe rollback point. Tags make `git checkout v1.4.1` instant and unambiguous. Tags are also visible in `git log --oneline --decorate`.</rationale>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>When preconditions in `Applies If` fail OR any item in `Skip If` triggers, do not run this methodology. Document the skip rationale in the artefact's parent log.</statement>
+      <rationale source="Methodology-routing discipline">Misapplied methodologies are worse than no methodology — they consume cycles and produce false confidence.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use `git worktree add` to give each parallel agent its own working directory on a separate branch. Never have two agents operate on the same branch simultaneously.</statement>
-      <rationale source="v1-source">Two agents on the same branch will overwrite each other's uncommitted changes, cause merge conflicts on push, and produce interleaved commits that are hard to review. Each worktree has its own index and HEAD, so agents are fully isolated at the git level.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>On a bare repo server, use a `post-receive` hook to trigger deploys automatically when `main` is pushed. The hook must be idempotent and log output to a file.</statement>
-      <rationale source="v1-source">Manual SSH + pull cycles after every push are error-prone and slow. A post-receive hook runs once per push, on the correct branch, with no human step required. Logging to a file allows asynchronous inspection of deploy output without holding the git push connection open.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Use `main` as the single deployable branch. Feature work goes on short-lived branches merged via PR. Never deploy from feature branches to production.</statement>
-      <rationale source="v1-source">Deploying from arbitrary feature branches creates ambiguity about what is running in production. A single deployable branch (`main`) means the deploy script always knows what to check out, and the post-receive hook has a single trigger condition.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

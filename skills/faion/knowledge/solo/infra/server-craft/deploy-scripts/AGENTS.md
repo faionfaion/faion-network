@@ -4,70 +4,100 @@ tier: solo
 group: infra
 domain: backend
 version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Bash-based deploy orchestrator for workspace/runtime separation: rsync source to runtime, manage Python virtualenvs with `pip install -e.
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Bash deploy orchestrator: rsync source to runtime, virtualenv via `pip install -e .`, systemd reload, pre/post hooks, atomic switch, rollback path, exit-code propagation."
 content_id: "eb38fbb6bc3c50aa"
+complexity: medium
+produces: report
+est_tokens: 6000
 tags: [deployment, bash, systemd, production, orchestration]
 ---
-# Deploy Scripts
+# Deploy Scripts for Solo VPS
 
 ## Summary
 
-**One-sentence:** Bash-based deploy orchestrator for workspace/runtime separation: rsync source to runtime, manage Python virtualenvs with `pip install -e.
+**One-sentence:** Bash deploy orchestrator: rsync source to runtime, virtualenv via `pip install -e .`, systemd reload, pre/post hooks, atomic switch, rollback path, exit-code propagation.
 
-**One-paragraph:** Bash-based deploy orchestrator for workspace/runtime separation: rsync source to runtime, manage Python virtualenvs with `pip install -e .`, restart systemd user services, and validate with a health check. A single `deploy.sh <service|all> [--rebuild-venv]` script handles the full lifecycle.
+**One-paragraph:** Solo deploys break in predictable ways: half-rsync leaves the runtime in a Frankenstein state, pip install fails after the new code is already in place, systemd reload races with the in-flight request. This methodology produces a deploy script with the four invariants: atomic switch (rsync to staging dir, mv into place), exit-code propagation (`set -euo pipefail`), pre-deploy verify (lint + tests gate), post-deploy smoke (health endpoint must return 200).
 
 ## Applies If (ALL must hold)
 
-- Adding or changing a service on a VPS using workspace/runtime separation pattern
-- Setting up initial deploy pipeline for a multi-service Python/Node platform
-- Needing rollback capability (`rollback.sh service HEAD~1`)
-- Post-deploy health validation before declaring success
+- Single-VPS deploy without orchestration platform (no k8s, no Nomad).
+- Runtime is Python / Node / Go service managed by systemd.
+- Workspace/runtime separation (~/workspace/repo vs /srv/project).
 
 ## Skip If (ANY kills it)
 
-- Docker-only deployments (use `docker compose up --pull` instead)
-- CI/CD-managed deployments (GitHub Actions, GitLab CI)
-- Monorepos where workspace and runtime are the same directory
+- Managed platform (Vercel, Railway, Fly.io) does the deploy.
+- Multi-node cluster — needs orchestration, not bash.
+- Greenfield prototype without paying users — `git pull && systemctl restart` is enough.
+
+**Ефективно для:**
+
+- Solo VPS-фаундери з 3-10 сервісами на одному хості.
+- Сервіси що повинні зберігати state під час deploy (websocket / sticky session).
+- Команди де deploy.sh — це і документація операцій.
+- Restore-after-failure: rollback за одну команду.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Versioned space for the artefact | Git repo / wiki with history | team |
+| Named owner | Person + role | team / RACI |
+| Trigger event | Event / threshold / schedule | operating cadence |
+| Upstream methodologies in `Assumes Loaded` | Already routine for the role | team training |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `solo/infra/server-craft/git-server-workflow` | Workspace/runtime separation foundation. |
+| `solo/infra/server-craft/systemd-user-services` | systemd reload patterns. |
+| `solo/infra/server-craft/health-checks-autoheal` | Post-deploy smoke calls health endpoint. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology | 1200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 900 |
+| `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology | 900 |
+| `content/05-examples.xml` | essential | Worked example from input to verified artefact | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 700 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-report` | haiku | Template fill from inventory. |
+| `populate-evidence` | sonnet | Per-row evidence link + verification. |
+| `outcome-synthesis` | opus | Cross-step synthesis of outcome impact. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/skeleton.md` | Deploy script audit report listing pre-gate + atomic switch + smoke + rollback. |
+| `templates/_smoke-test.md` | Minimum viable filled-in deploy audit. |
+| `templates/deploy.sh` | Deploy script template with atomic switch + smoke check + rollback path. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-deploy-scripts.py` | Validate artefact against the JSON Schema in content/02-output-contract.xml. Stdlib-only. | On artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `solo/infra/server-craft/`
+- [[git-server-workflow]]
+- [[systemd-user-services]]
+- [[health-checks-autoheal]]
+- [[one-person-rollback-runbook]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, status of prerequisites) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
