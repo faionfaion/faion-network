@@ -1,45 +1,39 @@
+// purpose: Bus::batch fan-out for parallel processing of N records
+// consumes: see content/02-output-contract.xml inputs
+// produces: artefact conforming to content/02-output-contract.xml
+// depends-on: content/01-core-rules.xml
+// token-budget-impact: ~350 tokens when loaded as context
+
 <?php
-// app/Jobs/ExportUsersJob.php
-// Batchable job: cancellation check, find_each equivalent, Bus::batch dispatch.
 
-namespace App\Jobs;
+namespace App\Services;
 
-use App\Models\User;
-use Illuminate\Bus\Batchable;
-use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Foundation\Bus\Dispatchable;
-use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
+use App\Jobs\ProcessOrderItemJob;
+use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
+use Throwable;
 
-class ExportUsersJob implements ShouldQueue
+class OrderItemProcessor
 {
-    use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-    public function __construct(
-        public readonly array $userIds,
-        public readonly string $filePath
-    ) {}
-
-    public function handle(): void
+    public function dispatchBatch(array $orderItemIds): string
     {
-        if ($this->batch()->cancelled()) {
-            return;
-        }
+        $jobs = array_map(fn (int $id) => new ProcessOrderItemJob($id), $orderItemIds);
 
-        $users = User::whereIn('id', $this->userIds)->get();
-        // Process chunk and append to $this->filePath...
+        $batch = Bus::batch($jobs)
+            ->name('process-order-items')
+            ->onQueue('low')
+            ->allowFailures()
+            ->then(function (Batch $batch) {
+                // all jobs completed (with or without failures since allowFailures)
+            })
+            ->catch(function (Batch $batch, Throwable $e) {
+                // first failure callback
+            })
+            ->finally(function (Batch $batch) {
+                // cleanup
+            })
+            ->dispatch();
+
+        return $batch->id;
     }
 }
-
-// Dispatch as a batch:
-// $chunks = array_chunk($allUserIds, 500); // max 500 IDs per job
-// $jobs = array_map(fn($chunk) => new ExportUsersJob($chunk, $path), $chunks);
-//
-// Bus::batch($jobs)
-//     ->then(fn($batch) => ExportMailer::ready($batch->id)->deliver())
-//     ->catch(fn($batch, $e) => Log::error('Export batch failed', ['id' => $batch->id]))
-//     ->finally(fn($batch) => Export::markComplete($batch->id))
-//     ->name('Export Users')
-//     ->dispatch();

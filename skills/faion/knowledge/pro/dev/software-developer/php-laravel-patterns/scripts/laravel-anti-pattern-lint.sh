@@ -1,46 +1,39 @@
 #!/usr/bin/env bash
-# laravel-anti-pattern-lint.sh — flag banned patterns per the layer rules.
-# Usage: laravel-anti-pattern-lint.sh <project-root>
-# Exit 1 on critical violations.
+# laravel-anti-pattern-lint.sh — Detect Laravel layering antipatterns.
+#
+# Usage:
+#   laravel-anti-pattern-lint.sh PROJECT_ROOT
+#
+# Exit codes:
+#   0 = clean
+#   1 = violations found
+#   2 = usage error
 set -euo pipefail
-root="${1:?usage: laravel-anti-pattern-lint.sh PROJECT_ROOT}"
+
+if [[ "${1:-}" == "--help" || $# -lt 1 ]]; then
+  grep -E '^#' "$0" | sed 's/^# \{0,1\}//'
+  [[ "${1:-}" == "--help" ]] && exit 0 || exit 2
+fi
+
+root="$1"
 fail=0
-echo "# Laravel pattern audit ($root)"
+echo "# Laravel layering audit ($root)"
 
-echo "## Eloquent calls inside Controllers (must be in Service)"
-grep -rEn '\b(User|Order|Post|Product)::(where|find|all|create|update|delete)\(' \
-  "$root/app/Http/Controllers" --include='*.php' 2>/dev/null \
-  | tee /tmp/lp.eloq-ctrl || true
-[[ -s /tmp/lp.eloq-ctrl ]] && fail=1
+echo "## Fat controller methods (>20 lines)"
+for f in $(find "$root/app/Http/Controllers" -name '*.php' 2>/dev/null); do
+  awk '/public function/,/^    \}/' "$f" | awk -v RS='}\n    ' 'length > 1500 { print FILENAME": fat method" }'
+done
 
-echo "## Inline validation in Controllers (use FormRequest)"
-grep -rEn 'Validator::make\(|\$request->validate\(' \
-  "$root/app/Http/Controllers" --include='*.php' 2>/dev/null \
-  | tee /tmp/lp.val-ctrl || true
-[[ -s /tmp/lp.val-ctrl ]] && fail=1
+echo "## Inline validate() in controllers"
+grep -rEn '\$request->validate\(' "$root/app/Http/Controllers" --include='*.php' 2>/dev/null && fail=1 || true
 
-echo "## request() helper inside Services"
-grep -rEn '\brequest\(\)' "$root/app/Services" --include='*.php' 2>/dev/null \
-  | tee /tmp/lp.req-svc || true
-[[ -s /tmp/lp.req-svc ]] && fail=1
+echo "## DB::transaction in controllers"
+grep -rEn 'DB::transaction' "$root/app/Http/Controllers" --include='*.php' 2>/dev/null && fail=1 || true
 
-echo "## Magic facades inside Services (Cache::, Mail::, Notification::, Bus::)"
-grep -rEn '\b(Cache|Mail|Notification|Bus|Event)::' \
-  "$root/app/Services" --include='*.php' 2>/dev/null \
-  | tee /tmp/lp.facade-svc || true
-[[ -s /tmp/lp.facade-svc ]] && fail=1
+echo "## Raw model returned (return \$var;)"
+grep -rEn '^\s*return\s+\$[a-z][A-Za-z]*;' "$root/app/Http/Controllers" --include='*.php' 2>/dev/null && echo "  review needed" || true
 
-echo "## DB::transaction wrapping HTTP / queue dispatch"
-grep -rEn -A 10 'DB::transaction' "$root/app" --include='*.php' 2>/dev/null \
-  | grep -E 'Http::|dispatch\(|Stripe::|->charge\(' \
-  | tee /tmp/lp.tx-http || true
-[[ -s /tmp/lp.tx-http ]] && fail=1
-
-echo "## Repository wrapping Eloquent without alternate implementation"
-find "$root/app" -name '*Repository.php' 2>/dev/null | while read -r f; do
-  if grep -qE '::query\(\)|::where\(' "$f" && ! grep -qE 'interface\b|implements\b' "$f"; then
-    echo "  $f: wraps Eloquent without abstraction"
-  fi
-done | tee /tmp/lp.repo || true
+echo "## abort(403) inline auth checks"
+grep -rEn 'abort\(403' "$root/app/Http/Controllers" --include='*.php' 2>/dev/null && fail=1 || true
 
 exit "$fail"

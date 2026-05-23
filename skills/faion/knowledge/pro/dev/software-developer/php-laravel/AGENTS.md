@@ -3,73 +3,95 @@ slug: php-laravel
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Production Laravel backend patterns: Controller → FormRequest → Service → Eloquent model → API Resource slice.
-content_id: "2bb6a9d655536100"
-tags: [laravel, php, backend, architecture, mvc]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Use Laravel's framework idioms correctly: service container, routing/controller resolution, middleware pipeline, providers, facades vs DI, and config caching.
+content_id: "a1d6ee772f52a974"
+complexity: medium
+produces: code
+est_tokens: 5200
+tags: [laravel, php, framework, routing, service-container]
 ---
-# PHP Laravel Backend
+# Laravel Framework Fundamentals
 
 ## Summary
 
-**One-sentence:** Production Laravel backend patterns: Controller → FormRequest → Service → Eloquent model → API Resource slice.
+**One-sentence:** Use Laravel's framework idioms correctly: service container, routing/controller resolution, middleware pipeline, providers, facades vs DI, and config caching.
 
-**One-paragraph:** Production Laravel backend patterns: Controller → FormRequest → Service → Eloquent model → API Resource slice. Controllers are thin HTTP adapters (10-30 lines). Business logic and DB::transaction live in service classes. Form Requests own validation and policy authorization. API Resources produce explicit field lists. No Request::all(), no Eloquent in controllers, no request() in services.
+**One-paragraph:** Laravel offers many ways to do the same thing — facades, helpers, service container, providers, contracts. Pick the idiomatic one: constructor-inject contracts, register bindings in providers, define routes in route files, use middleware for cross-cutting concerns, cache config + routes in production. Mixing facades into service classes makes testing hard; ignoring providers leads to bootstrap-time bugs.
+
+**Ефективно для:**
+
+- Greenfield Laravel сервіси — задати ідіоматичну архітектуру з самого початку.
+- Refactor legacy Laravel де facades всюди + бізнес-логіка в Route::get callbacks.
+- Setup performance optimizations: route:cache + config:cache + opcache + composer optimization.
+- Сервіс-контейнер сейлс: contract → impl, binding в service provider.
 
 ## Applies If (ALL must hold)
 
-- Greenfield CRUD-heavy backends (SaaS, e-commerce, internal tools) with 1-5 person teams.
-- API-first products pairing Sanctum/Passport for auth and Resource classes for serialization.
-- Brownfield migration from raw PHP, WordPress, or CodeIgniter when shipping speed matters.
-- Any project where convention-over-configuration can replace bespoke framework glue.
+- Laravel 10/11/12 project (recent framework versions).
+- Application has services + dependencies (not a 5-route prototype).
+- Production deployment needs `php artisan route:cache` + `config:cache`.
+- Tests must run without booting Laravel (unit tests).
 
 ## Skip If (ANY kills it)
 
-- Sub-millisecond hot paths (HFT, ad serving) — PHP request bootstrap (~30-80ms cold) is a floor.
-- Heavy CPU/ML workloads — use Laravel as the front door, offload via queues.
-- WebSocket-first apps with persistent connections — use Reverb only as a complement.
-- Stateful long-lived processes (game servers, media transcoders) — wrong runtime model.
-- Teams with zero PHP experience facing a hard deadline.
+- Project standardizes on Lumen (micro-framework subset) — different lifecycle.
+- Tiny single-file artisan app.
+- Already DDD/Hexagonal architecture with Laravel as IoC only — different methodology.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Service contract | PHP interface | domain model |
+| Implementation class | PHP class implementing the contract | developer |
+| Environment vars | .env file | ops |
 
 ## Assumes Loaded
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+none — methodology is self-contained.
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: contract-bind-in-provider, constructor-injection-over-facades, routes-in-route-files-only, config-via-config-helper, middleware-for-crosscutting | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for code + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `create-contract-and-binding` | sonnet | Templated interface + provider. |
+| `design-middleware-boundary` | opus | Decide which concerns are cross-cutting. |
+| `lint-facades-in-services` | haiku | Mechanical grep. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/PaymentServiceProvider.php` | Service Provider binding contracts to implementations |
+| `templates/config-stripe.php` | Config file pattern that survives config:cache |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-php-laravel.py` | Validate the Laravel module artefact against the schema | Pre-commit + CI |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
+- [[php-laravel-patterns]]
+- [[php-laravel-queues]]
+- [[php-eloquent]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

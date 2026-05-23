@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="ruby-activerecord Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for ruby-activerecord as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Ruby ActiveRecord Patterns Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>4 antipatterns observed in real Rails apps.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Putting WHERE logic directly in controller actions (Users.where(active: true).where(role: 'admin').where(...)).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Query logic scattered in controllers is not reusable, hard to test, and couples the controller to the schema. Later, multiple actions need the same filter and the code gets duplicated or moved to a helper (which is worse).</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="n-plus-one" severity="high">
+      <symptom>Index endpoint with 50 orders fires 51 queries; p99 latency spikes.</symptom>
+      <root-cause source="Rails Guides — eager loading">Lazy association access in iteration.</root-cause>
+      <fix>Add `.includes(:customer, :items)` at the query origin; bullet gem in dev to catch new occurrences.</fix>
+    </antipattern>
+
+    <antipattern id="missing-transaction" severity="high">
+      <symptom>Order created but inventory not decremented; manual reconciliation; customer complaint.</symptom>
+      <root-cause source="Rails Guides — transactions">Two AR writes outside transaction; second failed mid-call.</root-cause>
+      <fix>Wrap in `ActiveRecord::Base.transaction { order = Order.create!(...); InventoryItem.find(...).update!(qty: q - 1) }`.</fix>
+    </antipattern>
+
+    <antipattern id="magic-status-strings" severity="medium">
+      <symptom>Query `Order.where(status: 'pending')` returns empty after migration; new typo `pendnig` silent.</symptom>
+      <root-cause source="Rails Guides — enums">No enum; status is a free string column.</root-cause>
+      <fix>Add `enum status: { pending: 0, paid: 1, shipped: 2, cancelled: 3 }`; queries become `Order.pending`.</fix>
+    </antipattern>
+
+    <antipattern id="time-now-timezone-bug" severity="high">
+      <symptom>Reports show events at wrong hour; cron job fires 2h early after server moved to UTC.</symptom>
+      <root-cause source="Rails Guides — time zones">`Time.now` used; Rails app config is `config.time_zone = 'Europe/Kyiv'` but Time.now ignores it.</root-cause>
+      <fix>Replace all Time.now → Time.current; Date.today → Date.current; in cops/rubocop enable Rails/TimeZone.</fix>
+    </antipattern>
+
   </section>
 </text>

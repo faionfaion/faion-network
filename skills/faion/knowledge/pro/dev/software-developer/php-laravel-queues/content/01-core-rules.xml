@@ -1,11 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="php-laravel-queues Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for php-laravel-queues. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Laravel Queues Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules for safe Laravel queue jobs.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>TBD — v1 source contained no testable rules. Author at least one rule for this methodology.</statement>
-      <rationale source="migration-stub">Stub created by migrate-methodology-to-v2; replace with a real rule.</rationale>
+
+    <rule id="primitive-ids-only" testable="true" depth="essential">
+      <statement>Job constructor MUST accept primitive IDs (int, string, UUID), NOT Eloquent models. Reload the model inside `handle()`.</statement>
+      <rationale source="Laravel reference — queue jobs">Serializing models bloats payloads, captures stale state, and fails when soft-deletes change.</rationale>
     </rule>
+    <rule id="idempotent-handle" testable="true" depth="essential">
+      <statement>Every job's `handle()` MUST be idempotent: check whether the work was already done (e.g. `if ($order-&gt;confirmation_sent_at) return;`) before performing the action.</statement>
+      <rationale source="Laravel reference — queues; Microservices Patterns (Richardson)">Queues redeliver on transient failure; non-idempotent handlers double-send, double-charge.</rationale>
+    </rule>
+    <rule id="timeout-retries-backoff" testable="true" depth="essential">
+      <statement>Each job MUST declare `$tries`, `$timeout` (seconds), and `backoff()` (array of delays with jitter). Defaults are forbidden in production.</statement>
+      <rationale source="Laravel reference — job configuration">Default 1-try jobs never retry transients; default infinite-timeout jobs hang the worker pool.</rationale>
+    </rule>
+    <rule id="failed-method" testable="true" depth="essential">
+      <statement>Every job class MUST implement `failed(Throwable $e)` that logs the failure with job context AND notifies operators (Sentry/Slack).</statement>
+      <rationale source="Laravel reference — handling failed jobs">Silent failures = silent business loss; failed() is the only place to surface them.</rationale>
+    </rule>
+    <rule id="named-queue-per-priority" testable="true" depth="essential">
+      <statement>Jobs MUST be dispatched to a named queue (`onQueue('mail')` / `onQueue('low')`). The 'default' queue MUST NOT mix priority levels.</statement>
+      <rationale source="Laravel reference — queue priorities">Mixed-priority queues let a slow job (image processing) block a fast job (transactional email); separate queues + pools fix this.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

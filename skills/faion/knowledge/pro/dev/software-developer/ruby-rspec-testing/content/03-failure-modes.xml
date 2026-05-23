@@ -1,62 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="ruby-rspec-testing Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for ruby-rspec-testing as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="RSpec Testing Patterns Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>4 antipatterns observed in real RSpec suites.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Emitting deprecated RSpec idioms: `it { should validate_presence_of(:email) }`, controller specs with `assigns(:user)`, `RSpec.configure` with deprecated config keys, `assert_template`.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>RSpec 3.0+ deprecates the `should` syntax (pre-RSpec-3 idiom) and controller specs in favor of request specs. Agents trained on older tutorials or Rails 4-era documentation emit these patterns. Always enforce the modern form: `is_expected.to`, request specs, `have_http_status` matchers.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Using `create(:model)` everywhere instead of `build_stubbed` for specs that don't query the database. Creates 1000s of database rows in test runs.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Multiplies test duration; CI becomes slow and CI quota is exceeded. Force the rule in the prompt: "if the test doesn't query the DB, use build_stubbed". For model specs testing validations, use `is_expected.to` matchers instead of building invalid records.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Hidden test-order coupling via shared state: `@user = create(:user)` in `before(:all)`, or lazy `let` accessing instance variables set in another context. Tests pass in sequence but fail on `--order random`.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>RSpec random order (enable in `.rspec` with `--order random`) surfaces coupling early. Lazy `let` avoids this; use eager `let!` only when side effects are needed. Human-in-loop: run tests with `--order random --seed 1234` before merge; if order-dependent, force fix in the agent loop.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Hard-coding timestamps: `Time.current`, `Date.today` in spec body. Tests fail on Feb 29, DST transitions, or month boundaries without human notice.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Use `travel_to(Time.zone.local(2026, 5, 1, 12, 0, 0))` to freeze time explicitly. Reset with `travel_back` in an `after` block. Never rely on the current date/time in a test.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Adding `sleep` or `wait_for_ajax` loops in system specs instead of using Capybara matchers (`have_content`, `have_selector`).</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Capybara's matchers auto-wait with sensible defaults (2-30s configurable); `sleep` is unreliable on CI with variable load and adds unnecessary latency. Use Capybara's built-in waits; only add custom `wait_for_ajax` if the app is known to use AJAX and Capybara can't detect it.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>Defining factories inside spec files (`FactoryBot.define { factory :user do ... end }` in `_spec.rb`) instead of under `spec/factories/`.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Duplicate factories across files, harder to reuse and maintain. Move all factories to `spec/factories/`, one file per model. Agents often flatten factory hierarchies; enforce inheritance and traits in review.</repair>
-    </failure-mode>
-    <failure-mode id="fm-07" severity="medium">
-      <description>VCR cassettes with `record: :all` or `record: :new_episodes` in CI, allowing silent re-record when APIs change. Cassettes encode API behavior at moment-of-record forever.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Accidental re-record in CI masks API changes. Force `record: :none` in CI; local development can use `record: :new_episodes`, and cassettes are committed for review before merge. Human decision gate: "does the cassette change match the API change?".</repair>
-    </failure-mode>
-    <failure-mode id="fm-08" severity="medium">
-      <description>Mocking what you don't own: `allow_any_instance_of(HTTP::Client)` mocks the lib, diverging from reality. When the lib changes, mocks don't.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Force a `RemoteService` wrapper class and stub that boundary. Mocking the third-party lib directly hides integration bugs.</repair>
-    </failure-mode>
-    <failure-mode id="fm-09" severity="medium">
-      <description>System spec flake from Capybara waits tuning. Tests pass locally but flake on CI due to `Capybara.default_max_wait_time` being too short or not set.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Capybara's default is 2 seconds. On slow CI (shared runners), increase to 5-10 seconds. Configure in `spec/support/capybara.rb` or `rails_helper.rb`. Use `Capybara.current_session.config.default_max_wait_time = 10` to set globally.</repair>
-    </failure-mode>
-    <failure-mode id="fm-10" severity="medium">
-      <description>DatabaseCleaner strategy set globally to `:truncation` instead of context-specific `:transaction`. Truncation is slow and unnecessary for non-JS tests.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Configure DatabaseCleaner: use `:transaction` for normal model/request specs (fast, atomic); switch to `:truncation` only for system specs that use Selenium/Capybara (JS-driven, require a separate connection). Global `:truncation` doubles CI time.</repair>
-    </failure-mode>
-    <failure-mode id="fm-11" severity="medium">
-      <description>Skipping flaky specs to make CI green without investigation or follow-up. Disabled tests become stale and are never re-enabled.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Flaky specs signal a real bug: ordering dependency, timing issue, or test environment problem. Disable with a human TODO: "fix by X date". Set a calendar reminder to re-enable and investigate.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="create-everywhere-slow-suite" severity="high">
+      <symptom>Suite takes 8 minutes; 90% of specs hit DB via create(:resource).</symptom>
+      <root-cause source="factory_bot reference">Spec authors default to create instead of build_stubbed.</root-cause>
+      <fix>Audit specs: where DB persistence not verified, switch to build_stubbed. Suite drops to 1-2 min.</fix>
+    </antipattern>
+
+    <antipattern id="rails-helper-everywhere" severity="medium">
+      <symptom>Service specs require Rails boot; CI cold-start = 30s per worker; suite distribution suffers.</symptom>
+      <root-cause source="RSpec Rails reference">All specs require rails_helper, even pure Ruby tests.</root-cause>
+      <fix>Pure-logic specs `require 'spec_helper'`; only request/feature/system specs need rails_helper.</fix>
+    </antipattern>
+
+    <antipattern id="no-context-mess" severity="medium">
+      <symptom>Spec is a flat list of 30 `it` blocks; reviewer can't tell which variant each tests.</symptom>
+      <root-cause source="RSpec reference — describe/context/it">No context grouping by precondition.</root-cause>
+      <fix>Group by state: `context 'when order is paid' { it 'returns paid status'; ... }`; failure messages now read 'when order is paid it returns paid status'.</fix>
+    </antipattern>
+
+    <antipattern id="let-bang-overuse" severity="low">
+      <symptom>Every spec creates 5 records via let!; specs that don't use them still pay the setup cost.</symptom>
+      <root-cause source="RSpec reference — let">Author used let! defensively.</root-cause>
+      <fix>Audit each let!; downgrade to let (lazy) unless the side effect is strictly required.</fix>
+    </antipattern>
+
   </section>
 </text>

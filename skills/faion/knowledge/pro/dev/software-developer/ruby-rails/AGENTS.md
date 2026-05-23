@@ -3,72 +3,95 @@ slug: ruby-rails
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Rails backend patterns for production-grade applications.
-content_id: "218f2d3386bb58f2"
-tags: [ruby, rails, rspec, sidekiq, backend]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Use Rails 7/8 idioms: convention over configuration, RESTful routing, Strong Parameters, callbacks, concerns for shared logic, and config-environment isolation.
+content_id: "be83b6f92da8e4cf"
+complexity: medium
+produces: code
+est_tokens: 5200
+tags: [rails, ruby, framework, routing, convention]
 ---
-# Ruby on Rails Backend Development
+# Ruby on Rails Framework Fundamentals
 
 ## Summary
 
-**One-sentence:** Rails backend patterns for production-grade applications.
+**One-sentence:** Use Rails 7/8 idioms: convention over configuration, RESTful routing, Strong Parameters, callbacks, concerns for shared logic, and config-environment isolation.
 
-**One-paragraph:** Rails backend patterns for production-grade applications. Service Objects encapsulate business logic (user creation, order processing) with ActiveRecord::Base.transaction for data consistency and ServiceResult for success/failure semantics. RSpec model specs validate constraints, association specs check belongs_to/has_many, scope specs isolate filtering. Service specs exercise the happy path and error cases. Sidekiq background jobs with retry policies (exponential backoff) for async work (email, exports, notifications). Controllers stay thin, delegating to services. Pagination via kaminari.
+**One-paragraph:** Rails is opinionated; fighting conventions costs months. Adopt the patterns: RESTful resourceful routing (resources :orders), Strong Parameters for mass-assign safety, model callbacks only for invariants (not external side effects), concerns for ≥2-model shared logic, generators for scaffolding, credentials.yml for secrets, and environment-isolated config. Mixing Sinatra-style ad-hoc routes or skipping Strong Parameters defeats Rails' security posture.
+
+**Ефективно для:**
+
+- Greenfield Rails 7/8 проєкти — задати ідіоматичну structure.
+- Refactor non-RESTful routes у resources + member/collection convention.
+- Migration від config-soup до credentials.yml + environment-specific config.
+- Onboarding нових Ruby-devs — methodology як reading list + conventions.
 
 ## Applies If (ALL must hold)
 
-- Any Rails/Ruby backend shipping to production with a database.
-- Building multi-user SaaS with proper data isolation, audits, and async notifications.
-- Complex domain logic (order processing, payment reconciliation, report generation).
-- API backends with strict JSON contracts, validation errors, and fault handling.
-- Background job pipelines for email, data export, or data transformation.
+- Rails 7+ project (Hotwire-aware).
+- Application serves HTML and/or JSON.
+- Team commits to Rails conventions (vs Sinatra ad-hoc style).
+- Strong Parameters enabled (Rails default).
 
 ## Skip If (ANY kills it)
 
-- Simple static sites or content management — Rails is overkill.
-- Real-time systems requiring sub-100ms latency — consider Go or Rust.
-- Teams unfamiliar with Rails conventions — the convention overhead requires buy-in.
+- Rails API-only mode with separate FE — no Hotwire/Turbo; methodology applies but skip view-layer rules.
+- Project standardized on Hanami/Roda instead of Rails — different framework.
+- Trivial app — convention overhead > benefit.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Resource definition | Ruby class + table | domain |
+| Routes file | config/routes.rb | repo |
+| Credentials | config/credentials.yml.enc + master key | ops |
 
 ## Assumes Loaded
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+none — methodology is self-contained.
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: restful-resources, strong-parameters, credentials-not-env, concern-for-shared-multi-model, callback-only-for-invariants | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for code + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `refactor-routes` | sonnet | Mechanical grouping by resource. |
+| `decide-callback-vs-service` | opus | Distinguishing invariant vs side effect is judgment. |
+| `lint-strong-params` | haiku | Mechanical regex. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/routes.rb` | RESTful routes with member/collection convention |
+| `templates/orders_controller.rb` | RESTful controller with Strong Parameters + Pundit authorization |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ruby-rails.py` | Validate the Rails module artefact against the schema | Pre-commit + CI |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
+- [[ruby-rails-patterns]]
+- [[ruby-activerecord]]
+- [[ruby-rspec-testing]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

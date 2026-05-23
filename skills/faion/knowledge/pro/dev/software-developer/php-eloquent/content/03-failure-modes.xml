@@ -1,22 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="php-eloquent Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for php-eloquent as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="PHP Eloquent ORM Patterns Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>4 antipatterns observed in real Eloquent codebases.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Model::all() on a user-facing endpoint without pagination.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Loads the entire table into PHP memory. OOM risk on tables with &gt;10k rows.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Empty $fillable = [] and $guarded = [] simultaneously.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>All columns become mass-assignable, allowing an attacker to set is_admin, organization_id, or any sensitive field via the API.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Mixing old getEmailAttribute() accessor and new Attribute::make() for the same attribute on the same model.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Produces undefined behavior; old-style accessors silently win in some Laravel versions, causing the new accessor to be ignored.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="n-plus-one" severity="high">
+      <symptom>List endpoint with 50 orders fires 51 queries (1 + 50); p99 latency 3s.</symptom>
+      <root-cause source="Laravel reference — eager loading">`$orders = Order::all(); foreach ($orders as $o) { echo $o-&gt;customer-&gt;name; }` — customer accessed lazily inside loop.</root-cause>
+      <fix>`$orders = Order::with('customer')-&gt;get();` — one extra query for all customers.</fix>
+    </antipattern>
+
+    <antipattern id="mass-assignment-vuln" severity="high">
+      <symptom>User registration accepts arbitrary keys; `is_admin=1` in request body creates admin user.</symptom>
+      <root-cause source="Laravel reference — mass assignment">`User::create($request-&gt;all())` on model without `$fillable`.</root-cause>
+      <fix>Declare `$fillable = ['name', 'email', 'password']` on User; `is_admin` cannot be set via mass-assign.</fix>
+    </antipattern>
+
+    <antipattern id="missing-cast" severity="medium">
+      <symptom>`$user-&gt;active === true` returns false; admin panel checkbox bug; `$user-&gt;active === '1'` works.</symptom>
+      <root-cause source="Laravel reference — casting">active column is tinyint(1); Eloquent returns string by default.</root-cause>
+      <fix>Add `protected $casts = ['active' =&gt; 'boolean', 'metadata' =&gt; 'array', 'price' =&gt; MoneyCast::class];`.</fix>
+    </antipattern>
+
+    <antipattern id="missing-tx" severity="high">
+      <symptom>Order create followed by inventory decrement; mid-call DB hiccup leaves order without inventory deduction; manual reconciliation.</symptom>
+      <root-cause source="Laravel reference — transactions">Two writes outside DB::transaction.</root-cause>
+      <fix>`DB::transaction(function () { $order = Order::create(...); InventoryItem::where('sku', $sku)-&gt;decrement('qty'); });` — both rolled back on failure.</fix>
+    </antipattern>
+
   </section>
 </text>

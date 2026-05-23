@@ -1,54 +1,45 @@
+// purpose: Thin layered controller skeleton
+// consumes: see content/02-output-contract.xml inputs
+// produces: artefact conforming to content/02-output-contract.xml
+// depends-on: content/01-core-rules.xml
+// token-budget-impact: ~350 tokens when loaded as context
+
 <?php
-// app/Http/Controllers/Api/V1/UserController.php
-// Thin controller: receive FormRequest → call Service → return Resource.
 
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\StoreUserRequest;
-use App\Http\Requests\UpdateUserRequest;
-use App\Http\Resources\UserResource;
-use App\Http\Resources\UserCollection;
-use App\Services\UserService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response;
+use App\Http\Requests\StoreOrderRequest;
+use App\Http\Requests\UpdateOrderRequest;
+use App\Http\Resources\OrderResource;
+use App\Models\Order;
+use App\Services\OrderService;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
-class UserController extends Controller
+class OrderController extends Controller
 {
-    public function __construct(
-        private readonly UserService $userService
-    ) {}
-
-    public function index(): UserCollection
+    public function __construct(private readonly OrderService $service)
     {
-        return new UserCollection(
-            $this->userService->paginate(
-                perPage: request()->integer('per_page', 20)
-            )
-        );
+        $this->authorizeResource(Order::class, 'order');
     }
 
-    public function store(StoreUserRequest $request): JsonResponse
+    public function index(): AnonymousResourceCollection
     {
-        $user = $this->userService->create($request->validated());
-        return (new UserResource($user))
-            ->response()
-            ->setStatusCode(Response::HTTP_CREATED);
+        return OrderResource::collection($this->service->listForCurrentUser());
     }
 
-    public function show(int $id): UserResource
+    public function store(StoreOrderRequest $request): OrderResource
     {
-        return new UserResource($this->userService->findOrFail($id));
+        return new OrderResource($this->service->create($request->validated()));
     }
 
-    public function update(UpdateUserRequest $request, int $id): UserResource
+    public function update(UpdateOrderRequest $request, Order $order): OrderResource
     {
-        return new UserResource($this->userService->update($id, $request->validated()));
+        return new OrderResource($this->service->update($order, $request->validated()));
     }
 
-    public function destroy(int $id): JsonResponse
+    public function destroy(Order $order): void
     {
-        $this->userService->delete($id);
-        return response()->json(null, Response::HTTP_NO_CONTENT);
+        $this->service->cancel($order);
     }
 }

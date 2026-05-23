@@ -1,37 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="php-laravel Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for php-laravel as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Laravel Framework Fundamentals Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>4 antipatterns observed in real Laravel codebases.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>$request-&gt;all() passed directly to Model::create() or a service method without going through FormRequest::validated().</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>$request-&gt;all() includes every key the client sends — including is_admin, role_id, or other protected columns. If those keys are in $fillable, the client has elevated its own privileges.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>Eloquent::find($id) returning null without findOrFail(), with the controller returning a 200 response with null data.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Clients receive a 200 with an empty or null body and must guess whether the record exists. findOrFail() triggers a ModelNotFoundException that maps to 404 via the exception handler.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>$guarded = [] on a model with many columns, relying on FormRequest to prevent mass-assignment.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Future model columns added without a matching FormRequest update are immediately writable by any authenticated client. Defense-in-depth requires both $fillable and FormRequest validation.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>new ConcreteClass() inside service or controller methods instead of constructor injection.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Directly instantiated dependencies cannot be swapped in tests. Container-managed dependencies support mocking, decoration, and lifetime management (scoped, singleton, transient).</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>RefreshDatabase in every test class when tests are read-heavy, causing migrations to run once per test class and dominating CI time.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>RefreshDatabase recreates the schema between test classes. DatabaseTransactions wraps each test in a rolled-back transaction — much faster for read-only or SELECT-then-assert patterns.</repair>
-    </failure-mode>
-    <failure-mode id="fm-06" severity="medium">
-      <description>APP_DEBUG=true or APP_KEY= or DB_PASSWORD=root shipped in .env files committed to version control.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Debug mode exposes stack traces and environment variables in HTTP responses. Empty APP_KEY breaks encryption. Committed credentials reach every developer's machine and CI logs.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="config-cache-broken" severity="high">
+      <symptom>Local works, production crashes with 'env null' after `php artisan config:cache`.</symptom>
+      <root-cause source="Laravel reference — configuration">`env('STRIPE_KEY')` called inside a service class (not in `config/*.php`).</root-cause>
+      <fix>Move env() calls to `config/stripe.php` (`return ['key' =&gt; env('STRIPE_KEY')];`); reference via `config('stripe.key')` in services.</fix>
+    </antipattern>
+
+    <antipattern id="facade-fest-test-pain" severity="medium">
+      <symptom>Tests need `Mail::fake()`, `Queue::fake()`, `Storage::fake()` everywhere; setUp() is 30 lines of fake calls.</symptom>
+      <root-cause source="Laravel reference — facades vs DI">Services use facades directly; mocking requires Laravel's fake registry.</root-cause>
+      <fix>Refactor services to constructor-inject contracts (MailService, QueueService); unit tests use plain PHPUnit mocks.</fix>
+    </antipattern>
+
+    <antipattern id="route-cache-impossible" severity="medium">
+      <symptom>`php artisan route:cache` fails with closure-not-serializable error.</symptom>
+      <root-cause source="Laravel reference — route caching">Route uses inline closure with `use ($variable)`; closures can't be cached.</root-cause>
+      <fix>Convert inline closures to controller method references: `Route::get('/', [HomeController::class, 'index'])`.</fix>
+    </antipattern>
+
+    <antipattern id="inline-bind-bootstrap" severity="medium">
+      <symptom>Service binding only works after a specific endpoint is hit; first request after deploy fails.</symptom>
+      <root-cause source="Laravel reference — service providers">`app()-&gt;bind(MailService::class, ...)` placed inside a controller; not loaded at boot.</root-cause>
+      <fix>Move binding to `register()` in a ServiceProvider; register provider in `config/app.php`.</fix>
+    </antipattern>
+
   </section>
 </text>

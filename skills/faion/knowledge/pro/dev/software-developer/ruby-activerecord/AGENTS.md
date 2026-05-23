@@ -3,71 +3,96 @@ slug: ruby-activerecord
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Efficient database access with proper query optimization via Query Objects for chainable filters, scopes as lambdas for composition, eager loading via includes() to prevent N+1, and lifecycle callbacks (before_validation, after_create_commit).
-content_id: "1c7fa592ad35b975"
-tags: [ruby, activerecord, rails, database, orm]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Use ActiveRecord idiomatically: scopes for reusable queries, includes/preload/eager_load for N+1 elimination, strong attributes (counter_cache, enum, monetize), explicit transactions, and validation in models.
+content_id: "bb8ac802d640c07b"
+complexity: medium
+produces: code
+est_tokens: 5200
+tags: [rails, activerecord, ruby, orm, active-record]
 ---
-# ActiveRecord Patterns
+# Ruby ActiveRecord Patterns
 
 ## Summary
 
-**One-sentence:** Efficient database access with proper query optimization via Query Objects for chainable filters, scopes as lambdas for composition, eager loading via includes() to prevent N+1, and lifecycle callbacks (before_validation, after_create_commit).
+**One-sentence:** Use ActiveRecord idiomatically: scopes for reusable queries, includes/preload/eager_load for N+1 elimination, strong attributes (counter_cache, enum, monetize), explicit transactions, and validation in models.
 
-**One-paragraph:** Efficient database access with proper query optimization via Query Objects for chainable filters, scopes as lambdas for composition, eager loading via includes() to prevent N+1, and lifecycle callbacks (before_validation, after_create_commit). Validate presence, uniqueness with case_insensitive, and length constraints. Use has_one/has_many/has_many through for association semantics. Normalize data in callbacks (email lowercasing). Dispatch async work via deliver_later and callbacks.
+**One-paragraph:** ActiveRecord is Rails' ORM — productive but easy to misuse. The discipline: scopes for reusable WHERE clauses, includes/preload/eager_load for N+1 elimination (preload uses 2 queries, eager_load uses LEFT JOIN), enum for status columns, validates_* for invariants, transaction blocks for multi-write atomicity, and counter_cache for cheap counts. Avoid update_all / delete_all in business logic (bypasses callbacks); avoid Time.now (use Time.current for app timezone).
+
+**Ефективно для:**
+
+- Rails 7/8 проєкти з реляційною БД (PostgreSQL/MySQL).
+- Refactor N+1 queries (визначено через bullet gem).
+- Greenfield models — встановити scope/enum/callbacks одразу.
+- Migration від raw SQL обходів до AR idiom (зокрема, where + scope).
 
 ## Applies If (ALL must hold)
 
-- Any Rails application shipping to production with a relational database.
-- Building a complex domain with associations, scopes, and validation rules.
-- Extracting reusable query logic that appears in multiple controllers.
-- Performance optimization: identifying N+1 queries and using includes/joins.
+- Rails 7+ project with ActiveRecord (not Sequel / ROM).
+- Models have associations + validations.
+- Performance matters (organic traffic / paid features).
+- Database is PostgreSQL or MySQL.
 
 ## Skip If (ANY kills it)
 
-- NoSQL/document stores — use a different ORM pattern (Mongoid, etc.).
-- Raw SQL is more efficient — use find_by_sql for complex analytical queries.
-- Data migration/ETL scripts where overhead of the full Rails stack is unnecessary.
+- Read-only data warehouse — use raw SQL or dbt.
+- Project standardizes on Sequel or ROM — different ORM, different rules.
+- Sub-table-count: <3 tables in entire app.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Model + migration | Ruby class + db/migrate | domain |
+| bullet gem output | N+1 detection log | dev |
+| DB schema | db/schema.rb | repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[ruby-rails]] | Rails framework basics assumed. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: scopes-for-reused-where, includes-no-n-plus-one, transaction-block-multi-write, enum-for-status, no-time-now | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for code + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `extract-scopes` | sonnet | Templated migration. |
+| `design-enum-values` | opus | Domain decision on status values. |
+| `lint-time-now` | haiku | Mechanical grep + rubocop. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/order.rb` | ActiveRecord model with enum, scopes, includes-friendly associations |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-ruby-activerecord.py` | Validate the AR model artefact against the schema | Pre-commit + CI |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
+- [[ruby-rails]]
+- [[ruby-rails-patterns]]
+- [[ruby-rspec-testing]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

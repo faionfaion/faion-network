@@ -1,12 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="ruby-rails Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for ruby-rails as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Ruby on Rails Framework Fundamentals Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>4 antipatterns observed in real Rails apps.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>TBD — v1 source contained no antipatterns. Document at least one LLM failure mode for this methodology.</description>
-      <detector>TBD — observable check for the failure</detector>
-      <repair>TBD — corrective action when detector fires</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="callback-side-effect" severity="high">
+      <symptom>Running `Order.find(1).touch` in console sends production email; tests trigger emails to real addresses.</symptom>
+      <root-cause source="Rails Guides — callbacks; 7 Patterns (CodeClimate)">after_save :send_confirmation lives on the model.</root-cause>
+      <fix>Move to OrderService#confirm which explicitly calls OrderMailer.confirmation(@order).deliver_later. Remove callback.</fix>
+    </antipattern>
+
+    <antipattern id="mass-assign-vuln" severity="high">
+      <symptom>User can set is_admin=1 via params; attacker becomes admin.</symptom>
+      <root-cause source="Rails Guides — Strong Parameters">Controller uses `User.create(params[:user])` without permit.</root-cause>
+      <fix>`User.create(params.require(:user).permit(:name, :email, :password))`; is_admin not in list = ignored.</fix>
+    </antipattern>
+
+    <antipattern id="ad-hoc-routes-explosion" severity="medium">
+      <symptom>config/routes.rb is 400 lines; helpers don't exist for half the routes; named URLs are inconsistent.</symptom>
+      <root-cause source="Rails Guides — routing">Each new endpoint added as `get '/foo' =&gt; 'bar#baz'`.</root-cause>
+      <fix>Refactor into resources blocks: `resources :orders do member { patch :cancel } end`; named helpers (cancel_order_path) appear automatically.</fix>
+    </antipattern>
+
+    <antipattern id="secrets-in-env-leak" severity="high">
+      <symptom>Sentry error includes Stripe key in error context because ENV is printed in 5xx page.</symptom>
+      <root-cause source="Rails Guides — encrypted credentials">Stripe key read from ENV; ENV dump on error includes it.</root-cause>
+      <fix>Move STRIPE_SECRET to credentials.yml.enc; access via Rails.application.credentials.stripe[:secret]; ENV no longer holds it.</fix>
+    </antipattern>
+
   </section>
 </text>

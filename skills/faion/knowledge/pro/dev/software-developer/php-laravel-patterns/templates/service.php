@@ -1,54 +1,40 @@
+// purpose: Service with DB::transaction + business rules
+// consumes: see content/02-output-contract.xml inputs
+// produces: artefact conforming to content/02-output-contract.xml
+// depends-on: content/01-core-rules.xml
+// token-budget-impact: ~350 tokens when loaded as context
+
 <?php
-// app/Services/UserService.php
-// Service: owns business logic, DB::transaction, event dispatch.
-// No request() helper. No facades. No Eloquent in controller.
 
 namespace App\Services;
 
-use App\Models\User;
-use App\Repositories\UserRepository;
-use Illuminate\Pagination\LengthAwarePaginator;
+use App\Models\Order;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
-class UserService
+class OrderService
 {
-    public function __construct(
-        private readonly UserRepository $repository
-    ) {}
-
-    public function paginate(int $perPage = 20): LengthAwarePaginator
+    public function listForCurrentUser(): Collection
     {
-        return $this->repository->paginate($perPage);
+        return Order::where('user_id', auth()->id())->with('items')->latest()->get();
     }
 
-    public function findOrFail(int $id): User
-    {
-        return $this->repository->findOrFail($id);
-    }
-
-    public function create(array $data): User
+    public function create(array $data): Order
     {
         return DB::transaction(function () use ($data) {
-            $data['password'] = Hash::make($data['password']);
-            $user = $this->repository->create($data);
-            event(new \App\Events\UserCreated($user));
-            return $user;
-        });
-    }
-
-    public function update(int $id, array $data): User
-    {
-        return DB::transaction(function () use ($id, $data) {
-            if (isset($data['password'])) {
-                $data['password'] = Hash::make($data['password']);
+            $order = Order::create(['user_id' => auth()->id(), 'status' => 'pending']);
+            foreach ($data['items'] as $item) {
+                $order->items()->create($item);
             }
-            return $this->repository->update($id, $data);
+            return $order->load('items');
         });
     }
 
-    public function delete(int $id): bool
+    public function cancel(Order $order): void
     {
-        return $this->repository->delete($id);
+        DB::transaction(function () use ($order) {
+            $order->update(['status' => 'cancelled', 'cancelled_at' => now()]);
+            event(new OrderCancelled($order));
+        });
     }
 }

@@ -1,32 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="ruby-rails-patterns Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Migrated antipatterns for ruby-rails-patterns as failure modes. Add detector + repair clauses where missing.</summary>
+<text id="03-failure-modes" title="Ruby on Rails Service Objects Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>4 antipatterns observed in real Rails service-object rollouts.</summary>
 
-  <section title="Failure modes">
-    <failure-mode id="fm-01" severity="medium">
-      <description>Service has multiple public methods (call, create, update) or no call method at all.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Breaks single-responsibility; unclear which method is the entry point; harder to compose with organizers. A service is a command object with exactly one entry point.</repair>
-    </failure-mode>
-    <failure-mode id="fm-02" severity="medium">
-      <description>rescue StandardError inside the service, swallowing all exceptions into ServiceResult.failure.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Hides real bugs (NoMethodError, TypeError) as domain failures. Only catch documented domain exceptions like ActiveRecord::RecordInvalid or custom exceptions.</repair>
-    </failure-mode>
-    <failure-mode id="fm-03" severity="medium">
-      <description>Service returns raw ActiveRecord object on success, exception on failure — two divergent paths.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Controllers must handle both paths differently; ServiceResult enforces a uniform interface.</repair>
-    </failure-mode>
-    <failure-mode id="fm-04" severity="medium">
-      <description>Services reference params.require(...) or params.permit(...) from the controller. The service couples to Rails ActionController::Parameters.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Couples the service to Rails and prevents unit testing without mocking params. Services accept already-permitted plain hashes from the controller, not ActionController::Parameters.</repair>
-    </failure-mode>
-    <failure-mode id="fm-05" severity="medium">
-      <description>Services call deliver_now or perform_now for mailer/job dispatch, causing service specs to send real emails or run jobs synchronously.</description>
-      <detector>TBD — observable signal that this antipattern is happening</detector>
-      <repair>Synchronous dispatch makes tests slow, side-effect-prone, and brittle. Always use deliver_later / perform_later so the mailer/job is enqueued, not executed immediately.</repair>
-    </failure-mode>
+  <section title="Antipatterns">
+
+    <antipattern id="service-as-god-object" severity="high">
+      <symptom>OrderService grows to 600 LoC with #create, #update, #cancel, #refund, #ship methods.</symptom>
+      <root-cause source="Rails 7 Patterns (CodeClimate)">Single class accumulating multiple actions.</root-cause>
+      <fix>Split into PlaceOrderService + UpdateOrderService + CancelOrderService + RefundOrderService + ShipOrderService — one action per class.</fix>
+    </antipattern>
+
+    <antipattern id="exception-control-flow" severity="medium">
+      <symptom>Callers wrap service in rescue blocks; success/failure paths invisible until try/catch.</symptom>
+      <root-cause source="Rails 7 Patterns (CodeClimate)">Service raises for business failure (insufficient stock).</root-cause>
+      <fix>Return ServiceResult.failure(error: :insufficient_stock); callers check result.success? without rescue.</fix>
+    </antipattern>
+
+    <antipattern id="no-isolation-test" severity="medium">
+      <symptom>Service tests need full Rails boot; suite slow; tests fail when HTTP stack changes.</symptom>
+      <root-cause source="RSpec Rails reference">Service called from request spec only; no isolated unit test.</root-cause>
+      <fix>Write spec/services/place_order_service_spec.rb without `rails_helper` (use `spec_helper`); pass collaborators as mocks.</fix>
+    </antipattern>
+
+    <antipattern id="callback-side-effect-via-service" severity="high">
+      <symptom>`Order.find(1).touch` triggers PlaceOrderService.call which sends email; reproduction in console is destructive.</symptom>
+      <root-cause source="7 Patterns (CodeClimate)">Model's after_save calls PlaceOrderService.</root-cause>
+      <fix>Remove callback; have controller/job explicitly call PlaceOrderService.call.</fix>
+    </antipattern>
+
   </section>
 </text>

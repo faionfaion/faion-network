@@ -3,72 +3,95 @@ slug: php-phpunit-testing
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Laravel PHPUnit test patterns: feature tests via Tests\TestCase + RefreshDatabase covering happy path, validation failures, auth/authorization failures, and 404s; unit tests mocking dependencies; and Http::fake() / Queue::fake() / Mail::fake() for all outgoing side effects.
-content_id: "02351dbb4c5f90ef"
-tags: [php, phpunit, laravel, testing, feature-tests]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Structure PHPUnit tests with strict isolation, factory-based fixtures, the Arrange-Act-Assert pattern, data providers for table tests, and dependency injection for mocks.
+content_id: "ae14a9330419861f"
+complexity: medium
+produces: code
+est_tokens: 5200
+tags: [phpunit, testing, php, tdd, fixtures]
 ---
-# PHPUnit Testing (Laravel)
+# PHPUnit Testing Patterns
 
 ## Summary
 
-**One-sentence:** Laravel PHPUnit test patterns: feature tests via Tests\TestCase + RefreshDatabase covering happy path, validation failures, auth/authorization failures, and 404s; unit tests mocking dependencies; and Http::fake() / Queue::fake() / Mail::fake() for all outgoing side effects.
+**One-sentence:** Structure PHPUnit tests with strict isolation, factory-based fixtures, the Arrange-Act-Assert pattern, data providers for table tests, and dependency injection for mocks.
 
-**One-paragraph:** Laravel PHPUnit test patterns: feature tests via Tests\TestCase + RefreshDatabase covering happy path, validation failures, auth/authorization failures, and 404s; unit tests mocking dependencies; and Http::fake() / Queue::fake() / Mail::fake() for all outgoing side effects. One assertion concept per test method. Use $response->assertOk() (Laravel-flavored assertions), assertJsonPath for field-level contracts, and Carbon::setTestNow() for time-sensitive assertions.
+**One-paragraph:** PHPUnit is the standard PHP testing framework. Effective use requires: AAA test structure, factory-built fixtures (no shared state), data providers for parameterized tests, mock objects via constructor injection (not facade fakes), strict isolation (no test depends on order), and CI integration with --colors=never + --testdox + --coverage-xml. Pest is a wrapper that builds on PHPUnit; the rules carry over.
+
+**Ефективно для:**
+
+- Laravel / vanilla PHP проєкти з PHPUnit як test runner.
+- TDD стайл — швидкі ізольовані тести без full bootstrap.
+- Table-driven tests через #[DataProvider] для edge-case покриття.
+- Pest-flavored projects — методологія повторюється.
 
 ## Applies If (ALL must hold)
 
-- Any Laravel/PHP project shipping to production — feature tests are the bedrock.
-- API regression suites (status code, JSON shape, validation, auth).
-- Service-layer unit tests for business rules independent of HTTP.
-- CI pipelines requiring coverage thresholds and failure tracking.
+- PHP 8.2+ project with composer + PHPUnit 11+ installed.
+- Tests should run in CI on every push.
+- Mocking is used (downstream HTTP / Stripe / S3 / DB).
+- Team commits to maintaining the suite (not write-once-and-forget).
 
 ## Skip If (ANY kills it)
 
-- Browser / end-to-end flows — use Laravel Dusk (Playwright) instead.
-- Performance tests — use k6 or Octane benchmarks.
-- When the team has migrated to Pest — same underlying PHPUnit but the DSL differs; tell the agent which one.
-- Pure static-analysis questions — PHPStan/Larastan catch type bugs faster than a test.
+- Project standardized exclusively on Pest with no PHPUnit fallback — see pest-testing methodology.
+- Integration-only test suite (Cypress / Playwright) — JS toolchain.
+- Throwaway script.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Subject under test | PHP class with public methods | developer |
+| Test bootstrap | phpunit.xml.dist + tests/bootstrap.php | repo |
+| Factories | Laravel factories OR data-builder pattern | fixtures dir |
 
 ## Assumes Loaded
 
-| Methodology | Why |
-|-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+none — methodology is self-contained.
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: aaa-structure, factory-no-shared-state, data-provider-table-tests, mocks-via-di, no-test-order-dependence | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for code + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `scaffold-test` | sonnet | Templated test class. |
+| `design-edge-cases` | opus | Identifying important cases is judgment-heavy. |
+| `lint-shared-state` | haiku | Mechanical scan for static fixtures + setUp mutations. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/OrderServiceTest.php` | PHPUnit test class with AAA + #[DataProvider] + constructor mocks |
+| `templates/phpunit.xml` | PHPUnit config with random order + coverage clover output |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-php-phpunit-testing.py` | Validate the test artefact against the schema | Pre-commit + CI |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
+- [[php-laravel]]
+- [[php-laravel-patterns]]
+- [[ruby-rspec-testing]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

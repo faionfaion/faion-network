@@ -1,31 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ruby-activerecord Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for ruby-activerecord. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="Ruby ActiveRecord Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>5 testable rules for idiomatic ActiveRecord usage.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Complex query logic MUST be extracted into a Query Object (UsersQuery, OrdersQuery) rather than scattered in controller actions or helper methods. Query Objects MUST initialize with a base relation (User.all by default) and return self from each filter method to enable chaining.</statement>
-      <rationale source="v1-source">Query Objects are testable without hitting routes, reusable across controllers, and make the business rules explicit. Chaining makes the intent readable: UsersQuery.new.active.with_role('admin').search(term).paginate(...) documents the filtering flow.</rationale>
+
+    <rule id="scopes-for-reused-where" testable="true" depth="essential">
+      <statement>WHERE clauses used in ≥2 call sites MUST be extracted to a named scope on the model. Inline `Model.where(...)` duplication is forbidden.</statement>
+      <rationale source="Rails Guides — ActiveRecord scopes">Scopes give business meaning + centralize change; duplication drifts.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Model scopes MUST be defined as lambda scopes (scope :name, -&gt; { ... }) to enable composition and arguments. A scope MUST always return a relation (where, joins, etc.) so it can be chained with other scopes.</statement>
-      <rationale source="v1-source">Lambda scopes are evaluated at query-time, allowing arguments to be passed. Non-lambda scopes are evaluated at definition-time and break chaining. Scope chaining is the core flexibility of ActiveRecord: User.active.admins.recent composes three scopes into one query.</rationale>
+    <rule id="includes-no-n-plus-one" testable="true" depth="essential">
+      <statement>Collections that will iterate over associations MUST use `includes`/`preload`/`eager_load` to load them up front.</statement>
+      <rationale source="Rails Guides — eager loading associations">Lazy access in iteration triggers N+1; one of the top performance regressions in Rails apps.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Validations (validates :email, presence: true, uniqueness: { case_sensitive: false }) MUST live on the model, not in the controller. All non-nil assignments MUST be validated before save! or create!.</statement>
-      <rationale source="v1-source">Model validations are a single source of truth for business rules. Controllers may have multiple code paths (API, form, CLI); putting validation on the model ensures every path enforces the same constraints.</rationale>
+    <rule id="transaction-block-multi-write" testable="true" depth="essential">
+      <statement>Any sequence with ≥2 writes (save/create/update/destroy) MUST run inside an `ActiveRecord::Base.transaction do ... end` block. `update_all`/`delete_all` for state-changing business logic is forbidden.</statement>
+      <rationale source="Rails Guides — transactions">Without a transaction, mid-call failures leave partial state; update_all skips callbacks + validations.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>before_validation callbacks MUST normalize data (downcase email, strip whitespace). after_create_commit callbacks MUST dispatch async work (deliver_later, enqueue jobs) so failures do not roll back the primary transaction.</statement>
-      <rationale source="v1-source">Normalization before validation ensures consistent state (all emails lowercase). after_create_commit fires after the transaction commits, so network/queue failures do not cause a rollback. Use after_update_commit for updates.</rationale>
+    <rule id="enum-for-status" testable="true" depth="essential">
+      <statement>Columns representing a closed set of states MUST use `enum status: { pending: 0, paid: 1, ... }`. Magic strings/integers in queries are forbidden.</statement>
+      <rationale source="Rails Guides — ActiveRecord enums">enum gives scope methods, predicate methods, validation, and prevents typo bugs.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Every has_one and has_many association MUST declare a dependent: option (destroy, delete, nullify, or restrict_with_exception). The option MUST match the business rule: destroy when the child has no independent meaning, nullify when the child can exist without a parent, restrict_with_exception when the child must not be orphaned.</statement>
-      <rationale source="v1-source">Without dependent, deleting a parent leaves orphaned rows. dependent: :destroy cascades the deletion; dependent: :nullify removes the foreign key; dependent: :restrict_with_exception prevents deletion if children exist. Choosing the right option prevents data corruption and enforces invariants.</rationale>
+    <rule id="no-time-now" testable="true" depth="essential">
+      <statement>Code MUST use `Time.current` / `Date.current` (timezone-aware). `Time.now` / `Date.today` (server timezone) is forbidden in business logic.</statement>
+      <rationale source="Rails Guides — time zones">Time.now uses server timezone; switching servers or using AR queries with stored timestamps produces off-by-N-hour bugs.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>N+1 prevention: after writing a query that loads multiple parents, call includes() on the original relation to eager-load the children. Use includes(:associations) before the query, not after.</statement>
-      <rationale source="v1-source">User.includes(:profile).all loads users and their profiles in 2 queries total. User.all + looping and calling user.profile issues 1 + N queries. The difference is orders of magnitude for 100+ records.</rationale>
-    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

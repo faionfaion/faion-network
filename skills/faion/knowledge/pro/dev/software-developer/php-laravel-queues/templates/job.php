@@ -1,65 +1,60 @@
+// purpose: Queue job skeleton with tries+timeout+backoff+failed+idempotent handle
+// consumes: see content/02-output-contract.xml inputs
+// produces: artefact conforming to content/02-output-contract.xml
+// depends-on: content/01-core-rules.xml
+// token-budget-impact: ~450 tokens when loaded as context
+
 <?php
-// app/Jobs/ProcessOrderJob.php
-// Required: ShouldQueue, idempotency check, primitive args, failed(), retryUntil().
 
 namespace App\Jobs;
 
 use App\Models\Order;
-use App\Services\OrderProcessor;
+use App\Services\MailService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
-use Illuminate\Queue\SerializesModels;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Sentry\Laravel\Integration;
 use Throwable;
 
-class ProcessOrderJob implements ShouldQueue
+class SendOrderConfirmationJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 3;
-    public int $backoff = 60;
-    public int $timeout = 120;
+    public int $tries = 5;
+    public int $timeout = 30;
 
     public function __construct(
-        public readonly Order $order
+        public readonly int $orderId,
+        public readonly string $idempotencyKey,
     ) {}
+
+    public function backoff(): array
+    {
+        return [10, 30, 60, 120, 240];
+    }
 
     public function middleware(): array
     {
-        // WithoutOverlapping requires Redis or database cache — not file/array.
-        return [new WithoutOverlapping($this->order->id)];
+        return [(new WithoutOverlapping($this->idempotencyKey))->expireAfter(300)];
     }
 
-    public function handle(OrderProcessor $processor): void
+    public function handle(MailService $mail): void
     {
-        if ($this->order->isProcessed()) {
-            return; // idempotency: already done
+        $order = Order::findOrFail($this->orderId);
+        if ($order->confirmation_sent_at !== null) {
+            return; // idempotent: already processed
         }
-
-        $processor->process($this->order);
-
-        NotifyCustomerJob::dispatch($this->order)->onQueue('notifications');
+        $mail->send($order->customer->email, "Order #{$order->id} confirmed", view('mail.order-confirmation', ['order' => $order])->render());
+        $order->update(['confirmation_sent_at' => now()]);
     }
 
-    public function failed(Throwable $exception): void
+    public function failed(Throwable $e): void
     {
-        $this->order->update(['status' => 'failed']);
-
-        \Log::error('Order processing failed', [
-            'order_id' => $this->order->id,
-            'error' => $exception->getMessage(),
-        ]);
-    }
-
-    public function retryUntil(): \DateTime
-    {
-        return now()->addHours(24);
+        Log::error('SendOrderConfirmationJob failed', ['order_id' => $this->orderId, 'exception' => $e->getMessage()]);
+        Integration::captureUnhandledException($e);
     }
 }
-
-// Dispatch examples:
-// ProcessOrderJob::dispatch($order)->onQueue('orders');
-// ProcessOrderJob::dispatch($order)->delay(now()->addMinutes(10));
-// ProcessOrderJob::dispatch($order)->afterCommit(); // safe inside DB::transaction

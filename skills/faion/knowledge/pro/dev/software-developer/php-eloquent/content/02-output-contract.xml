@@ -1,22 +1,90 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="php-eloquent Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="PHP Eloquent ORM Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema describing one Eloquent model artefact (fillable + casts + scopes + relations).</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/php-eloquent.json",
+  "type": "object",
+  "required": [
+    "model_class",
+    "fillable_or_guarded",
+    "casts_declared",
+    "n_plus_one_count",
+    "tx_wrapped_writes"
+  ],
+  "properties": {
+    "model_class": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Za-z0-9]+$"
+    },
+    "fillable_or_guarded": {
+      "enum": [
+        "fillable",
+        "guarded"
+      ]
+    },
+    "casts_declared": {
+      "type": "boolean",
+      "const": true
+    },
+    "scope_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "n_plus_one_count": {
+      "type": "integer",
+      "maximum": 0
+    },
+    "tx_wrapped_writes": {
+      "type": "boolean",
+      "const": true
+    },
+    "mass_assignment_safe": {
+      "type": "boolean",
+      "const": true
+    }
+  },
+  "additionalProperties": false
+}
+]]></code>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "model_class": "Order",
+  "fillable_or_guarded": "fillable",
+  "casts_declared": true,
+  "scope_count": 3,
+  "n_plus_one_count": 0,
+  "tx_wrapped_writes": true,
+  "mass_assignment_safe": true
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "model_class": "order",
+  "fillable_or_guarded": "guarded",
+  "casts_declared": false,
+  "scope_count": 0,
+  "n_plus_one_count": 5,
+  "tx_wrapped_writes": false,
+  "mass_assignment_safe": false
+}
+]]></code>
+    <note>model_class lowercase; no $fillable/$guarded (actually says guarded but implies $guarded=[] = all assignable); no casts; 5 N+1 sites; no transactions.</note>
+  </example>
+  <forbidden>
+      <pattern id="no-fillable">Model with neither `$fillable` nor `$guarded` (or `$guarded = []` allowing all).</pattern>
+      <pattern id="lazy-in-loop">`foreach ($orders as $o) { $o-&gt;items; }` without prior `-&gt;with('items')`.</pattern>
+      <pattern id="multi-write-no-tx">Two or more save()/create()/update() calls in sequence without DB::transaction.</pattern>
+  </forbidden>
+
+  <reference path="scripts/validate-php-eloquent.py">Validator script</reference>
 </text>

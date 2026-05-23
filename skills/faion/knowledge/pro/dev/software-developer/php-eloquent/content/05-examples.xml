@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="PHP Eloquent ORM Patterns Examples" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Worked example: harden Order model with $fillable, $casts, scope, and transactional create.</summary>
+
+  <section title="Worked example">
+    <example trace="Order model hardening">
+      <context>Laravel 11; Order model has no $fillable, no $casts; OrderController::store does Order::create($request-&gt;all()) + InventoryItem::decrement separately.</context>
+      <walk>Step 1: `protected $fillable = ['customer_id', 'items', 'note'];` + `protected $casts = ['items' =&gt; 'array', 'paid_at' =&gt; 'datetime', 'total_cents' =&gt; 'integer'];`. Step 2: `scopeRecent($q) { return $q-&gt;where('created_at', '&gt;=', now()-&gt;subDays(30))); }` + scopePaid. Step 3: audit → 2 N+1 sites in OrderResource (customer + items); add `Order::with(['customer', 'items'])-&gt;get()` at service. Step 4: OrderService::create wraps both Order::create + Inventory decrement in DB::transaction. Step 5: tests assert that POST /orders with `is_admin=1` in body is ignored; assertQueryCount=3 on list endpoint; throw mid-tx leaves DB clean.</walk>
+      <output>Mass-assignment safe; N+1 eliminated; multi-write atomic.</output>
+    </example>
+  </section>
+</text>

@@ -3,73 +3,99 @@ slug: php-laravel-patterns
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Layered Laravel architecture: thin HTTP controllers, service classes that own business logic and transactions, Eloquent models accessed through service methods, and API Resources for response shaping.
-content_id: "5459de4344058100"
-tags: [laravel, architecture, patterns, controller, service]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Layered Laravel architecture: thin HTTP controllers, services owning business logic + transactions, Eloquent via services, Form Requests for validation, API Resources for responses, Policies for authorization.
+content_id: "2f25758ff792ad68"
+complexity: medium
+produces: code
+est_tokens: 5200
+tags: [laravel, patterns, controller, service, resource, php]
 ---
-# Laravel Patterns (Controller → Service → Resource)
+# Laravel Layered Patterns (Controller → Service → Resource)
 
 ## Summary
 
-**One-sentence:** Layered Laravel architecture: thin HTTP controllers, service classes that own business logic and transactions, Eloquent models accessed through service methods, and API Resources for response shaping.
+**One-sentence:** Layered Laravel architecture: thin HTTP controllers, services owning business logic + transactions, Eloquent via services, Form Requests for validation, API Resources for responses, Policies for authorization.
 
-**One-paragraph:** Layered Laravel architecture: thin HTTP controllers, service classes that own business logic and transactions, Eloquent models accessed through service methods, and API Resources for response shaping. Form Requests handle validation and authorization. No Eloquent calls in controllers; no request() helper in services; inject contracts, not facades.
+**One-paragraph:** Strict layering: controllers stay HTTP-only (parse + delegate + serialize via Resource), Form Requests own validation + authorize(), services own multi-step business logic + DB::transaction, Eloquent is accessed only via services, API Resources shape responses, Policies centralize permission checks. The methodology overlaps with laravel-patterns but is the per-project layering manifest, not just CRUD scaffolding.
+
+**Ефективно для:**
+
+- Команди >2 розробники, що хочуть стандартизувати Laravel layout.
+- Refactor legacy fat-controllers (>100 LoC) у layered structure.
+- Migration від facades-everywhere до DI-everywhere + Policies + Resources.
+- Code review checklist: layering як binary gate в PR.
 
 ## Applies If (ALL must hold)
 
-- Greenfield Laravel 10/11/12 APIs that need Controller → Service → Resource layering.
-- Brownfield refactors extracting business logic out of fat controllers.
-- Generating CRUD slices (Controller + FormRequest + Resource + Service + Policy) for new resources.
-- Cross-cutting hardening: FormRequests for validation, Resources for serialization, Services for transactions.
-- Standardizing API versioning (Api\V1\) and Sanctum/Passport authentication at the controller boundary.
+- Laravel 10/11/12 project with >5 controllers.
+- Team agreed layering convention (controller → service → eloquent).
+- API + JSON responses are dominant (not Inertia / Blade).
+- Code review enforces architectural rules (PRs blocked on violations).
 
 ## Skip If (ANY kills it)
 
-- Tiny apps (<10 routes) where Service + Resource is over-engineering — Eloquent inside controllers is acceptable.
-- Projects standardized on lorisleiva/laravel-actions or Spatie LaravelData + DDD — check team standard first.
-- Inertia / Livewire / Filament apps where the framework idiom (controller → component) is the boundary.
-- Console-only artisan apps — the controller/FormRequest/Resource trio doesn't apply.
+- Tiny app — layering overhead > benefit.
+- Project uses Spatie LaravelData / Actions instead of services.
+- Inertia.js / Livewire — different component model.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Code style guide | CONTRIBUTING.md | team lead |
+| Existing controllers | app/Http/Controllers/ | repo |
+| Domain models | Eloquent classes | domain |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[laravel-patterns]] | Per-slice CRUD scaffolding pattern. |
+| [[php-laravel]] | Framework basics. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: controller-thin, form-request-required, resource-required, service-owns-tx, policy-required | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for code + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `audit-layering` | haiku | Mechanical script run. |
+| `extract-service` | sonnet | Templated move of methods. |
+| `design-policy-rules` | opus | Authorization decisions are domain-heavy. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/controller.php` | Thin layered controller skeleton |
+| `templates/service.php` | Service with DB::transaction + business rules |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-php-laravel-patterns.py` | Validate the layering audit artefact against the schema | Pre-commit + CI |
+| `scripts/laravel-anti-pattern-lint.sh` | Lint fat controllers / inline validation / raw responses / tx in controller | Pre-commit + CI |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
+- [[laravel-patterns]]
+- [[php-laravel]]
+- [[php-eloquent]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.

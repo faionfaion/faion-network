@@ -3,74 +3,98 @@ slug: php-laravel-queues
 tier: pro
 group: dev
 domain: dev
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Laravel's queue system for offloading background work: job classes implementing ShouldQueue, named queues for priority, WithoutOverlapping middleware for deduplication, retry/backoff/timeout configuration, and Bus::batch for parallel dataset processing.
-content_id: "302900c45e681bd9"
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Laravel queue system for offloading background work: ShouldQueue job classes, named queues for priority, WithoutOverlapping for dedup, configured retry/backoff/timeout, and Bus::batch for parallel work.
+content_id: "7aaa8c431fad80f4"
+complexity: medium
+produces: code
+est_tokens: 5200
 tags: [laravel, queues, jobs, background-processing, async]
 ---
 # Laravel Queues
 
 ## Summary
 
-**One-sentence:** Laravel's queue system for offloading background work: job classes implementing ShouldQueue, named queues for priority, WithoutOverlapping middleware for deduplication, retry/backoff/timeout configuration, and Bus::batch for parallel dataset processing.
+**One-sentence:** Laravel queue system for offloading background work: ShouldQueue job classes, named queues for priority, WithoutOverlapping for dedup, configured retry/backoff/timeout, and Bus::batch for parallel work.
 
-**One-paragraph:** Laravel's queue system for offloading background work: job classes implementing ShouldQueue, named queues for priority, WithoutOverlapping middleware for deduplication, retry/backoff/timeout configuration, and Bus::batch for parallel dataset processing. Jobs must be idempotent (check isProcessed() early), pass primitive IDs only (not Eloquent models), and implement failed() to surface failures to operators.
+**One-paragraph:** Laravel's queue system runs background jobs on Redis / SQS / RabbitMQ workers via the ShouldQueue interface. Jobs must be idempotent (check isProcessed early), pass primitive IDs not Eloquent models, declare timeout/retries/backoff with jitter, implement failed() for visibility, and use middleware like WithoutOverlapping to prevent duplicate runs. Use Bus::batch for fan-out work; pin queue names for priority routing; run separate worker pools per queue.
+
+**Ефективно для:**
+
+- Email-sending, notification fan-out, image processing, webhook delivery.
+- Long-running tasks (>5s) які повинні бути поза HTTP request.
+- Bus::batch для дата-обробки (10k items → batched + monitored).
+- Pinning critical queues на окремі pools (priority-mail, default, low).
 
 ## Applies If (ALL must hold)
 
-- Any work taking >200ms from HTTP: email, PDF/CSV generation, third-party API calls, image processing.
-- Fan-out: one user action triggers many side-effects (notify N subscribers).
-- Batch jobs (Bus::batch) with then/catch/finally callbacks for large dataset processing.
-- Webhook processing where you must ack the sender quickly and process asynchronously.
-- Scheduled retries with exponential backoff for unreliable downstream services.
+- Laravel 10/11/12 project with Redis/SQS/RabbitMQ broker configured.
+- Background tasks identified that don't fit in HTTP response time.
+- Operators ready to run + monitor queue workers (supervisord / Horizon).
+- Idempotency story exists (or can be added) for each job.
 
 ## Skip If (ANY kills it)
 
-- Hard real-time requirements (<1s end-to-end) — queue overhead and worker polling add latency.
-- When the DB write IS the result the user is waiting for.
-- Single-host deployments without a daemonized worker (queue:work must run continuously).
-- Jobs that depend on request-scoped state (auth user, session) — pass primitive IDs only.
-- When there is no Horizon/supervisor plan and no failed_jobs monitoring.
+- Synchronous CLI scripts run via cron — no queue needed.
+- Sub-second background work — queue overhead > benefit; use @Async-style in process.
+- Strict in-order processing required — queues don't guarantee FIFO across workers.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Broker | Redis / SQS / RabbitMQ connection | ops |
+| Job inventory | list of (job, idempotency key, retry policy) | developer |
+| Horizon / supervisord config | worker config file | ops |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| [[php-laravel]] | Laravel framework basics (providers, config) assumed. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: primitive-ids-only, idempotent-handle, timeout-retries-backoff, failed-method, named-queue-per-priority | 1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for code + valid/invalid examples | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 900 |
+| `content/05-examples.xml` | essential | Worked example end-to-end | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `design-idempotency-key` | opus | Idempotency design needs domain understanding. |
+| `scaffold-job` | sonnet | Templated artisan generation. |
+| `lint-model-in-job-ctor` | haiku | Mechanical regex. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/job.php` | Queue job skeleton with tries+timeout+backoff+failed+idempotent handle |
+| `templates/batch-job.php` | Bus::batch fan-out for parallel processing of N records |
+| `templates/supervisor.ini` | Supervisor config for Horizon-managed queue workers per named queue |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-php-laravel-queues.py` | Validate the job artefact against the schema | Pre-commit + CI |
 
 ## Related
 
-- parent skill: `pro/dev/software-developer/`
+- [[php-laravel]]
+- [[php-laravel-patterns]]
+- [[php-eloquent]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
