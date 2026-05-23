@@ -1,4 +1,11 @@
 #!/usr/bin/env bash
+# purpose: Bash helper to create a User Story work item via REST API.
+# consumes: see content/02-output-contract.xml inputs for azure-devops-boards
+# produces: config
+# depends-on: content/01-core-rules.xml + content/02-output-contract.xml
+# token-budget-impact: ~200-1000 tokens when loaded as context
+
+
 # create-story.sh — create a User Story work item via Azure DevOps REST API.
 #
 # Required environment variables:

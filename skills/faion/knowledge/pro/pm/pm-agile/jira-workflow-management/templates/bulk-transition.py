@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+"""
+purpose: Reference script for safe bulk transitions via Jira REST API.
+consumes: see content/02-output-contract.xml inputs for jira-workflow-management
+produces: config
+depends-on: content/01-core-rules.xml + content/02-output-contract.xml
+token-budget-impact: ~200-1000 tokens when loaded as context
+"""
+
+
 """bulk_jql_transition.py — bulk-transition Jira issues matching a JQL query.
 
 Rate-limited to 5 req/s with Retry-After handling.

@@ -1,3 +1,9 @@
+<!-- purpose: Sprint planning template: goal, capacity, backlog, dependencies, risks. -->
+<!-- consumes: see content/02-output-contract.xml inputs for agile-hybrid-approaches -->
+<!-- produces: decision-record -->
+<!-- depends-on: content/01-core-rules.xml + content/02-output-contract.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
+
 # Sprint [N] Planning
 
 **Sprint Goal:** [One sentence describing the objective]

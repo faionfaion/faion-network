@@ -1,3 +1,9 @@
+<!-- purpose: Kanban board template with WIP limits and explicit policies. -->
+<!-- consumes: see content/02-output-contract.xml inputs for agile-hybrid-approaches -->
+<!-- produces: decision-record -->
+<!-- depends-on: content/01-core-rules.xml + content/02-output-contract.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
+
 # Kanban Board
 
 ## Backlog (no limit)

@@ -3,78 +3,103 @@ slug: handover-pack-template-outsource
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "90390947d1211c2a"
-summary: "Handover Pack Template Outsource — testable methodology for delivery, scheduling, RACI, throughput. Project-closure handover templates exist but they are PMI-flavored. Outsource specialist rotation handover is different: usually mid-project, not final close, and aimed at peer or in-house team."
-tags: [pm, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Mid-engagement handover pack spec for an outsource specialist rotating to a peer or in-house owner; covers context, decisions, contacts, open issues, runbooks, acceptance gate."
+content_id: "c5b243b088fe1949"
+complexity: medium
+produces: spec
+est_tokens: 4600
+tags: [pm, pro, outsource, handover, knowledge-transfer]
 ---
 # Handover Pack Template Outsource
 
 ## Summary
 
-**One-sentence:** Handover Pack Template Outsource — testable methodology for delivery, scheduling, RACI, throughput. Project-closure handover templates exist but they are PMI-flavored. Outsource specialist rotation handover is different: usually mid-project, not final close, and aimed at peer or in-house team.
+**One-sentence:** Mid-engagement handover pack spec for an outsource specialist rotating to a peer or in-house owner; covers context, decisions, contacts, open issues, runbooks, acceptance gate.
 
-**One-paragraph:** Handover Pack Template Outsource closes a known gap in pm practice: Project-closure handover templates exist but they are PMI-flavored. Outsource specialist rotation handover is different: usually mid-project, not final close, and aimed at peer or in-house team. The methodology is anchored to the recurring activity 'Pre-handover documentation pack (role: p4-outsource-specialist)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Handover Pack Template Outsource defines the testable methodology that turns the recurring work named in this skill into a repeatable, auditable artefact. The methodology is grounded in 6 core rules (see `content/01-core-rules.xml`), a JSON-Schema output contract, 4 catalogued failure modes, a 5-step procedure, and a decision tree whose leaves all reference a rule id.
+
+**Ефективно для:**
+
+- Outsource specialist rotating off mid-engagement (not at final close).
+- Receiving engineer is a peer or in-house team without prior context.
+- Engagement runs >3 months and has accumulated decisions worth carrying forward.
+- A named acceptance reviewer can sign off on the pack before rotation closes.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Pre-handover documentation pack (role: p4-outsource-specialist)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Engagement is active and rotation date is within 14 days.
+- Specialist has authority to publish documentation in the engagement's primary doc location.
+- Receiving owner is identified (no orphan handovers).
+- Source-of-truth for decisions (PR history, ADRs, transcripts) is accessible.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Final project close-out — use PMI project-closure templates instead.
+- Specialist has been on the engagement <2 weeks (no accumulated tacit knowledge worth handing).
+- Receiving owner is not identified — defer until owner is named.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source-of-truth data | tool export / sheet / API | upstream system named in this methodology |
+| Prior cycle's artefact (if any) | json / md | repo / wiki where artefacts persist |
+| Named consumer | person / agent | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft 2020-12) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | 800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example with trace | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `handover_pack_template_outsource_template_fill` | haiku | Template fill, no judgement |
-| `handover_pack_template_outsource_evidence_check` | sonnet | Bounded comparison + judgement |
-| `handover_pack_template_outsource_synthesis` | opus | Cross-input synthesis + final write-up |
+| `handover-pack-template-outsource_template_fill` | haiku | Bounded template fill, no judgement. |
+| `handover-pack-template-outsource_evidence_check` | sonnet | Bounded comparison + judgement on anchored evidence. |
+| `handover-pack-template-outsource_synthesis` | opus | Cross-input synthesis + final write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-schema.json` | JSON Schema (draft 2020-12) for the handover pack artefact. |
+| `templates/handover-pack.md` | Markdown skeleton for the pack: cover + decisions + open issues + runbooks + contacts + acceptance gate. |
+| `templates/acceptance-request.md` | Email/message template requesting the receiver's written acknowledgement. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-handover-pack-template-outsource.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/pm/` (see neighbouring methodologies)
-- triggering activity: `Pre-handover documentation pack (role: p4-outsource-specialist)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- parent skill: `pro/pm/` (see neighbouring methodologies).
+- [[launch-raci-template]]
+- [[reporting-basics]]
+- external: industry references cited inline in `content/01-core-rules.xml`.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input
+preconditions, source-of-truth access, named-consumer presence) onto a concrete
+verdict — apply the methodology, downgrade to draft, or skip — with each leaf
+referencing a rule id from `content/01-core-rules.xml`.

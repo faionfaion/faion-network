@@ -3,78 +3,103 @@ slug: launch-raci-template
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "3b11e5cdf6fcba1f"
-summary: "Launch Raci Template — testable methodology for delivery, scheduling, RACI, throughput. stakeholder-management covers communication, not the launch-specific RACI with eng / design / marketing / sales / support owners per workstream."
-tags: [pm, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Launch-specific RACI assigning eng / design / marketing / sales / support owners across the workstreams of a single product launch, covering pre / day / post phases."
+content_id: "80b4c6bfc2f0369f"
+complexity: medium
+produces: spec
+est_tokens: 4500
+tags: [pm, pro, launch, raci, cross-functional]
 ---
-# Launch Raci Template
+# Launch RACI Template
 
 ## Summary
 
-**One-sentence:** Launch Raci Template — testable methodology for delivery, scheduling, RACI, throughput. stakeholder-management covers communication, not the launch-specific RACI with eng / design / marketing / sales / support owners per workstream.
+**One-sentence:** Launch-specific RACI assigning eng / design / marketing / sales / support owners across the workstreams of a single product launch, covering pre / day / post phases.
 
-**One-paragraph:** Launch Raci Template closes a known gap in pm practice: stakeholder-management covers communication, not the launch-specific RACI with eng / design / marketing / sales / support owners per workstream. The methodology is anchored to the recurring activity 'Major launch GTM coordination (role: role-product-manager)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Launch RACI Template defines the testable methodology that turns the recurring work named in this skill into a repeatable, auditable artefact. The methodology is grounded in 6 core rules (see `content/01-core-rules.xml`), a JSON-Schema output contract, 4 catalogued failure modes, a 5-step procedure, and a decision tree whose leaves all reference a rule id.
+
+**Ефективно для:**
+
+- Cross-functional product launch with >=3 disciplines involved.
+- Need a single artefact stakeholders can point to for 'who owns this on launch day'.
+- Ambiguous accountability has bitten the team on a prior launch.
+- Launch date is set and at least one rehearsal is scheduled.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Major launch GTM coordination (role: role-product-manager)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- Launch involves >=3 disciplines (eng, design, marketing, sales, support, ops, legal — pick any).
+- A launch lead is named and has authority to publish the RACI.
+- Workstreams can be enumerated (e.g. comms, in-product, support readiness, ops runbook).
+- Single Accountable per row is enforceable (the lead can resolve disputes).
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- Launch is single-discipline (e.g. backend-only refactor) — overhead exceeds value.
+- No launch lead is named — RACI without an A column is meaningless.
+- Internal experiment (not a customer-facing launch) — use lighter scaffolding.
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source-of-truth data | tool export / sheet / API | upstream system named in this methodology |
+| Prior cycle's artefact (if any) | json / md | repo / wiki where artefacts persist |
+| Named consumer | person / agent | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft 2020-12) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | 800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example with trace | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `launch_raci_template_template_fill` | haiku | Template fill, no judgement |
-| `launch_raci_template_evidence_check` | sonnet | Bounded comparison + judgement |
-| `launch_raci_template_synthesis` | opus | Cross-input synthesis + final write-up |
+| `launch-raci-template_template_fill` | haiku | Bounded template fill, no judgement. |
+| `launch-raci-template_evidence_check` | sonnet | Bounded comparison + judgement on anchored evidence. |
+| `launch-raci-template_synthesis` | opus | Cross-input synthesis + final write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-schema.json` | JSON Schema (draft 2020-12) for the launch RACI artefact. |
+| `templates/raci-grid.md` | Markdown skeleton for the workstream-by-RACI grid with pre/day/post phases. |
+| `templates/rehearsal-walkthrough.md` | Rehearsal script that walks each row T-14 -> T+14. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-launch-raci-template.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/pm/` (see neighbouring methodologies)
-- triggering activity: `Major launch GTM coordination (role: role-product-manager)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- parent skill: `pro/pm/` (see neighbouring methodologies).
+- [[launch-raci-template]]
+- [[reporting-basics]]
+- external: industry references cited inline in `content/01-core-rules.xml`.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input
+preconditions, source-of-truth access, named-consumer presence) onto a concrete
+verdict — apply the methodology, downgrade to draft, or skip — with each leaf
+referencing a rule id from `content/01-core-rules.xml`.

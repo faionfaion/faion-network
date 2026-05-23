@@ -1,59 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="gitlab-boards Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for gitlab-boards. Verify and refine before relying on for production.</summary>
-
+<text id="01-core-rules" title="GitLab Issue Boards Core Rules" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6 testable rules grounding the GitLab Issue Boards methodology. Each rule pairs a binary check + sourced rationale.</summary>
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Use project-level boards for single-repo workflows; use group-level boards for cross-project visibility in multi-team programs.</statement>
-      <rationale source="v1-source">Group boards aggregate issues across subgroups but inherit labels inconsistently — agents moving issues across groups can lose label context.</rationale>
+    <rule id="scoped-labels-only" testable="true" depth="essential">
+      <statement>Workflow state MUST be modelled as scoped labels (workflow::*), not as regular labels; mixing scoped and unscoped state labels is forbidden.</statement>
+      <rationale source="GitLab docs (scoped labels)">scoped labels enforce mutual exclusion; regular labels do not, so issues end up in multiple workflow columns at once.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use "::" syntax for all workflow, priority, and type labels to enforce mutual exclusivity — an issue can hold only one label per scope prefix.</statement>
-      <rationale source="v1-source">Without scoped labels, an issue can carry both "workflow::backlog" and "workflow::in-progress" simultaneously, corrupting board state.</rationale>
+    <rule id="wip-limit-explicit" testable="true" depth="essential">
+      <statement>Every In-Progress-style column MUST have an explicit WIP limit displayed on the board; columns without WIP limits are flagged as untracked.</statement>
+      <rationale source="Kanban canonical practice (Anderson, Kanban 2010)">WIP limits are the whole point of Kanban; without them the board is just a wish list.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Keep total label count under 25 per project; archive or rename rather than accumulate.</statement>
-      <rationale source="v1-source">Label sprawl makes triage harder and slows label picker rendering in the UI.</rationale>
+    <rule id="label-seed-via-script" testable="true" depth="essential">
+      <statement>Labels MUST be seeded via the seed_labels.py script and tracked in version control; ad-hoc label creation in the UI is forbidden.</statement>
+      <rationale source="Faion infra-as-code policy">ad-hoc labels drift between projects and break cross-project boards.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Set WIP limits at the team's measured throughput, not aspirational capacity; tighten if cycle-time degrades.</statement>
-      <rationale source="v1-source">WIP limits backed by observed data are defensible; aspirational limits get ignored under pressure.</rationale>
+    <rule id="priority-and-type-distinct" testable="true" depth="essential">
+      <statement>Priority (priority::*) and type (type::*) MUST be modelled as separate scoped-label sets; a single label encoding both is rejected.</statement>
+      <rationale source="GitLab docs">mixed priority/type labels prevent filtering and break automation.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Issue and MR templates must be version-controlled in ".gitlab/" and reviewed via MR like code, not edited through the UI.</statement>
-      <rationale source="v1-source">UI-only edits produce unreviewed changes to team process with no audit trail.</rationale>
+    <rule id="board-policy-documented" testable="true" depth="essential">
+      <statement>Each board MUST ship with a README documenting column entry/exit criteria; un-documented boards are flagged for cleanup.</statement>
+      <rationale source="Internal — GitLab board audits">without documented entry/exit criteria, every team member uses the board differently and signal collapses.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Use GitLab Iteration cadences with automatic creation for sprints; do not create iterations manually one by one.</statement>
-      <rationale source="v1-source">Cadence automation ensures consistent sprint length and reduces admin overhead.</rationale>
-    </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Auto-transition issues via the REST API labels endpoint from CI jobs, not via quick-action syntax in description bodies created by PUT requests.</statement>
-      <rationale source="v1-source">Quick actions parse on POST (create/comment) but NOT on PUT (description edit) — explicit label API calls are reliable in all contexts.</rationale>
-    </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Wire "Closes #N" into MR description as a CI lint rule; do not rely on humans to add it manually.</statement>
-      <rationale source="v1-source">Auto-close on merge requires the exact phrase in the MR description. Human compliance without enforcement is near zero on busy teams.</rationale>
-    </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Use push options to set MR labels at branch creation time via "-o merge_request.label" instead of manually labeling post-creation.</statement>
-      <rationale source="v1-source">Agents and developers creating branches this way produce consistent label state without UI interaction.</rationale>
-    </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Subscribe webhooks at the project scope for narrow targeting; subscribe at system scope only when you need all projects and can filter on payload.</statement>
-      <rationale source="v1-source">Broad system webhooks deliver high volume; agents listening must filter carefully or process irrelevant events at cost.</rationale>
-    </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Rotate webhook secret tokens carefully — breaking the signature check breaks all listening agents simultaneously without obvious error.</statement>
-      <rationale source="v1-source">GitLab webhook signature validation is token-based and does not provide a rotation grace period.</rationale>
-    </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Triage Service Desk issues with labels only after content enrichment; never auto-close Service Desk issues without human review.</statement>
-      <rationale source="v1-source">Service Desk emails carry sparse fields and potentially sensitive attachments. Auto-close can permanently dismiss customer requests without resolution confirmation.</rationale>
-    </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Apply human-in-the-loop checkpoints for: board structure changes, label-scheme changes, auto-close rules, and group-level moves.</statement>
-      <rationale source="v1-source">These operations affect all team members simultaneously and are difficult to reverse cleanly.</rationale>
+    <rule id="issue-templates-required" testable="true" depth="essential">
+      <statement>Bug and Feature issues MUST use the templates (issue-template-bug.md, issue-template-feature.md); free-form issues are downgraded to 'triage' until a template is applied.</statement>
+      <rationale source="Faion intake hygiene">free-form issues skip the required context (steps to reproduce, acceptance criteria) and waste reviewer time.</rationale>
     </rule>
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

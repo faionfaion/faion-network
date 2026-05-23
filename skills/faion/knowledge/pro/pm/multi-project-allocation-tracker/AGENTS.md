@@ -3,77 +3,103 @@ slug: multi-project-allocation-tracker
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Multi Project Allocation Tracker: codified pm practice that turns the recurring 'role-project-manager/Run a 30-minute resource allocation review' decision into a repeatable, auditable artefact.
-content_id: "cbbfc8e86e6783cc"
-tags: [multi-project-allocation-tracker, pm, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "30-minute resource allocation review artefact: per-person allocation across active projects, over/under-allocation flags, rebalancing proposals with named decision owners."
+content_id: "811d998c1793b625"
+complexity: medium
+produces: spec
+est_tokens: 4400
+tags: [pm, pro, allocation, capacity, tracker]
 ---
 # Multi Project Allocation Tracker
 
 ## Summary
 
-**One-sentence:** Multi Project Allocation Tracker: codified pm practice that turns the recurring 'role-project-manager/Run a 30-minute resource allocation review' decision into a repeatable, auditable artefact.
+**One-sentence:** 30-minute resource allocation review artefact: per-person allocation across active projects, over/under-allocation flags, rebalancing proposals with named decision owners.
 
-**One-paragraph:** Multi Project Allocation Tracker addresses the gap identified by the role-project-manager/Run a 30-minute resource allocation review playbook: resource-management methodology assumes single-project view; P4 PMs juggle 3–6 engagements per person — no multi-project allocation primitive. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Multi Project Allocation Tracker defines the testable methodology that turns the recurring work named in this skill into a repeatable, auditable artefact. The methodology is grounded in 5 core rules (see `content/01-core-rules.xml`), a JSON-Schema output contract, 4 catalogued failure modes, a 5-step procedure, and a decision tree whose leaves all reference a rule id.
+
+**Ефективно для:**
+
+- PM running 3-10 concurrent projects with shared people.
+- Recurring allocation conflicts ('Olena is on 4 projects this week').
+- Weekly or biweekly review cadence is in place.
+- Allocation source-of-truth (sheet, Float, Resource Guru) is accessible.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of role-project-manager/Run a 30-minute resource allocation review OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- >=3 active projects sharing >=1 person.
+- PM has authority to negotiate rebalancing.
+- A baseline of per-person weekly capacity (hours/days) exists.
+- Prior cycle's allocation snapshot is accessible.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Single project — no cross-project allocation to track.
+- Fixed allocations with no expected change (e.g. dedicated teams) — review overhead does not pay back.
+- Cannot access allocation source-of-truth.
 
 ## Prerequisites
 
-- recent context for the role-project-manager/Run a 30-minute resource allocation review task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source-of-truth data | tool export / sheet / API | upstream system named in this methodology |
+| Prior cycle's artefact (if any) | json / md | repo / wiki where artefacts persist |
+| Named consumer | person / agent | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/project-manager` | parent role skill — provides the operating context for this methodology |
+| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft 2020-12) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | 800 |
+| `content/05-examples.xml` | essential | One end-to-end worked example with trace | 600 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `multi-project-allocation-tracker_template_fill` | haiku | Bounded template fill, no judgement. |
+| `multi-project-allocation-tracker_evidence_check` | sonnet | Bounded comparison + judgement on anchored evidence. |
+| `multi-project-allocation-tracker_synthesis` | opus | Cross-input synthesis + final write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/multi-project-allocation-tracker.json` | JSON schema for the Multi Project Allocation Tracker output contract |
-| `templates/multi-project-allocation-tracker.md` | Markdown skeleton with the required fields |
+| `templates/output-schema.json` | JSON Schema (draft 2020-12) for the allocation snapshot artefact. |
+| `templates/allocation-row.md` | Per-person allocation row skeleton. |
+| `templates/rebalance-proposal.md` | Rebalance proposal skeleton. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-multi-project-allocation-tracker.py` | Enforce Multi Project Allocation Tracker output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-multi-project-allocation-tracker.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
-- upstream playbook: `role-project-manager/Run a 30-minute resource allocation review`
+- parent skill: `pro/pm/` (see neighbouring methodologies).
+- [[launch-raci-template]]
+- [[reporting-basics]]
+- external: industry references cited inline in `content/01-core-rules.xml`.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input
+preconditions, source-of-truth access, named-consumer presence) onto a concrete
+verdict — apply the methodology, downgrade to draft, or skip — with each leaf
+referencing a rule id from `content/01-core-rules.xml`.

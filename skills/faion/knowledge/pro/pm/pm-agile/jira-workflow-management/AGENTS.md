@@ -3,74 +3,102 @@ slug: jira-workflow-management
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Jira workflow management covers project setup, issue-type scheme design, workflow state machines, automation rules, and JQL queries for Scrum and Kanban teams.
-content_id: "bccd99f4c2a7b0d7"
-tags: [jira, workflow, automation, issue-tracking, jql]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Jira project setup config: issue-type scheme, workflow state machine, transition rules, automation policies, JQL conventions for Scrum and Kanban teams."
+content_id: "aafe6ea5b22c1a8a"
+complexity: medium
+produces: config
+est_tokens: 4500
+tags: [jira, workflow, issue-types, automation, jql]
 ---
 # Jira Workflow Management
 
 ## Summary
 
-**One-sentence:** Jira workflow management covers project setup, issue-type scheme design, workflow state machines, automation rules, and JQL queries for Scrum and Kanban teams.
+**One-sentence:** Jira project setup config: issue-type scheme, workflow state machine, transition rules, automation policies, JQL conventions for Scrum and Kanban teams.
 
-**One-paragraph:** Jira workflow management covers project setup, issue-type scheme design, workflow state machines, automation rules, and JQL queries for Scrum and Kanban teams. Keep workflows to 5-7 statuses maximum and maintain one shared workflow per issue type across all projects to prevent scheme sprawl that breaks cross-project queries and slows performance.
+**One-paragraph:** Jira Workflow Management defines the testable methodology that turns the recurring work named in this skill into a repeatable, auditable artefact. The methodology is grounded in 6 core rules (see `content/01-core-rules.xml`), a JSON-Schema output contract, 4 catalogued failure modes, a 5-step procedure, and a decision tree whose leaves all reference a rule id.
+
+**Ефективно для:**
+
+- Atlassian-stack shops using Jira Cloud or Server as the primary tracker.
+- Multi-team programs where workflow consistency matters across boards.
+- Teams whose automation needs go beyond default Jira behaviour (cross-issue links, SLA timers).
+- Engineers building dashboards on JQL queries that must remain stable.
 
 ## Applies If (ALL must hold)
 
-- Bootstrapping a new Jira project for Scrum, Kanban, or Jira Service Management teams.
-- Standardizing 3+ inconsistent project workflows after acquisition or reorg.
-- Replacing manual triage and assignment with automation rules.
-- Wiring Jira into CI/CD pipelines (auto-transition on deploy, link branches/PRs to issues).
-- Migrating from Jira Server/Data Center to Cloud (workflow and scheme rebuild).
+- Jira admin role available for workflow + scheme changes.
+- Team has agreed on a single workflow per issue-type (Story, Bug, Task, Epic).
+- Naming convention for projects + components has been decided up-front.
+- Automation rules budget (Jira Cloud free tier limits) is acceptable.
 
 ## Skip If (ANY kills it)
 
-- Team smaller than 5 with Trello-grade needs — Jira's configuration tax inverts ROI.
-- Throwaway 2-week prototype — workflow overhead exceeds value.
-- Goal is "make Jira look like Linear" — replace Jira rather than fight it.
-- Pure documentation projects — use Confluence, not Jira.
-- Compliance forbids Atlassian Cloud and budget does not cover Data Center.
+- Team is migrating to Linear / GitHub Projects — defer Jira config to the migration ADR.
+- Single-team, <10 issues/week — default Jira workflows are good enough.
+- Workflow change would require migrating thousands of existing issues — defer to a migration plan.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source-of-truth data | tool export / sheet / API | upstream system named in this methodology |
+| Prior cycle's artefact (if any) | json / md | repo / wiki where artefacts persist |
+| Named consumer | person / agent | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft 2020-12) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `jira-workflow-management_template_fill` | haiku | Bounded template fill, no judgement. |
+| `jira-workflow-management_evidence_check` | sonnet | Bounded comparison + judgement on anchored evidence. |
+| `jira-workflow-management_synthesis` | opus | Cross-input synthesis + final write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-schema.json` | JSON Schema (draft 2020-12) for the Jira workflow configuration artefact. |
+| `templates/workflow-states.yaml` | Canonical Scrum + Kanban workflow states + transitions in YAML. |
+| `templates/bulk-transition.py` | Reference script for safe bulk transitions via Jira REST API. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-jira-workflow-management.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/pm/pm-agile/`
+- parent skill: `pro/pm/` (see neighbouring methodologies).
+- [[launch-raci-template]]
+- [[reporting-basics]]
+- external: industry references cited inline in `content/01-core-rules.xml`.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input
+preconditions, source-of-truth access, named-consumer presence) onto a concrete
+verdict — apply the methodology, downgrade to draft, or skip — with each leaf
+referencing a rule id from `content/01-core-rules.xml`.

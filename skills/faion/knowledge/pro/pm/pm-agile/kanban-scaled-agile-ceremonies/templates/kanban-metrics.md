@@ -1,3 +1,9 @@
+<!-- purpose: Markdown skeleton for lead-time / cycle-time / throughput / WIP report. -->
+<!-- consumes: see content/02-output-contract.xml inputs for kanban-scaled-agile-ceremonies -->
+<!-- produces: playbook-step -->
+<!-- depends-on: content/01-core-rules.xml + content/02-output-contract.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
+
 # Kanban Metrics — Week [N] / [Date Range]
 
 ## Flow Metrics

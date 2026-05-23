@@ -3,78 +3,99 @@ slug: freelancer-proposal-template-fixed-vs-tm
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "4df988846357bf87"
-summary: "Freelancer Proposal Template Fixed Vs Tm — testable methodology for delivery, scheduling, RACI, throughput. Comparison template + decision tree for fixed-scope vs. T&M cap vs. retainer pricing. Bigger PM methodologies cover scope/cost but not the solo's pricing-model choice."
-tags: [pm, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Side-by-side proposal artefact for a single engagement: fixed-scope vs T&M-cap vs retainer table, tradeoffs, recommended structure, the buyer's decision in one column.
+content_id: "7c1d15e721e874cd"
+complexity: medium
+produces: spec
+est_tokens: 5200
+tags: [pm, pro, freelance, proposal, pricing, fixed-price, tnm]
 ---
-# Freelancer Proposal Template Fixed Vs Tm
+# Freelancer Proposal Template Fixed-vs-T&M
 
 ## Summary
 
-**One-sentence:** Freelancer Proposal Template Fixed Vs Tm — testable methodology for delivery, scheduling, RACI, throughput. Comparison template + decision tree for fixed-scope vs. T&M cap vs. retainer pricing. Bigger PM methodologies cover scope/cost but not the solo's pricing-model choice.
+**One-sentence:** Side-by-side proposal artefact for a single engagement: fixed-scope vs T&M-cap vs retainer table, tradeoffs, recommended structure, the buyer's decision in one column.
 
-**One-paragraph:** Freelancer Proposal Template Fixed Vs Tm closes a known gap in pm practice: Comparison template + decision tree for fixed-scope vs. T&M cap vs. retainer pricing. Bigger PM methodologies cover scope/cost but not the solo's pricing-model choice. The methodology is anchored to the recurring activity 'Proposal draft from discovery notes (role: p3-technical-freelancer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Freelancer Proposal Template Fixed-vs-T&M delivers a defensible spec artefact for the pro PM cohort. It binds typed inputs to a strict output contract, enumerates known failure modes, and routes between optimistic and conservative variants via a decision tree. Downstream consumers (human reviewer or agent) accept the artefact without re-deriving the rationale because every claim cites an input by name.
+
+**Ефективно для:**
+
+- Solo фрілансер з inbound lead і вибором між firm-bid, capped T&M, retainer.
+- Boutique consultant, що тестує retainer pivot на існуючому клієнті.
+- Bootstrapper в pre-sales call: 3-option proposal as anchor для discovery + commitment.
+- Founder-PM, що калібрує win-rate проти конкурентів з різними pricing structures.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Proposal draft from discovery notes (role: p3-technical-freelancer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- an inbound lead has accepted a proposal request and pricing structure is open for discussion
+- the operator can credibly support all three structures (fixed, T&M-cap, retainer)
+- the buyer is sophisticated enough to choose between pricing models with tradeoffs surfaced
+- tier == pro or higher (gating enforced by tier-manifest)
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- buyer mandates one pricing model in the RFP — do not waste capacity proposing alternatives
+- engagement value is below the proposal-overhead threshold (e.g. < €5k) — short SOW suffices
+- the operator cannot honestly support one of the three structures — drop it from the template
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| recent context for the triggering activity | log/doc/ticket | last 30 days |
+| write-access to the artefact store | repo / wiki / decision log | team policy |
+| named accountable owner downstream | handle / email / role | RACI / org chart |
+| baseline conventions | CLAUDE.md / AGENTS.md / CONVENTIONS.md | repo root |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/pm/project-manager` | parent role skill — operating context for this methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | testable rules with statement + rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the spec + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | essential | step-by-step procedure with decision-gates | ~900 |
+| `content/05-examples.xml` | essential | worked example end-to-end | ~700 |
+| `content/06-decision-tree.xml` | essential | root question → branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `freelancer_proposal_template_fixed_vs_tm_template_fill` | haiku | Template fill, no judgement |
-| `freelancer_proposal_template_fixed_vs_tm_evidence_check` | sonnet | Bounded comparison + judgement |
-| `freelancer_proposal_template_fixed_vs_tm_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-inputs` | haiku | template fill from typed inputs |
+| `synthesize-freelancer_proposal_template_fixed_vs_tm` | sonnet | per-instance judgment with bounded inputs |
+| `review-for-stakes` | opus | cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/freelancer-proposal-template-fixed-vs-tm.md` | spec skeleton with required fields + 5-line header |
+| `templates/freelancer-proposal-template-fixed-vs-tm.schema.json` | JSON Schema for the output contract |
+| `templates/_smoke-test.md` | minimum viable filled-in example |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-freelancer-proposal-template-fixed-vs-tm.py` | enforce output-contract against template instance | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/pm/` (see neighbouring methodologies)
-- triggering activity: `Proposal draft from discovery notes (role: p3-technical-freelancer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[project-manager]]
+- [[pm-traditional]]
+- [[fixed-price-vs-tnm-decision-framework]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, stakes, recurrence) onto a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply or whether to skip the methodology entirely.

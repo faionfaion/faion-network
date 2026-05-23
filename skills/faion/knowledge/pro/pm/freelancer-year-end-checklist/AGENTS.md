@@ -3,78 +3,98 @@ slug: freelancer-year-end-checklist
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "f3d41e93754fbcca"
-summary: "Freelancer Year End Checklist — testable methodology for delivery, scheduling, RACI, throughput. Single-page year-end SOP combining books, taxes, legal, insurance, and planning — none of the existing ops-* methodologies stitch these together for a solo operator."
-tags: [pm, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: Annual end-of-year SOP: books reconciled, taxes prepped, legal (renewals, insurance, MSA review), portfolio scorecard, next-year revenue model — single-page run-list.
+content_id: "5bdcb724d4a89b4f"
+complexity: medium
+produces: checklist
+est_tokens: 5200
+tags: [pm, pro, freelance, year-end, checklist, annual]
 ---
-# Freelancer Year End Checklist
+# Freelancer Year-End Checklist
 
 ## Summary
 
-**One-sentence:** Freelancer Year End Checklist — testable methodology for delivery, scheduling, RACI, throughput. Single-page year-end SOP combining books, taxes, legal, insurance, and planning — none of the existing ops-* methodologies stitch these together for a solo operator.
+**One-sentence:** Annual end-of-year SOP: books reconciled, taxes prepped, legal (renewals, insurance, MSA review), portfolio scorecard, next-year revenue model — single-page run-list.
 
-**One-paragraph:** Freelancer Year End Checklist closes a known gap in pm practice: Single-page year-end SOP combining books, taxes, legal, insurance, and planning — none of the existing ops-* methodologies stitch these together for a solo operator. The methodology is anchored to the recurring activity 'Year-end tax, legal, and cash-flow close (role: p3-technical-freelancer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Freelancer Year-End Checklist delivers a defensible checklist artefact for the pro PM cohort. It binds typed inputs to a strict output contract, enumerates known failure modes, and routes between optimistic and conservative variants via a decision tree. Downstream consumers (human reviewer or agent) accept the artefact without re-deriving the rationale because every claim cites an input by name.
+
+**Ефективно для:**
+
+- Solo P3 фрілансер з простою бухгалтерією і потребою в annual checkpoint.
+- Boutique consultant з кількома jurisdictions і нагадуваннями про renewals.
+- Bootstrapper, що готує річну ревю до tax-preparer-а без surprises.
+- Founder-CEO мікро-агенції, що замикає рік без bookkeeper-а але хоче audit-trail.
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Year-end tax, legal, and cash-flow close (role: p3-technical-freelancer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- the operator runs a freelance practice with year-end obligations (books, taxes, renewals)
+- the practice has been active long enough to need formal reconciliation (≥ 6 months)
+- the operator commits to running the checklist within 30 days of fiscal year-end
+- tier == pro or higher (gating enforced by tier-manifest)
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- operator hires an external bookkeeper / lawyer that produces the equivalent run-list — do not duplicate
+- the practice is mid-pivot and most line items are moot (closing entity, switching country) — defer until structure stable
+- operator already runs a competing SOP that covers all line items — use the existing one
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| recent context for the triggering activity | log/doc/ticket | last 30 days |
+| write-access to the artefact store | repo / wiki / decision log | team policy |
+| named accountable owner downstream | handle / email / role | RACI / org chart |
+| baseline conventions | CLAUDE.md / AGENTS.md / CONVENTIONS.md | repo root |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/pm/project-manager` | parent role skill — operating context for this methodology |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | testable rules with statement + rationale + source | ~1100 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the checklist + valid/invalid examples | ~900 |
+| `content/03-failure-modes.xml` | essential | ≥3 antipatterns: symptom + root-cause + fix | ~900 |
+| `content/04-procedure.xml` | essential | step-by-step procedure with decision-gates | ~900 |
+| `content/06-decision-tree.xml` | essential | root question → branches → conclusion(ref=rule-id) | ~600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `freelancer_year_end_checklist_template_fill` | haiku | Template fill, no judgement |
-| `freelancer_year_end_checklist_evidence_check` | sonnet | Bounded comparison + judgement |
-| `freelancer_year_end_checklist_synthesis` | opus | Cross-input synthesis + final write-up |
+| `draft-inputs` | haiku | template fill from typed inputs |
+| `synthesize-freelancer_year_end_checklist` | sonnet | per-instance judgment with bounded inputs |
+| `review-for-stakes` | opus | cross-input synthesis when stakes are high |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/freelancer-year-end-checklist.md` | checklist skeleton with required fields + 5-line header |
+| `templates/freelancer-year-end-checklist.schema.json` | JSON Schema for the output contract |
+| `templates/_smoke-test.md` | minimum viable filled-in example |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-freelancer-year-end-checklist.py` | enforce output-contract against template instance | after subagent returns, before downstream consumer reads |
 
 ## Related
 
-- parent skill: `pro/pm/` (see neighbouring methodologies)
-- triggering activity: `Year-end tax, legal, and cash-flow close (role: p3-technical-freelancer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- [[project-manager]]
+- [[pm-traditional]]
+- [[freelance-capacity-model]]
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, stakes, recurrence) onto a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply or whether to skip the methodology entirely.

@@ -1,3 +1,9 @@
+<!-- purpose: Bug report issue template (steps, expected, actual, environment). -->
+<!-- consumes: see content/02-output-contract.xml inputs for gitlab-boards -->
+<!-- produces: config -->
+<!-- depends-on: content/01-core-rules.xml + content/02-output-contract.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
+
 ## Bug Description
 
 <!-- Brief description of the bug -->

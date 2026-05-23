@@ -1,3 +1,9 @@
+<!-- purpose: Markdown template for a Scrum user story (As a / I want / So that, AC). -->
+<!-- consumes: see content/02-output-contract.xml inputs for azure-devops-boards -->
+<!-- produces: config -->
+<!-- depends-on: content/01-core-rules.xml + content/02-output-contract.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
+
 # User Story: [Title]
 
 **As a** [persona/role],  

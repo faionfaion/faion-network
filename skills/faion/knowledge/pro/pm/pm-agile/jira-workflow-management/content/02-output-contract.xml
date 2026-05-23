@@ -1,22 +1,200 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="jira-workflow-management Output Contract" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Output schema for the subagent applying this methodology. Stub created by migration; fill before relying on it.</summary>
+<text id="02-output-contract" title="Jira Workflow Management Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft 2020-12) for the Jira Workflow Management artefact. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="TBD" format="TBD"/>
-    </required>
-    <forbidden>
-      <pattern id="f1">TBD — encode patterns v1 marks as anti-examples</pattern>
-    </forbidden>
-    <allowed-transformations>
-      <transformation>TBD — bounded normalizations allowed before return</transformation>
-    </allowed-transformations>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>TBD — first checkable invariant</item>
-    </list>
+  <section title="Schema">
+    <schema kind="json-schema">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/jira-workflow-management.json",
+  "type": "object",
+  "required": [
+    "project_id",
+    "issue_types",
+    "workflow",
+    "automation_rules",
+    "shared_filters"
+  ],
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "issue_types": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "workflow_id"
+        ]
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "required": [
+        "statuses",
+        "transitions"
+      ],
+      "properties": {
+        "statuses": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "name",
+              "category"
+            ],
+            "properties": {
+              "category": {
+                "enum": [
+                  "to-do",
+                  "in-progress",
+                  "done"
+                ]
+              }
+            }
+          }
+        },
+        "transitions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "from",
+              "to",
+              "name"
+            ]
+          }
+        }
+      }
+    },
+    "automation_rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "namespace",
+          "version",
+          "trigger",
+          "action"
+        ]
+      }
+    },
+    "shared_filters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "jql",
+          "owner"
+        ]
+      }
+    }
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "project_id": "ACME",
+  "issue_types": [
+    {
+      "name": "Story",
+      "workflow_id": "wf-scrum-v3"
+    },
+    {
+      "name": "Bug",
+      "workflow_id": "wf-bug-v2"
+    }
+  ],
+  "workflow": {
+    "statuses": [
+      {
+        "name": "Backlog",
+        "category": "to-do"
+      },
+      {
+        "name": "In Progress",
+        "category": "in-progress"
+      },
+      {
+        "name": "In Review",
+        "category": "in-progress"
+      },
+      {
+        "name": "Done",
+        "category": "done"
+      }
+    ],
+    "transitions": [
+      {
+        "from": "Backlog",
+        "to": "In Progress",
+        "name": "Start"
+      },
+      {
+        "from": "In Progress",
+        "to": "In Review",
+        "name": "Submit for review"
+      },
+      {
+        "from": "In Review",
+        "to": "Done",
+        "name": "Approve"
+      }
+    ]
+  },
+  "automation_rules": [
+    {
+      "namespace": "ACME/board/auto-assign",
+      "version": "v3",
+      "trigger": "issue-created",
+      "action": "assign to component lead"
+    }
+  ],
+  "shared_filters": [
+    {
+      "id": "10001",
+      "jql": "project = ACME AND status != Done",
+      "owner": "team-acme"
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "project_id": "ACME",
+  "issue_types": [
+    {
+      "name": "Story"
+    }
+  ],
+  "workflow": {
+    "statuses": [
+      {
+        "name": "Doing"
+      }
+    ]
+  }
+}
+]]></code>
+    <note>issue_type missing workflow_id; status missing category; no transitions; no automation_rules; no shared_filters.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern id="f1"><description>Status set to an approved/sent state by the producing agent without a human reviewer entry.</description></antipattern>
+    <antipattern id="f2"><description>Required field empty or replaced with a placeholder (n/a, unknown) without an anchored reason.</description></antipattern>
+    <antipattern id="f3"><description>Prose paragraph stuffed into a field the schema declares as array or object.</description></antipattern>
+  </section>
+
+  <reference path="scripts/validate-jira-workflow-management.py">Validator script.</reference>
 </text>

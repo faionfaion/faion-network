@@ -3,73 +3,102 @@ slug: hybrid-delivery
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A delivery model that combines predictive (waterfall/stage-gate) and agile methods within a single program, assigning each by component risk profile.
-content_id: "9023d6bf3361c079"
-tags: [hybrid, delivery-model, waterfall, agile, enterprise-delivery]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "ADR for a hybrid delivery model that assigns predictive (stage-gate) or agile method per component by risk profile, with explicit translation boundaries."
+content_id: "a4993ef8d841bdc0"
+complexity: medium
+produces: decision-record
+est_tokens: 4400
+tags: [hybrid, delivery-model, stage-gate, agile, enterprise]
 ---
 # Hybrid Delivery
 
 ## Summary
 
-**One-sentence:** A delivery model that combines predictive (waterfall/stage-gate) and agile methods within a single program, assigning each by component risk profile.
+**One-sentence:** ADR for a hybrid delivery model that assigns predictive (stage-gate) or agile method per component by risk profile, with explicit translation boundaries.
 
-**One-paragraph:** A delivery model that combines predictive (waterfall/stage-gate) and agile methods within a single program, assigning each by component risk profile. The canonical pattern: use predictive for planning, contracting, regulatory submissions, and hardware; use agile for software execution, testing, and iteration. Pure agile and pure waterfall each fail in mixed-reality programs. Hardware/software products need physical milestones alongside iterative firmware; regulated industries need gate evidence alongside fast cycles; enterprise portfolios need quarterly budget cycles alongside two-week sprints. Hybrid is not a compromise — it is an explicit, architected two-cadence model with a defined translation layer between them.
+**One-paragraph:** Hybrid Delivery defines the testable methodology that turns the recurring work named in this skill into a repeatable, auditable artefact. The methodology is grounded in 5 core rules (see `content/01-core-rules.xml`), a JSON-Schema output contract, 4 catalogued failure modes, a 5-step procedure, and a decision tree whose leaves all reference a rule id.
+
+**Ефективно для:**
+
+- Programs spanning regulated (compliance) and non-regulated (UI / integrations) components.
+- Fixed-price contracts that require agile execution under predictive governance.
+- Organisations migrating from pure waterfall and unable to flip the whole portfolio at once.
+- Multi-vendor delivery where vendors run different methods.
 
 ## Applies If (ALL must hold)
 
-- Programs with hardware and software components (medical device, automotive, IoT).
-- Regulated software (FDA, FAA, ISO 26262, SOX, GDPR) needing stage gates and V-model evidence.
-- Enterprise transformation rollouts: portfolio level uses milestones, delivery teams use Scrum/Kanban.
-- Vendor plus internal team mixes where vendor work is fixed-bid (predictive) and internal is iterative.
-- Cloud platforms running DevOps + Agile for delivery while ops/finance/security gate quarterly.
+- Program comprises >=2 components with materially different risk profiles.
+- Stage-gate funding model is in effect at the program level.
+- An execution PMO can enforce translation boundaries between methods.
+- Components can be enumerated and tagged with risk profile.
 
 ## Skip If (ANY kills it)
 
-- Pure software product team with autonomous backlog and no compliance — full Scrum or Kanban is simpler.
-- Startup with fewer than 10 people — ceremony overhead exceeds coordination value.
-- Pure fixed-scope construction build where iteration adds risk without value — stay predictive.
-- "We do hybrid" with no explicit written boundary — that is incoherence, not a method.
+- Single-component project — pure agile or pure predictive is the right call.
+- Risk profile is uniform across components — hybrid adds overhead without benefit.
+- No PMO authority to enforce translation boundaries — hybrid will collapse into mixed-mode chaos.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source-of-truth data | tool export / sheet / API | upstream system named in this methodology |
+| Prior cycle's artefact (if any) | json / md | repo / wiki where artefacts persist |
+| Named consumer | person / agent | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft 2020-12) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `hybrid-delivery_template_fill` | haiku | Bounded template fill, no judgement. |
+| `hybrid-delivery_evidence_check` | sonnet | Bounded comparison + judgement on anchored evidence. |
+| `hybrid-delivery_synthesis` | opus | Cross-input synthesis + final write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-schema.json` | JSON Schema (draft 2020-12) for the hybrid-delivery ADR artefact. |
+| `templates/hybrid-alignment.py` | Reference script aligning component method assignment with risk profile. |
+| `templates/component-map.md` | Markdown skeleton listing components with method + risk profile + boundary contracts. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-hybrid-delivery.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/pm/pm-agile/`
+- parent skill: `pro/pm/` (see neighbouring methodologies).
+- [[launch-raci-template]]
+- [[reporting-basics]]
+- external: industry references cited inline in `content/01-core-rules.xml`.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input
+preconditions, source-of-truth access, named-consumer presence) onto a concrete
+verdict — apply the methodology, downgrade to draft, or skip — with each leaf
+referencing a rule id from `content/01-core-rules.xml`.

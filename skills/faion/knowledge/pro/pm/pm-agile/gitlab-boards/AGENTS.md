@@ -3,74 +3,103 @@ slug: gitlab-boards
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: GitLab Issue Boards provide kanban-style project management integrated directly with GitLab's DevOps platform.
-content_id: "935f0b7572a29575"
-tags: [gitlab, kanban, project-management, devops, issue-boards]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "GitLab Issue Boards configuration with scoped labels (workflow::*, priority::*, type::*), board column policies, WIP limits, and seed-script for label hygiene."
+content_id: "0497567bfaceef45"
+complexity: medium
+produces: config
+est_tokens: 4400
+tags: [gitlab, kanban, scoped-labels, issue-boards, devops]
 ---
-# GitLab Boards
+# GitLab Issue Boards
 
 ## Summary
 
-**One-sentence:** GitLab Issue Boards provide kanban-style project management integrated directly with GitLab's DevOps platform.
+**One-sentence:** GitLab Issue Boards configuration with scoped labels (workflow::*, priority::*, type::*), board column policies, WIP limits, and seed-script for label hygiene.
 
-**One-paragraph:** GitLab Issue Boards provide kanban-style project management integrated directly with GitLab's DevOps platform. Boards visualize issues through customizable lists based on scoped labels, assignees, or milestones, enabling workflow management alongside CI/CD pipelines. Unifying source control, CI/CD, and project tracking in one platform eliminates context-switching overhead and enables automation that is impossible across separate tools — for example, auto-transitioning an issue to `workflow::review` when a linked MR is opened. Scoped labels give the board real state-machine semantics rather than tag soup.
+**One-paragraph:** GitLab Issue Boards defines the testable methodology that turns the recurring work named in this skill into a repeatable, auditable artefact. The methodology is grounded in 6 core rules (see `content/01-core-rules.xml`), a JSON-Schema output contract, 4 catalogued failure modes, a 5-step procedure, and a decision tree whose leaves all reference a rule id.
+
+**Ефективно для:**
+
+- Team already running GitLab CI/CD and wanting boards co-located with issues.
+- Kanban-style flow (no fixed sprints) with WIP-limit discipline.
+- Multi-project group where label naming must be stable across repos.
+- Need an audit trail of state changes via issue events.
 
 ## Applies If (ALL must hold)
 
-- Teams using GitLab for source control and CI/CD wanting a single-platform PM workflow.
-- Multi-project / multi-group programs where group-level boards aggregate cross-repo issues.
-- Compliance-conscious organizations that need self-hosted (Omnibus) over SaaS.
-- Workflows tied to MR lifecycle (issue → branch → MR → review → merge → close).
-- Teams running Iterations (sprints) with cadence automation built into GitLab.
+- GitLab project (CE or EE) with Maintainer role available for label setup.
+- Issues are the primary unit of work tracking (not external Jira/Linear).
+- Team agrees on scoped-label scheme (workflow:: / priority:: / type::) before seeding.
+- Group-level labels are accessible if labels need to be shared across projects.
 
 ## Skip If (ANY kills it)
 
-- Source not in GitLab — adopting boards-only via API is awkward; use a source-aligned tool (Jira, Linear, GitHub Projects).
-- Heavy portfolio + EVM needs — GitLab roadmaps are basic compared to Jira Plans or MS Project.
-- Non-technical stakeholders who refuse Markdown / quick-action syntax — adoption tax exceeds value.
-- Tiny teams that don't need WIP limits or scoped labels — Trello is faster with less ceremony.
-- Budget constrained to free tier but requiring WIP limits, multiple boards, or iterations (all Premium+).
+- Team uses GitHub Projects or Jira as the issue tracker; GitLab Boards is the wrong tool.
+- Single-developer repo — label scaffolding overhead exceeds value.
+- GitLab Free with >5 board columns required — Free caps multiple boards; upgrade or simplify.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source-of-truth data | tool export / sheet / API | upstream system named in this methodology |
+| Prior cycle's artefact (if any) | json / md | repo / wiki where artefacts persist |
+| Named consumer | person / agent | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft 2020-12) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `gitlab-boards_template_fill` | haiku | Bounded template fill, no judgement. |
+| `gitlab-boards_evidence_check` | sonnet | Bounded comparison + judgement on anchored evidence. |
+| `gitlab-boards_synthesis` | opus | Cross-input synthesis + final write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-schema.json` | JSON Schema (draft 2020-12) for the GitLab Boards configuration artefact. |
+| `templates/issue-template-bug.md` | Bug report issue template (steps, expected, actual, environment). |
+| `templates/issue-template-feature.md` | Feature request issue template (user need, acceptance criteria). |
+| `templates/scoped-labels.py` | Reference script listing the canonical scoped-label scheme. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-gitlab-boards.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/pm/pm-agile/`
+- parent skill: `pro/pm/` (see neighbouring methodologies).
+- [[launch-raci-template]]
+- [[reporting-basics]]
+- external: industry references cited inline in `content/01-core-rules.xml`.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input
+preconditions, source-of-truth access, named-consumer presence) onto a concrete
+verdict — apply the methodology, downgrade to draft, or skip — with each leaf
+referencing a rule id from `content/01-core-rules.xml`.

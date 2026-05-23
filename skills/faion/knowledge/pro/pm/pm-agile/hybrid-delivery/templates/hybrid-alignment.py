@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+"""
+purpose: Reference script aligning component method assignment with risk profile.
+consumes: see content/02-output-contract.xml inputs for hybrid-delivery
+produces: decision-record
+depends-on: content/01-core-rules.xml + content/02-output-contract.xml
+token-budget-impact: ~200-1000 tokens when loaded as context
+"""
+
+
 """hybrid-alignment.py — flag epics misaligned with their milestone from program.yaml.
 
 Usage: python hybrid-alignment.py program.yaml

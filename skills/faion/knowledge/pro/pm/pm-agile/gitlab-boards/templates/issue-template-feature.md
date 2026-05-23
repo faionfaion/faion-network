@@ -1,3 +1,9 @@
+<!-- purpose: Feature request issue template (user need, acceptance criteria). -->
+<!-- consumes: see content/02-output-contract.xml inputs for gitlab-boards -->
+<!-- produces: config -->
+<!-- depends-on: content/01-core-rules.xml + content/02-output-contract.xml -->
+<!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
+
 ## Feature Summary
 
 <!-- One-line description -->

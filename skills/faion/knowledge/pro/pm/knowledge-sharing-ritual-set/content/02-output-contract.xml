@@ -1,42 +1,111 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Knowledge Sharing Ritual Set Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Knowledge Sharing Ritual Set output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Knowledge Sharing Ritual Set Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft 2020-12) for the Knowledge Sharing Ritual Set artefact. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="ritual_calendar" type="list" required="true">[{name, cadence, duration_min, owner}]</field>
-      <field name="artefact_policy" type="object" required="true">{tech_talk, demo, arch_review, skip_level}</field>
-      <field name="recording_and_async" type="object" required="true">{recording_platform, async_doc_path}</field>
-      <field name="newcomer_question_counter" type="integer" required="true">monthly count</field>
-      <field name="quarterly_review_date" type="date" required="true">next review</field>
-      <field name="owner" type="string" required="true">manager or designated knowledge owner</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">ritual_calendar &lt; 3 rituals OR &gt; 6 rituals</pattern>
-      <pattern id="f2">any ritual without artefact policy</pattern>
-      <pattern id="f3">recording_and_async missing AND team distributed</pattern>
-      <pattern id="f4">newcomer_question_counter &gt; 10/month sustained</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim narrative fields to ≤500 chars preserving named entities + numeric claims.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/knowledge-sharing-ritual-set.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>ritual_calendar populated with a typed value</item>
-      <item>artefact_policy populated with a typed value</item>
-      <item>recording_and_async populated with a typed value</item>
-      <item>newcomer_question_counter populated with a typed value</item>
-      <item>quarterly_review_date populated with a typed value</item>
-      <item>owner populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-    </list>
+  <section title="Schema">
+    <schema kind="json-schema">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/knowledge-sharing-ritual-set.json",
+  "type": "object",
+  "required": [
+    "ritual_type",
+    "instance_id",
+    "occurred_on",
+    "presenter",
+    "artefact_url",
+    "action_items",
+    "status"
+  ],
+  "properties": {
+    "ritual_type": {
+      "enum": [
+        "weekly-tech-talk",
+        "biweekly-demo",
+        "monthly-arch-review",
+        "quarterly-skip-level"
+      ]
+    },
+    "instance_id": {
+      "type": "string"
+    },
+    "occurred_on": {
+      "type": "string",
+      "format": "date"
+    },
+    "presenter": {
+      "type": "string"
+    },
+    "artefact_url": {
+      "type": "string",
+      "format": "uri-reference"
+    },
+    "action_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "title",
+          "owner",
+          "due"
+        ]
+      }
+    },
+    "status": {
+      "enum": [
+        "held",
+        "skipped-with-reason",
+        "cancelled"
+      ]
+    }
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "ritual_type": "weekly-tech-talk",
+  "instance_id": "wtt-2026-W21",
+  "occurred_on": "2026-05-21",
+  "presenter": "Anna L.",
+  "artefact_url": "wiki://eng/tech-talks/2026-W21.md",
+  "action_items": [
+    {
+      "title": "Draft ADR-014 on vector-search choice",
+      "owner": "Anna L.",
+      "due": "2026-05-30"
+    }
+  ],
+  "status": "held"
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "ritual_type": "weekly",
+  "instance_id": "wtt",
+  "action_items": [
+    {
+      "title": "Draft ADR"
+    }
+  ],
+  "status": "held"
+}
+]]></code>
+    <note>ritual_type wrong enum; missing occurred_on + presenter + artefact_url; action item lacks owner + due.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern id="f1"><description>Status set to an approved/sent state by the producing agent without a human reviewer entry.</description></antipattern>
+    <antipattern id="f2"><description>Required field empty or replaced with a placeholder (n/a, unknown) without an anchored reason.</description></antipattern>
+    <antipattern id="f3"><description>Prose paragraph stuffed into a field the schema declares as array or object.</description></antipattern>
+  </section>
+
+  <reference path="scripts/validate-knowledge-sharing-ritual-set.py">Validator script.</reference>
 </text>

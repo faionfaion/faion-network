@@ -3,73 +3,104 @@ slug: agile-hybrid-approaches
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: A decision framework for selecting among Predictive (waterfall), Agile (Scrum/Kanban), and Hybrid delivery models based on five project factors: requirements clarity, stakeholder availability, risk tolerance, team experience, and contract type.
-content_id: "033a37e36a311d7c"
-tags: [agile, hybrid, waterfall, project-management, delivery-approaches]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Decision framework + ADR selecting Predictive / Agile / Hybrid delivery from five factors (clarity, stakeholder availability, risk, team experience, contract)."
+content_id: "4141eb7611ce134a"
+complexity: medium
+produces: decision-record
+est_tokens: 4600
+tags: [agile, hybrid, waterfall, delivery-approach, adr]
 ---
 # Agile and Hybrid Approaches
 
 ## Summary
 
-**One-sentence:** A decision framework for selecting among Predictive (waterfall), Agile (Scrum/Kanban), and Hybrid delivery models based on five project factors: requirements clarity, stakeholder availability, risk tolerance, team experience, and contract type.
+**One-sentence:** Decision framework + ADR selecting Predictive / Agile / Hybrid delivery from five factors (clarity, stakeholder availability, risk, team experience, contract).
 
-**One-paragraph:** A decision framework for selecting among Predictive (waterfall), Agile (Scrum/Kanban), and Hybrid delivery models based on five project factors: requirements clarity, stakeholder availability, risk tolerance, team experience, and contract type. Hybrid approaches combine elements — e.g., Water-Scrum-Fall, agile execution under predictive governance — when no pure model fits.
+**One-paragraph:** Agile and Hybrid Approaches defines the testable methodology that turns the recurring work named in this skill into a repeatable, auditable artefact. The methodology is grounded in 6 core rules (see `content/01-core-rules.xml`), a JSON-Schema output contract, 4 catalogued failure modes, a 5-step procedure, and a decision tree whose leaves all reference a rule id.
+
+**Ефективно для:**
+
+- Project kickoff where the right delivery model is genuinely unclear.
+- Fixed-price contracts needing agile execution under predictive governance.
+- Regulated environments where parts must be predictive (validation) and parts agile (UI).
+- Coaching engagement migrating from waterfall to agile; default-to-hybrid is the wrong move.
 
 ## Applies If (ALL must hold)
 
-- Project kickoff where the right delivery model is genuinely unclear (mixed-experience team, semi-defined scope).
-- Fixed-price contracts that need agile execution under predictive governance (Water-Scrum-Fall).
-- Regulated environments where parts must be predictive (compliance, validation) and parts agile (UI, integrations).
-- Coaching engagements moving from waterfall to agile, where pure-agile from day one would fail change management.
-- Solopreneur or small-team work where lightweight Kanban + monthly review is right-sized.
+- Initiation phase of a project that has not yet committed to a delivery model.
+- At least 2 of the 5 decision factors (clarity, stakeholders, risk, experience, contract) are answerable.
+- A decision owner exists who can ratify the recommendation as an ADR.
+- Project lifetime >=4 weeks (shorter scope: pick any approach, overhead not worth it).
 
 ## Skip If (ANY kills it)
 
-- A team already running stable Scrum or Kanban — switching to hybrid loses cadence without recovering certainty.
-- Pure exploration or research where any delivery framework is overhead.
-- Teams whose dysfunction is cultural, not methodological — a hybrid won't fix accountability gaps.
-- Crisis or incident response — use incident-response runbooks, not a delivery framework selection.
+- Team is already running stable Scrum or Kanban — switching to hybrid loses cadence.
+- Pure exploration / research where any delivery framework is overhead.
+- Crisis or incident response — use incident-response runbooks, not delivery selection.
+- Cultural dysfunction is the real problem — hybrid won't fix accountability gaps.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source-of-truth data | tool export / sheet / API | upstream system named in this methodology |
+| Prior cycle's artefact (if any) | json / md | repo / wiki where artefacts persist |
+| Named consumer | person / agent | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft 2020-12) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `agile-hybrid-approaches_template_fill` | haiku | Bounded template fill, no judgement. |
+| `agile-hybrid-approaches_evidence_check` | sonnet | Bounded comparison + judgement on anchored evidence. |
+| `agile-hybrid-approaches_synthesis` | opus | Cross-input synthesis + final write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-schema.json` | JSON Schema (draft 2020-12) for the approach-selection ADR artefact. |
+| `templates/sprint-plan.md` | Sprint planning template: goal, capacity, backlog, dependencies, risks. |
+| `templates/kanban-board.md` | Kanban board template with WIP limits and explicit policies. |
+| `templates/pick_approach.py` | YAML decision script that reads factor scores and recommends Predictive / Agile / Hybrid. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-agile-hybrid-approaches.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/pm/pm-agile/`
+- parent skill: `pro/pm/` (see neighbouring methodologies).
+- [[launch-raci-template]]
+- [[reporting-basics]]
+- external: industry references cited inline in `content/01-core-rules.xml`.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input
+preconditions, source-of-truth access, named-consumer presence) onto a concrete
+verdict — apply the methodology, downgrade to draft, or skip — with each leaf
+referencing a rule id from `content/01-core-rules.xml`.

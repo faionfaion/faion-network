@@ -3,77 +3,102 @@ slug: monthly-billing-batch-routine
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Monthly Billing Batch Routine: codified pm practice that turns the recurring 'p5-micro-agency-founder/Monthly invoice + contractor pay batch' decision into a repeatable, auditable artefact.
-content_id: "a26174bf73c473a6"
-tags: [monthly-billing-batch-routine, pm, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Micro-agency monthly invoice + contractor-pay batch routine: build customer invoices, queue contractor payouts, reconcile, surface to founder for approval."
+content_id: "5361bc687ba13599"
+complexity: medium
+produces: playbook-step
+est_tokens: 4400
+tags: [pm, pro, billing, agency-ops, cash-flow]
 ---
 # Monthly Billing Batch Routine
 
 ## Summary
 
-**One-sentence:** Monthly Billing Batch Routine: codified pm practice that turns the recurring 'p5-micro-agency-founder/Monthly invoice + contractor pay batch' decision into a repeatable, auditable artefact.
+**One-sentence:** Micro-agency monthly invoice + contractor-pay batch routine: build customer invoices, queue contractor payouts, reconcile, surface to founder for approval.
 
-**One-paragraph:** Monthly Billing Batch Routine addresses the gap identified by the p5-micro-agency-founder/Monthly invoice + contractor pay batch playbook: Founders run invoicing as fire-drill at month-end; a batched 2-hour routine playbook compresses pain. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Monthly Billing Batch Routine defines the testable methodology that turns the recurring work named in this skill into a repeatable, auditable artefact. The methodology is grounded in 6 core rules (see `content/01-core-rules.xml`), a JSON-Schema output contract, 4 catalogued failure modes, a 5-step procedure, and a decision tree whose leaves all reference a rule id.
+
+**Ефективно для:**
+
+- Micro-agency / studio founder with 2-15 customers and 1-10 contractors.
+- Monthly billing cadence (not weekly), with mid-month contractor payouts.
+- One human reviewer (founder) is the approval gate.
+- An auditable ledger (spreadsheet, Xero, Wave) is the source-of-truth.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p5-micro-agency-founder/Monthly invoice + contractor pay batch OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Recurring monthly invoice cycle is in place (date locked).
+- Founder has authority to send invoices and queue contractor payouts.
+- Contractor rate cards or signed SoWs are accessible.
+- Prior month's batch (if any) is accessible for delta.
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Sub-monthly cadence — use freelance-weekly-invoice-cadence instead.
+- Single-customer agency — overhead does not pay back; ad-hoc is fine.
+- Cannot access source-of-truth ledger (system down, access pending).
 
 ## Prerequisites
 
-- recent context for the p5-micro-agency-founder/Monthly invoice + contractor pay batch task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source-of-truth data | tool export / sheet / API | upstream system named in this methodology |
+| Prior cycle's artefact (if any) | json / md | repo / wiki where artefacts persist |
+| Named consumer | person / agent | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/project-manager` | parent role skill — provides the operating context for this methodology |
+| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft 2020-12) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `monthly-billing-batch-routine_template_fill` | haiku | Bounded template fill, no judgement. |
+| `monthly-billing-batch-routine_evidence_check` | sonnet | Bounded comparison + judgement on anchored evidence. |
+| `monthly-billing-batch-routine_synthesis` | opus | Cross-input synthesis + final write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/monthly-billing-batch-routine.json` | JSON schema for the Monthly Billing Batch Routine output contract |
-| `templates/monthly-billing-batch-routine.md` | Markdown skeleton with the required fields |
+| `templates/output-schema.json` | JSON Schema (draft 2020-12) for the monthly billing batch artefact. |
+| `templates/invoice-row.md` | Per-customer invoice line skeleton with evidence + reason. |
+| `templates/payout-row.md` | Per-contractor payout line skeleton with evidence + rate-card link. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-monthly-billing-batch-routine.py` | Enforce Monthly Billing Batch Routine output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-monthly-billing-batch-routine.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
-- upstream playbook: `p5-micro-agency-founder/Monthly invoice + contractor pay batch`
+- parent skill: `pro/pm/` (see neighbouring methodologies).
+- [[launch-raci-template]]
+- [[reporting-basics]]
+- external: industry references cited inline in `content/01-core-rules.xml`.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input
+preconditions, source-of-truth access, named-consumer presence) onto a concrete
+verdict — apply the methodology, downgrade to draft, or skip — with each leaf
+referencing a rule id from `content/01-core-rules.xml`.

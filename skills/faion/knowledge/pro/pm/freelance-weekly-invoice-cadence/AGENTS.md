@@ -3,78 +3,102 @@ slug: freelance-weekly-invoice-cadence
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-content_id: "5ad0824f1b19f13e"
-summary: "Freelance Weekly Invoice Cadence — testable methodology for delivery, scheduling, RACI, throughput. 74% don't get paid on time. Need a methodology for weekly invoicing + automated reminders + escalation ladder that doesn't burn the relationship."
-tags: [pm, pro, methodology]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Weekly invoice + automated reminder + escalation ladder routine for solo freelancers; produces an auditable per-week invoice batch artefact with reminder/escalation steps."
+content_id: "6f6b5c371466a9da"
+complexity: medium
+produces: playbook-step
+est_tokens: 4400
+tags: [pm, pro, freelance, invoicing, cash-flow]
 ---
 # Freelance Weekly Invoice Cadence
 
 ## Summary
 
-**One-sentence:** Freelance Weekly Invoice Cadence — testable methodology for delivery, scheduling, RACI, throughput. 74% don't get paid on time. Need a methodology for weekly invoicing + automated reminders + escalation ladder that doesn't burn the relationship.
+**One-sentence:** Weekly invoice + automated reminder + escalation ladder routine for solo freelancers; produces an auditable per-week invoice batch artefact with reminder/escalation steps.
 
-**One-paragraph:** Freelance Weekly Invoice Cadence closes a known gap in pm practice: 74% don't get paid on time. Need a methodology for weekly invoicing + automated reminders + escalation ladder that doesn't burn the relationship. The methodology is anchored to the recurring activity 'Project kickoff to handover (typical 6-12 week engagement) (role: p3-technical-freelancer)' and produces an auditable artefact that a downstream agent or human reviewer can sign off without re-deriving the reasoning.
+**One-paragraph:** Freelance Weekly Invoice Cadence defines the testable methodology that turns the recurring work named in this skill into a repeatable, auditable artefact. The methodology is grounded in 6 core rules (see `content/01-core-rules.xml`), a JSON-Schema output contract, 5 catalogued failure modes, a 5-step procedure, and a decision tree whose leaves all reference a rule id.
+
+**Ефективно для:**
+
+- Solo freelancer with 2-8 active retainers and recurring scope.
+- Engagements where late payment (>30d) is the dominant cash-flow risk.
+- Operator needs an audit trail of when reminders fired and which escalations are due.
+- Workflow is monitored by exactly one human owner (not a team).
 
 ## Applies If (ALL must hold)
 
-- The triggering activity 'Project kickoff to handover (typical 6-12 week engagement) (role: p3-technical-freelancer)' shows up in the user's workload at least once per cycle.
-- The operator has authority to act on the artefact this methodology produces (write access, sign-off rights).
-- A named consumer exists for the output — either a human reviewer or a downstream agent.
-- An auditable source-of-truth is available for the inputs this methodology requires.
+- At least one active client invoiced on a weekly or sub-monthly cadence.
+- Operator has write access to the billing tool (Stripe / Wise / ledger).
+- A named consumer reads the cadence artefact (the operator themselves counts).
+- Prior week's invoice batch is accessible for delta + carry-forward.
 
 ## Skip If (ANY kills it)
 
-- One-off, never-to-repeat work — methodology overhead does not pay back.
-- No named consumer — the artefact will be orphaned regardless of quality.
-- Cannot access the input source-of-truth (system down, access denied) — paraphrased substitutes are worse than skipping.
+- One-time fixed-price gig with a single invoice — overhead does not pay back.
+- Client pays via auto-debit / subscription and no reminder ladder is needed.
+- Operator cannot legally invoice (entity setup pending).
 
 ## Prerequisites
 
-- Read access to the systems, dashboards, or transcripts that feed the methodology's inputs.
-- A storage location for the produced artefact (git repo, doc, ticket) where the consumer can read it.
-- Prior cycle's artefact (if any) accessible for carry-forward and trend comparison.
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source-of-truth data | tool export / sheet / API | upstream system named in this methodology |
+| Prior cycle's artefact (if any) | json / md | repo / wiki where artefacts persist |
+| Named consumer | person / agent | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
-| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review) |
+| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 3-5 testable rules every application enforces | ~900 |
-| `content/02-output-contract.xml` | essential | Required output schema, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 4-8 detector + repair clauses for known agent failures | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft 2020-12) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `freelance_weekly_invoice_cadence_template_fill` | haiku | Template fill, no judgement |
-| `freelance_weekly_invoice_cadence_evidence_check` | sonnet | Bounded comparison + judgement |
-| `freelance_weekly_invoice_cadence_synthesis` | opus | Cross-input synthesis + final write-up |
+| `freelance-weekly-invoice-cadence_template_fill` | haiku | Bounded template fill, no judgement. |
+| `freelance-weekly-invoice-cadence_evidence_check` | sonnet | Bounded comparison + judgement on anchored evidence. |
+| `freelance-weekly-invoice-cadence_synthesis` | opus | Cross-input synthesis + final write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/output-schema.json` | JSON Schema for the methodology's required output |
+| `templates/output-schema.json` | JSON Schema (draft 2020-12) for the weekly invoice batch artefact. |
+| `templates/invoice-row.md` | Per-client invoice row skeleton with evidence + reason fields. |
+| `templates/reminder-ladder.yaml` | Default 3-rung reminder ladder config (+3/+7/+14 days). |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-output.py` | Enforce the output-contract before main agent accepts | After subagent returns, before commit/publish |
+| `scripts/validate-freelance-weekly-invoice-cadence.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/pm/` (see neighbouring methodologies)
-- triggering activity: `Project kickoff to handover (typical 6-12 week engagement) (role: p3-technical-freelancer)`
-- external: industry references cited inline in `content/01-core-rules.xml`
+- parent skill: `pro/pm/` (see neighbouring methodologies).
+- [[launch-raci-template]]
+- [[reporting-basics]]
+- external: industry references cited inline in `content/01-core-rules.xml`.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input
+preconditions, source-of-truth access, named-consumer presence) onto a concrete
+verdict — apply the methodology, downgrade to draft, or skip — with each leaf
+referencing a rule id from `content/01-core-rules.xml`.

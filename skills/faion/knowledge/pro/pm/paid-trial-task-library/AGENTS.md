@@ -3,77 +3,102 @@ slug: paid-trial-task-library
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion]
-summary: Paid Trial Task Library: codified pm practice that turns the recurring 'p5-micro-agency-founder/Hiring screen / contractor audition' decision into a repeatable, auditable artefact.
-content_id: "beee5af7ac830a5f"
-tags: [paid-trial-task-library, pm, pro]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Library of scoped, paid trial-tasks for screening contractors / hires: each entry carries scope, time-box, deliverable, rubric, payout, ip-safety flag."
+content_id: "81240ccd20b152f4"
+complexity: medium
+produces: checklist
+est_tokens: 4200
+tags: [pm, pro, hiring, paid-trial, contractor-audition]
 ---
 # Paid Trial Task Library
 
 ## Summary
 
-**One-sentence:** Paid Trial Task Library: codified pm practice that turns the recurring 'p5-micro-agency-founder/Hiring screen / contractor audition' decision into a repeatable, auditable artefact.
+**One-sentence:** Library of scoped, paid trial-tasks for screening contractors / hires: each entry carries scope, time-box, deliverable, rubric, payout, ip-safety flag.
 
-**One-paragraph:** Paid Trial Task Library addresses the gap identified by the p5-micro-agency-founder/Hiring screen / contractor audition playbook: Founders invent trial tasks ad-hoc; a library of role-specific paid-trial briefs (dev, designer, copy, ops) would standardize. Mechanism: a typed input → bounded transformation → contract-checked output. Primary output: a versioned artefact (decision record, checklist, score, or report) that downstream tasks can consume without re-deriving the rationale.
+**One-paragraph:** Paid Trial Task Library defines the testable methodology that turns the recurring work named in this skill into a repeatable, auditable artefact. The methodology is grounded in 6 core rules (see `content/01-core-rules.xml`), a JSON-Schema output contract, 4 catalogued failure modes, a 5-step procedure, and a decision tree whose leaves all reference a rule id.
+
+**Ефективно для:**
+
+- Micro-agency founder hiring contractors or first 1-3 employees.
+- Need to test real-world fit beyond CV + interview.
+- Willing to pay for a small bounded task to de-risk hire.
+- A rubric-based reviewer is available to score the deliverable.
 
 ## Applies If (ALL must hold)
 
-- task is an instance of p5-micro-agency-founder/Hiring screen / contractor audition OR a closely-adjacent variant
-- the operator has the artefacts named in Prerequisites available before starting
-- output will be consumed by a downstream agent or human reviewer (not discarded)
-- tier == pro or higher (gating enforced by tier-manifest)
+- Open role or contractor opening with >=2 candidates worth testing.
+- Founder has budget to pay for trial tasks.
+- A reviewer with discipline-relevant skill can score deliverables.
+- Tasks can be scoped to <=8 hours each (otherwise it becomes a project).
 
 ## Skip If (ANY kills it)
 
-- the team already maintains a working artefact for this gap — replace, do not duplicate
-- the change being decided is greenfield prototype with no production users
-- regulatory / compliance context overrides any in-methodology guidance (defer to legal)
+- Hiring on referral with high trust and prior work samples.
+- No budget for trial-task payments — unpaid trials are forbidden by Faion ethics rules.
+- Tasks would leak proprietary IP that can't be safely scoped.
 
 ## Prerequisites
 
-- recent context for the p5-micro-agency-founder/Hiring screen / contractor audition task (last 30 days)
-- write-access to the artefact store (repo / wiki / decision log)
-- named owner who is accountable for the output downstream
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source-of-truth data | tool export / sheet / API | upstream system named in this methodology |
+| Prior cycle's artefact (if any) | json / md | repo / wiki where artefacts persist |
+| Named consumer | person / agent | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `pro/pm/project-manager` | parent role skill — provides the operating context for this methodology |
+| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: r1-bound-scope, r2-typed-input, r3-named-owner, r4-versioned, r5-traceable-decision | ~900 |
-| `content/02-output-contract.xml` | essential | Required fields, forbidden patterns, allowed transformations | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft 2020-12) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft_inputs_summary` | haiku | Template fill, bounded transformation |
-| `synthesize_decision` | sonnet | Per-instance judgment; bounded inputs |
-| `review_for_compliance` | opus | Cross-input synthesis when stakes are high |
+| `paid-trial-task-library_template_fill` | haiku | Bounded template fill, no judgement. |
+| `paid-trial-task-library_evidence_check` | sonnet | Bounded comparison + judgement on anchored evidence. |
+| `paid-trial-task-library_synthesis` | opus | Cross-input synthesis + final write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| `templates/paid-trial-task-library.json` | JSON schema for the Paid Trial Task Library output contract |
-| `templates/paid-trial-task-library.md` | Markdown skeleton with the required fields |
+| `templates/output-schema.json` | JSON Schema (draft 2020-12) for the trial-task library artefact. |
+| `templates/task-entry.md` | Markdown skeleton for a single trial-task entry. |
+| `templates/rubric.md` | Rubric skeleton with good/acceptable/fail anchors. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-paid-trial-task-library.py` | Enforce Paid Trial Task Library output contract | After subagent returns, before downstream consumer reads |
+| `scripts/validate-paid-trial-task-library.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/pm/project-manager/`
-- upstream playbook: `p5-micro-agency-founder/Hiring screen / contractor audition`
+- parent skill: `pro/pm/` (see neighbouring methodologies).
+- [[launch-raci-template]]
+- [[reporting-basics]]
+- external: industry references cited inline in `content/01-core-rules.xml`.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input
+preconditions, source-of-truth access, named-consumer presence) onto a concrete
+verdict — apply the methodology, downgrade to draft, or skip — with each leaf
+referencing a rule id from `content/01-core-rules.xml`.

@@ -1,4 +1,13 @@
 #!/usr/bin/env python3
+"""
+purpose: Reference script computing cycle stats from issue events.
+consumes: see content/02-output-contract.xml inputs for kanban-scaled-agile-ceremonies
+produces: playbook-step
+depends-on: content/01-core-rules.xml + content/02-output-contract.xml
+token-budget-impact: ~200-1000 tokens when loaded as context
+"""
+
+
 """cycle-stats.py — compute throughput and cycle-time stats from JSONL of issues.
 
 Input JSONL: one JSON object per line with fields:

@@ -1,39 +1,154 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Multi Project Allocation Tracker Output Contract" version="1.0.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Multi Project Allocation Tracker output. Subagent must satisfy this before returning to the caller.</summary>
+<text id="02-output-contract" title="Multi Project Allocation Tracker Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft 2020-12) for the Multi Project Allocation Tracker artefact. Validator enforces required keys + per-field constraints.</summary>
 
-  <output-contract>
-    <required>
-      <field name="artefact_id" type="string" required="true">stable slug used to reference this artefact downstream</field>
-      <field name="owner" type="string" required="true">single named accountable owner (handle / email / role)</field>
-      <field name="decision" type="string" required="true">the actual answer / chosen option / value produced</field>
-      <field name="rationale" type="string" required="true">≥2 sentences; cites at least one input artefact by name</field>
-      <field name="inputs_used" type="list" required="true">list of input names with source paths or URLs</field>
-      <field name="version" type="string" required="true">semver (e.g., 1.0.0)</field>
-      <field name="last_reviewed" type="date" required="true">ISO-8601 date the artefact was last validated</field>
-    </required>
-
-    <forbidden>
-      <pattern id="f1">owner = 'team' / 'we' / 'us' / empty string</pattern>
-      <pattern id="f2">rationale that does not reference any input by name</pattern>
-      <pattern id="f3">inputs_used is empty AND decision is not 'no-op'</pattern>
-      <pattern id="f4">duplicate artefact_id within the same store</pattern>
-    </forbidden>
-
-    <allowed-transformations>
-      <transformation>Trim rationale to &lt;= 500 chars, preserving numeric claims and named tools.</transformation>
-      <transformation>Promote a 'no decision yet' state to status='pending' rather than fabricating a decision.</transformation>
-    </allowed-transformations>
-
-    <schema-reference path="templates/multi-project-allocation-tracker.json"/>
-  </output-contract>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field populated with a typed value</item>
-      <item>No forbidden pattern matches the output</item>
-      <item>Transformations applied where applicable</item>
-      <item>Output validates against templates/multi-project-allocation-tracker.json</item>
-    </list>
+  <section title="Schema">
+    <schema kind="json-schema">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/multi-project-allocation-tracker.json",
+  "type": "object",
+  "required": [
+    "snapshot_id",
+    "snapshot_date",
+    "people",
+    "rebalance_proposals"
+  ],
+  "properties": {
+    "snapshot_id": {
+      "type": "string"
+    },
+    "snapshot_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "people": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "person_id",
+          "capacity",
+          "allocations",
+          "total_allocated"
+        ],
+        "properties": {
+          "person_id": {
+            "type": "string"
+          },
+          "capacity": {
+            "type": "number"
+          },
+          "allocations": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "project_id",
+                "fraction",
+                "evidence"
+              ]
+            }
+          },
+          "total_allocated": {
+            "type": "number"
+          }
+        }
+      }
+    },
+    "rebalance_proposals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "proposal",
+          "owner_of_decision"
+        ]
+      }
+    }
+  }
+}
+]]></code>
+    </schema>
   </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "snapshot_id": "mpat-2026-W21",
+  "snapshot_date": "2026-05-21",
+  "people": [
+    {
+      "person_id": "olena-k",
+      "capacity": 1.0,
+      "allocations": [
+        {
+          "project_id": "orion",
+          "fraction": 0.6,
+          "evidence": [
+            {
+              "source": "orion-plan.md",
+              "citation": "phase-2 lead"
+            }
+          ]
+        },
+        {
+          "project_id": "nova",
+          "fraction": 0.5,
+          "evidence": [
+            {
+              "source": "nova-sow",
+              "citation": "tech-lead"
+            }
+          ]
+        }
+      ],
+      "total_allocated": 1.1,
+      "over_allocation_flag": {
+        "delta": 0.1,
+        "mitigation": "defer nova phase-2 onboarding by 1 week"
+      }
+    }
+  ],
+  "rebalance_proposals": [
+    {
+      "proposal": "Move 0.1 of olena-k from nova to bench until W23",
+      "owner_of_decision": "PM Iryna V."
+    }
+  ]
+}
+]]></code>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "snapshot_id": "mpat",
+  "people": [
+    {
+      "person_id": "olena",
+      "allocations": [
+        {
+          "project_id": "orion",
+          "fraction": 0.6
+        }
+      ],
+      "total_allocated": 1.4
+    }
+  ]
+}
+]]></code>
+    <note>missing snapshot_date + rebalance_proposals; allocation lacks evidence; total_allocated 1.4 has no over_allocation_flag; no capacity field.</note>
+  </example>
+
+  <section title="Forbidden patterns">
+    <antipattern id="f1"><description>Status set to an approved/sent state by the producing agent without a human reviewer entry.</description></antipattern>
+    <antipattern id="f2"><description>Required field empty or replaced with a placeholder (n/a, unknown) without an anchored reason.</description></antipattern>
+    <antipattern id="f3"><description>Prose paragraph stuffed into a field the schema declares as array or object.</description></antipattern>
+  </section>
+
+  <reference path="scripts/validate-multi-project-allocation-tracker.py">Validator script.</reference>
 </text>

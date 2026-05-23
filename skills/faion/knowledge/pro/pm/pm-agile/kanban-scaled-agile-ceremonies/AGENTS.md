@@ -3,74 +3,102 @@ slug: kanban-scaled-agile-ceremonies
 tier: pro
 group: pm
 domain: pm
-version: 1.0.0
-status: draft
-last_reviewed: 2026-05-20
-maintainers: [faion-net]
-summary: Alternative agile cadences for continuous-flow teams (Kanban) and multi-team programs (SAFe).
-content_id: "a161af1b8138677b"
-tags: [kanban, safe, ceremonies, agile, continuous-flow]
+version: 1.1.0
+status: active
+last_reviewed: 2026-05-23
+maintainers: [faion-network]
+summary: "Alternative ceremony cadence for continuous-flow Kanban teams + scaled SAFe programs: replenishment, flow review, ART sync, PI planning windows, with WIP and lead-time metrics."
+content_id: "62254c36095ab9ae"
+complexity: medium
+produces: playbook-step
+est_tokens: 4600
+tags: [kanban, safe, ceremonies, continuous-flow, scaled-agile]
 ---
-# Kanban and Scaled Agile Ceremonies
+# Kanban and SAFe Ceremonies
 
 ## Summary
 
-**One-sentence:** Alternative agile cadences for continuous-flow teams (Kanban) and multi-team programs (SAFe).
+**One-sentence:** Alternative ceremony cadence for continuous-flow Kanban teams + scaled SAFe programs: replenishment, flow review, ART sync, PI planning windows, with WIP and lead-time metrics.
 
-**One-paragraph:** Alternative agile cadences for continuous-flow teams (Kanban) and multi-team programs (SAFe). Kanban replaces fixed sprints with five cadences: daily standup (walk-the-board right-to-left), weekly replenishment, weekly service-delivery review, bi-weekly retrospective, and monthly strategy review. SAFe adds PI Planning (2-day, every 8-12 weeks), Scrum-of-Scrums (daily), PO Sync (weekly), and Inspect-and-Adapt (end of PI). The rule: throughput plus 85th-percentile cycle time beats velocity for forecasting; use Monte Carlo on these for date predictions.
+**One-paragraph:** Kanban and SAFe Ceremonies defines the testable methodology that turns the recurring work named in this skill into a repeatable, auditable artefact. The methodology is grounded in 5 core rules (see `content/01-core-rules.xml`), a JSON-Schema output contract, 4 catalogued failure modes, a 5-step procedure, and a decision tree whose leaves all reference a rule id.
+
+**Ефективно для:**
+
+- Continuous-flow teams that find Scrum sprints harmful (interrupt-driven work).
+- SAFe Agile Release Trains (ART) with 5-12 teams operating on a common cadence.
+- Programs needing a written cadence to bridge multiple Scrum / Kanban teams.
+- Operators tracking lead-time + throughput, not story-points + velocity.
 
 ## Applies If (ALL must hold)
 
-- Continuous-flow teams (support, ops, data engineering) with no natural sprint boundary.
-- Multi-team programs needing PI Planning and Scrum-of-Scrums coordination.
-- Teams with high mid-sprint volatility (incident-heavy ops, content production).
-- Platform teams serving many internal customers where replenishment fits better than sprint commitment.
-- Hybrid ScrumBan setups: sprint planning kept for steering, WIP limits enforced for flow.
+- Team or program has decided NOT to use Scrum sprints.
+- WIP-limit discipline is in place or about to be introduced.
+- Flow metrics (lead time, cycle time, throughput) can be measured.
+- Cadence owners (RTE for SAFe, Flow Manager for Kanban) are named.
 
 ## Skip If (ANY kills it)
 
-- A single team of fewer than 8 people with stable feature work — Scrum's ceremonies suffice.
-- Pure project work with fixed end date and known scope — predictive cadences fit better.
-- Organizations drowning in ceremonies; adding SAFe events without removing others causes revolt.
-- Discovery-heavy product work where dual-track agile maps better than SAFe.
-- Solopreneur or 2-person teams — overhead exceeds value; a personal Kanban board is enough.
+- Team is happily on Scrum with predictable sprint velocity.
+- Single team <5 people — SAFe ceremonies are overkill; lightweight Kanban is enough.
+- Org cannot commit to a fixed cadence (PI window) — SAFe collapses without it.
 
 ## Prerequisites
 
-- TBD — list concrete input artifacts and where they come from
+| Artefact | Format | Source |
+|----------|--------|--------|
+| Source-of-truth data | tool export / sheet / API | upstream system named in this methodology |
+| Prior cycle's artefact (if any) | json / md | repo / wiki where artefacts persist |
+| Named consumer | person / agent | engagement charter |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
-| `TBD/path` | TBD — what upstream output this consumes |
+| `pro/pm/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
+| `pro/sdd/AGENTS.md` if present | SDD discipline for the artefact lifecycle (status flow, owners, review). |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Testable rules migrated from v1 methodology | ~800 |
-| `content/02-output-contract.xml` | essential | Output schema (stub — fill from v1 patterns) | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns migrated from v1 methodology | ~800 |
+| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft 2020-12) + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
+| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule id | 600 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| TBD | sonnet | TBD |
+| `kanban-scaled-agile-ceremonies_template_fill` | haiku | Bounded template fill, no judgement. |
+| `kanban-scaled-agile-ceremonies_evidence_check` | sonnet | Bounded comparison + judgement on anchored evidence. |
+| `kanban-scaled-agile-ceremonies_synthesis` | opus | Cross-input synthesis + final write-up. |
 
 ## Templates
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/output-schema.json` | JSON Schema (draft 2020-12) for the ceremony cadence artefact. |
+| `templates/kanban-metrics.md` | Markdown skeleton for lead-time / cycle-time / throughput / WIP report. |
+| `templates/cycle-stats.py` | Reference script computing cycle stats from issue events. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| TBD | TBD | TBD |
+| `scripts/validate-kanban-scaled-agile-ceremonies.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
 
 ## Related
 
-- parent skill: `pro/pm/pm-agile/`
+- parent skill: `pro/pm/` (see neighbouring methodologies).
+- [[launch-raci-template]]
+- [[reporting-basics]]
+- external: industry references cited inline in `content/01-core-rules.xml`.
+
+## Decision tree
+
+See `content/06-decision-tree.xml`. The tree maps observable signals (input
+preconditions, source-of-truth access, named-consumer presence) onto a concrete
+verdict — apply the methodology, downgrade to draft, or skip — with each leaf
+referencing a rule id from `content/01-core-rules.xml`.
