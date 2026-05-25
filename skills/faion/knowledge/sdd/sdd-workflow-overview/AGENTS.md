@@ -2,9 +2,9 @@
 
 ## Summary
 
-**One-sentence:** Specification-Driven Development overview: a five-phase lifecycle (spec → design → impl-plan → tasks → review) where intent is the source of truth and each phase produces a versioned artefact that gates the next.
+**One-sentence:** Specification-Driven Development overview: a five-phase lifecycle (spec → plan → tasks → readiness → done) where intent is the source of truth, each phase produces a versioned artefact that gates the next, and CR/BUG side-streams run alongside without inheriting the full feature ceremony.
 
-**One-paragraph:** Specification-Driven Development overview: a five-phase lifecycle (spec → design → impl-plan → tasks → review) where intent is the source of truth and each phase produces a versioned artefact that gates the next. The methodology pins the artefact: a top-level SDD manifest that names the feature, lists artefact paths, current phase, and the gate result that authorised entry into that phase.
+**One-paragraph:** SDD now has five phases: `spec` (what to build), `plan` (merged design + execution plan in one `plan.md`), `tasks` (parallelizable task files under `tasks/todo,in-progress,done/`), `readiness` (the 10-item readiness.md gate that authorises moving the feature to `done/`), and `done` (the closed state with full audit trail). The central artefact across features is the per-project `project-spec/` folder, declared in each project's `constitution.md`. CR and BUG side-streams parallel the feature lifecycle but with lighter shape — see `cr-bug-tracking`.
 
 **Ефективно для:**
 
@@ -74,9 +74,11 @@
 ## Related
 
 - [[writing-specifications]]
-- [[writing-design-documents]]
-- [[writing-implementation-plans]]
+- [[plan-md-structure]] — replaces the old design.md + implementation-plan.md split.
 - [[task-creation-parallelization]]
+- [[readiness-checklist]] — the `readiness` phase gate.
+- [[project-spec-structure]] — central artefact across features.
+- [[cr-bug-tracking]] — side-streams parallel to the feature lifecycle.
 
 ## Decision tree
 

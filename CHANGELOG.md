@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- docs: update sdd-workflow-overview to new lifecycle (spec → plan → tasks → readiness → done; CR/BUG side-streams; project-spec/ as central artefact); bump to v1.1.0.
 - docs: update top-level AGENTS.md SDD doc types (drop test-plan.md, merge design+implementation-plan into plan.md, add project-spec/ + user-flows.md + ui-ux-design.md + readiness.md + CR/BUG side streams).
 - feat: add plan-md-structure methodology (merge design.md + implementation-plan.md into one plan.md with two H2 sections; skip rule for trivial features; F021/F022/F002 drift rationale).
 - feat: add cr-bug-tracking methodology (CR and BUG side-streams; global per-repo numbering with separate counters; commit prefixes cr(CR0NN)/fix(BUG0NN); BUG-driven business-rules.md updates).
