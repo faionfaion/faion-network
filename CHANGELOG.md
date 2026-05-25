@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: add user-flows-template methodology (per-feature user-flows.md; actor + preconditions + happy + negative paths per flow; pos+neg required; 1:1 mapping to Playwright specs).
 - feat: add ui-ux-design-template methodology (Nielsen 5 + Norman 2 per-feature audit; required for UI work, skipped for backend; ui-ux-design.md.tmpl).
 - docs: drop test-plan.md references from SDD methodologies (replace with user-flows.md / plan.md across design-docs-patterns, sdd-batch-orchestrator phases 02/07/10, 01-overview).
 - docs: update sdd-for-solos playbook to new lifecycle (merge Step 4+5 into single plan.md step, drop test-plan, add conditional user-flows.md / ui-ux-design.md, add Step 6 readiness, add CR/BUG section); bump to v2.0.0.
