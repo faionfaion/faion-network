@@ -14,10 +14,8 @@ Usage:
   validate-methodology-decision-tree.py <dir>          # one
   validate-methodology-decision-tree.py --all          # whole knowledge tree
 
-F-067 note: this validator inspects only content/*.xml — it never reads
-YAML frontmatter or meta.json. No metadata source switch is required for
-the meta.json migration; the XML checks are stable across pre- and
-post-migration corpora.
+Note: this validator inspects only content/*.xml — it never reads
+metadata files. The XML checks are independent of the meta.json layout.
 """
 from __future__ import annotations
 

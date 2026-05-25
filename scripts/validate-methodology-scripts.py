@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -20,25 +19,20 @@ KNOWLEDGE = REPO_ROOT / "skills" / "faion" / "knowledge"
 
 
 def _slug_from_meta(dir_path: Path) -> str | None:
-    """F-067: read slug from meta.json (canonical) or AGENTS.md frontmatter (fallback)."""
+    """F-067: read slug from meta.json (canonical metadata source)."""
     meta_path = dir_path / "meta.json"
-    if meta_path.exists():
-        try:
-            data = json.loads(meta_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            return None
-        if isinstance(data, dict):
-            slug = data.get("slug")
-            if isinstance(slug, str) and slug.strip():
-                return slug.strip()
+    if not meta_path.exists():
         return None
-    # F-067 transitional fallback; remove after T11.
-    agents_md = dir_path / "AGENTS.md"
-    if not agents_md.exists():
+    try:
+        data = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
         return None
-    text = agents_md.read_text(encoding="utf-8", errors="replace")
-    m = re.search(r"^slug:\s*(\S+)\s*$", text, re.MULTILINE)
-    return m.group(1).strip('"').strip("'") if m else None
+    if not isinstance(data, dict):
+        return None
+    slug = data.get("slug")
+    if isinstance(slug, str) and slug.strip():
+        return slug.strip()
+    return None
 
 
 def _output_contract_has_schema(xml_path: Path) -> bool:

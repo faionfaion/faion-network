@@ -101,86 +101,22 @@ def render(template_name: str, **ctx: Any) -> str:
 
 # ---- Methodology metadata (F-067: meta.json is the runtime source of truth) ----
 
-# Keys F-067 promotes from AGENTS.md frontmatter into meta.json. See
-# .aidocs/conventions/meta-json-spec.md for the canonical 14-key shape.
-_META_KEYS = (
-    "slug", "tier", "domain", "group", "version", "status", "last_reviewed",
-    "maintainers", "summary", "content_id", "complexity", "produces",
-    "est_tokens", "tags",
-)
-
-
-def _parse_agents_md_frontmatter(agents_md: Path) -> dict[str, Any] | None:
-    """Best-effort YAML frontmatter parse without a YAML dependency.
-
-    Reads only the leading `---`-delimited block. Handles flat `key: value`
-    pairs, inline list syntax `[a, b]`, and bracketed scalars. Returns None
-    if the file has no frontmatter or cannot be read.
-
-    # F-067 transitional fallback; remove after T11.
-    """
-    if not agents_md.exists() or not agents_md.is_file():
-        return None
-    try:
-        text = agents_md.read_text(errors="replace")
-    except OSError:
-        return None
-    if not text.startswith("---"):
-        return None
-    end = text.find("\n---", 3)
-    if end < 0:
-        return None
-    block = text[3:end].strip("\n")
-    out: dict[str, Any] = {}
-    for raw_line in block.splitlines():
-        line = raw_line.rstrip()
-        if not line or line.lstrip().startswith("#"):
-            continue
-        if ":" not in line:
-            continue
-        key, _, value = line.partition(":")
-        key = key.strip()
-        value = value.strip()
-        if not key:
-            continue
-        # Strip surrounding quotes on scalars.
-        if (len(value) >= 2 and value[0] == value[-1] and value[0] in ('"', "'")):
-            value = value[1:-1]
-        # Inline list: [a, b, c]
-        if value.startswith("[") and value.endswith("]"):
-            inner = value[1:-1].strip()
-            items = [
-                item.strip().strip('"').strip("'")
-                for item in inner.split(",") if item.strip()
-            ] if inner else []
-            out[key] = items
-        elif value.isdigit() or (value.startswith("-") and value[1:].isdigit()):
-            out[key] = int(value)
-        else:
-            out[key] = value
-    return out or None
-
 
 def read_meta(methodology_dir: Path) -> dict[str, Any] | None:
     """Return methodology metadata as a dict.
 
-    Reads `<methodology-dir>/meta.json` (the F-067 source of truth). If
-    meta.json is missing, falls back to parsing YAML frontmatter from
-    `<methodology-dir>/AGENTS.md` so the retriever keeps working during the
-    F-067 cutover.
+    Reads `<methodology-dir>/meta.json` (the F-067 source of truth). See
+    .aidocs/conventions/meta-json-spec.md for the canonical 14-key shape.
 
-    Returns None when neither source yields any metadata.
-
-    # F-067 transitional fallback; remove after T11.
+    Returns None when meta.json is missing or unparseable.
     """
     meta_path = methodology_dir / "meta.json"
-    if meta_path.exists() and meta_path.is_file():
-        try:
-            return json.loads(meta_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError):
-            pass  # fall through to frontmatter
-    # F-067 transitional fallback; remove after T11.
-    return _parse_agents_md_frontmatter(methodology_dir / "AGENTS.md")
+    if not (meta_path.exists() and meta_path.is_file()):
+        return None
+    try:
+        return json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
 
 
 # ---- Two-level lookup: L1 index loaders ----

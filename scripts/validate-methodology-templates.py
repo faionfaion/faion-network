@@ -6,10 +6,9 @@ Rules per checklist B3.1..B3.5:
   B3.2 templates are non-empty (heuristic: >50 bytes, not literal TBD placeholder)
   B3.3 each starts with a 5-line header (purpose / consumes / produces / depends-on / token-budget-impact)
 
-F-067 note: this validator only reads the `## Templates` H2 section in the
-AGENTS.md body — it never parses YAML frontmatter or meta.json. No metadata
-source switch is required for the meta.json migration; the body-section
-check is stable across pre- and post-migration corpora.
+Note: this validator only reads the `## Templates` H2 section in the
+AGENTS.md body — it never parses meta.json. The body-section check is
+independent of the meta.json layout.
 """
 from __future__ import annotations
 

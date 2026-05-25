@@ -6,9 +6,7 @@ A v2 methodology is a directory containing:
 
   <dir>/
   ├── meta.json              (F-067 canonical metadata: 14 required keys)
-  ├── AGENTS.md              (body sections only post-F-067; frontmatter is
-  │                           the transitional fallback while migration is
-  │                           in flight — removed after F-067 T11)
+  ├── AGENTS.md              (body sections only post-F-067)
   ├── content/
   │   ├── 01-core-rules.xml      (required)
   │   ├── 02-output-contract.xml (optional)
@@ -16,9 +14,8 @@ A v2 methodology is a directory containing:
   ├── templates/             (optional)
   └── scripts/               (optional)
 
-F-067 transitional behaviour: this validator reads meta.json when present
-and falls back to AGENTS.md frontmatter when not. Body-section checks always
-run against AGENTS.md.
+Metadata source: this validator reads meta.json. Body-section checks run
+against AGENTS.md.
 
 Usage:
 
@@ -44,9 +41,7 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
 
-# F-067: metadata source is meta.json (sibling of AGENTS.md). Frontmatter in
-# AGENTS.md is the transitional fallback while corpus migration is in flight;
-# it is removed after T11 ships.
+# F-067: metadata source is meta.json (sibling of AGENTS.md).
 REQUIRED_META_KEYS = (
     "slug",
     "tier",
@@ -70,15 +65,7 @@ F066_META_KEYS = (
 )
 
 VALID_COMPLEXITY = {"light", "medium", "deep"}
-# F-067 meta-schema.json allows free-form `produces` (regex ^[a-z][a-z0-9-]*$);
-# legacy F-066 frontmatter restricted it to the closed set below. We keep the
-# closed set for frontmatter-fallback paths and skip it for meta.json paths
-# (the JSON Schema regex covers the meta.json side).
-VALID_PRODUCES = {
-    "checklist", "rubric", "spec", "report",
-    "code", "config", "playbook-step", "decision-record",
-}
-# Schema-friendly produces regex (matches meta-schema.json `produces`).
+# F-067 meta-schema.json `produces`: free-form regex ^[a-z][a-z0-9-]*$.
 PRODUCES_RE = re.compile(r"^[a-z][a-z0-9-]*$")
 
 REQUIRED_SECTIONS = (
@@ -113,7 +100,6 @@ CONTENT_FILES_KNOWN = {
 }
 
 CONTENT_ID_RE = re.compile(r"^[0-9a-f]{16}$")
-FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n(.*)$", re.DOTALL)
 HEADING_RE = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
 
 
@@ -137,30 +123,6 @@ class Report:
     @property
     def ok(self) -> bool:
         return not self.violations
-
-
-def parse_frontmatter(text: str) -> dict[str, str] | None:
-    """Parse a minimal YAML-ish frontmatter block. Returns None on missing block."""
-    m = FRONTMATTER_RE.match(text)
-    if not m:
-        return None
-    block = m.group(1)
-    out: dict[str, str] = {}
-    for raw in block.splitlines():
-        line = raw.rstrip()
-        if not line or line.lstrip().startswith("#"):
-            continue
-        # collect top-level "key: value" pairs only; nested YAML lists / maps
-        # are kept verbatim under the parent key for presence-checks.
-        if not line.startswith(" ") and ":" in line:
-            key, _, value = line.partition(":")
-            out[key.strip()] = value.strip()
-    return out
-
-
-def frontmatter_body(text: str) -> str:
-    m = FRONTMATTER_RE.match(text)
-    return m.group(2) if m else text
 
 
 def _meta_from_json(meta_path: Path, report: Report) -> dict | None:
@@ -206,42 +168,22 @@ def _present(value: object) -> bool:
 
 
 def validate_meta(meta_path: Path, agents_path: Path, report: Report) -> None:
-    """F-067: validate metadata. Prefer meta.json; fall back to AGENTS.md frontmatter.
+    """F-067: validate metadata read from `<dir>/meta.json`."""
+    if not meta_path.exists():
+        report.fail(meta_path, "META_MISSING",
+                    "meta.json not found (F-067 canonical metadata source)")
+        return
 
-    Source precedence:
-      1. <dir>/meta.json  (post-migration canonical source)
-      2. AGENTS.md YAML frontmatter  (F-067 transitional fallback; remove after T11)
-    """
-    meta: dict | None = None
-    source = ""
-
-    if meta_path.exists():
-        meta = _meta_from_json(meta_path, report)
-        source = "meta.json"
-    else:
-        # F-067 transitional fallback; remove after T11.
-        if not agents_path.exists():
-            report.fail(agents_path, "AGENTS_MISSING",
-                        "AGENTS.md not found (and no meta.json sibling)")
-            return
-        fm = parse_frontmatter(agents_path.read_text(encoding="utf-8"))
-        if fm is None:
-            report.fail(meta_path, "META_MISSING",
-                        "no meta.json found and AGENTS.md has no YAML frontmatter "
-                        "(post-F-067 expects meta.json; pre-migration expects frontmatter)")
-            return
-        meta = fm
-        source = "AGENTS.md frontmatter"
-
+    meta = _meta_from_json(meta_path, report)
     if meta is None:
         return  # parse error already reported
 
-    location = meta_path if source == "meta.json" else agents_path
+    location = meta_path
 
     for key in REQUIRED_META_KEYS:
         if key not in meta or not _present(meta[key]):
             report.fail(location, "META_KEY",
-                        f"required metadata key missing or empty in {source}: '{key}'")
+                        f"required metadata key missing or empty in meta.json: '{key}'")
 
     cid = _normalise(meta.get("content_id"))
     if cid and not CONTENT_ID_RE.fullmatch(cid):
@@ -254,22 +196,15 @@ def validate_meta(meta_path: Path, agents_path: Path, report: Report) -> None:
         for key in F066_META_KEYS:
             if key not in meta or not _present(meta[key]):
                 report.fail(location, "F066_META_KEY",
-                            f"F-066 required key missing or empty in {source}: '{key}'")
+                            f"F-066 required key missing or empty in meta.json: '{key}'")
         cx = _normalise(meta.get("complexity"))
         if cx and cx not in VALID_COMPLEXITY:
             report.fail(location, "F066_COMPLEXITY",
                         f"complexity must be one of {sorted(VALID_COMPLEXITY)}, got '{cx}'")
         pr = _normalise(meta.get("produces"))
-        if pr:
-            # F-067 meta.json: open-form regex per meta-schema.json.
-            # Frontmatter fallback: legacy closed set (F-066 B1).
-            if source == "meta.json":
-                if not PRODUCES_RE.fullmatch(pr):
-                    report.fail(location, "F066_PRODUCES",
-                                f"produces='{pr}' must match ^[a-z][a-z0-9-]*$")
-            elif pr not in VALID_PRODUCES:
-                report.fail(location, "F066_PRODUCES",
-                            f"produces must be one of {sorted(VALID_PRODUCES)}, got '{pr}'")
+        if pr and not PRODUCES_RE.fullmatch(pr):
+            report.fail(location, "F066_PRODUCES",
+                        f"produces='{pr}' must match ^[a-z][a-z0-9-]*$")
 
 
 def validate_agents_md_body(agents_path: Path, report: Report) -> None:
@@ -279,10 +214,7 @@ def validate_agents_md_body(agents_path: Path, report: Report) -> None:
         return
 
     text = agents_path.read_text(encoding="utf-8")
-    # Strip leading frontmatter if present (F-067 transitional); body checks
-    # apply to the markdown body either way.
-    body = frontmatter_body(text)
-    headings = {h.strip() for h in HEADING_RE.findall(body)}
+    headings = {h.strip() for h in HEADING_RE.findall(text)}
 
     # Section names may include optional parenthetical qualifiers, e.g.
     # "Applies If (ALL must hold)". Match by prefix to be tolerant.
@@ -344,8 +276,8 @@ def validate_methodology_dir(root: Path, report: Report) -> None:
         report.fail(root, "NOT_A_DIR", "path is not a directory")
         return
 
-    # F-067: metadata = meta.json (canonical) with frontmatter fallback;
-    # body sections live in AGENTS.md and are validated separately.
+    # F-067: metadata = meta.json (canonical); body sections live in
+    # AGENTS.md and are validated separately.
     validate_meta(root / "meta.json", root / "AGENTS.md", report)
     validate_agents_md_body(root / "AGENTS.md", report)
 

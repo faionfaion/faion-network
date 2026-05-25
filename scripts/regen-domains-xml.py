@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """F-067 T09 — regenerate domains.xml (L1) + per-domain INDEX.xml (L2).
 
-Walks `skills/faion/knowledge/` for `meta.json` files (preferred) and falls
-back to AGENTS.md frontmatter for the pre-migration state. Generates:
+Walks `skills/faion/knowledge/` for `meta.json` files (the F-067 canonical
+metadata source). Generates:
 
   1. `skills/faion/knowledge/domains.xml` — L1 index of all domains, each
      with description + slug count.
@@ -23,14 +23,11 @@ HARD RULES (per F-067 T09):
   - NEVER overwrite an existing domains.xml without backing it up first.
   - Output must parse cleanly with xml.etree.ElementTree.
   - UTF-8 + lowercase tags.
-
-# F-067 transitional fallback; remove after T11
 """
 from __future__ import annotations
 
 import argparse
 import json
-import re
 import shutil
 import sys
 import xml.etree.ElementTree as ET
@@ -47,8 +44,6 @@ PROGRESS_DIR = (
     REPO_ROOT.parent / ".aidocs" / "_progress" / "F-067" / "samples"
 )
 
-FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---\s*\n", re.DOTALL)
-
 META_KEYS = ("slug", "tier", "group", "domain", "summary")
 
 # Sub-paths to ignore inside knowledge/.
@@ -56,36 +51,12 @@ SKIP_DIR_PARTS = {"templates", "scripts", "content", "__pycache__"}
 
 
 # ---------------------------------------------------------------------------
-# Frontmatter / meta.json parsing
+# meta.json parsing
 # ---------------------------------------------------------------------------
 
 
-def parse_frontmatter(p: Path) -> dict[str, str] | None:
-    """Parse YAML frontmatter from AGENTS.md (fallback path)."""
-    try:
-        text = p.read_text(encoding="utf-8", errors="replace")
-    except OSError:
-        return None
-    m = FRONTMATTER_RE.match(text)
-    if not m:
-        return None
-    out: dict[str, str] = {}
-    for line in m.group(1).splitlines():
-        line = line.rstrip()
-        if not line or line.lstrip().startswith("#"):
-            continue
-        if line.startswith(" ") or line.startswith("\t"):
-            # skip nested list items
-            continue
-        if ":" not in line:
-            continue
-        k, _, v = line.partition(":")
-        out[k.strip()] = v.strip().strip('"').strip("'")
-    return out
-
-
 def load_meta_json(p: Path) -> dict[str, str] | None:
-    """Load meta.json (preferred source post-migration)."""
+    """Load meta.json (F-067 canonical metadata source)."""
     try:
         data = json.loads(p.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
@@ -96,16 +67,10 @@ def load_meta_json(p: Path) -> dict[str, str] | None:
 
 
 def methodology_entry(leaf_dir: Path) -> dict[str, str] | None:
-    """Resolve a methodology entry — meta.json first, frontmatter fallback."""
+    """Resolve a methodology entry from `<leaf>/meta.json`."""
     meta = leaf_dir / "meta.json"
     if meta.is_file():
         return load_meta_json(meta)
-    agents = leaf_dir / "AGENTS.md"
-    if agents.is_file():
-        # F-067 transitional fallback; remove after T11
-        fm = parse_frontmatter(agents)
-        if fm:
-            return {k: fm.get(k, "") for k in META_KEYS}
     return None
 
 
@@ -117,16 +82,13 @@ def methodology_entry(leaf_dir: Path) -> dict[str, str] | None:
 def collect() -> dict[str, list[dict[str, str]]]:
     """Walk knowledge/, group methodologies by domain.
 
-    A "methodology leaf" is any directory that contains either meta.json
-    or AGENTS.md (with frontmatter). We do not descend into nested leaves.
+    A "methodology leaf" is any directory containing a `meta.json` file.
     """
     by_domain: dict[str, list[dict[str, str]]] = defaultdict(list)
     seen: set[Path] = set()
 
-    # First collect candidate leaves via meta.json + AGENTS.md walks.
-    candidates: list[Path] = []
-    candidates.extend(KNOWLEDGE.rglob("meta.json"))
-    candidates.extend(KNOWLEDGE.rglob("AGENTS.md"))
+    # Collect candidate leaves via meta.json walk (F-067 canonical layout).
+    candidates: list[Path] = list(KNOWLEDGE.rglob("meta.json"))
 
     for marker in candidates:
         leaf = marker.parent
@@ -177,7 +139,7 @@ def render_l2_index(domain: str, entries: list[dict[str, str]]) -> str:
         f"  <description>L2 index of methodologies in the {escape(domain)} "
         f"domain. The retriever reads this after picking {escape(domain)} "
         f"from L1 domains.xml. Entries list slug + tier + summary; open the "
-        f"leaf AGENTS.md / content/*.xml for full payload.</description>"
+        f"leaf meta.json / content/*.xml for full payload.</description>"
     )
     for e in entries:
         slug = escape(e.get("slug", ""))

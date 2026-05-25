@@ -4,9 +4,6 @@
 Walks `skills/faion/knowledge/<domain>/<slug>/meta.json` and
 `skills/faion/playbooks/<domain>/<slug>/meta.json` (post-F-067 layout).
 
-Until T11 lands the migration, falls back to AGENTS.md frontmatter so the
-pre-migration corpus keeps producing the same 2625 entries as F-066 v7.
-
 Usage:
     python3 scripts/regen-tier-manifest.py            # write to skills/tier-manifest.json
     python3 scripts/regen-tier-manifest.py --dry-run  # print summary, write nothing
@@ -14,7 +11,6 @@ Usage:
 """
 import argparse
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -31,27 +27,6 @@ NEW_NOTES = (
     "v8: F-067 closed — corpus restructured to domain-first layout; "
     "tier-manifest now derived from <domain>/<slug>/meta.json files."
 )
-
-
-def parse_frontmatter(text: str) -> str | None:
-    m = re.match(r"^---\n(.*?)\n---\n", text, re.DOTALL)
-    return m.group(1) if m else None
-
-
-def fm_get(fm: str | None, key: str) -> str | None:
-    if not fm:
-        return None
-    m = re.search(rf"^{re.escape(key)}:\s*(.+)$", fm, re.MULTILINE)
-    if not m:
-        return None
-    return m.group(1).strip().strip('"').strip("'")
-
-
-def tier_from_path(path: Path, root: Path) -> str | None:
-    rel = path.relative_to(root).parts
-    if not rel:
-        return None
-    return rel[0] if rel[0] in TIERS else None
 
 
 def entry_from_meta(meta_path: Path) -> dict | None:
@@ -73,42 +48,15 @@ def entry_from_meta(meta_path: Path) -> dict | None:
     }
 
 
-def entry_from_agents_md(agents_path: Path, root: Path) -> dict | None:
-    """F-067 transitional fallback; remove after T11."""
-    d = agents_path.parent
-    if d.name == "templates":
-        return None
-    fm = parse_frontmatter(agents_path.read_text(encoding="utf-8", errors="replace"))
-    if not fm:
-        return None
-    slug = fm_get(fm, "slug")
-    if not slug:
-        return None
-    tier = tier_from_path(d, root) or fm_get(fm, "tier")
-    return {
-        "slug": slug,
-        "tier": tier,
-        "path": str(d.relative_to(ROOT)),
-        "content_id": fm_get(fm, "content_id") or "",
-        "domain": fm_get(fm, "domain") or "",
-        "group": fm_get(fm, "group") or "",
-        "status": fm_get(fm, "status") or "draft",
-        "version": fm_get(fm, "version") or "1.0.0",
-    }
-
-
 def collect_entries() -> tuple[list[dict], dict]:
-    """Walk knowledge + playbooks. Prefer meta.json; fall back to AGENTS.md.
+    """Walk knowledge + playbooks meta.json files.
 
     Returns (entries, stats).
     """
     entries: list[dict] = []
-    seen_paths: set[str] = set()
     stats = {
         "meta_knowledge": 0,
         "meta_playbooks": 0,
-        "fallback_knowledge": 0,
-        "fallback_playbooks": 0,
         "skipped": 0,
     }
 
@@ -118,8 +66,9 @@ def collect_entries() -> tuple[list[dict], dict]:
             e = entry_from_meta(meta)
             if e:
                 entries.append(e)
-                seen_paths.add(e["path"])
                 stats["meta_knowledge"] += 1
+            else:
+                stats["skipped"] += 1
 
     # 2. meta.json under playbooks (post-F-067 layout)
     if PLAYBOOKS.exists():
@@ -127,23 +76,7 @@ def collect_entries() -> tuple[list[dict], dict]:
             e = entry_from_meta(meta)
             if e:
                 entries.append(e)
-                seen_paths.add(e["path"])
                 stats["meta_playbooks"] += 1
-
-    # 3. F-067 transitional fallback; remove after T11.
-    #    Walk AGENTS.md frontmatter when meta.json is absent.
-    #    Mirrors F-066 v7 behaviour: knowledge-only (playbooks were not in v7).
-    if KNOWLEDGE.exists():
-        for agents in KNOWLEDGE.rglob("AGENTS.md"):
-            d = agents.parent
-            # skip if a meta.json already covered this dir
-            if str(d.relative_to(ROOT)) in seen_paths:
-                continue
-            e = entry_from_agents_md(agents, KNOWLEDGE)
-            if e:
-                entries.append(e)
-                seen_paths.add(e["path"])
-                stats["fallback_knowledge"] += 1
             else:
                 stats["skipped"] += 1
 
@@ -177,8 +110,6 @@ def main() -> int:
         f"entries={len(entries)} "
         f"(meta_knowledge={stats['meta_knowledge']}, "
         f"meta_playbooks={stats['meta_playbooks']}, "
-        f"fallback_knowledge={stats['fallback_knowledge']}, "
-        f"fallback_playbooks={stats['fallback_playbooks']}, "
         f"skipped={stats['skipped']})"
     )
     print(summary)
