@@ -2,9 +2,9 @@
 
 ## Summary
 
-**One-sentence:** Produces a binary-pass checklist that gates feature promotion from `backlog/` → `todo/` in the SDD lifecycle, replacing gut-feel approval.
+**One-sentence:** Produces binary-pass checklists that gate TWO SDD lifecycle transitions: `backlog → todo` (this methodology directly) and `in-progress → done` (delegated to the `readiness-checklist` methodology with extra quality-gate items).
 
-**One-paragraph:** SDD Promotion Gate Checklist produces a checklist that fixes a recurring decision in the sdd domain. It pins the artefact shape, attaches evidence, and blocks unfit inputs via the decision tree. Apply when the preconditions hold; otherwise the decision tree routes you to skip-this-methodology.
+**One-paragraph:** Same shape, two gates. The `backlog → todo` gate verifies canonical artefacts (spec.md always; plan.md unless trivial), evidence-linked yeses, named reviewer, blocker list. The `in-progress → done` gate delegates to readiness-checklist (10 items including conditional API tests, Playwright pos+neg, surface coupling, deploy). The decision tree routes you to the right sub-gate based on the feature's current state.
 
 **Ефективно для:**
 
@@ -48,6 +48,7 @@
 | `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 600 |
 | `content/04-procedure.xml` | essential | 5-step procedure with decision gates | 700 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
+| `content/07-done-gate.xml` | essential | in-progress → done gate delegated to readiness-checklist; conditional quality gates (API tests, Playwright pos+neg, surface coupling) | 500 |
 
 ## Task Routing
 
@@ -74,6 +75,9 @@
 
 - [[definition-of-done-multi-role]]
 - [[ai-assisted-specification-writing]]
+- [[readiness-checklist]] — methodology consumed by the in-progress → done gate.
+- [[plan-md-structure]] — defines which artefacts the backlog → todo gate checks.
+- [[cr-bug-tracking]] — CR / BUG side-streams have their own lighter close-out (NOT this gate).
 
 ## Decision tree
 
