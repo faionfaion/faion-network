@@ -1,27 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="TypeScript Strict Mode — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+<text id="06-decision-tree" title="typescript-strict-mode Decision Tree" version="1.1.0" est_tokens="200">
+  <summary>Per-error fix-strategy routing.</summary>
+
   <decision-tree>
-    <root-question id="q-applies">Do the Applies-If preconditions ALL hold for this task?</root-question>
-    <branch when="applies_if_all_hold == true">
-      <question id="q-primary">Is the primary trigger (first Applies-If item) present in the input artefact?</question>
-      <branch when="primary_trigger_present == true">
-        <question id="q-secondary">Is the secondary constraint (second Applies-If item) also met?</question>
-        <branch when="secondary_constraint_met == true">
-          <conclusion ref="r1-strict-true">Apply the full methodology starting from r1-strict-true; load content/01-core-rules.xml and follow content/04-procedure.xml (if present).</conclusion>
-        </branch>
-        <branch when="secondary_constraint_met == false">
-          <conclusion ref="r2-four-extras">Partial application: apply r2-four-extras only; do not enforce later-stage rules.</conclusion>
-        </branch>
+    <root-question id="q-error-kind">What kind of strict-mode error is this?</root-question>
+
+    <branch when="q-error-kind == 'indexed-access-undefined'">
+      <question id="q-context">Is the read part of an iteration loop or a single one-shot access?</question>
+
+      <branch when="q-context == 'iteration'">
+        <conclusion ref="r2-no-unchecked-indexed-access">Destructure with default: `const [first = fallback] = items;`. Or use a check `if (i &lt; items.length) …`.</conclusion>
       </branch>
-      <branch when="primary_trigger_present == false">
-        <conclusion ref="r3-zod-at-io">Pre-conditions not met; revisit Applies-If list before applying any rule. Pause and clarify.</conclusion>
+
+      <branch when="q-context == 'single-access'">
+        <conclusion ref="r2-no-unchecked-indexed-access">Optional chaining + nullish coalescing: `items[0]?.name ?? '—'`.</conclusion>
       </branch>
     </branch>
-    <branch when="applies_if_all_hold == false">
-      <conclusion ref="r6-explicit-return-types-exports">Skip this methodology; route to the sibling methodology indicated by the Skip-If reason.</conclusion>
+
+    <branch when="q-error-kind == 'nullable-property'">
+      <question id="q-caller-guarantee">Does the caller guarantee the value is present at this point?</question>
+
+      <branch when="q-caller-guarantee == true">
+        <conclusion ref="r4-no-bang-chain">Use an assertion function `assertDefined(x, 'must be loaded by middleware')` — NEVER `!`.</conclusion>
+      </branch>
+
+      <branch when="q-caller-guarantee == false">
+        <conclusion ref="r4-no-bang-chain">Optional chaining + default. Or refactor to a discriminated-union Result.</conclusion>
+      </branch>
     </branch>
-    <example trace="canonical-path">
-      <p>Typical happy path: applies-if holds, primary trigger present, secondary met → run the full methodology against r1-strict-true.</p>
-    </example>
+
+    <branch when="q-error-kind == 'unknown-narrow'">
+      <conclusion ref="r5-no-as-cast-on-unknown">Add a type predicate `function isFoo(v: unknown): v is Foo { … }`. Or Zod-parse if the value crosses a trust boundary.</conclusion>
+    </branch>
   </decision-tree>
+
+  <example trace="users-array-empty"><![CDATA[
+error: 'users[0]' is possibly 'undefined'.
+q-error-kind -> 'indexed-access-undefined'
+q-context -> 'single-access'
+=> conclusion r2: `users[0]?.email ?? 'unknown@—'`.
+]]></example>
 </text>

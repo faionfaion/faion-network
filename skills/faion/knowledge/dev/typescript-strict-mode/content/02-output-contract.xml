@@ -1,70 +1,96 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="TypeScript Strict Mode — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Output schema for the subagent applying typescript-strict-mode. Encodes required boolean checks against the artefact under review.</summary>
+<text id="02-output-contract" title="typescript-strict-mode Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>JSON schema for the strict-mode migration spec.</summary>
 
-  <section title="Schema (JSON Schema fragment)">
-    <code lang="json"><![CDATA[
+  <output-contract>
+    <schema format="json-schema"><![CDATA[
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ['strict_true', 'four_extras_enabled', 'zod_at_io', 'no_bare_any', 'no_unjustified_ts_ignore'],
+  "required": ["artefact_id", "owner", "repo", "ts_version", "current_flags", "target_flags", "migration_steps", "lint_backstops", "version", "last_reviewed"],
   "properties": {
-    "strict_true": { "type": "boolean" },
-    "four_extras_enabled": { "type": "boolean" },
-    "zod_at_io": { "type": "boolean" },
-    "no_bare_any": { "type": "boolean" },
-    "no_unjustified_ts_ignore": { "type": "boolean" }
-  },
-  "additionalProperties": false
+    "artefact_id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "owner": {"type": "string"},
+    "repo": {"type": "string"},
+    "ts_version": {"type": "string"},
+    "current_flags": {"type": "object"},
+    "target_flags": {
+      "type": "object",
+      "required": ["strict", "noUncheckedIndexedAccess", "exactOptionalPropertyTypes"],
+      "properties": {
+        "strict": {"const": true},
+        "noUncheckedIndexedAccess": {"const": true},
+        "exactOptionalPropertyTypes": {"const": true}
+      }
+    },
+    "migration_steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["order", "flag", "fix_strategy"],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "flag": {"type": "string"},
+          "fix_strategy": {"type": "string", "minLength": 20},
+          "error_budget": {"type": "integer", "minimum": 0}
+        }
+      }
+    },
+    "lint_backstops": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string"}
+    },
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
+  }
 }
-]]></code>
-  </section>
+]]></schema>
 
-  <section title="Required fields">
-    <list>
-      <item>strict_true</item>
-      <item>four_extras_enabled</item>
-      <item>zod_at_io</item>
-      <item>no_bare_any</item>
-      <item>no_unjustified_ts_ignore</item>
-    </list>
-  </section>
+    <forbidden>
+      <pattern id="f1">migration_steps does not include strict, noUncheckedIndexedAccess, exactOptionalPropertyTypes</pattern>
+      <pattern id="f2">a migration_step with fix_strategy shorter than 20 chars or containing the word "later" / "TODO" / placeholder-markers</pattern>
+      <pattern id="f3">lint_backstops missing both no-non-null-assertion and no-explicit-any</pattern>
+      <pattern id="f4">owner equals "team" or empty</pattern>
+    </forbidden>
 
-  <section title="Valid example">
-    <example type="good">
-      <code lang="json"><![CDATA[
+    <allowed-transformations>
+      <transformation>Sort migration_steps by order ascending.</transformation>
+    </allowed-transformations>
+  </output-contract>
+
+  <example valid="true"><![CDATA[
 {
-  "strict_true": true,
-  "four_extras_enabled": true,
-  "zod_at_io": true,
-  "no_bare_any": true,
-  "no_unjustified_ts_ignore": true
+  "artefact_id": "billing-strict-migration",
+  "owner": "ruslan@faion.net",
+  "repo": "faion-net-be",
+  "ts_version": "^5.4.0",
+  "current_flags": {"strict": false},
+  "target_flags": {"strict": true, "noUncheckedIndexedAccess": true, "exactOptionalPropertyTypes": true},
+  "migration_steps": [
+    {"order": 1, "flag": "strict", "fix_strategy": "Enable bundle; address strictNullChecks errors by adding | undefined to optional returns.", "error_budget": 80},
+    {"order": 2, "flag": "noUncheckedIndexedAccess", "fix_strategy": "Destructure with default OR optional chain at every array[i] / record[key] read site.", "error_budget": 60},
+    {"order": 3, "flag": "exactOptionalPropertyTypes", "fix_strategy": "Audit optional fields; add | undefined where explicit undefined assignment is needed.", "error_budget": 30}
+  ],
+  "lint_backstops": ["@typescript-eslint/no-non-null-assertion", "@typescript-eslint/no-explicit-any", "@typescript-eslint/no-unsafe-assignment"],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
 }
-]]></code>
-      <note>All gates green; methodology applied.</note>
-    </example>
-  </section>
+]]></example>
 
-  <section title="Invalid example">
-    <example type="bad">
-      <code lang="json"><![CDATA[
+  <example valid="false"><![CDATA[
 {
-  "strict_true": false,
-  "four_extras_enabled": false,
-  "zod_at_io": false,
-  "no_bare_any": false,
-  "no_unjustified_ts_ignore": false
+  "artefact_id": "bad-spec",
+  "owner": "team",
+  "repo": "x",
+  "ts_version": "5",
+  "current_flags": {},
+  "target_flags": {"strict": false, "noUncheckedIndexedAccess": false, "exactOptionalPropertyTypes": false},
+  "migration_steps": [{"order": 1, "flag": "strict", "fix_strategy": "later"}],
+  "lint_backstops": [],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
 }
-]]></code>
-      <note>All gates red; methodology not applied — fix the violations before claiming completion.</note>
-    </example>
-  </section>
-
-  <section title="Self-check checklist">
-    <list>
-      <item>Every required field is present and boolean true.</item>
-      <item>Artefact references the rule id from 01-core-rules.xml (e.g., r1-strict-true).</item>
-      <item>No extra properties outside the schema.</item>
-    </list>
-  </section>
+]]></example>
 </text>

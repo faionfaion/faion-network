@@ -1,31 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="TypeScript Strict Mode — Core Rules" version="1.0.0" est_tokens="1000" depth="essential">
-  <summary>Testable rules every typescript-strict-mode application must obey.</summary>
+<text id="01-core-rules" title="typescript-strict-mode Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>Six testable rules for adopting and sustaining TS strict mode.</summary>
 
   <section title="Rule set">
+
     <rule id="r1-strict-true" testable="true" depth="essential">
-      <statement>tsconfig.json compilerOptions.strict: true.</statement>
-      <rationale source="faion-network">Single flag turns on the canonical strict family (noImplicitAny, strictNullChecks, etc.).</rationale>
+      <statement>tsconfig.compilerOptions.strict MUST be true. This enables the bundle of 7 sub-flags (strictNullChecks, noImplicitAny, …).</statement>
+      <rationale source="ts-handbook strict">`strict: true` is the single switch that turns on type-safety basics; flipping individual sub-flags is acceptable only as a stepping stone during migration.</rationale>
     </rule>
-    <rule id="r2-four-extras" testable="true" depth="essential">
-      <statement>Enable noUncheckedIndexedAccess, exactOptionalPropertyTypes, noImplicitReturns, noFallthroughCasesInSwitch on top of strict.</statement>
-      <rationale source="faion-network">These four close the remaining 'silently wrong' loopholes that strict alone misses.</rationale>
+
+    <rule id="r2-no-unchecked-indexed-access" testable="true" depth="essential">
+      <statement>noUncheckedIndexedAccess MUST be true. `array[i]` and `record[key]` have type `T | undefined`; consumers must handle the undefined branch.</statement>
+      <rationale source="ts-handbook flag">Out-of-bounds and missing-key reads are the most common silent runtime crashes in TS code. The flag turns the bug into a compile error at every read site.</rationale>
     </rule>
-    <rule id="r3-zod-at-io" testable="true" depth="essential">
-      <statement>Validate every IO boundary (HTTP body, queue message, env vars) with Zod schemas. Use Schema.parse for trusted input, .safeParse for untrusted.</statement>
-      <rationale source="faion-network">TypeScript types vanish at runtime; Zod is the runtime layer that ensures the type-level contract.</rationale>
+
+    <rule id="r3-exact-optional" testable="true" depth="essential">
+      <statement>exactOptionalPropertyTypes MUST be true. Optional property `foo?: T` accepts only `T` or omission — not `undefined` explicitly. To allow explicit undefined, declare `foo?: T | undefined`.</statement>
+      <rationale source="ts-handbook flag">Distinguishes "field absent" from "field present with value undefined". The semantic gap matters for serialisation, Object.keys, JSON.stringify, and database mappers.</rationale>
     </rule>
-    <rule id="r4-unknown-over-any" testable="true" depth="essential">
-      <statement>Replace any with unknown. Narrow with type guards before use.</statement>
-      <rationale source="faion-network">any disables type checking on every chained operation; unknown forces explicit narrowing.</rationale>
+
+    <rule id="r4-no-bang-chain" testable="true" depth="essential">
+      <statement>The non-null assertion operator `!` is FORBIDDEN on values that can legitimately be null/undefined. Allowed only on tagged-template / hostObject reads guaranteed by the runtime contract.</statement>
+      <rationale source="effective-typescript">`!` is invisible at runtime and produces a useless TypeError at the next access. Optional chaining + nullish coalescing OR an assertion function are the correct alternatives.</rationale>
     </rule>
-    <rule id="r5-no-bare-ts-ignore" testable="true" depth="essential">
-      <statement>Never use bare // @ts-ignore. Always // @ts-expect-error[code]  // reason: why.</statement>
-      <rationale source="faion-network">Bare ignores hide unknown bugs; expect-error fails build if the error goes away (preventing rot).</rationale>
+
+    <rule id="r5-no-as-cast-on-unknown" testable="true" depth="essential">
+      <statement>`as T` casts on `unknown` or `any` are forbidden. Narrow with a type predicate function or validate with Zod safeParse before treating the value as T.</statement>
+      <rationale source="ts-handbook narrowing">`as T` is an unchecked lie to the compiler. Type predicates and Zod schemas put the narrowing logic in code that can be tested.</rationale>
     </rule>
-    <rule id="r6-explicit-return-types-exports" testable="true" depth="essential">
-      <statement>Export-visible functions declare explicit return types.</statement>
-      <rationale source="faion-network">Internal inference is fine; explicit at the boundary prevents inferred type drift breaking consumers.</rationale>
+
+    <rule id="r6-unknown-at-boundary" testable="true" depth="essential">
+      <statement>Every function that receives external input (HTTP body, env var via process.env, JSON.parse output, FormData) declares the parameter as `unknown` (or the equivalent Zod-inferred type). `any` at boundaries is forbidden.</statement>
+      <rationale source="ts-handbook + boundary discipline">unknown forces a narrowing step at the entry; any propagates through the entire call graph and disables type-checking downstream.</rationale>
     </rule>
+
   </section>
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>
