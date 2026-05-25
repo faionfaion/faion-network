@@ -73,12 +73,20 @@ Full convention: `skills/faion-claude-code/project-docs-convention/README.md`
 **Task lifecycle (inside feature):** `todo/ → in-progress/ → done/`
 
 **SDD document types:**
-- **constitution.md** - Tech decisions, standards, architecture
+- **constitution.md** - Tech decisions, standards, architecture. Declares per-project `project-spec/` location.
 - **roadmap.md** - Feature timeline, releases, success metrics
-- **spec.md** - What to build (requirements, success criteria)
-- **design.md** - How to build (architecture, API contracts)
-- **test-plan.md** - How to verify (test cases per AC, required at feature level)
-- **implementation-plan.md** - Task breakdown, dependencies, token estimates
+- **project-spec/** - Per-project source-of-truth folder (domain, business rules, data model, deploy, invariants). See `project-spec-structure` methodology.
+- **spec.md** - What to build (requirements, success criteria); delta-only when project-spec/ exists.
+- **plan.md** - Merged design + implementation plan; two H2 sections: `## Design` + `## Execution Plan`. See `plan-md-structure` methodology.
+- **user-flows.md** - Per-feature, REQUIRED only when user-facing flow exists. See `user-flows-template` methodology.
+- **ui-ux-design.md** - Per-feature, REQUIRED only when UI is touched. See `ui-ux-design-template` methodology.
+- **readiness.md** - Gate before moving feature to `done/`. See `readiness-checklist` methodology.
+
+**CR / BUG side streams:**
+- **crs/{todo,done}/CR0NN-slug.md** - Change requests; lighter than features. See `cr-bug-tracking`.
+- **bugs/{todo,in-progress,done}/BUG0NN-slug.md** - Defects with repro + regression test. See `cr-bug-tracking`.
+
+`project-spec/` location is declared per-project in each project's `constitution.md`.
 
 ## No Time Estimates
 
