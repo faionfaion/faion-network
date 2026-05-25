@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: add ui-ux-design-template methodology (Nielsen 5 + Norman 2 per-feature audit; required for UI work, skipped for backend; ui-ux-design.md.tmpl).
 - docs: drop test-plan.md references from SDD methodologies (replace with user-flows.md / plan.md across design-docs-patterns, sdd-batch-orchestrator phases 02/07/10, 01-overview).
 - docs: update sdd-for-solos playbook to new lifecycle (merge Step 4+5 into single plan.md step, drop test-plan, add conditional user-flows.md / ui-ux-design.md, add Step 6 readiness, add CR/BUG section); bump to v2.0.0.
 - docs: update sdd-promotion-gate-checklist to gate both backlog→todo and in-progress→done (new 07-done-gate.xml delegates to readiness-checklist); bump to v1.2.0.
