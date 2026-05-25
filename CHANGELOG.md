@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- F-068 T05: clean 4 dead `knowledge_paths` entries in tier-manifest.json `tiers` block (python-developer/javascript-developer roles, post-T01 remap).
 - F-068 T01: remap 19 role-as-domain methodologies (python-developer/javascript-developer → dev/frontend/backend).
 - F-068 T02: resolve sdd/templates-planning decision-tree stub (downgraded to draft).
 - F-068 T03: remove F-067 transitional frontmatter fallback (7 files).
