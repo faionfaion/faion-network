@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: add plan-md-structure methodology (merge design.md + implementation-plan.md into one plan.md with two H2 sections; skip rule for trivial features; F021/F022/F002 drift rationale).
 - feat: add cr-bug-tracking methodology (CR and BUG side-streams; global per-repo numbering with separate counters; commit prefixes cr(CR0NN)/fix(BUG0NN); BUG-driven business-rules.md updates).
 - feat: add readiness-checklist methodology (10-item readiness.md gating in-progress → done; conditional quality gates; surface-coupling review).
 - feat: add project-spec-structure methodology (folder shape, rebuild test as acceptance gate, per-feature delta update, location declared in constitution.md).
