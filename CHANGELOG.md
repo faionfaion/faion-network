@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: add readiness-checklist methodology (10-item readiness.md gating in-progress → done; conditional quality gates; surface-coupling review).
 - feat: add project-spec-structure methodology (folder shape, rebuild test as acceptance gate, per-feature delta update, location declared in constitution.md).
 - F-068 T05: clean 4 dead `knowledge_paths` entries in tier-manifest.json `tiers` block (python-developer/javascript-developer roles, post-T01 remap).
 - F-068 T01: remap 19 role-as-domain methodologies (python-developer/javascript-developer → dev/frontend/backend).
