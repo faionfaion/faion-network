@@ -22,12 +22,26 @@ post-migration corpora.
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 KNOWLEDGE = REPO_ROOT / "skills" / "faion" / "knowledge"
+
+
+def _is_draft(dir_path: Path) -> bool:
+    """F-068: draft methodologies are exempt from the decision-tree requirement
+    until they're activated. Read meta.json status field; absent meta.json or
+    parse errors fall through to the standard validation path."""
+    meta = dir_path / "meta.json"
+    if not meta.exists():
+        return False
+    try:
+        return json.loads(meta.read_text(encoding="utf-8")).get("status") == "draft"
+    except (OSError, json.JSONDecodeError):
+        return False
 
 
 def _gather_rule_ids(core_xml: Path) -> set[str]:
@@ -58,6 +72,10 @@ def _depth(node: ET.Element) -> int:
 
 def validate_dir(dir_path: Path, rule_ids_override: set[str] | None = None) -> list[str]:
     errs: list[str] = []
+    # F-068: draft methodologies are exempt from the decision-tree requirement
+    # until they're activated.
+    if _is_draft(dir_path):
+        return errs
     dt = dir_path / "content" / "06-decision-tree.xml"
     if not dt.exists():
         errs.append("missing content/06-decision-tree.xml")
