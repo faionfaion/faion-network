@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Orchestrator Token Protocol Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Six testable rules that make a fan-out pay for retrieval once. R1 removes the duplicate scans; R4 is the checkpoint that keeps the other five from silently regressing.</summary>
+
+  <section title="Search once">
+    <rule id="r1-orchestrator-searches-children-resolve" testable="true" depth="essential">
+      <statement>The orchestrator MUST perform the search the fan-out needs and pass the resulting identifiers to subagents. A subagent brief MUST NOT contain a search query for content the parent has already located. Where a child must search — genuinely disjoint exploration — that MUST be stated in the brief as a deliberate exception, not left as the default.</statement>
+      <rationale source="faion-cli-ab-experiment-2026-08-09">Two full product builds were run under a meter. The CLI-first pipeline issued 22 `faion search` calls and wrote 8,669,708 cache-write tokens against 150 input and 9,200 output tokens: each fresh subprocess re-sent the whole candidate manifest to the provider. At 2026-08 Opus rates that is roughly $55 for 22 searches, about $2.50 each — enough to erase the pipeline's entire measured saving elsewhere and leave it 5-6x more expensive overall. The searches were near-duplicates; one search shared as identifiers would have cost one.</rationale>
+    </rule>
+    <rule id="r2-identifiers-not-bodies-in-briefs" testable="true" depth="essential">
+      <statement>A subagent brief MUST reference content by stable identifier — hash-ID or path — and MUST NOT embed the body. Pasting a retrieved document into a brief is FORBIDDEN, including excerpts assembled "to save the child a call".</statement>
+      <rationale source="fan-out-multiplier">A body pasted into a brief is paid once per child and again on every turn that child re-sends its context, so an N-way fan-out multiplies it by more than N. An identifier is a few tokens and lets the child fetch only if it actually needs the text — which, for most fan-outs, most children do not.</rationale>
+    </rule>
+  </section>
+
+  <section title="Hydrate off the prompt path">
+    <rule id="r3-sink-first-hydration" testable="true" depth="essential">
+      <statement>Subagents MUST hydrate with the sink form of the content fetch — `faion get-content ID --sink` — which writes the body to disk and returns a short receipt. Piping a body through stdout into a prompt is permitted ONLY when the consumer is a human reading a terminal.</statement>
+      <rationale source="receipt-vs-body">The sink form returns a roughly 30-token receipt naming the file it wrote; the body reaches the agent as a file it may read, in part, on demand. Stdout transit puts the whole document into the context permanently and unconditionally, so the agent pays full price for a document it may only need one section of. Batch fetches take the same flag and return N receipts in one doc-set.</rationale>
+    </rule>
+    <rule id="r4-meter-checkpoints-bracket-the-fanout" testable="true" depth="essential">
+      <statement>The orchestrator MUST record a meter snapshot immediately before the fan-out and immediately after it rejoins, and MUST report the delta alongside the agent-visible token count. A pipeline that reports only agent-visible tokens MUST NOT claim a saving.</statement>
+      <rationale source="invisible-cost-line">The 2026-08-09 experiment reported minus 3.4% agent-visible tokens while being several times more expensive in reality, because the CLI's own provider calls happened inside child processes and appeared in nobody's context. The delta between two `faion tokens report` snapshots is the only number that includes them. Without the brackets the protocol's own effect is unfalsifiable.</rationale>
+    </rule>
+  </section>
+
+  <section title="Declare the process">
+    <rule id="r5-spawned-processes-declare-subagent" testable="true" depth="essential">
+      <statement>Every spawned child process MUST set `FAION_SUBAGENT=1` in its environment. The orchestrator MUST set it as part of the spawn, not delegate it to the child's own prompt.</statement>
+      <rationale source="shared-cache-bucket">The flag does two things at once. It drops the conversation-transcript block, which the child does not have and would otherwise pay to inject. And because the cache key includes the transcript hash, every no-transcript caller lands in one shared bucket keyed only by query, tier and corpus hash — so a repeat of an identical query from a different OS process is served from cache with zero provider calls. Left unset, each child hashes a different transcript, misses, and pays full price for a search its sibling already ran. A flag the child is merely told to set is a flag that gets forgotten in exactly the deep fan-outs where it matters most.</rationale>
+    </rule>
+    <rule id="r6-machine-readable-output-in-pipelines" testable="true" depth="essential">
+      <statement>Non-interactive callers MUST request the narrow output form — `--terse` and, when only identifiers are consumed downstream, `--output ids`. Prose or full-document output MUST NOT be parsed by a pipeline stage.</statement>
+      <rationale source="format-is-a-cost-decision">Rendered output carries framing, summaries and formatting sized for a human reader, all of which enters the consuming agent's context and none of which survives parsing. Where the next stage needs a list of identifiers, every other byte is waste that a flag removes.</rationale>
+    </rule>
+  </section>
+</text>

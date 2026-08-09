@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: add ai-agents/orchestrator-token-protocol methodology (free) — a fan-out pays for retrieval once: the orchestrator searches and passes hash-IDs, subagents hydrate via `get-content --sink`, every spawned process sets `FAION_SUBAGENT=1` (shared no-transcript cache bucket), and `faion tokens report` brackets the dispatch so the CLI's own cost is attributed. Anchored on the 2026-08-09 A/B run: 22 searches, 8,669,708 cache-write tokens, ~$55, against a reported −3.4% agent-visible saving.
 - feat: add quality-gates methodology (stack-to-gate matrix for backend / frontend / user-facing / pure-data; two-layer enforcement readiness.md + CI; framework-neutral tool recommendations).
 - feat: add user-flows-template methodology (per-feature user-flows.md; actor + preconditions + happy + negative paths per flow; pos+neg required; 1:1 mapping to Playwright specs).
 - feat: add ui-ux-design-template methodology (Nielsen 5 + Norman 2 per-feature audit; required for UI work, skipped for backend; ui-ux-design.md.tmpl).

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="Fan-Out Retrieval Failure Modes" version="1.0.0" est_tokens="500" depth="reference">
+  <summary>Five ways a fan-out pays for retrieval more than once. All five are quiet: the pipeline produces correct output and the cost lands somewhere nobody is reading.</summary>
+
+  <antipattern id="per-subagent-re-search">
+    <description>Each subagent is briefed with a topic and told to look it up. Ten children, ten searches, one corpus.</description>
+    <reason>The candidate set is re-sent to the provider by every fresh process, so the corpus scan is billed per child rather than per question. Measured at 22 calls in one pipeline for a handful of distinct questions. It hides well because each individual call looks cheap and none of them appear in the orchestrator's context.</reason>
+  </antipattern>
+
+  <antipattern id="body-pasted-into-the-brief">
+    <description>The orchestrator fetches a document, then inlines it into every child's brief so the children "do not have to fetch it".</description>
+    <reason>Trades one cheap fetch per child for one expensive copy per child, then re-sends that copy on every turn of every child. The intuition is right — avoid the duplicate work — but the duplicate being avoided is the cheap one.</reason>
+  </antipattern>
+
+  <antipattern id="stdout-body-transit">
+    <description>Content is fetched without the sink flag and the body arrives on stdout, straight into the consuming context.</description>
+    <reason>Loads the whole document unconditionally when the agent typically needs one section, and makes the cost proportional to document size rather than to what was used. The sink form is a flag away and returns a receipt of about 30 tokens.</reason>
+  </antipattern>
+
+  <antipattern id="unmetered-fanout">
+    <description>The pipeline reports agent-visible token counts and declares a win. The CLI's own provider calls are not in the report because they happened in child processes.</description>
+    <reason>Produces confidently wrong conclusions: one measured run showed a small agent-visible reduction while being several times more expensive end to end. Any optimisation accepted on that evidence is unverified, and the regression it hides grows with fan-out width.</reason>
+  </antipattern>
+
+  <antipattern id="transcript-injection-in-children">
+    <description>Subagents are spawned without the subagent flag, so each injects whatever conversation context it can resolve.</description>
+    <reason>Two costs for one omission. The transcript is paid on every child call, and because it is part of the cache key each child hashes differently and misses a shared cache entry a sibling has already warmed — turning a free repeat into a full-price search.</reason>
+  </antipattern>
+</text>
