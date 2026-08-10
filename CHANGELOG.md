@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- docs: land SDD state — feature-049-spec-deltas-bdd-cli (in-progress) and the ai-sdlc-landscape-2026 research set.
 - feat: add .codex-plugin manifest for the Codex packaging of faion.
 - feat: add quota-gate skill — GO/HOLD/UNKNOWN rate-limit gate with a source-freshness guard.
 - feat: add faion-net-content skill — editorial pipeline for the faion.net content surface (audience-first, subagent-driven, multilingual).
