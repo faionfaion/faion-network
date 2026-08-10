@@ -1,20 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Two-Pass: Free-Form Reasoning Then Structured Extraction Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
-  <summary>5 testable rules grounding the two-pass-reason-then-extract methodology. Each rule pairs a binary check + sourced rationale.</summary>
+<text id="01-core-rules" title="Two-Pass: Free-Form Reasoning Then Structured Extraction Core Rules" version="1.2.0" est_tokens="1350" depth="essential">
+  <summary>5 testable rules grounding the two-pass-reason-then-extract methodology. Each rule pairs a binary check + sourced rationale. Corrected 2026-08-04: the accuracy loss this methodology recovers is caused by the FORMAT INSTRUCTION in the prompt, not by the decoder's grammar mask — see the correction section at the end.</summary>
 
   <section title="Rule set">
 
     <rule id="two-pass-required" testable="true" depth="essential">
-      <statement>Tasks combining deep reasoning + strict schema MUST split into two passes: strong model in free text (or extended thinking), then cheap model with strict structured output over the strong-model transcript.</statement>
-      <rationale source="arXiv:2505.04016; BuildMVPFast 2026">SLOT (arXiv:2505.04016) + BuildMVPFast 2026 report 10-15% accuracy drop on math/analysis under strict SO vs free text. Two-pass restores it at near-zero extraction cost.</rationale>
+      <statement>Tasks combining deep reasoning + strict schema MUST split into two passes: strong model answering in free text (or extended thinking) with NO format instruction in its prompt, then cheap model with strict structured output over the strong-model transcript.</statement>
+      <rationale source="arXiv:2604.03616, The Format Tax, Lee / D'Antoni / Berg-Kirkpatrick (UC San Diego), 2026-04-04">The decoupled two-pass shape recovers +6.8 pp on average, improving 42 of 72 model x task x format combinations, measured over MATH-500, GPQA-Diamond, ZebraLogic and WritingBench across 6 open-weight models and 4 closed APIs. Open-weight models lose -3.9 pp on average from the format request alone and -5.8 pp averaged across formats. Frontier closed models have largely absorbed the tax — Claude Haiku, Grok and GPT-5.4-nano show near-zero or positive deltas — so run the A/B before adopting rather than assuming the gain (see ab-vs-single-pass).</rationale>
     </rule>
     <rule id="strong-model-free-text" testable="true" depth="essential">
-      <statement>Pass 1 MUST NOT use `tool_choice` / `response_format=json_schema` / strict grammar constraints. Extended thinking is allowed and encouraged when task difficulty justifies it.</statement>
-      <rationale source="Anthropic extended-thinking docs">The grammar mask costs probability mass on tokens that are not the optimal reasoning tokens; removing it is what recovers accuracy.</rationale>
+      <statement>Pass 1 MUST NOT use `tool_choice` / `response_format=json_schema` / `output_config.format` / strict grammar constraints — AND its prompt MUST NOT describe the output format, show the schema, or ask for JSON. Dropping the decoder constraint while leaving "reply as JSON matching this schema" in the prompt keeps almost the whole cost. Extended thinking is allowed and encouraged when task difficulty justifies it.</statement>
+      <rationale source="arXiv:2604.03616, The Format Tax, 2026-04-04">92% of statistically significant degradations (McNemar test) are already present with the format-requesting INSTRUCTION alone, before any decoder constraint is applied; the grammar adds little further harm. The mechanism the authors propose is that a format instruction compresses the visible reasoning channel before the model has finished solving, so it commits early. This corrects the earlier rationale in this methodology, which attributed the loss to the grammar mask: the mask was the visible mechanism, the instruction is the cause. Removing the instruction is what recovers accuracy.</rationale>
     </rule>
     <rule id="extractor-deterministic" testable="true" depth="essential">
       <statement>Pass 2 MUST use strict structured output (`response_format=json_schema` / `tool_choice` / Pydantic `parse`). Temperature ≤ 0.2.</statement>
-      <rationale source="Anthropic tool-use docs; OpenAI structured outputs docs">Extraction is mechanical; determinism is the contract the consumer relies on.</rationale>
+      <rationale source="Anthropic tool-use docs; OpenAI structured outputs docs; arXiv:2604.25359, 2026-04-28">Extraction is mechanical; determinism is the contract the consumer relies on. Note the residual risk moves rather than disappearing: across 21 models schema compliance is near-perfect while exact leaf-value accuracy is 83.0% on plain text, so pass 2 can be perfectly valid and still carry a wrong value. Spend eval budget on the values, not on compliance.</rationale>
     </rule>
     <rule id="transcript-bounded" testable="true" depth="essential">
       <statement>The strong-model transcript passed to the extractor MUST be capped (e.g. 8K tokens). If reasoning exceeds the cap, summarize first or split the task.</statement>
@@ -25,6 +25,11 @@
       <rationale source="Internal — two-pass adoption checklist">Two-pass is an investment; A/B keeps the decision data-driven and prevents cargo-culting on tasks where single-pass is fine.</rationale>
     </rule>
 
+  </section>
+
+  <section title="Correction — 2026-08-04">
+    <statement>Versions up to 1.1.0 of this methodology attributed the accuracy loss to the grammar mask of strict structured output, citing SLOT (arXiv:2505.04016) and a 2026 vendor guide for a 10-15% drop. The two-pass PRESCRIPTION was right and is unchanged; the CAUSAL story was wrong. The Format Tax (arXiv:2604.03616, 2026-04-04) separates the format-requesting instruction from the grammar-constrained decode and measures each: 92% of significant degradations are present with the instruction alone. Three consequences. First, the fix is to remove the format instruction from the reasoning prompt, not merely to disable constrained decoding — a common half-measure that keeps the cost. Second, a strict schema is NOT a plausible cause of a MISSING required field: under real constrained decoding the grammar makes the closing brace unreachable until every required key is emitted, so an observed ~30% required-field omission rate (Anthropic Agent SDK with `output_format=json_schema` on Sonnet 4.5, internal, production fix was plain text parsed into Pydantic) is evidence that the path was not applying grammar constraints at all — a client integration defect, not the format tax. Third, that production choice — prose then parse — is the researched-correct shape, a degenerate one-pass form of the decoupled two-pass recommended here, not a superstitious workaround. Do not generalise it into "provider structured output is unreliable": those are different code paths and the API path must be measured on its own.</statement>
+    <statement>Retained but reframed: the extended-thinking variant (hidden scratchpad, then format) recovers +9.2 pp on average but worsens 15% of combinations (arXiv:2604.03616) — higher mean, higher variance than the two-pass split. Prefer two-pass when a regression on any single task class is unacceptable.</statement>
   </section>
 
   <see-also>

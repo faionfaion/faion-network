@@ -7,7 +7,7 @@
 
     <rule testable="true">
       <statement>When a task requires deep reasoning AND a strict schema, run the strong model in free-text or extended-thinking mode for the reasoning step, then run a cheap extractor model with strict structured output to fill the schema from the strong model's transcript.</statement>
-      <rationale>The grammar mask of strict JSON costs probability mass on schema-conforming tokens that are not the optimal reasoning tokens. The SLOT paper and the BuildMVPFast 2026 guide both report 10–15 percent accuracy loss on math and complex analysis when reasoning is forced through strict SO versus free text. Two-pass restores accuracy because the reasoning step has no schema constraint, and the extraction step is easy enough that a small model meets the spec at fraction of the cost.</rationale>
+      <rationale>Corrected 2026-08-04. The cost is the FORMAT INSTRUCTION in the prompt, not the grammar mask: The Format Tax (arXiv:2604.03616, 2026-04-04) separates the format request from the constrained decode and finds 92 percent of statistically significant degradations already present with the instruction alone, before any decoder constraint. A format instruction compresses the visible reasoning channel before the model has finished solving, so it commits early. Two-pass restores accuracy — +6.8 pp on average, improving 42 of 72 model x task x format combinations — because pass 1 sees no format request at all, and the extraction step is easy enough that a small model meets the spec at a fraction of the cost. Earlier SLOT / vendor-guide figures of 10–15 percent describe the combined effect and do not isolate the cause.</rationale>
     </rule>
 
     <example type="good">
@@ -26,7 +26,7 @@ verdict = haiku.responses.parse(
     text_format=Verdict,  # strict Pydantic model
 )
       ]]></code>
-      <note>Reasoning is unconstrained and benefits from extended thinking. Extraction is mechanical, so a Haiku-class model meets the schema reliably and cheaply.</note>
+      <note>Reasoning is unconstrained and benefits from extended thinking. Note what the prompt does NOT contain: no schema, no "reply as JSON", no field list — removing the decoder constraint while leaving the format instruction keeps almost the whole cost. Extraction is mechanical, so a Haiku-class model meets the schema reliably and cheaply.</note>
     </example>
 
     <example type="bad">
@@ -39,16 +39,17 @@ verdict = anthropic.messages.create(
     messages=[{"role": "user", "content": question}],
 )
       ]]></code>
-      <note>Strict mode masks tokens during the reasoning trace itself. Accuracy drops 10–15 percent on hard tasks because the model cannot fully reason inside the grammar.</note>
+      <note>Two problems, and the smaller one is the grammar. The schema is described to the model in the same turn it must reason in, which is where 92 percent of the measured degradation lives (arXiv:2604.03616, 2026-04-04); the decoder mask on top adds little further harm. Frontier closed models absorb most of this tax, so measure before assuming the loss.</note>
     </example>
 
     <antipattern>
       <description>Adding a long reasoning field to a strict schema as a substitute for two-pass on math or research tasks.</description>
-      <reason>The embedded scratchpad pattern works for medium-difficulty reasoning, but on truly hard tasks the grammar mask still degrades the reasoning trace. When task difficulty saturates the scratchpad, switch to two-pass.</reason>
+      <reason>The embedded scratchpad pattern works for medium-difficulty reasoning, but the schema is still stated up front, so the format instruction is still compressing the reasoning channel on the hard tasks — the scratchpad field does not undo that. The hidden-scratchpad variant (extended thinking, then format) recovers +9.2 pp on average but worsens 15 percent of combinations; two-pass is the lower-variance choice. When task difficulty saturates the scratchpad, switch to two-pass.</reason>
     </antipattern>
 
     <reference path="templates/two_pass.py">Reusable two-pass function with Opus reasoning and Haiku extraction.</reference>
-    <reference href="https://arxiv.org/html/2505.04016v1">SLOT — Structuring the Output of Large Language Models (arXiv 2505.04016).</reference>
+    <reference href="https://arxiv.org/html/2604.03616">The Format Tax (arXiv:2604.03616, 2026-04-04) — separates the format instruction from the grammar constraint; the source of the corrected causal story.</reference>
+    <reference href="https://arxiv.org/html/2505.04016v1">SLOT — Structuring the Output of Large Language Models (arXiv 2505.04016). Combined-effect figures; superseded on causality.</reference>
     <reference href="https://www.buildmvpfast.com/blog/structured-output-llm-json-mode-function-calling-production-guide-2026">BuildMVPFast — Structured output 2026 guide (10–15% accuracy gap).</reference>
     <reference href="https://platform.claude.com/docs/en/build-with-claude/extended-thinking">Anthropic — Extended thinking documentation.</reference>
   </section>

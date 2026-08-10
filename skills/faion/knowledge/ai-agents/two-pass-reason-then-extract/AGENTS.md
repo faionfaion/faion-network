@@ -2,13 +2,13 @@
 
 ## Summary
 
-**One-sentence:** Run strong model in free text for reasoning, cheap model with strict schema for extraction; restores the 10-15% accuracy that grammar-mask costs on hard tasks.
+**One-sentence:** Run the strong model in free text with NO format instruction in its prompt, then a cheap model with a strict schema over the transcript; recovers the accuracy that asking for a format costs on hard tasks (+6.8 pp, arXiv:2604.03616).
 
-**One-paragraph:** Forcing strict JSON during reasoning measurably hurts accuracy: SLOT (arXiv:2505.04016) and BuildMVPFast 2026 report 10-15% drops on math + complex analysis when the same prompt runs with strict structured output vs free text. The grammar mask burns probability on schema-conforming tokens that are not the optimal reasoning tokens. This methodology splits the work: pass 1 runs the strong model (Opus + extended thinking) in free text; pass 2 runs a cheap extractor (Haiku) with strict structured output over the transcript. The schema lands on the consumer; the reasoning is never constrained.
+**One-paragraph:** Asking a model for a format while it is still reasoning measurably hurts accuracy — but the cost is in the prompt, not in the decoder. The Format Tax (arXiv:2604.03616, 2026-04-04) measures the format-requesting instruction and the grammar-constrained decode separately and finds 92% of statistically significant degradations already present with the instruction alone; the grammar mask adds little further harm. A format instruction compresses the visible reasoning channel before the model has finished solving, so it commits early. This methodology splits the work: pass 1 runs the strong model (extended thinking allowed) in free text with no schema, no field list and no "reply as JSON" anywhere in its prompt; pass 2 runs a cheap extractor with strict structured output over the transcript. The schema lands on the consumer; the reasoning never sees it. Decoupled two-pass recovers +6.8 pp on average and improves 42 of 72 model x task x format combinations — though frontier closed models have largely absorbed the tax, so the A/B rule still decides adoption.
 
 **Ефективно для:**
 
-- Math word problems, multi-step proofs, code generation з тонкими constraints — accuracy відновлюється.
+- Math word problems, multi-step proofs, code generation з тонкими constraints — accuracy відновлюється (MATH-500 і ZebraLogic — найгірші під format instruction).
 - Research synthesis: довгий аналіз → коротка структурна verdict.
 - Legal / medical verdict tasks: ригідна schema без compromise на reasoning.
 - Будь-який pipeline, де Opus extended thinking justified, але consumer хоче strict JSON.
@@ -43,9 +43,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules: two-pass-required, strong-model-free-text, extractor-deterministic, transcript-bounded, ab-vs-single-pass | 1100 |
+| `content/01-core-rules.xml` | essential | 5 testable rules: two-pass-required, strong-model-free-text, extractor-deterministic, transcript-bounded, ab-vs-single-pass — plus the 2026-08-04 causal correction | 1350 |
 | `content/02-output-contract.xml` | essential | JSON Schema for config + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 900 |
 | `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 800 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
@@ -72,10 +72,16 @@
 |------|---------|--------------|
 | `scripts/validate-two-pass-reason-then-extract.py` | Validate the config artefact against the schema | CI on each artefact change; pre-commit |
 
+## Correction (1.2.0, 2026-08-04)
+
+Up to 1.1.0 this methodology blamed the grammar mask for the accuracy loss. The prescription was right; the cause was wrong. Per arXiv:2604.03616 the loss sits overwhelmingly in the format INSTRUCTION in the prompt, so pass 1 must drop the schema from its prompt, not merely drop `response_format` from its request. Two knock-on corrections: a strict schema cannot cause a MISSING required field (constrained decoding makes the closing brace unreachable until it is emitted), so the ~30% required-field omission seen with the Anthropic Agent SDK `output_format=json_schema` on Sonnet 4.5 is an integration defect on that path rather than the format tax; and the production fix that followed it — plain text parsed into Pydantic — is the researched-correct shape, a one-pass degenerate form of what this methodology prescribes, not a superstitious workaround.
+
 ## Related
 
 - [[weak-model-preselection]]
 - [[tool-description-as-prompt]]
+- [[schema-semantic-constraint-gap]] — what pass 2's schema still fails to enforce once you have it
+- [[closed-set-output-validation]] — the exact check for pass-2 fields whose legal values you supplied
 
 ## Decision tree
 

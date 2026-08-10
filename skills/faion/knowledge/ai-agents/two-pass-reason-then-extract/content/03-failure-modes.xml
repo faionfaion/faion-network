@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Two-Pass: Free-Form Reasoning Then Structured Extraction Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>3 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+<text id="03-failure-modes" title="Two-Pass: Free-Form Reasoning Then Structured Extraction Failure Modes" version="1.2.0" est_tokens="900" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix. Two were added in 1.2.0 with the format-tax correction: keeping the format instruction after removing the constraint, and blaming the format tax for missing required fields.</summary>
 
   <section title="Antipatterns">
 
     <antipattern id="scratchpad-substitute" severity="high">
       <symptom>Author adds a 'reasoning' field to the strict schema and claims it equals two-pass.</symptom>
-      <root-cause source="arXiv:2505.04016; internal hard-task evals">Embedded scratchpad works for medium tasks; on hard tasks the grammar mask still degrades the reasoning trace.</root-cause>
+      <root-cause source="arXiv:2604.03616, 2026-04-04">Embedded scratchpad works for medium tasks, but the schema is still stated in the same prompt — and the format INSTRUCTION carries 92% of the measured degradation, before any decoder constraint. A reasoning field inside the schema does not remove the instruction; it is the instruction.</root-cause>
       <fix>Switch to two-pass when difficulty saturates the scratchpad — A/B is the test.</fix>
     </antipattern>
 
@@ -20,6 +20,18 @@
       <symptom>Two-pass adopted on faith. Subsequent eval shows single-pass was within 2%, doubling cost for nothing.</symptom>
       <root-cause source="Internal — two-pass adoption checklist">Cargo-cult on the pattern without measuring task difficulty.</root-cause>
       <fix>Run A/B on 50+ tasks before adopting; require ≥5% absolute delta to justify the double-call cost.</fix>
+    </antipattern>
+
+    <antipattern id="constraint-removed-instruction-kept" severity="high">
+      <symptom>Pass 1 drops `tool_choice` / `response_format` but its prompt still shows the schema or says "reply as JSON"; the A/B shows almost no gain and the pattern is written off as cargo cult.</symptom>
+      <root-cause source="arXiv:2604.03616, 2026-04-04">The decoder constraint was never the main cost. 92% of significant degradations are present with the format-requesting instruction alone, so removing only the constraint removes almost none of the tax.</root-cause>
+      <fix>Strip the format request from the pass-1 prompt entirely — no schema, no field list, no "as JSON". The consumer's contract belongs to pass 2 and to nothing else.</fix>
+    </antipattern>
+
+    <antipattern id="format-tax-blamed-for-missing-fields" severity="medium">
+      <symptom>A provider SDK returns objects missing REQUIRED fields at a high rate; the team cites the format tax and moves to plain-text parsing without investigating.</symptom>
+      <root-cause source="Anthropic structured-outputs docs, fetched 2026-08-03; internal Sonnet 4.5 Agent SDK observation">Under real constrained decoding a required field cannot be omitted — the grammar makes the closing brace unreachable until it is emitted. A high omission rate is therefore evidence that grammar constraints were not applied on that path (schema passed as a prompt instruction, a soft JSON mode, or an errored fallback). The format tax explains accuracy loss, not omission.</root-cause>
+      <fix>Move to prose-then-parse if you want — it is the researched-correct shape either way — but log the request as sent and confirm which path ran. Do not generalise one SDK's behaviour to the provider's API.</fix>
     </antipattern>
 
   </section>
