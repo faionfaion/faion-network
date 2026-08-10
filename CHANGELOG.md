@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- chore: add scripts AGENTS/CLAUDE docs and build-methodology-index-c.py.
 - feat: add hooks AGENTS/CLAUDE docs and track-wakeup.sh hook.
 - feat: add 7 article-pipeline agent definitions (outliner, writer, reviewer-en, translation-reviewer, translator, glossary-extractor, qg-fixer).
 - docs: slim root AGENTS.md to the 20-80 line budget; deep reference moves to .agents/ (INDEX, adapters, docs-convention, linting).
