@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: add .codex-plugin manifest for the Codex packaging of faion.
 - feat: add quota-gate skill — GO/HOLD/UNKNOWN rate-limit gate with a source-freshness guard.
 - feat: add faion-net-content skill — editorial pipeline for the faion.net content surface (audience-first, subagent-driven, multilingual).
 - chore: add scripts AGENTS/CLAUDE docs and build-methodology-index-c.py.
