@@ -4,7 +4,7 @@ Claude Code plugin hooks shipped with `faion-network`.
 
 ## Registration
 
-Only `hooks.json` is loaded by the runtime. It registers three `UserPromptSubmit` commands, each `python3 ${CLAUDE_PLUGIN_ROOT}/hooks/<file>` with `timeout: 5`. A file present here but absent from `hooks.json` does not run — `track-wakeup.sh` (PostToolUse for `ScheduleWakeup`) is currently unregistered and invoked elsewhere.
+Only `hooks.json` is loaded by the runtime. It registers three `UserPromptSubmit` commands, each `python3 ${CLAUDE_PLUGIN_ROOT}/hooks/<file>` with `timeout: 5`. A file present here but absent from `hooks.json` does not run. Workspace-specific hooks (e.g. the NERO statusline's wakeup tracker) live in `~/.claude/hooks/`, not in this repo — the plugin ships only universal session-discipline hooks.
 
 | File | Effect |
 |------|--------|
