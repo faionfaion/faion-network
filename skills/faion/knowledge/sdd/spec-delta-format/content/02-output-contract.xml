@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Spec Delta — Output Contract" version="1.0.0" est_tokens="850" depth="essential">
+  <summary>One Markdown file per feature, with a closed section vocabulary in a fixed order. The shape is the contract; the bundled validator checks it.</summary>
+
+  <section title="File shape">
+    <schema format="markdown" filename="spec.md">
+      <code lang="markdown"><![CDATA[
+# Spec Delta — <FEATURE-ID> <feature name>
+
+**Baseline:** `<path>/project-spec/` @ `<git-ref>`
+
+## Out of Scope
+
+- <adjacent thing a reader would expect to change, and why it did not>
+
+## RENAMED
+
+### <old-id> <old name> -> <new-id> <new name>
+
+**Scenarios:** <references carried across, or none>
+
+<what else moves with the name, if anything>
+
+## REMOVED
+
+### <id> <name>
+
+**Scenarios:** <every AC / requirement / test / flow that referenced this, and its new home or why it is obsolete>
+
+<why it is gone>
+
+## CHANGED
+
+### <id> <name>
+
+**Scenarios:** <references affected, and their status after the change>
+
+**Was:** <one line, quoted only for context>
+**Now:** <the new statement>
+
+## ADDED
+
+### <id> <name>
+
+<the new content, in the shape project-spec/ expects>
+]]></code>
+    </schema>
+    <note>Empty operation sections are omitted, not left with a placeholder. A delta with no operation section at all is not a delta — either nothing changed about the durable shape of the system, or the change has not been identified yet.</note>
+  </section>
+
+  <section title="Forbidden patterns">
+    <list>
+      <item>f1 — a missing baseline line, or a baseline without a git ref.</item>
+      <item>f2 — any H2 outside the closed vocabulary `Out of Scope`, `RENAMED`, `REMOVED`, `CHANGED`, `ADDED`. In particular `## Unchanged`, `## Status`, `## Notes` and any invented verb.</item>
+      <item>f3 — operation sections out of merge order (`RENAMED` → `REMOVED` → `CHANGED` → `ADDED`).</item>
+      <item>f4 — a `RENAMED` block without an explicit `-&gt;` (or `→`) pair.</item>
+      <item>f5 — a `REMOVED` or `CHANGED` block with no `**Scenarios:**` line.</item>
+      <item>f6 — the same identifier appearing in two operation sections, other than as the two halves of one `RENAMED` pair.</item>
+      <item>f7 — an operation block with no identifier in its heading.</item>
+      <item>f8 — no `## Out of Scope` section, or an empty one. "Nothing adjacent was considered" is itself worth writing down and is almost never true.</item>
+      <item>f9 — a delta with no operation sections at all.</item>
+    </list>
+  </section>
+
+  <example valid="true">
+    <code lang="markdown"><![CDATA[
+# Spec Delta — F-081 Refund window
+
+**Baseline:** `.product/project-spec/` @ `a1b2c3d`
+
+## Out of Scope
+
+- Chargebacks. They share the refund vocabulary but are a separate flow with its own provider contract; unchanged by this feature.
+
+## RENAMED
+
+### BR-07 Cancellation rules -> BR-07 Refund rules
+
+**Scenarios:** AC-14, AC-15 and `tests/billing/test_refund.py` all reference BR-07 by id and carry across unchanged.
+
+The id is retained deliberately: renaming the id as well would break three references for a wording change.
+
+## CHANGED
+
+### BR-07 Refund rules
+
+**Scenarios:** AC-14 (updated to 30 days), AC-15 (unaffected), `user-flows.md#refund` (updated).
+
+**Was:** a refund is available within 14 days of purchase.
+**Now:** a refund is available within 30 days of purchase, or within 90 days for annual plans.
+]]></code>
+    <note>Note the rename and the change are two separate blocks on the same id, in merge order — the rename lands first, so the CHANGED block addresses the post-rename name. This is the one legitimate case where an id appears twice, and the validator allows it only in this direction.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="markdown"><![CDATA[
+# Spec Delta — F-082 Pricing
+
+**Baseline:** `.product/project-spec/`
+
+## ADDED
+
+### PR-03 Annual discount
+
+Annual plans get 20% off.
+
+## REMOVED
+
+### PR-01 Monthly-only pricing
+
+No longer accurate.
+
+## Unchanged
+
+Everything else.
+]]></code>
+    <note>Five failures. No git ref on the baseline (f1). `## Unchanged` is not in the vocabulary and is unbounded by construction (f2, r5). ADDED precedes REMOVED, so an id collision between PR-03 and a section about to be deleted would surface as a false conflict (f3). The REMOVED block has no `**Scenarios:**` line, so nobody knows what referenced PR-01 (f5) — and PR-01 → PR-03 is almost certainly a rename wearing a delete-plus-add costume (r2).</note>
+  </example>
+
+  <section title="Consistency rules the validator enforces">
+    <statement>Baseline line present with a path and a git ref. Every H2 is in the closed vocabulary. Operation sections appear in merge order. Every operation block has an identifier in its heading. Every RENAMED block heading contains an arrow. Every REMOVED and CHANGED block has a non-empty `**Scenarios:**` line. No identifier appears in two operation sections except as a RENAMED old/new pair. `## Out of Scope` present and non-empty. At least one operation section present. The validator does NOT check that the delta is correct against the actual baseline — that needs the baseline, and it is the reviewer's job.</statement>
+  </section>
+
+  <reference path="scripts/validate-spec-delta-format.py">Structural validator; `--self-test` included.</reference>
+  <reference path="templates/spec-delta.md">Fill-in delta; ships valid against this contract.</reference>
+</text>

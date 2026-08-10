@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: add sdd/constitution-md methodology (free) — Produces constitution.md — at most 20 standing rules that pass the durable/cross-cutting/contestable/checkable test, each with a one-sentence why written before the rule, stable R-NN ids, a compliance statement and a semver footer — small enough to load into every phase, and explicitly delegating domain facts to project-spec/ instead of absorbing them.
+- feat: add sdd/ears-requirements methodology (free) — Constrains the statement sentence of every requirement to one of the five EARS patterns (Mavin, RE'09) with a derived clause order Where < While < When < If/Then, ships the grammar as machine-readable data plus fixtures, and routes everything that is not a system response to a condition somewhere else instead of dressing it in 'shall'.
+- feat: add sdd/spec-delta-format methodology (solo) — Defines the one-file spec delta: a baseline named by reference and git ref, four operation verbs (RENAMED, REMOVED, CHANGED, ADDED) applied in exactly that order, a mandatory scenario-loss check on every removal and change, a bounded Out of Scope section, and archiving only after the merged project-spec/ verifies.
 - docs: land SDD state — feature-049-spec-deltas-bdd-cli (in-progress) and the ai-sdlc-landscape-2026 research set.
 - feat: add .codex-plugin manifest for the Codex packaging of faion.
 - feat: add quota-gate skill — GO/HOLD/UNKNOWN rate-limit gate with a source-freshness guard.

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Spec Delta Core Rules" version="1.0.0" est_tokens="1200" depth="essential">
+  <summary>Seven testable rules. R2 and R3 are the pair that most deltas get wrong: four verbs, and exactly one order in which they can be applied without corrupting the baseline.</summary>
+
+  <section title="The baseline">
+    <rule id="r1-baseline-by-reference" testable="true" depth="essential">
+      <statement>The delta MUST name its baseline as a path plus a git ref (`.product/project-spec/ @ a1b2c3d`) and MUST NOT copy any part of the baseline into the delta file. Quoting a single line for context inside a CHANGED block is permitted; reproducing a section is not. If the baseline has moved since the ref, the delta is re-based against the current ref before merge, never merged against a ref it was not written for.</statement>
+      <rationale source="sdd/project-spec-structure; corpus decision 2026-08-04">A copied baseline forks the source of truth the moment the original changes, and both copies then look authoritative. The git ref is what makes the delta re-playable and reviewable months later: without it, "CHANGED section 3.2" is unresolvable once section 3.2 has been renumbered. This is also why a per-feature `spec/` directory holding its own copy of the domain was rejected — it forks the source of truth by construction.</rationale>
+    </rule>
+  </section>
+
+  <section title="The verbs and the order">
+    <rule id="r2-four-verbs-closed" testable="true" depth="essential">
+      <statement>Exactly four operation verbs exist and the vocabulary is closed: `RENAMED`, `REMOVED`, `CHANGED`, `ADDED`. A rename MUST use `RENAMED` with an explicit `old -&gt; new` pair; expressing it as a `REMOVED` plus an `ADDED` is forbidden. Invented verbs (`UPDATED`, `MOVED`, `DEPRECATED`, `CLARIFIED`) are forbidden — a deprecation is a `CHANGED`, a move is a `RENAMED`, a clarification that changes no meaning is not a delta at all.</statement>
+      <rationale source="derived from rename-as-delete-plus-add defect class">RENAMED exists as its own verb for one reason: a rename expressed as a delete plus an add loses every reference to the old identifier, and nothing notices, because both halves are individually valid. The reader of a `REMOVED X` / `ADDED Y` pair cannot tell whether Y is a renamed X or a genuinely new thing that happens to look similar — and neither can a tool. An open verb vocabulary produces the same problem one synonym at a time.</rationale>
+    </rule>
+
+    <rule id="r3-merge-order" testable="true" depth="essential">
+      <statement>Operations MUST be applied in the order `RENAMED → REMOVED → CHANGED → ADDED`, and the sections MUST appear in the file in that same order. Renames first, so every later operation refers to post-rename identifiers and the delta has exactly one naming vocabulary. Removals second, so a CHANGED whose target is about to disappear fails as "target not found" instead of applying and then being deleted. Changes third, over the surviving, correctly-named set. Additions last, so an ADDED identifier that already exists after the first three steps is a genuine collision rather than an artefact of ordering.</statement>
+      <rationale source="derived — order is forced by what each operation needs to be true">This is the only order in which each operation sees a consistent world; every other permutation makes at least one class of conflict undetectable. Applying ADDED before REMOVED, for example, makes an id collision with a section that is about to be deleted look like a real conflict, so the author "fixes" it by renaming the new thing — and the fix is now permanent. The order is not a convention to be flexible about; it is the reason conflicts surface at all.</rationale>
+    </rule>
+  </section>
+
+  <section title="What a delta must not lose">
+    <rule id="r4-scenario-loss-check" testable="true" depth="essential">
+      <statement>Every `REMOVED` and every `CHANGED` block MUST carry a `**Scenarios:**` line enumerating the acceptance criteria, requirement ids, test files or user flows that referenced the affected section, and for each one either its new home or an explicit statement that it is obsolete and why. `**Scenarios:** none` is a permitted answer and MUST be verified rather than assumed — it is a claim that nothing referenced this section, which is checkable with one search.</statement>
+      <rationale source="coverage-drop defect class; sdd/readiness-checklist i8-spec-delta">Coverage does not usually disappear because someone deleted a test. It disappears because someone deleted a spec section that three acceptance criteria were hanging off, the tests kept passing against nothing, and the gap surfaced in production two releases later. The scenario line is the cheapest possible place to catch it: the author already has the section open and already knows what it was for, and neither will be true for the reviewer.</rationale>
+    </rule>
+
+    <rule id="r5-bounded-out-of-scope" testable="true" depth="essential">
+      <statement>The delta MUST contain an `## Out of Scope` section listing what a reader would reasonably expect this feature to have changed and it did not. It MUST NOT contain a section enumerating everything that stayed the same — an unchanged list is unbounded, unverifiable, and stale on arrival.</statement>
+      <rationale source="corpus decision 2026-08-04 — '## Unchanged (explicit)' rejected as mandatory">The instinct behind an explicit unchanged list is real: reviewers want to know that an omission was deliberate. But "unchanged" is the complement of the delta over the whole baseline, so the list can never be complete and its incompleteness is indistinguishable from an oversight. `## Out of Scope` is bounded — it holds only the handful of adjacent things a reader would have expected — and every entry is a decision someone actually made, which is the property that makes it worth reviewing.</rationale>
+    </rule>
+
+    <rule id="r6-ids-inside-operation-blocks" testable="true" depth="essential">
+      <statement>Every operation block MUST be headed by the identifier it operates on (`### DM-04 Invoice`, `### R-12 Refund window`, `### 3.2 Pricing rules`), and an identifier MUST NOT appear in more than one operation section — except as the two halves of a single `RENAMED` pair. Untitled or id-less blocks are forbidden.</statement>
+      <rationale source="derived from merge conflict detection">Ids inside the blocks are what make the delta mechanically mergeable and make two concurrent deltas comparable: without them the merge is a prose reconciliation. The one-section-per-id rule catches the common authoring error where a section is edited and then also removed, or added and then changed, in the same delta — a contradiction that reads as perfectly reasonable when the two blocks are eighty lines apart.</rationale>
+    </rule>
+  </section>
+
+  <section title="Lifecycle">
+    <rule id="r7-verify-then-archive" testable="true" depth="essential">
+      <statement>The delta is merged into `project-spec/` in the same pull request as the feature, the merged `project-spec/` is then verified — rebuild test, readiness gate, or whatever the project's acceptance check is — and ONLY after that verification passes is the delta archived. Archiving before verification is forbidden. The archived delta is retained, not deleted: the sequence of deltas is the only reconstructable history of how `project-spec/` reached its current state.</statement>
+      <rationale source="sdd/project-spec-structure rebuild-test gate; sdd/readiness-checklist i8-spec-delta">Archive-then-verify discards the instruction set at the exact moment it becomes valuable. When the merged spec turns out to be incoherent, the delta is what tells you which operation introduced it and what the pre-merge state was; a delta already moved to `done/` and half-forgotten turns a ten-minute diagnosis into a git-archaeology session. Keeping the archive is what lets a future reader answer "when did this rule appear, and with which feature" without reading every commit.</rationale>
+    </rule>
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+    <link path="templates/spec-delta.md"/>
+  </see-also>
+</text>

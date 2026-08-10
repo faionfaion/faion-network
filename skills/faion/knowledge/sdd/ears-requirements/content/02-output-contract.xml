@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="EARS Requirement Set — Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>The artefact this methodology produces: a requirement set in which every item carries an id, a statement, a classified `ears_pattern`, and — when the pattern is `n-a` — a recorded reason. Machine-checkable by the bundled validator.</summary>
+
+  <section title="JSON Schema">
+    <schema format="json-schema-draft-07" filename="requirements.json">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ears-requirements.json",
+  "type": "object",
+  "required": ["artefact_id", "version", "last_reviewed", "requirements", "ears_violations", "owner"],
+  "properties": {
+    "artefact_id": {"type": "string"},
+    "version": {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
+    "last_reviewed": {"type": "string", "format": "date"},
+    "owner": {"type": "string"},
+    "requirements": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "statement", "ears_pattern", "priority", "verification_method"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^(FR|NFR)-\\d{3}$"},
+          "statement": {"type": "string", "minLength": 12},
+          "ears_pattern": {
+            "type": "string",
+            "enum": ["ubiquitous", "state-driven", "event-driven",
+                     "optional-feature", "unwanted-behaviour", "complex", "n-a"]
+          },
+          "ears_pattern_na_reason": {"type": "string", "minLength": 12},
+          "priority": {"type": "string", "enum": ["must", "should", "could"]},
+          "verification_method": {"type": "string", "minLength": 3},
+          "source_flow": {"type": "string"}
+        }
+      }
+    },
+    "ears_violations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "code", "message"],
+        "properties": {
+          "id": {"type": "string"},
+          "code": {"type": "string", "pattern": "^[EWI]\\d{3}$"},
+          "severity": {"type": "string", "enum": ["error", "warn", "info"]},
+          "message": {"type": "string"}
+        }
+      }
+    }
+  }
+}
+]]></code>
+    </schema>
+  </section>
+
+  <section title="Forbidden patterns">
+    <list>
+      <item>f1 — any requirement without an `FR-NNN` / `NFR-NNN` id.</item>
+      <item>f2 — any requirement without `verification_method`.</item>
+      <item>f3 — any `FR-NNN` with `ears_pattern: n-a`. The opt-out is available to NFRs only; an FR that cannot be expressed as a system response to a condition is not a functional requirement.</item>
+      <item>f4 — any requirement with `ears_pattern: n-a` and no `ears_pattern_na_reason`. Silent opt-out is the failure this field exists to prevent.</item>
+      <item>f5 — any FR failing EARS classification in an artefact submitted as final, i.e. `ears_violations` containing an `E`-severity code for that id.</item>
+      <item>f6 — `owner` equal to `team`, `we`, empty or null.</item>
+    </list>
+  </section>
+
+  <example valid="true">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "F-081-checkout-requirements",
+  "version": "1.0.0",
+  "last_reviewed": "2026-08-04",
+  "owner": "@solo-founder",
+  "requirements": [
+    {
+      "id": "FR-001",
+      "statement": "When a customer submits the checkout form, the payment service shall create a charge intent.",
+      "ears_pattern": "event-driven",
+      "priority": "must",
+      "verification_method": "integration test",
+      "source_flow": "user-flows.md#checkout-happy-path"
+    },
+    {
+      "id": "FR-002",
+      "statement": "If the payment provider returns a declined status, then the checkout page shall display the message \"Card declined\".",
+      "ears_pattern": "unwanted-behaviour",
+      "priority": "must",
+      "verification_method": "negative test"
+    },
+    {
+      "id": "NFR-001",
+      "statement": "The billing service shall encrypt stored card tokens at rest using AES-256.",
+      "ears_pattern": "ubiquitous",
+      "priority": "must",
+      "verification_method": "property test + monitor"
+    },
+    {
+      "id": "NFR-002",
+      "statement": "The payment integration is isolated behind a single adapter module with no provider types leaking into domain code.",
+      "ears_pattern": "n-a",
+      "ears_pattern_na_reason": "architectural constraint, not a system response to a condition",
+      "priority": "should",
+      "verification_method": "architecture test (import boundary)"
+    }
+  ],
+  "ears_violations": []
+}
+]]></code>
+    <note>`verification_method` was suggested from `ears_pattern` (event → integration, unwanted → negative, ubiquitous → property/monitor) and then confirmed by a human. It is never auto-filled.</note>
+  </example>
+
+  <example valid="false">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "bad",
+  "version": "1.0.0",
+  "last_reviewed": "2026-08-04",
+  "owner": "team",
+  "requirements": [
+    {
+      "id": "FR-003",
+      "statement": "The app should be fast.",
+      "ears_pattern": "n-a",
+      "priority": "must",
+      "verification_method": "manual"
+    }
+  ],
+  "ears_violations": []
+}
+]]></code>
+    <note>Four forbidden patterns at once: f3 (an FR may not opt out), f4 (no reason given), f5 (the statement emits E001/E008/W103/W111 and `ears_violations` was left empty anyway), f6 (`owner: team`).</note>
+  </example>
+
+  <section title="Consistency rules the validator enforces">
+    <statement>`ears_pattern` MUST equal the pattern the linter derives from `statement` — a recorded classification that disagrees with the parser is a stale artefact, not an override. Every `E`-code the linter emits for a requirement MUST appear in `ears_violations` with the matching id; an empty `ears_violations` array asserts a clean parse and is checked, not trusted. `ears_pattern: n-a` requires `ears_pattern_na_reason` and an `NFR-` id.</statement>
+  </section>
+
+  <reference path="scripts/validate-ears-requirements.py">Contract validator and line linter; `--self-test` replays every fixture.</reference>
+  <reference path="templates/ears-rules.json">The rule table the validator loads. Same file the Go runtime embeds.</reference>
+</text>
