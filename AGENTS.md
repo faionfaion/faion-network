@@ -1,164 +1,60 @@
 # faion-network
 
-**Methodology base for the CLI.** The repo is the source of truth for everything the `faion` CLI ships at runtime: skills, methodologies, playbooks, workflows, and the `tier-manifest.json` that gates them.
+Methodology corpus and Claude Code skill base for the `faion` CLI. Auto-loaded in every session (symlinked as `~/workspace/.claude`), so this file stays inside the 20-80 line budget — deep content lives in `.agents/`.
 
 | Item | Value |
 |------|-------|
 | Repo | `faionfaion/faion-network` |
-| Content | 54 skills, 1300+ methodologies, 120 playbooks, 5 workflows, `tier-manifest.json` |
-| Tiers | free / solo / pro / geek (cumulative; manifest is the authoritative path-to-tier map) |
-| Distribution | Read by `faion-cli` at runtime; read by `faion-net-be` on disk via `KNOWLEDGE_ROOT` + `TIER_MANIFEST_PATH` settings; **not** bundled into the public `faion` plugin |
-| Symlink | `~/workspace/.claude → projects/faion-net/faion-network` so Claude Code loads skills from here directly |
+| Corpus | 2,637 methodologies over 22 domains, 455 playbooks, 6 workflows, 6 skill dirs |
+| Gating | `skills/tier-manifest.json` v8, 3,092 entries — authoritative path-to-tier map |
+| Tiers | free / solo / pro / geek (cumulative) |
+| Distribution | Read by `faion-cli` at runtime; read by `faion-net-be` on disk via `KNOWLEDGE_ROOT` + `TIER_MANIFEST_PATH`; not bundled into the public `faion` plugin |
+| Ecosystem | `../AGENTS.md` — full stack and runtime data flow |
 
-**Ecosystem map:** see `../AGENTS.md` for the full 5-repo stack and runtime data flow.
+## Layout
 
-## Adapters
+| Path | What |
+|------|------|
+| `skills/faion/knowledge/<domain>/<slug>/` | Methodology: `AGENTS.md` + `meta.json` + `content/*.xml` (+ `templates/`, `scripts/`) |
+| `skills/faion/playbooks/by-goal/<goal>/<slug>/` | Playbook: `AGENTS.md` + `content/01-playbook.xml` |
+| `skills/faion/workflows/` | 6 orchestration workflows (brainstorm, idea-to-prod, improver, media-ops, poll-agents, sdd-batch-orchestrator) |
+| `skills/tier-manifest.json` | Generated from `meta.json` files — never hand-edit |
+| `agents/` · `hooks/` · `rules/` | Subagent definitions · plugin hooks (`hooks.json`) · authoring rules |
+| `scripts/` | Validators and index/manifest generators |
+| `docs/` | Corpus specs: `skill-authoring.md`, `directory-structure.md`, `methodology-xml-schema.md` |
+| `.aidocs/` | SDD lifecycle docs for this repo |
+| `.agents/` | Deep reference — see [.agents/INDEX.md](.agents/INDEX.md) |
 
-This repo is packaged for Claude Code and Codex. Shared project rules live below; runtime-specific Faion behavior lives in adapter files:
-
-| Runtime | Adapter |
-|---------|---------|
-| Claude Code | `skills/faion/adapters/claude-code.md` and `skills/faion/workflows/adapters/claude-code.md` |
-| Codex | `skills/faion/adapters/codex.md` and `skills/faion/workflows/adapters/codex.md` |
-
-Claude Code-specific metadata (`CLAUDE.md`, `allowed-tools`, hooks) is kept for Claude compatibility. Codex should ignore it unless the Codex adapter says otherwise.
-
-## Git Commits
-
-- 50 chars title, optional body
-- NO "Co-Authored-By: Claude"
-- NO emojis
-- Format: `type: short description`
-- **CHANGELOG.md required** — pre-commit hook blocks without it. Add entry under `## [Unreleased]`
-
-## Language
-
-- **User:** Ukrainian
-- **Docs/code:** English (saves ~30% tokens)
-- **Subagent prompts:** English
-
-## Documentation
-
-**NO ASCII ART.** Allowed: tables, lists, arrows (`→`), directory trees.
-
-## Documentation Convention
-
-Every directory uses this pattern for multi-agent compatibility:
-
-```
-any-dir/
-├── CLAUDE.md       # Always: @AGENTS.md (Claude Code entrypoint)
-├── AGENTS.md       # Essential context for THIS dir (20-80 lines, auto-loaded)
-├── .agents/        # Detailed reference docs (on-demand)
-│   └── INDEX.md    # Full index of .agents/ contents
-└── .aidocs/        # SDD lifecycle docs (project roots only)
-    └── INDEX.md    # Full index of .aidocs/ contents
-```
-
-- `CLAUDE.md` = always `@AGENTS.md`, nothing else
-- `AGENTS.md` = what this dir IS + commands + gotchas. Mentions `.agents/INDEX.md` path
-- `.agents/` = architecture, API refs, decisions, deep dives
-- `.product/` = per-project SDD + product docs (specs, designs, plans, roadmap)
-- `.aidocs/` = workspace-level SDD (multi-repo projects like NERO)
-
-**Per-module coverage:** `CLAUDE.md` + `AGENTS.md` required in every directory that contains source code — not just repo roots, but also subpackages, module folders, test dirs. When creating or modifying a directory, always ensure the pair exists. AGENTS.md: 20-80 lines, file table, key types. Skip only empty `__init__.py`-only dirs with no logic.
-
-Full convention: `skills/faion-claude-code/project-docs-convention/README.md`
-
-## Directory Structure
-
-**Full documentation:** [docs/directory-structure.md](docs/directory-structure.md)
-
-**SDD feature lifecycle:** `backlog/ → todo/ → in-progress/ → done/`
-**Task lifecycle (inside feature):** `todo/ → in-progress/ → done/`
-
-**SDD document types:**
-- **constitution.md** - Tech decisions, standards, architecture. Declares per-project `project-spec/` location.
-- **roadmap.md** - Feature timeline, releases, success metrics
-- **project-spec/** - Per-project source-of-truth folder (domain, business rules, data model, deploy, invariants). See `project-spec-structure` methodology.
-- **spec.md** - What to build (requirements, success criteria); delta-only when project-spec/ exists.
-- **plan.md** - Merged design + implementation plan; two H2 sections: `## Design` + `## Execution Plan`. See `plan-md-structure` methodology.
-- **user-flows.md** - Per-feature, REQUIRED only when user-facing flow exists. See `user-flows-template` methodology.
-- **ui-ux-design.md** - Per-feature, REQUIRED only when UI is touched. See `ui-ux-design-template` methodology.
-- **readiness.md** - Gate before moving feature to `done/`. See `readiness-checklist` methodology.
-
-**CR / BUG side streams:**
-- **crs/{todo,done}/CR0NN-slug.md** - Change requests; lighter than features. See `cr-bug-tracking`.
-- **bugs/{todo,in-progress,done}/BUG0NN-slug.md** - Defects with repro + regression test. See `cr-bug-tracking`.
-
-`project-spec/` location is declared per-project in each project's `constitution.md`.
-
-## No Time Estimates
-
-**NEVER provide time estimates** for task execution in SDD workflow:
-
-- ❌ "This will take 2 hours"
-- ❌ "Estimated duration: 3 days"
-- ❌ "Should be done in 30 minutes"
-- ✅ "Task complexity: High" (qualitative)
-- ✅ "Est. tokens: ~50k" (resource-based)
-
-**Why:** Time estimates are inherently unreliable and create false expectations. Use complexity levels and token estimates instead.
-
-**In SDD documents:**
-- `implementation-plan.md` — NO `estimated_duration` field
-- `TASK_*.md` — NO time estimates, use token estimates only
-- `roadmap.md` — Use phases/milestones, not dates when possible
-
-## Token Efficiency
-
-**Symbols:** `→` leads to | `⇒` transforms | `✅` done | `❌` failed | `⚠️` warning
-
-**Abbrev:** `cfg` config | `impl` impl | `perf` perf | `sec` security | `dep` dependency
-
-## SDD Memory
-
-**Location:** Project-local `.aidocs/memory/` (not global)
-
-```
-.aidocs/memory/
-├── patterns.md           # Learned patterns
-├── mistakes.md           # Errors and solutions
-├── decisions.md          # Key decisions
-└── session.md            # Session state
-```
-
-**Note:** Memory updates sync to project CLAUDE.md automatically.
-
-## Linting & Pre-Commit Rules
-
-**Every project MUST have pre-commit hooks.** If a hook fails, fix the issue — never skip with `--no-verify`.
-
-### Per-Project Setup
-
-| Project | Tool | Pre-commit | What it checks |
-|---------|------|------------|----------------|
-| **backend** | ruff | `.pre-commit-config.yaml` | Format, lint (E/W/F/I/B/C4/UP/SIM/DJ/T20), debug statements |
-| **dag** | ruff | `.pre-commit-config.yaml` | Same as backend |
-| **frontend** | ESLint + Prettier | `.husky/pre-commit` | Format, Angular lint, selector prefix |
-| **ddl-builder** | ESLint + Prettier + TS | `.husky/pre-commit` | Format, typecheck, RELEASE_NOTES.md |
-
-### Agent Rules
-
-1. **When hook fails** — read the error, fix the root cause, commit again. Never `--no-verify`.
-2. **When adding new Python code** — run `ruff check --fix` before committing. No `print()` in production code (T20).
-3. **When adding new TypeScript code** — run `npm run typecheck`. No `any` types.
-4. **When finding a new bug pattern** — consider adding a ruff/ESLint rule for it. Document in project AGENTS.md.
-5. **DDL Builder** — always update RELEASE_NOTES.md with every commit.
-
-### ruff Quick Reference (Python)
+## Commands
 
 ```bash
-ruff check .              # Lint
-ruff check . --fix        # Lint + auto-fix
-ruff format .             # Format (replaces black)
-ruff check . --select T20 # Find print() statements
+bash scripts/f066-validate-all.sh                    # all 6 corpus validators, summary report
+python3 scripts/validate-methodology-v2.py <dir>     # one methodology dir
+python3 scripts/validate-playbook-v3.py --all        # all playbooks
+python3 scripts/validate-domains-index.py            # L1 domains.xml
+python3 scripts/regen-tier-manifest.py --dry-run     # manifest diff vs meta.json (drop flag to write)
+bash tests/test_snapshot.sh                          # installer unit tests
+bash init.sh                                         # install skills + agents into ~/.claude
 ```
 
-Key rule groups: `E` errors, `F` pyflakes, `I` isort, `B` bugbear, `T20` no-print, `DJ` django, `UP` pyupgrade.
+## Rules
 
-## References
+- **Commits** — `type: short description`, 50-char title, no `Co-Authored-By`, no emojis. Every commit adds an entry under `## [Unreleased]` in `CHANGELOG.md`.
+- **Language** — user Ukrainian; docs, code and subagent prompts English.
+- **Documentation** — no ASCII art; tables, lists, arrows (`→`) and directory trees are fine.
+- **Docs convention** — every source dir carries `CLAUDE.md` (exactly `@AGENTS.md`) + `AGENTS.md` (20-80 lines: purpose, file table, commands, gotchas). Full rules: [.agents/docs-convention.md](.agents/docs-convention.md)
+- **SDD** — features `backlog/ → todo/ → in-progress/ → done/`; tasks inside a feature `todo/ → in-progress/ → done/`. Document types and CR/BUG streams: [.agents/sdd-lifecycle.md](.agents/sdd-lifecycle.md)
+- **No time estimates** — never state hours, days or dates in SDD docs; use qualitative complexity and token estimates.
+- **Linting** — every project must have working pre-commit hooks; on failure fix the cause, never `--no-verify`. Per-project setup: [.agents/linting.md](.agents/linting.md)
+- **Skill authoring** — read `rules/skill-authoring.md` before creating or editing anything under `skills/`.
+- **Adapters** — packaged for Claude Code and Codex; runtime-specific behavior: [.agents/adapters.md](.agents/adapters.md)
 
-- [Claude Code Docs](https://docs.anthropic.com/en/docs/claude-code)
-- [Skills](https://docs.anthropic.com/en/docs/claude-code/skills)
-- [Sub-agents](https://docs.anthropic.com/en/docs/claude-code/sub-agents)
+## Gotchas
+
+- `skills/tier-manifest.json` is **generated** from `meta.json` files — regenerate with `regen-tier-manifest.py`; hand-edits get overwritten.
+- **`scripts/build-domain-index-v2.py` is BROKEN — never run it.** It reads YAML frontmatter that 0 of 2,637 methodology `AGENTS.md` files carry (F-067 moved that metadata to `meta.json`), so it returns 0 entries for every domain and `--write` silently empties the `INDEX.xml` it targets. Until it is repaired, `INDEX.xml` entries are added **by hand**: one `<methodology slug tier path>` block with a `<summary>`, kept alphabetical, with the `count=` attribute bumped to match.
+- The manifest is at `skills/tier-manifest.json`, not the repo root.
+- No git hook is installed here — the `CHANGELOG.md` rule is enforced by review, not automatically.
+- Methodology and playbook dirs already carry their own `AGENTS.md` envelope fixed by the corpus spec. Do not add repo-style `AGENTS.md` / `CLAUDE.md` pairs anywhere under `skills/faion/knowledge/**` or `skills/faion/playbooks/**`.
+- Retrieval is two-level: read `skills/faion/knowledge/domains.xml` (L1), pick at most 3 domains, then their `INDEX.xml` (L2) before opening any leaf. Never enumerate the corpus.
+- `docs/catalog.json`, `README.md` and `skills/CLAUDE.md` still quote pre-F-067 counts (52 knowledge bases, 1,300+ methodologies). The manifest is the source of truth.
