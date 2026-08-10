@@ -10,10 +10,15 @@ file FREEZES — and a frozen value was trusted as live, which once made the poo
 sit on a stale "98%" for ~2 days. So: if the source file is older than
 --max-age-min, we return UNKNOWN instead of pretending the number is current.
 
-Source resolution (first existing wins):
-  1. $CLAUDE_SESSION_STATE                (explicit override)
-  2. /tmp/claude-session-state.json       (faion statusline target)
+Source resolution — the platform adapter contract:
+  --source <path> overrides everything: if given, ONLY that path is read;
+  a missing/unreadable --source is UNKNOWN, never a silent fallback.
+  Otherwise, first existing wins:
+  1. $CLAUDE_SESSION_STATE                (env override)
+  2. /tmp/claude-session-state.json       (NERO statusline target)
   3. ~/.claude/session-state.json
+Third-party platforms plug in by writing the JSON shape below to any of
+these paths (and keeping its mtime fresh), or by passing --source.
 
 Expected JSON shape (only the fields used):
   {"rate_limits": {"five_hour":  {"used_percentage": <num>, "resets_at": <epoch?>},
@@ -36,9 +41,14 @@ from pathlib import Path
 
 
 def find_source(explicit):
-    candidates = []
     if explicit:
-        candidates.append(Path(explicit))
+        # --source is a hard override: never fall back past it.
+        p = Path(explicit)
+        try:
+            return p if p.is_file() else None
+        except OSError:
+            return None
+    candidates = []
     env = os.environ.get("CLAUDE_SESSION_STATE")
     if env:
         candidates.append(Path(env))
@@ -55,7 +65,10 @@ def find_source(explicit):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--source", default=None, help="explicit path to session-state JSON")
+    ap.add_argument("--source", default=None,
+                    help="explicit path to session-state JSON; overrides the env "
+                         "var and both default paths — a missing --source is "
+                         "UNKNOWN, not a fallback")
     ap.add_argument("--five-hold", type=float, default=70.0)
     ap.add_argument("--seven-hold", type=float, default=94.0)
     ap.add_argument("--max-age-min", type=float, default=15.0,
@@ -65,8 +78,13 @@ def main():
 
     src = find_source(args.source)
     if src is None:
-        print("UNKNOWN no session-state source found. Gate conservatively: "
-              "low --cap, heed in-session limit warnings.")
+        if args.source:
+            print(f"UNKNOWN --source {args.source} does not exist or is not a "
+                  f"file (no fallback past an explicit --source). Gate "
+                  f"conservatively: low cap, heed in-session limit warnings.")
+        else:
+            print("UNKNOWN no session-state source found. Gate conservatively: "
+                  "low --cap, heed in-session limit warnings.")
         return 2
 
     # Freshness guard — the fix this workspace exists for.

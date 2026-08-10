@@ -42,14 +42,41 @@ once made the pool sit on a stale `98%` for ~2 days. So the gate now checks the 
 This is the single concrete improvement over the source skill, which trusted the file's value
 regardless of age.
 
-## Source resolution
+## Source resolution (platform adapter contract)
 
-Reads, first existing wins: `$CLAUDE_SESSION_STATE` → `/tmp/claude-session-state.json` (the
-faion statusline target on this machine) → `~/.claude/session-state.json`. JSON shape used:
+The gate has no built-in knowledge of any provider's API — it reads a session-state JSON file
+that something else keeps fresh. On NERO that something is the statusline; any other platform
+plugs in through the same contract.
+
+Resolution order:
+
+1. `--source <path>` — hard override of everything below. If given, ONLY that path is read;
+   a missing or unreadable `--source` is **UNKNOWN**, never a silent fallback to another file.
+2. `$CLAUDE_SESSION_STATE` env var.
+3. `/tmp/claude-session-state.json` (the NERO statusline target on this machine).
+4. `~/.claude/session-state.json`.
+
+For steps 2-4, first existing wins.
+
+**JSON contract for third-party writers** — write this shape to any of the paths above and
+keep the file's mtime fresh (the freshness guard treats an old mtime as stale):
 
 ```json
-{"rate_limits": {"five_hour": {"used_percentage": 64}, "seven_day": {"used_percentage": 12}}}
+{
+  "rate_limits": {
+    "five_hour":  {"used_percentage": 64},
+    "seven_day":  {"used_percentage": 12}
+  }
+}
 ```
+
+`used_percentage` is a number 0-100. Extra fields are ignored. A file that exists but does not
+parse to this shape is **UNKNOWN**.
+
+**No source at all → UNKNOWN (rc=2), by design.** On a machine where nothing writes
+session-state, the gate cannot answer and says so — it never guesses GO. Callers MUST gate
+conservatively on rc=2: low dispatch cap, heed in-session limit warnings, re-check after a
+live turn.
 
 ## Where it's used
 
