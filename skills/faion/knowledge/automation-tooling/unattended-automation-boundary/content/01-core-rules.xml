@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Unattended Automation Boundary — Rules" version="1.0.0" est_tokens="950" depth="essential">
+  <summary>Seven testable rules. R1 is the gate — most systems fail it and must install nothing. R2 fixes the escalation order, R3 the exec constraint, and R4-R7 apply only once a surface is warranted.</summary>
+
+  <section title="The gate">
+    <rule id="r1-nobody-present-gate" testable="true" depth="essential">
+      <statement>An automation runtime MUST NOT be installed unless at least one trigger fires when no human is present — a scheduled run at a time you are not working, an inbound webhook from an external system, or an event on a machine you are not at. Every trigger MUST be enumerated in the record with `human_present` stated. If every trigger has a human present, the record MUST record `chosen_surface: none` and stop. "Install nothing" is the expected outcome, not a failure of the analysis.</statement>
+      <rationale source="present-agent-covers-its-own-triggers">A trigger with a human present is already served: the agent session that the human started can run the work directly, and its own hooks fire on its own events at no additional operational cost. Adding a workflow runtime for that case buys a second place for the logic to live, a second place to look when it breaks, and a second update surface — with no capability that was not already there.</rationale>
+    </rule>
+  </section>
+
+  <section title="Escalation">
+    <rule id="r2-cheapest-surface-first" testable="true" depth="essential">
+      <statement>Surfaces MUST be considered in fixed order and the first one that can express the trigger MUST be chosen: (1) the agent's own hooks and built-in scheduling, (2) the operating system's scheduler — cron, a systemd timer, the platform's task scheduler, (3) a self-hosted workflow runtime. Each step up MUST name, in the record, the concrete thing the step below could not express. An escalation whose justification is "it is easier to see" is not an escalation, it is a preference, and it costs a whole runtime.</statement>
+      <rationale source="capability-vs-convenience">Steps 1 and 2 are already installed and already monitored; step 3 is a service to run, secure, back up and update. Requiring the justification to name a missing capability rather than a missing convenience is what keeps the third step rare.</rationale>
+    </rule>
+    <rule id="r3-exec-capability-is-a-hard-constraint" testable="true" depth="essential">
+      <statement>If any step of the workflow must run a local binary, the record MUST set `needs_local_exec: true`, and a surface MUST NOT be chosen unless it can actually execute one. As assessed 2026-08-04: n8n can, on self-hosted instances only, with the Execute Command node unavailable on n8n Cloud and excluded by default so it must be explicitly re-enabled; Make and Maia cannot, their On-Premise Agent being an HTTP bridge on an enterprise plan; Dify cannot even when self-hosted, its code sandbox applying a seccomp policy that blocks exec syscalls; Flowise's Custom Function cannot, running in a JavaScript VM without `child_process`. This capability MUST be re-verified against current documentation before the choice is made.</statement>
+      <rationale source="vendor-docs-and-trackers-2026-08-04">Three of the four commonly recommended visual tools cannot do the thing a developer most often wants from one, and the constraint is architectural rather than configurable — a sandbox that blocks exec is the product's security model, not a setting. Discovering this after building the workflow is the common path; checking it first costs one line in the record.</rationale>
+    </rule>
+  </section>
+
+  <section title="Operating conditions">
+    <rule id="r4-host-must-be-awake" testable="true" depth="essential">
+      <statement>Any surface other than `none` MUST declare the host that runs the trigger and that host MUST be always-on. A laptop that sleeps, a workstation that is shut down at night, and a container that is started manually are not unattended hosts. If no always-on host exists, the record either provisions one — and states its recurring cost in currency — or falls back to `chosen_surface: none`.</statement>
+      <rationale source="the-trigger-that-never-fired">The failure is silent: a nightly job on a sleeping laptop does not error, it simply never runs, and nothing reports the absence. The cost of the fix is small and concrete — a small always-on VPS is a few euro a month — but it must be a decision in the record rather than an assumption.</rationale>
+    </rule>
+    <rule id="r5-blast-radius-and-stop-switch" testable="true" depth="essential">
+      <statement>Any surface other than `none` MUST declare what an unattended run is permitted to do — what it may write, what it may publish, what it may spend, and which credentials it holds — and MUST name a stop switch that a human can operate without reading the workflow. A run that can publish or spend without a declared ceiling MUST NOT be enabled.</statement>
+      <rationale source="unattended-means-unobserved">The defining property of unattended work is that its first ten failures happen with nobody watching. A blast radius bounded in advance turns an unobserved failure into a bounded one; a stop switch that requires understanding the workflow is not a stop switch at the moment it is needed.</rationale>
+    </rule>
+    <rule id="r6-one-unattended-surface-per-system" testable="true" depth="essential">
+      <statement>A system MUST have exactly one unattended trigger surface, named in the record. Introducing a second — a workflow runtime beside an existing scheduler, or per-component cron entries beside a central one — is drift, and MUST be recorded as a rejected alternative rather than adopted alongside.</statement>
+      <rationale source="two-schedulers-diverge">Two surfaces schedule the same thing twice, or each assume the other owns something and neither runs it. Both failures are found late, because the symptom is an absence. One surface makes the inventory of what runs unattended readable in one place.</rationale>
+    </rule>
+    <rule id="r7-name-the-failing-trigger" testable="true" depth="essential">
+      <statement>The record MUST name at least one concrete trigger, with a date, that the current arrangement failed to serve — a run that did not happen, an event that arrived while nobody was there, a manual step performed at an unreasonable hour. A new surface adopted without a dated failure is adopted on anticipation, and MUST be recorded as `chosen_surface: none` until the failure occurs.</statement>
+      <rationale source="anticipated-need-is-not-need">Automation runtimes are adopted for workflows imagined rather than observed, and the imagined ones are the ones that never get built — leaving a service to maintain and nothing running on it. A dated failure is cheap evidence and it is the difference between a tool that earns its upkeep and one that becomes furniture.</rationale>
+    </rule>
+  </section>
+</text>

@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: add automation-tooling/unattended-automation-boundary methodology (solo) — Produces an Unattended Automation Record deciding whether an automation runtime is warranted at all — usually it is not — and, when it is, the cheapest surface that can express the trigger: agent hooks, then the OS scheduler, then a self-hosted workflow runtime. Carries the dated per-tool exec-capability table that eliminates most visual tools outright when a local binary must run.
 - feat: add ai-core/closed-set-output-validation methodology (solo) — groundedness as set membership (grounding_rate = |E n C| / |E|) when the output space is enumerable; count-don't-log rule, mixed-output scoping, MiniCheck CC BY-NC licence bar.
 - feat: add ai-core/retrieval-cost-per-answer-audit methodology (solo) — Produces a Retrieval Cost Ledger over ten real queries — index tokens, candidate tokens, delivered-body tokens, correctness — yielding median tokens per lookup and the overhead ratio that decides whether to compress, restructure or leave the retrieval structure alone.
 - feat: add ai-agents/context-graph-engineering methodology (pro) — Produces a Graph Design Record that first proves a graph is warranted at all (M:N, cross-links, cycles or temporal validity), then constrains edge construction, traversal budget and integrity checks — so the graph never costs more than the retrieval it replaces.

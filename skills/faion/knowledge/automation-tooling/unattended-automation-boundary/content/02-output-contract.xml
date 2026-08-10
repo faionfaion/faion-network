@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Unattended Automation Record — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>The artefact this methodology produces: an Unattended Automation Record as YAML or JSON, machine-checkable by the bundled validator.</summary>
+
+  <contract format="yaml|json" filename="unattended-automation-record.yaml">
+    <field name="system" type="string" required="true">What the automation would serve, in one line.</field>
+    <field name="triggers" type="list" required="true" min_items="1">Every candidate trigger. Each item: `name`, `kind` (schedule|webhook|file-event|manual), `human_present` (bool), `when` (the time or event, concretely).</field>
+    <field name="failing_trigger" type="string" required="true" min_length="30">One trigger the current arrangement demonstrably failed to serve, with a four-digit year (r7).</field>
+    <field name="chosen_surface" type="enum" required="true" values="none|agent-hooks|os-scheduler|workflow-runtime">The verdict. `none` is the expected outcome and installs nothing.</field>
+    <field name="needs_local_exec" type="boolean" required="when chosen_surface!=none">Whether any step must run a local binary. Decides the last surface outright (r3).</field>
+    <field name="runtime" type="string" required="when chosen_surface==workflow-runtime">Which runtime: `n8n`, `make`, `dify`, `flowise`, or another named product.</field>
+    <field name="self_hosted" type="boolean" required="when chosen_surface==workflow-runtime">Cloud instances of every tool assessed here cannot execute a local binary.</field>
+    <field name="why_hooks_insufficient" type="string" required="when chosen_surface in os-scheduler,workflow-runtime" min_length="20">The capability agent hooks lack. Convenience does not qualify (r2).</field>
+    <field name="why_scheduler_insufficient" type="string" required="when chosen_surface==workflow-runtime" min_length="20">The capability the OS scheduler lacks.</field>
+    <field name="host" type="string" required="when chosen_surface!=none">The machine that runs the trigger.</field>
+    <field name="host_availability" type="enum" required="when chosen_surface!=none" values="always-on|sleeps|manual-start">Only `always-on` is an unattended host (r4).</field>
+    <field name="host_cost_per_month" type="string" required="when host is provisioned for this">Recurring cost in currency, e.g. "EUR 5".</field>
+    <field name="blast_radius" type="string" required="when chosen_surface!=none" min_length="20">What an unattended run may write, publish, spend and hold credentials for (r5).</field>
+    <field name="stop_switch" type="string" required="when chosen_surface!=none" min_length="12">How a human halts it without reading the workflow.</field>
+    <field name="rejected_surfaces" type="list" required="true" min_items="1">Each item `{surface, reason}`. A second unattended surface belongs here, never alongside (r6).</field>
+  </contract>
+
+  <section title="Stop condition">
+    <statement>When every trigger has `human_present: true`, the record is COMPLETE at `chosen_surface: none` plus `system`, `triggers`, `failing_trigger` and `rejected_surfaces`. Every other field is omitted. A record that answers `none` and then specifies a host and a blast radius has not accepted its own verdict.</statement>
+  </section>
+
+  <section title="Consistency rules the validator enforces">
+    <statement>If no trigger has `human_present: false`, `chosen_surface` must be `none` and no surface-specific field may be present. `needs_local_exec: true` forbids `make`, `dify` and `flowise` outright, and forbids `n8n` unless `self_hosted: true`. Escalating to `os-scheduler` requires `why_hooks_insufficient`; escalating to `workflow-runtime` requires both justifications. Any surface other than `none` requires `host_availability: always-on`, a `blast_radius` and a `stop_switch`. `failing_trigger` must contain a four-digit year. `rejected_surfaces` must be non-empty — including for `none`, where the rejected surface is whatever you were about to install.</statement>
+  </section>
+</text>
