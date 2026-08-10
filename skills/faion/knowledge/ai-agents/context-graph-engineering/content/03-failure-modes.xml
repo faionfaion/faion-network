@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="Context Graph Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Six ways context graphs fail in production, each with the observable symptom and the rule that prevents it.</summary>
+
+  <failure id="f1-graph-for-a-tree-problem">
+    <symptom>Retrieval quality is flat or worse than the search it replaced, while cost rose an order of magnitude. Fact-shaped questions regressed most.</symptom>
+    <cause>The data was hierarchical. Every real query resolved to a containment walk that a tree already answered.</cause>
+    <prevention ref="r1-graph-warrant">Name the warrant before building. Measured on GraphRAG-Bench: flat retrieval beat the graph on fact questions on both corpora at 1/40th the query tokens.</prevention>
+  </failure>
+
+  <failure id="f2-extraction-bill">
+    <symptom>Indexing dominates the budget; the graph is quietly not rebuilt after corpus changes; answers drift stale.</symptom>
+    <cause>Edges were extracted by an LLM where they could have been derived from structure, so every rebuild repays full construction cost.</cause>
+    <prevention ref="r3-derived-edges-first">Derive first. 654,673 tokens versus 89,215 on the same corpus is the difference between a graph you can rebuild nightly and one you rebuild once and then lie about.</prevention>
+  </failure>
+
+  <failure id="f3-context-window-blowout">
+    <symptom>Intermittent failures on "connected" queries; latency spikes; truncation errors that never reproduce on test data.</symptom>
+    <cause>No declared hop or fan-out bound, so traversal cost is O(k^h) and a well-connected seed node walks most of the graph.</cause>
+    <prevention ref="r5-declared-traversal-budget">Declare h and k, compute the worst case, prove it fits before shipping.</prevention>
+  </failure>
+
+  <failure id="f4-confident-stale-fact">
+    <symptom>The agent asserts something that was true last quarter with no hedging, and cites the graph as its source.</symptom>
+    <cause>Contradicting facts overwrote their predecessors, so the graph holds only a present tense with no way to express "no longer".</cause>
+    <prevention ref="r6-no-hard-delete">Expire rather than delete; filter by validity at query time.</prevention>
+  </failure>
+
+  <failure id="f5-dangling-edge-trusted">
+    <symptom>The agent recommends a resource that does not exist, or reports "not found" for content that demonstrably does.</symptom>
+    <cause>Edges point at identifiers that never resolved, or resolve on disk but not in the registry the retriever actually consults.</cause>
+    <prevention ref="r7-integrity-gate-in-ci">Referential integrity as a failing CI gate, checked against the SAME registry the retriever uses at runtime — not against the filesystem. The two diverge silently, and the filesystem check passes while retrieval fails.</prevention>
+  </failure>
+
+  <failure id="f6-supernode-collapse">
+    <symptom>A small number of queries are catastrophically slow or expensive; most are fine. The slow set all touch the same few nodes.</symptom>
+    <cause>Hub nodes accumulated edges without bound, so any walk reaching them fans out to a large fraction of the graph.</cause>
+    <prevention ref="r4-closed-edge-vocabulary">Declare a supernode cap and refactor hubs into intermediate nodes before shipping.</prevention>
+  </failure>
+</text>

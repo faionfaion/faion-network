@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Schema Pair Record — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>The artefact this methodology produces: a Schema Pair Record (SPR) as YAML or JSON, machine-checkable by the bundled validator. It carries both schemas inline so the drop set is computed, not asserted.</summary>
+
+  <schema format="yaml|json" filename="schema-pair-record.yaml">
+    <field name="system" type="string" required="true">What the model is being asked to emit, in one line.</field>
+    <field name="transports" type="list" required="true" min_items="1">Providers this schema is sent to. Each item is `anthropic`, `gemini`, or `other`. `other` additionally requires `unsupported_keywords`.</field>
+    <field name="unsupported_keywords" type="list" required="false">Required only when `transports` contains `other`: the keyword list that transport does not compile, taken from its own docs with a fetch date.</field>
+    <field name="wire_schema_path" type="string" required="true">Repo path of the file actually sent to the provider.</field>
+    <field name="validation_schema_path" type="string" required="true">Repo path of the full-contract schema enforced after parse. MUST differ from `wire_schema_path` (r2).</field>
+    <field name="validation_schema" type="object" required="true">The full contract inline — every constraint the output must satisfy.</field>
+    <field name="wire_schema" type="object" required="true">The wire copy inline — supported keywords only. The validator diffs it against `validation_schema` to compute the drop set.</field>
+    <field name="dropped_keywords" type="list" required="true">One entry per computed drop. Each item: `keyword`, `field` (JSON pointer), `on_violation` (`drop` | `reject` | `clamp`), `enforced_by` (code location that re-checks after parse), `counter` (metric name the check increments).</field>
+    <field name="hints" type="list" required="false">Constraints restated in a field `description` as prose for the model's benefit only. Explicitly NOT enforcement (r6). Each item: `keyword`, `field`, `text`.</field>
+    <field name="structured_output" type="boolean" required="true">Whether this request sets `output_config.format` or a strict tool schema.</field>
+    <field name="citations_enabled" type="boolean" required="true">Whether this request enables `citations` on any user-supplied `document` or `search_result` block.</field>
+    <field name="citations_plan" type="enum" required="true" values="none|structured_only|citations_only|two_call">How the 400 fork is resolved. `two_call` requires `two_call_note`.</field>
+    <field name="two_call_note" type="string" required="false" min_length="30">Required when `citations_plan: two_call`: which call selects identifiers under a schema and which call produces cited prose over exactly those bodies.</field>
+    <field name="metrics" type="list" required="true" min_items="2">Metric names computed over an eval run. MUST include `schema_valid_rate` AND at least one name that also appears as a `counter` in `dropped_keywords` (r7).</field>
+    <field name="value_accuracy_review" type="string" required="true" min_length="20">Where review budget goes now that compliance is not the bottleneck — the fields whose VALUES are checked by a human or a harness.</field>
+  </schema>
+
+  <section title="Per-transport dropped keywords (dated)">
+    <statement>Anthropic, docs fetched 2026-08-03 — not compiled: `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`, `minLength`, `maxLength`, `pattern`, `maxItems`, `uniqueItems`, and `minItems` other than 0 or 1. Compiled: types, `enum` of scalars, `const`, `anyOf`, `allOf` without `$ref`, internal `$ref`/`$defs`, `required`, `additionalProperties: false`, `default`, and a fixed list of string `format` values. Gemini, docs fetched 2026-08-03 — compiles an OpenAPI 3.0 subset that DOES accept `pattern` and numeric ranges, so its drop set is smaller and the two transports disagree. Re-verify both lists before any release that depends on them; Anthropic's list moved twice in the nine months to 2026-08-03.</statement>
+  </section>
+
+  <section title="Consistency rules the validator enforces">
+    <statement>The drop set is COMPUTED as (constraint keywords in `validation_schema`) minus (the same keyword at the same field in `wire_schema`); every computed drop must have a `dropped_keywords` entry, and every entry must correspond to a computed drop — no phantom bookkeeping. No keyword unsupported by any declared transport may remain in `wire_schema` (r6). `enforced_by` must be a code location, and a value that merely logs is rejected (r3). `structured_output` and `citations_enabled` must not both be true (r5). `metrics` must contain `schema_valid_rate` plus at least one declared counter (r7). `wire_schema_path` must differ from `validation_schema_path` (r2).</statement>
+  </section>
+</text>

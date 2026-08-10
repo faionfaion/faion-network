@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Context Graph Engineering Rules" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Seven testable rules. R1 is a gate: most systems fail it and must not build a graph at all. R2-R7 apply only after R1 passes.</summary>
+
+  <section title="The gate">
+    <rule id="r1-graph-warrant" testable="true" depth="essential">
+      <statement>A context graph MUST NOT be built unless the data exhibits at least ONE of four warrants, named explicitly in the Graph Design Record: (a) M:N membership — a node belongs to several independent parents; (b) cross-branch links — references that jump between unrelated subtrees; (c) cycles — recurrent or mutual dependencies; (d) temporal validity — relations that become true and false over time. If none holds, a tree or flat retrieval is the correct structure and the record MUST record `warrant: none` and stop.</statement>
+      <rationale source="graphrag-bench-2506.05690">On the only shared benchmark (GraphRAG-Bench, 2025-06-06) flat retrieval with reranking BEAT the graph on fact retrieval — 60.92 vs 49.29 ACC on Novel, 64.73 vs 38.63 on Medical — while costing 879 query tokens against 38,707 for graph-local and 331,375 for graph-global. A graph without a warrant buys a 40-380x token bill and loses accuracy.</rationale>
+    </rule>
+    <rule id="r2-cheapest-structure-first" testable="true" depth="essential">
+      <statement>The record MUST state the token cost per query of the structure being replaced and of the proposed graph, measured on ten real queries — not estimated. A graph that does not beat the incumbent structure on cost-per-correct-answer MUST be rejected regardless of a satisfied warrant.</statement>
+      <rationale source="lazygraphrag-2024-11-25">Microsoft's own LazyGraphRAG result — indexing at 0.1% of full GraphRAG and querying at 4%, while beating vector RAG, RAPTOR and every GraphRAG mode — is an admission that eager graph construction was mispriced. Measure before building.</rationale>
+    </rule>
+  </section>
+
+  <section title="Construction">
+    <rule id="r3-derived-edges-first" testable="true" depth="essential">
+      <statement>Edges MUST be derived deterministically from existing structure — imports, call sites, hyperlinks, frontmatter references, foreign keys, git history — wherever such structure exists. LLM entity extraction is permitted ONLY for edge classes that provably cannot be derived, and each such class MUST be named in the record with the reason derivation is impossible.</statement>
+      <rationale source="graphrag-bench-2506.05690">On one ~56k-token corpus, LLM-extracted graph construction cost 654,673 tokens against 89,215 for the cheapest structural method — 7.3x — and must be repaid on every corpus change. Derived edges are free, deterministic, and cannot hallucinate.</rationale>
+    </rule>
+    <rule id="r4-closed-edge-vocabulary" testable="true" depth="essential">
+      <statement>Edge types MUST come from a closed enum declared in the record, each directed and each with a stated meaning (e.g. `CALLS`, `IMPORTS`, `SUPERSEDES`, `PREREQUISITE_OF`). Untyped or catch-all edges (`RELATED_TO`, `SEE_ALSO`, `ASSOCIATED_WITH`) are forbidden. A node exceeding the declared supernode cap MUST be refactored into an intermediate hub before the graph ships.</statement>
+      <rationale source="traversal-fan-out">An untyped edge cannot be filtered at traversal time, so every hop pulls the union of everything. Supernodes turn a bounded walk into a corpus dump.</rationale>
+    </rule>
+  </section>
+
+  <section title="Traversal">
+    <rule id="r5-declared-traversal-budget" testable="true" depth="essential">
+      <statement>The record MUST declare a maximum hop depth `h` and a maximum fan-out `k`, compute the worst-case node count as the sum of k^i for i in 0..h, multiply by the per-node token cost, and show the product fits the declared context budget. Traversal MUST enforce both bounds at runtime, and when candidates exceed `k` it MUST rank them by a stated deterministic score rather than truncating arbitrarily.</statement>
+      <rationale source="subgraph-explosion">Traversal cost is O(k^h). Undeclared, it is discovered in production as a blown context window. Arbitrary truncation silently drops the neighbour that mattered, which is indistinguishable from a retrieval bug.</rationale>
+    </rule>
+  </section>
+
+  <section title="Freshness and integrity">
+    <rule id="r6-no-hard-delete" testable="true" depth="essential">
+      <statement>For any edge class carrying the temporal warrant, facts MUST NOT be hard-deleted on contradiction. The superseded edge is expired by timestamp and the new edge inserted; queries filter by validity at the query time. Edge classes without the temporal warrant MUST declare `temporal: false` and are exempt.</statement>
+      <rationale source="graphiti-bitemporal">An agent that cannot distinguish "was true" from "is true" reports stale facts with full confidence. Expiry preserves provenance; deletion destroys the audit trail that makes the graph worth more than a search index.</rationale>
+    </rule>
+    <rule id="r7-integrity-gate-in-ci" testable="true" depth="essential">
+      <statement>Three checks MUST run in CI and fail the build, not warn: (a) referential integrity — every edge endpoint resolves to an existing node in the authoritative registry; (b) orphan audit — nodes with zero in- and out-degree are reported and either justified or linked; (c) acyclicity — edge classes declared acyclic are checked for cycles. A graph shipped without these gates MUST be marked `status: draft`.</statement>
+      <rationale source="broken-edges-are-worse-than-none">A dangling edge is trusted by the agent exactly as much as a valid one, so an unvalidated graph converts silent data rot into confident wrong answers. Measured in this corpus: 883 of 18,107 reference edges resolved to nothing, and over a third of those pointed at content that existed but was never registered — a defect class that a referential-integrity gate catches for zero tokens.</rationale>
+    </rule>
+  </section>
+</text>

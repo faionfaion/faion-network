@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="What The Disk Says To Do" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Routing from an observed state directory to one action: enrol, dispatch, wait, dead-letter, roll back, or do nothing. Every branch reads only files, so a tick needs no memory of the previous tick.</summary>
+  <decision-tree>
+    <root-question id="q-observed-state">For this unit id: does its state directory exist, what is the latest phase with a marker, which marker is it, and how old is it?</root-question>
+
+    <branch when="state_dir_exists == false AND caller == enrol">
+      <conclusion ref="r1-identity-checked-before-write" verdict="Create the directory, write meta.txt with identity and provenance, append the first history line. This is the ONLY branch permitted to create a directory."/>
+    </branch>
+
+    <branch when="state_dir_exists == false AND caller != enrol">
+      <conclusion ref="r1-identity-checked-before-write" verdict="STOP. Exit non-zero and name the unit id in the error. Do not create anything: an unknown id at this point is a typo, and creating for it produces a phantom unit that the dispatcher will treat as unstarted work."/>
+    </branch>
+
+    <branch when="state_dir_exists == true AND no marker at the next lineage phase">
+      <conclusion ref="r2-in-flight-marker-before-dispatch" verdict="Write phase-&lt;next&gt;.in-flight with the timestamp and agent id FIRST, append the history line, then dispatch. Never the other order."/>
+    </branch>
+
+    <branch when="marker == in-flight AND age &lt; dead_letter_after_minutes">
+      <conclusion ref="r6-stale-in-flight-goes-to-dead-letter" verdict="WAIT. Do nothing this tick. A phase in progress is the normal case and the commonest cause of double-dispatch is impatience with a slow one."/>
+    </branch>
+
+    <branch when="marker == in-flight AND age &gt;= dead_letter_after_minutes AND agent_alive == true">
+      <conclusion ref="r6-stale-in-flight-goes-to-dead-letter" verdict="WAIT, and raise the threshold in the spec. The unit is legitimately long-running; the number was set against the average phase instead of the longest."/>
+    </branch>
+
+    <branch when="marker == in-flight AND age &gt;= dead_letter_after_minutes AND agent_alive == false">
+      <conclusion ref="r6-stale-in-flight-goes-to-dead-letter" verdict="DEAD-LETTER. Append the line, move the unit to the operator queue, do not re-dispatch automatically — a blind resume runs ahead of the rate-limit gate and every resumed dispatch is full-price uncached input."/>
+    </branch>
+
+    <branch when="marker == failed">
+      <conclusion ref="r5-rollback-is-truncate-and-requeue" verdict="RETRY is permitted here and only here: the phase declared its own failure, so nothing downstream consumed its output. Re-dispatch the same phase; escalate to the operator on the third consecutive failure."/>
+    </branch>
+
+    <branch when="marker == done AND output judged wrong">
+      <conclusion ref="r5-rollback-is-truncate-and-requeue" verdict="ROLL BACK, do not retry. Truncate markers at and after this phase in lineage order, append rolled-back with the reason, requeue there with an amended brief. Retrying in place leaves the downstream phases that already consumed the bad artefact."/>
+    </branch>
+
+    <branch when="marker == done AND phase == last in lineage">
+      <conclusion ref="r3-append-only-per-unit-history" verdict="COMPLETE. Append the final line and stop reading this unit. The history, not the marker set, is what gets archived."/>
+    </branch>
+  </decision-tree>
+</text>

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Hierarchical Index Compression Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Six testable rules bounding what a tiered index costs to walk. R2 recovers the most tokens for the least work; R5 is the only rule that authorises spending anything to build.</summary>
+
+  <section title="The ceiling">
+    <rule id="r1-declared-index-read-ceiling" testable="true" depth="essential">
+      <statement>The record MUST declare a maximum token cost for any single index read, and every level MUST be measured against it. An index exceeding the ceiling MUST be sharded before anything else is optimised. The ceiling MUST be set so that walking the full depth costs materially less than the median body delivered — a walk that costs more than its destination is a structure defect, not a tuning parameter.</statement>
+      <rationale source="faion-network-self-measurement-2026-08-04">Measured on this corpus 2026-08-04: the second-tier indexes total 866 KB (~221,000 tokens) across 20 domains, and the largest single index is ~30,000 tokens. A lookup into that domain paid 30k before considering any candidate, against a median delivered body of 3,300 tokens. No ceiling had ever been declared, so nothing reported the growth.</rationale>
+    </rule>
+    <rule id="r2-entries-discriminate-not-describe" testable="true" depth="essential">
+      <statement>An index entry MUST carry only what is needed to decide whether to open the leaf: a stable identifier, the routing keys used for pre-filtering, and one discriminator of at most a declared character cap answering "when would I open this rather than its neighbours". The leaf's own summary, abstract or description MUST NOT be restated in the index. The record MUST list the fields the leaf exclusively owns.</statement>
+      <rationale source="paid-twice-arithmetic">A summary restated in the index is paid twice — once by every lookup that reads the index, once again by the lookup that opens the leaf — and it is the wrong text for the job both times: a description tells you what a document is, while routing needs to know how it differs from its siblings. On this corpus, entries carried a truncated prose summary the leaf repeated; replacing it with a ≤90-character discriminator is a multiple-fold cut to the index tier for zero capability loss, because the full summary already lives in each leaf's own metadata.</rationale>
+    </rule>
+  </section>
+
+  <section title="The shape">
+    <rule id="r3-fanout-and-depth-reach-the-corpus" testable="true" depth="essential">
+      <statement>The record MUST declare fan-out `f` per level and depth `d`, and MUST show that `f^d` is greater than or equal to the corpus size — an index that cannot reach every leaf will silently orphan content. Total lookup cost MUST be stated as `d` index reads plus the body, and MUST fit the declared budget. Depth MUST NOT exceed 3: each level is a full read paid on every lookup, and a fourth tier costs more than the branching factor it buys.</statement>
+      <rationale source="tree-walk-arithmetic">Cost is linear in depth and the constant is a whole index read, so depth is the expensive dimension and fan-out is the cheap one — the opposite of the intuition carried over from data-structure textbooks, where a read is O(1). Widening from 20 to 60 entries at one level costs a few hundred tokens; adding a level costs an entire index read on every lookup forever.</rationale>
+    </rule>
+    <rule id="r4-shard-trigger-is-a-number" testable="true" depth="essential">
+      <statement>The record MUST declare the size at which an index is split and the partition key it splits on. Sharding MUST place a stub index at the original path carrying one row per shard, so the caller's routing does not change. Shrinking an over-budget index by deleting entries or trimming prose is FORBIDDEN as a response to the trigger: it removes reachability or discrimination instead of cost.</statement>
+      <rationale source="growth-is-monotonic">A corpus that grows crosses any fixed budget eventually, so the only question is whether the crossing is detected by a rule or by an incident. A number in the record makes it a build-time check; judgement makes it a surprise. The stub matters because a shard that changes the caller's routing is a migration, and migrations get deferred past the point where the cost was worth paying.</rationale>
+    </rule>
+  </section>
+
+  <section title="The build">
+    <rule id="r5-shard-before-you-summarise" testable="true" depth="essential">
+      <statement>If the corpus already nests under a natural key — domain, module, product area, customer — the hierarchy MUST be built by sharding that structure, and no summarisation model may be invoked. Building a recursive summary tree over the corpus is permitted ONLY when no natural nesting exists, and then the record MUST state `build_tokens` and amortise it against corpus change frequency.</statement>
+      <rationale source="graphrag-bench-2506.05690">Recursive summarisation is not free but is the cheap end of the built structures: on one ~56,000-token corpus, RAPTOR indexed at 115,541 tokens / 135s against Microsoft GraphRAG's 654,673 / 292s — 5.7x cheaper — and RAPTOR's query cost of 3,441-3,510 tokens is roughly a tenth of GraphRAG-local (GraphRAG-Bench, arXiv 2506.05690, 2025-06-06, GPT-4o-mini). Sharding an existing nesting costs nothing at all, which beats both, so it must be excluded before either is considered.</rationale>
+    </rule>
+    <rule id="r6-known-leaf-skips-the-walk" testable="true" depth="essential">
+      <statement>When the leaf path is already known — from a prior turn, a cached route, an explicit reference or a user-supplied identifier — the walk MUST be skipped and the leaf read directly. Any component that reads an index above the ceiling into an orchestrator's own context MUST instead delegate the walk and receive leaf paths with one-line reasons, not the index itself.</statement>
+      <rationale source="dispatch-cost-of-index-reads">The walk exists to find an unknown leaf; repeating it for a known one pays the full index tier for information already held. The delegation clause closes the larger leak: an index read into a long-lived orchestrator context is paid once per read but carried for the rest of the session, so its true cost is the read multiplied by every subsequent turn that re-sends the context.</rationale>
+    </rule>
+  </section>
+</text>

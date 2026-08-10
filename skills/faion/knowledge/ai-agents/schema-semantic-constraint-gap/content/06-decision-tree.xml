@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Schema Split / Post-Validate / Two-Call Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Routing from observable schema and request properties to an action. Read the first branch that matches; the last two branches are overlays that apply regardless of which earlier branch fired.</summary>
+  <decision-tree>
+    <root-question id="q-semantic-keywords">Does the schema contain any keyword beyond type, `enum`, `const`, `required` and `additionalProperties: false` — that is, any `minimum`, `maximum`, `multipleOf`, `minLength`, `maxLength`, `pattern`, `maxItems`, or `minItems` other than 0 or 1?</root-question>
+
+    <branch when="semantic_keywords_present == false AND citations_needed == false">
+      <conclusion ref="r1-grammar-guarantees-shape-only" verdict="STOP. Types, enums, required and additionalProperties are compiled, so the written schema and the enforced schema coincide. No split, no record. Keep it that way: the next range you add reopens this tree."/>
+    </branch>
+
+    <branch when="semantic_keywords_present == true AND transports == ['anthropic']">
+      <conclusion ref="r2-two-schema-split" verdict="Split the file. Wire schema keeps the compiled subset; validation schema keeps the full contract. Write the record, and give every computed drop a checker and a counter before shipping."/>
+    </branch>
+
+    <branch when="semantic_keywords_present == true AND len(transports) &gt; 1">
+      <conclusion ref="r4-transport-divergence-is-declared" verdict="Split, then take the UNION of the per-transport drop sets and post-validate at that strictest level on every path. Do not let one provider's grammar be the reason a value is well-formed."/>
+    </branch>
+
+    <branch when="semantic_keywords_present == true AND post_validation_exists == true AND counters_exist == false">
+      <conclusion ref="r3-checker-and-counter-per-dropped-keyword" verdict="The check exists and is unobservable. Promote every log line to a counter on the result object and assert on it in the eval harness. This is the cheapest reliability change available here."/>
+    </branch>
+
+    <branch when="citations_needed == true AND structured_output_needed == true">
+      <conclusion ref="r5-citations-xor-structured-output" verdict="Two calls, not one. Call 1: structured output, no citations, emits identifiers. Call 2: citations enabled over the bodies of exactly those identifiers, no `output_config.format`. A single request returns 400."/>
+    </branch>
+
+    <branch when="wire_schema_contains_unsupported_keyword == true">
+      <conclusion ref="r6-no-hopeful-keywords-on-the-wire" verdict="Overlay. Strip it deliberately and record where the constraint moved. Leaving it is a coin flip between silent stripping and a 400, and it inflates the compiled grammar toward the size limit."/>
+    </branch>
+
+    <branch when="only_declared_metric == 'schema_valid_rate'">
+      <conclusion ref="r7-compliance-is-not-value-accuracy" verdict="Overlay. Add at least one semantic metric over the dropped keywords before spending anything on raising compliance; compliance is already the saturated number."/>
+    </branch>
+  </decision-tree>
+</text>

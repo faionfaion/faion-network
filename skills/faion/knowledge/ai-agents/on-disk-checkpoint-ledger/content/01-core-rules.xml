@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="On-Disk Checkpoint Ledger Rules" version="1.0.0" est_tokens="1100" depth="essential">
+  <summary>Six testable rules. R1 and R2 are ordering rules — both defects they prevent have been observed in production runs. R5 is the one most orchestrators are missing entirely: rollback is not retry.</summary>
+
+  <section title="Identity">
+    <rule id="r1-identity-checked-before-write" testable="true" depth="essential">
+      <statement>Every state write MUST first verify that the unit's state directory already exists, and MUST exit non-zero with a loud error if it does not. Directory creation MUST have exactly one path — a single enrol or scaffold step, invoked when the unit enters the queue and nowhere else. Marker-writing tools MUST NOT create directories, not even with `mkdir -p`.</statement>
+      <rationale source="faion-poll-agents-ghost-state-2026">Observed in this orchestrator: a mistyped unit slug passed to the marker tool silently created a new state directory, because the tool used `mkdir -p` for convenience. The dispatcher then saw a unit at phase zero and offered to redo work that was already four phases of seven complete. A typo became a phantom unit, and the only signal was a directory nobody had asked for. Hardening the tool to exit non-zero on a missing directory closed the class.</rationale>
+    </rule>
+    <rule id="r2-in-flight-marker-before-dispatch" testable="true" depth="essential">
+      <statement>The `in-flight` marker for a phase MUST be written BEFORE the agent or subprocess is dispatched, not after it returns. The marker MUST record the dispatch timestamp and, where the runtime exposes one, the agent or process identifier. A phase MUST NOT be dispatched while an `in-flight` marker for it already exists.</statement>
+      <rationale source="crash-visibility-ordering">Ordering decides what a crash looks like. Marker-after-dispatch means a process killed mid-run leaves no trace, and the phase is indistinguishable from one never started — so the recovery path is a guess. Marker-before-dispatch means the same crash leaves a stuck marker: a positive, greppable signal with a timestamp, which is exactly what R6's sweep needs to act on.</rationale>
+    </rule>
+  </section>
+
+  <section title="History">
+    <rule id="r3-append-only-per-unit-history" testable="true" depth="essential">
+      <statement>Each unit MUST own an append-only `history.log`, one line per transition, written under an exclusive lock: `&lt;iso_ts&gt; &lt;phase&gt; &lt;in-flight|done|failed|rolled-back&gt; &lt;commit-or-reason&gt;`. Lines MUST NOT be edited, reordered or deleted — including by rollback, which appends its own line rather than removing the ones it supersedes. Status markers are derived state; the log is the record.</statement>
+      <rationale source="status-is-not-history">A status field answers "where is it now" and destroys the answer to "how did it get here". The second question is the one asked after every incident, and it is unanswerable from a directory of current markers. Append-only also makes the log safe under concurrent writers with a single lock, which a rewritten status file is not.</rationale>
+    </rule>
+    <rule id="r4-declared-write-boundaries" testable="true" depth="essential">
+      <statement>The spec MUST name where checkpoints are written, and the list MUST include all four boundaries that apply to the run: after each completed model call whose output is expensive to reproduce; after each non-idempotent side effect (a commit, a push, a publish, a payment, an outbound message); before each step with a known failure mode; and at each human gate. A checkpoint MUST NOT be written between a side effect and the record of that side effect.</statement>
+      <rationale source="replay-cost-and-double-side-effects">A checkpoint interval wider than the expensive step means a crash repays it; narrower than a non-idempotent side effect means a resume repeats it, which is worse than repaying tokens because it is externally visible. The human gate matters separately: a gate that holds a live process converts a reviewer's lunch break into a timeout, whereas a gate that is a file on disk can stay open indefinitely at zero cost.</rationale>
+    </rule>
+  </section>
+
+  <section title="Recovery">
+    <rule id="r5-rollback-is-truncate-and-requeue" testable="true" depth="essential">
+      <statement>Rollback MUST be a distinct operation from retry. `rollback &lt;unit&gt; &lt;phase&gt;` MUST: verify the state directory exists (R1); remove every marker at or after `&lt;phase&gt;` in declared lineage order; append one `rolled-back` line naming the phase and the reason; and requeue the unit at that phase. A missing marker MUST NOT be interpreted as "never started" unless the history contains no line for that phase — after a rollback, absence is a recorded outcome, not an absence of information.</statement>
+      <rationale source="wrong-but-consistent-output">Retry re-runs a phase on top of whatever the failed attempt left behind, which is correct only for a crash. The failure that has no retry path is the internally consistent but wrong output: it succeeded, the marker says `done`, downstream phases consumed it, and re-running the phase alone cannot repair the lineage. Truncation is the only operation that restores the run to a state the orchestrator can reason about, and it must be recorded or the next tick re-derives the wrong conclusion from the same directory.</rationale>
+    </rule>
+    <rule id="r6-stale-in-flight-goes-to-dead-letter" testable="true" depth="essential">
+      <statement>Each tick MUST sweep for `in-flight` markers older than a declared threshold whose agent or process is no longer alive, and MUST move those units to a dead-letter state that requires an operator decision. Automatic re-dispatch on a stale marker is FORBIDDEN. The sweep MUST verify liveness before acting: a long-running unit is not a dead one.</statement>
+      <rationale source="quota-gate-and-false-crash-race">Blind resume defeats the rate-limit gate the orchestrator dispatches under, because the resume path skips the check that would have held the run. It also races legitimately slow units: observed here, translation units routinely run past 150 minutes, and a threshold sweep without a liveness check re-dispatched work that was still in progress — paying twice and producing two writers on one file. Prompt caching being hardcoded off for subagent dispatches (`anthropics/claude-code#29966`, filed 2026-03-02, still open at last activity 2026-07-29; one measured session wasted ~378,000 uncached tokens) makes every accidental re-dispatch full price, with no cached prefix to soften it.</rationale>
+    </rule>
+  </section>
+
+  <section title="Boundary">
+    <rule id="r7-orchestration-decisions-stay-caller-side" testable="true" depth="extended">
+      <statement>A packaged tool or CLI MAY scaffold the state directory, unpack the marker and rollback scripts, and emit a step manifest. It MUST NOT decide when to advance, retry or roll back a phase, and it MUST NOT write a checkpoint on the orchestrator's behalf. Those decisions belong to the caller that owns the run.</statement>
+      <rationale source="cli-orchestration-artefact-boundary">A checkpoint written by a tool that does not own the run records a fact the orchestrator did not observe, so the two disagree exactly when it matters — during recovery. Materialising deterministic artefacts is safe because it is reproducible and carries no judgement; advancing a phase is judgement and must live with whoever can see the run.</rationale>
+    </rule>
+  </section>
+</text>

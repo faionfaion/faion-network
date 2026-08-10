@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="Checkpoint Ledger Failure Modes" version="1.0.0" est_tokens="750" depth="essential">
+  <summary>Six ways an on-disk ledger fails. Four have been observed in production runs of this orchestrator; each carries the rule that closes it.</summary>
+
+  <failure id="f1-phantom-unit">
+    <symptom>A unit appears in the queue that nobody enrolled. It sits at phase zero, and the dispatcher offers to run work that was already partly done under the correct id.</symptom>
+    <cause>The marker tool created its own state directory, so a mistyped unit id produced a second directory instead of an error.</cause>
+    <prevention ref="r1-identity-checked-before-write">One creation path. Every other writer verifies the directory exists and exits non-zero when it does not. Observed here: a mistyped slug produced a phantom unit whose only symptom was an offer to redo four of seven completed phases.</prevention>
+  </failure>
+
+  <failure id="f2-crash-is-silence">
+    <symptom>A phase shows no marker at all after a crash or a kill. Nobody can tell whether it was dispatched, so recovery is a coin flip between redoing paid work and skipping unfinished work.</symptom>
+    <cause>The marker was written when the agent returned. An agent that never returns writes nothing.</cause>
+    <prevention ref="r2-in-flight-marker-before-dispatch">Write the marker first. A crash then leaves a stuck marker with a timestamp — a positive signal the sweep can act on instead of an absence it has to interpret.</prevention>
+  </failure>
+
+  <failure id="f3-status-without-history">
+    <symptom>After an incident, nobody can reconstruct the order of events. The state directory shows where each unit is and nothing about how it got there.</symptom>
+    <cause>Only current-status markers were kept; each transition overwrote its predecessor.</cause>
+    <prevention ref="r3-append-only-per-unit-history">One append-only line per transition, under a lock. Markers are derived and disposable; the log is the record and is never rewritten, including by rollback.</prevention>
+  </failure>
+
+  <failure id="f4-retry-on-a-poisoned-state">
+    <symptom>A phase is re-run repeatedly and keeps producing output that is internally consistent and wrong. Three-strikes escalation fires and the operator has nothing to act on.</symptom>
+    <cause>The only recovery verb was retry. A phase that succeeded and produced a bad artefact had no path back, because downstream phases had already consumed it.</cause>
+    <prevention ref="r5-rollback-is-truncate-and-requeue">Add rollback as a separate verb: truncate markers at and after the phase in lineage order, record `rolled-back` with a reason, requeue there with an amended brief.</prevention>
+  </failure>
+
+  <failure id="f5-sweep-kills-a-live-unit">
+    <symptom>Two agents write the same output file. Cost for the phase doubles and the artefact is a mixture of two runs.</symptom>
+    <cause>A staleness timer re-dispatched an `in-flight` phase without checking whether the original agent was still alive. Long-running phases tripped the timer legitimately.</cause>
+    <prevention ref="r6-stale-in-flight-goes-to-dead-letter">Check liveness before acting, set the threshold against the longest phase rather than the average, and route to dead-letter rather than re-dispatch. Observed here on translation units that routinely run past 150 minutes.</prevention>
+  </failure>
+
+  <failure id="f6-blind-resume-blows-the-budget">
+    <symptom>After an outage the orchestrator resumes everything at once and hits the rate limit within minutes, leaving a second wave of stale markers behind it.</symptom>
+    <cause>Automatic crash-resume ran ahead of the gate that normally throttles dispatch, and every resumed dispatch was full-price uncached input.</cause>
+    <prevention ref="r6-stale-in-flight-goes-to-dead-letter">Resume is an operator decision routed through the same gate as a first dispatch. Prompt caching is hardcoded off for subagent dispatches (`anthropics/claude-code#29966`, filed 2026-03-02, open at last activity 2026-07-29), so a resumed batch re-pays its whole prefix — one measured session wasted ~378,000 uncached tokens.</prevention>
+  </failure>
+</text>

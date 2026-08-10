@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Graph / Tree / Flat Decision Tree" version="1.0.0" est_tokens="450" depth="essential">
+  <summary>Routing tree from observable data properties to a structure choice. Most real systems terminate at the first two branches.</summary>
+  <decision-tree>
+    <root-question id="q-warrant">Does any node belong to more than one independent parent, OR do references jump between unrelated subtrees, OR are there cycles, OR do relations expire over time?</root-question>
+
+    <branch when="none_of_the_four == true">
+      <conclusion ref="r1-graph-warrant" verdict="STOP. No graph. If the data nests, use a hierarchy with compact indexes; if it does not, use flat retrieval with reranking. Record `warrant: none` and close the record."/>
+    </branch>
+
+    <branch when="none_of_the_four == false AND graph_tokens_per_query &gt;= incumbent_tokens_per_query AND accuracy_gain_measured == false">
+      <conclusion ref="r2-cheapest-structure-first" verdict="STOP. Warrant exists but does not pay. Keep the incumbent structure; revisit when query mix shifts toward multi-hop."/>
+    </branch>
+
+    <branch when="none_of_the_four == false AND structural_sources_available == true">
+      <conclusion ref="r3-derived-edges-first" verdict="Build the graph from derived edges only (imports, links, refs, foreign keys, git). Declare the closed edge enum. Do NOT invoke LLM extraction in v1 — ship the free graph and measure what it misses."/>
+    </branch>
+
+    <branch when="none_of_the_four == false AND structural_sources_available == false AND corpus_is_static == true">
+      <conclusion ref="r3-derived-edges-first" verdict="LLM extraction is permitted. Name each extracted edge class and why derivation is impossible. Budget construction as a one-off; a static corpus amortises it."/>
+    </branch>
+
+    <branch when="none_of_the_four == false AND structural_sources_available == false AND corpus_is_static == false">
+      <conclusion ref="r2-cheapest-structure-first" verdict="High risk. Extraction cost is repaid on every change. Prototype on a corpus slice, measure rebuild cost against change frequency, and prefer a lazy pattern that indexes like flat retrieval and pays graph cost only at query time."/>
+    </branch>
+
+    <branch when="warrant == temporal">
+      <conclusion ref="r6-no-hard-delete" verdict="Overlay, not alternative: whichever branch above applies, edges MUST be bitemporal — expire on contradiction, never delete, filter by validity at query time."/>
+    </branch>
+
+    <branch when="graph_shipped == true AND integrity_checks_in_ci == false">
+      <conclusion ref="r7-integrity-gate-in-ci" verdict="Mark `status: draft`. An unvalidated graph converts data rot into confident wrong answers; it is not shippable regardless of how good the retrieval looks."/>
+    </branch>
+  </decision-tree>
+</text>

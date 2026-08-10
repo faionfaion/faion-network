@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Checkpoint Ledger Spec — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>The artefact this methodology produces: a Checkpoint Ledger Spec as YAML or JSON, describing one orchestrator's state directory, marker vocabulary, write boundaries and recovery operations. Machine-checkable by the bundled validator.</summary>
+
+  <section title="State directory layout">
+    <statement>The spec describes this shape and the validator assumes it: `&lt;state_root&gt;/&lt;unit_id&gt;/` containing `meta.txt` (identity and provenance, written once at enrol), `phase-&lt;name&gt;.in-flight` / `.done` / `.failed` (derived status, one file per phase reached), and `history.log` (append-only record). `&lt;state_root&gt;` is gitignored: it is run state, not source.</statement>
+  </section>
+
+  <contract format="yaml|json" filename="checkpoint-ledger-spec.yaml">
+    <field name="system" type="string" required="true" min_length="12">Which orchestrator this specifies, in one line.</field>
+    <field name="state_root" type="string" required="true">Directory holding one subdirectory per unit.</field>
+    <field name="gitignored" type="boolean" required="true">Must be `true`. Run state in version control produces merge conflicts on every tick.</field>
+    <field name="unit_id_pattern" type="string" required="true">Regex every unit id must match. The identity guard rejects anything else before it can create a phantom unit (r1).</field>
+    <field name="lineage" type="list" required="true" min_items="2">Ordered phase names, earliest first. Rollback truncates in this order; the order is the only thing that makes "at or after" meaningful.</field>
+    <field name="enrol_command" type="string" required="true">The ONE command that creates a state directory. Any other writer must fail on a missing directory (r1).</field>
+    <field name="mark_command" type="string" required="true">The marker writer. Must be distinct from `enrol_command`.</field>
+    <field name="mark_creates_dirs" type="boolean" required="true">Must be `false`. This is the ghost-state guard stated as a field so it can be checked (r1).</field>
+    <field name="marker_states" type="list" required="true">Exactly `in-flight`, `done`, `failed`. `rolled-back` is a history verb, not a marker — a rolled-back phase has no marker at all (r5).</field>
+    <field name="in_flight_written" type="enum" required="true" values="before_dispatch|after_dispatch">Must be `before_dispatch` (r2).</field>
+    <field name="history_file" type="string" required="true">Filename of the append-only log, relative to the unit directory.</field>
+    <field name="history_line_format" type="string" required="true">Must contain `iso_ts`, `phase`, `status` and a reason or commit token (r3).</field>
+    <field name="lock" type="string" required="true" min_length="4">The mutual-exclusion mechanism guarding appends — e.g. `flock on &lt;state_root&gt;/.lock`.</field>
+    <field name="record_fields" type="list" required="true">Must contain all four of `identity`, `snapshot`, `provenance`, `status`. Identity is what the unit is; snapshot is what state it reached; provenance is what produced it (commit, model, brief); status is where it stands.</field>
+    <field name="write_boundaries" type="list" required="true">Closed vocabulary: `model_call`, `non_idempotent_side_effect`, `risky_step`, `human_gate`. `model_call` is always required; the other three are required whenever the matching `has_*` flag is true (r4).</field>
+    <field name="has_non_idempotent_side_effects" type="boolean" required="true">Does the run commit, push, publish, pay or send?</field>
+    <field name="has_human_gate" type="boolean" required="true">Does any phase wait on a person?</field>
+    <field name="rollback_command" type="string" required="true">Must take a unit and a phase. Truncate-and-requeue, never retry-in-place (r5).</field>
+    <field name="dead_letter_after_minutes" type="integer" required="true">Age at which an `in-flight` marker is swept. Must exceed the longest expected phase, not the average one (r6).</field>
+    <field name="liveness_check" type="string" required="true" min_length="8">How the sweep proves the agent is gone before acting. A timer alone is not a liveness check.</field>
+    <field name="auto_redispatch_on_stale" type="boolean" required="true">Must be `false`. Stale markers go to dead-letter and wait for an operator (r6).</field>
+    <field name="cli_writes_checkpoints" type="boolean" required="true">Must be `false`. A packaged tool may scaffold and unpack; it may not advance a run (r7).</field>
+  </contract>
+
+  <section title="Consistency rules the validator enforces">
+    <statement>`lineage` entries are unique and non-empty; every phase named in `write_boundaries` context, in `rollback_command` examples, or in the template must resolve to a lineage entry. `marker_states` equals the three-value set exactly — an extra state such as `skipped` or `partial` is rejected, because each additional state doubles the recovery matrix and the ones that get added are always derivable from the history. `in_flight_written`, `mark_creates_dirs`, `auto_redispatch_on_stale`, `cli_writes_checkpoints` and `gitignored` each have exactly one permitted value; they exist as fields precisely so the guard is stated rather than assumed.</statement>
+  </section>
+</text>

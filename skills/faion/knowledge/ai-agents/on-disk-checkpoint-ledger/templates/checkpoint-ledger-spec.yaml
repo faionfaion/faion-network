@@ -1,0 +1,57 @@
+# purpose: declare one orchestrator's checkpoint ledger — layout, vocabulary, boundaries, recovery.
+# consumes: an existing queue/pool orchestrator and its phase lineage.
+# produces: the contract that mark.sh, rollback.sh and the tick sweep are written against.
+# depends-on: content/02-output-contract.xml; scripts/validate-on-disk-checkpoint-ledger.py
+# token-budget-impact: zero at runtime — the ledger is files; no model reads it.
+#
+# Validate:  validate-on-disk-checkpoint-ledger.py checkpoint-ledger-spec.yaml
+#
+# Five fields below have exactly one permitted value. They are fields, not
+# assumptions, so the guard is reviewable and the validator can enforce it.
+
+system: "cron-driven agent pool over an on-disk task queue"
+
+# --- Layout. One directory per unit under state_root; never in version control. ---
+state_root: ".pool/states"
+gitignored: true                       # must be true
+
+# --- Identity (r1). One creation path; every other writer verifies and exits. ---
+unit_id_pattern: "^[a-z0-9][a-z0-9-]{2,63}$"
+enrol_command: "scripts/enrol.sh <unit>"
+mark_command: "scripts/mark.sh <unit> <phase> <status> [reason]"
+mark_creates_dirs: false               # must be false — this is the ghost-state guard
+
+# --- Lineage. Ordered, earliest first. Rollback truncates "at or after" in THIS order. ---
+lineage:
+  - brief
+  - draft
+  - review
+  - publish
+
+# --- Markers (r2, r5). Exactly three states; rolled-back is a history verb. ---
+marker_states: [in-flight, done, failed]
+in_flight_written: before_dispatch     # must be before_dispatch
+
+# --- History (r3). Append-only, one line per transition, under a lock. ---
+history_file: "history.log"
+history_line_format: "<iso_ts> <phase> <status> <commit-or-reason>"
+lock: "flock on .pool/states/.lock"
+record_fields: [identity, snapshot, provenance, status]
+
+# --- Write boundaries (r4). model_call always; the others follow the flags. ---
+write_boundaries:
+  - model_call                         # after each expensive-to-reproduce model call
+  - non_idempotent_side_effect         # after each commit / push / publish / send
+  - risky_step                         # before each step with a known failure mode
+  - human_gate                         # at each gate, so it can stay open for days
+has_non_idempotent_side_effects: true
+has_human_gate: true
+
+# --- Recovery (r5, r6). Rollback takes a unit AND a phase. ---
+rollback_command: "scripts/rollback.sh <unit> <phase> <reason>"
+dead_letter_after_minutes: 180         # set against the LONGEST phase, not the average
+liveness_check: "pid in the marker is checked with kill -0 before any sweep action"
+auto_redispatch_on_stale: false        # must be false — dead-letter, then an operator decides
+
+# --- Boundary (r7). A packaged tool may scaffold and unpack; it may not advance a run. ---
+cli_writes_checkpoints: false          # must be false

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="Hierarchical Index Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Six ways a tiered index becomes the bill it was built to avoid. All are silent: answers stay correct while cost climbs, which is why each needs a declared number rather than a review.</summary>
+
+  <failure id="f1-the-map-costs-more-than-the-destination">
+    <symptom>Lookups are expensive and nobody can point to why. The retrieved content is small and obviously relevant; the total is an order of magnitude larger.</symptom>
+    <cause>Index tiers grew with the corpus and no ceiling was ever declared, so the growth was never reported by anything.</cause>
+    <prevention ref="r1-declared-index-read-ceiling">Declare the ceiling against the median body. Measured here: a 30,000-token index read delivering a 3,300-token body — a 10:1 walk-to-destination ratio that had accumulated unremarked.</prevention>
+  </failure>
+
+  <failure id="f2-entries-became-abstracts">
+    <symptom>The index grows faster than the corpus. Each new leaf adds several lines rather than one, and the entries read like a catalogue.</symptom>
+    <cause>Entries carry a prose summary restating the leaf, so the same text is paid once at the index and again at the leaf.</cause>
+    <prevention ref="r2-entries-discriminate-not-describe">Cap the entry to a discriminator that answers "when would I open this rather than its neighbours". The full summary already lives in the leaf's metadata and does not belong in the map.</prevention>
+  </failure>
+
+  <failure id="f3-unreachable-leaves">
+    <symptom>Content exists on disk, was correctly written, and is never retrieved. It is usually found by a broken-link audit rather than by a user.</symptom>
+    <cause>Fan-out multiplied by depth no longer reaches the corpus: leaves were added without a matching entry, or a shard left orphans behind.</cause>
+    <prevention ref="r3-fanout-and-depth-reach-the-corpus">Check `f^d &gt;= corpus_size` at build time and audit index-to-filesystem reachability in the same job. Unreachable content is invisible, so no amount of usage feedback surfaces it.</prevention>
+  </failure>
+
+  <failure id="f4-trimmed-instead-of-sharded">
+    <symptom>An over-budget index is brought back under budget, and routing quality drops immediately afterwards: the retriever starts choosing plausible neighbours.</symptom>
+    <cause>The response to the size trigger was to shorten or delete entries, which removed discrimination rather than cost.</cause>
+    <prevention ref="r4-shard-trigger-is-a-number">Split on the declared partition key behind a stub. Trimming trades a cost problem for a correctness problem and hides the trade in a diff that looks like cleanup.</prevention>
+  </failure>
+
+  <failure id="f5-built-a-summary-tree-over-a-corpus-that-already-nested">
+    <symptom>A substantial one-off summarisation bill, a tree that must be rebuilt on every corpus change, and a hierarchy that mirrors the directory structure that was already there.</symptom>
+    <cause>The build pattern was chosen before checking for a natural partition key.</cause>
+    <prevention ref="r5-shard-before-you-summarise">Exclude free sharding first. Recursive summarisation is the cheap end of the built structures — 115,541 tokens against 654,673 on the same corpus — but sharding an existing nesting costs zero, and zero beats the cheap end.</prevention>
+  </failure>
+
+  <failure id="f6-index-parked-in-the-orchestrator-context">
+    <symptom>Session cost rises with turn count even when later turns do no retrieval. The first lookup of a session is disproportionately expensive.</symptom>
+    <cause>A long-lived orchestrator read a whole index into its own context instead of delegating the walk, so the index is re-sent with every subsequent turn.</cause>
+    <prevention ref="r6-known-leaf-skips-the-walk">Delegate the walk and take back leaf paths with one-line reasons. An index read into a persistent context is not paid once — it is paid once per turn for the rest of the session.</prevention>
+  </failure>
+</text>

@@ -1,0 +1,96 @@
+# Schema Pair Record — single-transport structured-output call.
+# See content/02-output-contract.xml. The drop set is COMPUTED by the validator
+# from the diff between validation_schema and wire_schema — do not hand-maintain
+# it, and do not book a drop the diff cannot see.
+#
+# Validate:  validate-schema-semantic-constraint-gap.py schema-pair-record.yaml
+
+system: "rank a supplied candidate list into a scored hit list"
+
+transports: [anthropic]
+
+wire_schema_path: "internal/search/schemas/search.wire.json"
+validation_schema_path: "internal/search/schemas/search.validation.json"
+
+# --- The full contract. This is what the output must satisfy. ---
+validation_schema:
+  type: object
+  properties:
+    hits:
+      type: array
+      maxItems: 20
+      items:
+        type: object
+        properties:
+          id: { type: string, pattern: "^[a-f0-9]{16}$" }
+          score: { type: number, minimum: 0, maximum: 1 }
+          why: { type: string, maxLength: 240 }
+
+# --- The wire copy. Compiled keywords only (r1). Everything the grammar cannot
+#     express has been stripped deliberately, not hopefully (r6). ---
+wire_schema:
+  type: object
+  additionalProperties: false
+  properties:
+    hits:
+      type: array
+      minItems: 0            # 0 and 1 compile; any other value does not
+      items:
+        type: object
+        additionalProperties: false
+        required: [id, score, why]
+        properties:
+          id: { type: string }
+          score: { type: number }
+          why: { type: string }
+
+# --- One entry per computed drop. enforced_by is a code location; a log line
+#     is not enforcement (r3). ---
+dropped_keywords:
+  - keyword: maxItems
+    field: "/hits"
+    on_violation: clamp
+    enforced_by: "search.Run clamps decoded hits to opts.Top before returning"
+    counter: overflow_rate
+  - keyword: pattern
+    field: "/hits[]/id"
+    on_violation: drop
+    enforced_by: "agent.go candByID membership check (stronger than the regex)"
+    counter: hallucinated_id_rate
+  - keyword: minimum
+    field: "/hits[]/score"
+    on_violation: reject
+    enforced_by: "search.validateHit range check"
+    counter: range_violation_rate
+  - keyword: maximum
+    field: "/hits[]/score"
+    on_violation: reject
+    enforced_by: "search.validateHit range check"
+    counter: range_violation_rate
+  - keyword: maxLength
+    field: "/hits[]/why"
+    on_violation: clamp
+    enforced_by: "search.validateHit rune-length check (runes, not bytes)"
+    counter: why_overflow_rate
+
+# --- Prose restated for the model only. NOT enforcement (r6). ---
+hints:
+  - keyword: maxLength
+    field: "/hits[]/why"
+    text: "description says: at most 240 characters, one sentence"
+
+structured_output: true
+citations_enabled: false
+citations_plan: structured_only
+
+# --- schema_valid_rate plus at least one semantic rate (r7). ---
+metrics:
+  - schema_valid_rate
+  - hallucinated_id_rate
+  - range_violation_rate
+  - why_overflow_rate
+  - overflow_rate
+
+value_accuracy_review: >
+  Sampled human review of ranking order and of whether each `why` string is true
+  of the document it points at — 20 queries per release. Compliance is not reviewed.

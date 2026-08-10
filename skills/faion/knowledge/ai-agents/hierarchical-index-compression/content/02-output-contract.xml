@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Index Budget Record — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>The artefact this methodology produces: an Index Budget Record as YAML or JSON, stating what each tier costs, what an entry may contain, and when a tier splits. Machine-checkable by the bundled validator.</summary>
+
+  <contract format="yaml|json" filename="index-budget-record.yaml">
+    <field name="system" type="string" required="true" min_length="12">What the hierarchy indexes, in one line.</field>
+    <field name="corpus_size" type="integer" required="true">Number of leaves the hierarchy must reach.</field>
+    <field name="median_body_tokens" type="integer" required="true">Median delivered body, from the upstream cost ledger. The ceiling is set against this, not against a context-window size.</field>
+    <field name="index_read_ceiling_tokens" type="integer" required="true">Maximum cost of ONE index read at any level (r1).</field>
+    <field name="levels" type="list" required="true" min_items="1">Ordered, root first. Each item: `name`, `entry_count`, `read_tokens` (measured, not estimated), `partition_key` (null at the leaf-most index).</field>
+    <field name="max_depth" type="integer" required="true" max="3">Number of index reads a cold lookup pays. Depth is the expensive dimension (r3).</field>
+    <field name="fanout" type="integer" required="true">Entries per index at the widest level. `fanout^max_depth` must reach `corpus_size`.</field>
+    <field name="discriminator_max_chars" type="integer" required="true" max="120">Per-entry cap on the one free-text field. Above ~120 characters an entry has become a description (r2).</field>
+    <field name="entry_fields" type="list" required="true">Closed list of what an entry may carry — typically `id`, routing keys, `discriminator`.</field>
+    <field name="leaf_owns" type="list" required="true" min_items="1">Fields that MUST NOT appear in any index entry. Must include the leaf's full summary or description field (r2).</field>
+    <field name="shard_trigger_tokens" type="integer" required="true">Index size at which a level splits. Must be at or below `index_read_ceiling_tokens` (r4).</field>
+    <field name="shard_stub" type="boolean" required="true">Must be `true`: a split leaves a stub at the original path so caller routing is unchanged (r4).</field>
+    <field name="corpus_nests_naturally" type="boolean" required="true">Does a natural partition key already exist? Decides whether any build is authorised at all (r5).</field>
+    <field name="build_pattern" type="enum" required="true" values="shard|recursive_summary|hybrid">`shard` is free. `recursive_summary` is permitted only when `corpus_nests_naturally` is false.</field>
+    <field name="build_tokens" type="integer" required="true">One-off construction cost. Must be `0` for `shard`, and above `0` for any pattern involving summarisation (r5).</field>
+    <field name="rebuild_trigger" type="string" required="true">What invalidates the index and how it is rebuilt incrementally. Required whenever `build_tokens` is above zero.</field>
+    <field name="skip_walk_when_known" type="boolean" required="true">Must be `true`. A known leaf path is read directly (r6).</field>
+  </contract>
+
+  <section title="Consistency rules the validator enforces">
+    <statement>`len(levels)` equals `max_depth`. Every level's `read_tokens` is at or below `index_read_ceiling_tokens`; a level above it is reported with the shard that fixes it. `fanout ** max_depth &gt;= corpus_size`, or leaves are unreachable. The full cold walk — `sum(read_tokens) + median_body_tokens` — is reported, and the walk portion must not exceed the median body: a map costlier than its destination fails r1. Every level except the last declares a `partition_key`. `leaf_owns` and `entry_fields` are disjoint.</statement>
+  </section>
+
+  <section title="Handoff">
+    <statement>This record is downstream of a Retrieval Cost Ledger and upstream of nothing. After the compression lands, re-run the audit on the same ten queries: the record predicts a new index share, and the ledger is what confirms it. A record whose predicted saving is never verified is a plan, not a result.</statement>
+  </section>
+</text>

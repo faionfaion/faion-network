@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Schema Semantic Constraint Gap Rules" version="1.0.0" est_tokens="1150" depth="essential">
+  <summary>Seven testable rules. R1 names the gap between shape and semantics; R2-R4 close it with a two-file split and a counter per dropped keyword; R5-R7 cover the citations fork and the two ways an over-specified wire schema bites back.</summary>
+
+  <section title="The gap">
+    <rule id="r1-grammar-guarantees-shape-only" testable="true" depth="essential">
+      <statement>A structured-output or strict-tool schema MUST be treated as a parser guarantee, never as a validator. The compiled grammar enforces type, `enum`, `const`, `required` and `additionalProperties: false`. It does NOT enforce `minimum`, `maximum`, `multipleOf`, `minLength`, `maxLength`, `pattern`, `maxItems`, or `minItems` other than 0 or 1. Any design document, test or dashboard that reports "schema valid" as a correctness signal MUST be corrected to say "parseable".</statement>
+      <rationale source="Anthropic structured-outputs docs, platform.claude.com, fetched 2026-08-03">The supported-keyword list is published and short: object/array/string/integer/number/boolean/null, enum of scalars, const, anyOf, allOf without $ref, internal $ref/$defs, required, additionalProperties false, default, a fixed set of string `format` values, and minItems in {0, 1}. Everything a range or a regex would protect is outside it. The official Pydantic and Zod helpers strip the unsupported keywords from the wire schema and fold them into the field `description` as prose — so the constraint survives as a suggestion to the model and as nothing at all to the decoder.</rationale>
+    </rule>
+    <rule id="r2-two-schema-split" testable="true" depth="essential">
+      <statement>The schema MUST exist as two artefacts with two names: a WIRE schema containing only keywords the declared transport compiles, and a VALIDATION schema containing the full contract. One file used for both is forbidden. The record MUST name both paths and state which one the transport receives.</statement>
+      <rationale source="Anthropic structured-outputs docs 2026-08-03; internal audit of faion-cli internal/search/schemas/search.json, 2026-08-03">A single file pretending to be both is why the gap is invisible: the author reads `score: {minimum: 0, maximum: 1}` in the repo and believes it is enforced, while the wire copy the provider compiled never contained those keys. In the audited schema, five of seven constraints were in the unsupported list and two of those — score range and a 240-character justification cap — had no code-level enforcement at all.</rationale>
+    </rule>
+  </section>
+
+  <section title="Closing it">
+    <rule id="r3-checker-and-counter-per-dropped-keyword" testable="true" depth="essential">
+      <statement>Every keyword the wire schema drops MUST appear in the record with (a) the code location that re-checks it after parse and (b) the name of a counter or rate the check increments. A check that logs and continues does not satisfy (b): a log line is invisible to a test and to the user. Violation handling MUST be one of drop / reject / clamp, declared per keyword.</statement>
+      <rationale source="faion-cli internal/search/agent.go:270, read 2026-08-03">The live example: a hallucinated identifier is dropped correctly, but the event goes to `logger.Warn` and nothing counts it, so no eval can assert on it and no user sees it. The check exists and the metric does not, which is the same reliability posture as having neither. Post-validation itself is cheap — deterministic, zero tokens, tens of lines — so the only real cost is remembering that it is required.</rationale>
+    </rule>
+    <rule id="r4-transport-divergence-is-declared" testable="true" depth="essential">
+      <statement>When one schema is sent to more than one provider, the record MUST declare the transport list and the per-transport dropped set, and post-validation MUST be applied uniformly at the strictest level regardless of transport. A constraint enforced by one provider's grammar and by no code path is a latent defect on every other transport.</statement>
+      <rationale source="Gemini structured-output docs (OpenAPI 3.0 subset) vs Anthropic supported list, both 2026-08-03">Gemini compiles an OpenAPI 3.0 subset that DOES accept `pattern` and numeric ranges; Anthropic does not. The same request therefore has different effective validation levels per transport, and the failure presents as "it works on one provider" — the most expensive shape of bug, because the reproduction depends on routing the reader cannot see.</rationale>
+    </rule>
+  </section>
+
+  <section title="The citations fork">
+    <rule id="r5-citations-xor-structured-output" testable="true" depth="essential">
+      <statement>A single request MUST NOT both enable `citations` on a user-supplied `document` or `search_result` block and set `output_config.format` (or the deprecated `output_format`). The API returns 400. A design needing both MUST be two calls: call 1 structured output selecting identifiers, call 2 citations-enabled prose over the bodies of exactly those identifiers.</statement>
+      <rationale source="Anthropic Citations docs, platform.claude.com/docs/en/build-with-claude/citations, Warning block, fetched 2026-08-03">Verbatim: "Citations cannot be used together with structured outputs… the API returns a 400 error", because citations interleave citation blocks with text output and a grammar-constrained JSON body has no text blocks to attach them to. There is no request-level workaround. The trap is documentation asymmetry: the warning appears only on the Citations page — the Structured Outputs page as fetched the same day carries no reciprocal notice — so a team building from the structured-outputs guide alone discovers this as a production 400. Cite the Citations page in a comment where the transport is assembled.</rationale>
+    </rule>
+  </section>
+
+  <section title="When the wire schema bites back">
+    <rule id="r6-no-hopeful-keywords-on-the-wire" testable="true" depth="essential">
+      <statement>Unsupported keywords MUST NOT be left in the wire schema in the hope that they are honoured or harmlessly ignored. Strip them deliberately and record where the constraint moved to. Where a keyword is dropped for the decoder but still useful as a hint, restate it in the field `description` as prose — and mark it in the record as a hint, not an enforcement.</statement>
+      <rationale source="vercel/ai issue #14342, read 2026-08-03; anthropic-sdk-python issue #1185, read 2026-08-03">Best case the keyword is stripped; worst case the request 400s — third-party reports have Zod schemas carrying `minimum`, `maximum`, `exclusiveMinimum` and `not` breaking Anthropic structured outputs outright. Separately, complex schemas can fail with "compiled grammar is too large", so wire-schema size is itself a constraint: the smaller the wire schema, the fewer ways the call fails before the model speaks.</rationale>
+    </rule>
+    <rule id="r7-compliance-is-not-value-accuracy" testable="true" depth="essential">
+      <statement>Review and eval budget MUST be spent on value accuracy, not on raising schema compliance. A record whose only declared metric is `schema_valid_rate` is incomplete; it MUST declare at least one semantic metric over the dropped keywords.</statement>
+      <rationale source="arXiv:2604.25359, The Structured Output Benchmark, Singh et al., submitted 2026-04-28">Across 21 frontier and open-weight models, schema compliance is near-perfect while exact leaf-value accuracy is 83.0% on plain text (5,000 eval records), 67.2% on OCR'd images and 23.7% on audio transcripts, and longer context makes extraction substantially harder. Valid and correct differ by roughly 17 points on the easiest modality. Optimising a metric that is already saturated is theatre; the money is in the gap the grammar never touched.</rationale>
+    </rule>
+  </section>
+</text>

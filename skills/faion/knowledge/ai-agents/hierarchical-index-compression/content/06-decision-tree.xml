@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Shard, Build, Or Leave It" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Routing from the measured index share and the corpus shape to one action. Free actions are exhausted before any paid one is considered.</summary>
+  <decision-tree>
+    <root-question id="q-index-share">From the upstream cost ledger: what share of a lookup is index reads, does the corpus nest under a natural key, and does any single index exceed the declared ceiling?</root-question>
+
+    <branch when="index_share &lt; 0.2">
+      <conclusion ref="r1-declared-index-read-ceiling" verdict="LEAVE ALONE. The bill is candidates or bodies, not the map. Declare the ceiling anyway so future growth trips a check, and go optimise the tier that is actually paying."/>
+    </branch>
+
+    <branch when="index_share &gt;= 0.2 AND entries_restate_leaf_summary == true">
+      <conclusion ref="r2-entries-discriminate-not-describe" verdict="COMPRESS ENTRIES FIRST. Replace restated summaries with a discriminator under the declared cap and re-measure before anything else. It is free, reversible, needs no re-routing, and usually removes the ceiling breach on its own."/>
+    </branch>
+
+    <branch when="index_share &gt;= 0.2 AND entries_already_compressed == true AND corpus_nests_naturally == true">
+      <conclusion ref="r4-shard-trigger-is-a-number" verdict="SHARD. Split every index above the trigger on its natural partition key, leave a stub at the original path carrying one row per shard, and audit reachability. No model is invoked; build_tokens stays zero."/>
+    </branch>
+
+    <branch when="index_share &gt;= 0.2 AND entries_already_compressed == true AND corpus_nests_naturally == false AND corpus_changes_often == false">
+      <conclusion ref="r5-shard-before-you-summarise" verdict="BUILD A RECURSIVE SUMMARY TREE. Authorised only here — no natural key, and a static corpus that amortises the build. Record build_tokens and the rebuild trigger; expect roughly a sixth of a full extraction-graph build on the same corpus."/>
+    </branch>
+
+    <branch when="index_share &gt;= 0.2 AND corpus_nests_naturally == false AND corpus_changes_often == true">
+      <conclusion ref="r5-shard-before-you-summarise" verdict="STOP AND FIND A KEY. A summary tree over a frequently changing corpus repays its build on every change. Impose a partition key — by source, by owner, by date — and shard on that instead; an imperfect free hierarchy beats a perfect one that is never rebuilt."/>
+    </branch>
+
+    <branch when="max_depth &gt;= 3 AND index_share &gt;= 0.2">
+      <conclusion ref="r3-fanout-and-depth-reach-the-corpus" verdict="OVERLAY: widen, do not deepen. Every level is a full read on every lookup. Increase fan-out to hold the corpus at the current depth before adding a tier, and never exceed depth 3."/>
+    </branch>
+
+    <branch when="orchestrator_reads_index_directly == true">
+      <conclusion ref="r6-known-leaf-skips-the-walk" verdict="OVERLAY, whichever branch applied: delegate the walk to a retrieval subagent that returns leaf paths and one-line reasons. An index read into a long-lived context is re-sent every turn, so its cost is the read multiplied by the remaining session."/>
+    </branch>
+  </decision-tree>
+</text>

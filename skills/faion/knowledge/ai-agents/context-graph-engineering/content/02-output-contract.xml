@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Graph Design Record — Output Contract" version="1.0.0" est_tokens="650" depth="essential">
+  <summary>The artefact this methodology produces: a Graph Design Record (GDR) as YAML or JSON, machine-checkable by the bundled validator.</summary>
+
+  <contract format="yaml|json" filename="graph-design-record.yaml">
+    <field name="system" type="string" required="true">What is being retrieved over, in one line.</field>
+    <field name="warrant" type="enum" required="true" values="m_to_n|cross_links|cycles|temporal|none">The single strongest warrant from r1-graph-warrant. `none` is a valid, common and often correct answer.</field>
+    <field name="warrant_evidence" type="string" required="true" min_length="40">Concrete evidence for the warrant, naming real nodes and edges in the data. "It feels connected" is not evidence.</field>
+    <field name="rejected_alternative" type="enum" required="true" values="flat|tree|hybrid">The cheaper structure considered and why it loses. Required even when the warrant holds.</field>
+    <field name="cost_incumbent_tokens" type="integer" required="true">Measured mean query tokens of the CURRENT structure over ten real queries.</field>
+    <field name="cost_graph_tokens" type="integer" required="true">Measured or prototyped mean query tokens of the proposed graph over the SAME ten queries.</field>
+    <field name="edge_types" type="list" required="true" min_items="1">Closed enum. Each item: `name`, `direction`, `meaning`, `derived_from` (structural source) or `extracted_by` (model + reason derivation is impossible), and `temporal` (bool).</field>
+    <field name="supernode_cap" type="integer" required="true">Maximum edges on one node before refactor is mandatory.</field>
+    <field name="max_hops" type="integer" required="true" max="5">Traversal depth bound `h`.</field>
+    <field name="max_fanout" type="integer" required="true">Per-node neighbour bound `k`.</field>
+    <field name="worst_case_nodes" type="integer" required="true">Computed sum of k^i for i in 0..h. Must be present and must be consistent with max_hops and max_fanout.</field>
+    <field name="context_budget_tokens" type="integer" required="true">Declared ceiling the worst case must fit inside.</field>
+    <field name="ranking_function" type="string" required="true" min_length="12">Deterministic score used when candidates exceed `k` — e.g. personalized PageRank seeded on query anchors, times edge weight, times recency decay.</field>
+    <field name="integrity_checks" type="list" required="true">Must contain all three of `referential`, `orphans`, `acyclicity`, each with the CI job that runs it.</field>
+    <field name="rebuild_trigger" type="string" required="true">What invalidates the graph and how it is rebuilt incrementally.</field>
+  </contract>
+
+  <section title="Stop condition">
+    <statement>When `warrant: none`, the record is COMPLETE at that field plus `warrant_evidence` and `rejected_alternative`. Every remaining field is omitted. A record that answers `none` and then specifies edge types has not understood the gate.</statement>
+  </section>
+
+  <section title="Consistency rules the validator enforces">
+    <statement>`worst_case_nodes` must equal the sum of `max_fanout`^i for i in 0..`max_hops`. `worst_case_nodes` multiplied by an assumed per-node cost must not exceed `context_budget_tokens`. Every edge type must declare exactly one of `derived_from` or `extracted_by`. If any edge type sets `temporal: true`, the warrant must be `temporal` or the record must justify the mismatch.</statement>
+  </section>
+</text>
