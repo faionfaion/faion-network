@@ -7,16 +7,16 @@ Full directory documentation: [../docs/directory-structure.md](../docs/directory
 
 ## Document types
 
-- **constitution.md** — tech decisions, standards, architecture. Declares the per-project `project-spec/` location.
+- **constitution.md** — tech decisions, standards, architecture. Declares a `project-spec/` location ONLY when it deviates from the canonical path.
 - **roadmap.md** — feature timeline, releases, success metrics.
-- **project-spec/** — per-project source-of-truth folder (domain, business rules, data model, deploy, invariants). See the `project-spec-structure` methodology.
+- **project-spec/** — per-project source-of-truth folder (domain, business rules, data model, deploy, invariants) at the canonical `.aidocs/project-spec/` path; current revision only — history lives in git + `features/done/`. See the `project-spec-structure` methodology.
 - **spec.md** — what to build (requirements, success criteria); delta-only when `project-spec/` exists.
 - **plan.md** — merged design + implementation plan; exactly two H2 sections: `## Design` + `## Execution Plan`. See the `plan-md-structure` methodology.
 - **user-flows.md** — per-feature, REQUIRED only when a user-facing flow exists. See `user-flows-template`.
 - **ui-ux-design.md** — per-feature, REQUIRED only when UI is touched. See `ui-ux-design-template`.
 - **readiness.md** — gate before moving a feature to `done/`. See `readiness-checklist`.
 
-`project-spec/` location is declared per-project in that project's `constitution.md`.
+`project-spec/` lives at `.aidocs/project-spec/` (repo root; ONE per product for monorepos). A legacy project keeping it elsewhere declares the path in its `constitution.md`.
 
 The retired quartet — `design.md`, `test-plan.md`, `implementation-plan.md` alongside `spec.md` — is rejectable output. `plan.md` replaces design + implementation plan.
 
