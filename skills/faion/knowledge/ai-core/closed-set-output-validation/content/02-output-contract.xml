@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Closed-Set Validation Contract — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>The artefact this methodology produces: a Closed-Set Validation Contract as YAML or JSON, one per closed field, machine-checkable by the bundled validator.</summary>
+
+  <schema format="yaml|json" filename="closed-set-validation-contract.yaml">
+    <field name="system" type="string" required="true">What the model is being asked to select, in one line.</field>
+    <field name="closed_field" type="string" required="true">The output field whose values must be members of the supplied set. One contract per closed field.</field>
+    <field name="candidate_set_source" type="string" required="true" min_length="20">The artefact `C` comes from and when it is materialised. It MUST be supplied in the request or controlled at validation time (r1). Values naming the model's own memory or a prior model turn are rejected.</field>
+    <field name="closedness_evidence" type="string" required="true" min_length="40">Why all three closedness conditions hold: enumerable at request time, supplied by us, out-of-set means wrong. Name the actual data.</field>
+    <field name="selection_prompt_shape" type="enum" required="true" values="set_in_request|narrowed_set_in_request|description_only">How the candidates reach the model. `description_only` is rejected — a description of the set is not the set (r2).</field>
+    <field name="membership_check" type="string" required="true" min_length="10">The code location performing the membership test after parse.</field>
+    <field name="on_violation" type="enum" required="true" values="drop|reject|repair">Declared policy. `log` is not a policy (r4).</field>
+    <field name="counter" type="string" required="true">Name of the counter or rate the check increments on the result object.</field>
+    <field name="metrics" type="list" required="true" min_items="2">MUST include `grounding_rate` and `empty_result_rate`; an empty emission set is reported separately, never as perfect grounding (r3).</field>
+    <field name="threshold" type="number" required="false">Optional alert threshold on the hallucinated rate. Requires `baseline_measured`.</field>
+    <field name="baseline_measured" type="boolean" required="false">Whether the threshold rests on a measured baseline. A threshold with `false` is recorded as a guess and the validator says so.</field>
+    <field name="open_fields" type="list" required="true">Fields the grounding rate does NOT cover. May be empty, but the key is required (r5). Each item: `name`, `max_chars` (or null), `review` (`sampling` | `scorer` | `none`), and `claim_decompose` (bool).</field>
+    <field name="scorer" type="enum" required="false" values="none|hhem-2.1-open|other">Groundedness scorer for the open fields, if any. `bespoke-minicheck` is rejected on licence (r7). `other` requires `scorer_licence`.</field>
+    <field name="scorer_licence" type="string" required="false">Licence of the chosen scorer; required when `scorer: other`. Non-commercial licences are rejected.</field>
+    <field name="scorer_role" type="enum" required="false" values="triage|gate">Only `triage` is permitted; a 64-77%-accurate classifier is not a pass/fail gate (r7).</field>
+  </schema>
+
+  <section title="The metric, stated once">
+    <statement>For emitted values `E` and supplied candidate set `C`: `grounding_rate = |E ∩ C| / |E|`, `hallucinated_rate = 1 − grounding_rate`, both in [0, 1] and both undefined when `|E| = 0` — that case increments `empty_result_rate` instead. `E` is a multiset: a value emitted twice counts twice, because duplicate emissions are a real defect. Membership is exact, so there is no confidence interval, no calibration and no threshold intrinsic to the metric; a threshold, if any, is an operational alert on top of it.</statement>
+  </section>
+
+  <section title="Consistency rules the validator enforces">
+    <statement>`candidate_set_source` must not name model memory or a previous model turn (r1). `selection_prompt_shape: description_only` is rejected (r2). `on_violation` must be a policy, and a `membership_check` that only logs is rejected (r4). `metrics` must contain `grounding_rate` and `empty_result_rate` (r3). A `threshold` without `baseline_measured: true` is flagged as an unmeasured guess (r4). Any open field with `claim_decompose: true` and `max_chars` under 500 is rejected as the short-justification anti-pattern (r6). `scorer: bespoke-minicheck` — or any `other` whose licence is non-commercial — is rejected, and `scorer_role: gate` is rejected (r7).</statement>
+  </section>
+</text>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="From Overhead Ratio to Verdict" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Routing from the two measured numbers to one of three verdicts: leave alone, compress, restructure. Most systems that reach here route to compress, which needs no new machinery.</summary>
+  <decision-tree>
+    <root-question id="q-overhead">What is the measured overhead_ratio — tokens spent on index and candidates per token of delivered body — and where does median_tokens_per_lookup sit against the published reference band?</root-question>
+
+    <branch when="ledger_rows &lt; 10 OR token_counts_estimated == true">
+      <conclusion ref="r1-lookup-is-the-unit" verdict="STOP. There is no ledger yet. Instrument the full lookup — routing, index, candidates, body — collect ten real queries, and return. Do not let an estimate enter this tree; downstream methodologies cannot distinguish it from a measurement."/>
+    </branch>
+
+    <branch when="overhead_ratio &lt; 2.0 AND median_tokens_per_lookup &lt; 5000">
+      <conclusion ref="r5-overhead-ratio-decides" verdict="LEAVE ALONE. Retrieval is near the published flat-vector band (879-954 query tokens, GraphRAG-Bench 2025-06-06). Spend the effort on answer quality, not structure. Record the ledger as a baseline and move on."/>
+    </branch>
+
+    <branch when="overhead_ratio &gt;= 2.0 AND index_tokens_share &gt;= 0.5">
+      <conclusion ref="r3-four-columns-not-one-total" verdict="COMPRESS THE INDEX. The bill is the routing tier, not the content. Shard any index above a declared read ceiling, replace restated summaries with short discriminators, and re-measure. This is the cheapest fix and needs no new retrieval machinery."/>
+    </branch>
+
+    <branch when="overhead_ratio &gt;= 2.0 AND index_tokens_share &lt; 0.5 AND multi_hop_share &lt; 0.3">
+      <conclusion ref="r3-four-columns-not-one-total" verdict="COMPRESS THE CANDIDATE SET. Candidates dominate on a mostly single-hop query mix: tighten k, add reranking, and re-measure. Flat retrieval with reranking beat graph retrieval on both fact corpora at roughly 1/40th the query tokens."/>
+    </branch>
+
+    <branch when="overhead_ratio &gt;= 5.0 AND multi_hop_share &gt;= 0.3 AND compression_already_applied == true">
+      <conclusion ref="r6-comparison-holds-everything-else-fixed" verdict="RESTRUCTURE — and only now. Hand median_tokens_per_lookup to `context-graph-engineering` as cost_incumbent_tokens. Any candidate structure must be measured on this same query set, model and tokenizer, with its build cost amortised against corpus change frequency."/>
+    </branch>
+
+    <branch when="tokens_per_correct_answer &gt; median_tokens_per_lookup * 2">
+      <conclusion ref="r3-four-columns-not-one-total" verdict="OVERLAY, whichever branch above applied: more than half the lookups fail. This is a quality defect wearing a cost costume — route to retrieval evaluation first, because cheapening a retriever that already misses makes the cost-per-correct-answer worse, not better."/>
+    </branch>
+  </decision-tree>
+</text>

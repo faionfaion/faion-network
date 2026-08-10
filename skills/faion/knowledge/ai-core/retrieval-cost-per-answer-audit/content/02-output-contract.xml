@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Retrieval Cost Ledger — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>The artefact this methodology produces: a Retrieval Cost Ledger as YAML or JSON, machine-checkable by the bundled validator, and the required input to `context-graph-engineering`.</summary>
+
+  <contract format="yaml|json" filename="retrieval-cost-ledger.yaml">
+    <field name="system" type="string" required="true" min_length="12">What is being retrieved over, in one line.</field>
+    <field name="structure" type="enum" required="true" values="flat|tree|graph|hybrid">The incumbent structure being measured. Not the one being proposed.</field>
+    <field name="measured_on" type="string" required="true">ISO date of measurement. A ledger without a date cannot be compared to anything (r6).</field>
+    <field name="model" type="string" required="true">Model and tokenizer used. Both sides of any comparison must match (r6).</field>
+    <field name="sampling" type="string" required="true" min_length="20">How the queries were drawn from real traffic (r2).</field>
+    <field name="queries" type="list" required="true" min_items="10">The ledger rows. Each item: `id`, `text`, `shape` (`fact`|`multi_hop`), `index_tokens`, `candidate_tokens`, `body_tokens`, `correct` (bool), optional `synthetic` (bool, excluded from derived numbers).</field>
+    <field name="median_tokens_per_lookup" type="integer" required="true">Median of (index + candidate + body) across non-synthetic rows (r5).</field>
+    <field name="p90_tokens_per_lookup" type="integer" required="true">The p90 value, plus `p90_query_id` naming the row (r4).</field>
+    <field name="p90_query_id" type="string" required="true">Which query produced the p90 figure, so the tail is inspectable.</field>
+    <field name="overhead_ratio" type="number" required="true">Median of ((index + candidate) / body) per row, to one decimal. The verdict number (r5).</field>
+    <field name="tokens_per_correct_answer" type="integer" required="true">Sum of all tokens over all non-synthetic rows divided by the count of `correct: true` rows. Punishes cheap retrieval that fails.</field>
+    <field name="index_build_tokens" type="integer" required="true">One-off construction cost. `0` for flat retrieval with no build step (r6).</field>
+    <field name="corpus_change_frequency" type="string" required="true">How often the build cost is repaid — e.g. `per merge to main`, `weekly`, `never`. Amortisation input for r6.</field>
+    <field name="verdict" type="enum" required="true" values="leave_alone|compress|restructure">The routing outcome from 06-decision-tree.xml, recorded so the ledger is actionable rather than informational.</field>
+  </contract>
+
+  <section title="Derived numbers are recomputed, not asserted">
+    <statement>The validator recomputes `median_tokens_per_lookup`, `p90_tokens_per_lookup`, `overhead_ratio` and `tokens_per_correct_answer` from the rows and rejects the ledger on mismatch. A ledger is a table of measurements plus arithmetic; a stated summary that disagrees with its own rows is the most common form of retrieval-cost fiction.</statement>
+  </section>
+
+  <section title="Consistency rules the validator enforces">
+    <statement>At least ten non-synthetic rows. Every row carries all four measurement fields and they are non-negative integers; `body_tokens` MUST be greater than zero — a row that delivered nothing is a retrieval failure, not a cost measurement, and belongs in the eval harness. At least one row has `shape: fact` and at least one has `shape: multi_hop` (r2). `p90_query_id` resolves to a real row id. `verdict` MUST be consistent with `overhead_ratio`: a ratio at or above 5.0 cannot record `leave_alone`.</statement>
+  </section>
+
+  <section title="Handoff">
+    <statement>`median_tokens_per_lookup` is the value that fills `cost_incumbent_tokens` in a Graph Design Record. A ledger that stops before that field is complete, but the downstream gate in `context-graph-engineering` will refuse it.</statement>
+  </section>
+</text>

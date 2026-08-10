@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Membership / Entailment / Neither Decision Tree" version="1.0.0" est_tokens="450" depth="essential">
+  <summary>Routing from the observable shape of an output field to a groundedness strategy. Run it once per field, not once per response — mixed outputs land in two different branches.</summary>
+  <decision-tree>
+    <root-question id="q-enumerable">For this field, can every legal value be enumerated at request time from an artefact you supplied or control?</root-question>
+
+    <branch when="enumerable == true AND set_supplied_in_request == true">
+      <conclusion ref="r3-membership-is-the-metric" verdict="Membership. Compute grounding_rate = |E n C| / |E| in code, drop or reject non-members, count them. No scorer, no judge, no threshold. Write the contract and stop."/>
+    </branch>
+
+    <branch when="enumerable == true AND set_supplied_in_request == false">
+      <conclusion ref="r2-select-do-not-author" verdict="Fix the request before the metric. Put the candidate set (or a deterministically narrowed slice of it) into the prompt so the model selects rather than recalls. Validating an authored identifier against a set the model never saw measures luck."/>
+    </branch>
+
+    <branch when="enumerable == true AND set_source == 'model_memory_or_prior_turn'">
+      <conclusion ref="r1-closedness-test" verdict="NOT closed. A set the model produced is asserted, not supplied; checking against it proves self-consistency only. Find the authoritative artefact or treat the field as open."/>
+    </branch>
+
+    <branch when="enumerable == false AND field_is_capped_justification == true">
+      <conclusion ref="r6-no-claim-decomposition-on-short-justifications" verdict="Neither. Do not claim-decompose a capped one-liner. Review it by sampling, or remove the cap and treat it as prose the product stands behind."/>
+    </branch>
+
+    <branch when="enumerable == false AND field_is_prose == true AND stakes == 'high'">
+      <conclusion ref="r7-fallback-scorer-licence-bar" verdict="Entailment, as triage only. HHEM-2.1-Open (Apache 2.0, CPU, ~1.5 s per 2k tokens) to rank output for human attention. Never a gate; never Bespoke-MiniCheck in a commercial product."/>
+    </branch>
+
+    <branch when="enumerable == false AND field_is_prose == true AND stakes == 'low'">
+      <conclusion ref="r5-scope-the-metric-to-the-closed-field" verdict="Neither. Declare the field open in the contract, state that the grounding rate excludes it, and spend the budget on the closed fields where the answer is exact."/>
+    </branch>
+
+    <branch when="membership_check_exists == true AND counter_exists == false">
+      <conclusion ref="r4-count-do-not-log" verdict="Overlay. The check is already right and unobservable. Promote the log line to a counter on the result object and assert on it in the eval harness before adding anything else."/>
+    </branch>
+  </decision-tree>
+</text>

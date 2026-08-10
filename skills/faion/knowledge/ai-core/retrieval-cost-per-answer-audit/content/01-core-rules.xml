@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Retrieval Cost Per Answer — Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Six testable rules. R1 defines the unit being measured — most bad audits fail here. R5 carries the dated reference table that lets a reader place their own number against published structures.</summary>
+
+  <section title="The unit">
+    <rule id="r1-lookup-is-the-unit" testable="true" depth="essential">
+      <statement>The measured unit MUST be one complete lookup: every token sent to or read by the model from the moment a query arrives until an answer body is delivered. This includes routing and index reads, taxonomy or manifest files, reranker inputs, and every candidate document pulled and then discarded. Measuring only the final retrieval call, or only the tokens in the answer, is NOT a cost audit and the ledger MUST be rejected.</statement>
+      <rationale source="faion-network-self-measurement-2026-08-04">Measured on this corpus on 2026-08-04: two-level retrieval (L1 `knowledge/domains.xml` then an L2 `&lt;domain&gt;/INDEX.xml`, then the leaf) costs 13,000-84,000 tokens per lookup, median ~33,000, to deliver a median 3,300-token body. The final leaf read — the only leg most teams instrument — is 10% of the bill. The index, not the answer, is the invoice.</rationale>
+    </rule>
+    <rule id="r2-ten-real-queries" testable="true" depth="essential">
+      <statement>The ledger MUST contain at least ten queries drawn from real traffic or a real task log, and MUST state how they were sampled. The set MUST span the actual query mix, including at least one multi-hop or synthesis query and at least one single-fact lookup. Synthetic queries written to exercise the retriever are forbidden as ledger rows; they may be recorded separately and labelled `synthetic: true`, excluded from every derived number.</statement>
+      <rationale source="graphrag-bench-2506.05690">GraphRAG-Bench (arXiv 2506.05690, published 2025-06-06, GPT-4o-mini) reports opposite winners on fact-shaped and reasoning-shaped questions from the same corpus: flat retrieval with reranking scored 60.92 against the graph's 49.29 on Novel fact retrieval and 64.73 against 38.63 on Medical. A ledger built from one query shape measures a different system than the one in production.</rationale>
+    </rule>
+  </section>
+
+  <section title="Recording">
+    <rule id="r3-four-columns-not-one-total" testable="true" depth="essential">
+      <statement>Each row MUST record four values separately: `index_tokens` (routing, taxonomy, manifest and index reads), `candidate_tokens` (documents retrieved and passed to the model or reranker, including those discarded), `body_tokens` (the content that actually answered), and `correct` (boolean, judged against a stated criterion). A single aggregate total is insufficient because the remedy differs per leg: index cost is fixed by compression, candidate cost by reranking or a tighter `k`, body cost by chunking.</statement>
+      <rationale source="faion-network-self-measurement-2026-08-04">Splitting the legs is what located the defect in this corpus: L2 indexes total 866 KB (~221,000 tokens) and `dev/INDEX.xml` alone is ~30,000, so a single `dev` lookup pays a 30k index read before any candidate is considered. An aggregate 33k figure would have been blamed on chunk size and the wrong fix shipped.</rationale>
+    </rule>
+    <rule id="r4-median-and-p90-never-mean" testable="true" depth="essential">
+      <statement>Derived numbers MUST be reported as median and p90 across the rows. The mean MUST NOT be used as the headline figure. The p90 row MUST be identified by query so the tail case is inspectable rather than abstract.</statement>
+      <rationale source="subgraph-and-index-tails">Retrieval cost distributions are right-skewed: a small number of queries touch the largest index or the highest-degree node and dominate the arithmetic mean while being unrepresentative of typical spend. Measured here, the 13k-84k range spans 6.5x on the same system — the mean describes no real query.</rationale>
+    </rule>
+  </section>
+
+  <section title="The verdict numbers">
+    <rule id="r5-overhead-ratio-decides" testable="true" depth="essential">
+      <statement>The ledger MUST compute and publish two numbers: `median_tokens_per_lookup` = median of (index + candidate + body) per row, and `overhead_ratio` = median of ((index + candidate) / body) per row. The ratio, not the absolute total, is the verdict: it states how many tokens are burned per token of answer delivered and is comparable across corpora and models. A ledger that omits either number is incomplete.</statement>
+      <rationale source="graphrag-bench-2506.05690">Published query-token costs on the same two corpora and model (GraphRAG-Bench, arXiv 2506.05690, 2025-06-06, GPT-4o-mini) place any measurement on a 380x scale: flat vector 879-954; RAPTOR 3,441-3,510; Microsoft GraphRAG local 38,707-39,821; GraphRAG global 331,375-332,881. Our own tree, measured 2026-08-04, sits at ~33,000 per lookup at a 10:1 overhead ratio — Microsoft-GraphRAG-local cost for plain-tree capability, which is the exact defect this number exists to expose.</rationale>
+    </rule>
+    <rule id="r6-comparison-holds-everything-else-fixed" testable="true" depth="essential">
+      <statement>Any before/after or structure-A-versus-structure-B claim MUST reuse the identical query set, the identical model and the identical tokenizer, and MUST record the measurement date on both sides. Indexing cost MUST be recorded separately from query cost and amortised against a stated corpus-change frequency; a structure MUST NOT be compared on query cost alone when its build cost is repaid on every change.</statement>
+      <rationale source="graphrag-bench-2506.05690+lazygraphrag-2024-11-25">On one ~56,000-token corpus, indexing cost 654,673 tokens / 292s for Microsoft GraphRAG, 115,541 / 135s for RAPTOR and 89,215 / 32s for KGP (GraphRAG-Bench, 2025-06-06) — a 7.3x spread invisible in any query-only comparison. Microsoft's own LazyGraphRAG (announced 2024-11-25) indexes at parity with vector RAG — 0.1% of full GraphRAG — and answers global queries at 4% of its cost, which is a public admission that eager build cost was mispriced by comparing the wrong column.</rationale>
+    </rule>
+  </section>
+</text>

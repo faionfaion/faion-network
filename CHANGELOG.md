@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: add ai-core/closed-set-output-validation methodology (solo) — groundedness as set membership (grounding_rate = |E n C| / |E|) when the output space is enumerable; count-don't-log rule, mixed-output scoping, MiniCheck CC BY-NC licence bar.
+- feat: add ai-core/retrieval-cost-per-answer-audit methodology (solo) — Produces a Retrieval Cost Ledger over ten real queries — index tokens, candidate tokens, delivered-body tokens, correctness — yielding median tokens per lookup and the overhead ratio that decides whether to compress, restructure or leave the retrieval structure alone.
 - feat: add ai-agents/context-graph-engineering methodology (pro) — Produces a Graph Design Record that first proves a graph is warranted at all (M:N, cross-links, cycles or temporal validity), then constrains edge construction, traversal budget and integrity checks — so the graph never costs more than the retrieval it replaces.
 - feat: add ai-agents/hierarchical-index-compression methodology (pro) — Produces an Index Budget Record bounding a tiered retrieval hierarchy: a per-level read ceiling, fan-out that provably reaches the corpus, entries capped to a discriminator rather than a restated summary, and a numeric shard trigger.
 - feat: add ai-agents/on-disk-checkpoint-ledger methodology (solo) — Produces a Checkpoint Ledger Spec giving a bash/cron agent orchestrator durable resume, per-unit append-only history and truncate-and-requeue rollback — state directory, marker files and flock, no framework and no database.

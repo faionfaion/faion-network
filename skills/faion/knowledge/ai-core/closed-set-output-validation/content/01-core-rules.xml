@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Closed-Set Output Validation Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Seven testable rules. R1 decides whether the space is genuinely closed; R2-R4 are select-not-author, the exact metric, and counting instead of logging; R5-R7 are the boundaries — mixed outputs, the claim-decomposition anti-pattern, and the licence bar on fallback scorers.</summary>
+
+  <section title="Is the space closed?">
+    <rule id="r1-closedness-test" testable="true" depth="essential">
+      <statement>A field is CLOSED only if all three hold: (a) every legal value can be enumerated at request time; (b) the enumeration comes from an artefact you supplied in the request or control at validation time — not from the model's world knowledge; (c) a value outside the enumeration is wrong by definition, not merely unusual. The contract MUST record the artefact the set comes from. If any of the three fails, the field is OPEN and this methodology does not apply to it.</statement>
+      <rationale source="internal — closedness audit, 2026-08-03">The failure this rule prevents is silent and expensive in the other direction: treating an open field as closed drops correct answers because the set was incomplete. Condition (b) is the one people skip — a set assembled from the model's own earlier turn is not supplied, it is asserted, and validating against it proves only self-consistency.</rationale>
+    </rule>
+    <rule id="r2-select-do-not-author" testable="true" depth="essential">
+      <statement>For a closed field the model MUST be given the candidate set in the request and asked to SELECT from it. It MUST NOT be asked to author, recall or reconstruct the identifier. Where the set is large, narrow it deterministically first (retrieval, filter, prefix) and supply the narrowed set — do not substitute a description of the set for the set.</statement>
+      <rationale source="Anthropic search_result / citations design, docs fetched 2026-08-03">This is what forced citation does at the decoder: the citation is an index into supplied material, not a string, so a source that was never supplied cannot be named. Selection reproduces that property with no API feature, no provider dependency and no cost. Authoring an identifier from memory is the single most reliable way to manufacture a well-formed value that refers to nothing.</rationale>
+    </rule>
+  </section>
+
+  <section title="The metric and the enforcement">
+    <rule id="r3-membership-is-the-metric" testable="true" depth="essential">
+      <statement>Groundedness for a closed field MUST be computed as `grounding_rate = |E ∩ C| / |E|`, where `E` is the multiset of emitted values and `C` the supplied candidate set; `hallucinated_rate = 1 − grounding_rate`. No entailment model, no judge, no threshold tuning and no confidence score may stand in for this check. `E` empty is reported as a separate `empty_result_rate`, never as a grounding_rate of 1.</statement>
+      <rationale source="RAGAS faithfulness definition, docs.ragas.io, fetched 2026-08-03">RAGAS faithfulness decomposes a response into atomic claims and divides supported by total — an estimator whose accuracy is bounded by the entailment step. Membership is the same ratio computed exactly: zero tokens, zero model, no false positives, nothing to calibrate. Every groundedness scorer in the literature is an approximation of a check you can do directly when the space is enumerable.</rationale>
+    </rule>
+    <rule id="r4-count-do-not-log" testable="true" depth="essential">
+      <statement>A value failing membership MUST be handled by a declared policy — `drop`, `reject` or `repair` — AND counted on the result object so a test can assert on it and a user can see it. Writing a log line and continuing is forbidden. A threshold on the rate MAY be set only after a baseline has been measured; a threshold with no measured baseline MUST be recorded as a guess.</statement>
+      <rationale source="faion-cli internal/search/agent.go:270, read 2026-08-03">The live example in our own binary: `logger.Warn("search: dropping hallucinated id", …)` followed by `continue`. The drop is correct and the event is invisible — nothing increments, so no eval asserts on it, no `--verbose` line shows it, and the true rate has never been measured. A defect class with no counter is indistinguishable from a defect class that does not exist, right up until a user reports it.</rationale>
+    </rule>
+  </section>
+
+  <section title="Boundaries">
+    <rule id="r5-scope-the-metric-to-the-closed-field" testable="true" depth="essential">
+      <statement>In a mixed output, the contract MUST list the OPEN fields explicitly and state that the grounding rate does not cover them. A dashboard reporting `grounding_rate: 1.0` for a response containing an unverified prose field MUST label the scope.</statement>
+      <rationale source="internal — metric-scope review, 2026-08-03">The typical response is a closed identifier plus a short open justification. Membership proves the identifier points at a real supplied document; it proves nothing about whether the sentence next to it is true of that document. An unscoped 1.0 is read by everyone as "nothing was hallucinated", which is a stronger claim than the check supports.</rationale>
+    </rule>
+    <rule id="r6-no-claim-decomposition-on-short-justifications" testable="true" depth="essential">
+      <statement>Claim decomposition and entailment scoring MUST NOT be applied to short justification strings (roughly, a capped single sentence such as a 240-character `why`). Either the field is a claim the product stands behind — in which case remove the cap and treat it as prose — or it is a UX affordance, in which case it is reviewed by sampling, not scored.</statement>
+      <rationale source="RAGAS faithfulness scope, docs.ragas.io, fetched 2026-08-03">Faithfulness is defined over generated prose about retrieved context. Decomposing a capped one-liner produces one or two degenerate claims, costs judge tokens per response, and yields a number that moves with phrasing rather than with truth. It measures the wrong thing at a real price.</rationale>
+    </rule>
+    <rule id="r7-fallback-scorer-licence-bar" testable="true" depth="essential">
+      <statement>If an OPEN field genuinely needs a groundedness scorer, the scorer's licence MUST permit the use. Bespoke-MiniCheck (Llama-3.1-Bespoke-MiniCheck-7B) is CC BY-NC 4.0 — NON-COMMERCIAL — and MUST NOT be used in or for a commercial product without a negotiated licence, including as a dev-time gate that informs one. Vectara HHEM-2.1-Open is Apache 2.0 and is the default choice. No scorer may be used as a pass/fail gate; scorers rank things for human attention.</statement>
+      <rationale source="Bespoke-MiniCheck-7B and Vectara HHEM-2.1-Open model cards, huggingface.co, fetched 2026-08-03">MiniCheck-7B is SOTA on LLM-AggreFact and unusable commercially; the accuracy edge is not worth a licence negotiation. HHEM-2.1-Open is 0.1B parameters, ~600 MB at fp32, ~1.5 s per 2k-token input on CPU, and reports balanced accuracy of 76.55% on AggreFact-SOTA, 74.28% on RAGTruth-QA and 64.42% on RAGTruth-Summ — a tool that is wrong a quarter to a third of the time is triage, not a gate. Its benchmark figures are from 2024 and its behaviour on 2026-era model output is unmeasured.</rationale>
+    </rule>
+  </section>
+</text>

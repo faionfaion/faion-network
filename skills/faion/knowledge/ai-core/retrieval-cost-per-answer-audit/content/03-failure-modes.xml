@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="Retrieval Cost Audit Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Six ways a cost audit produces a confidently wrong number, each with the observable symptom and the rule that prevents it.</summary>
+
+  <failure id="f1-measured-only-the-last-call">
+    <symptom>The audit reports a small, comfortable number. Nobody can reconcile it with the observed latency or with the context-window pressure the system actually shows.</symptom>
+    <cause>Instrumentation sat on the vector-store call or the final document read. Routing files, taxonomy reads, index reads and discarded candidates were never counted.</cause>
+    <prevention ref="r1-lookup-is-the-unit">Count from query arrival to body delivered. On this corpus that moved the number from ~3.3k to ~33k — the leaf read was 10% of the lookup.</prevention>
+  </failure>
+
+  <failure id="f2-demo-queries">
+    <symptom>The ledger looks clean and every row is correct. Production cost and quality do not match it in either direction.</symptom>
+    <cause>Queries were written for the audit rather than sampled from traffic, so they match the retriever's assumptions and skip the shapes that break it.</cause>
+    <prevention ref="r2-ten-real-queries">Sample from a real log, state the sampling method, and force at least one fact query and one multi-hop query into the set. The published benchmark shows opposite winners on those two shapes.</prevention>
+  </failure>
+
+  <failure id="f3-mean-hides-the-tail">
+    <symptom>Median-cost budgets are set, then a minority of queries blow the context window in production and are treated as unexplained bugs.</symptom>
+    <cause>A right-skewed distribution was summarised by its mean, so the expensive tail was averaged into invisibility instead of being named.</cause>
+    <prevention ref="r4-median-and-p90-never-mean">Report median and p90, and name the p90 query. The tail case must be a document you can open, not a percentile.</prevention>
+  </failure>
+
+  <failure id="f4-query-cost-only">
+    <symptom>A new structure wins the audit and is adopted, then the team quietly stops rebuilding the index because the rebuild is unaffordable, and answers drift stale.</symptom>
+    <cause>Build cost was excluded from the comparison, so a structure with a 7x indexing bill looked cheap on the column that was measured.</cause>
+    <prevention ref="r6-comparison-holds-everything-else-fixed">Record `index_build_tokens` separately and amortise it against the corpus change frequency. 654,673 versus 89,215 tokens on one ~56k-token corpus is the difference between nightly rebuilds and a lie.</prevention>
+  </failure>
+
+  <failure id="f5-cheap-and-wrong">
+    <symptom>Token spend drops sharply after a change; user-visible answer quality drops with it, and the cost dashboard registers the change as a win.</symptom>
+    <cause>Cost was optimised without a correctness column, so a retriever that returns less of everything scores as an improvement.</cause>
+    <prevention ref="r3-four-columns-not-one-total">Carry `correct` per row and publish `tokens_per_correct_answer`. Retrieval that fails costs its full tokens and delivers nothing.</prevention>
+  </failure>
+
+  <failure id="f6-estimated-ledger">
+    <symptom>The audit's numbers are round, no instrumentation exists, and the figures are quoted downstream for months as though measured.</symptom>
+    <cause>Token counts were estimated from character counts or from memory of a pricing page instead of read from usage fields or a local tokenizer.</cause>
+    <prevention ref="r1-lookup-is-the-unit">If token counts cannot be obtained, do not produce a ledger. An estimate acquires the authority of a measurement the moment it is written down in this format, and the downstream gate cannot tell the difference.</prevention>
+  </failure>
+</text>
