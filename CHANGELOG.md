@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- chore: drop 2 stray agent-worktree artifacts tracked under .clone/.
 - chore: mark 73 methodology validate-*.py scripts executable.
 - fix: apply arXiv:2604.23178 (TMLR 2026) judge-bias findings — judge-calibration-protocol gains r7 (sub-floor κ = pairwise triage only, never a gate; best debiased config measured κ=0.549), llm-judge-rubric-evidence-first gains r6 (style bias 0.10-0.76 dominates, up to 19x position bias) plus per-family verbosity signs.
 - fix: correct ai-agents/two-pass-reason-then-extract causal rationale (1.1.0 → 1.2.0, geek → pro) — the accuracy loss sits in the format INSTRUCTION in the prompt, not the decoder's grammar mask (arXiv:2604.03616, 2026-04-04); adds two antipatterns and the required-field-omission clarification. content_id 3a4830f4d2828248 → c0abba28b1cfdd21.
