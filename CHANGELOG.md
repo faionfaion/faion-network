@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: add runnable article-pipeline workflow (workflows/article-pipeline.js, invoked by name via the Workflow tool) — universal longform production: outline (schema-constrained) → parallel section writers → assemble with tail-artifact check → editor review → gate loop (capped fixes) → per-language translate/review/gates as barrier-free pipeline chains; hard content-only boundary (never code, only supplied gate commands run). Replaces the seven faion-article-* agent definitions — universal parts live in the script, faion.net specifics moved to faion-net-fe with the skill.
 - chore: move faion-net-content skill out of the corpus to faion-net-fe/.claude/skills/ — product-specific editorial machinery does not belong in the product-neutral methodology repo.
 - chore: sync tier-manifest with the landed corpus batch (3,093 entries: 15 new methodologies registered, two-pass tier geek → pro).
 - chore: move the 46 BMAD v6.10.0 skill dirs out of `skills/` to `~/workspace/tools/bmad/` — they were untracked (installer-placed, never committed) but loaded ~1.8k tokens of descriptions into every session because `~/.claude` symlinks here. Re-running the BMAD installer with the `claude-code` target puts them back; check `git status skills/` after any BMAD install.

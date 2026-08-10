@@ -20,6 +20,7 @@ Methodology corpus and Claude Code skill base for the `faion` CLI. Auto-loaded i
 | `skills/faion/workflows/` | 6 orchestration workflows (brainstorm, idea-to-prod, improver, media-ops, poll-agents, sdd-batch-orchestrator) |
 | `skills/tier-manifest.json` | Generated from `meta.json` files — never hand-edit |
 | `agents/` · `hooks/` · `rules/` | Subagent definitions · plugin hooks (`hooks.json`) · authoring rules |
+| `workflows/` | Runnable Workflow-tool scripts, invoked by name (`article-pipeline`) |
 | `scripts/` | Validators and index/manifest generators |
 | `docs/` | Corpus specs: `skill-authoring.md`, `directory-structure.md`, `methodology-xml-schema.md` |
 | `.aidocs/` | SDD lifecycle docs for this repo |
