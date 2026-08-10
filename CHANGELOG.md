@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- chore: sync tier-manifest with the landed corpus batch (3,093 entries: 15 new methodologies registered, two-pass tier geek → pro).
+- chore: move the 46 BMAD v6.10.0 skill dirs out of `skills/` to `~/workspace/tools/bmad/` — they were untracked (installer-placed, never committed) but loaded ~1.8k tokens of descriptions into every session because `~/.claude` symlinks here. Re-running the BMAD installer with the `claude-code` target puts them back; check `git status skills/` after any BMAD install.
 - chore: drop 2 stray agent-worktree artifacts tracked under .clone/.
 - chore: mark 73 methodology validate-*.py scripts executable.
 - fix: apply arXiv:2604.23178 (TMLR 2026) judge-bias findings — judge-calibration-protocol gains r7 (sub-floor κ = pairwise triage only, never a gate; best debiased config measured κ=0.549), llm-judge-rubric-evidence-first gains r6 (style bias 0.10-0.76 dominates, up to 19x position bias) plus per-family verbosity signs.
