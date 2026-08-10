@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: add faion-net-content skill — editorial pipeline for the faion.net content surface (audience-first, subagent-driven, multilingual).
 - chore: add scripts AGENTS/CLAUDE docs and build-methodology-index-c.py.
 - feat: add hooks AGENTS/CLAUDE docs and track-wakeup.sh hook.
 - feat: add 7 article-pipeline agent definitions (outliner, writer, reviewer-en, translation-reviewer, translator, glossary-extractor, qg-fixer).
