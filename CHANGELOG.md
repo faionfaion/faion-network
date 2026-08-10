@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: add hooks AGENTS/CLAUDE docs and track-wakeup.sh hook.
 - feat: add 7 article-pipeline agent definitions (outliner, writer, reviewer-en, translation-reviewer, translator, glossary-extractor, qg-fixer).
 - docs: slim root AGENTS.md to the 20-80 line budget; deep reference moves to .agents/ (INDEX, adapters, docs-convention, linting).
 - feat: wire project-spec into sdd workflows — sdd-batch-orchestrator v2.3.0 (PLAN declares expected `project-spec/` impact or `no spec impact`, EXECUTE lands the delta in the same commit set, REVIEW treats spec/code mismatch as a blocker, the coordinator mechanically checks every merged feature touched `project-spec/` or declared no-impact in `readiness.md`, DELIVER gated by a batch-level rebuild test) and idea-to-prod v1.2.0 (Phase 3 bootstraps `.aidocs/project-spec/` from prfaq + brainstorm + decisions before per-feature planning; feature specs become deltas against it).
