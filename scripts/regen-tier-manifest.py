@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 """F-067 T07: regenerate tier-manifest.json from meta.json files.
 
-Walks `skills/faion/knowledge/<domain>/<slug>/meta.json` and
-`skills/faion/playbooks/<domain>/<slug>/meta.json` (post-F-067 layout).
+Walks `skills/faion/knowledge/<domain>/<slug>/meta.json`,
+`skills/faion/playbooks/<domain>/<slug>/meta.json` (post-F-067 layout)
+and `skills/faion/fragments/<library>/meta.json` (F027 T06: one
+meta.json per fragment library directory gates every fragment file
+beneath it — the same directory-coverage rule vfs-pack applies).
 
 Usage:
     python3 scripts/regen-tier-manifest.py            # write to skills/tier-manifest.json
@@ -18,14 +21,18 @@ ROOT = Path(__file__).resolve().parent.parent  # faion-network repo root
 MANIFEST = ROOT / "skills" / "tier-manifest.json"
 KNOWLEDGE = ROOT / "skills" / "faion" / "knowledge"
 PLAYBOOKS = ROOT / "skills" / "faion" / "playbooks"
+FRAGMENTS = ROOT / "skills" / "faion" / "fragments"
 BACKUP = ROOT / "skills" / "tier-manifest.json.f067-pre-bak"
 
 TIERS = ("free", "solo", "pro", "geek")
-TODAY = "2026-05-23"
-NEW_VERSION = 8
+TODAY = "2026-08-10"
+NEW_VERSION = 9
 NEW_NOTES = (
-    "v8: F-067 closed — corpus restructured to domain-first layout; "
-    "tier-manifest now derived from <domain>/<slug>/meta.json files."
+    "v9: F027 T06 — fragment libraries (skills/faion/fragments/<library>/"
+    "meta.json, one entry gating the whole library dir) join the manifest. "
+    "Prior v8: F-067 domain-first restructure, entries derived from "
+    "<domain>/<slug>/meta.json files; F-068 T05 cleaned 4 dead "
+    "knowledge_paths entries."
 )
 
 
@@ -57,6 +64,7 @@ def collect_entries() -> tuple[list[dict], dict]:
     stats = {
         "meta_knowledge": 0,
         "meta_playbooks": 0,
+        "meta_fragments": 0,
         "skipped": 0,
     }
 
@@ -77,6 +85,16 @@ def collect_entries() -> tuple[list[dict], dict]:
             if e:
                 entries.append(e)
                 stats["meta_playbooks"] += 1
+            else:
+                stats["skipped"] += 1
+
+    # 3. meta.json under fragments (F027 T06: one per library dir)
+    if FRAGMENTS.exists():
+        for meta in FRAGMENTS.rglob("meta.json"):
+            e = entry_from_meta(meta)
+            if e:
+                entries.append(e)
+                stats["meta_fragments"] += 1
             else:
                 stats["skipped"] += 1
 
@@ -110,6 +128,7 @@ def main() -> int:
         f"entries={len(entries)} "
         f"(meta_knowledge={stats['meta_knowledge']}, "
         f"meta_playbooks={stats['meta_playbooks']}, "
+        f"meta_fragments={stats['meta_fragments']}, "
         f"skipped={stats['skipped']})"
     )
     print(summary)

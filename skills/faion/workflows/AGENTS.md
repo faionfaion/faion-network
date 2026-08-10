@@ -47,7 +47,7 @@ A workflow is **the orchestration shape**, not a script. The orchestrator is the
 
 ## Related
 
-- `../../../workflows/article-pipeline.js` — **runnable** Workflow-tool script (invoked by name via `Workflow({name: "article-pipeline"})`): universal longform article production + translation; content-only, no coding. Projects supply paths/languages/gates/prompt-overrides via `args`.
+- `../../../workflows/article-pipeline.js` — **runnable** Workflow-tool script (invoked by name via `Workflow({name: "article-pipeline"})`): universal longform article production + translation; content-only, no coding. Projects supply paths/languages/gates/prompt-overrides via `args`. Its role prompts are also distilled into the corpus fragment library at `../fragments/article/` (tier pro; `corpus:article-outliner` et al.), which the F027 workflow composer in `faion-cli` composes into emitted artifacts.
 - `docs/skill-authoring.md` — folder shape, token budgets, anti-patterns.
 - `adapters/AGENTS.md` — Claude Code and Codex runtime mappings.
 - `skills/faion/knowledge/geek/ai/llm-integration/semantic-xml-content/` — semantic XML convention.
