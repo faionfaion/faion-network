@@ -2,10 +2,10 @@
 status: active
 audience: both
 owner: ruslan
-last_verified: 2026-08-06
-version: 2.2.0
+last_verified: 2026-08-10
+version: 2.3.0
 applies_to: any
-content_id: de95eaa0cf909224
+content_id: 34f9728b21702b5a
 success_criteria:
   - Every phase is fronted by a versioned prompt file under `prompts/`; the orchestrator never inlines long prompts.
   - Parallel waves run inside isolated `git worktree` checkouts; `flock` serializes merges into the default branch.
@@ -15,6 +15,7 @@ success_criteria:
   - Visual-delivery phase produces focused before/after evidence before the batch is declared done.
   - The coordinator gates every wave boundary; wave N+1 never dispatches on a non-CLEAR verdict.
   - Ledger entries carry cited evidence, and the previous batch's ledger is audited before INTAKE.
+  - Every merged feature lands its `project-spec/` delta in the same commit set or declares `no spec impact` in `readiness.md`; a batch-level rebuild test gates DELIVER.
 ---
 
 # SDD Batch Orchestrator

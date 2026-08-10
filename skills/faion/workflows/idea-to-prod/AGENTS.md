@@ -2,12 +2,13 @@
 status: active
 audience: both
 owner: ruslan
-last_verified: 2026-08-04
-version: 1.1.0
+last_verified: 2026-08-10
+version: 1.2.0
 applies_to: any
-content_id: 22a54a015d9517fa
+content_id: c16f48d5164177a4
 success_criteria:
   - `.product/` on-disk layout (master-prompt, state, decisions, tasks, research) exists before any subagent runs.
+  - Phase 3 bootstraps `.aidocs/project-spec/` (per `sdd/project-spec-structure`) before any per-feature planner dispatches; feature `spec.md` files are deltas against it.
   - Each phase advances only after its outputs land on disk and state.md records the transition.
   - Orchestrator dispatches subagents by file reference (path), never by inline prompt text.
   - Phase 2.5 concept gate returns `proceed` before any `spec.md` is written; `kill` ends the run as a success.
