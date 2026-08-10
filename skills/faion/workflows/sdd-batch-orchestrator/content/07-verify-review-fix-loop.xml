@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="07-verify-review-fix-loop" title="Verify-review-fix iteration with hard cap">
-  <summary>After execution merges, the orchestrator runs a bounded loop: build/test verifier → independent reviewer → fix-applier on blockers, repeating until the reviewer returns clean or the iteration cap forces escalation.</summary>
+  <summary>After execution merges, the orchestrator runs a bounded loop: build/test verifier → independent reviewer → fix-applier on blockers, repeating until the reviewer returns clean or the iteration cap forces escalation. A single convergence re-derivation runs after the first PASS and emits unbuilt intent as new tasks.</summary>
 
   <section title="Loop steps">
     <list>
@@ -28,11 +28,24 @@
       <item>FAIL-WITH-NITS — only nice-to-have items; orchestrator may accept and proceed (records the nits as TODOs in the feature's `done/` move).</item>
       <item>FAIL — at least one blocker; loop continues.</item>
     </list>
+    <rule>
+      <statement>Every FAIL blocker MUST cite either a specific `spec.md` line or a `constitution.md` rule id. A finding that cites neither is recorded as a nit, not a blocker, and MUST NOT restart the loop.</statement>
+      <rationale>Without a citation requirement, "blocker" degrades into "the reviewer would have written it differently", and the hard iteration cap gets consumed by taste. Citation makes the review checkable in both directions: the fix-applier knows exactly what to satisfy, and a wrong blocker is visible as a wrong citation rather than a disagreement about quality. It also surfaces the real finding — a defect that no spec line and no rule covers is a gap in the spec, which belongs in the convergence pass below, not in the fix queue.</rationale>
+    </rule>
+  </section>
+
+  <section title="Convergence re-derivation">
+    <p>Runs exactly once, after REVIEW first returns PASS and before delivery. Never before EXECUTE.</p>
+    <p>One append-only pass reads `spec.md`, the `## Execution Plan` section of `plan.md`, and `constitution.md` as the sole statement of intent, assesses the PRESENT STATE of the code (not a `git diff`), and emits any intended-but-unbuilt work as NEW `TASK_*.md` files in the feature folder. If nothing is missing it writes nothing and the batch proceeds to delivery.</p>
+    <rule>
+      <statement>The convergence pass MUST NOT edit `spec.md`, `plan.md`, existing task numbering, or any code. Its only permitted write is a new `TASK_*.md`.</statement>
+      <rationale>A pass allowed to edit the intent it is checking against can always reach agreement by rewriting the spec, which is the one outcome that makes the check worthless. Restricting it to appending tasks keeps intent immutable and makes the pass's output reviewable as a diff of exactly one kind. Reading present state rather than the diff is the other half: a diff shows what this batch changed, while the question being asked is what the spec asked for and nobody built — including work silently dropped between PLAN and EXECUTE, which no diff of the executed work can reveal.</rationale>
+    </rule>
   </section>
 
   <section title="Independence">
     <rule>
-      <statement>The reviewer subagent MUST be a separate `Agent` spawn from the executor. It receives only the spec/design/test-plan and the diff, never the executor's reasoning.</statement>
+      <statement>The reviewer subagent MUST be a separate `Agent` spawn from the executor. It receives only `spec.md`, `plan.md`, the conditional `user-flows.md` / `ui-ux-design.md`, and the diff — never the executor's reasoning.</statement>
       <rationale>An author rarely catches their own structural mistakes. Independence is what makes the review a meaningful check, not a rubber stamp.</rationale>
     </rule>
   </section>

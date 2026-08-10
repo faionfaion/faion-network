@@ -10,6 +10,10 @@
       <item>They live in the same repository and same file, but at non-overlapping line ranges, AND the orchestrator accepts a possible rebase between them.</item>
     </list>
     <p>Otherwise the features go in sequential waves. When in doubt, default to a separate worktree per feature.</p>
+    <rule>
+      <statement>The grouping computed at PARALLELIZE is authoritative for wave 1 only. For every later wave it is provisional until the coordinator re-derives the overlap against the merge point and returns CLEAR.</statement>
+      <rationale>Overlap is computed against the pre-batch tree, but each wave mutates that tree — creating files, renaming modules, moving a contract. A grouping that was disjoint when it was computed can be overlapping by the time it dispatches, and the collision then surfaces as a merge conflict or a silent overwrite rather than as a scheduling decision. Re-deriving at the boundary costs one read of the merged tree; discovering it after the fact costs a resolver dispatch and an unattributable break.</rationale>
+    </rule>
     <p>Pool size is bounded by quota: read `platform quota-state source`'s `rate_limits.five_hour.used_percentage`. Stop adding agents to the wave when the projected wave consumption would push the meter past the user-set threshold (default 50%).</p>
   </section>
 
@@ -55,16 +59,25 @@ git -C "$REPO" branch -d feature/${FEATURE}
     </rule>
   </section>
 
+  <section title="Wave boundary">
+    <p>The wave loop is: dispatch wave → await every executor → dispatch the coordinator → act on its verdict → dispatch the next wave. The coordinator runs after the final wave too, because the last merge point is the one VERIFY, REVIEW and DELIVER all read.</p>
+    <rule>
+      <statement>The orchestrator MUST NOT dispatch wave N+1 until the coordinator has returned CLEAR for wave N. On HOLD it applies the named remediation and re-runs the coordinator; on ABORT it stops the batch and escalates.</statement>
+      <rationale>Dispatching into an unchecked merge point is what turns one wave's break into a stack of merges over it. Each additional wave landed on a broken base multiplies the attribution cost — this is the whole reason the gate sits at the boundary rather than at VERIFY, which runs once, after everything has already landed.</rationale>
+    </rule>
+    <reference path="content/11-coordinator.xml">What the coordinator checks and what its verdicts mean.</reference>
+  </section>
+
   <section title="Conflict handling">
     <rule>
-      <statement>An executor that hits a merge or rebase conflict MUST stop, list conflict files plus both sides' SDD intent (read each side's `spec.md` / `design.md`), and return control to the orchestrator. The resolver subagent (`prompts/06-merge-resolver.md`) is then dispatched.</statement>
+      <statement>An executor that hits a merge or rebase conflict MUST stop, list conflict files plus both sides' SDD intent (read each side's `spec.md` and the `## Design` section of `plan.md`), and return control to the orchestrator. The resolver subagent (`prompts/06-merge-resolver.md`) is then dispatched.</statement>
       <rationale>Auto-resolving with `--ours` / `--theirs` silently destroys one side. Conflict resolution is its own phase with its own prompt file, not a side effect of execution.</rationale>
     </rule>
   </section>
 
   <section title="Resolver behaviour">
     <list>
-      <item>Reads both features' `spec.md` and `design.md` to understand the current and other side's intent.</item>
+      <item>Reads both features' `spec.md` and `plan.md` (`## Design`) to understand the current and other side's intent.</item>
       <item>Reads `git log` and `git show` for the conflicting file to confirm the diff.</item>
       <item>Combines both intents at the line level, with a documented decision per file in the resolver's report.</item>
       <item>Special-cases append-only files (`CHANGELOG.md`, `MAP.md`, `methodologies-index/methodology.xml`) by keeping entries from both sides under `## [Unreleased]` (or the equivalent heading).</item>

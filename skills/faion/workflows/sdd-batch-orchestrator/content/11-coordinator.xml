@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="11-coordinator" title="The coordinator: the wave-boundary gate">
+  <summary>An independent subagent that runs after wave N merges and before wave N+1 dispatches. It answers one question — is this merge point sound enough to build the next wave on — and returns CLEAR / HOLD / ABORT. It never edits code, never merges, never re-dispatches.</summary>
+
+  <section title="Why the role exists">
+    <p>Executors verify inside their own worktrees, in isolation from each other. That proves each feature is green <em>alone</em>. Nothing in the twelve phases proves the <em>combination</em> is green until VERIFY, which runs once, after every wave has already landed. A wave that breaks a sibling wave is therefore discovered at the end of the batch, with several merges stacked on top of the break and no cheap way to attribute it.</p>
+    <p>The second gap is staler still: wave admission is computed from file overlap <em>before</em> the batch starts. Wave N can create files, rename modules, or move a contract that wave N+1's grouping assumed nothing would touch. By the time wave N+1 dispatches, the grouping that authorised it may describe a tree that no longer exists.</p>
+    <p>Both gaps sit at the same seam — the boundary between waves — and neither is visible to the role that produced them.</p>
+  </section>
+
+  <section title="When it runs">
+    <rule>
+      <statement>The coordinator runs at every wave boundary inside EXECUTE, including after the final wave. It is not a phase; the twelve-phase order is unchanged and the phase count stays at twelve.</statement>
+      <rationale>The check belongs to the seam between waves, not to a step in the sequence. Modelling it as a thirteenth phase was rejected on 2026-08-04 for moving the check past the point where the batch is already declared done — a wave-boundary role puts it before every subsequent merge instead of after all of them. A batch with a single wave still gets one coordinator run, because a single wave still merges into a tree the orchestrator has not re-read.</rationale>
+    </rule>
+    <p>Ordering within the wave loop: dispatch wave → await all executors → dispatch coordinator → act on verdict → dispatch next wave.</p>
+  </section>
+
+  <section title="What it checks">
+    <list>
+      <item><b>The merge actually landed.</b> For every feature the wave reported as `done=&lt;id&gt; commit=&lt;sha&gt;`: the sha is reachable from the default branch, the worktree is gone, the feature branch is deleted. A report is a claim, not evidence.</item>
+      <item><b>The merge point is green.</b> Run the playbook's VERIFY command matrix against the merged tree — not against any worktree. This is the first execution of those commands over the combination.</item>
+      <item><b>The next wave's admission still holds.</b> Re-derive file overlap for wave N+1 against the current tree, not the pre-batch tree. Files created, renamed, or moved by wave N count.</item>
+      <item><b>No scope leak.</b> Each feature's diff stays inside the surface its `plan.md` declared. Files touched outside it are reported with their paths.</item>
+      <item><b>Quota headroom.</b> Read the live meter and state whether wave N+1 fits under the threshold. The orchestrator decides; the coordinator supplies the number it just measured.</item>
+    </list>
+  </section>
+
+  <section title="Verdict shape">
+    <list>
+      <item><b>CLEAR</b> — merge landed, tree green, next wave's grouping re-derived and unchanged (or narrowed). The orchestrator dispatches wave N+1.</item>
+      <item><b>HOLD</b> — a named, attributable problem with a named remediation: a feature to re-dispatch, a FIX to run at the merge point, or a regrouping of wave N+1. Wave N+1 does not dispatch. The orchestrator acts on the remediation and re-runs the coordinator.</item>
+      <item><b>ABORT</b> — the merge point is broken in a way the coordinator cannot attribute to one feature, or a claimed commit does not exist. The orchestrator stops the batch and escalates to the user.</item>
+    </list>
+    <rule>
+      <statement>Every HOLD and every ABORT MUST name the feature id and cite either a failing command with its output, a commit sha, or a file path. A finding that cites none of these is recorded as a ledger observation, not a verdict.</statement>
+      <rationale>The same discipline the review loop applies to blockers. Without it, HOLD degrades into "the coordinator was uneasy" and stalls a wave on taste. A citation makes the finding checkable in both directions: the orchestrator knows exactly what to remediate, and a wrong HOLD is visible as a wrong citation rather than as a disagreement.</rationale>
+    </rule>
+  </section>
+
+  <section title="Hard constraints">
+    <rule>
+      <statement>The coordinator MUST NOT edit code, MUST NOT merge, MUST NOT re-dispatch a subagent, and MUST NOT modify any SDD artifact. Its only permitted writes are appends to the batch `run-log.md` and to the action ledger.</statement>
+      <rationale>A checker that can fix can always reach a passing verdict by fixing, which makes the verdict worthless as a signal — the same reason the convergence pass may only append tasks. Confining the coordinator to reads plus two append-only files also keeps its output reviewable as exactly one kind of diff, and keeps remediation authority where escalation authority already lives: with the orchestrator.</rationale>
+    </rule>
+    <rule>
+      <statement>The coordinator MUST be a separate `Agent` spawn from every executor in the wave it checks, and MUST receive only the wave manifest, the merge point, and the features' `spec.md` / `plan.md` — never the executors' reports or reasoning.</statement>
+      <rationale>Reading the reports is how the coordinator would inherit the executors' account of their own work, which is precisely the account being checked. It must reach the merge point through git and the filesystem, the way the next wave will.</rationale>
+    </rule>
+  </section>
+
+  <section title="Prompt file">
+    <p>`prompts/13-wave-coordinator.md`, built from `templates/prompt-skeleton.md` like every other prompt file. Numbering continues past twelve because prompt files are capabilities, not phases — the phase list stops at twelve and the coordinator is not on it.</p>
+    <p>Parameter block: `wave_manifest`, `merge_point` (sha), `repo_path`, `default_branch`, `next_wave_manifest` (omit after the final wave), `verify_matrix` (from the playbook), `ledger_path`.</p>
+    <p>Last-line marker: `verdict=CLEAR|HOLD|ABORT wave=&lt;n&gt;`. The orchestrator validates it against that enum before acting, per the output-contract rule in `content/03-prompt-files.xml`.</p>
+  </section>
+
+  <see-also>
+    <link path="content/04-parallelism.xml"/>
+    <link path="content/12-reflection.xml"/>
+    <link path="content/07-verify-review-fix-loop.xml"/>
+  </see-also>
+</text>

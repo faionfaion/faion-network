@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="60-stop-conditions" title="Stop and pause conditions">
-  <summary>Four conditions stop or pause the loop: operator halt, irreversible-action gate, Phase 6 full pass, and cron expiry. The orchestrator never decides on its own to terminate; it stops on a defined trigger and records the stop reason in `state.md`.</summary>
+  <summary>Five conditions stop or pause the loop: operator halt, irreversible-action gate, Phase 2.5 `kill` verdict, Phase 6 full pass, and cron expiry. The orchestrator never decides on its own to terminate; it stops on a defined trigger and records the stop reason in `state.md`.</summary>
 
   <section title="Operator halt (immediate)">
     <p>Trigger: operator says "stop", "pause", "park", or any equivalent signal in chat or in `state.md`.</p>
@@ -17,6 +17,12 @@
     <reference path="content/20-phases.xml">Phase 5 deploy gate uses this pattern.</reference>
   </section>
 
+  <section title="Phase 2.5 kill verdict (success terminal state)">
+    <p>Trigger: `.product/prfaq.md` carries `verdict: kill`.</p>
+    <p>Action: the orchestrator stops dispatching, records `stop reason: concept-killed` plus the gate's stated reason in `state.md`, and exits. The run is reported to the operator as SUCCESSFUL — a concept killed before a spec set was written is the cheapest outcome the loop can produce. Re-entry requires a changed concept, not a re-run of the same one.</p>
+    <reference path="content/20-phases.xml">Phase 2.5 concept gate.</reference>
+  </section>
+
   <section title="Phase 6 full pass (success terminal state)">
     <p>Trigger: every Phase 6 validation returns PASS and `state.md` records `phase: shipped`.</p>
     <p>Action: the orchestrator stops driving. The cron tick observes `phase: shipped` and no-ops. The operator can re-engage by editing `state.md` or by invoking a sibling workflow (e.g. `improver` for session capture).</p>
@@ -29,7 +35,7 @@
 
   <section title="Stop reason logging">
     <rule>
-      <statement>Every stop MUST be recorded in `state.md` with: ISO timestamp, stop reason (one of: operator-halt, irreversible-gate-defer, phase-6-shipped, cron-expiry), and (for operator halt) the operator's stated reason if provided.</statement>
+      <statement>Every stop MUST be recorded in `state.md` with: ISO timestamp, stop reason (one of: operator-halt, irreversible-gate-defer, concept-killed, phase-6-shipped, cron-expiry), and (for operator halt) the operator's stated reason if provided.</statement>
       <rationale>Future sessions need to know why the loop stopped to decide whether to resume. An unrecorded stop forces the next session to re-read the entire `state.md` log to infer cause — slow and unreliable.</rationale>
     </rule>
   </section>

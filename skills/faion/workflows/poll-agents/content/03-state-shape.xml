@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-state-shape" title="On-disk state and atomic operations">
-  <summary>The pool's truth lives on disk, not in the parent's conversation context. Three plain-text files (`QUEUE.txt`, `DONE.txt`, optional `ACTIVE.txt`) plus the committed `BRIEF.md` survive `/compact`, full session restart, and parent crashes. Atomic pop semantics rely on `head` plus an `mv` rename, never in-place edits without a backing file.</summary>
+  <summary>The pool's truth lives on disk, not in the parent's conversation context. Three plain-text files (`QUEUE.txt`, `DONE.txt`, `ACTIVE.txt`) plus the committed `BRIEF.md` survive `/compact`, full session restart, and parent crashes. Atomic pop semantics rely on `head` plus an `mv` rename, never in-place edits without a backing file.</summary>
 
   <section title="State files">
     <list>
       <item>`QUEUE.txt` — pending batches, one per line. Each line is the unit a single subagent consumes (one absolute path, or a batch slug that the subagent expands via `BRIEF.md`). Gitignored.</item>
       <item>`DONE.txt` — completed batches. Each line is tab-separated (`&lt;path&gt;\tOK\t&lt;iso-date&gt;`), or carries the canonical last-line marker `done=&lt;slug&gt; commit=&lt;sha&gt;` per batch. Gitignored.</item>
-      <item>`ACTIVE.txt` (optional) — currently in-flight batch slugs, one per line. Cleared on successful completion. Gitignored. Useful when subagent IDs are not stably retrievable across `/compact`.</item>
+      <item>`ACTIVE.txt` — currently in-flight batch slugs, one per line, each with the ISO timestamp it was written. Appended BEFORE the dispatch call, removed on completion. Gitignored. It is the pool's only record that a popped batch was ever handed to an agent.</item>
       <item>`BRIEF.md` — committed; the single source of truth for what each subagent should do (read-files, work skeleton, file format, commit style, merge policy, hard rules).</item>
     </list>
   </section>
@@ -27,9 +27,17 @@
   <section title="Append patterns">
     <list>
       <item>`DONE.txt` append after each completion — use `&gt;&gt; DONE.txt` from a single shell line; concurrent append to a regular file is safe under POSIX `O_APPEND` semantics and the parent is single-threaded for record-keeping.</item>
-      <item>`ACTIVE.txt` add on dispatch, remove on completion — use the same `head/tail/mv` pattern as `QUEUE.txt` to avoid in-place edits.</item>
+      <item>`ACTIVE.txt` add BEFORE dispatch, remove on completion — use the same `head/tail/mv` pattern as `QUEUE.txt` to avoid in-place edits.</item>
       <item>Never `git add` any of `QUEUE.txt`, `DONE.txt`, `ACTIVE.txt` — they are runtime state, not source.</item>
     </list>
+    <rule>
+      <statement>The in-flight marker MUST be written to `ACTIVE.txt` BEFORE the dispatch call, never after it returns.</statement>
+      <rationale>A batch is popped off `QUEUE.txt` and then dispatched. If the marker is written after the call, a crash in between leaves the batch in neither file — the queue no longer holds it, nothing is in flight for it, and the drain check reports the pool complete with work silently missing. Written first, the same crash leaves a stuck marker, which is a visible, sweepable condition instead of silence.</rationale>
+    </rule>
+    <rule>
+      <statement>Before appending `done=&lt;slug&gt;` to `DONE.txt`, the parent MUST verify that `slug` is present in `ACTIVE.txt`. A slug that is not in the in-flight set MUST fail loudly and MUST NOT create any state for that slug.</statement>
+      <rationale>The completion marker arrives as text from a subagent, and a mistyped or hallucinated slug is indistinguishable from a real one by shape alone. Recording it unchecked writes a completion for a unit the pool never dispatched, which then reads as done forever, while the real unit sits unclaimed. The check is a closed-set membership test against a file the parent already maintains — no extra tokens, no extra round trip — and it is the whole difference between a typo that errors immediately and a ghost unit that surfaces after the queue has drained.</rationale>
+    </rule>
   </section>
 
   <section title="Recovery flow">

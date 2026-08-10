@@ -2,22 +2,23 @@
 status: active
 audience: both
 owner: ruslan
-last_verified: 2026-05-07
-version: 1.0.0
+last_verified: 2026-08-04
+version: 1.1.0
 applies_to: any
-content_id: 35c7522f4958fe07
+content_id: 22a54a015d9517fa
 success_criteria:
   - `.product/` on-disk layout (master-prompt, state, decisions, tasks, research) exists before any subagent runs.
   - Each phase advances only after its outputs land on disk and state.md records the transition.
   - Orchestrator dispatches subagents by file reference (path), never by inline prompt text.
-  - Phase 6 validation passes before the run is declared production-ready.
+  - Phase 2.5 concept gate returns `proceed` before any `spec.md` is written; `kill` ends the run as a success.
+  - Phase 6 validation passes before the run is declared production-ready, cheapest instrument first.
 ---
 
 # Idea-to-Prod Workflow
 
 ## Summary
 
-Single-prompt autonomous build: from one idea sentence to a production-deployed system, driven by a cron tick (`*/5 * * * *`) and a fixed file layout (`master-prompt.md` + `state.md` + `decisions.md` + `tasks/` + `research/`). The orchestrator never carries heavy work — it dispatches subagents by file reference (path to master-prompt + path to task brief), reads the bounded summary, and updates `state.md`. Six phases run in order: research (parallel) → brainstorm → SDD plan → implement → deploy → validate. Each phase advances only when its outputs exist on disk and `state.md` reflects the transition.
+Single-prompt autonomous build: from one idea sentence to a production-deployed system, driven by a cron tick (`*/5 * * * *`) and a fixed file layout (`master-prompt.md` + `state.md` + `decisions.md` + `tasks/` + `research/`). The orchestrator never carries heavy work — it dispatches subagents by file reference (path to master-prompt + path to task brief), reads the bounded summary, and updates `state.md`. Phases run in order: research (parallel) → brainstorm → concept gate → SDD plan → implement → deploy → validate. Each phase advances only when its outputs exist on disk, `state.md` reflects the transition, and any verdict the phase carries is the passing one.
 
 ## Why
 
@@ -27,7 +28,7 @@ Multi-week projects drift when the orchestrator improvises long prompts each tic
 
 - One-prompt asks like "build this end-to-end", "ідея до прод", "запусти проект сам", "автономний білд".
 - Greenfield projects where the operator wants the loop to drive itself.
-- Projects that need research → brainstorm → SDD → implement → deploy → validate inside one cron-driven session.
+- Projects that need research → brainstorm → concept gate → SDD → implement → deploy → validate inside one cron-driven session.
 - Multi-day work that must survive context compaction and resume from disk state.
 
 ## When NOT To Use
@@ -43,13 +44,13 @@ Multi-week projects drift when the orchestrator improvises long prompts each tic
 | File | What's inside |
 |------|---------------|
 | `content/00-routing.xml` | Auto-route triggers vs sibling workflows; consent gate; orchestrator vs operator vs subagent split. |
-| `content/10-bootstrap.xml` | `.product/` directory layout; master-prompt, state, decisions, tasks, research file contracts. |
-| `content/20-phases.xml` | Six phases (research, brainstorm, plan, implement, deploy, validate); advance condition; sibling-workflow invocation. |
-| `content/30-token-discipline.xml` | File-reference dispatch, background mode, subagent summary cap, no-narration rule. |
+| `content/10-bootstrap.xml` | `.product/` directory layout; master-prompt, constitution, prfaq, state, decisions, tasks, research contracts; bounded per-directory doc rule. |
+| `content/20-phases.xml` | Phases (research, brainstorm, 2.5 concept gate, plan, implement, deploy, validate); advance condition; sibling-workflow invocation. |
+| `content/30-token-discipline.xml` | File-reference dispatch, background mode, subagent summary cap, index-reads-are-dispatch-costs, no-narration rule. |
 | `content/40-cron-loop.xml` | `*/5 * * * *` tick semantics; heartbeat not control; restart-from-disk; one-line state log. |
-| `content/50-failure-modes.xml` | Recovery table: failed subagent, dead-end fallback, internet chain, quota check, open question parking, hook failure. |
-| `content/60-stop-conditions.xml` | Operator halt, irreversible action gate, phase-6 pass, cron expiry. |
-| `decisions.xml` | Why on-disk file layout, cron-as-heartbeat, file-ref dispatch, sibling-workflow composition, append-only decisions. |
+| `content/50-failure-modes.xml` | Recovery table: failed subagent, dead-end fallback, internet chain, quota check, open question parking, hook failure, consistent-but-wrong output. |
+| `content/60-stop-conditions.xml` | Operator halt, irreversible action gate, concept-gate kill, phase-6 pass, cron expiry. |
+| `decisions.xml` | Why on-disk file layout, cron-as-heartbeat, file-ref dispatch, sibling-workflow composition, append-only decisions, bounded context files, concept gate, cheapest-instrument validation. |
 
 ## Related
 

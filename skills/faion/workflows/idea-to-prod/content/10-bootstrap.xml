@@ -7,6 +7,8 @@
     <code lang="text"><![CDATA[
 .product/
 ├── master-prompt.md          # WHAT we build, WHY, conventions, /faion resources
+├── prfaq.md                  # Phase 2.5 concept gate; frontmatter carries the verdict
+├── constitution.md           # standing rules locked after Phase 2; read by Phases 3-6
 ├── state.md                  # CURRENT phase, in-flight tasks, one-line log
 ├── decisions/decisions.md    # append-only architectural decisions
 ├── tasks/NN-<slug>.md        # per-task briefs read by subagents
@@ -20,6 +22,10 @@
     <p>Single entry point. Every agent (orchestrator and every subagent) reads it first. Holds the project vision, architecture sketch, phase list, conventions inherited from the workspace, and the list of `/faion` resources to invoke per phase. It is rewritten only when the vision itself changes; phase progression does not edit it.</p>
   </section>
 
+  <section title="constitution.md">
+    <p>Written once by the orchestrator after Phase 2 locks the stack: at most 20 standing rules, each with one sentence of why. Phases 3-6 read it, and planning subagents cite it by rule id (`R-NN`). `decisions/decisions.md` remains append-only history; the constitution is the standing set, so a rule that goes stale is amended in place rather than appended to. If the project has no rules worth stating, the file is not written — an empty constitution is worse than none, because later phases read it as authoritative.</p>
+  </section>
+
   <section title="state.md">
     <p>Refreshed every cron tick. Holds: current phase, in-flight subagents, last action, next action, parked open questions. The log section is one line per tick — symbols not paragraphs.</p>
     <reference path="content/40-cron-loop.xml">Tick semantics and the log format.</reference>
@@ -29,6 +35,10 @@
     <rule>
       <statement>Architectural decisions MUST be appended to `decisions/decisions.md` with: ISO date, decision (one sentence), rationale (why this beats alternatives), alternatives considered (list with rejection reasons). Past entries are NEVER rewritten.</statement>
       <rationale>External callers (commits, SDD tickets, code review) cite decisions by date. Rewriting silently breaks citations. Append-only plus a chosen-vs-rejected pair makes the trail trustworthy across compactions and restarts.</rationale>
+    </rule>
+    <rule>
+      <statement>`state.md` MUST carry a one-line index per decision (ISO date + one sentence + anchor). The orchestrator and its subagents read the full `decisions/decisions.md` body only when a task brief names the anchor.</statement>
+      <rationale>An append-only log grows monotonically, so loading it whole on every tick re-pays its full cost for decisions the current phase cannot act on. The index line is enough to decide whether the body is worth a read. Loading discipline, not the entry template, is what keeps a decision log affordable over a multi-week run.</rationale>
     </rule>
   </section>
 
@@ -46,8 +56,16 @@
 
   <section title="Per-directory docs">
     <rule>
-      <statement>Every directory created by this workflow MUST get an `AGENTS.md` (essential context, file table) and a `CLAUDE.md` (`@AGENTS.md` only). This includes `.product/`, `.product/tasks/`, `.product/research/`, and any `features/&lt;id&gt;/` folder.</statement>
-      <rationale>The workspace convention is that any directory without the pair is invisible to future agents. Skipping the pair means later sessions cannot route through the project.</rationale>
+      <statement>Every directory created by this workflow MUST get a `CLAUDE.md` containing exactly the one line `@AGENTS.md`. This includes `.product/`, `.product/tasks/`, `.product/research/`, and any `features/&lt;id&gt;/` folder.</statement>
+      <rationale>The one-line bridge is pure routing: it costs one line, it is not model-written prose, and it makes the directory reachable from either agent runtime. This half of the convention is free and stays mandatory.</rationale>
     </rule>
+    <rule>
+      <statement>The matching `AGENTS.md` is a STUB, not generated prose: at most 30 lines, carrying commands, conventions and boundaries only — never a directory listing, a dependency list, or an architecture overview. The orchestrator MUST NOT auto-generate an `AGENTS.md` body; it writes the stub and the operator confirms or replaces it at the next gate. An unconfirmed stub does NOT block phase advance, and a directory the operator declines to describe keeps a stub of zero content lines.</statement>
+      <rationale>The `AGENTS.md` body is not free: it is re-read on every tick of every future session. The only controlled study of the format (Gloaguen et al., ETH Zurich + LogicStar, arXiv, February 2026) measured machine-generated context files as a net loss — −0.5% on SWE-bench Lite, worse in five of eight settings — while human-written ones bought roughly +4% success for +19% inference cost, and every variant tested added 20-23% cost and 14-22% reasoning tokens. Repository-overview sections specifically measured unhelpful, because the agent derives them from the files anyway. A bounded, human-confirmed stub keeps the routing benefit and stops paying for generated prose that measurably hurts.</rationale>
+    </rule>
+    <antipattern>
+      <description>Bootstrapping eight nested `AGENTS.md` files as part of creating the project tree, each opened with a generated repository-overview and dependency section.</description>
+      <reason>The tax is paid on every tick of every future session, for content the agent reconstructs from the files themselves — and the measured effect of generated context files is negative, not neutral. The cost is certain; the benefit is not.</reason>
+    </antipattern>
   </section>
 </text>

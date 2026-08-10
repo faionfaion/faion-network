@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="12-reflection" title="Reflection: the action ledger and its follow-through audit">
+  <summary>The coordinator appends evidence-backed observations to an append-only action ledger at each wave boundary and at batch close. The next batch opens by auditing that ledger and marking each open item against its own artifacts. Writing without auditing produces a diary; both halves are required.</summary>
+
+  <section title="The pairing">
+    <rule>
+      <statement>A batch that writes ledger entries MUST also, before INTAKE, audit the ledger left by the previous batch on the same project. Neither half ships alone.</statement>
+      <rationale>An entry nobody re-reads changes nothing, and an audit with nothing to audit is a no-op — so a workflow that implements one half converges on doing neither. Pairing them makes the ledger self-enforcing: the audit is what gives the writing a consumer, and the writing is what gives the audit a subject. The failure this prevents is the specific one the empty `.aidocs/&lt;project&gt;/memory/` folders record — a documented memory shape that no step was ever obliged to populate or read.</rationale>
+    </rule>
+    <list>
+      <item><b>Write — at each wave boundary.</b> The coordinator has just read the merge point, run the verify matrix, and re-derived the next wave's grouping. Evidence is in hand and attributable to a wave. Post-hoc mining at batch close recovers less and guesses more.</item>
+      <item><b>Write — at batch close.</b> Whatever the verify-review-fix loop and the convergence pass surfaced that no single wave boundary saw.</item>
+      <item><b>Audit — before INTAKE of the next batch.</b> Every open entry gets marked against this batch's artifacts. This runs before intake, not after delivery, because an unaddressed entry is an input to planning.</item>
+    </list>
+  </section>
+
+  <section title="What qualifies as an entry">
+    <p>Not every observation. An observation earns a ledger entry when at least one holds:</p>
+    <list>
+      <item>It recurred across ≥2 features or ≥2 waves in this batch.</item>
+      <item>It cost a verify-review-fix iteration.</item>
+      <item>The coordinator caught it — meaning a phase that should have caught it did not.</item>
+    </list>
+    <rule>
+      <statement>An entry MUST cite evidence: a commit sha, a file path, or a failing command with its output. An observation that cites none of these is not written to the ledger.</statement>
+      <rationale>The same citation bar the review loop puts on blockers, for the same reason: without it the ledger fills with impressions, and an audit against impressions cannot be resolved either way, so every entry stays open forever and the ledger stops being read. Evidence is also what makes the follow-through audit mechanical — the next batch checks a sha or a path, it does not re-litigate a judgement.</rationale>
+    </rule>
+    <p>The third qualifier is the productive one. A coordinator catch means the gap is in a prompt file, not in the code: the phase that should have caught it is under-specified. Those entries carry `class: prompt` and their remediation is a diff to a versioned file under `prompts/`, which is the loop this whole pattern exists to close.</p>
+  </section>
+
+  <section title="Ledger shape">
+    <p>One file per project: `.aidocs/&lt;project&gt;/memory/action-ledger.md`. Append-only — entries are added and their `status` is re-marked, never rewritten or deleted. Skeleton in `templates/action-ledger.md`.</p>
+    <list>
+      <item>`id` — `AL-NNN`, stable, never reused.</item>
+      <item>`batch` — the batch id that raised it.</item>
+      <item>`class` — `process` | `prompt` | `methodology` | `tooling`.</item>
+      <item>`observation` — one line, what happened.</item>
+      <item>`evidence` — sha, path, or command + output.</item>
+      <item>`action` — what to change, concretely enough to diff.</item>
+      <item>`status` — `open` | `done` | `not-addressed`.</item>
+    </list>
+    <p>No owner field and no deadline: a solo operator's ledger has one owner, and the no-time-estimates rule forbids the deadline. Entries carry complexity qualitatively when it matters.</p>
+  </section>
+
+  <section title="The audit">
+    <p>Runs as its own subagent before INTAKE, fronted by `prompts/14-ledger-auditor.md`. For each `open` entry in the previous batch's ledger:</p>
+    <list>
+      <item>Look for evidence in <em>this</em> batch's artifacts — commits, prompt-file diffs, `readiness.md`, review verdicts — that the action was taken.</item>
+      <item>Mark `done` (evidence found, cited), `open` (still outstanding), or `not-addressed` (this batch hit the same failure again — cite the repeat).</item>
+      <item>A `not-addressed` entry whose failure repeated is surfaced to the orchestrator as a CLARIFY input, not silently re-marked.</item>
+    </list>
+    <rule>
+      <statement>The auditor MUST NOT close an entry without citing the evidence that closed it, and MUST NOT edit the `observation`, `evidence`, or `action` fields of an existing entry. It writes only `status` and an appended `resolved:` citation.</statement>
+      <rationale>An auditor that can rewrite the observation can close any entry by narrowing what it claimed. Restricting it to the status field and an appended citation keeps the original claim immutable and makes each audit reviewable as a diff of exactly one column — which is also what lets a later reader tell a genuinely fixed item from a quietly reworded one.</rationale>
+    </rule>
+  </section>
+
+  <section title="Anti-patterns">
+    <antipattern>
+      <description>Writing the ledger at batch close only, mined from the run log after the fact.</description>
+      <reason>This is BMAD's epic-end retrospective shape, and it inherits its weakness: the evidence has to be reconstructed from records written for another purpose, so recall drops to whatever the run log happened to capture and attribution to a wave is guesswork. The coordinator already holds the evidence at the boundary — writing it there costs nothing extra.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Ledger entries phrased as sentiment: "planning felt rushed", "the FE wave was painful".</description>
+      <reason>Unfalsifiable, so the next audit can neither close nor repeat them. They accumulate as permanent `open` noise until the ledger is abandoned. The evidence rule exists to reject exactly these.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Letting the coordinator apply a ledger entry's remediation itself while it is at the merge point.</description>
+      <reason>It is the checker. A checker that edits the prompt files it is measuring against has no independent baseline left for the next wave, and the remediation lands with no review.</reason>
+    </antipattern>
+  </section>
+
+  <see-also>
+    <link path="content/11-coordinator.xml"/>
+    <link path="content/09-anti-patterns.xml"/>
+  </see-also>
+</text>

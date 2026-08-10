@@ -2,10 +2,10 @@
 status: active
 audience: both
 owner: ruslan
-last_verified: 2026-05-02
-version: 2.0.0
+last_verified: 2026-08-04
+version: 2.1.0
 applies_to: any
-content_id: 9b69e99f0b6a7925
+content_id: af4c40e30f8ca908
 success_criteria:
   - Discovery interview answers (Phase 1) cover every required question group before scaffolding starts.
   - The new outlet's project tree matches the canonical scaffold in `content/05-scaffold-structure.xml`.

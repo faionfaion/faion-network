@@ -2,15 +2,19 @@
 status: active
 audience: both
 owner: ruslan
-last_verified: 2026-05-02
-version: 2.0.0
+last_verified: 2026-08-06
+version: 2.2.0
 applies_to: any
-content_id: 92296fb91a0883f3
+content_id: de95eaa0cf909224
 success_criteria:
   - Every phase is fronted by a versioned prompt file under `prompts/`; the orchestrator never inlines long prompts.
   - Parallel waves run inside isolated `git worktree` checkouts; `flock` serializes merges into the default branch.
   - REVIEW → FIX loop respects the hard iteration cap defined in `content/07-verify-review-fix-loop.xml`.
+  - EXECUTE does not dispatch for a feature whose `spec.md` still carries an unresolved clarification marker.
+  - A convergence re-derivation runs once after the first REVIEW PASS and emits unbuilt intent as new `TASK_*.md`.
   - Visual-delivery phase produces focused before/after evidence before the batch is declared done.
+  - The coordinator gates every wave boundary; wave N+1 never dispatches on a non-CLEAR verdict.
+  - Ledger entries carry cited evidence, and the previous batch's ledger is audited before INTAKE.
 ---
 
 # SDD Batch Orchestrator
@@ -26,7 +30,7 @@ Multi-feature batches drift when the orchestrator improvises long prompts each t
 ## When To Use
 
 - A batch of ≥3 SDD features in `.aidocs/<project>/todo/` that share a delivery surface (faion-net-fe, storybook, knowledge methodologies, mediamanager-fe, ETL).
-- Bug-fix or small-feature work where SDD artifacts (spec, design, test plan, implementation plan) belong before code.
+- Bug-fix or small-feature work where SDD artifacts (`spec.md`, `plan.md`, conditional `user-flows.md` / `ui-ux-design.md`, `readiness.md`) belong before code.
 - Visual changes on a faion-network-hosted surface where before/after screenshots are the expected proof of done.
 - Batches that span multiple nested repos under `faion-net/` and benefit from parallel waves.
 
@@ -43,15 +47,17 @@ Multi-feature batches drift when the orchestrator improvises long prompts each t
 | File | What's inside |
 |------|---------------|
 | `content/01-overview.xml` | Core principle, role split, language convention, neutrality of the SDD tracker shape. |
-| `content/02-phases.xml` | The 12 phases and which prompt file fronts each. |
-| `content/03-prompt-files.xml` | How a subagent prompt file is structured + dispatch shape. |
+| `content/02-phases.xml` | The 12 phases, which prompt file fronts each, and the foreign-artifact name map. |
+| `content/03-prompt-files.xml` | How a subagent prompt file is structured + dispatch shape + output-contract placement and marker validation. |
 | `content/04-parallelism.xml` | Wave admission rules, worktree pattern, `flock` merge serialization, conflict handling. |
-| `content/05-defaults-constraints.xml` | No-push / no-`--no-verify` / CHANGELOG / commit-format defaults. |
+| `content/05-defaults-constraints.xml` | No-push / no-`--no-verify` / CHANGELOG / commit-format defaults; EXECUTE entry gate on unresolved clarifications. |
 | `content/06-clarification-batching.xml` | Aggregating open questions into one batched `AskUserQuestion`. |
-| `content/07-verify-review-fix-loop.xml` | Iterative quality gate with hard cap, faion-network verify commands. |
+| `content/07-verify-review-fix-loop.xml` | Iterative quality gate with hard cap, verify commands, blocker-citation rule, convergence re-derivation. |
 | `content/08-recapture-and-deliver.xml` | Focused before/after screenshots + delivery channels (`tg-send`, SDD `done/`). |
 | `content/09-anti-patterns.xml` | What to avoid and why. |
 | `content/10-playbook-adaptation.xml` | How to specialize the pattern per delivery surface (BE, FE, knowledge, storybook, ETL). |
+| `content/11-coordinator.xml` | The coordinator role: wave-boundary gate, what it checks, CLEAR/HOLD/ABORT, why it may not fix. |
+| `content/12-reflection.xml` | Action ledger written at wave boundaries, audited before the next batch's INTAKE. |
 
 ## Templates
 
@@ -60,6 +66,8 @@ Multi-feature batches drift when the orchestrator improvises long prompts each t
 | `templates/prompt-skeleton.md` | Skeleton for any subagent prompt file under `prompts/`. |
 | `templates/playbook-skeleton.md` | Skeleton for a domain-specific playbook under `playbooks/`. |
 | `templates/orchestrator-dispatch.txt` | Format of the `Agent` spawn message the orchestrator uses. |
+| `templates/orchestrator-approach.md` | The main thread's own contract — read once at batch start; the orchestrator has no prompt file. |
+| `templates/action-ledger.md` | Skeleton for `.aidocs/<project>/memory/action-ledger.md`. |
 | `templates/focused-screenshot.py` | Element-focused Playwright capture with CSS outline injection. |
 
 ## Related

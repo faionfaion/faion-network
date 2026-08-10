@@ -16,7 +16,7 @@ You <one-paragraph mission statement: what this subagent is for, what side effec
 - Reference files to read first:
   - `<repo>/AGENTS.md`
   - `<repo>/CHANGELOG.md` (to confirm format)
-  - `<feature_folder>/spec.md` and `design.md` (when relevant)
+  - `<feature_folder>/spec.md` and `plan.md` (`## Design` + `## Execution Plan`), plus `user-flows.md` / `ui-ux-design.md` when they exist
 
 ## Workflow
 
@@ -29,12 +29,11 @@ You <one-paragraph mission statement: what this subagent is for, what side effec
 
 ## Output
 
-Either:
-- A structured Markdown report with a fixed schema (sections + bullet lists), OR
-- A list of files written (paths + meaning), OR
-- A last-line marker the orchestrator parses, e.g. `done=<feature-id> commit=<short-sha>` or `verdict=PASS|FAIL-WITH-NITS|FAIL`.
+**Default — use this unless the phase is mechanical:** a freeform report body (prose and bullets, no fixed schema imposed on the reasoning) that ends with a single machine-parsed last line, e.g. `done=<feature-id> commit=<short-sha>` or `verdict=PASS|FAIL-WITH-NITS|FAIL`. The orchestrator parses only the last line.
 
-State which one your prompt produces. Pick exactly one.
+**Whole-message JSON** is allowed only for mechanical phases whose output is a list, not a judgement — file inventories, screenshot paths, RECAPTURE manifests. NEVER for REVIEW, PLAN, or merge resolution.
+
+State which shape your prompt produces, and keep this section LAST in the file — a format instruction placed near the mission statement constrains the reasoning that has to happen before the format is filled in.
 
 ## Constraints
 

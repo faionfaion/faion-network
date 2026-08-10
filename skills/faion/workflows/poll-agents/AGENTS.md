@@ -2,14 +2,15 @@
 status: active
 audience: both
 owner: ruslan
-last_verified: 2026-05-02
-version: 2.0.0
+last_verified: 2026-08-04
+version: 2.1.0
 applies_to: any
-content_id: 4561f8360a60223f
+content_id: 41802beb67d441de
 success_criteria:
   - Parent never writes, commits, or merges — only pops the queue, dispatches subagents, and records DONE.
   - In-flight count stays ≤15 at all times (strict cap enforced before every dispatch).
-  - State lives on disk (`QUEUE.txt`, `DONE.txt`, optional `ACTIVE.txt`) so the parent survives context compaction.
+  - State lives on disk (`QUEUE.txt`, `DONE.txt`, `ACTIVE.txt`) so the parent survives context compaction.
+  - Every in-flight marker is written before its dispatch, and every `done=` slug is checked against the in-flight set before it is recorded.
   - Pool stays full via both signals (cron tick keepalive + per-completion replacement) until the queue drains.
 ---
 
@@ -17,7 +18,7 @@ success_criteria:
 
 ## Summary
 
-Self-replenishing pool of N background subagents draining a queue of independent task batches. The parent does only orchestration (pop queue + dispatch + record); every write, commit, and merge happens inside isolated worktree subagents. The pool stays full via two complementary signals: a periodic cron tick (keepalive, drain detection, post-`/compact` recovery) and a per-completion handler (real-time one-per-completion replacement). On-disk state (`QUEUE.txt`, `DONE.txt`, optional `ACTIVE.txt`) makes the parent fully restartable.
+Self-replenishing pool of N background subagents draining a queue of independent task batches. The parent does only orchestration (pop queue + dispatch + record); every write, commit, and merge happens inside isolated worktree subagents. The pool stays full via two complementary signals: a periodic cron tick (keepalive, drain detection, post-`/compact` recovery) and a per-completion handler (real-time one-per-completion replacement). On-disk state (`QUEUE.txt`, `DONE.txt`, `ACTIVE.txt`) makes the parent fully restartable.
 
 ## Why
 
@@ -43,9 +44,9 @@ Linear sequential processing of 100+ task batches is slow and burns parent conte
 |------|---------------|
 | `content/01-overview.xml` | Core principle (parent isolation), role split, battle-tested examples, language convention. |
 | `content/02-phases.xml` | Four phases: initialize state → initial dispatch → steady-state loop (cron tick + completion handler) → drain. |
-| `content/03-state-shape.xml` | `QUEUE.txt`/`DONE.txt`/`ACTIVE.txt` + atomic `head/tail/mv` pop; why on-disk state survives `/compact`. |
-| `content/04-replenishment.xml` | Two-signal pattern, strict 15-in-flight cap, quota gate, retry-with-sonnet on failure. |
-| `content/05-anti-patterns.xml` | Parent doing writes, missing `flock`, polling instead of completion handler, in-memory state, over-commit, batched replacement. |
+| `content/03-state-shape.xml` | `QUEUE.txt`/`DONE.txt`/`ACTIVE.txt` + atomic `head/tail/mv` pop; marker-before-dispatch; closed-set check on `done=`. |
+| `content/04-replenishment.xml` | Two-signal pattern, strict 15-in-flight cap, quota gate (uncached dispatch pricing), stale in-flight sweep, retry-with-sonnet. |
+| `content/05-anti-patterns.xml` | Parent doing writes, missing `flock`, polling instead of completion handler, in-memory state, over-commit, cached-prefix fan-out sizing, batched replacement. |
 
 ## Related
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="50-failure-modes" title="Failure modes and recovery paths">
-  <summary>Six failure modes are first-class in this workflow: failed subagent, dead-end loop, internet-research blocked, quota exhaustion, open question requiring operator input, and pre-commit hook failure. Each has a defined detection signal and recovery action so the orchestrator never improvises under stress.</summary>
+  <summary>Seven failure modes are first-class in this workflow: failed subagent, dead-end loop, internet-research blocked, quota exhaustion, open question requiring operator input, pre-commit hook failure, and output that is internally consistent but wrong. Each has a defined detection signal and recovery action so the orchestrator never improvises under stress.</summary>
 
   <section title="Failed subagent">
     <p>Detection: expected output file missing or under expected size after the dispatch window.</p>
@@ -43,6 +43,16 @@
       <description>Re-running the failed `git commit` with `--no-verify` to "unblock" the loop.</description>
       <reason>The hook caught a real defect (lint, format, missing CHANGELOG entry, debug print). Bypassing it ships the defect, which a later session must debug — and the bypass itself becomes a precedent that erodes the gate.</reason>
     </antipattern>
+  </section>
+
+  <section title="Output internally consistent but wrong">
+    <p>Detection: the phase's output files all exist, pass their own checks, and are self-consistent — but a later phase, the operator, or a verdict-carrying gate establishes that they answer the wrong question (wrong assumption inherited from a brief, a research claim that did not survive verification, a spec written against a superseded decision).</p>
+    <p>Recovery: archive the affected outputs to `.product/rollback/&lt;iso_ts&gt;/`, revert `state.md` to the phase that produced them, append a `rolled-back` line naming the reason, and re-dispatch with an amended brief that states the corrected assumption explicitly. Never edit the wrong output in place.</p>
+    <rule>
+      <statement>A rollback MUST leave a `rolled-back` line in the `state.md` log. A phase whose outputs were removed without that record MUST NOT be read as "never started".</statement>
+      <rationale>Re-dispatch logic keys on missing outputs. Silently deleting a bad output makes the loop re-run the phase from the same brief with the same assumption, producing the same wrong answer at full cost — and the three-strikes counter never fires, because each attempt looks like a first one. The record is what turns a rollback into a different attempt rather than a repeated one.</rationale>
+    </rule>
+    <p>The three-strikes escalation below routes here before it reaches the operator: a phase that has been rolled back twice is a brief problem, not a subagent problem.</p>
   </section>
 
   <section title="Recovery escalation">

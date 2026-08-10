@@ -25,7 +25,15 @@
   <section title="Quota gate">
     <rule>
       <statement>Between every spawn the parent MUST read `/tmp/claude-session-state.json` `rate_limits.five_hour.used_percentage` and pause dispatch if the projected wave consumption would push the meter past the user-set threshold (default 50%).</statement>
-      <rationale>A long pool run can starve later sessions in the same 5-hour window. Reading the meter is one file read; not reading it pays the cost on the next session, not this one. The threshold is conservative because subagent token use is bursty and not perfectly predictable from queue length alone.</rationale>
+      <rationale>A long pool run can starve later sessions in the same 5-hour window. Reading the meter is one file read; not reading it pays the cost on the next session, not this one. The threshold is conservative because subagent token use is bursty and not perfectly predictable from queue length alone. It is also conservative for a structural reason: prompt caching does not apply to Agent-tool subagent dispatches (`anthropics/claude-code#29966`, filed 2026-03-02, still open at last activity 2026-07-29; measured at 54 of 54 dispatches with zero cache reads in one session, reproduced 2026-07-24). Every dispatch must be priced as full-rate uncached input.</rationale>
+    </rule>
+    <p>Two consequences follow for fan-out sizing. The 50% threshold is a floor, not a knob to raise when the queue is long. And a shared `BRIEF.md` prefix is re-paid in full on every dispatch, so fewer larger batches cost less than many small ones for the same work — which also makes file-reference dispatch a cost rule rather than a hygiene preference.</p>
+  </section>
+
+  <section title="Stale in-flight entries">
+    <rule>
+      <statement>On every tick the parent MUST sweep `ACTIVE.txt` for entries older than a configured window (default 60 min) with no live agent. A stale entry goes to a dead-letter list and is reported; it MUST NOT be silently re-dispatched.</statement>
+      <rationale>The tick refills on `active &lt; N`, and it counts active from `ACTIVE.txt`. A stuck marker therefore holds a slot open forever and the pool runs permanently below cap. Silent re-dispatch is the wrong fix in the other direction: the batch may have completed and merged before the parent lost track of it, so re-running duplicates commits into the same branch. Dead-lettering makes the ambiguous case visible and leaves the decision to the one signal that can resolve it — `git log`.</rationale>
     </rule>
   </section>
 

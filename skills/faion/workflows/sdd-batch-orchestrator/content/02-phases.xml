@@ -6,16 +6,26 @@
     <list>
       <item>1. INTAKE — analyzers read each feature folder under `.aidocs/&lt;project&gt;/todo/&lt;feature-id&gt;/` and produce a structured report with open questions.</item>
       <item>2. CLARIFY — open questions are deduplicated and asked of the user via batched `AskUserQuestion` calls in Ukrainian.</item>
-      <item>3. PLAN — one planning subagent per feature writes/updates the SDD artifact set: `spec.md`, `plan.md` (one file with `## Design` + `## Execution Plan` H2 sections per plan-md-structure), conditional `user-flows.md` (user-facing) and `ui-ux-design.md` (UI), atomic `TASK_*.md`.</item>
+      <item>3. PLAN — one planning subagent per feature writes/updates the SDD artifact set: `spec.md`, `plan.md` (one file with `## Design` + `## Execution Plan` H2 sections per plan-md-structure), conditional `user-flows.md` (user-facing) and `ui-ux-design.md` (UI), atomic `TASK_*.md`. Functional requirements follow the EARS patterns in `sdd/ears-requirements`; where `user-flows.md` exists the planner generates them from it (happy path → `When`, negative path → `If … then`, precondition → `While`) instead of writing prose and pattern-matching afterwards.</item>
       <item>4. PARALLELIZE — the orchestrator inspects file overlap and groups features into execution waves.</item>
       <item>5. BASELINE — for visual fixes, capture a focused before-screenshot of the bug area with a red CSS outline.</item>
-      <item>6. EXECUTE — wave-scoped subagents apply the fix in isolated worktrees and merge into the local default branch (no remote push).</item>
+      <item>6. EXECUTE — wave-scoped subagents apply the fix in isolated worktrees and merge into the local default branch (no remote push). The coordinator runs at every wave boundary inside this phase and gates the next wave's dispatch — see `content/11-coordinator.xml`.</item>
       <item>7. RESOLVE — when waves conflict, a dedicated resolver subagent reads both sides' SDD intent and combines them.</item>
       <item>8. VERIFY — build, type-check, lint, unit tests, e2e tests, and `validate-methodology-xml.py` run against the merged result.</item>
       <item>9. REVIEW — an independent reviewer reads each feature's diff against its `spec.md` / `plan.md` (and `user-flows.md` / `ui-ux-design.md` if applicable) and returns PASS / FAIL-WITH-NITS / FAIL.</item>
       <item>10. FIX — review blockers are addressed by a fix-applier subagent, then VERIFY and REVIEW are repeated (hard cap on iterations).</item>
       <item>11. RECAPTURE — focused after-screenshot with a green outline; before+after pair delivered out-of-band with explanatory captions.</item>
       <item>12. DELIVER — feature folder moved `in-progress/ → done/`, commits pushed and artifacts deployed only after explicit user confirmation.</item>
+    </list>
+  </section>
+
+  <section title="Foreign artifact names">
+    <p>Specs imported from another spec-driven toolchain use different file names for the same artifacts. Map them on intake rather than creating a parallel document set; `design.md`, `test-plan.md` and `implementation-plan.md` are retired names in this repo and MUST NOT be written.</p>
+    <list>
+      <item>`requirements.md` → `spec.md`</item>
+      <item>`design.md` → the `## Design` section of `plan.md`</item>
+      <item>`tasks.md` → the `## Execution Plan` section of `plan.md`, plus one `TASK_*.md` per atomic task</item>
+      <item>`test-plan.md` → `user-flows.md` (scenarios) plus the VERIFY command matrix (mechanics)</item>
     </list>
   </section>
 
@@ -35,6 +45,12 @@
       <item>`prompts/11-recapture-and-deliver.md` — RECAPTURE</item>
       <item>`prompts/12-deployer.md` — DELIVER</item>
     </list>
+    <p>Two further prompt files front the coordinator role rather than a phase. Prompt files are capabilities, not phases: the phase list stops at twelve and neither of these is on it.</p>
+    <list>
+      <item>`prompts/13-wave-coordinator.md` — the wave-boundary gate inside EXECUTE (`content/11-coordinator.xml`)</item>
+      <item>`prompts/14-ledger-auditor.md` — the follow-through audit that runs before INTAKE (`content/12-reflection.xml`)</item>
+    </list>
+    <p>The orchestrator itself has no prompt file — it is the role doing the dispatching. Its approach is fixed by `templates/orchestrator-approach.md`, read once at batch start.</p>
     <reference path="templates/prompt-skeleton.md">Skeleton each prompt file must follow.</reference>
   </section>
 

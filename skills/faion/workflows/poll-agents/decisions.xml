@@ -35,4 +35,10 @@
     <rejected>Retry on the same model (haiku-on-haiku); escalate to opus on failure</rejected>
     <rationale>Lesson from feature-045: haiku-on-haiku retries loop on the same failure mode (typically misread file format or truncated output) and exhaust the haiku quota without progress. Sonnet's larger context and stronger instruction-following close the gap reliably. Opus is overkill for recovery and burns the quota the pool needs for forward progress on the rest of the queue. Sonnet is the correct floor.</rationale>
   </decision>
+
+  <decision date="2026-08-04" topic="active-txt-mandatory-and-closed-set">
+    <chose>`ACTIVE.txt` is mandatory, written before dispatch, swept for stale entries on every tick, and used as the closed set that a `done=&lt;slug&gt;` marker must belong to before it is recorded.</chose>
+    <rejected>Keeping `ACTIVE.txt` optional and reconstructing in-flight state from system reminders plus `git log`; adopting a durable-execution framework (LangGraph-style checkpointer, SQL-backed state) for replay; a per-unit `states/&lt;id&gt;/` marker tree with a multi-phase lineage log.</rejected>
+    <rationale>Optional `ACTIVE.txt` leaves a real hole: a crash between popping `QUEUE.txt` and dispatching removes the unit from the queue while nothing records it as in flight, and the drain check then reports a complete pool over silently missing work. Making the file mandatory and writing it first converts that silence into a stuck marker, which is sweepable. The same file then does second duty for free as a membership set, so a mistyped or hallucinated completion slug fails loudly instead of creating a ghost unit that reads as done forever. The heavier alternatives were rejected on shape, not merit: a durable-execution framework is a Python runtime dependency for a bash-and-files pool, and a per-unit phase lineage belongs to pipelines whose units have phases — this pool's unit is single-phase by construction, so the tree would encode a state machine that does not exist here.</rationale>
+  </decision>
 </decisions>

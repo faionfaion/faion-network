@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="20-phases" title="Six phases from idea to validated production">
-  <summary>Fixed phase order: research (parallel) → brainstorm → SDD plan → implement → deploy → validate. A phase advances only when its outputs exist on disk and `state.md` reflects the transition. Each phase invokes its sibling /faion workflow by name.</summary>
+<text id="20-phases" title="Phases from idea to validated production">
+  <summary>Fixed phase order: research (parallel) → brainstorm → concept gate → SDD plan → implement → deploy → validate. A phase advances only when its outputs exist on disk, `state.md` reflects the transition, and any verdict the phase carries is the passing one. Each phase invokes its sibling /faion workflow by name.</summary>
 
   <section title="Phase 1 — Research (parallel)">
     <p>Trigger: bootstrap complete, no `research/*.md` files exist yet.</p>
@@ -10,22 +10,52 @@
       <statement>Phase 1 task briefs MUST list the `/faion` knowledge resources the subagent should consult (e.g. `software-architect`, `gtm-strategist`, `rag-engineer`) and the search tool chain (Bash gemini → codex → claude as fallback) inside the brief itself, not in the dispatch message.</statement>
       <rationale>The brief is the contract. Putting tool chains and knowledge paths in the dispatch couples the orchestrator to per-task content; putting them in the brief lets future re-dispatches reproduce the same subagent without orchestrator memory.</rationale>
     </rule>
+    <rule>
+      <statement>A brief for a desk-research dimension (competitor pricing, market sizing, regulatory constraint, any claim that will be cited later) MUST name a UI-based research tool rather than a raw search-API key path, and MUST require every landed claim to carry a `verified_by` source plus an H/M/L confidence tag before it enters `research/NN-&lt;slug&gt;.md`.</statement>
+      <rationale>Generated research reads as authoritative whether or not the underlying citation supports it, and the best-measured desk-research tools still misattribute a large share of what they cite. Forced per-claim verification is what turns a fast answer into a usable one; the confidence tag lets Phase 2 see which architectural decisions rest on soft ground instead of discovering it at Phase 6. The existing gemini → codex → claude chain is a code-search fallback and is untouched by this rule. Output contract: `research/perplexity-ai-research`.</rationale>
+    </rule>
   </section>
 
   <section title="Phase 2 — Brainstorm">
     <p>Trigger: all `research/*.md` files exist; no `brainstorm.md` yet.</p>
     <p>What it does: a single subagent invokes `../brainstorm/` (multi-agent diverge → converge → review). Inputs: every `research/*.md`. Output: `brainstorm.md` with locked architectural decisions (stack, runtime shape, knowledge schema, billing model — project-dependent). Each locked decision is appended to `decisions/decisions.md`.</p>
     <reference path="../brainstorm/AGENTS.md">Sibling workflow contract.</reference>
+    <p>After the decisions are appended, the orchestrator writes `constitution.md` — the standing rule set Phases 3-6 read.</p>
+    <reference path="content/10-bootstrap.xml">Constitution contract and the rest of the `.product/` layout.</reference>
+  </section>
+
+  <section title="Phase 2.5 — Concept gate">
+    <p>Trigger: `brainstorm.md` exists; `.product/prfaq.md` does not.</p>
+    <p>What it does: one subagent runs a working-backwards PRFAQ pass (`product/working-backwards-prfaq`) against `brainstorm.md` and the research set, and writes `.product/prfaq.md` with frontmatter `stage`, `concept_type`, and `verdict: proceed | revise | kill`.</p>
+    <p>Output: `.product/prfaq.md` carrying a verdict. On `revise` the loop returns to Phase 2 with the gate's objection as the brainstorm question. On `kill` the loop stops.</p>
+    <rule>
+      <statement>Phase 3 MUST NOT start on any verdict other than `proceed`. A `kill` verdict terminates the run, and the run is recorded as SUCCESSFUL.</statement>
+      <rationale>Phase 2 ranks options inside a category the loop already assumed was wanted; nothing before this gate asks whether anyone wants the category. Asking after Phase 3 means the spec set is already written and sunk cost argues for building it. A killed concept is the gate doing its job — scoring it as a failure creates pressure to pass every concept, which is the same as having no gate.</rationale>
+    </rule>
+    <reference path="content/60-stop-conditions.xml">`kill` as a terminal stop.</reference>
   </section>
 
   <section title="Phase 3 — SDD Plan">
-    <p>Trigger: `brainstorm.md` exists and decisions are appended.</p>
-    <p>What it does: per feature identified in brainstorm, the orchestrator creates `features/NN-&lt;slug&gt;/` and dispatches one planning subagent. Each subagent reads `brainstorm.md` + `decisions/decisions.md` and writes the SDD quartet: `spec.md`, `design.md`, `test-plan.md`, `implementation-plan.md`.</p>
-    <p>Output: complete SDD set per feature, ready for wave execution.</p>
+    <p>Trigger: `.product/prfaq.md` carries `verdict: proceed` and the Phase 2 decisions are appended.</p>
+    <p>What it does: per feature identified in brainstorm, the orchestrator creates `features/NN-&lt;slug&gt;/` and dispatches one planning subagent. Each subagent reads `brainstorm.md` + `constitution.md` + `decisions/decisions.md` and writes the current SDD artifact set.</p>
+    <list>
+      <item>`spec.md` — what to build; delta-only where a `project-spec/` exists, per `sdd/spec-delta-format`.</item>
+      <item>`plan.md` — ONE file with two H2 sections, `## Design` and `## Execution Plan`, per `sdd/plan-md-structure`.</item>
+      <item>`user-flows.md` — required only when a user-facing flow exists.</item>
+      <item>`ui-ux-design.md` — required only when UI is touched.</item>
+      <item>`TASK_*.md` — atomic task briefs.</item>
+      <item>`readiness.md` — the gate the feature must pass before it moves to `done/`.</item>
+    </list>
+    <p>Functional requirements in `spec.md` follow the EARS patterns in `sdd/ears-requirements`; where `user-flows.md` exists the planner GENERATES them from it (happy path → `When`, negative path → `If … then`, precondition → `While`) rather than writing prose first and pattern-matching afterwards.</p>
+    <rule>
+      <statement>`design.md`, `test-plan.md` and `implementation-plan.md` are RETIRED document names. A planning subagent that emits any of them is running a stale template and its output MUST be rejected, not merged.</statement>
+      <rationale>The lifecycle removed `test-plan.md` (its content lives in `user-flows.md` and the verify matrix) and merged design plus implementation-plan into a single `plan.md`. A four-file set produced against the old names splits design from execution again, and every downstream reader — reviewer, executor, readiness gate — looks for files that will not be there. Naming drift in the artifact set is silent until it costs a whole planning pass.</rationale>
+    </rule>
+    <p>Output: complete SDD artifact set per feature, ready for wave execution.</p>
   </section>
 
   <section title="Phase 4 — Implement">
-    <p>Trigger: SDD quartet exists for at least one feature.</p>
+    <p>Trigger: `spec.md` and `plan.md` exist for at least one feature.</p>
     <p>What it does: hands off to `../sdd-batch-orchestrator/` for wave execution. Each task subagent reads its `TASK_*.md`, executes, runs the project's pre-commit hook, and produces a granular commit (one logical change per commit).</p>
     <reference path="../sdd-batch-orchestrator/AGENTS.md">Wave-execute contract.</reference>
     <rule>
@@ -45,15 +75,26 @@
 
   <section title="Phase 6 — Validate">
     <p>Trigger: Phase 5 reports deploy success.</p>
-    <p>What it does: end-to-end walk of the product surface (per `test-plan.md`); adversarial probes on isolation boundaries (read-only); fallback-chain test (e.g. force primary tool failure → secondary → tertiary); cost-per-action measurement against the margin model.</p>
-    <p>Output: validation report appended to `state.md`. On full pass, `state.md` reads `phase: shipped` and the cron loop stops driving.</p>
+    <p>What it does: validates the deployed surface with the cheapest instrument that could have caught the defect, in this order, stopping at the first failure.</p>
+    <list>
+      <item>Rung 1 — deterministic checks that cost no tokens: lint, type-check, pre-commit hooks, schema and link validators, the project's own smoke script.</item>
+      <item>Rung 2 — labelled trigger cases over a fixed input set; runs only when the product itself ships an LLM-backed selection or routing step.</item>
+      <item>Rung H — the operator walks each feature's `user-flows.md` end to end and signs its `readiness.md`.</item>
+      <item>Rung 3 — model-graded behavioural scenarios; written only for a scenario the operator would otherwise re-read by hand before every release.</item>
+    </list>
+    <p>Also in scope at rung 1: adversarial probes on isolation boundaries (read-only), a fallback-chain test (force primary tool failure → secondary → tertiary), and cost-per-action measurement against the margin model.</p>
+    <rule>
+      <statement>Rung-3 behavioural scenarios MUST be capped at 5-15 for the life of the project, and a rung-3 scenario MUST NOT be written for anything a rung-1 check can decide from an artifact's bytes.</statement>
+      <rationale>Model-graded scenarios are the most expensive instrument and the least stable: they cost tokens on every run, drift with model versions, and agree with human judgement too weakly to act as an absolute gate. Uncapped, the scenario suite becomes a second product to maintain, and the phase that was supposed to prove the first one is now the thing being debugged. The cap forces each scenario to earn its place against the operator's own attention.</rationale>
+    </rule>
+    <p>Output: validation report appended to `state.md`; `readiness.md` signed per feature. On full pass, `state.md` reads `phase: shipped` and the cron loop stops driving.</p>
     <reference path="content/60-stop-conditions.xml">Stop semantics.</reference>
   </section>
 
   <section title="Advance condition (invariant)">
     <rule>
-      <statement>A phase advances if and only if (a) every output file the phase declares exists on disk AND (b) `state.md` records the transition with the new phase id and timestamp. Both conditions are required; either alone is insufficient.</statement>
-      <rationale>Files-only advance allows a half-written brainstorm to count as Phase 2 done. State-only advance allows a tick to claim progress without artifact. Coupling the two makes the loop restartable from disk after compaction.</rationale>
+      <statement>A phase advances if and only if (a) every output file the phase declares exists on disk, (b) `state.md` records the transition with the new phase id and timestamp, AND (c) where the phase carries a verdict — Phase 2.5's `proceed`, Phase 6's signed `readiness.md` — the verdict is the passing one. All three are required; any one alone is insufficient.</statement>
+      <rationale>Files-only advance allows a half-written brainstorm to count as Phase 2 done. State-only advance allows a tick to claim progress without artifact. Verdict-blind advance is the worst of the three: the gate file exists, so both other conditions read as satisfied, while the gate said stop. Coupling all three makes the loop restartable from disk after compaction and keeps a gate from degrading into a file-existence check.</rationale>
     </rule>
   </section>
 </text>

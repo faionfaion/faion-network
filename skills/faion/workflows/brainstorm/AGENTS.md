@@ -2,13 +2,13 @@
 status: active
 audience: both
 owner: ruslan
-last_verified: 2026-05-02
-version: 2.0.0
+last_verified: 2026-08-04
+version: 2.1.0
 applies_to: any
-content_id: 084b0d7bdc299820
+content_id: 94c850d01b67493d
 success_criteria:
   - Phase 0 consent gate runs first when the user did not explicitly request brainstorming.
-  - Phase 1 produces ≥10 distinct-persona generations of 30 recs each, with no cross-talk.
+  - Phase 1 produces ≥10 distinct-persona generations of 30 recs each, with no cross-talk; the four-field shape is emitted as a terminal pass, not imposed up front.
   - Phase 2 dedup + consensus count + tier ranking yields a single merged list.
   - Phase 3 attaches an adversarial review verdict (KEEP / DEMOTE / DROP) to every item.
 ---

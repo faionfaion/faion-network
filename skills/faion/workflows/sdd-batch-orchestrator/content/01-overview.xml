@@ -15,13 +15,18 @@
   </section>
 
   <section title="Role split">
-    <p>The orchestrator does three things only: decides which phase runs next, decides what can run in parallel, and confirms sensitive actions (push, deploy, destructive ops) with the user. Everything else lives in subagents.</p>
+    <p>Three roles, and they are not interchangeable. The orchestrator composes, the coordinator checks, the executors work.</p>
     <list>
-      <item>Orchestrator: composition, parallelism decisions, user confirmations, quota gating.</item>
-      <item>Subagents: domain work behind a single prompt file each.</item>
+      <item><b>Orchestrator</b> — the main thread. Decides which phase runs next, decides what can run in parallel, confirms sensitive actions (push, deploy, destructive ops) with the user, gates on quota. It writes no code, reviews no diff, resolves no conflict. Its approach is fixed by `templates/orchestrator-approach.md`, read at batch start; it is the one role with no dispatchable prompt file, because it is the thing doing the dispatching.</item>
+      <item><b>Coordinator</b> — an independent subagent that runs at every wave boundary: after wave N merges, before wave N+1 dispatches. It answers one question — is the merge point sound enough to build the next wave on — and returns CLEAR / HOLD / ABORT. It is a checker, never a fixer. See `content/11-coordinator.xml`.</item>
+      <item><b>Executors</b> — phase subagents, one prompt file each, one verb and one verdict each.</item>
       <item>Reference docs: cross-cutting knowledge (git conventions, screenshot strategy, delivery channel auth).</item>
       <item>Playbooks: per-delivery-surface specializations (faion-net-be, faion-net-fe, knowledge, storybook, mediamanager-fe, ETL).</item>
     </list>
+    <rule>
+      <statement>The orchestrator MUST NOT perform the coordinator's checks itself, even when only one wave is planned.</statement>
+      <rationale>The orchestrator holds the executors' reports in its context and decided the wave grouping being checked. Checking its own grouping against reports it already believes is not a check. The same independence argument that separates REVIEW from EXECUTE separates the coordinator from the orchestrator — and it is the orchestrator, not the executor, whose error the coordinator is most likely to catch, because a wrong wave grouping is an orchestrator decision.</rationale>
+    </rule>
   </section>
 
   <section title="Tracker shape (faion-network)">
