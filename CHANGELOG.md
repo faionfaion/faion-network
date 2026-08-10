@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- chore: move faion-net-content skill out of the corpus to faion-net-fe/.claude/skills/ — product-specific editorial machinery does not belong in the product-neutral methodology repo.
 - chore: sync tier-manifest with the landed corpus batch (3,093 entries: 15 new methodologies registered, two-pass tier geek → pro).
 - chore: move the 46 BMAD v6.10.0 skill dirs out of `skills/` to `~/workspace/tools/bmad/` — they were untracked (installer-placed, never committed) but loaded ~1.8k tokens of descriptions into every session because `~/.claude` symlinks here. Re-running the BMAD installer with the `claude-code` target puts them back; check `git status skills/` after any BMAD install.
 - chore: drop 2 stray agent-worktree artifacts tracked under .clone/.
