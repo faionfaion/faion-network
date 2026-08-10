@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Source Routing Record — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>The artefact this methodology produces: a Source Routing Record as YAML or JSON, machine-checkable by the bundled validator.</summary>
+
+  <contract format="yaml|json" filename="source-routing-record.yaml">
+    <field name="agent" type="string" required="true">Which agent or runtime this routing applies to.</field>
+    <field name="server_cap" type="integer" required="true" min="0">Maximum concurrently connected MCP servers. `0` is a valid and common answer (r4).</field>
+    <field name="definition_footprint_tokens" type="integer" required="true">Measured tool-definition footprint of the routed MCP set, per request. Diagnostic unit.</field>
+    <field name="standing_cost_per_session" type="string" required="true" min_length="4">The same charge expressed in currency, e.g. "USD 0.12 per session at current volume" (r1).</field>
+    <field name="deferred_tool_loading" type="boolean" required="true">Whether definitions are fetched on demand rather than sent up front.</field>
+    <field name="deferred_fallback" type="string" required="when deferred_tool_loading==true" min_length="20">What happens when the agent needs a tool it has not fetched (r4).</field>
+    <field name="sources" type="list" required="true" min_items="1">Every source the agent needs. Each item: `name`, `capability` (what the agent needs from it), `cli_available` (bool), `cli_binary` (required when routed to cli), `route` (cli|mcp|neither), `cli_insufficient_reason` (required when `cli_available` is true and route is mcp), `mcp_justification` (required when route is mcp; one of stateful-session|oauth-brokered|push-subscription|no-cli-exists), `first_party` (bool, required when route is mcp), `credential_scope` (required when route is mcp), `spec_revision` (required when route is mcp), `migration_deadline` (required when `spec_revision` predates 2026-07-28), `reason` (required when route is neither).</field>
+  </contract>
+
+  <section title="Stop condition">
+    <statement>When every source routes to `cli` or `neither`, the record is COMPLETE with `server_cap: 0`, a zero footprint and no MCP-specific fields anywhere. This is the common outcome for an agent that can execute commands, and it is the cheapest one — no standing charge, no trust boundary widened, no protocol revision to track.</statement>
+  </section>
+
+  <section title="Consistency rules the validator enforces">
+    <statement>The count of sources routed to `mcp` must not exceed `server_cap`, and `server_cap: 0` forbids any MCP route. A source with `cli_available: true` routed to `mcp` requires a non-empty `cli_insufficient_reason`. Every MCP route requires an `mcp_justification` drawn from the closed list, `first_party: true`, a non-empty `credential_scope` and a `spec_revision`; a revision earlier than 2026-07-28 requires a `migration_deadline`. A `stateful-session` justification against `spec_revision: 2026-07-28` is rejected as contradictory. Every `cli` route requires a `cli_binary`; every `neither` route requires a `reason`. Any field or reason text citing registry listing as justification is rejected. `definition_footprint_tokens` must be 0 when no source routes to MCP.</statement>
+  </section>
+</text>

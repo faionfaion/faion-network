@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Rung Placement Record — Output Contract" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>The artefact this methodology produces: a Rung Placement Record (RPR) as YAML or JSON — one row per check, each routed to a rung by the three-question rule and justified against the rung below. Machine-checkable by the bundled validator.</summary>
+
+  <contract format="yaml|json" filename="rung-placement-record.yaml">
+    <field name="system" type="string" required="true" min_length="8">What is being verified, in one line.</field>
+    <field name="rung3_budget" type="integer" required="true" max="15">Declared ceiling on rung-3 scenarios, ever. Must be at least the number of rung-3 checks listed (r4-rung-3-is-pairwise-and-budgeted).</field>
+    <field name="checks" type="list" required="true" min_items="1">One entry per check. Fields below.</field>
+    <field name="checks[].id" type="string" required="true">Stable kebab-case identifier, unique within the record.</field>
+    <field name="checks[].defect" type="string" required="true" min_length="15">The observable defect this check detects — what goes wrong, not what the check does.</field>
+    <field name="checks[].answers" type="enum" required="true" values="bytes|mechanical|judgement|none">Which of Q1/Q2/Q3 first answered yes. `bytes` implies rung 1, `mechanical` rung 2, `judgement` rung 3, `none` rung H (r1-cheapest-instrument-first).</field>
+    <field name="checks[].rung" type="enum" required="true" values="1|2|3|H">The rung. Must agree with `answers`; the validator rejects any mismatch, which is how rung inflation is caught mechanically.</field>
+    <field name="checks[].instrument" type="string" required="true" min_length="4">The concrete thing that runs: a validator filename, a labelled case id, a named scenario, or the reviewer's role.</field>
+    <field name="checks[].cannot_live_below" type="string" required="false" min_length="20">REQUIRED for rung 2, 3 and H: why the rung below provably cannot decide this. Omitted for rung 1 (r2-cannot-live-on-the-rung-below).</field>
+    <field name="checks[].exact" type="boolean" required="false">REQUIRED for rung 1: true if the check decides by exact rule, false if by heuristic or threshold.</field>
+    <field name="checks[].action" type="enum" required="false" values="block|flag">REQUIRED for rung 1. Must be `flag` whenever `exact` is false (r3-exact-rules-block-heuristics-flag).</field>
+    <field name="checks[].pairwise" type="boolean" required="false">REQUIRED true for rung 3. An absolute-score rung-3 check is rejected.</field>
+    <field name="checks[].cadence" type="enum" required="true" values="pre-commit|ci|nightly|on-change|pre-release|on-demand">When it runs. Rungs 2 and 3 may not be `pre-commit` (r6-cadence-follows-rung).</field>
+    <field name="manual_review_log" type="list" required="false">REQUIRED non-empty when any check has `rung: H`. Each item: `found` (what the human caught) and `pushed_down_to` (the check id now covering it, or the literal `accepted-risk` with a reason). This is the field that makes manual review compound instead of repeat (r5-rung-h-is-a-gate-but-not-deterministic).</field>
+  </contract>
+
+  <section title="Consistency rules the validator enforces">
+    <statement>Check ids are unique. `rung` agrees with `answers` on the mapping bytes→1, mechanical→2, judgement→3, none→H. Every check above rung 1 carries `cannot_live_below`. Every rung-1 check declares `exact` and `action`, and `exact: false` forces `action: flag`. Every rung-3 check sets `pairwise: true`. Rung-3 count ≤ `rung3_budget` ≤ 15. No rung-2 or rung-3 check has `cadence: pre-commit`. When any rung-H check exists, `manual_review_log` is present and non-empty. When the record holds 8 or more checks, rung-1 checks must be at least half of them — the healthy mix is nearer 85% by count, and anything under half is rung inflation.</statement>
+  </section>
+
+  <section title="Scope note">
+    <statement>This record routes a check to an instrument. It does not say what the gate does when the instrument breaks (see `gate-fail-closed-rule`), what threshold it blocks at (see `model-eval-control-bands`), what to do with a finding once produced (see `lint-autofix-vs-flag-decision-rule`), or whether a phase may be promoted (see `quality-gates-confidence`). A record with 30 correctly-placed checks and no fail-closed contract is a suite that can report green while dead.</statement>
+  </section>
+</text>

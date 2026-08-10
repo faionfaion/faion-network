@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="How Gates Fail Open" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Six ways a gate reports pass without evaluating, each with the observable symptom and the rule that prevents it. All six are silent by construction: the symptom is always absence.</summary>
+
+  <failure id="f1-dead-judge-reads-as-clean">
+    <symptom>Findings counts drop to zero across a batch. Nobody investigates, because zero findings is the outcome everyone wants. Quality complaints arrive from readers instead.</symptom>
+    <cause>The judge's response parser swallows its exception and returns an empty result, so a refusal, a truncation and a rate-limit message all render as "nothing wrong".</cause>
+    <prevention ref="r1-cannot-evaluate-is-not-pass">Give the gate an ERROR verdict and route it to FAIL. Our instance: `llm-judge.py:175` returns `[]` on `JSONDecodeError` and the process exits 0.</prevention>
+  </failure>
+
+  <failure id="f2-schema-fix-that-fixes-nothing">
+    <symptom>Structured outputs are enabled, the parse errors disappear, and the gate still never fires.</symptom>
+    <cause>Only the PARSE door was closed. A schema-valid empty array is still empty, and EMPTY was never enumerated as a mode.</cause>
+    <prevention ref="r2-name-the-non-evaluating-modes">Enumerate all five modes. A response that validates against the schema and carries no verdict is an ERROR, not a pass — and it is the mode that survives every schema migration.</prevention>
+  </failure>
+
+  <failure id="f3-runner-that-cannot-fail">
+    <symptom>The aggregate check is green for months. Individual validators, run by hand, are red.</symptom>
+    <cause>Sub-checks were piped through `tee`/`tail` and their exit status discarded; the runner's own last statement was an `echo`.</cause>
+    <prevention ref="r4-exit-status-must-survive-the-pipeline">Accumulate statuses explicitly and exit on the accumulator. Our instance: `f066-validate-all.sh` runs six corpus validators and always exits 0.</prevention>
+  </failure>
+
+  <failure id="f4-configured-never-invoked">
+    <symptom>A reviewer reads the repo, sees the tool's config file, and records the risk as mitigated. No output from that tool exists anywhere in CI logs.</symptom>
+    <cause>The tool was installed and configured; no runner ever calls it.</cause>
+    <prevention ref="r5-configured-is-not-invoked">Require an invocation line per checker in the contract and assert config-to-runner reachability in a rung-1 validator. Our instance: `.vale.ini` is configured and `vale` is never invoked.</prevention>
+  </failure>
+
+  <failure id="f5-raise-that-never-shipped">
+    <symptom>A correct fail-closed patch sits in review for weeks, then is abandoned as "too invasive".</symptom>
+    <cause>The fix raised an exception on the ERROR path, which changed the contract of every caller, batch driver and retry wrapper downstream.</cause>
+    <prevention ref="r3-synthetic-finding-not-exception">Emit a synthetic high-severity finding into the channel the gate already has. The existing threshold trips; no caller changes; the diagnosis lands in the report the operator already reads.</prevention>
+  </failure>
+
+  <failure id="f6-permanently-red-gate-gets-disabled">
+    <symptom>The gate is commented out of CI, or everyone has learned the bypass flag, and nobody remembers when.</symptom>
+    <cause>Fail-closed was implemented with no override, so a provider outage or a flaky dependency turned the gate into an obstacle rather than a signal.</cause>
+    <prevention ref="r6-override-is-explicit-logged-and-expiring">Ship one named, logged, expiring hatch. A dated `--allow-degraded` in the log is a decision; a commented-out CI step is an amnesia.</prevention>
+  </failure>
+</text>

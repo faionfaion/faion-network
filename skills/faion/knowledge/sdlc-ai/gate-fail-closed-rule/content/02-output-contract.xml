@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Gate Failure Contract — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>The artefact this methodology produces: a Gate Failure Contract (GFC) as YAML or JSON, one per gate, machine-checkable by the bundled validator.</summary>
+
+  <contract format="yaml|json" filename="gate-failure-contract.yaml">
+    <field name="gate" type="string" required="true" min_length="3">The gate's name as an operator would say it, e.g. "uk prose judge" or "corpus validator sweep".</field>
+    <field name="instrument" type="enum" required="true" values="static|trigger-eval|judge|manual">What does the evaluating. `static` reads bytes; `trigger-eval` calls the system and compares mechanically; `judge` calls a model to score; `manual` is a person reading. Determines which non-evaluating modes are mandatory.</field>
+    <field name="invocation" type="string" required="true" min_length="5">The exact command a runner executes. A gate with no invocation line is configured, not run (r5-configured-is-not-invoked).</field>
+    <field name="verdict_channel" type="enum" required="true" values="exit_code|findings|both">How the verdict leaves the gate. `findings` requires `blocking_severity`.</field>
+    <field name="blocking_severity" type="enum" required="false" values="critical|high|medium|low">The severity at or above which the gate's own threshold blocks. Required when `verdict_channel` includes findings; the synthetic ERROR finding must be emitted at this level.</field>
+    <field name="failure_modes" type="list" required="true" min_items="1">One entry per non-evaluating mode. Each item: `mode` (one of `parse`, `refusal`, `truncation`, `transport`, `empty`, `crash`, `absent_input`), `detect` (the observable that identifies it), `emits` (the synthetic finding rule id, or `exit:N`), and `severity`. For `instrument: judge` all five model modes are mandatory; for `trigger-eval`, all except `refusal`; for `static`, `crash` and `absent_input`.</field>
+    <field name="forbidden_paths" type="list" required="true" min_items="1">Code paths audited out of existence, quoted with file and line — e.g. `except json.JSONDecodeError: return []`. Names what was removed so a reviewer can grep for its return.</field>
+    <field name="degraded_override" type="mapping" required="true">Keys: `allowed` (bool), and when true also `flag`, `expires` (ISO date), `logged` (bool, must be true). When `allowed: false` no other key is needed (r6-override-is-explicit-logged-and-expiring).</field>
+    <field name="fault_injection_proof" type="string" required="true" min_length="15">The command that breaks the gate on purpose and the exit code it must then produce, e.g. "FAION_JUDGE_FORCE=parse-error make lint → expect exit 1". A contract without this asserts fail-closed; this demonstrates it.</field>
+    <field name="last_proved" type="string" required="true">ISO date the fault-injection proof was last run green. A proof nobody re-runs decays into a claim.</field>
+  </contract>
+
+  <section title="Consistency rules the validator enforces">
+    <statement>Every `mode` mandatory for the declared `instrument` is present exactly once. No `emits` value is `pass`, `ignore`, `warn`, `none`, `exit:0` or empty. When `verdict_channel` includes findings, every mode's `severity` is at or above `blocking_severity` on the ordering critical &gt; high &gt; medium &gt; low. `degraded_override.allowed: true` requires `flag`, `logged: true` and an `expires` date that is not in the past relative to `last_proved`. `fault_injection_proof` and `last_proved` are both present and non-empty.</statement>
+  </section>
+
+  <section title="Scope note">
+    <statement>This contract governs what a gate does when it CANNOT evaluate. It does not govern what the gate should check, which rung it belongs on, or what threshold it blocks at — see `verification-rung-placement-rule` for instrument choice and `model-eval-control-bands` for thresholds. A gate can be perfectly placed, perfectly thresholded, and still report pass because it was dead.</statement>
+  </section>
+</text>

@@ -1,0 +1,36 @@
+# purpose: Gate Failure Contract for a rung-1 static gate — the zero-token case, where the leak is the runner, not a model.
+# consumes: the aggregate runner script and every checker config file in the repository.
+# produces: gate-failure-contract — validated by scripts/validate-gate-fail-closed-rule.py.
+# depends-on: content/01-core-rules.xml (r4 exit status, r5 configured-is-not-invoked).
+# token-budget-impact: none — the gate itself costs 0 tokens; the contract is ~200 tokens when read.
+#
+# Validate:  validate-gate-fail-closed-rule.py gate-failure-contract-static.yaml
+#
+# A static gate has no model, so it has no parse / refusal / truncation / transport
+# mode. It fails open in exactly two other ways: it crashes and nobody notices, or
+# a configured checker is never invoked. Both are enumerated below.
+
+gate: "corpus validator sweep"
+instrument: static
+invocation: "bash scripts/f066-validate-all.sh"
+verdict_channel: exit_code
+
+failure_modes:
+  - mode: crash
+    detect: "any sub-validator exits >1, is killed, or its status is lost to a pipe"
+    emits: "exit:2"
+    severity: high
+  - mode: absent_input
+    detect: "target directory, meta.json, or a checker binary is missing"
+    emits: "exit:2"
+    severity: high
+
+forbidden_paths:
+  - "f066-validate-all.sh: run() pipes through tail|tee and never reads ${PIPESTATUS[0]}; the script ends on echo, so it exits 0 whatever the validators find"
+  - ".vale.ini is configured and no runner invokes vale — coverage claimed, never exercised (r5)"
+
+degraded_override:
+  allowed: false
+
+fault_injection_proof: "corrupt one meta.json, run the sweep -> expect exit 1 naming that directory"
+last_proved: "2026-08-04"

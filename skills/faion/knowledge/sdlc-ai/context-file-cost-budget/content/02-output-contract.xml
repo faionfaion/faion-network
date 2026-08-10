@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Context Budget Record — Output Contract" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>The artefact this methodology produces: a Context Budget Record as YAML or JSON, machine-checkable by the bundled validator.</summary>
+
+  <contract format="yaml|json" filename="context-budget-record.yaml">
+    <field name="file" type="string" required="true">Path to the context file under audit, relative to the repository root.</field>
+    <field name="authored_by" type="enum" required="true" values="human|llm|mixed">Who wrote it. `llm` is the variant the evidence says is negative (r1).</field>
+    <field name="current_lines" type="integer" required="true">Line count before the cut.</field>
+    <field name="ceiling" type="integer" required="true">Declared maximum. Default 200; higher requires `ceiling_justification` (r3).</field>
+    <field name="ceiling_justification" type="string" required="when ceiling&gt;200" min_length="20">Why this file may exceed the default.</field>
+    <field name="blocks" type="list" required="true" min_items="1">Classification of the whole file. Each item: `lines` ("12-30"), `kind` (instruction|overview|preference), `decision` (keep|cut|relocate), `relocate_to` (required when decision is relocate), `confirmed_by_human` (bool, required true for keep), `marked_as_preference` (bool, required true for a kept preference).</field>
+    <field name="kept_lines" type="integer" required="true">Sum of the line counts of every block with `decision: keep`. Must be arithmetically consistent with `blocks` and must not exceed `ceiling`.</field>
+    <field name="runs" type="integer" required="true" min="5">Runs per arm on the same task set (r7).</field>
+    <field name="cost_usd_baseline" type="number" required="true">Median currency cost per run with no context file.</field>
+    <field name="cost_usd_after" type="number" required="true">Median currency cost per run with the cut file.</field>
+    <field name="cost_accepted_because" type="string" required="when cost_usd_after&gt;cost_usd_baseline" min_length="20">What the extra spend buys. Absent, a cost increase is not accepted.</field>
+    <field name="success_baseline" type="number" required="true">Median task success rate with no context file, 0..1.</field>
+    <field name="success_after" type="number" required="true">Median task success rate with the cut file, 0..1.</field>
+    <field name="input_tokens_baseline" type="integer" required="false">Diagnostic only. Never the headline cost figure (r7).</field>
+    <field name="input_tokens_after" type="integer" required="false">Diagnostic only.</field>
+    <field name="verdict" type="enum" required="true" values="keep|cut|relocate|delete">What happens to the file.</field>
+    <field name="verdict_rationale" type="string" required="true" min_length="30">Why, referencing the measured deltas.</field>
+  </contract>
+
+  <section title="Stop condition">
+    <statement>When `authored_by: llm` and no block carries `confirmed_by_human: true`, the record is COMPLETE at `verdict: delete` — the measurement is not required, because the evidence already covers this cell and the cheapest correct action is removal. Measuring an unconfirmed machine-written file before deleting it spends money to re-derive a published result.</statement>
+  </section>
+
+  <section title="Consistency rules the validator enforces">
+    <statement>`kept_lines` must equal the summed span of every `keep` block and must not exceed `ceiling`. A `ceiling` above 200 requires `ceiling_justification`. No block may be `kind: overview` with `decision: keep`. Every `keep` block requires `confirmed_by_human: true`; every kept `preference` block also requires `marked_as_preference: true`; every `relocate` block requires a non-empty `relocate_to`. `runs` must be at least 5. If `cost_usd_after` exceeds `cost_usd_baseline`, `cost_accepted_because` is required. If `success_after` is not greater than `success_baseline` while cost rose, the verdict must be `cut` or `delete` — never `keep`.</statement>
+  </section>
+</text>

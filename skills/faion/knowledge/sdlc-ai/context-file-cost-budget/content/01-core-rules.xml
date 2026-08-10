@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Context File Cost Budget — Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Seven testable rules. R1 and R2 gate how a context file may come into existence; R3-R6 bound what it may contain; R7 gates any claim that it helps.</summary>
+
+  <section title="Generation">
+    <rule id="r1-never-auto-generate" testable="true" depth="essential">
+      <statement>A context file MUST NOT be produced by an agent or a workflow and accepted into the repository unread. Any tool, command or pipeline step that writes an `AGENTS.md` or `CLAUDE.md` MUST mark its output a draft, and the phase that created it MUST NOT advance until a human has cut it. A repository-wide "generate context files for every module" pass is forbidden outright.</statement>
+      <rationale source="gloaguen-et-al-arxiv-2602.11988-v2-2026-06-23">The ETH Zurich and LogicStar AI study (arXiv 2602.11988, first submitted February 2026, v2 2026-06-23) measured LLM-generated context files at -0.5% task success on SWE-bench Lite and found they failed to help in five of the eight settings tested — while still charging the same 20-23% inference premium as the human-written ones. Auto-generation is the one variant the evidence says is worse than having no file at all.</rationale>
+    </rule>
+    <rule id="r2-stub-confirmed-line-by-line" testable="true" depth="essential">
+      <statement>Where a context file is needed, generate a SHORT stub — commands, conventions and boundaries only — and confirm it line by line. Each line MUST end up in exactly one state: kept (a human affirmed it), rewritten, or cut. Unconfirmed lines MUST NOT ship. The record MUST carry `confirmed_by_human: true` on every kept block; a block without it is a draft, not content.</statement>
+      <rationale source="gloaguen-et-al-arxiv-2602.11988-v2-2026-06-23">The same study measured human-written context files at roughly +4% task success for roughly +19% inference cost — a real but small gain, and the only variant that was positive at all. The difference between the variant that helps and the variant that hurts is human judgement applied per line, which is why the confirmation is per line and not per file.</rationale>
+    </rule>
+  </section>
+
+  <section title="Size">
+    <rule id="r3-declared-line-ceiling" testable="true" depth="essential">
+      <statement>The record MUST declare a line ceiling and the file MUST fit inside it. The default ceiling is 200 lines; a higher ceiling requires a written justification in the record. Exceeding the ceiling is resolved by relocating or cutting content, never by raising the ceiling silently.</statement>
+      <rationale source="anthropic-memory-docs-2026-08-03">Anthropic's own memory documentation (code.claude.com/docs/en/memory, checked 2026-08-03) targets roughly 200 lines for a project memory file. The number matters less than the fact that a ceiling exists: a file with no ceiling grows monotonically because every addition is individually reasonable and the cost is charged to a future session nobody is in the room for.</rationale>
+    </rule>
+  </section>
+
+  <section title="Contents">
+    <rule id="r4-instructions-in-overviews-out" testable="true" depth="essential">
+      <statement>Every line MUST be classified as one of three kinds. `instruction` — a command to run, a convention to follow, a boundary not to cross — stays. `overview` — directory listings, dependency inventories, architecture narrative, file counts, "what this project is" prose — MUST be cut or relocated; it MUST NOT be kept. `preference` — a soft opinion — stays only if it is explicitly marked as a preference (see r6). A block classified `overview` and kept is a contract violation the validator rejects.</statement>
+      <rationale source="gloaguen-et-al-arxiv-2602.11988-v2-2026-06-23">Repository overviews were the specific category measured as unhelpful in the ETH/LogicStar work — the agent derives that information from the repository anyway, on demand, at the moment it needs it, and paying for it on every turn buys a duplicate. The reasoning-token overhead the same study recorded, 14-22% above baseline, is what over-reading standing background costs.</rationale>
+    </rule>
+    <rule id="r5-path-scoped-relocation" testable="true" depth="essential">
+      <statement>Content that applies only to a subtree MUST be relocated to a path-scoped mechanism that loads when that subtree is touched — a scoped rules file, a nested context file at the subtree root, or an exclusion from the global file — rather than living in the always-loaded root file. Every block with `decision: relocate` MUST name its destination path in the record.</statement>
+      <rationale source="standing-vs-conditional-cost">A rule about the frontend build is standing cost in a root file and conditional cost in a scoped one. Scoping converts a tax paid on every turn of every session into one paid only on turns that touch the thing the rule governs, with no loss of coverage.</rationale>
+    </rule>
+    <rule id="r6-preferences-marked-or-cut" testable="true" depth="essential">
+      <statement>A line that is a preference rather than a requirement MUST say so in its own text ("prefer", "if in doubt", "unless the task says otherwise") or be cut. Unmarked soft guidance MUST be treated as an instruction and re-judged against r4. The record MUST set `marked_as_preference: true` on any kept block classified `preference`.</statement>
+      <rationale source="agent-over-compliance">Agents over-comply: an unmarked line is read as a hard constraint, so "we usually use pytest" becomes a prohibition on anything else, and the agent will contort a task rather than cross a line that was only ever a habit. Marking the line is cheaper than debugging the contortion.</rationale>
+    </rule>
+  </section>
+
+  <section title="Claims">
+    <rule id="r7-five-run-median-before-claiming" testable="true" depth="essential">
+      <statement>No claim that a context file improves anything may be made without at least five runs per arm on the same task set, reported as medians, with the cost delta stated alongside the success delta. Cost MUST be reported in currency per run — token counts are permitted only as a diagnostic alongside it, never as the headline figure. A cost increase with no measured success increase MUST resolve to `cut` or `delete`.</statement>
+      <rationale source="gloaguen-et-al-arxiv-2602.11988-v2-2026-06-23">The effect sizes in play are single-digit percentage points against agent run-to-run variance that routinely exceeds them, so a one-run A/B is indistinguishable from noise and will confirm whatever the author already believed. Reporting cost next to success is what stops a +4% success result from being presented as free when it came with +19% spend.</rationale>
+    </rule>
+  </section>
+</text>

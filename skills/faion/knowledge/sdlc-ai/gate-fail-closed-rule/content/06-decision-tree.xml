@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="What Should This Gate Do When It Cannot Evaluate" version="1.0.0" est_tokens="480" depth="essential">
+  <summary>Routing from an observable property of the gate's code to the fix. The first two branches cover most gates in most repositories.</summary>
+  <decision-tree>
+    <root-question id="q-error-verdict">Does the gate have a terminating path that reports pass without having produced a verdict — an empty default from an exception handler, an unchecked exit status, or a checker nobody invokes?</root-question>
+
+    <branch when="no_such_path == true AND fault_injection_proof_run == true">
+      <conclusion ref="r1-cannot-evaluate-is-not-pass" verdict="Gate is fail-closed. Record the contract with `last_proved` set to today and move on. Re-run the fault-injection proof whenever the gate, its parser, or its provider changes."/>
+    </branch>
+
+    <branch when="no_such_path == true AND fault_injection_proof_run == false">
+      <conclusion ref="r4-exit-status-must-survive-the-pipeline" verdict="Unproven, not closed. Break one check on purpose and confirm a non-zero exit before claiming coverage. An assertion of fail-closed that has never been observed failing is a claim, not a gate."/>
+    </branch>
+
+    <branch when="leak_site == 'exception_handler_returns_default'">
+      <conclusion ref="r3-synthetic-finding-not-exception" verdict="Replace the default return with a synthetic finding at the gate's own blocking severity, carrying the mode, the case id and the first 200 chars of the raw response. Do NOT raise — raising changes every caller and the patch will not merge. Then enumerate the remaining four modes (r2)."/>
+    </branch>
+
+    <branch when="leak_site == 'runner_discards_exit_status'">
+      <conclusion ref="r4-exit-status-must-survive-the-pipeline" verdict="Accumulate each sub-check's status (`${PIPESTATUS[0]}` when piping) and exit on the accumulator. Verify by breaking one sub-check; the runner must exit non-zero."/>
+    </branch>
+
+    <branch when="leak_site == 'tool_configured_but_never_invoked'">
+      <conclusion ref="r5-configured-is-not-invoked" verdict="Either wire the invocation into a runner and record it in the contract, or delete the config file. A config with no invocation is a coverage claim nobody can falsify — the worst of the three states."/>
+    </branch>
+
+    <branch when="instrument == 'judge' AND structured_output_enabled == true">
+      <conclusion ref="r2-name-the-non-evaluating-modes" verdict="Structured output closes PARSE only. Explicitly handle REFUSAL, TRUNCATION (stop_reason == length), TRANSPORT and EMPTY — a schema-valid response carrying no verdict is the mode that survives the schema fix."/>
+    </branch>
+
+    <branch when="instrument == 'manual'">
+      <conclusion ref="r1-cannot-evaluate-is-not-pass" verdict="A human gate fails closed by default — an unreviewed artefact is simply not approved. Record it as `instrument: manual` with modes `absent_input` and `crash`, state the cost in founder-hours, and do not call it deterministic. Its real risk is not fail-open; it is that the same defect is re-found every session, which is a placement problem (see `verification-rung-placement-rule`)."/>
+    </branch>
+
+    <branch when="gate_is_red_on_every_run AND cause == 'flaky_dependency'">
+      <conclusion ref="r6-override-is-explicit-logged-and-expiring" verdict="Add one named, logged, expiring `--allow-degraded` flag rather than letting someone remove the gate. No expiry date means you have shipped a hole with a nicer name."/>
+    </branch>
+  </decision-tree>
+</text>

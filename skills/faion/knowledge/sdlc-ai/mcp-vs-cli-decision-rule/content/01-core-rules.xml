@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="MCP vs CLI — Rules" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>Seven testable rules. R1 states the cost asymmetry that decides everything, R2 sets the default, R3 closes the list of exceptions, and R4-R7 bound what survives.</summary>
+
+  <section title="The asymmetry">
+    <rule id="r1-standing-cost-per-request" testable="true" depth="essential">
+      <statement>An MCP server's tool definitions enter the context of EVERY request while it is connected, used or not. The record MUST state the measured definition footprint of the currently connected set and MUST express the resulting standing charge as currency per session, not as a token count alone. A CLI the agent invokes contributes nothing until invoked and then contributes only its output.</statement>
+      <rationale source="landscape-review-2026-08-04">Representative connected server sets measured between roughly 17.6k and 55k tokens of tool definitions per request in the 2026 landscape review this rule is drawn from — before a single tool is called. That is a fixed toll on every turn of every session, so it multiplies by conversation length; a CLI's cost is proportional to use, which is the shape a cost should have.</rationale>
+    </rule>
+    <rule id="r2-cli-is-the-default-route" testable="true" depth="essential">
+      <statement>If a CLI for the source exists and the agent can execute commands, the source MUST route to the CLI. Choosing MCP for a source that has a working CLI requires a written `cli_insufficient_reason` in the record naming what the command cannot do. "Nicer to use", "more structured", "the official integration" and "it is what everyone does" are not reasons.</statement>
+      <rationale source="cost-proportional-to-use">The CLI is also a live source in the sense that matters — it reads current state at the moment it runs, with no cache to go stale and no schema to re-agree. The agent already knows how to read `--help`, so the discovery problem MCP solves at standing cost is solved here at the cost of one call, once.</rationale>
+    </rule>
+  </section>
+
+  <section title="When MCP earns it">
+    <rule id="r3-closed-list-of-justifications" testable="true" depth="essential">
+      <statement>A source MAY route to MCP only under one of four named justifications, recorded verbatim: `stateful-session` — the interaction must persist state across calls that a process per call cannot hold; `oauth-brokered` — access requires an authorisation flow the agent cannot perform in a shell; `push-subscription` — the source pushes updates rather than answering questions; `no-cli-exists` — there is no command-line access at all and building one is out of scope. Any other justification MUST route the source to CLI or to `neither`.</statement>
+      <rationale source="narrow-band-of-genuine-need">These four are the cases where a one-shot command is structurally, not merely inconveniently, unable to do the job. Leaving the list open turns it into a preference field, and a preference field always resolves toward whatever was going to be installed anyway.</rationale>
+    </rule>
+    <rule id="r4-declare-a-server-cap" testable="true" depth="essential">
+      <statement>The record MUST declare a maximum number of concurrently connected servers and the routed set MUST fit inside it. If deferred or searchable tool loading is enabled to mitigate the footprint, the record MUST also state the fallback: what the agent does when it needs a tool whose definition it has not fetched. Deferred loading trades a standing charge for a discovery step that can fail silently.</statement>
+      <rationale source="footprint-scales-with-connections">The definition footprint scales with the number of connected servers, so an uncapped set grows until someone notices the bill rather than until someone decides. Deferred loading genuinely reduces the footprint, but a tool the agent has not fetched is a tool it does not know exists — the failure looks like the model declining a task rather than like a missing integration.</rationale>
+    </rule>
+  </section>
+
+  <section title="Trust and versioning">
+    <rule id="r5-first-party-oauth-only" testable="true" depth="essential">
+      <statement>Credentials MUST be issued only to servers published by the owner of the data they reach, and only through an OAuth flow scoped to what the source routing actually needs. Third-party or community-published servers reaching a first-party service MUST NOT receive credentials; route those sources to the vendor's own CLI or to `neither`. The record MUST carry `first_party` and `credential_scope` for every MCP-routed source.</statement>
+      <rationale source="a-server-sees-everything-it-brokers">An MCP server is an intermediary with full sight of every request and response it brokers, including the credential. Whoever publishes it is therefore inside your trust boundary for that source, which is a decision worth making deliberately rather than by installing something convenient.</rationale>
+    </rule>
+    <rule id="r6-pin-and-date-the-spec-revision" testable="true" depth="essential">
+      <statement>Every MCP-routed source MUST record the protocol revision its server implements. Revision 2026-07-28 is stateless and deprecates Sampling, Roots and Logging with a twelve-month clock; a server on an earlier revision that depends on any of those MUST carry a `migration_deadline` in the record. A `stateful-session` justification against a stateless revision MUST be re-examined — the state has to live somewhere, and if it lives in the server the deprecation applies to it.</statement>
+      <rationale source="mcp-spec-revision-2026-07-28">The 2026-07-28 revision's move to stateless operation and its deprecation of Sampling, Roots and Logging change what a compliant server may assume. An undated pin is how a server keeps passing its own tests while drifting out of the protocol it claims, and the twelve-month window is short enough that "we will handle it later" is a dated commitment or nothing.</rationale>
+    </rule>
+    <rule id="r7-registry-is-not-a-trust-signal" testable="true" depth="essential">
+      <statement>Presence in the MCP registry MUST NOT be recorded or used as evidence that a server is safe, maintained or first-party. The registry has been in preview since 2025-09-08 and remains so; a record that cites registry listing as its justification for a routing decision is invalid.</statement>
+      <rationale source="registry-preview-since-2025-09-08">A preview catalogue is a discovery aid, not a review process. Treating a listing as vetting imports a trust decision nobody made, which is precisely the decision r5 exists to force into the open.</rationale>
+    </rule>
+  </section>
+</text>

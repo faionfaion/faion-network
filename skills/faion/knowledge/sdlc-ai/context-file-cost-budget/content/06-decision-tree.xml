@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Context File Keep / Cut / Relocate / Delete" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Routing from who wrote the file and what is in it to a verdict. The first branch resolves most repositories that ran a bootstrap pass.</summary>
+  <decision-tree>
+    <root-question id="q-authorship">Who wrote this context file, and has a human confirmed its lines one at a time?</root-question>
+
+    <branch when="authored_by == 'llm' AND human_confirmed_lines == 0">
+      <conclusion ref="r1-never-auto-generate" verdict="DELETE. This is the cell the measurement covers: machine-written and unconfirmed went slightly negative on task success while still charging the full inference premium. Record verdict: delete and stop — do not spend runs re-deriving a published result. Regenerate later as a stub if a need appears."/>
+    </branch>
+
+    <branch when="authored_by != 'llm' OR human_confirmed_lines &gt; 0">
+      <conclusion ref="r2-stub-confirmed-line-by-line" verdict="Proceed to classification. Every line gets exactly one of kept, rewritten or cut, and every kept block carries confirmed_by_human: true. Unconfirmed lines do not ship."/>
+    </branch>
+
+    <branch when="block_kind == 'overview'">
+      <conclusion ref="r4-instructions-in-overviews-out" verdict="CUT, or relocate if some later phase genuinely needs it on demand. Directory trees, dependency inventories and architecture narrative are derivable by the agent at the moment of need; keeping them buys a duplicate and turns background into a constraint."/>
+    </branch>
+
+    <branch when="block_kind == 'instruction' AND applies_to_subtree_only == true">
+      <conclusion ref="r5-path-scoped-relocation" verdict="RELOCATE to a path-scoped rule or a nested file at that subtree's root, and name the destination in the record. Same coverage, conditional cost instead of standing cost."/>
+    </branch>
+
+    <branch when="block_kind == 'preference' AND line_marks_itself_as_soft == false">
+      <conclusion ref="r6-preferences-marked-or-cut" verdict="Rewrite the line to say it is a preference, or CUT it. Left unmarked it is enforced as law, and the failure shows up as the agent contorting a task rather than crossing a habit."/>
+    </branch>
+
+    <branch when="kept_lines &gt; ceiling">
+      <conclusion ref="r3-declared-line-ceiling" verdict="Do not raise the ceiling. Return to classification and relocate or cut until the file fits. A ceiling raised to accommodate content is not a ceiling."/>
+    </branch>
+
+    <branch when="runs_per_arm &lt; 5">
+      <conclusion ref="r7-five-run-median-before-claiming" verdict="STOP. No verdict of 'keep' may be recorded yet. Run at least five per arm on the same task set, take medians, and report the currency cost delta next to the success delta."/>
+    </branch>
+
+    <branch when="runs_per_arm &gt;= 5 AND success_after &lt;= success_baseline AND cost_after &gt; cost_baseline">
+      <conclusion ref="r7-five-run-median-before-claiming" verdict="CUT further, or DELETE. The file is charging a standing premium and returning nothing measurable. Keep is not available on this branch regardless of how well-written the file reads."/>
+    </branch>
+  </decision-tree>
+</text>

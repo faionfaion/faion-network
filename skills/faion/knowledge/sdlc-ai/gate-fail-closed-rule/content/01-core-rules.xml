@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Fail-Closed Gate Rules" version="1.0.0" est_tokens="850" depth="essential">
+  <summary>One rule with five enforcement clauses: a gate that cannot evaluate must not report pass. R1 is the rule; R2-R6 close the five doors through which a non-evaluating gate leaks a green build.</summary>
+
+  <section title="The rule">
+    <rule id="r1-cannot-evaluate-is-not-pass" testable="true" depth="essential">
+      <statement>A gate that did not complete its evaluation MUST NOT report pass. Every terminating path through a gate MUST resolve to exactly one of three verdicts — PASS, FAIL, or ERROR — and ERROR MUST be routed to the same outcome as FAIL unless an explicit, logged, expiring override says otherwise. A gate whose code contains a path returning an empty finding list, a zero exit code, or a default-true from an exception handler has no ERROR verdict and is not a gate.</statement>
+      <rationale source="faion-net-fe/scripts/llm-judge.py:175, read 2026-08-04">`parse_findings` catches `json.JSONDecodeError` and returns `[]`. Empty findings means zero high-severity findings, which satisfies `--max-high 0`, which exits 0. A judge that refused, timed out, was rate-limited, or returned prose is therefore indistinguishable from an article with nothing wrong with it — and the failure is silent precisely when the model is least healthy, which is when load is highest.</rationale>
+    </rule>
+  </section>
+
+  <section title="Closing the five doors">
+    <rule id="r2-name-the-non-evaluating-modes" testable="true" depth="essential">
+      <statement>For every model-backed gate the contract MUST enumerate all five non-evaluating modes and state, per mode, how it is detected and what it emits: (a) PARSE — the reply is not the declared shape; (b) REFUSAL — the model answered, in prose, about why it will not answer; (c) TRUNCATION — `stop_reason` is length, or the reply ends mid-token; (d) TRANSPORT — rate limit, timeout, 5xx, connection reset; (e) EMPTY — a schema-valid response carrying no verdict. A bare `except Exception: return default` collapses all five into one silent pass and is forbidden.</statement>
+      <rationale source="three-tier-verification-ladder.md, 2026-08-03">The five modes fail at different layers, so a single try/except cannot distinguish "the model said the artefact is clean" from "there was no model". Schema-valid-but-empty is the mode that survives a schema fix: a structured-output migration removes the PARSE door and leaves EMPTY wide open.</rationale>
+    </rule>
+    <rule id="r3-synthetic-finding-not-exception" testable="true" depth="essential">
+      <statement>A gate MUST signal ERROR by emitting a synthetic finding at the severity its own threshold already blocks on — for a gate running `--max-high 0`, one finding of severity `high` with a stable rule id such as `judge-parse-failure` — rather than by raising into the caller. The synthetic finding carries the mode, the raw first 200 characters of the response, and the case id.</statement>
+      <rationale source="failure-signalling-through-the-existing-channel">Raising changes the contract of every caller, so it does not get merged; a finding travels the path the gate already has, so fail-closed becomes a five-line change instead of a refactor. It also lands in the same report the operator already reads, which is where a diagnosis is worth something.</rationale>
+    </rule>
+    <rule id="r4-exit-status-must-survive-the-pipeline" testable="true" depth="essential">
+      <statement>The aggregate runner's exit code MUST be a function of every sub-check's exit code. Piping a check through `tee`, `tail`, `head`, `grep` or a subshell without `set -o pipefail` and without capturing `${PIPESTATUS[0]}` discards its status; a runner that ends by printing a report path returns the exit code of `echo`. Every runner MUST be proved by a fault-injection run: break one check on purpose, confirm the runner exits non-zero.</statement>
+      <rationale source="faion-network/scripts/f066-validate-all.sh, read 2026-08-04">The runner wraps all six corpus validators in `run() { "$@" 2>&amp;1 | tail -3 | tee -a "$REPORT"; }` and terminates with `echo "report: $REPORT"`. `set -uo pipefail` is set but no status is ever tested, so the script exits 0 whatever the validators find. It has been the corpus-wide gate and has never been able to fail.</rationale>
+    </rule>
+    <rule id="r5-configured-is-not-invoked" testable="true" depth="essential">
+      <statement>A checker that is configured but never invoked reports pass by omission. Every tool with a config file in the repository MUST either appear in a runner's invocation list, or carry a one-line comment naming the gate that runs it, or be deleted. The gate contract MUST list the invocation command per checker, and a rung-1 validator SHOULD assert that each config file's tool is referenced by at least one runner.</statement>
+      <rationale source="faion-net-fe repo audit, 2026-08-04">`.vale.ini` is present and configured; no runner invokes `vale`. The prose gate reads as covered on inspection of the repo and covers nothing. Absent coverage is invisible in a green build in a way that failing coverage is not.</rationale>
+    </rule>
+    <rule id="r6-override-is-explicit-logged-and-expiring" testable="true" depth="essential">
+      <statement>Fail-closed needs one escape hatch or it gets bypassed wholesale. Degraded operation MUST require an explicit flag (e.g. `--allow-degraded`), MUST log the mode and the case, MUST carry an expiry date in the contract, and MUST NOT be the default. A gate with no override and a flaky dependency becomes a gate someone disabled; a gate with a silent default override was never closed.</statement>
+      <rationale source="lint-autofix-vs-flag-decision-rule (sdlc-ai)">The same dynamic that makes a false-positive-prone blocking check get bypassed applies to a gate that goes red on a provider outage. The difference between a hatch and a hole is that the hatch is named, dated, and printed in the log.</rationale>
+    </rule>
+  </section>
+</text>

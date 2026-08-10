@@ -1,0 +1,63 @@
+# purpose: fill-in Source Routing Record for an agent with a mixed source set
+# consumes: the list of live sources the agent needs + the measured definition footprint
+# produces: decision-record (per-source cli | mcp | neither)
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: small
+#
+# If every source routes to a CLI, use source-routing-record-cli-only.yaml instead.
+# Validate:  validate-mcp-vs-cli-decision-rule.py source-routing-record.yaml
+
+agent: "the repo coding agent, running with shell access"
+
+# --- The standing charge (r1, r4). Cap first, then fit the set to it. ---
+server_cap: 2
+definition_footprint_tokens: 21400
+standing_cost_per_session: "USD 0.09 per session at our current turn count"
+deferred_tool_loading: true
+deferred_fallback: >
+  On a miss the agent re-runs tool discovery once and, if still absent, reports the
+  gap in its final message instead of declining silently. Misses are logged.
+
+sources:
+  - name: "GitHub"
+    capability: "read issues and PRs, push branches"
+    cli_available: true
+    cli_binary: "gh"
+    route: cli          # authenticated, already installed, zero standing cost
+
+  - name: "production Postgres"
+    capability: "ad-hoc read queries during investigation"
+    cli_available: true
+    cli_binary: "psql"
+    route: cli
+
+  - name: "the design tool"
+    capability: "read a file's component tree and export assets"
+    cli_available: false
+    route: mcp
+    mcp_justification: oauth-brokered   # stateful-session|oauth-brokered|push-subscription|no-cli-exists
+    first_party: true
+    credential_scope: "read-only on two named project files; no org-wide scope"
+    spec_revision: "2026-07-28"
+
+  - name: "the ticketing system"
+    capability: "watch for status changes and react"
+    cli_available: true
+    cli_binary: "tkt"
+    route: mcp
+    cli_insufficient_reason: >
+      The command answers questions; it cannot receive a push. The requirement is a
+      subscription that wakes the agent, which no one-shot invocation expresses.
+    mcp_justification: push-subscription
+    first_party: true
+    credential_scope: "one project, issue read plus comment write; no admin"
+    spec_revision: "2026-03-26"
+    migration_deadline: "2027-07-28"   # earlier revision; twelve-month clock recorded
+
+  - name: "an internal analytics warehouse"
+    capability: "aggregate queries for weekly summaries"
+    cli_available: false
+    route: neither
+    reason: >
+      Only a community-published server exists and it would hold a warehouse
+      credential. Waiting for a first-party path; the weekly summary stays manual.

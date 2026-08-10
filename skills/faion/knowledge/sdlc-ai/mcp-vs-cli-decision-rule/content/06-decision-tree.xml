@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="CLI / MCP / Neither Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
+  <summary>Routing one source at a time. Run it per source, not per agent; most sources terminate in the first two branches.</summary>
+  <decision-tree>
+    <root-question id="q-cli-exists">For this one source: does a command-line path exist, and can the agent execute commands?</root-question>
+
+    <branch when="cli_available == true AND agent_can_execute == true AND structural_blocker == false">
+      <conclusion ref="r2-cli-is-the-default-route" verdict="Route CLI. Record the binary. Cost is proportional to use, nothing is added to every future request, and the trust boundary is unchanged. Stop here for this source."/>
+    </branch>
+
+    <branch when="cli_available == true AND structural_blocker == false AND reason_is_preference == true">
+      <conclusion ref="r2-cli-is-the-default-route" verdict="Still CLI. 'Nicer', 'more structured', 'the official integration' and 'everyone does it' are preferences, and a preference does not buy a charge levied on every request. Write the preference down and route CLI anyway."/>
+    </branch>
+
+    <branch when="structural_blocker in ('stateful-session','oauth-brokered','push-subscription','no-cli-exists')">
+      <conclusion ref="r3-closed-list-of-justifications" verdict="MCP is available for this source. Record the justification verbatim from the closed list, plus first_party, credential_scope and spec_revision, and check the source still fits under server_cap."/>
+    </branch>
+
+    <branch when="structural_blocker not in the closed list">
+      <conclusion ref="r3-closed-list-of-justifications" verdict="Route CLI, or `neither` with a reason. A blocker outside the four named cases is an inconvenience, and the list stays closed precisely so that this branch cannot be argued around."/>
+    </branch>
+
+    <branch when="mcp_routed == true AND first_party == false">
+      <conclusion ref="r5-first-party-oauth-only" verdict="Do NOT issue credentials. A third-party server sees every request and response it brokers, including the credential. Route to the vendor's own CLI, or `neither` until a first-party server exists."/>
+    </branch>
+
+    <branch when="mcp_routed == true AND spec_revision &lt; '2026-07-28' AND depends_on_sampling_roots_or_logging == true">
+      <conclusion ref="r6-pin-and-date-the-spec-revision" verdict="Record a dated migration_deadline inside the twelve-month clock, or route CLI now. A server that passes its own tests today and depends on a deprecated capability fails on somebody else's schedule."/>
+    </branch>
+
+    <branch when="mcp_routed_count &gt; server_cap">
+      <conclusion ref="r4-declare-a-server-cap" verdict="STOP. Do not raise the cap to fit the set; re-run this tree over the lowest-value MCP-routed source and move it to CLI. If deferred loading is what makes the set fit, record the fallback for a definition the agent never fetched."/>
+    </branch>
+
+    <branch when="justification_cites_registry_listing == true">
+      <conclusion ref="r7-registry-is-not-a-trust-signal" verdict="Invalid, regardless of branch. The registry has been in preview since 2025-09-08 and reviews nothing. Replace the justification with one from the closed list or route elsewhere."/>
+    </branch>
+  </decision-tree>
+</text>
