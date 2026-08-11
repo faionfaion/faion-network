@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: `corpus:sdd-planner.schema` — the planner's output contract as a paired schema (`feature_id` plus a non-empty `tasks` array of `{id, title, summary, feature_folder, depends_on}`). Without it the planner returns prose and nothing downstream can fan out: the recipe grammar ranges only over an earlier stage's JSON array, so a per-task implementation fan-out needs the plan to *be* an array. Generalised from the shape the g5 pipeline proved in anger.
+
 - feat: verification-gate fragment pack at `skills/faion/fragments/gate/` (tier **solo**) — `gate-runner`, `gate-runner.schema` and `gate-fixer` move out of the pro-tier article library, because a gate is plumbing every gated pipeline needs and the solo-tier recipes (`sdd-feature`, `audit-and-fix`) could not have resolved a pro fragment. Corpus names are path-independent, so `corpus:gate-runner` still resolves for the article pipeline; only the tier gating changes. New `gate-bootstrap` joins them: it makes the project's toolchain exist and proves the gate commands run before any stage depends on them — the g3/g4 lesson, where pipelines burned fix rounds on a missing venv, turned into a stage instead of an assumption. Its hard boundary is environment artifacts only: it never edits source, and a project that declares no dependencies is a finding, not an invitation to invent a bootstrap.
 
 - fix: validate-lexicon.py return annotation — validate_lexicon returns the prefix set that validate_stopwords consumes, not None.
