@@ -132,7 +132,7 @@ def classify(ua: str, terms: set[str], taxonomy_ua, domains, tags, titles) -> st
     return "observed"
 
 
-def validate_lexicon(path: Path) -> None:
+def validate_lexicon(path: Path) -> set[str]:
     text = read_strict(path)
     rows = split_header(path, text)
     if not rows:
