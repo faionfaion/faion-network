@@ -9,7 +9,7 @@ Workflow recipes: platform-neutral F027 pipelines an agent picks from and `faion
 | Recipe | Tier | Stages | Shape |
 |--------|------|--------|-------|
 | `sdd-feature/` | solo | 6 | intake → plan → bootstrap gate → per-task fan-out over worktrees → review → gated fix. One written feature, built. |
-| `research-first-build/` | pro | 11 | three research catalogs → quantified concept pick → design → plan → fan-out → assets → bootstrap gate → review → gated fix. Decides what to build before building it. |
+| `research-first-build/` | pro | 13 | research plan → three sourced catalogs (one a market landscape) → evidence gate → quantified concept pick → design → plan → fan-out → assets → bootstrap gate → review → gated fix. Decides what to build before building it. |
 | `article-pipeline/` | pro | 6 | outline → per-section fan-out → assemble → gated editorial pass → translate → language review. Content only, never code. |
 | `audit-and-fix/` | solo | 4 | bootstrap → machine checks → cited review → gated fix. No fan-out; the smallest recipe here. |
 
@@ -31,7 +31,8 @@ recipes/<name>/
 - Fragment tier ≤ recipe tier. The gate trio lives in `fragments/gate/` at tier solo precisely so a solo recipe can gate.
 - A `bootstrap` stage wherever the pipeline runs tests. The g3/g4 pipelines burned fix rounds on a missing venv; an environment is a stage, not an assumption.
 - Service identity and paths are vars, never literals — two runs of the same recipe must not collide on a service name, a port or a state directory.
-- Validate before shipping: `python3 scripts/validate-recipes.py` (card sections, var coverage, fragment resolution, and `faion workflow validate` on every recipe).
+- A research stage composes a research-role fragment, and every one of those includes `corpus:research-source-discipline` — the corpus instructs the fetch, it never substitutes for it. `validate-recipes.py` fails a research-role fragment that drops the block.
+- Validate before shipping: `python3 scripts/validate-recipes.py` (card sections, var coverage, fragment resolution, the research sourcing block, and `faion workflow validate` on every recipe).
 
 ## Gotchas
 

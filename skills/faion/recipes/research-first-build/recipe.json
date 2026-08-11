@@ -1,19 +1,19 @@
 {
   "recipe": 1,
   "name": "research-first-build",
-  "description": "Greenfield build that researches before it decides: three named catalogs, one quantified concept pick, a design, an SDD plan, a per-task implementation fan-out, an asset pass, a bootstrap gate, an independent review and a bounded fix loop.",
+  "description": "Greenfield build that researches before it decides: a research plan, three sourced catalogs (one of them a competitor and market landscape), an evidence gate that fails on an unsourced load-bearing claim, one quantified concept pick, a design, an SDD plan, a per-task implementation fan-out, an asset pass, a bootstrap gate, an independent review and a bounded fix loop.",
   "pattern": "sequential",
-  "pattern_rationale": "One repository advanced by ordered stages, and the order is the point: research precedes the concept, the concept precedes the design, the design precedes the plan. The grammar fans out only over an earlier stage's result, so the three research axes run as three sequential stages of the same fragment; the only concurrency is the per-task implementation fan-out.",
+  "pattern_rationale": "One repository advanced by ordered stages, and the order is the point: the plan precedes the research, the research precedes the concept, the concept precedes the design, the design precedes the plan. The grammar fans out only over an earlier stage's result, so the three research axes run as three sequential stages; the only concurrency is the per-task implementation fan-out. The evidence stage sits between research and concept deliberately — a concept picked from unsourced claims is a guess with a rationale attached.",
 
   "vars": {
     "brief":          { "required": true, "description": "path to the product brief the whole pipeline is grounded in" },
     "repo_path":      { "required": true, "description": "repo the pipeline builds in" },
-    "docs_dir":       { "required": true, "description": "directory the research catalogs are written to and read back from" },
+    "docs_dir":       { "required": true, "description": "directory the research plan, the catalogs, the claims files and the evidence table are written to and read back from" },
     "feature_folder": { "required": true, "description": "SDD feature folder the designer writes spec.md into and the planner plans in" },
     "project_dir":    { "required": true, "description": "directory the toolchain lives in and the gate commands run against — a var, never a literal, so a second product built from this recipe cannot collide with the first" },
     "diff_base":      { "required": true, "description": "diff base for the reviewer: the sha the repo was at before this run (a greenfield repo's root commit resolves with git rev-list --max-parents=0 HEAD)" },
     "axis_one":       { "required": false, "default": "domain mechanisms and prior art", "description": "first research axis" },
-    "axis_two":       { "required": false, "default": "market, competitors and audience", "description": "second research axis" },
+    "axis_two":       { "required": false, "default": "market, competitors and audience", "description": "the market the analyst profiles — competitor breadth floors and the debunk pass apply to it" },
     "axis_three":     { "required": false, "default": "business model, pricing and unit economics", "description": "third research axis" },
     "default_branch": { "required": false, "default": "main", "description": "branch the executors merge into" },
     "verify":         { "required": false, "default": "", "description": "verify commands for executors and the fix applier, one per line, run from the worktree root" },
@@ -22,11 +22,24 @@
 
   "stages": [
     {
+      "id": "research_plan",
+      "prompt": "corpus:research-desk-brief",
+      "slots": {
+        "brief": "{{var:brief}}",
+        "outdir": "{{var:docs_dir}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": true },
+      "retry": 2
+    },
+
+    {
       "id": "research_one",
       "prompt": "corpus:build-domain-cataloger",
       "slots": {
         "brief": "{{var:brief}}",
         "axis": "{{var:axis_one}}",
+        "plan": "{{var:docs_dir}}/research-plan.md",
         "outdir": "{{var:docs_dir}}"
       },
       "output": { "kind": "text" },
@@ -36,10 +49,11 @@
 
     {
       "id": "research_two",
-      "prompt": "corpus:build-domain-cataloger",
+      "prompt": "corpus:research-market-analyst",
       "slots": {
         "brief": "{{var:brief}}",
-        "axis": "{{var:axis_two}}",
+        "market": "{{var:axis_two}}",
+        "plan": "{{var:docs_dir}}/research-plan.md",
         "outdir": "{{var:docs_dir}}"
       },
       "output": { "kind": "text" },
@@ -53,6 +67,19 @@
       "slots": {
         "brief": "{{var:brief}}",
         "axis": "{{var:axis_three}}",
+        "plan": "{{var:docs_dir}}/research-plan.md",
+        "outdir": "{{var:docs_dir}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": true },
+      "retry": 2
+    },
+
+    {
+      "id": "evidence",
+      "prompt": "corpus:research-evidence-table",
+      "slots": {
+        "claims_dir": "{{var:docs_dir}}",
         "outdir": "{{var:docs_dir}}"
       },
       "output": { "kind": "text" },
