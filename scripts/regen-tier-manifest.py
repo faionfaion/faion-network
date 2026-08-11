@@ -10,7 +10,10 @@ beneath it — the same directory-coverage rule vfs-pack applies) and
 pack gates its scripts and cards, same directory-coverage rule) and
 `skills/faion/lexicon/meta.json` (F031: one meta.json gates the UA->EN
 query lexicon; it is tier `free` on purpose - a paid lexicon would mean
-free users cannot search in their own language).
+free users cannot search in their own language) and
+`skills/faion/recipes/<name>/meta.json` (F027 recipe library: one
+meta.json per recipe dir gates its recipe.json and its card, same
+directory-coverage rule).
 
 The manifest `notes` field is never dropped: a version bump keeps the
 previous note verbatim behind a `Prior vN:` prefix.
@@ -32,15 +35,17 @@ PLAYBOOKS = ROOT / "skills" / "faion" / "playbooks"
 FRAGMENTS = ROOT / "skills" / "faion" / "fragments"
 TOOLS = ROOT / "skills" / "faion" / "tools"
 LEXICON = ROOT / "skills" / "faion" / "lexicon"
+RECIPES = ROOT / "skills" / "faion" / "recipes"
 BACKUP = ROOT / "skills" / "tier-manifest.json.f067-pre-bak"
 
 TIERS = ("free", "solo", "pro", "geek")
 TODAY = "2026-08-11"
-NEW_VERSION = 11
+NEW_VERSION = 12
 NOTES_HEAD = (
-    "v11: F031 — the UA→EN query lexicon "
-    "(skills/faion/lexicon/meta.json, one entry gating ua-en.tsv and "
-    "ua-stopwords.txt) joins the manifest at tier free."
+    "v12: workflow recipes (skills/faion/recipes/<name>/meta.json, one "
+    "entry gating each recipe.json and its card) join the manifest, and "
+    "the verification-gate fragments move from fragments/article to "
+    "fragments/gate at tier solo so solo recipes can gate."
 )
 
 
@@ -89,6 +94,7 @@ def collect_entries() -> tuple[list[dict], dict]:
         "meta_fragments": 0,
         "meta_tools": 0,
         "meta_lexicon": 0,
+        "meta_recipes": 0,
         "skipped": 0,
     }
 
@@ -142,6 +148,16 @@ def collect_entries() -> tuple[list[dict], dict]:
             else:
                 stats["skipped"] += 1
 
+    # 6. meta.json under recipes (F027: one per recipe dir)
+    if RECIPES.exists():
+        for meta in RECIPES.rglob("meta.json"):
+            e = entry_from_meta(meta)
+            if e:
+                entries.append(e)
+                stats["meta_recipes"] += 1
+            else:
+                stats["skipped"] += 1
+
     entries.sort(key=lambda e: (e["tier"] or "", e["path"]))
     return entries, stats
 
@@ -176,6 +192,7 @@ def main() -> int:
         f"meta_fragments={stats['meta_fragments']}, "
         f"meta_tools={stats['meta_tools']}, "
         f"meta_lexicon={stats['meta_lexicon']}, "
+        f"meta_recipes={stats['meta_recipes']}, "
         f"skipped={stats['skipped']})"
     )
     print(summary)
