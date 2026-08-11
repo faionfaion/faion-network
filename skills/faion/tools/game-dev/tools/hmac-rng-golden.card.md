@@ -5,8 +5,8 @@ Emit and re-verify golden vectors for an HMAC-SHA256 rejection-sampling RNG, so 
 
 ## Invoke
 ```
-python3 scripts/hmac-rng-golden.py --emit --key {str}|--key-hex {hex} --case {n}:{msg} [--case ...] [--cases-file {path}] [--word-bits 32|64] [--counter-encoding text|be32] [--counter-sep {sep}] --out {golden.json}
-python3 scripts/hmac-rng-golden.py --verify {golden.json}
+python3 {script} --emit --key {str}|--key-hex {hex} --case {n}:{msg} [--case ...] [--cases-file {path}] [--word-bits 32|64] [--counter-encoding text|be32] [--counter-sep {sep}] --out {golden.json}
+python3 {script} --verify {golden.json}
 ```
 
 ## Inputs

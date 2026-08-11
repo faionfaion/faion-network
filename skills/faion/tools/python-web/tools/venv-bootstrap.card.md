@@ -5,7 +5,7 @@ Create or refresh a project `.venv`, install its requirements, and prove it impo
 
 ## Invoke
 ```
-sh scripts/venv-bootstrap.sh --dir {project} [--venv {path}] [--requirements {file}] [--verify-import {mod,mod}] [--python {exe}] [--force]
+sh {script} --dir {project} [--venv {path}] [--requirements {file}] [--verify-import {mod,mod}] [--python {exe}] [--force]
 ```
 
 ## Inputs

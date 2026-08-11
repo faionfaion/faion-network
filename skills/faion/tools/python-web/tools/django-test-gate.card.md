@@ -5,7 +5,7 @@ Run a Django suite through the project's own venv and return the verdict as one 
 
 ## Invoke
 ```
-python3 scripts/django-test-gate.py --project {backend-dir} [--venv {dir}] [--label {app.tests}] [--tag {t}] [--exclude-tag {t}] [--settings {module}] [--env-file {path}] [--keepdb] [--timeout {seconds}]
+python3 {script} --project {backend-dir} [--venv {dir}] [--label {app.tests}] [--tag {t}] [--exclude-tag {t}] [--settings {module}] [--env-file {path}] [--keepdb] [--timeout {seconds}]
 ```
 
 ## Inputs

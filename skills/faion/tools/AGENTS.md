@@ -23,7 +23,7 @@ tools/<pack>/
 
 ## Card shape
 
-Fixed section order, nothing added or dropped: `# <tool-name>` · `## Purpose` · `## Invoke` · `## Inputs` · `## Outputs` · `## When NOT to use` · `## Cost`. Placeholders in `## Invoke` are written `{like-this}`. `## Outputs` names every file written, the stdout shape, and what each exit code means.
+Fixed section order, nothing added or dropped: `# <tool-name>` · `## Purpose` · `## Invoke` · `## Inputs` · `## Outputs` · `## When NOT to use` · `## Cost`. Placeholders in `## Invoke` are written `{like-this}`, and the script's own position is written `{script}` — the CLI substitutes the materialised absolute path there (`python3 {script} --in {claims.jsonl}`). A literal `scripts/foo.py` resolves only through a compatibility shim that guesses from the filename; see `.aidocs/crs/done/CR-005-tool-card-invoke-placeholder.md`. `## Outputs` names every file written, the stdout shape, and what each exit code means.
 
 ## Script contract
 

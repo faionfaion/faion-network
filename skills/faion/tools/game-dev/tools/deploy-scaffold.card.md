@@ -5,7 +5,7 @@ Emit a systemd unit, an nginx vhost and a `deploy.sh` for one gunicorn app, with
 
 ## Invoke
 ```
-python3 scripts/deploy-scaffold.py --name {name} --port {port} --domain {host} --root {/opt/dir} [--out-dir {dir}] [--wsgi {pkg.wsgi:application}] [--user {u}] [--group {g}] [--state-dir {path}] [--webroot {path}] [--zone {z}] [--backend {dir}] [--frontend {dir}] [--test-labels {labels}] [--page-route {/path}={file}] [--regex-route {regex}={file}] [--check-local] [--force]
+python3 {script} --name {name} --port {port} --domain {host} --root {/opt/dir} [--out-dir {dir}] [--wsgi {pkg.wsgi:application}] [--user {u}] [--group {g}] [--state-dir {path}] [--webroot {path}] [--zone {z}] [--backend {dir}] [--frontend {dir}] [--test-labels {labels}] [--page-route {/path}={file}] [--regex-route {regex}={file}] [--check-local] [--force]
 ```
 
 ## Inputs

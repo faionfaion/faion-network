@@ -5,7 +5,7 @@ Turn a JSONL of research claims into a markdown evidence table plus a gaps repor
 
 ## Invoke
 ```
-python3 scripts/source-table.py --in {claims.jsonl} [--out {table.md}] [--report {gaps.md}] [--title {heading}] [--require-date]
+python3 {script} --in {claims.jsonl} [--out {table.md}] [--report {gaps.md}] [--title {heading}] [--require-date]
 ```
 
 ## Inputs
