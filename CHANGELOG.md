@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- feat: verification-gate fragment pack at `skills/faion/fragments/gate/` (tier **solo**) — `gate-runner`, `gate-runner.schema` and `gate-fixer` move out of the pro-tier article library, because a gate is plumbing every gated pipeline needs and the solo-tier recipes (`sdd-feature`, `audit-and-fix`) could not have resolved a pro fragment. Corpus names are path-independent, so `corpus:gate-runner` still resolves for the article pipeline; only the tier gating changes. New `gate-bootstrap` joins them: it makes the project's toolchain exist and proves the gate commands run before any stage depends on them — the g3/g4 lesson, where pipelines burned fix rounds on a missing venv, turned into a stage instead of an assumption. Its hard boundary is environment artifacts only: it never edits source, and a project that declares no dependencies is a finding, not an invitation to invent a bootstrap.
+
 - fix: validate-lexicon.py return annotation — validate_lexicon returns the prefix set that validate_stopwords consumes, not None.
 - chore: register the lexicon in the tier manifest (v10 → v11, 3,098 → 3,099 entries, +1 added / -0 removed / ~0 changed) — `regen-tier-manifest.py` gained a fifth walk over `skills/faion/lexicon/meta.json`, alongside knowledge, playbooks, fragment libraries and tool packs, so one entry gates `ua-en.tsv` and `ua-stopwords.txt` under the same directory-coverage rule `vfs-pack` applies. Prior `notes` preserved verbatim behind the existing `Prior notes, verbatim:` prefix chain.
 
