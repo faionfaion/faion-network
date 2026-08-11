@@ -31,10 +31,11 @@ Methodology corpus and Claude Code skill base for the `faion` CLI. Auto-loaded i
 ## Commands
 
 ```bash
-bash scripts/f066-validate-all.sh                    # all 6 corpus validators, summary report
+bash scripts/f066-validate-all.sh                    # all 7 corpus validators, summary report
 python3 scripts/validate-methodology-v2.py <dir>     # one methodology dir
 python3 scripts/validate-playbook-v3.py --all        # all playbooks
 python3 scripts/validate-domains-index.py            # L1 domains.xml
+python3 scripts/validate-lexicon.py                  # UA→EN lexicon shape + provenance
 python3 scripts/regen-tier-manifest.py --dry-run     # manifest diff vs meta.json (drop flag to write)
 bash tests/test_snapshot.sh                          # installer unit tests
 bash init.sh                                         # install skills + agents into ~/.claude

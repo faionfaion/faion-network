@@ -6,14 +6,15 @@ Corpus validators and generators. Run from the repo root; every script resolves 
 
 | Script | Use |
 |--------|-----|
-| `f066-validate-all.sh [report]` | Runs the 6 corpus validators, writes a pass/fail summary (default `/tmp/f066-validate-report.txt`) |
+| `f066-validate-all.sh [report]` | Runs the 7 corpus validators, writes a pass/fail summary (default `/tmp/f066-validate-report.txt`) |
 | `validate-methodology-v2.py <dir>` | One methodology dir (positional, no `--all`) |
 | `validate-methodology-decision-tree.py --all` | Mandatory `06-decision-tree.xml` |
 | `validate-methodology-templates.py --all` · `validate-methodology-scripts.py --all` | `templates/` and `scripts/` per methodology |
 | `validate-playbook-v3.py --all` | Playbooks (v3 layout); `--self-test` available |
 | `validate-domains-index.py` · `validate-domain-index.py --all` | L1 `domains.xml` and L2 `INDEX.xml` |
 | `validate-playbook-taxonomy.py` · `validate-workflow-v2.py` | Goal taxonomy, workflow shape |
-| `regen-tier-manifest.py [--dry-run]` | Rebuilds `skills/tier-manifest.json` from `meta.json` under `knowledge/`, `playbooks/`, `fragments/<library>/` and `tools/<pack>/`. `--dry-run` first, always. Keeps the previous `notes` verbatim behind a `Prior notes, verbatim:` prefix; re-running at the same version leaves `notes` untouched |
+| `validate-lexicon.py [dir]` | UA→EN lexicon: file hygiene, row shape, byte order, every `en` term attested in the corpus, `src` re-derived and compared to the declared value, the 20% `observed` cap, stopwords disjoint from the prefixes |
+| `regen-tier-manifest.py [--dry-run]` | Rebuilds `skills/tier-manifest.json` from `meta.json` under `knowledge/`, `playbooks/`, `fragments/<library>/`, `tools/<pack>/` and `lexicon/`. `--dry-run` first, always. Keeps the previous `notes` verbatim behind a `Prior notes, verbatim:` prefix; re-running at the same version leaves `notes` untouched |
 | `lib/snapshot.sh` · `lib/integrity-check.sh` | Installer helpers, unit-tested by `tests/test_snapshot.sh` |
 
 ## Gotchas
