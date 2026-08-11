@@ -19,6 +19,7 @@ Methodology corpus and Claude Code skill base for the `faion` CLI. Auto-loaded i
 | `skills/faion/playbooks/by-goal/<goal>/<slug>/` | Playbook: `AGENTS.md` + `content/01-playbook.xml` |
 | `skills/faion/workflows/` | 6 orchestration workflows (brainstorm, idea-to-prod, improver, media-ops, poll-agents, sdd-batch-orchestrator) |
 | `skills/faion/tools/<pack>/` | Tool pack: `meta.json` + `scripts/<name>.py\|sh` + `tools/<name>.card.md` — runnable tools an agent uses instead of writing a throwaway script |
+| `skills/faion/lexicon/` | UA→EN query lexicon: `meta.json` (tier **free**) + `ua-en.tsv` + `ua-stopwords.txt` — a Ukrainian query scores zero against an English corpus without it |
 | `skills/tier-manifest.json` | Generated from `meta.json` files — never hand-edit |
 | `agents/` · `hooks/` · `rules/` | Subagent definitions · plugin hooks (`hooks.json`) · authoring rules |
 | `workflows/` | Runnable Workflow-tool scripts, invoked by name (`article-pipeline`) |
