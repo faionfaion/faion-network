@@ -2,10 +2,15 @@
 """F-067 T07: regenerate tier-manifest.json from meta.json files.
 
 Walks `skills/faion/knowledge/<domain>/<slug>/meta.json`,
-`skills/faion/playbooks/<domain>/<slug>/meta.json` (post-F-067 layout)
-and `skills/faion/fragments/<library>/meta.json` (F027 T06: one
+`skills/faion/playbooks/<domain>/<slug>/meta.json` (post-F-067 layout),
+`skills/faion/fragments/<library>/meta.json` (F027 T06: one
 meta.json per fragment library directory gates every fragment file
-beneath it — the same directory-coverage rule vfs-pack applies).
+beneath it — the same directory-coverage rule vfs-pack applies) and
+`skills/faion/tools/<pack>/meta.json` (F029: one meta.json per tool
+pack gates its scripts and cards, same directory-coverage rule).
+
+The manifest `notes` field is never dropped: a version bump keeps the
+previous note verbatim behind a `Prior vN:` prefix.
 
 Usage:
     python3 scripts/regen-tier-manifest.py            # write to skills/tier-manifest.json
@@ -22,18 +27,30 @@ MANIFEST = ROOT / "skills" / "tier-manifest.json"
 KNOWLEDGE = ROOT / "skills" / "faion" / "knowledge"
 PLAYBOOKS = ROOT / "skills" / "faion" / "playbooks"
 FRAGMENTS = ROOT / "skills" / "faion" / "fragments"
+TOOLS = ROOT / "skills" / "faion" / "tools"
 BACKUP = ROOT / "skills" / "tier-manifest.json.f067-pre-bak"
 
 TIERS = ("free", "solo", "pro", "geek")
-TODAY = "2026-08-10"
-NEW_VERSION = 9
-NEW_NOTES = (
-    "v9: F027 T06 — fragment libraries (skills/faion/fragments/<library>/"
-    "meta.json, one entry gating the whole library dir) join the manifest. "
-    "Prior v8: F-067 domain-first restructure, entries derived from "
-    "<domain>/<slug>/meta.json files; F-068 T05 cleaned 4 dead "
-    "knowledge_paths entries."
+TODAY = "2026-08-11"
+NEW_VERSION = 10
+NOTES_HEAD = (
+    "v10: F029 — tool packs (skills/faion/tools/<pack>/meta.json, one "
+    "entry gating the pack's scripts/ and tools/ cards) join the manifest."
 )
+
+
+def build_notes(current_notes: str, current_version) -> str:
+    """Prepend this version's note, keeping the previous one verbatim.
+
+    Idempotent: regenerating a manifest already at NEW_VERSION returns its
+    notes unchanged, so repeated runs never stack duplicate prefixes and no
+    prior note is ever dropped.
+    """
+    if current_version == NEW_VERSION:
+        return current_notes
+    if not current_notes:
+        return NOTES_HEAD
+    return f"{NOTES_HEAD} Prior notes, verbatim: {current_notes}"
 
 
 def entry_from_meta(meta_path: Path) -> dict | None:
@@ -65,6 +82,7 @@ def collect_entries() -> tuple[list[dict], dict]:
         "meta_knowledge": 0,
         "meta_playbooks": 0,
         "meta_fragments": 0,
+        "meta_tools": 0,
         "skipped": 0,
     }
 
@@ -98,6 +116,16 @@ def collect_entries() -> tuple[list[dict], dict]:
             else:
                 stats["skipped"] += 1
 
+    # 4. meta.json under tools (F029: one per tool pack dir)
+    if TOOLS.exists():
+        for meta in TOOLS.rglob("meta.json"):
+            e = entry_from_meta(meta)
+            if e:
+                entries.append(e)
+                stats["meta_tools"] += 1
+            else:
+                stats["skipped"] += 1
+
     entries.sort(key=lambda e: (e["tier"] or "", e["path"]))
     return entries, stats
 
@@ -121,14 +149,16 @@ def main() -> int:
     new_manifest["entries"] = entries
     new_manifest["total"] = len(entries)
     new_manifest["last_synced"] = TODAY
+    new_manifest["notes"] = build_notes(manifest.get("notes", ""),
+                                        manifest.get("version"))
     new_manifest["version"] = NEW_VERSION
-    new_manifest["notes"] = NEW_NOTES
 
     summary = (
         f"entries={len(entries)} "
         f"(meta_knowledge={stats['meta_knowledge']}, "
         f"meta_playbooks={stats['meta_playbooks']}, "
         f"meta_fragments={stats['meta_fragments']}, "
+        f"meta_tools={stats['meta_tools']}, "
         f"skipped={stats['skipped']})"
     )
     print(summary)

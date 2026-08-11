@@ -13,7 +13,7 @@ Corpus validators and generators. Run from the repo root; every script resolves 
 | `validate-playbook-v3.py --all` | Playbooks (v3 layout); `--self-test` available |
 | `validate-domains-index.py` · `validate-domain-index.py --all` | L1 `domains.xml` and L2 `INDEX.xml` |
 | `validate-playbook-taxonomy.py` · `validate-workflow-v2.py` | Goal taxonomy, workflow shape |
-| `regen-tier-manifest.py [--dry-run]` | Rebuilds `skills/tier-manifest.json` from `<domain>/<slug>/meta.json`. `--dry-run` first, always |
+| `regen-tier-manifest.py [--dry-run]` | Rebuilds `skills/tier-manifest.json` from `meta.json` under `knowledge/`, `playbooks/`, `fragments/<library>/` and `tools/<pack>/`. `--dry-run` first, always. Keeps the previous `notes` verbatim behind a `Prior notes, verbatim:` prefix; re-running at the same version leaves `notes` untouched |
 | `lib/snapshot.sh` · `lib/integrity-check.sh` | Installer helpers, unit-tested by `tests/test_snapshot.sh` |
 
 ## Gotchas
