@@ -1,0 +1,188 @@
+{
+  "recipe": 1,
+  "name": "research-first-build",
+  "description": "Greenfield build that researches before it decides: three named catalogs, one quantified concept pick, a design, an SDD plan, a per-task implementation fan-out, an asset pass, a bootstrap gate, an independent review and a bounded fix loop.",
+  "pattern": "sequential",
+  "pattern_rationale": "One repository advanced by ordered stages, and the order is the point: research precedes the concept, the concept precedes the design, the design precedes the plan. The grammar fans out only over an earlier stage's result, so the three research axes run as three sequential stages of the same fragment; the only concurrency is the per-task implementation fan-out.",
+
+  "vars": {
+    "brief":          { "required": true, "description": "path to the product brief the whole pipeline is grounded in" },
+    "repo_path":      { "required": true, "description": "repo the pipeline builds in" },
+    "docs_dir":       { "required": true, "description": "directory the research catalogs are written to and read back from" },
+    "feature_folder": { "required": true, "description": "SDD feature folder the designer writes spec.md into and the planner plans in" },
+    "project_dir":    { "required": true, "description": "directory the toolchain lives in and the gate commands run against — a var, never a literal, so a second product built from this recipe cannot collide with the first" },
+    "diff_base":      { "required": true, "description": "diff base for the reviewer: the sha the repo was at before this run (a greenfield repo's root commit resolves with git rev-list --max-parents=0 HEAD)" },
+    "axis_one":       { "required": false, "default": "domain mechanisms and prior art", "description": "first research axis" },
+    "axis_two":       { "required": false, "default": "market, competitors and audience", "description": "second research axis" },
+    "axis_three":     { "required": false, "default": "business model, pricing and unit economics", "description": "third research axis" },
+    "default_branch": { "required": false, "default": "main", "description": "branch the executors merge into" },
+    "verify":         { "required": false, "default": "", "description": "verify commands for executors and the fix applier, one per line, run from the worktree root" },
+    "gates":          { "required": false, "default": "", "description": "gate commands, one per line; {file} is replaced with the path under verification. Empty means the gate reports clean" }
+  },
+
+  "stages": [
+    {
+      "id": "research_one",
+      "prompt": "corpus:build-domain-cataloger",
+      "slots": {
+        "brief": "{{var:brief}}",
+        "axis": "{{var:axis_one}}",
+        "outdir": "{{var:docs_dir}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": true },
+      "retry": 2
+    },
+
+    {
+      "id": "research_two",
+      "prompt": "corpus:build-domain-cataloger",
+      "slots": {
+        "brief": "{{var:brief}}",
+        "axis": "{{var:axis_two}}",
+        "outdir": "{{var:docs_dir}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": true },
+      "retry": 2
+    },
+
+    {
+      "id": "research_three",
+      "prompt": "corpus:build-domain-cataloger",
+      "slots": {
+        "brief": "{{var:brief}}",
+        "axis": "{{var:axis_three}}",
+        "outdir": "{{var:docs_dir}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": true },
+      "retry": 2
+    },
+
+    {
+      "id": "concept",
+      "prompt": "corpus:build-concept-synthesizer",
+      "slots": {
+        "brief": "{{var:brief}}",
+        "catalogs_dir": "{{var:docs_dir}}"
+      },
+      "output": { "kind": "json", "schema": "corpus:build-concept-synthesizer.schema" },
+      "capability": { "read": true, "write": false, "net": false },
+      "retry": 2
+    },
+
+    {
+      "id": "design",
+      "prompt": "corpus:build-solution-designer",
+      "slots": {
+        "brief": "{{var:brief}}",
+        "research_dir": "{{var:docs_dir}}",
+        "concept": "{{stage:concept.file}}",
+        "outdir": "{{var:feature_folder}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": false }
+    },
+
+    {
+      "id": "plan",
+      "prompt": "corpus:sdd-planner",
+      "slots": {
+        "feature_folder": "{{var:feature_folder}}",
+        "repo_path": "{{var:repo_path}}",
+        "intake_report": "{{stage:design.file}}",
+        "clarifications": ""
+      },
+      "output": { "kind": "json", "schema": "corpus:sdd-planner.schema" },
+      "capability": { "read": true, "write": true, "net": false },
+      "retry": 2
+    },
+
+    {
+      "id": "implement",
+      "prompt": "corpus:sdd-task-executor",
+      "fanout": {
+        "over": "stage:plan.file#tasks",
+        "item_slot": "feature_folder",
+        "max_concurrent": 6
+      },
+      "slots": {
+        "feature_folder": "{{item:file}}",
+        "repo_path": "{{var:repo_path}}",
+        "default_branch": "{{var:default_branch}}",
+        "worktree_root": "{{run:dir}}/wt-{{item:index}}",
+        "verify_matrix": "{{var:verify}}",
+        "merge_lock": "{{run:dir}}/merge.lock"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": false }
+    },
+
+    {
+      "id": "assets",
+      "prompt": "corpus:build-asset-director",
+      "slots": {
+        "spec": "{{var:feature_folder}}/spec.md",
+        "repo": "{{var:repo_path}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": false }
+    },
+
+    {
+      "id": "bootstrap",
+      "prompt": "corpus:gate-bootstrap",
+      "slots": {
+        "repo": "{{var:repo_path}}",
+        "project": "{{var:project_dir}}",
+        "article": "{{var:project_dir}}",
+        "gates": "{{var:gates}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": true },
+      "gate": {
+        "verifier": "corpus:gate-runner",
+        "verifier_schema": "corpus:gate-runner.schema",
+        "fixer": "corpus:gate-fixer",
+        "max_rounds": 2
+      }
+    },
+
+    {
+      "id": "review",
+      "prompt": "corpus:sdd-code-reviewer",
+      "slots": {
+        "feature_folder": "{{var:feature_folder}}",
+        "repo_path": "{{var:repo_path}}",
+        "diff_base": "{{var:diff_base}}",
+        "guardrails": "{{var:brief}}"
+      },
+      "output": { "kind": "json", "schema": "corpus:sdd-code-reviewer.schema" },
+      "capability": { "read": true, "write": false, "net": false },
+      "retry": 2
+    },
+
+    {
+      "id": "fix",
+      "prompt": "corpus:sdd-fix-applier",
+      "slots": {
+        "feature_folder": "{{var:feature_folder}}",
+        "repo_path": "{{var:repo_path}}",
+        "blockers": "{{stage:review.file}}",
+        "verify_matrix": "{{var:verify}}",
+        "article": "{{var:project_dir}}",
+        "gates": "{{var:gates}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": false },
+      "resume": true,
+      "gate": {
+        "verifier": "corpus:gate-runner",
+        "verifier_schema": "corpus:gate-runner.schema",
+        "fixer": "corpus:gate-fixer",
+        "max_rounds": 2
+      }
+    }
+  ]
+}

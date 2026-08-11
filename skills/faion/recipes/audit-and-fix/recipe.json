@@ -1,0 +1,80 @@
+{
+  "recipe": 1,
+  "name": "audit-and-fix",
+  "description": "Audit an existing tree and repair only what the audit blocks: bootstrap the toolchain, run the project's own checks into a machine verdict, review the diff against its intent, then fix under a bounded gate.",
+  "pattern": "sequential",
+  "pattern_rationale": "Four ordered stages over one tree, each consuming the previous verdict; there is nothing to fan out over because an audit has one subject, and the fix's verifier loop is a bounded gate rather than a second pattern.",
+
+  "vars": {
+    "repo_path":    { "required": true, "description": "repo under audit" },
+    "project_dir":  { "required": true, "description": "directory the toolchain lives in and the check commands run against — a var, never a literal, so auditing a second service cannot bootstrap the first one's tree" },
+    "scope_folder": { "required": true, "description": "folder holding the intent the audit checks against (an SDD feature folder, a spec directory); the reviewer cites it and the fixer is bound by it" },
+    "diff_base":    { "required": true, "description": "diff base the audit reads the tree against (a sha, a tag, or a release ref)" },
+    "gates":        { "required": false, "default": "", "description": "check commands, one per line; {file} is replaced with the path under verification. Empty means the audit reports clean" },
+    "verify":       { "required": false, "default": "", "description": "verify commands the fixer runs over its own repair, one per line" },
+    "guardrails":   { "required": false, "default": "", "description": "project spec / constitution paths the reviewer cites blockers against" }
+  },
+
+  "stages": [
+    {
+      "id": "bootstrap",
+      "prompt": "corpus:gate-bootstrap",
+      "slots": {
+        "repo": "{{var:repo_path}}",
+        "project": "{{var:project_dir}}",
+        "gates": "{{var:gates}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": true },
+      "retry": 2
+    },
+
+    {
+      "id": "checks",
+      "prompt": "corpus:gate-runner",
+      "slots": {
+        "article": "{{var:project_dir}}",
+        "gates": "{{var:gates}}"
+      },
+      "output": { "kind": "json", "schema": "corpus:gate-runner.schema" },
+      "capability": { "read": true, "write": true, "net": false },
+      "retry": 2
+    },
+
+    {
+      "id": "review",
+      "prompt": "corpus:sdd-code-reviewer",
+      "slots": {
+        "feature_folder": "{{var:scope_folder}}",
+        "repo_path": "{{var:repo_path}}",
+        "diff_base": "{{var:diff_base}}",
+        "guardrails": "{{var:guardrails}}"
+      },
+      "output": { "kind": "json", "schema": "corpus:sdd-code-reviewer.schema" },
+      "capability": { "read": true, "write": false, "net": false },
+      "retry": 2
+    },
+
+    {
+      "id": "fix",
+      "prompt": "corpus:sdd-fix-applier",
+      "slots": {
+        "feature_folder": "{{var:scope_folder}}",
+        "repo_path": "{{var:repo_path}}",
+        "blockers": "{{stage:review.file}}",
+        "verify_matrix": "{{var:verify}}",
+        "article": "{{var:project_dir}}",
+        "gates": "{{var:gates}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": false },
+      "resume": true,
+      "gate": {
+        "verifier": "corpus:gate-runner",
+        "verifier_schema": "corpus:gate-runner.schema",
+        "fixer": "corpus:gate-fixer",
+        "max_rounds": 2
+      }
+    }
+  ]
+}

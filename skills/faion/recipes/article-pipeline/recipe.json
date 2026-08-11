@@ -1,0 +1,108 @@
+{
+  "recipe": 1,
+  "name": "article-pipeline",
+  "description": "Longform article production from an editorial brief: outline, parallel section drafting, assembly, a gated editorial pass, then translation and a language review of the translated file.",
+  "pattern": "sequential",
+  "pattern_rationale": "One artifact advanced by ordered stages — outline, draft, assemble, edit, translate, review the translation. The only concurrent work is per-section drafting inside a single fan-out stage, and the editorial gate is a bounded repair loop, so neither makes this hierarchical.",
+
+  "vars": {
+    "brief":       { "required": true,  "description": "path to the editorial brief every stage is grounded in" },
+    "article":     { "required": true,  "description": "target path of the finished source-language article" },
+    "language":    { "required": true,  "description": "target language of the translation (the pipeline always produces exactly one)" },
+    "target":      { "required": true,  "description": "target path of the translated article" },
+    "style_guide": { "required": false, "default": "", "description": "style guide the outliner and the editor enforce" },
+    "rules":       { "required": false, "default": "", "description": "language-rules file for the translator and the language reviewer" },
+    "gates":       { "required": false, "default": "", "description": "validation command templates, one per line; {file} is replaced with the file under verification. Empty means the gate reports clean" }
+  },
+
+  "stages": [
+    {
+      "id": "outline",
+      "prompt": "corpus:article-outliner",
+      "slots": {
+        "brief": "{{var:brief}}",
+        "style_guide": "{{var:style_guide}}"
+      },
+      "output": { "kind": "json", "schema": "corpus:article-outliner.schema" },
+      "capability": { "read": true, "write": false, "net": false },
+      "retry": 2
+    },
+
+    {
+      "id": "sections",
+      "prompt": "corpus:article-section-writer",
+      "fanout": {
+        "over": "stage:outline.file#sections",
+        "item_slot": "section",
+        "max_concurrent": 8
+      },
+      "slots": {
+        "section": "{{item:file}}",
+        "index": "{{item:index}}",
+        "outline": "{{stage:outline.file}}",
+        "brief": "{{var:brief}}",
+        "workdir": "{{run:dir}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": false }
+    },
+
+    {
+      "id": "assemble",
+      "prompt": "corpus:article-assembler",
+      "slots": {
+        "outline": "{{stage:outline.file}}",
+        "workdir": "{{run:dir}}",
+        "article": "{{var:article}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": false }
+    },
+
+    {
+      "id": "review",
+      "prompt": "corpus:article-editor-reviewer",
+      "slots": {
+        "article": "{{var:article}}",
+        "brief": "{{var:brief}}",
+        "style_guide": "{{var:style_guide}}",
+        "gates": "{{var:gates}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": false },
+      "resume": true,
+      "gate": {
+        "verifier": "corpus:gate-runner",
+        "verifier_schema": "corpus:gate-runner.schema",
+        "fixer": "corpus:gate-fixer",
+        "max_rounds": 2
+      }
+    },
+
+    {
+      "id": "translate",
+      "prompt": "corpus:article-translator",
+      "slots": {
+        "article": "{{var:article}}",
+        "language": "{{var:language}}",
+        "target": "{{var:target}}",
+        "rules": "{{var:rules}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": false }
+    },
+
+    {
+      "id": "language_review",
+      "prompt": "corpus:article-language-reviewer",
+      "slots": {
+        "article": "{{var:article}}",
+        "language": "{{var:language}}",
+        "target": "{{var:target}}",
+        "rules": "{{var:rules}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": false }
+    }
+  ]
+}

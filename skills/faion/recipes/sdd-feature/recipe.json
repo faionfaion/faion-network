@@ -1,0 +1,123 @@
+{
+  "recipe": 1,
+  "name": "sdd-feature",
+  "description": "One SDD feature from intake to reviewed, gated implementation: analyze, plan, bootstrap the toolchain, implement the planned tasks in parallel worktrees, review independently, fix what the review blocks.",
+  "pattern": "sequential",
+  "pattern_rationale": "One feature folder advanced by ordered stages, each consuming the previous stage's artifact; the only concurrency is the per-task implementation fan-out inside a single stage, and the review-fix loop is a bounded gate rather than a second pattern.",
+
+  "vars": {
+    "feature_folder": { "required": true, "description": "SDD feature folder holding spec.md / plan.md / TASK_*.md" },
+    "repo_path":      { "required": true, "description": "repo the feature is built in" },
+    "project_dir":    { "required": true, "description": "directory the toolchain lives in and the gate commands run against (backend/, the repo root, a service subdir) — a var so two features never bootstrap the same tree by accident" },
+    "default_branch": { "required": false, "default": "main", "description": "branch the executors merge into" },
+    "verify":         { "required": false, "default": "", "description": "verify commands for executors and the fix applier, one per line, run from the worktree root" },
+    "gates":          { "required": false, "default": "", "description": "gate commands, one per line; {file} is replaced with the path under verification. Empty means the gate reports clean" },
+    "guardrails":     { "required": false, "default": "", "description": "project spec / constitution paths handed to the analyzer and the reviewer" },
+    "clarifications": { "required": false, "default": "", "description": "answers to the intake's open questions, fed to the planner" },
+    "diff_base":      { "required": false, "default": "HEAD", "description": "diff base the reviewer reads the feature against" }
+  },
+
+  "stages": [
+    {
+      "id": "intake",
+      "prompt": "corpus:sdd-intake-analyzer",
+      "slots": {
+        "feature_folder": "{{var:feature_folder}}",
+        "repo_path": "{{var:repo_path}}",
+        "guardrails": "{{var:guardrails}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": false, "net": false },
+      "retry": 2
+    },
+
+    {
+      "id": "plan",
+      "prompt": "corpus:sdd-planner",
+      "slots": {
+        "feature_folder": "{{var:feature_folder}}",
+        "repo_path": "{{var:repo_path}}",
+        "intake_report": "{{stage:intake.file}}",
+        "clarifications": "{{var:clarifications}}"
+      },
+      "output": { "kind": "json", "schema": "corpus:sdd-planner.schema" },
+      "capability": { "read": true, "write": true, "net": false },
+      "retry": 2
+    },
+
+    {
+      "id": "bootstrap",
+      "prompt": "corpus:gate-bootstrap",
+      "slots": {
+        "repo": "{{var:repo_path}}",
+        "project": "{{var:project_dir}}",
+        "article": "{{var:project_dir}}",
+        "gates": "{{var:gates}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": true },
+      "gate": {
+        "verifier": "corpus:gate-runner",
+        "verifier_schema": "corpus:gate-runner.schema",
+        "fixer": "corpus:gate-fixer",
+        "max_rounds": 2
+      }
+    },
+
+    {
+      "id": "implement",
+      "prompt": "corpus:sdd-task-executor",
+      "fanout": {
+        "over": "stage:plan.file#tasks",
+        "item_slot": "feature_folder",
+        "max_concurrent": 4
+      },
+      "slots": {
+        "feature_folder": "{{item:file}}",
+        "repo_path": "{{var:repo_path}}",
+        "default_branch": "{{var:default_branch}}",
+        "worktree_root": "{{run:dir}}/wt-{{item:index}}",
+        "verify_matrix": "{{var:verify}}",
+        "merge_lock": "{{run:dir}}/merge.lock"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": false }
+    },
+
+    {
+      "id": "review",
+      "prompt": "corpus:sdd-code-reviewer",
+      "slots": {
+        "feature_folder": "{{var:feature_folder}}",
+        "repo_path": "{{var:repo_path}}",
+        "diff_base": "{{var:diff_base}}",
+        "guardrails": "{{var:guardrails}}"
+      },
+      "output": { "kind": "json", "schema": "corpus:sdd-code-reviewer.schema" },
+      "capability": { "read": true, "write": false, "net": false },
+      "retry": 2
+    },
+
+    {
+      "id": "fix",
+      "prompt": "corpus:sdd-fix-applier",
+      "slots": {
+        "feature_folder": "{{var:feature_folder}}",
+        "repo_path": "{{var:repo_path}}",
+        "blockers": "{{stage:review.file}}",
+        "verify_matrix": "{{var:verify}}",
+        "article": "{{var:project_dir}}",
+        "gates": "{{var:gates}}"
+      },
+      "output": { "kind": "text" },
+      "capability": { "read": true, "write": true, "net": false },
+      "resume": true,
+      "gate": {
+        "verifier": "corpus:gate-runner",
+        "verifier_schema": "corpus:gate-runner.schema",
+        "fixer": "corpus:gate-fixer",
+        "max_rounds": 2
+      }
+    }
+  ]
+}

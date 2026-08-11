@@ -1,0 +1,42 @@
+# recipes/
+
+Workflow recipes: platform-neutral F027 pipelines an agent picks from and `faion workflow build` compiles into a Claude Dynamic Workflow and a Codex chain. The agent chooses the shape; the CLI has no model and must never guess one.
+
+**Card-first rule.** The card is the contract. An agent must be able to pick a recipe and invoke it having read `<name>.card.md` and nothing else — never open `recipe.json` to work out what to pass. Every `{{var:…}}` the recipe declares is documented in the card's Inputs; if the card and the recipe disagree, the card is the bug report.
+
+## Catalog
+
+| Recipe | Tier | Stages | Shape |
+|--------|------|--------|-------|
+| `sdd-feature/` | solo | 6 | intake → plan → bootstrap gate → per-task fan-out over worktrees → review → gated fix. One written feature, built. |
+| `research-first-build/` | pro | 11 | three research catalogs → quantified concept pick → design → plan → fan-out → assets → bootstrap gate → review → gated fix. Decides what to build before building it. |
+| `article-pipeline/` | pro | 6 | outline → per-section fan-out → assemble → gated editorial pass → translate → language review. Content only, never code. |
+| `audit-and-fix/` | solo | 4 | bootstrap → machine checks → cited review → gated fix. No fan-out; the smallest recipe here. |
+
+Four different stage shapes on purpose: the catalog teaches by contrast, so an agent picking between them is comparing pipelines, not reading four spellings of one.
+
+## Layout
+
+```
+recipes/<name>/
+├── meta.json          # tier gate for the whole recipe dir
+├── recipe.json        # the F027 recipe — what the CLI compiles
+└── <name>.card.md     # the contract, six ordered sections, ≤40 lines
+```
+
+## Rules
+
+- Card shape, fixed order, nothing added or dropped: `# <name>` · `## Purpose` · `## Invoke` · `## Inputs` · `## Outputs` · `## When NOT to use` · `## Cost`.
+- Only `corpus:` fragment references. A shipped recipe that composes a user-space fragment resolves on the author's machine and nowhere else.
+- Fragment tier ≤ recipe tier. The gate trio lives in `fragments/gate/` at tier solo precisely so a solo recipe can gate.
+- A `bootstrap` stage wherever the pipeline runs tests. The g3/g4 pipelines burned fix rounds on a missing venv; an environment is a stage, not an assumption.
+- Service identity and paths are vars, never literals — two runs of the same recipe must not collide on a service name, a port or a state directory.
+- Validate before shipping: `python3 scripts/validate-recipes.py` (card sections, var coverage, fragment resolution, and `faion workflow validate` on every recipe).
+
+## Gotchas
+
+- `vfs-pack` ships `.md` and `.xml` only, so the **cards ship in the CLI blob but `recipe.json` does not** — same gap F029 has with `scripts/*.py`. Until the packer's allowlist widens, a recipe body reaches a user through the repo, not the binary.
+- The gate verifier contract is `{clean, findings}` — the emitted artifact branches on `verdict.clean`. Any verifier fragment other than `corpus:gate-runner` must return that shape.
+- `corpus:gate-runner` and `corpus:gate-fixer` name their subject slot `article` for historical reasons; in a code pipeline pass the directory under verification in that slot.
+- Fan-out only ranges over an earlier stage's JSON array (`stage:<id>.file#<path>`) — there is no fan-out over a var, which is why `research-first-build` runs its three axes as three stages of one fragment.
+- Tier comes from `<name>/meta.json`; `scripts/regen-tier-manifest.py` walks it alongside knowledge, playbooks, fragments and tools.
