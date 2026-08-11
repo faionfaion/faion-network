@@ -7,7 +7,10 @@ Walks `skills/faion/knowledge/<domain>/<slug>/meta.json`,
 meta.json per fragment library directory gates every fragment file
 beneath it — the same directory-coverage rule vfs-pack applies) and
 `skills/faion/tools/<pack>/meta.json` (F029: one meta.json per tool
-pack gates its scripts and cards, same directory-coverage rule).
+pack gates its scripts and cards, same directory-coverage rule) and
+`skills/faion/lexicon/meta.json` (F031: one meta.json gates the UA->EN
+query lexicon; it is tier `free` on purpose - a paid lexicon would mean
+free users cannot search in their own language).
 
 The manifest `notes` field is never dropped: a version bump keeps the
 previous note verbatim behind a `Prior vN:` prefix.
@@ -28,14 +31,16 @@ KNOWLEDGE = ROOT / "skills" / "faion" / "knowledge"
 PLAYBOOKS = ROOT / "skills" / "faion" / "playbooks"
 FRAGMENTS = ROOT / "skills" / "faion" / "fragments"
 TOOLS = ROOT / "skills" / "faion" / "tools"
+LEXICON = ROOT / "skills" / "faion" / "lexicon"
 BACKUP = ROOT / "skills" / "tier-manifest.json.f067-pre-bak"
 
 TIERS = ("free", "solo", "pro", "geek")
 TODAY = "2026-08-11"
-NEW_VERSION = 10
+NEW_VERSION = 11
 NOTES_HEAD = (
-    "v10: F029 — tool packs (skills/faion/tools/<pack>/meta.json, one "
-    "entry gating the pack's scripts/ and tools/ cards) join the manifest."
+    "v11: F031 — the UA→EN query lexicon "
+    "(skills/faion/lexicon/meta.json, one entry gating ua-en.tsv and "
+    "ua-stopwords.txt) joins the manifest at tier free."
 )
 
 
@@ -83,6 +88,7 @@ def collect_entries() -> tuple[list[dict], dict]:
         "meta_playbooks": 0,
         "meta_fragments": 0,
         "meta_tools": 0,
+        "meta_lexicon": 0,
         "skipped": 0,
     }
 
@@ -126,6 +132,16 @@ def collect_entries() -> tuple[list[dict], dict]:
             else:
                 stats["skipped"] += 1
 
+    # 5. meta.json under lexicon (F031: one entry gates the query lexicon)
+    if LEXICON.exists():
+        for meta in LEXICON.rglob("meta.json"):
+            e = entry_from_meta(meta)
+            if e:
+                entries.append(e)
+                stats["meta_lexicon"] += 1
+            else:
+                stats["skipped"] += 1
+
     entries.sort(key=lambda e: (e["tier"] or "", e["path"]))
     return entries, stats
 
@@ -159,6 +175,7 @@ def main() -> int:
         f"meta_playbooks={stats['meta_playbooks']}, "
         f"meta_fragments={stats['meta_fragments']}, "
         f"meta_tools={stats['meta_tools']}, "
+        f"meta_lexicon={stats['meta_lexicon']}, "
         f"skipped={stats['skipped']})"
     )
     print(summary)

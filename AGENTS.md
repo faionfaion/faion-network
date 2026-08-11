@@ -6,7 +6,7 @@ Methodology corpus and Claude Code skill base for the `faion` CLI. Auto-loaded i
 |------|-------|
 | Repo | `faionfaion/faion-network` |
 | Corpus | 2,637 methodologies over 22 domains, 455 playbooks, 6 workflows, 6 skill dirs |
-| Gating | `skills/tier-manifest.json` v10, 3,098 entries — authoritative path-to-tier map |
+| Gating | `skills/tier-manifest.json` v11, 3,099 entries — authoritative path-to-tier map |
 | Tiers | free / solo / pro / geek (cumulative) |
 | Distribution | Read by `faion-cli` at runtime; read by `faion-net-be` on disk via `KNOWLEDGE_ROOT` + `TIER_MANIFEST_PATH`; not bundled into the public `faion` plugin |
 | Ecosystem | `../AGENTS.md` — full stack and runtime data flow |
