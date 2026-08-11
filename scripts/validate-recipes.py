@@ -16,6 +16,20 @@ agent cannot invoke. This validator fails on:
   * a fragment reference that resolves to no file in the corpus
   * a recipe `faion workflow validate` refuses
 
+It also gates the fragment library on one rule that is not about
+recipes at all, and belongs here because this is the script that reads
+every fragment: **a research-role fragment must include the source
+discipline block.** faion never goes to the internet — the calling
+agent does — so the corpus's job is to demand and shape the fetch. A
+research prompt that does not carry the sourcing bar asks for less
+than an agent with no prompt at all, which is measured, not
+hypothetical (2026-08-11: 14 competitors and 0 URLs against 31 and
+108). A fragment is a research role when its opening role line names
+one, or when it lives under `fragments/research/`; it satisfies the
+rule by containing `{{include:corpus:research-source-discipline}}`.
+The block itself must keep its four anchors, so the include can never
+degrade into a pointer at an empty file.
+
 The `faion` binary is located via $FAION_BIN, then ../faion-cli/bin/faion,
 then PATH. When it is absent the compile check is reported as skipped
 (the corpus is validated far more often than the CLI is built);
@@ -26,8 +40,9 @@ Usage:
     python3 scripts/validate-recipes.py <dir>...   # named recipe dirs
     python3 scripts/validate-recipes.py --strict   # absent faion binary is fatal
 
-Exit: 0 all recipes valid · 1 at least one finding · 2 the validator
-could not run (no recipes directory, unreadable input).
+Exit: 0 all recipes valid and the fragment library holds · 1 at least
+one finding · 2 the validator could not run (no recipes directory,
+unreadable input).
 """
 import argparse
 import json
@@ -48,6 +63,38 @@ CARD_SECTIONS = ("Purpose", "Invoke", "Inputs", "Outputs", "When NOT to use", "C
 MAX_CARD_LINES = 40
 
 VAR_REF = re.compile(r"\{\{var:([a-zA-Z0-9_]+)\}\}")
+
+# The shared sourcing block, and the include that pulls it in.
+DISCIPLINE = "research-source-discipline"
+DISCIPLINE_INCLUDE = "{{include:corpus:" + DISCIPLINE + "}}"
+
+# A fragment's opening role line: "You are a|an|the <role>." The role
+# noun is what decides, not the paragraph — "You are the concept
+# synthesizer. You read the research catalogs" is not a research role,
+# and an SDD intake *analyzer* is not an *analyst*.
+ROLE_LINE = re.compile(r"^You are (?:an?|the) ([^.]*)\.", re.MULTILINE)
+RESEARCH_ROLE = re.compile(
+    r"\b(research|researcher|analyst|market|competitor|competitive|"
+    r"evidence|source)\b", re.IGNORECASE)
+
+# What the discipline block must actually say, so that including it
+# means something. One probe per requirement, deliberately loose about
+# wording and strict about the requirement existing at all. Probed
+# against the block with its whitespace collapsed, because a fragment
+# is hard-wrapped at ~68 columns and a requirement does not stop being
+# stated because it fell across a line break.
+DISCIPLINE_ANCHORS = (
+    ("a URL and an access date on every load-bearing claim",
+     re.compile(r"URL and the date you accessed", re.IGNORECASE)),
+    ("the H/M/L confidence definitions",
+     re.compile(r"- H —.*?- M —.*?- L —")),
+    ("the no-reliable-figure path",
+     re.compile(r"no reliable public figure found", re.IGNORECASE)),
+    ("the recalled-not-verified label",
+     re.compile(r"recalled from training, not re-verified", re.IGNORECASE)),
+    ("faion fact add provenance",
+     re.compile(r"faion fact add .*?--source", re.IGNORECASE)),
+)
 
 
 def find_faion() -> str | None:
@@ -129,6 +176,47 @@ def check_card(name: str, card: Path, declared: set[str], referenced: set[str],
     for var in sorted(declared | referenced):
         if f"`{var}`" not in inputs:
             fail(f"{card.name}: var '{var}' is not documented in ## Inputs")
+
+
+def is_research_role(path: Path, body: str) -> bool:
+    """Whether this fragment claims a role that goes and sources things."""
+    if path.parent.name == "research":
+        return True
+    match = ROLE_LINE.search(body)
+    return bool(match and RESEARCH_ROLE.search(match.group(1)))
+
+
+def check_fragments() -> list[str]:
+    """Every research-role fragment carries the source discipline block."""
+    findings: list[str] = []
+    if not FRAGMENTS.is_dir():
+        return findings
+
+    block = FRAGMENTS / "research" / f"{DISCIPLINE}.md"
+    if not block.is_file():
+        return [f"fragments: {DISCIPLINE}.md is missing — every research "
+                "role includes it, so its absence breaks them all"]
+
+    flat = " ".join(block.read_text(encoding="utf-8").split())
+    for what, probe in DISCIPLINE_ANCHORS:
+        if not probe.search(flat):
+            findings.append(f"fragments: {DISCIPLINE}.md does not state "
+                            f"{what} — the block every research role "
+                            "includes must carry the bar, not point at it")
+
+    for path in sorted(FRAGMENTS.rglob("*.md")):
+        if path.name.endswith(".schema.md") or path == block:
+            continue
+        body = path.read_text(encoding="utf-8")
+        if not is_research_role(path, body):
+            continue
+        if DISCIPLINE_INCLUDE not in body:
+            rel = path.relative_to(FRAGMENTS)
+            findings.append(
+                f"fragments: {rel} is a research role and does not include "
+                f"'{DISCIPLINE_INCLUDE}' — the corpus instructs the fetch, "
+                "it never substitutes for it")
+    return findings
 
 
 def check_recipe(directory: Path, faion: str | None, strict: bool) -> list[str]:
@@ -233,10 +321,19 @@ def main() -> int:
             return 2
         findings += check_recipe(directory, faion, args.strict)
 
+    ok = len(targets) - len({f.split(':', 1)[0] for f in findings})
+
+    # Library-wide, so it runs even when named recipe dirs were given:
+    # a research fragment that drops the sourcing block breaks every
+    # recipe composing it, including the ones not named on this line.
+    fragment_findings = check_fragments()
+    findings += fragment_findings
+
     for finding in findings:
         print(f"FAIL {finding}")
-    ok = len(targets) - len({f.split(':', 1)[0] for f in findings})
-    print(f"summary: {ok}/{len(targets)} recipes pass, {len(findings)} finding(s)")
+    print(f"summary: {ok}/{len(targets)} recipes pass, "
+          f"{len(fragment_findings)} fragment finding(s), "
+          f"{len(findings)} finding(s)")
     return 1 if findings else 0
 
 
