@@ -1,12 +1,14 @@
 ---
-status: active
+status: retired
 audience: both
 owner: ruslan
-last_verified: 2026-05-02
-applies_to: skills/faion/playbooks/
+last_verified: 2026-08-13
+applies_to: none — the entity this spec describes no longer exists
 ---
 
-# Tier Playbooks Conventions
+# Tier Playbooks Conventions (retired)
+
+**Retired 2026-08-13 (P2.3).** The `skills/faion/playbooks/<tier>/<group>/<slug>/playbook.md` entity this spec describes was deleted: 120 files nothing read, in a layout the corpus left behind at F-067. The live entity is the goal-dir playbook at `skills/faion/playbooks/<goal>/<slug>/` — `AGENTS.md` + `meta.json` + `content/01-playbook.xml`, tier carried in `meta.json`, indexed by `scripts/regen-playbook-index.py`. Nothing below is current; it is kept because it is the record of how the deleted files were authored.
 
 Authoritative spec for the **tier playbook** entity under `skills/faion/playbooks/<tier>/<group>/<slug>/`.
 
