@@ -40,17 +40,21 @@ BACKUP = ROOT / "skills" / "tier-manifest.json.f067-pre-bak"
 
 TIERS = ("free", "solo", "pro", "geek")
 TODAY = "2026-08-13"
-NEW_VERSION = 13
+NEW_VERSION = 14
 NOTES_HEAD = (
-    "v13: P1.5 — the whole composable layer moves to tier free. All four "
-    "recipes, all five paid fragment packs (article, build, gate, "
-    "research, sdd) and the research tool pack the research fragments "
-    "invoke are now free; 10 entries retiered, none added or removed. "
-    "The pipeline is the mechanism that makes an agent's output correct, "
-    "and gating the mechanism does not sell tiers — it makes free-tier "
-    "output worse. What a tier buys is the content a pipeline consumes. "
-    "Same argument F031 made for the UA->EN lexicon."
+    "v14: P2.3 — the dead `playbook_root` / `playbook_paths` keys are "
+    "dropped from every tier block. They encoded the pre-F-067 "
+    "`playbooks/<tier>/<group>/<slug>` layout, which was deleted; no "
+    "code in faion-cli or faion-net-be ever read either key (the "
+    "backend reads only `preview_percentage` out of a tier block, and "
+    "resolves tier from `entries` / meta.json), so they were a stale "
+    "map that could only mislead the next reader. `entries` is "
+    "unchanged and remains the single source of path-to-tier truth."
 )
+
+# Keys under `tiers.<tier>` that no longer describe anything on disk.
+# `entries` is the path-to-tier map; these were a second, stale copy.
+DEAD_TIER_KEYS = ("playbook_root", "playbook_paths")
 
 
 def build_notes(current_notes: str, current_version) -> str:
@@ -182,6 +186,10 @@ def main() -> int:
     entries, stats = collect_entries()
 
     new_manifest = dict(manifest)
+    new_manifest["tiers"] = {
+        tier: {k: v for k, v in (block or {}).items() if k not in DEAD_TIER_KEYS}
+        for tier, block in (manifest.get("tiers") or {}).items()
+    }
     new_manifest["entries"] = entries
     new_manifest["total"] = len(entries)
     new_manifest["last_synced"] = TODAY
