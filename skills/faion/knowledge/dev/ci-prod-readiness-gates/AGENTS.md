@@ -34,12 +34,6 @@
 | Perf budget for the surface | JSON | ops decision |
 | Dep-vuln tool (Snyk/Dependabot/Trivy) | config | platform |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| [[software-developer]] | Operating context for PR-level concerns |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

@@ -31,12 +31,6 @@
 | `Document folder/URL` | input docs | raw corpus |
 | `OPENAI_API_KEY or equivalent` | embedding model creds | secret |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|---|---|
-| [[rag-engineer-basics]] | RAG fundamentals. |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

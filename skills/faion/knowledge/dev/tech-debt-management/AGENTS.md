@@ -79,9 +79,9 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[code-quality/debt-scoring-rubric]] — upstream input.
+- [[debt-scoring-rubric]] — upstream input.
 - [[ci-quality-gate-design]] — gate the fix joins.
-- [[code-quality/framework-decomposition-patterns]] — common Boy-Scout move.
+- [[framework-decomposition-patterns]] — common Boy-Scout move.
 
 ## Decision tree
 

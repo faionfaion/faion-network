@@ -85,7 +85,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[tts-basics]] — single-call layer this service builds on.
 - [[voice-implementation]] — duplex voice agent that consumes TTSService streaming output.
-- [[multimodal-ai/voice-basics]] — turn-based STT→LLM→TTS pipeline.
+- [[voice-basics]] — turn-based STT→LLM→TTS pipeline.
 
 ## Decision tree
 

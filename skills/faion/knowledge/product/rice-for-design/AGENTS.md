@@ -75,7 +75,6 @@
 ## Related
 
 - [[feature-prioritization-rice]]
-- [[ui-designer]]
 
 ## Decision tree
 

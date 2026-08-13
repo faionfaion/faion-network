@@ -36,12 +36,6 @@
 | Acceptable staleness (TTL) | product decision | PM |
 | Cache hit-rate floor | telemetry SLO | SRE |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| `[[python-developer]]` | host language conventions |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

@@ -41,7 +41,7 @@
 | Methodology | Why |
 |-------------|-----|
 | [[feature-flags]] | Wave 2 dual-run depends on flag-gated rollout. |
-| [[trunk-based-development]] | Waves ship behind flags, not long-lived branches. |
+| [[trunk-based-dev-principles]] | Waves ship behind flags, not long-lived branches. |
 
 ## Content (load on demand)
 
@@ -80,8 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Related
 
 - [[feature-flags]]
-- [[trunk-based-development]]
-- [[technical-debt]]
+- [[trunk-based-dev-principles]]
+- [[technical-debt-management]]
 
 ## Decision tree
 

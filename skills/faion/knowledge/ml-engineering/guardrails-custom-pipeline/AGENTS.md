@@ -78,7 +78,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[guardrails-concepts]] — plan that picks `custom` for the rail
 - [[guardrails-testing]] — adversarial harness this pipeline must survive
-- [[prompt-injection-defense]] — pattern library this pipeline imports
 
 ## Decision tree
 

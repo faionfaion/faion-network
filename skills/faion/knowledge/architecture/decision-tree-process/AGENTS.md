@@ -38,8 +38,8 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[solo/dev/software-architect/trade-off-decision-matrix]] | Phase 3 uses the weighted decision matrix. |
-| [[solo/dev/software-architect/trade-off-decision-methods]] | Phase 3 may invoke ATAM / cost-of-delay if the matrix is insufficient. |
+| [[trade-off-decision-matrix]] | Phase 3 uses the weighted decision matrix. |
+| [[trade-off-decision-methods]] | Phase 3 may invoke ATAM / cost-of-delay if the matrix is insufficient. |
 
 ## Content (load on demand)
 
@@ -81,10 +81,10 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[solo/dev/software-architect/trade-off-decision-matrix]]
-- [[solo/dev/software-architect/trade-off-decision-methods]]
-- [[solo/dev/software-architect/decision-tree-tech-stack]]
-- [[solo/dev/software-architect/decision-tree-cloud-provider]]
+- [[trade-off-decision-matrix]]
+- [[trade-off-decision-methods]]
+- [[decision-tree-tech-stack]]
+- [[decision-tree-cloud-provider]]
 
 ## Decision tree
 

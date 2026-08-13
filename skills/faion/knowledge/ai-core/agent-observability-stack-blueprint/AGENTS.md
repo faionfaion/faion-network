@@ -30,13 +30,6 @@
 | Cost ceiling | USD / month | finance |
 | Eval ground-truth set ≥30 examples | JSONL | eval owner |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| `[[llm-integration]]` | Provider SDK knowledge |
-| `[[ai-agents]]` | Trajectory definition |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

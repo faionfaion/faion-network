@@ -38,8 +38,8 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[solo/dev/software-architect/trade-off-decision-matrix]] | Weighted matrix is the default method. |
-| [[solo/dev/software-architect/quality-attributes]] | ATAM consumes the QA scenario set. |
+| [[trade-off-decision-matrix]] | Weighted matrix is the default method. |
+| [[quality-attributes]] | ATAM consumes the QA scenario set. |
 
 ## Content (load on demand)
 
@@ -75,10 +75,10 @@
 
 ## Related
 
-- [[solo/dev/software-architect/trade-off-decision-matrix]]
-- [[solo/dev/software-architect/trade-off-quality-attributes]]
-- [[solo/dev/software-architect/quality-attributes]]
-- [[solo/dev/software-architect/decision-tree-process]]
+- [[trade-off-decision-matrix]]
+- [[trade-off-quality-attributes]]
+- [[quality-attributes]]
+- [[decision-tree-process]]
 
 ## Decision tree
 

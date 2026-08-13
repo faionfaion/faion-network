@@ -75,7 +75,7 @@
 ## Related
 
 - [[ops-churn-prevention]]
-- [[cohort-basics]]
+- [[cohort-implementation]]
 - [[retention-metrics]]
 
 ## Decision tree

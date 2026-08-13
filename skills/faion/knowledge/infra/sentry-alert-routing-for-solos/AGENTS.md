@@ -75,7 +75,7 @@
 
 ## Related
 
-- [[docker-compose-devops]]
+- [[docker-compose]]
 - [[solo-deploy-checklist]]
 
 ## Decision tree

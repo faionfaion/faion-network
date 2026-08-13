@@ -38,7 +38,7 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[solo/dev/software-architect/trade-off-decision-matrix]] | Scoring uses the weighted matrix shape. |
+| [[trade-off-decision-matrix]] | Scoring uses the weighted matrix shape. |
 
 ## Content (load on demand)
 
@@ -76,9 +76,9 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[solo/dev/software-architect/trade-off-decision-matrix]]
-- [[solo/dev/software-architect/decision-tree-process]]
-- [[solo/dev/software-architect/decision-tree-tech-stack]]
+- [[trade-off-decision-matrix]]
+- [[decision-tree-process]]
+- [[decision-tree-tech-stack]]
 
 ## Decision tree
 

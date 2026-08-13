@@ -31,10 +31,6 @@
 | `SUT output sample` | JSONL or md | from system |
 | `Optional ground-truth` | if available | labeling |
 
-## Assumes Loaded
-
-none
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

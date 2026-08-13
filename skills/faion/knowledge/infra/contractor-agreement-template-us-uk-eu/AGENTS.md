@@ -81,8 +81,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[contractor-hiring-process]]
-- [[vendor-management]]
+- [[vendor-management-pm]]
 - [[ops-legal-compliance-checklist]]
 
 ## Decision tree

@@ -79,7 +79,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[compute-substrate-decision-tree]] parent skill: `pro/infra/devops-engineer/`
 - [[architecture-decision-records]]
-- [[capacity-planning-pre-launch]]
 
 ## Decision tree
 

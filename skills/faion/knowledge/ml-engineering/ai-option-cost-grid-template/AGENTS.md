@@ -71,7 +71,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[rag-architecture]] · [[embedding-cost-optimization]] · [[ml-engineering/eval-set-design]]
+- [[rag-architecture]] · [[embedding-cost-optimization]] · [[ai-feature-eval-set-design]]
 
 ## Decision tree
 

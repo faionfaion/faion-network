@@ -79,8 +79,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[project-manager]]
-- [[pm-traditional]]
 - [[follow-the-sun-handoff-protocol]]
 
 ## Decision tree

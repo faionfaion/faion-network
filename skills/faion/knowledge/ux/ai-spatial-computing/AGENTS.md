@@ -39,7 +39,7 @@
 | Methodology | Why |
 |-------------|-----|
 | [[multimodal-vui-design]] | Voice + visual fusion baseline |
-| [[wcag-22-checklist]] | A11y for non-traditional surfaces |
+| [[wcag-22-compliance]] | A11y for non-traditional surfaces |
 
 ## Content (load on demand)
 

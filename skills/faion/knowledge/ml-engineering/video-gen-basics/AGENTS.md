@@ -81,7 +81,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[video-gen-tools]] — production service with multi-provider fallback + retry.
 - [[img-gen-basics]] — image generator providing image-to-video source frames.
-- [[multimodal-ai/vision-applications]] — verify generated frames against the brief.
+- [[vision-applications]] — verify generated frames against the brief.
 
 ## Decision tree
 

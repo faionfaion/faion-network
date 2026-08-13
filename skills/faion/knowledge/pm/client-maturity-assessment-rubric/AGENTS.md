@@ -34,12 +34,6 @@
 | Write-access to the artefact store | repo / wiki / decision log | infra |
 | Named accountable owner (handle / email / role) | string | engagement RACI |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| [[project-manager]] | Parent role skill — provides operating context for any PM artefact. |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
@@ -76,7 +70,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[project-manager]]
 - [[change-request-pricing-rubric]]
 - [[client-status-email-template-agency]]
 - upstream playbook: `role-project-manager/Client onboarding into our delivery cadence (two weeks)`

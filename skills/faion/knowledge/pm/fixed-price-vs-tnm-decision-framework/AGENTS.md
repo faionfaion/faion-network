@@ -77,8 +77,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[project-manager]]
-- [[pm-traditional]]
 - [[fixed-price-three-point-estimation]]
 
 ## Decision tree

@@ -79,7 +79,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[cost-anomaly-runbook]]
 - [[cost-model-spreadsheet-template]]
-- [[finops-baseline]]
 
 ## Decision tree
 

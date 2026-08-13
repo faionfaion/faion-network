@@ -34,13 +34,6 @@
 | ASR model version pin | string | provider release notes |
 | LLM-judge rubric | text | this methodology template |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| [[testing-developer]] | CI fixture wiring + pytest harness conventions |
-| [[llm-integration]] | LLM-judge call patterns and rate-limit discipline |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

@@ -76,7 +76,7 @@
 ## Related
 
 - [[on-page-seo-checklist-2026]]
-- [[seo-manager/seo-techniques]]
+- [[seo-techniques]]
 
 ## Decision tree
 

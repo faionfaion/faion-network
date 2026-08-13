@@ -34,10 +34,6 @@
 | Junior context | tenure + AI tools used | team page |
 | Project conventions | CONTRIBUTING.md / lint rules | repo |
 
-## Assumes Loaded
-
-none — methodology is self-contained.
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
@@ -73,7 +69,6 @@ none — methodology is self-contained.
 
 ## Related
 
-- [[junior-ai-pairing-protocol]]
 - [[java-spring-boot]]
 
 ## Decision tree

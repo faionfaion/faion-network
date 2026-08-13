@@ -80,7 +80,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Related
 
 - [[ads-google-keywords]]
-- [[ads-google-creative]]
 - [[ads-conversion-tracking]]
 - [[google-ads-optimization]]
 

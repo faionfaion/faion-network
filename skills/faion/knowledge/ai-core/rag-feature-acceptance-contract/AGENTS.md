@@ -87,9 +87,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[rag-evaluation-frameworks]] — vocabulary the contract speaks
-- [[golden-dataset-construction]] — the eval set referenced by the contract
-- [[llm-as-judge-design]] — calibration discipline for rubric judges
+- [[rag-evaluation]] — vocabulary the contract speaks
+- [[golden-set-curation-and-maintenance]] — the eval set referenced by the contract
 - [[retrieval-drift-alerting-recipe]] — runtime monitor that fires the recontract trigger
 
 ## Decision tree

@@ -31,12 +31,6 @@
 | Owner for action items | handle / email | team roster |
 | Previous week's action-item log | Markdown | review owner |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| `[[llm-cost-attribution-model]]` | attribution to surface / model is already in place |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
@@ -74,7 +68,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[llm-cost-attribution-model]] — upstream attribution method.
 - [[fine-tune-vs-prompt-decision-tree]] — adjacent decision when costs blow.
 - [[vector-db-tuning-runbook]] — adjacent when cost driver is retrieval.
 

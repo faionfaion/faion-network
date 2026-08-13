@@ -20,7 +20,7 @@
 - The parent genuinely needs the full evidence pasted into its context (defeats the firewall).
 - The work is small enough that 1-2 direct tool calls cost less than the subagent overhead.
 - Latency budget cannot absorb a subagent round-trip.
-- For TRUE parallelism gains see [[ai-agents/handoff-id-payload]] instead.
+- For TRUE parallelism gains see [[handoff-id-payload]] instead.
 
 ## Prerequisites
 

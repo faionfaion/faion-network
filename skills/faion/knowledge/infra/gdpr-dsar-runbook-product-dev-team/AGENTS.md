@@ -75,7 +75,6 @@
 
 - parent skill: `geek/infra/`
 - `[[banking-core-data-residency-rules]]`
-- `[[data-retention-policy-template]]`
 
 ## Decision tree
 

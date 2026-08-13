@@ -36,7 +36,6 @@
 | Methodology | Why |
 |---|---|
 | [[langchain-basics]] | LCEL knowledge. |
-| [[rag-engineer-basics]] | Domain context on retrieval evals. |
 
 ## Content (load on demand)
 

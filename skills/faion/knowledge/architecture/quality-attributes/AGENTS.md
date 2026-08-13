@@ -38,8 +38,8 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[solo/dev/software-architect/performance-architecture]] | Latency / throughput SLOs land here as performance scenarios. |
-| [[solo/dev/software-architect/security-architecture]] | Security NFRs land here as security scenarios. |
+| [[performance-architecture]] | Latency / throughput SLOs land here as performance scenarios. |
+| [[security-architecture]] | Security NFRs land here as security scenarios. |
 
 ## Content (load on demand)
 
@@ -77,10 +77,10 @@
 
 ## Related
 
-- [[solo/dev/software-architect/performance-architecture]]
-- [[solo/dev/software-architect/security-architecture]]
-- [[solo/dev/software-architect/trade-off-quality-attributes]]
-- [[solo/dev/software-architect/trade-off-decision-matrix]]
+- [[performance-architecture]]
+- [[security-architecture]]
+- [[trade-off-quality-attributes]]
+- [[trade-off-decision-matrix]]
 
 ## Decision tree
 

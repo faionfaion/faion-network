@@ -38,7 +38,7 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[solo/dev/software-architect/patterns-overview]] | Selection between pattern families starts here. |
+| [[patterns-overview]] | Selection between pattern families starts here. |
 
 ## Content (load on demand)
 
@@ -74,9 +74,9 @@
 
 ## Related
 
-- [[solo/dev/software-architect/patterns-overview]]
-- [[solo/dev/software-architect/system-design-process]]
-- [[solo/dev/software-architect/quality-attributes]]
+- [[patterns-overview]]
+- [[system-design-process]]
+- [[quality-attributes]]
 
 ## Decision tree
 

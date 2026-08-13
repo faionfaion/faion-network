@@ -78,9 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[kubernetes-resources]]
 - [[helm-basics]]
-- [[deploy-blue-green-canary]]
+- [[release-strategy-canary-blue-green-feature-flag]]
 
 ## Decision tree
 

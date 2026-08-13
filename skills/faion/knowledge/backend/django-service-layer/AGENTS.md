@@ -38,7 +38,7 @@
 | Methodology | Why |
 |-------------|-----|
 | `[[django-selectors]]` | The read-side counterpart; this methodology must coexist with it. |
-| `[[django-pytest-setup]]` | The pytest runner that exercises the extracted services. |
+| `[[django-pytest]]` | The pytest runner that exercises the extracted services. |
 | `[[django-imports]]` | Settles the import ordering used inside `services.py` modules. |
 
 ## Content (load on demand)
@@ -80,7 +80,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - parent skill: `free/dev/python-developer/`
 - `[[django-selectors]]` — the read-side sister
-- `[[django-pytest-setup]]` — exercises extracted services
+- `[[django-pytest]]` — exercises extracted services
 - `[[django-api]]` — thins the views that consume the services
 - HackSoftware Django Styleguide §services — canonical external source.
 

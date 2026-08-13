@@ -79,7 +79,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[code-quality/tech-debt-management]] — framing for "AI deferred this" detection.
+- [[tech-debt-management]] — framing for "AI deferred this" detection.
 - [[bug-pattern-to-lint-rule-conversion]] — convert recurring AI bugs into deterministic detectors.
 - external: [GitHub Copilot review-resistance study (2024)](https://arxiv.org/abs/2404.10543) · [Stanford "Do Users Write More Insecure Code with AI Assistants?" (Perry et al., 2023)](https://arxiv.org/abs/2211.03622) · [Snyk supply-chain "slopsquatting" advisories (2025)]
 

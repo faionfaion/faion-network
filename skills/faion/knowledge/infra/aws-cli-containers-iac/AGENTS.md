@@ -71,7 +71,6 @@
 
 - [[aws-cfn-terraform-templates]]
 - [[aws-cli-compute]]
-- [[aws-foundations]]
 
 ## Decision tree
 

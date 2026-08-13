@@ -84,7 +84,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Related
 
 - [[vision-basics]] — single-image typed extraction layer this builds on.
-- [[content-moderation]] — moderation patterns extended with policy enforcement.
+- [[vision-classification-moderation]] — moderation patterns extended with policy enforcement.
 - [[structured-output-basics]] — JSON-schema contract.
 
 ## Decision tree

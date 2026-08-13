@@ -37,7 +37,7 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[ai-assisted-specification-writing (sdd)]] | spec-layer counterpart whose output we consume |
+| [[ai-assisted-specification-writing]] | spec-layer counterpart whose output we consume |
 
 ## Content (load on demand)
 

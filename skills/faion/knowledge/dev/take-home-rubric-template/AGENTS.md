@@ -68,7 +68,6 @@
 ## Related
 
 - parent skill: `geek/dev/`
-- `[[interview-loop-charter]]`
 
 ## Decision tree
 

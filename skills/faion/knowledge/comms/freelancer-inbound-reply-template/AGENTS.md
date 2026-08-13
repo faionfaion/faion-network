@@ -38,12 +38,6 @@
 | Source-of-truth refs | URLs, transcript ids, dashboard snapshots, design-file ids | external systems |
 | Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| [[communicator]] | Parent skill — shared comms vocabulary and tone discipline |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

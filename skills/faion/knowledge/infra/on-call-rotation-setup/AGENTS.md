@@ -71,7 +71,6 @@
 
 - parent skill: `geek/infra/`
 - `[[oncall-handoff-protocol]]`
-- `[[compensation-policy-template]]`
 
 ## Decision tree
 

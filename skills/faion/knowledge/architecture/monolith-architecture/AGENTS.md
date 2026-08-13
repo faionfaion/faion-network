@@ -34,10 +34,6 @@
 | Test pyramid (unit / integration / e2e) | test plan | QA / team |
 | Single deploy pipeline (build → test → deploy) | CI config | devops |
 
-## Assumes Loaded
-
-none
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
@@ -75,9 +71,9 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[solo/dev/software-architect/modular-monolith]]
-- [[solo/dev/software-architect/system-design-process]]
-- [[solo/dev/software-architect/patterns-overview]]
+- [[modular-monolith]]
+- [[system-design-process]]
+- [[patterns-overview]]
 
 ## Decision tree
 

@@ -40,7 +40,6 @@
 | Methodology | Why |
 |-------------|-----|
 | [[devops-aws-service-selection]] | Pillar evaluation depends on service choices made earlier |
-| [[finops-cloud-cost-optimization]] | Cost-pillar items depend on FinOps practice |
 
 ## Content (load on demand)
 
@@ -79,7 +78,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Related
 
 - [[devops-aws-service-selection]]
-- [[finops-cloud-cost-optimization]]
 
 ## Decision tree
 

@@ -71,7 +71,6 @@
 ## Related
 
 - parent skill: `geek/infra/`
-- `[[progressive-delivery-101]]`
 - `[[slo-definition-template-per-service-class]]`
 
 ## Decision tree

@@ -38,7 +38,7 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[solo/dev/software-architect/decision-tree-process]] | Matrix is the Phase-3 instrument. |
+| [[decision-tree-process]] | Matrix is the Phase-3 instrument. |
 
 ## Content (load on demand)
 
@@ -77,9 +77,9 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[solo/dev/software-architect/decision-tree-process]]
-- [[solo/dev/software-architect/trade-off-decision-methods]]
-- [[solo/dev/software-architect/trade-off-quality-attributes]]
+- [[decision-tree-process]]
+- [[trade-off-decision-methods]]
+- [[trade-off-quality-attributes]]
 
 ## Decision tree
 

@@ -73,7 +73,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[llm-integration]] — parent skill.
 - [[cost-quality-tradeoff-framework]] — adjacent framework.
 - [[eval-contract-template]] — adjacent eval gate.
 

@@ -38,8 +38,8 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[solo/dev/software-architect/structural-patterns]] | Catalog of structural patterns and selection cues. |
-| [[solo/dev/software-architect/system-design-process]] | Patterns plug into the design process. |
+| [[structural-patterns]] | Catalog of structural patterns and selection cues. |
+| [[system-design-process]] | Patterns plug into the design process. |
 
 ## Content (load on demand)
 
@@ -75,9 +75,9 @@
 
 ## Related
 
-- [[solo/dev/software-architect/structural-patterns]]
-- [[solo/dev/software-architect/system-design-process]]
-- [[solo/dev/software-architect/modular-monolith]]
+- [[structural-patterns]]
+- [[system-design-process]]
+- [[modular-monolith]]
 
 ## Decision tree
 

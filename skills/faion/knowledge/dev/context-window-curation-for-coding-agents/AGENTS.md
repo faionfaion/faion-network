@@ -79,9 +79,9 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[code-quality/framework-decomposition-patterns]] — bounded files → bounded context.
+- [[framework-decomposition-patterns]] — bounded files → bounded context.
 - [[changelog-automation-conventional-commits]] — small commits keep change area small.
-- [[code-quality/ai-code-review-checklist]] — review output of an agent given this context.
+- [[ai-code-review-checklist]] — review output of an agent given this context.
 
 ## Decision tree
 

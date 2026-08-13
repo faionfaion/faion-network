@@ -30,12 +30,6 @@
 | Caller agent system prompt | text | agent owner |
 | Owner for the new tool | handle / email | team roster |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| `[[llm-integration]]` | tool-call dispatch semantics per provider |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
@@ -73,7 +67,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[tool-card-template]] — produces the artefact this checklist gates.
 - [[tool-trust-boundary-model]] — deeper trust-boundary review.
-- [[verb-object-naming]] — single field methodology this rolls up.
+- [[verb-object-tool-naming]] — single field methodology this rolls up.
 
 ## Decision tree
 

@@ -35,12 +35,6 @@
 | Per-endpoint write rate + read rate | telemetry | SRE |
 | PII / auth classification per endpoint | policy doc | security |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| `[[api-developer]]` | endpoint contracts known |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

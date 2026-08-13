@@ -65,7 +65,7 @@
 ## Related
 
 - [[prompt-techniques]] — XML delimiters in prompts are the runtime analogue.
-- [[claude-code:skills]] — file structure that wraps content/.
+- [[skills]] — file structure that wraps content/.
 
 ## Decision tree
 

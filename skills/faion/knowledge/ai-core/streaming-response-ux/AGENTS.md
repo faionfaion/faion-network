@@ -31,12 +31,6 @@
 | Surface owner | handle / email | team roster |
 | Latency budget | ms (target + p95) | PM |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| `[[llm-integration]]` | provider SDK streaming primitives |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
@@ -74,9 +68,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[llm-integration]] — provider streaming primitives.
-- [[ai-feature-ux-patterns]] — adjacent UX-pattern catalogue.
-- [[telemetry-spec-template]] — TTFT / abort-rate sink contract.
+- [[ai-feature-ux-pattern-library]] — adjacent UX-pattern catalogue.
 
 ## Decision tree
 

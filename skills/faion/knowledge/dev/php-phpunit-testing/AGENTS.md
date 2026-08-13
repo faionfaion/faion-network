@@ -34,10 +34,6 @@
 | Test bootstrap | phpunit.xml.dist + tests/bootstrap.php | repo |
 | Factories | Laravel factories OR data-builder pattern | fixtures dir |
 
-## Assumes Loaded
-
-none — methodology is self-contained.
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

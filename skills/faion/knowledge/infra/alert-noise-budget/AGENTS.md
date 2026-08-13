@@ -83,8 +83,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Related
 
 - [[alert-deduplication-playbook]]
-- [[sli-slo-definition]]
-- [[incident-response-rotation]]
 
 ## Decision tree
 

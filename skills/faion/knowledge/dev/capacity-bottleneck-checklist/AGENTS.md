@@ -34,12 +34,6 @@
 | Write-access to decision log | repo / wiki | team |
 | Named owner candidate | handle/email/role | team |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| [[software-developer]] | Parent role context — provides the operating frame for this methodology |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

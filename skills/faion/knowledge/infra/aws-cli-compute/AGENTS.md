@@ -70,7 +70,6 @@
 
 - [[aws-cfn-terraform-templates]]
 - [[aws-cli-containers-iac]]
-- [[aws-foundations]]
 
 ## Decision tree
 

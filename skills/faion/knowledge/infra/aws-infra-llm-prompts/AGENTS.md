@@ -79,7 +79,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[aws-foundations]]
 - [[aws-cfn-terraform-templates]]
 - [[aws-cli-compute]]
 

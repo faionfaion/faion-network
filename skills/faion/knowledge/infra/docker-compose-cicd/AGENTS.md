@@ -65,8 +65,8 @@
 
 ## Related
 
-- [[docker-compose-devops]]
-- [[docker-compose-infrastructure]]
+- [[docker-compose]]
+- [[docker-compose-infra]]
 
 ## Decision tree
 

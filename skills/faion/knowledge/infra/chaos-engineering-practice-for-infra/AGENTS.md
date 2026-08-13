@@ -72,7 +72,7 @@
 ## Related
 
 - parent skill: `geek/infra/`
-- `[[incident-response-playbook]]`
+- `[[incident-response-blameless-playbook]]`
 - `[[slo-definition-template-per-service-class]]`
 
 ## Decision tree

@@ -74,7 +74,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[fine-tune-vs-prompt-decision-tree]] — gates whether to fine-tune at all.
 - [[data-exfiltration-canary-tokens]] — adjacent leakage detection.
-- [[ai-trism-compliance]] — broader compliance overlay.
 
 ## Decision tree
 

@@ -74,8 +74,7 @@
 
 ## Related
 
-- [[code-review-checklist]]
-- [[sdd-document-templates]]
+- [[templates]]
 
 ## Decision tree
 

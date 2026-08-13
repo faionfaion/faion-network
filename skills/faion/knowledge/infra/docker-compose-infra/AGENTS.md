@@ -67,7 +67,7 @@
 
 ## Related
 
-- [[docker-compose-devops]]
+- [[docker-compose]]
 - [[docker-compose-cicd]]
 - [[server-init-bootstrap]]
 

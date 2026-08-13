@@ -34,12 +34,6 @@
 | ANTHROPIC_API_KEY | env var | provider account |
 | Metric list | text list of ≥4 metrics | this methodology default |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| [[market-researcher]] | Upstream — supplies general market-data normalization rules |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
@@ -70,7 +64,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[market-researcher]]
 - [[vui-conversation-design]]
 - [[core-vui-design-principles]]
 

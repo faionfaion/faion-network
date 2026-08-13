@@ -29,12 +29,6 @@
 | Domain name | registered domain | registrar |
 | Stripe / Supabase / Vercel / Cloudflare accounts | free-tier accounts | vendor signup |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| `[[server-craft]]` | solo-tier server fundamentals if escalation needed |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
@@ -69,8 +63,6 @@
 ## Related
 
 - parent skill: `free/infra/`
-- `[[server-craft]]`
-- `[[automation]]`
 
 ## Decision tree
 

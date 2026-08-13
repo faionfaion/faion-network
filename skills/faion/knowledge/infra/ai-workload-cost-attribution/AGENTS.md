@@ -72,7 +72,6 @@
 
 - parent skill: `geek/infra/`
 - `[[llm-observability]]`
-- `[[cost-monitoring-baseline]]`
 
 ## Decision tree
 

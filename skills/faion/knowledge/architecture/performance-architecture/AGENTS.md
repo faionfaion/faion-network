@@ -38,7 +38,7 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[solo/dev/software-architect/quality-attributes]] | Performance targets come from the quality-attributes scenarios. |
+| [[quality-attributes]] | Performance targets come from the quality-attributes scenarios. |
 
 ## Content (load on demand)
 
@@ -78,9 +78,9 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[solo/dev/software-architect/quality-attributes]]
-- [[solo/dev/software-architect/serverless-cold-start-optimization]]
-- [[solo/dev/software-architect/system-design-process]]
+- [[quality-attributes]]
+- [[serverless-cold-start-optimization]]
+- [[system-design-process]]
 
 ## Decision tree
 

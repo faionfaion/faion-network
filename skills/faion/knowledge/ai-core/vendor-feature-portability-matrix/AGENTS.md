@@ -31,12 +31,6 @@
 | Owner for the matrix | handle / email | team roster |
 | Eval row set for capability tests | JSONL | RAG / agent owner |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| `[[llm-cost-attribution-model]]` | cost per vendor is already known |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
@@ -74,8 +68,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[multi-model-router-decision-tree]] — adjacent runtime routing decision.
-- [[llm-cost-attribution-model]] — vendor cost comparison upstream.
 - [[fine-tune-vs-prompt-decision-tree]] — depth axis on vendor lock-in.
 
 ## Decision tree

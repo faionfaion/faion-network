@@ -78,8 +78,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[project-manager]]
-- [[pm-traditional]]
 - [[founder-as-pm-survival-kit]]
 
 ## Decision tree

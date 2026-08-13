@@ -73,7 +73,7 @@
 ## Related
 
 - [[docker-compose-cicd]]
-- [[docker-compose-infrastructure]]
+- [[docker-compose-infra]]
 - [[server-init-bootstrap]]
 
 ## Decision tree

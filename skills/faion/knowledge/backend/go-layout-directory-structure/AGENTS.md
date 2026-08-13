@@ -35,10 +35,6 @@
 | Module name | go.mod | team |
 | Binary inventory | ops doc | team |
 
-## Assumes Loaded
-
-None — this methodology can be applied without upstream artefacts beyond the listed prerequisites.
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

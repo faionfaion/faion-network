@@ -34,10 +34,6 @@
 | Routes file | config/routes.rb | repo |
 | Credentials | config/credentials.yml.enc + master key | ops |
 
-## Assumes Loaded
-
-none — methodology is self-contained.
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

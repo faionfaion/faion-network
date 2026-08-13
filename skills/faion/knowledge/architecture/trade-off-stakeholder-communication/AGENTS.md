@@ -40,7 +40,6 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[trade-off-analysis]] | Source of the scorecard the briefing renders. |
 | [[architecture-decision-records]] | Defines the ADR shell this Consequences section drops into. |
 
 ## Content (load on demand)
@@ -81,7 +80,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[trade-off-analysis]]
 - [[architecture-decision-records]]
 - [[trade-off-technical-debt]]
 - [[quality-attributes-analysis]]

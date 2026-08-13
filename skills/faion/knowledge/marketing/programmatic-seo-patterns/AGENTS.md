@@ -77,7 +77,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[seo-manager]]
 - [[growth-paid-acquisition]]
 - [[topic-cluster-architecture-with-eeat]]
 

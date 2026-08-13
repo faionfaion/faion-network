@@ -83,7 +83,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[video-gen-basics]] — single-call layer this service builds on.
 - [[img-gen-tools]] — generates anchor frames for image-to-video.
-- [[multimodal-ai/vision-applications]] — post-hoc verification of generated frames against brief.
+- [[vision-applications]] — post-hoc verification of generated frames against brief.
 
 ## Decision tree
 

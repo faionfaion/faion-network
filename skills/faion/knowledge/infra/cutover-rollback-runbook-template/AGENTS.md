@@ -79,9 +79,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[deploy-blue-green-canary]]
-- [[incident-response-rotation]]
-- [[data-migration-runbook]]
+- [[release-strategy-canary-blue-green-feature-flag]]
 
 ## Decision tree
 

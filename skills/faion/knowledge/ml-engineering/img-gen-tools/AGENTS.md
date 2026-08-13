@@ -77,7 +77,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[img-gen-basics]]
 - [[ai-cost-attribution-schema]]
-- [[multi-provider-fallback-patterns]]
 
 ## Decision tree
 

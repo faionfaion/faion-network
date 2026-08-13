@@ -34,10 +34,6 @@
 | Current metrics | Lighthouse / RUM baseline | WebPageTest / CrUX |
 | Business KPI | conversion / bounce / SEO position | product/marketing |
 
-## Assumes Loaded
-
-none — methodology is self-contained.
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

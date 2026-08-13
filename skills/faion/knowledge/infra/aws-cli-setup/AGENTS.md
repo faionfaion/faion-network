@@ -76,8 +76,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[code-review-checklist]]
-- [[sdd-document-templates]]
+- [[templates]]
 
 ## Decision tree
 

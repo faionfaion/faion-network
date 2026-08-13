@@ -82,7 +82,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Related
 
 - [[supply-chain-risk-checklist-spike]]
-- [[dependency-audit]]
 - parent skill: `pro/dev/software-developer/`
 - external: [Tim Bray — Bug-Filing Best Practices](https://www.tbray.org/ongoing/) · [n8n forking patterns (NERO ADR-2024-007)](https://github.com/n8n-io/n8n/) · [patch-package npm tool](https://github.com/ds300/patch-package) · [Renovate config docs](https://docs.renovatebot.com/) · [Tom Critchlow — Forking decisions](https://tomcritchlow.com/)
 

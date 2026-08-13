@@ -174,6 +174,21 @@ def rewrite_line(line: str, existing: set[str], stats: Counter) -> str | None:
     return out
 
 
+ASSUMES = re.compile(r"^## Assumes Loaded[ \t]*\n(.*?)(?=^## |\Z)", re.M | re.S)
+
+
+def drop_empty_assumes(text: str, stats: Counter) -> str:
+    """`## Assumes Loaded` is optional; a header-only table is worse than no section."""
+    m = ASSUMES.search(text)
+    if not m:
+        return text
+    rows = [ln for ln in m.group(1).split("\n") if ln.strip().startswith("|")]
+    if len(rows) > 2:  # header + separator + at least one entry
+        return text
+    stats["sections_removed"] += 1
+    return text[:m.start()] + text[m.end():]
+
+
 def rewrite(text: str, existing: set[str], stats: Counter) -> str:
     spans = code_spans(text)
     out_lines: list[str] = []
@@ -187,7 +202,7 @@ def rewrite(text: str, existing: set[str], stats: Counter) -> str:
         new = rewrite_line(line, existing, stats)
         if new is not None:
             out_lines.append(new)
-    return "\n".join(out_lines)
+    return drop_empty_assumes("\n".join(out_lines), stats)
 
 
 def main() -> int:
@@ -217,6 +232,7 @@ def main() -> int:
     print(f"links dropped: {stats['dropped']} "
           f"(bullets removed {stats['bullets_removed']}, rows removed {stats['rows_removed']}, "
           f"unlinked in place {stats['unlinked']})")
+    print(f"empty '## Assumes Loaded' sections removed: {stats['sections_removed']}")
 
     if args.report:
         print("\nslug -> target or DROP (count)")

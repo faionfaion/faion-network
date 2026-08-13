@@ -75,7 +75,7 @@
 
 ## Related
 
-- [[seo-manager/growth-seo-fundamentals]]
+- [[growth-seo-fundamentals]]
 - [[outreach-personalization-rubric]]
 
 ## Decision tree

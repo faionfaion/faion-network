@@ -71,7 +71,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[llm-decision-framework]] — same provider posture as text models
 - [[cost-optimization]] — per-image cost drives Flux schnell vs DALL-E choice
-- [[multimodal-ai]] — broader vision/audio context
 
 ## Decision tree
 

@@ -74,7 +74,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Related
 
 - [[minimum-product-frameworks]]
-- [[ui-designer]]
 
 ## Decision tree
 

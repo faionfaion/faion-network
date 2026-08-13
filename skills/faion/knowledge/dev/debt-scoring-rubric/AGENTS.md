@@ -79,7 +79,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[code-quality/tech-debt-management]] — payoff strategies the score feeds.
+- [[tech-debt-management]] — payoff strategies the score feeds.
 - [[blast-radius-scoring-rubric]] — shares the blast factor.
 - external: [Martin Fowler — TechnicalDebtQuadrant](https://martinfowler.com/bliki/TechnicalDebtQuadrant.html) · [Adam Tornhill — Your Code as a Crime Scene] · [Google SRE workbook — toil and tech debt]
 

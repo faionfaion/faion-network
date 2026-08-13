@@ -77,9 +77,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[retro-basics]]
 - [[agency-year-end-close-checklist]]
-- [[oncall-rotation-design]]
 
 ## Decision tree
 

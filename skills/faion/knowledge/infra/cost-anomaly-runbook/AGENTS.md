@@ -77,7 +77,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[finops-baseline]]
 - [[cost-pr-gate-recipe]]
 - [[cost-model-spreadsheet-template]]
 

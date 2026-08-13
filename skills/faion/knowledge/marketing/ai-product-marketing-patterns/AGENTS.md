@@ -72,8 +72,6 @@
 ## Related
 
 - parent skill: `geek/marketing/`
-- `[[positioning-canvas]]`
-- `[[launch-playbook]]`
 
 ## Decision tree
 

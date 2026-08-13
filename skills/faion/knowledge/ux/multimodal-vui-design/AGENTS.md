@@ -39,7 +39,7 @@
 | Methodology | Why |
 |-------------|-----|
 | [[llm-powered-conversational-ai]] | Conversational backbone |
-| [[wcag-22-checklist]] | A11y baseline |
+| [[wcag-22-compliance]] | A11y baseline |
 
 ## Content (load on demand)
 

@@ -72,7 +72,6 @@
 ## Related
 
 - parent skill: `geek/infra/`
-- `[[team-topologies-skills]]`
 
 ## Decision tree
 

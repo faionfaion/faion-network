@@ -70,7 +70,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Related
 
 - [[search-intent-to-brief]] — downstream brief generator.
-- [[seo-manager]] — domain context.
 - [[zero-click-search-adaptation]] — paired AIO methodology.
 
 ## Decision tree

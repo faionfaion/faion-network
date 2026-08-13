@@ -74,7 +74,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[pair-with-ai-agent-protocol]]
 - [[code-review-process]]
-- [[prompt-engineering]]
 
 ## Decision tree
 

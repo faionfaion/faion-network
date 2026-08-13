@@ -82,7 +82,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[google-ads-basics]]
 - [[ads-google-keywords]]
-- [[ads-google-creative]]
 - [[google-ads-optimization]]
 
 ## Decision tree

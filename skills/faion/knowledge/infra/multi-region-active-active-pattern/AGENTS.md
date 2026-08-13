@@ -73,7 +73,6 @@
 ## Related
 
 - parent skill: `geek/infra/`
-- `[[disaster-recovery-baseline]]`
 - `[[banking-core-data-residency-rules]]`
 
 ## Decision tree

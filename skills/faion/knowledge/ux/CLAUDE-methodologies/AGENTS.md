@@ -33,12 +33,6 @@
 | Known constraints | device, surface, modality, AI involvement | user prompt |
 | Methodology catalog snapshot | current list of geek/ux methodologies | L2 INDEX.xml |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| [[AGENTS.md]] | Parent skill context |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

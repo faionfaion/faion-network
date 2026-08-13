@@ -34,8 +34,6 @@
 
 | Methodology | Why |
 |-------------|-----|
-| `[[llm-integration]]` | Provider SDK + structured output |
-| `[[rag-engineer]]` | Embedding + vector-store fundamentals |
 | `[[agent-observability-stack-blueprint]]` | Trace + cost + eval wiring |
 
 ## Content (load on demand)

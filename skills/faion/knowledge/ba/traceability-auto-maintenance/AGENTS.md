@@ -39,7 +39,7 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[requirements-traceability-full-lifecycle]] | Defines the graph schema this job rebuilds. |
+| [[requirements-traceability]] | Defines the graph schema this job rebuilds. |
 
 ## Content (load on demand)
 
@@ -77,7 +77,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[requirements-traceability-full-lifecycle]]
+- [[requirements-traceability]]
 - [[scope-drift-early-warning-metrics]]
 - [[definition-of-done-library]]
 

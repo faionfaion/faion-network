@@ -39,7 +39,7 @@
 | Methodology | Why |
 |-------------|-----|
 | [[jobs-to-be-done]] | Research grounding the reviewer checks against in c01 |
-| [[wcag-22-checklist]] | Source of truth for a11y verdicts in c03 |
+| [[wcag-22-compliance]] | Source of truth for a11y verdicts in c03 |
 
 ## Content (load on demand)
 
@@ -78,8 +78,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[wcag-22-checklist]]
-- [[design-system-foundations]]
+- [[wcag-22-compliance]]
 - [[ai-plugin-ecosystem]]
 
 ## Decision tree

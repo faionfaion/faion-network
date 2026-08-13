@@ -73,8 +73,6 @@
 ## Related
 
 - [[code-review-process]]
-- [[git-workflow]]
-- [[pr-description-template]]
 
 ## Decision tree
 

@@ -33,12 +33,6 @@
 | Model registry or provider list | docs | ml-engineering |
 | Prompt-storage convention | files or registry | ml-engineering |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| [[AGENTS.md]] | Parent skill context |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

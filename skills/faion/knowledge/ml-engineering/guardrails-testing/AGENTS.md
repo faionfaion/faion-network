@@ -80,7 +80,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[guardrails-custom-pipeline]] — system under test
 - [[guardrails-nemo]] — NeMo config under test
-- [[prompt-injection-defense]] — source of adversarial patterns
 
 ## Decision tree
 

@@ -77,7 +77,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[code-review-process]]
 - [[prompt-patterns-for-common-dev-tasks]]
-- [[claude-code-skills-authoring]]
+- [[skills]]
 
 ## Decision tree
 

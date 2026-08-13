@@ -79,7 +79,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[capacity-safety-floor-policy]]
 - [[prr-checklist-canonical]]
-- [[sdd-document-templates]]
+- [[templates]]
 
 ## Decision tree
 

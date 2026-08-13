@@ -34,12 +34,6 @@
 | Lint/formatter configs | .eslintrc / pyproject.toml / etc. | client repo |
 | Recent merged PR sample (>= 20) | diff history | client repo |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| [[software-developer]] | Operating context for the outsource developer role |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

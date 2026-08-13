@@ -43,7 +43,6 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[server-craft]] | Infra baseline — where the metrics land |
 | [[api-rest-design]] | Endpoint definitions the metrics attach to |
 
 ## Content (load on demand)
@@ -81,7 +80,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[server-craft]]
 - [[api-rest-design]]
 - [[api-error-handling]]
 - [[alert-to-fix-incident-loop]]

@@ -40,7 +40,6 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[trade-off-analysis]] | Provides the option-evaluation matrix that justifies the shortcut. |
 | [[architecture-decision-records]] | Debt items often inline into an ADR Decision section. |
 
 ## Content (load on demand)
@@ -80,10 +79,9 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[trade-off-analysis]]
 - [[trade-off-stakeholder-communication]]
 - [[architecture-decision-records]]
-- [[refactoring]]
+- [[refactoring-patterns]]
 
 ## Decision tree
 

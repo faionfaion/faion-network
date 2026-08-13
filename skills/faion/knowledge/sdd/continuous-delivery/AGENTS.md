@@ -32,10 +32,6 @@
 | CD adoption stage | principles-needed / pipeline-needed | team |
 | Existing pipeline (if any) | ci.yml or cd.yml | repository |
 
-## Assumes Loaded
-
-none
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

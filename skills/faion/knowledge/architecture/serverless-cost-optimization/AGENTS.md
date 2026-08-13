@@ -38,8 +38,8 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[solo/dev/software-architect/serverless-foundations]] | Foundational FaaS understanding. |
-| [[solo/dev/software-architect/serverless-cold-start-optimization]] | Cost mitigations may interact with cold-start tuning. |
+| [[serverless-foundations]] | Foundational FaaS understanding. |
+| [[serverless-cold-start-optimization]] | Cost mitigations may interact with cold-start tuning. |
 
 ## Content (load on demand)
 
@@ -79,9 +79,9 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[solo/dev/software-architect/serverless-foundations]]
-- [[solo/dev/software-architect/serverless-cold-start-optimization]]
-- [[solo/dev/software-architect/serverless-architecture-patterns]]
+- [[serverless-foundations]]
+- [[serverless-cold-start-optimization]]
+- [[serverless-architecture-patterns]]
 
 ## Decision tree
 

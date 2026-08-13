@@ -38,7 +38,7 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[solo/dev/software-architect/serverless-foundations]] | Foundations checklist precedes IaC investment. |
+| [[serverless-foundations]] | Foundations checklist precedes IaC investment. |
 
 ## Content (load on demand)
 
@@ -76,9 +76,9 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[solo/dev/software-architect/serverless-foundations]]
-- [[solo/dev/software-architect/serverless-architecture-patterns]]
-- [[solo/dev/software-architect/serverless-cost-optimization]]
+- [[serverless-foundations]]
+- [[serverless-architecture-patterns]]
+- [[serverless-cost-optimization]]
 
 ## Decision tree
 

@@ -81,7 +81,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[prometheus-monitoring]]
 - [[alert-deduplication-playbook]]
-- [[sli-slo-definition]]
 
 ## Decision tree
 

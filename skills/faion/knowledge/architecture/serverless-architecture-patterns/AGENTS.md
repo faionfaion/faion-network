@@ -38,8 +38,8 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[solo/dev/software-architect/serverless-foundations]] | Foundational FaaS concepts. |
-| [[solo/dev/software-architect/serverless-cold-start-optimization]] | Cold-start mitigations apply when chosen. |
+| [[serverless-foundations]] | Foundational FaaS concepts. |
+| [[serverless-cold-start-optimization]] | Cold-start mitigations apply when chosen. |
 
 ## Content (load on demand)
 
@@ -75,10 +75,10 @@
 
 ## Related
 
-- [[solo/dev/software-architect/serverless-foundations]]
-- [[solo/dev/software-architect/serverless-cold-start-optimization]]
-- [[solo/dev/software-architect/serverless-cost-optimization]]
-- [[solo/dev/software-architect/serverless-iac-and-templates]]
+- [[serverless-foundations]]
+- [[serverless-cold-start-optimization]]
+- [[serverless-cost-optimization]]
+- [[serverless-iac-and-templates]]
 
 ## Decision tree
 

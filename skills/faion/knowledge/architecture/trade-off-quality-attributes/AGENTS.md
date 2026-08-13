@@ -38,8 +38,8 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[solo/dev/software-architect/quality-attributes]] | QA scenarios are the input to this analysis. |
-| [[solo/dev/software-architect/trade-off-decision-methods]] | ATAM may be the chosen method here. |
+| [[quality-attributes]] | QA scenarios are the input to this analysis. |
+| [[trade-off-decision-methods]] | ATAM may be the chosen method here. |
 
 ## Content (load on demand)
 
@@ -79,10 +79,10 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[solo/dev/software-architect/quality-attributes]]
-- [[solo/dev/software-architect/trade-off-decision-methods]]
-- [[solo/dev/software-architect/performance-architecture]]
-- [[solo/dev/software-architect/security-architecture]]
+- [[quality-attributes]]
+- [[trade-off-decision-methods]]
+- [[performance-architecture]]
+- [[security-architecture]]
 
 ## Decision tree
 

@@ -41,8 +41,7 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[utm-discipline]] | Source/medium tagging consistency assumed. |
-| [[campaign-naming-convention]] | Stable campaign names for grouping. |
+| [[utm-taxonomy-discipline]] | Source/medium tagging consistency assumed. |
 | [[multi-touch-attribution-modeling]] | Background on attribution-model trade-offs. |
 
 ## Content (load on demand)
@@ -83,8 +82,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[utm-discipline]]
-- [[campaign-naming-convention]]
+- [[utm-taxonomy-discipline]]
 - [[multi-touch-attribution-modeling]]
 - [[daily-ads-anomaly-checklist]]
 

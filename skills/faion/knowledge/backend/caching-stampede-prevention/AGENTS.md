@@ -39,7 +39,6 @@
 
 | Methodology | Why |
 |-------------|-----|
-| `[[backend-systems]]` | host stack |
 | `[[caching-invalidation]]` | invalidation patterns |
 
 ## Content (load on demand)

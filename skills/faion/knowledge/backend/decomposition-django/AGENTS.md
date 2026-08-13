@@ -81,7 +81,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 - [[django-services]]
 - [[django-celery]]
 - [[modular-monolith]]
-- [[code-ownership]]
 
 ## Decision tree
 

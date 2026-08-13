@@ -75,8 +75,8 @@
 
 ## Related
 
-- [[seo-manager/seo-basics]]
-- [[seo-manager/growth-seo-link-building]]
+- [[seo-basics]]
+- [[growth-seo-link-building]]
 
 ## Decision tree
 

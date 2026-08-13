@@ -39,12 +39,6 @@
 | Source-of-truth refs | URLs, transcript ids, dashboard snapshots, design-file ids | external systems |
 | Prior artefact (if any) | this methodology's prior output | repository / doc store |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| [[server-craft]] | Parent skill — infra & ops vocabulary |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

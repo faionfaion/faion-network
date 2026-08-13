@@ -34,10 +34,6 @@
 | Identity provider | field | ops |
 | Observability stack | field | SRE |
 
-## Assumes Loaded
-
-none
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
@@ -69,10 +65,10 @@ none
 
 ## Related
 
-- [[solo/dev/software-architect/serverless-architecture-patterns]]
-- [[solo/dev/software-architect/serverless-cold-start-optimization]]
-- [[solo/dev/software-architect/serverless-cost-optimization]]
-- [[solo/dev/software-architect/serverless-iac-and-templates]]
+- [[serverless-architecture-patterns]]
+- [[serverless-cold-start-optimization]]
+- [[serverless-cost-optimization]]
+- [[serverless-iac-and-templates]]
 
 ## Decision tree
 

@@ -37,7 +37,7 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[ai-assisted-specification-writing (sdd-planning)]] | planning-layer counterpart for plan output |
+| [[ai-assisted-specification-writing-planning]] | planning-layer counterpart for plan output |
 
 ## Content (load on demand)
 

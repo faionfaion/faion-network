@@ -41,7 +41,7 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[requirements-traceability-full-lifecycle]] | Provides the requirement → ticket mapping these metrics aggregate over. |
+| [[requirements-traceability]] | Provides the requirement → ticket mapping these metrics aggregate over. |
 | [[scope-creep-parking-lot-protocol]] | Parking-lot age feeds metric #5. |
 | [[scope-change-vs-scope-creep-detection]] | Classifier verdicts feed metric #1 (CR-volume). |
 | [[risk-threshold-policy]] | Red triggers route through the policy. |
@@ -83,7 +83,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[requirements-traceability-full-lifecycle]]
+- [[requirements-traceability]]
 - [[scope-creep-parking-lot-protocol]]
 - [[scope-change-vs-scope-creep-detection]]
 - [[risk-threshold-policy]]

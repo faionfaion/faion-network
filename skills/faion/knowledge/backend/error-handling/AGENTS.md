@@ -35,12 +35,6 @@
 | Error type catalogue (URIs) | doc site | team |
 | Localisation strategy (single locale vs multi) | product decision | PM |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| `[[api-developer]]` | endpoint contracts |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

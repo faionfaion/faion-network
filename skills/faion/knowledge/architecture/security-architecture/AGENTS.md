@@ -38,7 +38,7 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[solo/dev/software-architect/quality-attributes]] | Security scenarios live as ISO-25010 security NFRs. |
+| [[quality-attributes]] | Security scenarios live as ISO-25010 security NFRs. |
 
 ## Content (load on demand)
 
@@ -79,9 +79,9 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[solo/dev/software-architect/quality-attributes]]
-- [[solo/dev/software-architect/system-design-process]]
-- [[solo/dev/software-architect/serverless-architecture-patterns]]
+- [[quality-attributes]]
+- [[system-design-process]]
+- [[serverless-architecture-patterns]]
 
 ## Decision tree
 

@@ -38,7 +38,7 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[solo/dev/software-architect/trade-off-decision-matrix]] | Cloud choice consumes the weighted-matrix scoring shape. |
+| [[trade-off-decision-matrix]] | Cloud choice consumes the weighted-matrix scoring shape. |
 
 ## Content (load on demand)
 
@@ -76,9 +76,9 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[solo/dev/software-architect/decision-tree-tech-stack]]
-- [[solo/dev/software-architect/decision-tree-process]]
-- [[solo/dev/software-architect/trade-off-decision-matrix]]
+- [[decision-tree-tech-stack]]
+- [[decision-tree-process]]
+- [[trade-off-decision-matrix]]
 
 ## Decision tree
 

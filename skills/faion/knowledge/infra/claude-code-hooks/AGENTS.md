@@ -69,7 +69,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Related
 
 - parent skill: `geek/infra/`
-- `[[skills-and-plugins]]`
+- `[[skills]]`
 
 ## Decision tree
 

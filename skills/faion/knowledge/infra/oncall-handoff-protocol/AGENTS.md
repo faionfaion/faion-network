@@ -67,7 +67,7 @@
 
 - parent skill: `geek/infra/`
 - `[[on-call-rotation-setup]]`
-- `[[incident-response-playbook]]`
+- `[[incident-response-blameless-playbook]]`
 
 ## Decision tree
 

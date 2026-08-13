@@ -34,10 +34,6 @@
 | Implementation class | PHP class implementing the contract | developer |
 | Environment vars | .env file | ops |
 
-## Assumes Loaded
-
-none — methodology is self-contained.
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

@@ -33,7 +33,7 @@
 
 | Methodology | Why |
 |-------------|-----|
-| `[[content-marketing]]` | Content queue conventions |
+| `[[growth-content-marketing]]` | Content queue conventions |
 
 ## Content (load on demand)
 
@@ -66,8 +66,7 @@
 ## Related
 
 - parent skill: `free/marketing/`
-- `[[content-marketing]]`
-- `[[growth-marketing]]`
+- `[[growth-content-marketing]]`
 
 ## Decision tree
 

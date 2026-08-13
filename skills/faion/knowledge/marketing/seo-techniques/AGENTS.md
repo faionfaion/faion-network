@@ -75,8 +75,8 @@
 
 ## Related
 
-- [[seo-manager/seo-basics]]
-- [[seo-manager/topical-authority]]
+- [[seo-basics]]
+- [[topical-authority]]
 
 ## Decision tree
 

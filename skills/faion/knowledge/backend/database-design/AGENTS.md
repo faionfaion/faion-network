@@ -35,12 +35,6 @@
 | Global type policy (UUID v7 vs bigint) | decision record | tech lead |
 | Migration tool selection | ADR | tech lead |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| `[[api-developer]]` | endpoint contracts derive table needs |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

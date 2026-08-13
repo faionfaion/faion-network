@@ -82,7 +82,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[characterization-test-recipes]] — safety net for the extraction.
 - [[context-window-curation-for-coding-agents]] — bounded files = bounded context.
-- [[code-quality/tech-debt-management]] — sibling for picking which fat files to fix first.
+- [[tech-debt-management]] — sibling for picking which fat files to fix first.
 
 ## Decision tree
 

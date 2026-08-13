@@ -34,12 +34,6 @@
 | Target framework upgrade notes | Markdown | framework docs |
 | AST library for the language | tool | npm / pip |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| [[software-developer]] | Operating context for the upgrade task |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

@@ -75,8 +75,6 @@
 
 ## Related
 
-- [[gtm-strategist]]
-- [[growth-marketer]]
 - [[ops-pricing-strategy]]
 
 ## Decision tree

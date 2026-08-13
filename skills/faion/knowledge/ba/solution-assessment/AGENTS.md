@@ -44,7 +44,7 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[requirements-traceability-full-lifecycle]] | Provides the requirement-to-deliverable mapping the assessment scores. |
+| [[requirements-traceability]] | Provides the requirement-to-deliverable mapping the assessment scores. |
 | [[scope-drift-early-warning-metrics]] | Drift signals indicate which requirements may be Deprecated by assessment time. |
 
 ## Content (load on demand)
@@ -86,7 +86,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[requirements-traceability-full-lifecycle]]
+- [[requirements-traceability]]
 - [[scope-drift-early-warning-metrics]]
 - [[use-case-modeling]]
 - [[strategy-analysis-future-state]]

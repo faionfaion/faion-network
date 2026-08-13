@@ -82,7 +82,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[prometheus-monitoring]]
 - [[alert-noise-budget]]
-- [[oncall-rotation-design]]
 
 ## Decision tree
 

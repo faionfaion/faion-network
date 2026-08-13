@@ -71,7 +71,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[role-software-developer]] — parent role skill.
 - Upstream playbook: `role-software-developer/Local dev env reset`.
 
 ## Decision tree

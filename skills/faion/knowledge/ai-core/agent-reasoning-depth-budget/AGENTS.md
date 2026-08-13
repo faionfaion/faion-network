@@ -34,7 +34,6 @@
 | Methodology | Why |
 |-------------|-----|
 | `[[agent-eval-harness-bootstrap-recipe]]` | Harness to run budget sweeps |
-| `[[llm-integration]]` | Reasoning-token APIs |
 
 ## Content (load on demand)
 

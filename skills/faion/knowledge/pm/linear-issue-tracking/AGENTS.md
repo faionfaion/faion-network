@@ -73,7 +73,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[linear-issue-tracking__pm-agile]]
+- [[linear-issue-tracking-pm-agile]]
 - [[burndown-diagnosis-cheatsheet]]
 
 ## Decision tree

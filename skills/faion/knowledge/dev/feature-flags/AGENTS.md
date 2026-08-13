@@ -40,7 +40,7 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[trunk-based-development]] | Flags enable trunk-based shipping of incomplete work. |
+| [[trunk-based-dev-principles]] | Flags enable trunk-based shipping of incomplete work. |
 | [[logging-patterns]] | Flag evaluations are logged for observability. |
 
 ## Content (load on demand)
@@ -78,7 +78,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[trunk-based-development]]
+- [[trunk-based-dev-principles]]
 - [[logging-patterns]]
 - [[ab-testing]]
 

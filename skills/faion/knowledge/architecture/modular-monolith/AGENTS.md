@@ -38,7 +38,7 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[solo/dev/software-architect/monolith-architecture]] | Modular monolith is a specialization of the monolith style. |
+| [[monolith-architecture]] | Modular monolith is a specialization of the monolith style. |
 
 ## Content (load on demand)
 
@@ -77,9 +77,9 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[solo/dev/software-architect/monolith-architecture]]
-- [[solo/dev/software-architect/system-design-process]]
-- [[solo/dev/software-architect/patterns-overview]]
+- [[monolith-architecture]]
+- [[system-design-process]]
+- [[patterns-overview]]
 
 ## Decision tree
 

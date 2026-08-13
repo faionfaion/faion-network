@@ -76,7 +76,7 @@
 ## Related
 
 - [[search-intent-to-brief]]
-- [[seo-manager/seo-techniques]]
+- [[seo-techniques]]
 
 ## Decision tree
 

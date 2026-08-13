@@ -71,7 +71,6 @@
 ## Related
 
 - parent skill: `geek/infra/`
-- `[[audit-logging-baseline]]`
 - `[[banking-core-data-residency-rules]]`
 
 ## Decision tree

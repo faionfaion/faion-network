@@ -72,7 +72,7 @@
 
 - parent skill: `geek/dev/`
 - `[[retro-adr-workflow]]`
-- `[[architecture-fitness-functions]]`
+- `[[evolutionary-architecture-fitness-functions]]`
 
 ## Decision tree
 

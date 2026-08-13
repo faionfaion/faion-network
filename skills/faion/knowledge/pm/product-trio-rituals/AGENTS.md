@@ -74,7 +74,6 @@
 
 ## Related
 
-- [[product-planning]]
 - [[communications-management]]
 - [[stakeholder-engagement]]
 

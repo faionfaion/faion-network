@@ -35,12 +35,6 @@
 | Per-entity staleness SLO | product decision | PM |
 | Redis ACL for tag / version ops | ops doc | SRE |
 
-## Assumes Loaded
-
-| Methodology | Why |
-|-------------|-----|
-| `[[backend-systems]]` | host stack |
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

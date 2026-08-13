@@ -75,8 +75,8 @@
 
 ## Related
 
-- [[seo-manager/seo-basics]]
-- [[seo-manager/seo-techniques]]
+- [[seo-basics]]
+- [[seo-techniques]]
 
 ## Decision tree
 

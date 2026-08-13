@@ -75,7 +75,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[data-exfiltration-canary-tokens]] — upstream primitive.
 - [[hallucination-detection-online]] — adjacent online monitor.
-- [[llm-integration]] — parent skill.
 - Upstream playbook: `p3-llm-integration/Detect cross-session context bleed`.
 
 ## Decision tree

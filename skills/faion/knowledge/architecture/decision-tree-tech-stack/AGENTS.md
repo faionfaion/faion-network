@@ -38,8 +38,8 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[solo/dev/software-architect/trade-off-decision-matrix]] | Stack picks consume the weighted scoring shape. |
-| [[solo/dev/software-architect/decision-tree-process]] | Tech stack decisions are an instance of the six-phase process. |
+| [[trade-off-decision-matrix]] | Stack picks consume the weighted scoring shape. |
+| [[decision-tree-process]] | Tech stack decisions are an instance of the six-phase process. |
 
 ## Content (load on demand)
 
@@ -77,9 +77,9 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[solo/dev/software-architect/decision-tree-process]]
-- [[solo/dev/software-architect/decision-tree-cloud-provider]]
-- [[solo/dev/software-architect/trade-off-decision-matrix]]
+- [[decision-tree-process]]
+- [[decision-tree-cloud-provider]]
+- [[trade-off-decision-matrix]]
 
 ## Decision tree
 

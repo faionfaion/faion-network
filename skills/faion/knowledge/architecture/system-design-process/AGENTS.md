@@ -38,8 +38,8 @@
 
 | Methodology | Why |
 |-------------|-----|
-| [[solo/dev/software-architect/quality-attributes]] | Phase 2 NFRs land here as scenarios. |
-| [[solo/dev/software-architect/decision-tree-process]] | Each ADR follows the decision-tree-process methodology. |
+| [[quality-attributes]] | Phase 2 NFRs land here as scenarios. |
+| [[decision-tree-process]] | Each ADR follows the decision-tree-process methodology. |
 
 ## Content (load on demand)
 
@@ -80,9 +80,9 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[solo/dev/software-architect/quality-attributes]]
-- [[solo/dev/software-architect/decision-tree-process]]
-- [[solo/dev/software-architect/patterns-overview]]
+- [[quality-attributes]]
+- [[decision-tree-process]]
+- [[patterns-overview]]
 
 ## Decision tree
 

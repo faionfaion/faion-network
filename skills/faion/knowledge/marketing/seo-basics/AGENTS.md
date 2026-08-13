@@ -75,8 +75,8 @@
 
 ## Related
 
-- [[seo-manager/growth-seo-fundamentals]]
-- [[seo-manager/seo-techniques]]
+- [[growth-seo-fundamentals]]
+- [[seo-techniques]]
 
 ## Decision tree
 

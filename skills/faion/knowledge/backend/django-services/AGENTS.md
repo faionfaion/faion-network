@@ -78,8 +78,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - [[decomposition-django]]
 - [[django-celery]]
-- [[drf-views]]
-- [[service-layer-pattern]]
+- [[django-service-layer]]
 
 ## Decision tree
 

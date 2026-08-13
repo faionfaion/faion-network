@@ -77,7 +77,7 @@
 
 - [[capacity-safety-floor-policy]]
 - [[prr-checklist-canonical]]
-- [[sdd-document-templates]]
+- [[templates]]
 
 ## Decision tree
 

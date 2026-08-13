@@ -33,10 +33,6 @@
 | Language preference | Python / TypeScript / Node | team |
 | Scale | single-run / batch / parallel / serverless | team |
 
-## Assumes Loaded
-
-none
-
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |

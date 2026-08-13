@@ -74,8 +74,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[llm-integration]] — parent skill.
-- [[claude-code]] — agent-specific override layer.
 - [[eval-contract-template]] — wire up the eval gate this methodology mandates.
 - Upstream playbook: `p6-product-dev-team/Adopt faion org-wide and override with company patterns`.
 

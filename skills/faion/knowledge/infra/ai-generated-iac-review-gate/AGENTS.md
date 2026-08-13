@@ -71,8 +71,7 @@
 ## Related
 
 - parent skill: `geek/infra/`
-- `[[code-generation-review]]`
-- `[[iac-baseline]]`
+- `[[iac-basics]]`
 
 ## Decision tree
 

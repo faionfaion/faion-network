@@ -70,7 +70,6 @@
 ## Related
 
 - parent skill: `geek/infra/`
-- `[[team-topologies-skills]]`
 - `[[oncall-handoff-protocol]]`
 
 ## Decision tree

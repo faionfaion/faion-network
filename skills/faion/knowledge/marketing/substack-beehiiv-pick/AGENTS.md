@@ -34,7 +34,7 @@
 
 | Methodology | Why |
 |-------------|-----|
-| `[[content-marketing]]` | Newsletter cadence + tone conventions |
+| `[[growth-content-marketing]]` | Newsletter cadence + tone conventions |
 
 ## Content (load on demand)
 
@@ -68,8 +68,7 @@
 ## Related
 
 - parent skill: `free/marketing/`
-- `[[content-marketing]]`
-- `[[growth-marketing]]`
+- `[[growth-content-marketing]]`
 
 ## Decision tree
 
