@@ -1,4 +1,4 @@
-// purpose: TBD-template-header
+// purpose: UserSchema + z.infer + validators reference
 // consumes: input from methodology
 // produces: output artefact
 // depends-on: 01-core-rules.xml

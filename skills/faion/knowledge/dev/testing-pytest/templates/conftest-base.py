@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: Base conftest.py - adapt for your project stack
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

@@ -63,7 +63,6 @@
 |---|---|
 | `templates/server-inventory.yaml` | Input. |
 | `templates/gateway-spec.md` | Output. |
-| `templates/gateway_config.json` | Working virtual-server + federation config. |
 | `templates/_smoke-test.yaml` | Minimum. |
 
 ## Scripts

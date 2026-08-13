@@ -59,10 +59,7 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/trajectory.jsonl.tmpl` | Single trajectory schema. |
 | `templates/tag-taxonomy.md.tmpl` | Capability + persona + difficulty taxonomy. |
-| `templates/provenance.json.tmpl` | Provenance record for real-trace cases. |
-| `templates/_smoke-test.jsonl` | Minimal 3-trajectory example set. |
 
 ## Scripts
 

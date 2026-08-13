@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: Fan-out N subagents; each firewalled; parent gathers final summaries only
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

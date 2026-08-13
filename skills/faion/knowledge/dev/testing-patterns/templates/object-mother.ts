@@ -1,4 +1,4 @@
-// purpose: TBD-template-header
+// purpose: Pattern: Object Mother returns Builder so callers can further customize
 // consumes: input from methodology
 // produces: output artefact
 // depends-on: 01-core-rules.xml

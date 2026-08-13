@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: Reciprocal Rank Fusion (RRF) implementation
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

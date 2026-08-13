@@ -1,4 +1,4 @@
-// purpose: TBD-template-header
+// purpose: Environment: jsdom for browser-like, node for pure Node.js, happy-dom (faster jsdom alternative)
 // consumes: input from methodology
 // produces: output artefact
 // depends-on: 01-core-rules.xml

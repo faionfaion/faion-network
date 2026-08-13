@@ -1,4 +1,4 @@
-// purpose: TBD-template-header
+// purpose: entity-builder.ts for testing-patterns
 // consumes: input from methodology
 // produces: output artefact
 // depends-on: 01-core-rules.xml

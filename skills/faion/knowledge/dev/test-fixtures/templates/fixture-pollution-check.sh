@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: Runs pytest with random ordering seeds to detect order-dependent failures
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

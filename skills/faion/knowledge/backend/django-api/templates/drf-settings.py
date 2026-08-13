@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: REST_FRAMEWORK + SIMPLE_JWT + SPECTACULAR config
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

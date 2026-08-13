@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: Wrapper for attacker-controlled input - never reaches parent context
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

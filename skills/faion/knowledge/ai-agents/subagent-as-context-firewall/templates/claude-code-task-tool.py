@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: Claude Code Task-tool invocation pattern returning slim contract
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

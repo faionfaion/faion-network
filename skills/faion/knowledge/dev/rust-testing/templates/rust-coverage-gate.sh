@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: CI script running cargo llvm-cov + diff-cover against base branch
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

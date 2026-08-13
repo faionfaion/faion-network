@@ -1,4 +1,4 @@
-// purpose: TBD-template-header
+// purpose: For production apps prefer TanStack Query. This is a teaching example
 // consumes: input from methodology
 // produces: output artefact
 // depends-on: 01-core-rules.xml

@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: Complexity-based router (Claude Haiku classifier → Sonnet/Opus)
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

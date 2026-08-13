@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: DALL-E 3 batch generation with content-policy retry and URL expiry handling
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

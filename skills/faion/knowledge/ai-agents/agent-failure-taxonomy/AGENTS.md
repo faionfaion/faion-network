@@ -59,7 +59,6 @@
 |------|---------|
 | `templates/taxonomy.md.tmpl` | Versioned taxonomy doc skeleton. |
 | `templates/label-definition.md.tmpl` | Single-label definition + remediation lane. |
-| `templates/classification-log.jsonl.tmpl` | Append-only re-classification log schema. |
 | `templates/_smoke-test.md` | Filled example with 6 default labels. |
 
 ## Scripts

@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: Reference anti-example: a leaky subagent that pastes evidence into the parent
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

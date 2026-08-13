@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: Pre-commit hook blocking refactor: commits touching >5 files
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

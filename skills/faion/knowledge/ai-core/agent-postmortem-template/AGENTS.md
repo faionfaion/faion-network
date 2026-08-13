@@ -62,7 +62,6 @@
 |------|---------|
 | `templates/postmortem.md.tmpl` | Postmortem skeleton with all six fields. |
 | `templates/layer-attribution.md.tmpl` | Six-layer decision rubric. |
-| `templates/eval-delta.json.tmpl` | Eval-delta record schema example. |
 | `templates/_smoke-test.md` | Filled example for a tool-schema regression. |
 
 ## Scripts

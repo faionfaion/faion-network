@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: SQLAlchemy session fixture with savepoint rollback per test
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

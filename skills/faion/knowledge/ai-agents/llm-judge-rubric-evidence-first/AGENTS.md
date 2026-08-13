@@ -61,8 +61,6 @@ none
 |---|---|
 | `templates/eval-task-profile.yaml` | Input. |
 | `templates/judge-spec.md` | Output. |
-| `templates/rubric.json` | Sample 3-criterion rubric. |
-| `templates/judge_prompt.xml` | Anthropic-style judge prompt with bias mitigations. |
 | `templates/_smoke-test.yaml` | Minimum. |
 
 ## Scripts

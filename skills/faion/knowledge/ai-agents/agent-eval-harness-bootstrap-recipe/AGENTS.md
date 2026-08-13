@@ -62,7 +62,6 @@
 |------|---------|
 | `templates/runner.py.tmpl` | Harness runner: replay → judge → score → CI exit. |
 | `templates/rubric.md.tmpl` | Anchored rubric template. |
-| `templates/golden-set.jsonl.tmpl` | Golden-set example schema. |
 | `templates/ci-gate.yaml.tmpl` | GitHub Actions / GitLab CI gate. |
 | `templates/_smoke-test.py` | Smoke test that runs harness against 3 trajectories. |
 

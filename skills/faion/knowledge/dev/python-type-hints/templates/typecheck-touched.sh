@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: CI script: run mypy --strict only on git diff changed .py files
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

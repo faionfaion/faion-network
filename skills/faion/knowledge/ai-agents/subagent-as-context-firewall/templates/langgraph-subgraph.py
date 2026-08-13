@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: LangGraph subgraph with isolated State and slim parent-facing output
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

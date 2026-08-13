@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: Subagent invocation via Anthropic Claude Agent SDK with tool_choice + Pydantic output
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

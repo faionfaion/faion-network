@@ -1,4 +1,4 @@
-// purpose: TBD-template-header
+// purpose: Pre-authenticated via API - skips login UI for faster test setup
 // consumes: input from methodology
 // produces: output artefact
 // depends-on: 01-core-rules.xml

@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: Reference BaseModel implementation (mirrors django-base-model)
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

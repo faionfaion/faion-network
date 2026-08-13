@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: Multi-turn agent loop with explicit stop_reason branching + max-turns guard
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

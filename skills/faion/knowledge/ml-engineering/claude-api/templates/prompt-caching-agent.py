@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: Cached system prompt + tool-use loop with MAX_TURNS guard and exponential-backoff retry
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

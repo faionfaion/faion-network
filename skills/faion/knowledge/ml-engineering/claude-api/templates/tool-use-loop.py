@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: Complete tool-use skeleton with ToolExecutor, retry decorator, forced structured output
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: Script comparing local component to upstream repo HEAD
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

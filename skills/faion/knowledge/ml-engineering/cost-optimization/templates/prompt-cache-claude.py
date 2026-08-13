@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: Prompt-caching helper with cache_control prefix layout
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

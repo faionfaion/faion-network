@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: analyze_image() helper: base64 encoding, image-first ordering, PDF page check
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml

@@ -1,4 +1,4 @@
-# purpose: TBD-template-header
+# purpose: ModelViewSet with action-specific serializers
 # consumes: input from methodology
 # produces: output artefact
 # depends-on: 01-core-rules.xml
