@@ -49,8 +49,8 @@ The playbook is done when:
 - Run security tests
 
 **Methodologies in chain:**
-- `security-testing` → `solo/dev/testing-developer/security-testing`
-- `secrets-management` → `solo/infra/server-craft/secrets-management`
+- `security-testing-testing` → `dev/security-testing-testing`
+- `secrets-management` → `backend/secrets-management`
 
 **Outputs:**
 - Security audit report
@@ -86,7 +86,7 @@ The playbook is done when:
 - Document restore command
 
 **Methodologies in chain:**
-- `backup-recovery` → `solo/infra/server-craft/backup-recovery`
+- `backup-recovery` → `backend/backup-recovery`
 
 **Outputs:**
 - Restore drill log
@@ -122,8 +122,8 @@ The playbook is done when:
 - Set up FAQ baseline
 
 **Methodologies in chain:**
-- `ops-customer-support` → `solo/marketing/gtm-strategist/ops-customer-support`
-- `feedback-management` → `solo/product/product-operations/feedback-management`
+- `ops-customer-support` → `marketing/ops-customer-support`
+- `feedback-management` → `product/feedback-management`
 
 **Outputs:**
 - Support routing config

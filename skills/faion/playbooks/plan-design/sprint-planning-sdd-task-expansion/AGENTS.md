@@ -45,10 +45,10 @@ The playbook is done when:
 **Intent:** Stories chosen from backlog get promoted into SDD feature folders.
 
 **Methodologies in chain:**
-- `task-spec-kit-three-step` → `geek/sdlc-ai/task-spec-kit-three-step`
-- `task-agent-drafts-spec-before-coding` → `geek/sdlc-ai/task-agent-drafts-spec-before-coding`
-- `template-spec` → `solo/sdd/sdd-planning/template-spec`
-- `writing-specifications` → `solo/sdd/sdd/writing-specifications`
+- `task-spec-kit-three-step` → `sdlc-ai/task-spec-kit-three-step`
+- `task-agent-drafts-spec-before-coding` → `sdlc-ai/task-agent-drafts-spec-before-coding`
+- `template-spec` → `sdd/template-spec`
+- `writing-specifications` → `sdd/writing-specifications`
 
 **Decision gate:**
 > Advance once each promoted story has a spec.md and passes DoR. No promotion without it.
@@ -58,8 +58,8 @@ The playbook is done when:
 **Intent:** Features touching cross-service boundaries get a design.md.
 
 **Methodologies in chain:**
-- `template-design` → `solo/sdd/sdd-planning/template-design`
-- `writing-design-documents` → `solo/sdd/sdd/writing-design-documents`
+- `template-design` → `sdd/template-design`
+- `writing-design-documents` → `sdd/writing-design-documents`
 
 **Decision gate:**
 > Advance when every cross-service feature has a design.md AND every isolated feature has an explicit waiver in the spec.
@@ -69,11 +69,11 @@ The playbook is done when:
 **Intent:** implementation-plan.md becomes TASK_*.md files in `tasks/todo/`.
 
 **Methodologies in chain:**
-- `template-task` → `solo/sdd/sdd-planning/template-task`
-- `writing-implementation-plans` → `solo/sdd/sdd/writing-implementation-plans`
-- `impl-plan-100k-rule` → `solo/sdd/sdd-planning/impl-plan-100k-rule`
-- `task-creation-parallelization` → `solo/sdd/sdd/task-creation-parallelization`
-- `tracker-linear-agent-as-assignee` → `geek/sdlc-ai/tracker-linear-agent-as-assignee`
+- `template-task` → `sdd/template-task`
+- `writing-implementation-plans` → `sdd/writing-implementation-plans`
+- `impl-plan-100k-rule` → `sdd/impl-plan-100k-rule`
+- `task-creation-parallelization` → `sdd/task-creation-parallelization`
+- `tracker-linear-agent-as-assignee` → `sdlc-ai/tracker-linear-agent-as-assignee`
 
 **Decision gate:**
 > Advance once every promoted feature has a `tasks/todo/` tree with self-contained task files.
@@ -83,10 +83,10 @@ The playbook is done when:
 **Intent:** Velocity + complexity tags fit inside confirmed capacity; sprint commit posted.
 
 **Methodologies in chain:**
-- `predictive-analytics-pm` → `pro/pm/pm-agile/predictive-analytics-pm`
-- `raci-matrix` → `pro/pm/pm-agile/raci-matrix`
-- `scrum-ceremonies` → `pro/pm/pm-agile/scrum-ceremonies`
-- `value-stream-management` → `pro/pm/pm-agile/value-stream-management`
+- `predictive-analytics-pm-pm-agile` → `pm/predictive-analytics-pm-pm-agile`
+- `raci-matrix-pm-agile` → `pm/raci-matrix-pm-agile`
+- `scrum-ceremonies` → `pm/scrum-ceremonies`
+- `value-stream-management-pm-agile` → `pm/value-stream-management-pm-agile`
 
 **Decision gate:**
 > Required: sprint commit signed off. Overcommitting at this gate = guaranteed mid-sprint scope cut.

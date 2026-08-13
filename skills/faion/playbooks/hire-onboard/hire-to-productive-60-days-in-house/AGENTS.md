@@ -46,11 +46,11 @@ The playbook is done when:
 **Intent:** Funnel → structured interview with role-specific rubric → offer.
 
 **Methodologies in chain:**
-- `structured-interview-design` → `pro/comms/hr-recruiter/structured-interview-design`
-- `interview-methods` → `pro/comms/hr-recruiter/interview-methods`
-- `star-interview-framework` → `pro/comms/hr-recruiter/star-interview-framework`
-- `star-interview-method` → `pro/comms/hr-recruiter/star-interview-method`
-- `employee-value-proposition` → `pro/comms/hr-recruiter/employee-value-proposition`
+- `structured-interview-design` → `hr/structured-interview-design`
+- `interview-methods` → `hr/interview-methods`
+- `star-interview-framework` → `hr/star-interview-framework`
+- `star-interview-method` → `hr/star-interview-method`
+- `employee-value-proposition` → `hr/employee-value-proposition`
 
 **Decision gate:**
 > Advance only with a hire decision backed by rubric evidence + bias check.
@@ -60,9 +60,9 @@ The playbook is done when:
 **Intent:** Hire is incident-literate, has run the dev loop locally, has merged a small PR.
 
 **Methodologies in chain:**
-- `onboarding-30-day` → `pro/comms/hr-recruiter/onboarding-30-day`
-- `onboarding` → `pro/comms/hr-recruiter/onboarding`
-- `30-60-90-day-plan` → `pro/comms/hr-recruiter/30-60-90-day-plan`
+- `onboarding-30-day` → `hr/onboarding-30-day`
+- `onboarding` → `hr/onboarding`
+- `30-60-90-day-plan` → `hr/30-60-90-day-plan`
 
 **Decision gate:**
 > Advance when 14-day retro passes. Repeating week-1 problems = block.
@@ -72,7 +72,7 @@ The playbook is done when:
 **Intent:** Hire scopes, designs, ships their first owned feature.
 
 **Methodologies in chain:**
-- `onboarding-60-90-day` → `pro/comms/hr-recruiter/onboarding-60-90-day`
+- `onboarding-60-90-day` → `hr/onboarding-60-90-day`
 
 **Decision gate:**
 > Required: shipped feature behind a flag. Half-shipped doesn't count.
@@ -82,8 +82,8 @@ The playbook is done when:
 **Intent:** 60-day retro; retention checkpoint; promotion-eligibility decision (later).
 
 **Methodologies in chain:**
-- `retention-compliance` → `pro/comms/hr-recruiter/retention-compliance`
-- `lessons-learned` → `pro/pm/pm-traditional/lessons-learned`
+- `retention-compliance` → `hr/retention-compliance`
+- `lessons-learned-pm-traditional` → `pm/lessons-learned-pm-traditional`
 
 **Decision gate:**
 > Required: written retro. If retention signals are weak, escalate now, not at day 90.

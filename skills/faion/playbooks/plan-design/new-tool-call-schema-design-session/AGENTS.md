@@ -47,10 +47,10 @@ The playbook is done when:
 - Decide bundle vs split
 
 **Methodologies in chain:**
-- `verb-object-tool-naming` → `geek/ai/ai-agents/verb-object-tool-naming`
-- `tool-description-as-prompt` → `geek/ai/ai-agents/tool-description-as-prompt`
-- `bundle-vs-split-tools` → `geek/ai/ai-agents/bundle-vs-split-tools`
-- `field-descriptions-as-prompts` → `geek/ai/ai-agents/field-descriptions-as-prompts`
+- `verb-object-tool-naming` → `ai-agents/verb-object-tool-naming`
+- `tool-description-as-prompt` → `ai-agents/tool-description-as-prompt`
+- `bundle-vs-split-tools` → `ai-agents/bundle-vs-split-tools`
+- `field-descriptions-as-prompts` → `ai-agents/field-descriptions-as-prompts`
 
 **Outputs:**
 - Tool card draft
@@ -69,13 +69,13 @@ The playbook is done when:
 - Cheap guardrail tripwires on inputs
 
 **Methodologies in chain:**
-- `strict-mode-required-fields` → `geek/ai/ai-agents/strict-mode-required-fields`
-- `structured-tool-errors` → `geek/ai/ai-agents/structured-tool-errors`
-- `idempotent-write-tools` → `geek/ai/ai-agents/idempotent-write-tools`
-- `cheap-guardrail-tripwire` → `geek/ai/ai-agents/cheap-guardrail-tripwire`
-- `schema-version-pinning` → `geek/ai/ai-agents/schema-version-pinning`
-- `tool-use-function-calling` → `geek/ai/ml-engineer/tool-use-function-calling`
-- `guardrails-custom-pipeline` → `geek/ai/ml-engineer/guardrails-custom-pipeline`
+- `strict-mode-required-fields` → `ai-agents/strict-mode-required-fields`
+- `structured-tool-errors` → `ai-agents/structured-tool-errors`
+- `idempotent-write-tools` → `ai-agents/idempotent-write-tools`
+- `cheap-guardrail-tripwire` → `ai-agents/cheap-guardrail-tripwire`
+- `schema-version-pinning` → `ai-agents/schema-version-pinning`
+- `tool-use-function-calling` → `ml-engineering/tool-use-function-calling`
+- `guardrails-custom-pipeline` → `ml-engineering/guardrails-custom-pipeline`
 
 **Outputs:**
 - Schema v.x.y.z

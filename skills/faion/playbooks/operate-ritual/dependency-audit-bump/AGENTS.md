@@ -36,7 +36,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `free/dev/software-developer/pnpm-package-management` (tier: free)
+- `dev/pnpm-package-management` (tier: free)
 
 ### Step 2 — Plan
 
@@ -53,7 +53,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `free/dev/software-developer/python-poetry-setup` (tier: free)
+- `dev/python-poetry-setup` (tier: free)
 
 ### Step 3 — Execute
 
@@ -69,7 +69,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `solo/dev/software-architect/architecture-decision-records` (tier: solo)
+- `architecture/architecture-decision-records` (tier: solo)
 
 ### Step 4 — Verify
 
@@ -83,9 +83,6 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 **Outputs**
 - Verification report
 - Metric delta vs baseline
-
-**Backed by methodology**
-- `solo/dev/software-developer/technical-debt` (tier: solo)
 
 ### Step 5 — Close
 
@@ -101,7 +98,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `solo/dev/testing-developer/security-testing` (tier: solo)
+- `dev/security-testing-testing` (tier: solo)
 
 ## Decision points
 

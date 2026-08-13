@@ -48,7 +48,7 @@ The playbook is done when:
 - Ask what success looks like at end of call
 
 **Methodologies in chain:**
-- `active-listening` -> `solo/comms/communicator/active-listening`
+- `active-listening` → `comms/active-listening`
 
 **Outputs:**
 - Confirmed agenda
@@ -66,9 +66,9 @@ The playbook is done when:
 - Surface workarounds + prior attempts
 
 **Methodologies in chain:**
-- `elicitation-techniques` -> `pro/ba/business-analyst/elicitation-techniques`
-- `stakeholder-analysis` -> `pro/ba/business-analyst/stakeholder-analysis`
-- `mom-test` -> `solo/comms/communicator/mom-test`
+- `elicitation-techniques` → `ba/elicitation-techniques`
+- `stakeholder-analysis` → `ba/stakeholder-analysis`
+- `mom-test` → `comms/mom-test`
 
 **Outputs:**
 - Pain map notes
@@ -86,9 +86,9 @@ The playbook is done when:
 - Surface alternative solutions considered
 
 **Methodologies in chain:**
-- `growth-gtm-strategy` -> `pro/marketing/gtm-strategist/growth-gtm-strategy`
-- `competitive-intelligence` -> `pro/research/market-researcher/competitive-intelligence`
-- `selling-ideas` -> `solo/comms/communicator/selling-ideas`
+- `growth-gtm-strategy` → `marketing/growth-gtm-strategy`
+- `competitive-intelligence-market-research` → `research/competitive-intelligence-market-research`
+- `selling-ideas` → `comms/selling-ideas`
 
 **Outputs:**
 - Budget signal

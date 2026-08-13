@@ -47,9 +47,9 @@ The playbook is done when:
 - Compare to last week
 
 **Methodologies in chain:**
-- `plausible-analytics` → `solo/marketing/growth-marketer/plausible-analytics`
-- `ops-dashboard-setup` → `solo/marketing/growth-marketer/ops-dashboard-setup`
-- `product-analytics` → `solo/product/product-operations/product-analytics`
+- `plausible-analytics` → `marketing/plausible-analytics`
+- `ops-dashboard-setup` → `marketing/ops-dashboard-setup`
+- `product-analytics` → `product/product-analytics`
 
 **Outputs:**
 - Weekly pulse row
@@ -67,8 +67,8 @@ The playbook is done when:
 - Tag for follow-up
 
 **Methodologies in chain:**
-- `ab-testing-basics` → `solo/dev/automation-tooling/ab-testing-basics`
-- `ab-testing-implementation` → `solo/dev/automation-tooling/ab-testing-implementation`
+- `ab-testing-basics` → `sdd/ab-testing-basics`
+- `ab-testing-implementation` → `sdd/ab-testing-implementation`
 
 **Outputs:**
 - Anomaly list with hypotheses
@@ -86,10 +86,10 @@ The playbook is done when:
 - Write success metric + decision date
 
 **Methodologies in chain:**
-- `growth-landing-page-design` → `solo/marketing/conversion-optimizer/growth-landing-page-design`
-- `ops-subscription-models` → `solo/marketing/gtm-strategist/ops-subscription-models`
-- `okr-setting` → `solo/product/product-manager/okr-setting`
-- `outcome-based-roadmaps` → `solo/product/product-manager/outcome-based-roadmaps`
+- `growth-landing-page-design` → `marketing/growth-landing-page-design`
+- `ops-subscription-models` → `marketing/ops-subscription-models`
+- `okr-setting` → `product/okr-setting`
+- `outcome-based-roadmaps` → `product/outcome-based-roadmaps`
 
 **Outputs:**
 - Next-week experiment ticket

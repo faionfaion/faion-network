@@ -36,7 +36,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps` (tier: geek)
+- `sdlc-ai/inc-runbook-as-markdown-tagged-steps` (tier: geek)
 
 ### Step 2 — Plan
 
@@ -53,7 +53,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `pro/dev/software-architect/observability-architecture` (tier: pro)
+- `architecture/observability-architecture` (tier: pro)
 
 ### Step 3 — Execute
 
@@ -69,7 +69,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `pro/dev/software-architect/reliability-architecture` (tier: pro)
+- `architecture/reliability-architecture` (tier: pro)
 
 ### Step 4 — Verify
 
@@ -85,7 +85,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `pro/pm/project-manager/risk-register` (tier: pro)
+- `pm/risk-register` (tier: pro)
 
 ### Step 5 — Close
 
@@ -101,7 +101,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps` (tier: geek)
+- `sdlc-ai/inc-runbook-as-markdown-tagged-steps` (tier: geek)
 
 ## Decision points
 

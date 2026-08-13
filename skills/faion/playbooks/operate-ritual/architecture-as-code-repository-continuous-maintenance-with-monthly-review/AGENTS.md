@@ -36,10 +36,10 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `geek/sdd/sdd-planning/ai-assisted-specification-writing` (tier: geek)
-- `geek/sdlc-ai/lint-megalinter-polyglot` (tier: geek)
-- `solo/dev/software-architect/c4-model` (tier: solo)
-- `solo/sdd/sdd/writing-design-documents` (tier: solo)
+- `sdd/ai-assisted-specification-writing-planning` (tier: geek)
+- `sdlc-ai/lint-megalinter-polyglot` (tier: geek)
+- `architecture/c4-model` (tier: solo)
+- `sdd/writing-design-documents` (tier: solo)
 
 ### Step 2 — Assess
 
@@ -56,10 +56,10 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Risk register
 
 **Backed by methodology**
-- `geek/sdd/sdd/ai-assisted-specification-writing` (tier: geek)
-- `geek/sdlc-ai/lint-precommit-floor` (tier: geek)
-- `solo/sdd/sdd/living-documentation` (tier: solo)
-- `solo/sdd/sdd/writing-specifications` (tier: solo)
+- `sdd/ai-assisted-specification-writing` (tier: geek)
+- `sdlc-ai/lint-precommit-floor` (tier: geek)
+- `sdd/living-documentation` (tier: solo)
+- `sdd/writing-specifications` (tier: solo)
 
 ### Step 3 — Plan
 
@@ -76,10 +76,10 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `geek/sdlc-ai/gov-conventional-commits-enforced` (tier: geek)
-- `geek/sdlc-ai/mr-codemod-refactor-agent` (tier: geek)
-- `solo/sdd/sdd/mistake-memory` (tier: solo)
-- `solo/sdd/sdd/yaml-frontmatter` (tier: solo)
+- `sdlc-ai/gov-conventional-commits-enforced` (tier: geek)
+- `sdlc-ai/mr-codemod-refactor-agent` (tier: geek)
+- `sdd/mistake-memory` (tier: solo)
+- `sdd/yaml-frontmatter` (tier: solo)
 
 ### Step 4 — Execute
 
@@ -95,9 +95,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `geek/sdlc-ai/kb-agents-md-context-pyramid` (tier: geek)
-- `geek/sdlc-ai/mr-graph-vs-diff-reviewer` (tier: geek)
-- `solo/sdd/sdd/pattern-memory` (tier: solo)
+- `sdlc-ai/kb-agents-md-context-pyramid` (tier: geek)
+- `sdlc-ai/mr-graph-vs-diff-reviewer` (tier: geek)
+- `sdd/pattern-memory` (tier: solo)
 
 ### Step 5 — Verify
 
@@ -113,9 +113,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `geek/sdlc-ai/kb-codebase-rag-symbol-chunked` (tier: geek)
-- `geek/sdlc-ai/task-spec-kit-three-step` (tier: geek)
-- `solo/sdd/sdd/reflexion-learning` (tier: solo)
+- `sdlc-ai/kb-codebase-rag-symbol-chunked` (tier: geek)
+- `sdlc-ai/task-spec-kit-three-step` (tier: geek)
+- `sdd/reflexion-learning` (tier: solo)
 
 ### Step 6 — Close
 
@@ -131,9 +131,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `geek/sdlc-ai/kb-versioned-agent-memory-files` (tier: geek)
-- `solo/dev/software-architect/architecture-decision-records` (tier: solo)
-- `solo/sdd/sdd/sdd-workflow-overview` (tier: solo)
+- `sdlc-ai/kb-versioned-agent-memory-files` (tier: geek)
+- `architecture/architecture-decision-records` (tier: solo)
+- `sdd/sdd-workflow-overview` (tier: solo)
 
 ## Decision points
 

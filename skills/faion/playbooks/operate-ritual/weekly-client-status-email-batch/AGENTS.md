@@ -47,9 +47,9 @@ The playbook is done when:
 - Tag scope-creep risks
 
 **Methodologies in chain:**
-- `scope-management` -> `pro/pm/project-manager/scope-management`
-- `change-control` -> `pro/pm/project-manager/change-control`
-- `stakeholder-engagement` -> `pro/pm/project-manager/stakeholder-engagement`
+- `scope-management` → `pm/scope-management`
+- `change-control` → `pm/change-control`
+- `stakeholder-engagement` → `pm/stakeholder-engagement`
 
 **Outputs:**
 - Per-client fact card
@@ -67,7 +67,7 @@ The playbook is done when:
 - Flag scope-creep risks in writing
 
 **Methodologies in chain:**
-- `business-storytelling` -> `solo/comms/communicator/business-storytelling`
+- `business-storytelling` → `comms/business-storytelling`
 
 **Outputs:**
 - Email drafts per account

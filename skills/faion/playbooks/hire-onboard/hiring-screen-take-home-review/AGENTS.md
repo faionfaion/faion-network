@@ -45,10 +45,10 @@ The playbook is done when:
 **Intent:** AI bot lints + scans + runs tests at the same bar as team PRs.
 
 **Methodologies in chain:**
-- `lint-megalinter-polyglot` → `geek/sdlc-ai/lint-megalinter-polyglot`
-- `lint-precommit-floor` → `geek/sdlc-ai/lint-precommit-floor`
-- `sec-codeql-autofix-on-pr` → `geek/sdlc-ai/sec-codeql-autofix-on-pr`
-- `code-review-basics` → `free/dev/code-quality/code-review-basics`
+- `lint-megalinter-polyglot` → `sdlc-ai/lint-megalinter-polyglot`
+- `lint-precommit-floor` → `sdlc-ai/lint-precommit-floor`
+- `sec-codeql-autofix-on-pr` → `sdlc-ai/sec-codeql-autofix-on-pr`
+- `code-review-basics` → `dev/code-review-basics`
 
 **Decision gate:**
 > Advance to human review only after the floor has run. Don't read whitespace.
@@ -58,10 +58,10 @@ The playbook is done when:
 **Intent:** Score with a structured interview rubric; capture STAR evidence.
 
 **Methodologies in chain:**
-- `structured-interview-design` → `pro/comms/hr-recruiter/structured-interview-design`
-- `star-interview-framework` → `pro/comms/hr-recruiter/star-interview-framework`
-- `star-interview-method` → `pro/comms/hr-recruiter/star-interview-method`
-- `interview-methods` → `pro/comms/hr-recruiter/interview-methods`
+- `structured-interview-design` → `hr/structured-interview-design`
+- `star-interview-framework` → `hr/star-interview-framework`
+- `star-interview-method` → `hr/star-interview-method`
+- `interview-methods` → `hr/interview-methods`
 
 **Decision gate:**
 > Advance only when every rubric line has an evidence quote. Vibes-only entries get rewritten.
@@ -71,7 +71,7 @@ The playbook is done when:
 **Intent:** Bias-check the scoring before committing the verdict.
 
 **Methodologies in chain:**
-- `interview-methods` → `pro/comms/hr-recruiter/interview-methods`
+- `interview-methods` → `hr/interview-methods`
 
 **Decision gate:**
 > Required: written decision + bias check. Skipping bias check defaults to status-quo team shape.

@@ -47,12 +47,12 @@ The playbook is done when:
 - Mine production traces for candidate training data
 
 **Methodologies in chain:**
-- `llm-decision-framework` → `geek/ai/ml-engineer/llm-decision-framework`
-- `decision-framework` → `geek/ai/ml-engineer/decision-framework`
-- `cost-optimization` → `geek/ai/ml-engineer/cost-optimization`
-- `cost-reduction-strategies` → `geek/ai/ml-ops/cost-reduction-strategies`
-- `prompt-engineering-evaluation` → `geek/ai/ml-engineer/prompt-engineering-evaluation`
-- `record-replay-debugging` → `geek/ai/ai-agents/record-replay-debugging`
+- `llm-decision-framework` → `ml-engineering/llm-decision-framework`
+- `decision-framework` → `ml-engineering/decision-framework`
+- `cost-optimization` → `ml-engineering/cost-optimization`
+- `cost-reduction-strategies` → `ml-engineering/cost-reduction-strategies`
+- `prompt-engineering-evaluation` → `ml-engineering/prompt-engineering-evaluation`
+- `record-replay-debugging` → `ai-agents/record-replay-debugging`
 
 **Outputs:**
 - Baseline scorecard
@@ -71,11 +71,11 @@ The playbook is done when:
 - Write decision doc with rubric
 
 **Methodologies in chain:**
-- `finetuning` → `geek/ai/ml-engineer/finetuning`
-- `fine-tuning-openai-basics` → `geek/ai/ml-ops/fine-tuning-openai-basics`
-- `finetuning-basics` → `geek/ai/ml-ops/finetuning-basics`
-- `role-specialized-models` → `geek/ai/ai-agents/role-specialized-models`
-- `confidence-thresholded-cascade` → `geek/ai/ai-agents/confidence-thresholded-cascade`
+- `finetuning` → `ml-engineering/finetuning`
+- `fine-tuning-openai-basics` → `ml-engineering/fine-tuning-openai-basics`
+- `finetuning-basics` → `ml-engineering/finetuning-basics`
+- `role-specialized-models` → `ai-agents/role-specialized-models`
+- `confidence-thresholded-cascade` → `ai-agents/confidence-thresholded-cascade`
 
 **Outputs:**
 - Tune-vs-prompt decision doc
@@ -93,10 +93,10 @@ The playbook is done when:
 - Document dataset provenance
 
 **Methodologies in chain:**
-- `fine-tuning-openai-data-prep` → `geek/ai/ml-engineer/fine-tuning-openai-data-prep`
-- `fine-tuning-openai-sft` → `geek/ai/ml-engineer/fine-tuning-openai-sft`
-- `fine-tuning-openai-dpo` → `geek/ai/ml-engineer/fine-tuning-openai-dpo`
-- `finetuning-datasets` → `geek/ai/ml-ops/finetuning-datasets`
+- `fine-tuning-openai-data-prep` → `ml-engineering/fine-tuning-openai-data-prep`
+- `fine-tuning-openai-sft` → `ml-engineering/fine-tuning-openai-sft`
+- `fine-tuning-openai-dpo` → `ml-engineering/fine-tuning-openai-dpo`
+- `finetuning-datasets` → `ml-engineering/finetuning-datasets`
 
 **Outputs:**
 - SFT corpus
@@ -116,9 +116,9 @@ The playbook is done when:
 - Score against held-out eval
 
 **Methodologies in chain:**
-- `fine-tuning-lora` → `geek/ai/ml-engineer/fine-tuning-lora`
-- `lora-qlora` → `geek/ai/ml-ops/lora-qlora`
-- `fine-tuning-openai-production` → `geek/ai/ml-ops/fine-tuning-openai-production`
+- `fine-tuning-lora` → `ml-engineering/fine-tuning-lora`
+- `lora-qlora` → `ml-engineering/lora-qlora`
+- `fine-tuning-openai-production` → `ml-engineering/fine-tuning-openai-production`
 
 **Outputs:**
 - Trained checkpoint
@@ -137,9 +137,9 @@ The playbook is done when:
 - Promote and pin schema
 
 **Methodologies in chain:**
-- `fine-tuning-openai-eval` → `geek/ai/ml-engineer/fine-tuning-openai-eval`
-- `fine-tuning-openai-deployment` → `geek/ai/ml-engineer/fine-tuning-openai-deployment`
-- `schema-version-pinning` → `geek/ai/ai-agents/schema-version-pinning`
+- `fine-tuning-openai-eval` → `ml-engineering/fine-tuning-openai-eval`
+- `fine-tuning-openai-deployment` → `ml-engineering/fine-tuning-openai-deployment`
+- `schema-version-pinning` → `ai-agents/schema-version-pinning`
 
 **Outputs:**
 - Shadow report

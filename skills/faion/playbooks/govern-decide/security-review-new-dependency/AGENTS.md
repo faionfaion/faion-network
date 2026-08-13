@@ -51,12 +51,12 @@ The playbook is done when:
 **Intent:** AI screens the diff; trivial bumps move through Renovate handoff.
 
 **Methodologies in chain:**
-- `sec-trivy-pinned-supply-chain-scan` → `geek/sdlc-ai/sec-trivy-pinned-supply-chain-scan`
-- `gov-license-compliance-scan` → `geek/sdlc-ai/gov-license-compliance-scan`
-- `mr-renovate-ai-handoff` → `geek/sdlc-ai/mr-renovate-ai-handoff`
-- `gov-approval-token-signed-jwt` → `geek/sdlc-ai/gov-approval-token-signed-jwt`
-- `security-supply-chain` → `pro/infra/cicd-engineer/security-supply-chain`
-- `security-container-scanning` → `pro/infra/cicd-engineer/security-container-scanning`
+- `sec-trivy-pinned-supply-chain-scan` → `sdlc-ai/sec-trivy-pinned-supply-chain-scan`
+- `gov-license-compliance-scan` → `sdlc-ai/gov-license-compliance-scan`
+- `mr-renovate-ai-handoff` → `sdlc-ai/mr-renovate-ai-handoff`
+- `gov-approval-token-signed-jwt` → `sdlc-ai/gov-approval-token-signed-jwt`
+- `security-supply-chain` → `infra/security-supply-chain`
+- `security-container-scanning` → `infra/security-container-scanning`
 
 **Decision gate:**
 > If auto-merge eligible AND scans green AND license clear → merge. Otherwise advance to human review.
@@ -66,10 +66,10 @@ The playbook is done when:
 **Intent:** Security-conscious engineer reads the diff; considers alternatives; writes an ADR.
 
 **Methodologies in chain:**
-- `architecture-decision-records` → `solo/dev/software-architect/architecture-decision-records`
-- `architecture-decision-records-sdd-planning` → `solo/sdd/sdd-planning/architecture-decision-records`
-- `architecture-decision-records-sdd` → `solo/sdd/sdd/architecture-decision-records`
-- `security-architecture` → `solo/dev/software-architect/security-architecture`
+- `architecture-decision-records` → `architecture/architecture-decision-records`
+- `architecture-decision-records-planning` → `sdd/architecture-decision-records-planning`
+- `architecture-decision-records` → `sdd/architecture-decision-records`
+- `security-architecture` → `architecture/security-architecture`
 
 **Decision gate:**
 > Required: ADR with at least one alternative considered. ADR-less merges = future surprise.

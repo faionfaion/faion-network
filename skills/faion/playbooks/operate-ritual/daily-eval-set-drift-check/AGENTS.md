@@ -45,9 +45,9 @@ The playbook is done when:
 - Confirm schema pin still valid
 
 **Methodologies in chain:**
-- `trajectory-eval-otel` → `geek/ai/ai-agents/trajectory-eval-otel`
-- `schema-version-pinning` → `geek/ai/ai-agents/schema-version-pinning`
-- `llm-observability-stack` → `geek/ai/ml-engineer/llm-observability-stack`
+- `trajectory-eval-otel` → `ai-agents/trajectory-eval-otel`
+- `schema-version-pinning` → `ai-agents/schema-version-pinning`
+- `llm-observability-stack` → `ml-engineering/llm-observability-stack`
 
 **Outputs:**
 - Last-24h sample
@@ -64,10 +64,10 @@ The playbook is done when:
 - Compare scores vs trailing 7-day baseline
 
 **Methodologies in chain:**
-- `llm-judge-rubric-evidence-first` → `geek/ai/ai-agents/llm-judge-rubric-evidence-first`
-- `model-evaluation` → `geek/ai/ml-engineer/model-evaluation`
-- `evaluation-framework` → `geek/ai/ml-ops/evaluation-framework`
-- `evaluation-metrics` → `geek/ai/ml-ops/evaluation-metrics`
+- `llm-judge-rubric-evidence-first` → `ai-agents/llm-judge-rubric-evidence-first`
+- `model-evaluation` → `ml-engineering/model-evaluation`
+- `evaluation-framework` → `ml-engineering/evaluation-framework`
+- `evaluation-metrics` → `ml-engineering/evaluation-metrics`
 
 **Outputs:**
 - Daily judge scorecard

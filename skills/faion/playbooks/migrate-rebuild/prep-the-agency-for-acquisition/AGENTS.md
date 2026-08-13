@@ -48,7 +48,7 @@ The playbook is done when:
 - Score concentration risk
 
 **Methodologies in chain:**
-- `product-operations` -> `pro/product/product-operations/product-operations`
+- `product-operations-product-ops` → `pm/product-operations-product-ops`
 
 **Outputs:**
 - Dependency audit doc
@@ -66,11 +66,11 @@ The playbook is done when:
 - Audit partnership + vendor commitments
 
 **Methodologies in chain:**
-- `ops-annual-planning-process` -> `pro/marketing/gtm-strategist/ops-annual-planning-process`
-- `ops-financial-basics` -> `pro/marketing/gtm-strategist/ops-financial-basics`
-- `ops-legal-basics` -> `pro/marketing/gtm-strategist/ops-legal-basics`
-- `ops-legal-compliance-checklist` -> `pro/marketing/gtm-strategist/ops-legal-compliance-checklist`
-- `ops-partnership-strategy` -> `pro/marketing/gtm-strategist/ops-partnership-strategy`
+- `ops-annual-planning-process` → `marketing/ops-annual-planning-process`
+- `ops-financial-basics` → `marketing/ops-financial-basics`
+- `ops-legal-basics` → `marketing/ops-legal-basics`
+- `ops-legal-compliance-checklist` → `marketing/ops-legal-compliance-checklist`
+- `ops-partnership-strategy` → `marketing/ops-partnership-strategy`
 
 **Outputs:**
 - Financial pack

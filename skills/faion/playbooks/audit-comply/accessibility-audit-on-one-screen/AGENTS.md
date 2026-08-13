@@ -36,7 +36,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `free/dev/software-developer/e2e-testing` (tier: free)
+- `dev/e2e-testing` (tier: free)
 
 ### Step 2 — Plan
 
@@ -53,7 +53,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `free/dev/software-developer/storybook-setup` (tier: free)
+- `dev/storybook-setup` (tier: free)
 
 ### Step 3 — Execute
 
@@ -69,7 +69,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `solo/dev/frontend-developer/accessibility` (tier: solo)
+- `frontend/accessibility` (tier: solo)
 
 ### Step 4 — Verify
 
@@ -85,7 +85,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `solo/dev/frontend-developer/storybook-setup` (tier: solo)
+- `frontend/storybook-setup` (tier: solo)
 
 ### Step 5 — Close
 
@@ -101,7 +101,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `solo/dev/software-developer/accessibility` (tier: solo)
+- `dev/accessibility` (tier: solo)
 
 ## Decision points
 

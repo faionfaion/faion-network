@@ -47,10 +47,10 @@ The playbook is done when:
 - Send via accounting tool
 
 **Methodologies in chain:**
-- `ops-financial-basics` -> `pro/marketing/gtm-strategist/ops-financial-basics`
-- `ops-legal-compliance-checklist` -> `pro/marketing/gtm-strategist/ops-legal-compliance-checklist`
-- `ops-tax-compliance` -> `pro/marketing/gtm-strategist/ops-tax-compliance`
-- `ops-financial-planning` -> `solo/marketing/gtm-strategist/ops-financial-planning`
+- `ops-financial-basics` → `marketing/ops-financial-basics`
+- `ops-legal-compliance-checklist` → `marketing/ops-legal-compliance-checklist`
+- `ops-tax-compliance` → `marketing/ops-tax-compliance`
+- `ops-financial-planning` → `marketing/ops-financial-planning`
 
 **Outputs:**
 - Sent invoices list
@@ -68,8 +68,8 @@ The playbook is done when:
 - Confirm receipt + log
 
 **Methodologies in chain:**
-- `ops-contractor-management` -> `pro/marketing/gtm-strategist/ops-contractor-management`
-- `cost-estimation` -> `pro/pm/project-manager/cost-estimation`
+- `ops-contractor-management` → `marketing/ops-contractor-management`
+- `cost-estimation` → `pm/cost-estimation`
 
 **Outputs:**
 - Payments sent

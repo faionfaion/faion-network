@@ -49,8 +49,8 @@ The playbook is done when:
 - Decide: rollback / flag-off / patch
 
 **Methodologies in chain:**
-- `monitoring-logging` → `solo/infra/server-craft/monitoring-logging`
-- `health-checks-autoheal` → `solo/infra/server-craft/health-checks-autoheal`
+- `monitoring-logging` → `backend/monitoring-logging`
+- `health-checks-autoheal` → `backend/health-checks-autoheal`
 
 **Outputs:**
 - Triage note with decision
@@ -68,8 +68,8 @@ The playbook is done when:
 - Communicate ETA to customers if needed
 
 **Methodologies in chain:**
-- `cd-pipelines` → `solo/dev/automation-tooling/cd-pipelines`
-- `feature-flags-rollout-targeting` → `solo/dev/automation-tooling/feature-flags-rollout-targeting`
+- `cd-pipelines` → `sdd/cd-pipelines`
+- `feature-flags-rollout-targeting` → `sdd/feature-flags-rollout-targeting`
 
 **Outputs:**
 - Mitigated prod
@@ -105,8 +105,8 @@ The playbook is done when:
 - Update mistake-memory
 
 **Methodologies in chain:**
-- `mistake-memory` → `solo/sdd/sdd/mistake-memory`
-- `reflexion-learning` → `solo/sdd/sdd/reflexion-learning`
+- `mistake-memory` → `sdd/mistake-memory`
+- `reflexion-learning` → `sdd/reflexion-learning`
 
 **Outputs:**
 - Postmortem doc

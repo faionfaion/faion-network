@@ -48,9 +48,9 @@ The playbook is done when:
 **Intent:** List flags by lifecycle stage; spot drift.
 
 **Methodologies in chain:**
-- `feature-flags-types-lifecycle` → `solo/dev/automation-tooling/feature-flags-types-lifecycle`
-- `feature-flags-core-implementation` → `solo/dev/automation-tooling/feature-flags-core-implementation`
-- `trunk-based-feature-flags` → `solo/dev/automation-tooling/trunk-based-feature-flags`
+- `feature-flags-types-lifecycle` → `sdd/feature-flags-types-lifecycle`
+- `feature-flags-core-implementation` → `sdd/feature-flags-core-implementation`
+- `trunk-based-feature-flags` → `dev/trunk-based-feature-flags`
 
 **Decision gate:**
 > Advance once every flag is mapped to one of: dark / ramp / GA-pending / drifting.
@@ -60,10 +60,10 @@ The playbook is done when:
 **Intent:** Walk SLO + error + adoption + business-intent signals per flag.
 
 **Methodologies in chain:**
-- `feature-flags-rollout-targeting` → `solo/dev/automation-tooling/feature-flags-rollout-targeting`
-- `feature-flags-services-testing` → `solo/dev/automation-tooling/feature-flags-services-testing`
-- `release-planning` → `pro/product/product-manager/release-planning`
-- `quality-gates-confidence` → `solo/sdd/sdd/quality-gates-confidence`
+- `feature-flags-rollout-targeting` → `sdd/feature-flags-rollout-targeting`
+- `feature-flags-services-testing` → `sdd/feature-flags-services-testing`
+- `release-planning` → `pm/release-planning`
+- `quality-gates-confidence` → `sdd/quality-gates-confidence`
 
 **Decision gate:**
 > Advance when each flag has at least one quantitative signal supporting the proposed verdict. No vibes-only decisions.
@@ -73,8 +73,8 @@ The playbook is done when:
 **Intent:** Write the verdict per flag; remove dead flags.
 
 **Methodologies in chain:**
-- `feature-flags-types-lifecycle` → `solo/dev/automation-tooling/feature-flags-types-lifecycle`
-- `feature-flags-core-implementation` → `solo/dev/automation-tooling/feature-flags-core-implementation`
+- `feature-flags-types-lifecycle` → `sdd/feature-flags-types-lifecycle`
+- `feature-flags-core-implementation` → `sdd/feature-flags-core-implementation`
 
 **Decision gate:**
 > Required: written verdict per flag. Unresolved flags carry forward but must be tagged 'unresolved-prev-week'.

@@ -49,12 +49,12 @@ The playbook is done when:
 - Score customer concentration risk
 
 **Methodologies in chain:**
-- `aarrr-pirate-metrics` -> `pro/marketing/growth-marketer/aarrr-pirate-metrics`
-- `cohort-implementation` -> `pro/marketing/growth-marketer/cohort-implementation`
-- `ops-metrics-basics` -> `pro/marketing/growth-marketer/ops-metrics-basics`
-- `ops-financial-basics` -> `pro/marketing/gtm-strategist/ops-financial-basics`
-- `business-model-research` -> `pro/research/market-researcher/business-model-research`
-- `risk-assessment` -> `pro/research/market-researcher/risk-assessment`
+- `aarrr-pirate-metrics` → `marketing/aarrr-pirate-metrics`
+- `cohort-implementation` → `marketing/cohort-implementation`
+- `ops-metrics-basics` → `marketing/ops-metrics-basics`
+- `ops-financial-basics` → `marketing/ops-financial-basics`
+- `business-model-research-market-research` → `research/business-model-research-market-research`
+- `risk-assessment-market-research` → `research/risk-assessment-market-research`
 
 **Outputs:**
 - Revenue-mix audit
@@ -73,14 +73,13 @@ The playbook is done when:
 - Launch landings + intake forms
 
 **Methodologies in chain:**
-- `minimum-product-frameworks` -> `pro/product/product-manager/minimum-product-frameworks`
-- `mlp-planning` -> `pro/product/product-manager/mlp-planning`
-- `release-planning` -> `pro/product/product-manager/release-planning`
-- `competitive-positioning` -> `pro/product/product-planning/competitive-positioning`
-- `growth-brand-positioning` -> `pro/marketing/gtm-strategist/growth-brand-positioning`
-- `growth-gtm-strategy` -> `pro/marketing/gtm-strategist/growth-gtm-strategy`
-- `growth-free-trial-optimization` -> `pro/marketing/conversion-optimizer/growth-free-trial-optimization`
-- `plg-implementation-guide` -> `pro/marketing/conversion-optimizer/plg-implementation-guide`
+- `minimum-product-frameworks` → `pm/minimum-product-frameworks`
+- `mlp-planning` → `pm/mlp-planning`
+- `release-planning` → `pm/release-planning`
+- `competitive-positioning-product-planning` → `pm/competitive-positioning-product-planning`
+- `growth-brand-positioning` → `marketing/growth-brand-positioning`
+- `growth-gtm-strategy` → `marketing/growth-gtm-strategy`
+- `plg-implementation-guide` → `marketing/plg-implementation-guide`
 
 **Outputs:**
 - 2 productized landings live
@@ -99,12 +98,12 @@ The playbook is done when:
 - Stand up retention ops
 
 **Methodologies in chain:**
-- `north-star-metric` -> `pro/marketing/growth-marketer/north-star-metric`
-- `retention-strategies` -> `pro/marketing/growth-marketer/retention-strategies`
-- `growth-affiliate-marketing` -> `pro/marketing/gtm-strategist/growth-affiliate-marketing`
-- `ops-customer-success-basics` -> `pro/marketing/gtm-strategist/ops-customer-success-basics`
-- `ops-upselling-cross-selling` -> `pro/marketing/gtm-strategist/ops-upselling-cross-selling`
-- `ops-partnership-strategy` -> `pro/marketing/gtm-strategist/ops-partnership-strategy`
+- `north-star-metric` → `marketing/north-star-metric`
+- `retention-strategies` → `marketing/retention-strategies`
+- `growth-affiliate-marketing` → `marketing/growth-affiliate-marketing`
+- `ops-customer-success-basics` → `marketing/ops-customer-success-basics`
+- `ops-upselling-cross-selling` → `marketing/ops-upselling-cross-selling`
+- `ops-partnership-strategy` → `marketing/ops-partnership-strategy`
 
 **Outputs:**
 - Retainer conversion ledger
@@ -123,13 +122,13 @@ The playbook is done when:
 - Build founder-time dashboard
 
 **Methodologies in chain:**
-- `onboarding-30-day` -> `pro/comms/hr-recruiter/onboarding-30-day`
-- `onboarding-60-90-day` -> `pro/comms/hr-recruiter/onboarding-60-90-day`
-- `ops-contractor-management` -> `pro/marketing/gtm-strategist/ops-contractor-management`
-- `resource-management` -> `pro/pm/project-manager/resource-management`
-- `product-operations` -> `pro/product/product-operations/product-operations`
-- `portfolio-strategy` -> `pro/product/product-manager/portfolio-strategy`
-- `portfolio-strategy` -> `pro/product/product-planning/portfolio-strategy`
+- `onboarding-30-day` → `hr/onboarding-30-day`
+- `onboarding-60-90-day` → `hr/onboarding-60-90-day`
+- `ops-contractor-management` → `marketing/ops-contractor-management`
+- `resource-management` → `pm/resource-management`
+- `product-operations-product-ops` → `pm/product-operations-product-ops`
+- `portfolio-strategy` → `pm/portfolio-strategy`
+- `portfolio-strategy-product-planning` → `pm/portfolio-strategy-product-planning`
 
 **Outputs:**
 - Contractor coverage SOP
@@ -148,10 +147,10 @@ The playbook is done when:
 - Write commitment or rollback decision
 
 **Methodologies in chain:**
-- `ops-annual-planning-process` -> `pro/marketing/gtm-strategist/ops-annual-planning-process`
-- `ops-annual-planning-templates` -> `pro/marketing/gtm-strategist/ops-annual-planning-templates`
-- `business-model-planning` -> `pro/research/market-researcher/business-model-planning`
-- `trend-analysis` -> `pro/research/market-researcher/trend-analysis`
+- `ops-annual-planning-process` → `marketing/ops-annual-planning-process`
+- `ops-annual-planning-templates` → `marketing/ops-annual-planning-templates`
+- `business-model-planning` → `research/business-model-planning`
+- `trend-analysis-market-research` → `research/trend-analysis-market-research`
 
 **Outputs:**
 - Annual plan v2

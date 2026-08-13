@@ -48,8 +48,8 @@ The playbook is done when:
 - Tag expected behaviour
 
 **Methodologies in chain:**
-- `record-replay-debugging` → `geek/ai/ai-agents/record-replay-debugging`
-- `trajectory-eval-otel` → `geek/ai/ai-agents/trajectory-eval-otel`
+- `record-replay-debugging` → `ai-agents/record-replay-debugging`
+- `trajectory-eval-otel` → `ai-agents/trajectory-eval-otel`
 
 **Outputs:**
 - golden.jsonl
@@ -66,8 +66,8 @@ The playbook is done when:
 - Author rubric judge
 
 **Methodologies in chain:**
-- `chaos-eval-fault-injection` → `geek/ai/ai-agents/chaos-eval-fault-injection`
-- `llm-judge-rubric-evidence-first` → `geek/ai/ai-agents/llm-judge-rubric-evidence-first`
+- `chaos-eval-fault-injection` → `ai-agents/chaos-eval-fault-injection`
+- `llm-judge-rubric-evidence-first` → `ai-agents/llm-judge-rubric-evidence-first`
 
 **Outputs:**
 - Behavioural set + judges
@@ -84,8 +84,8 @@ The playbook is done when:
 - Wire observability stack
 
 **Methodologies in chain:**
-- `llm-observability-stack` → `geek/ai/ml-engineer/llm-observability-stack`
-- `llm-observability-stack-2026` → `geek/ai/ml-ops/llm-observability-stack-2026`
+- `llm-observability-stack` → `ml-engineering/llm-observability-stack`
+- `llm-observability-stack-2026` → `ml-engineering/llm-observability-stack-2026`
 
 **Outputs:**
 - CI workflow YAML

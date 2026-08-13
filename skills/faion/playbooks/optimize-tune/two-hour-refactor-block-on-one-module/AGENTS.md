@@ -36,8 +36,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `free/dev/code-quality/code-decomposition-patterns` (tier: free)
-- `solo/dev/software-developer/technical-debt` (tier: solo)
+- `dev/code-decomposition-patterns` (tier: free)
 
 ### Step 2 — Assess
 
@@ -54,7 +53,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Risk register
 
 **Backed by methodology**
-- `free/dev/code-quality/code-decomposition-principles` (tier: free)
+- `dev/code-decomposition-principles` (tier: free)
 
 ### Step 3 — Plan
 
@@ -71,7 +70,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `free/dev/software-developer/code-review` (tier: free)
+- `dev/code-review` (tier: free)
 
 ### Step 4 — Execute
 
@@ -87,7 +86,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `free/dev/software-developer/refactoring-patterns` (tier: free)
+- `dev/refactoring-patterns` (tier: free)
 
 ### Step 5 — Verify
 
@@ -103,7 +102,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `solo/dev/code-quality/framework-decomposition-patterns` (tier: solo)
+- `dev/framework-decomposition-patterns` (tier: solo)
 
 ### Step 6 — Close
 
@@ -119,7 +118,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `solo/dev/code-quality/tech-debt-management` (tier: solo)
+- `dev/tech-debt-management` (tier: solo)
 
 ## Decision points
 

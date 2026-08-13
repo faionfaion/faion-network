@@ -48,9 +48,8 @@ The playbook is done when:
 - Decide build/waitlist/kill
 
 **Methodologies in chain:**
-- `mom-test` → `solo/comms/communicator/mom-test`
-- `continuous-discovery` → `solo/product/product-manager/continuous-discovery`
-- `market-researcher` → `solo/research/market-researcher`
+- `mom-test` → `comms/mom-test`
+- `continuous-discovery` → `product/continuous-discovery`
 
 **Outputs:**
 - Signal evidence packet
@@ -68,7 +67,7 @@ The playbook is done when:
 - Decide bump/queue
 
 **Methodologies in chain:**
-- `feature-prioritization-rice` → `solo/product/product-manager/feature-prioritization-rice`
+- `feature-prioritization-rice` → `product/feature-prioritization-rice`
 
 **Outputs:**
 - RICE score + priority decision
@@ -86,9 +85,9 @@ The playbook is done when:
 - Write non-goals
 
 **Methodologies in chain:**
-- `mvp-scoping` → `solo/product/product-manager/mvp-scoping`
-- `micro-mvps` → `solo/product/product-manager/micro-mvps`
-- `minimum-product-frameworks` → `solo/product/product-planning/minimum-product-frameworks`
+- `mvp-scoping` → `product/mvp-scoping`
+- `micro-mvps` → `product/micro-mvps`
+- `minimum-product-frameworks` → `product/minimum-product-frameworks`
 
 **Outputs:**
 - Micro-MVP scope doc
@@ -106,9 +105,9 @@ The playbook is done when:
 - Define non-goals explicitly
 
 **Methodologies in chain:**
-- `spec-writing` → `solo/product/product-manager/spec-writing`
-- `spec-structure` → `solo/sdd/sdd-planning/spec-structure`
-- `writing-specifications` → `solo/sdd/sdd/writing-specifications`
+- `spec-writing` → `product/spec-writing`
+- `spec-structure` → `sdd/spec-structure`
+- `writing-specifications` → `sdd/writing-specifications`
 
 **Outputs:**
 - spec.md
@@ -126,8 +125,8 @@ The playbook is done when:
 - Set success metric + decision date
 
 **Methodologies in chain:**
-- `feature-flags-rollout-targeting` → `solo/dev/automation-tooling/feature-flags-rollout-targeting`
-- `feature-flags` → `solo/dev/software-developer/feature-flags`
+- `feature-flags-rollout-targeting` → `sdd/feature-flags-rollout-targeting`
+- `feature-flags` → `dev/feature-flags`
 
 **Outputs:**
 - Flag plan in spec

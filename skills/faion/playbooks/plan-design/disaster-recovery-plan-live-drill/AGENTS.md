@@ -36,8 +36,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `geek/sdlc-ai/inc-postmortem-auto-draft-no-publish` (tier: geek)
-- `pro/infra/cicd-engineer/backup-database-postgres` (tier: pro)
+- `sdlc-ai/inc-postmortem-auto-draft-no-publish` (tier: geek)
+- `infra/backup-database-postgres` (tier: pro)
 
 ### Step 2 — Assess
 
@@ -54,8 +54,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Risk register
 
 **Backed by methodology**
-- `geek/sdlc-ai/inc-read-only-investigation-default` (tier: geek)
-- `pro/infra/cicd-engineer/backup-filesystem-restic` (tier: pro)
+- `sdlc-ai/inc-read-only-investigation-default` (tier: geek)
+- `infra/backup-filesystem-restic` (tier: pro)
 
 ### Step 3 — Plan
 
@@ -72,8 +72,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps` (tier: geek)
-- `pro/infra/cicd-engineer/backup-kubernetes-velero` (tier: pro)
+- `sdlc-ai/inc-runbook-as-markdown-tagged-steps` (tier: geek)
+- `infra/backup-kubernetes-velero` (tier: pro)
 
 ### Step 4 — Pilot
 
@@ -89,8 +89,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated rollback playbook
 
 **Backed by methodology**
-- `pro/dev/software-architect/observability-architecture` (tier: pro)
-- `pro/infra/cicd-engineer/backup-verification-dr` (tier: pro)
+- `architecture/observability-architecture` (tier: pro)
+- `infra/backup-verification-dr` (tier: pro)
 
 ### Step 5 — Execute
 
@@ -106,8 +106,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `pro/dev/software-architect/quality-attributes-analysis` (tier: pro)
-- `solo/dev/software-architect/architecture-decision-records` (tier: solo)
+- `architecture/quality-attributes-analysis` (tier: pro)
+- `architecture/architecture-decision-records` (tier: solo)
 
 ### Step 6 — Verify
 
@@ -123,8 +123,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `pro/dev/software-architect/reliability-architecture` (tier: pro)
-- `solo/dev/software-architect/quality-attributes` (tier: solo)
+- `architecture/reliability-architecture` (tier: pro)
+- `architecture/quality-attributes` (tier: solo)
 
 ### Step 7 — Roll out
 
@@ -140,7 +140,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Stakeholder update
 
 **Backed by methodology**
-- `pro/infra/cicd-engineer/backup-basics` (tier: pro)
+- `infra/backup-basics` (tier: pro)
 
 ### Step 8 — Close
 
@@ -156,7 +156,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `pro/infra/cicd-engineer/backup-cloud-aws` (tier: pro)
+- `infra/backup-cloud-aws` (tier: pro)
 
 ## Decision points
 

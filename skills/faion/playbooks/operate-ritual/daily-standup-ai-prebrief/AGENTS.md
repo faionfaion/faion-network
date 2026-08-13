@@ -44,9 +44,9 @@ The playbook is done when:
 **Intent:** AI agent aggregates yesterday's signal into a single channel post before standup.
 
 **Methodologies in chain:**
-- `tracker-linear-agent-as-assignee` → `geek/sdlc-ai/tracker-linear-agent-as-assignee`
-- `tracker-ai-triage-classify-route` → `geek/sdlc-ai/tracker-ai-triage-classify-route`
-- `api-monitoring-alerting` → `pro/dev/software-developer/api-monitoring-alerting`
+- `tracker-linear-agent-as-assignee` → `sdlc-ai/tracker-linear-agent-as-assignee`
+- `tracker-ai-triage-classify-route` → `sdlc-ai/tracker-ai-triage-classify-route`
+- `api-monitoring-alerting` → `dev/api-monitoring-alerting`
 
 **Decision gate:**
 > Advance to the sync only when the pre-brief is posted. No brief = standup happens but is logged as a process miss.
@@ -56,9 +56,9 @@ The playbook is done when:
 **Intent:** Cover exceptions, blockers, and changes since the brief. Skip everything that's already in the brief.
 
 **Methodologies in chain:**
-- `scrum-ceremonies` → `pro/pm/pm-agile/scrum-ceremonies`
-- `kanban-scaled-agile-ceremonies` → `pro/pm/pm-agile/kanban-scaled-agile-ceremonies`
-- `raci-matrix` → `pro/pm/pm-agile/raci-matrix`
+- `scrum-ceremonies` → `pm/scrum-ceremonies`
+- `kanban-scaled-agile-ceremonies` → `pm/kanban-scaled-agile-ceremonies`
+- `raci-matrix-pm-agile` → `pm/raci-matrix-pm-agile`
 
 **Decision gate:**
 > End the meeting at 15 minutes regardless. Spill = sign that standup turned into status theater.
@@ -68,8 +68,8 @@ The playbook is done when:
 **Intent:** Patterns and mistakes from today land in memory; not just in heads.
 
 **Methodologies in chain:**
-- `mistake-memory` → `solo/sdd/sdd/mistake-memory`
-- `pattern-memory` → `solo/sdd/sdd/pattern-memory`
+- `mistake-memory` → `sdd/mistake-memory`
+- `pattern-memory` → `sdd/pattern-memory`
 
 **Decision gate:**
 > If a real pattern showed up but didn't make it to memory, schedule a 5-min follow-up — don't lose it.

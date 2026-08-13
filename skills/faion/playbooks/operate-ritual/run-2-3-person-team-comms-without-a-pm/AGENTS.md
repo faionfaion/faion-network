@@ -48,8 +48,8 @@ The playbook is done when:
 - Set Friday close ritual
 
 **Methodologies in chain:**
-- `communications-management` -> `pro/pm/project-manager/communications-management`
-- `stakeholder-engagement` -> `pro/pm/project-manager/stakeholder-engagement`
+- `communications-management` → `pm/communications-management`
+- `stakeholder-engagement` → `pm/stakeholder-engagement`
 
 **Outputs:**
 - Cadence calendar
@@ -68,7 +68,7 @@ The playbook is done when:
 - Tag scope-creep + risk in same thread
 
 **Methodologies in chain:**
-- `ops-contractor-management` -> `pro/marketing/gtm-strategist/ops-contractor-management`
+- `ops-contractor-management` → `marketing/ops-contractor-management`
 
 **Outputs:**
 - Async standup thread daily
@@ -105,7 +105,7 @@ The playbook is done when:
 - Run lessons-learned briefing
 
 **Methodologies in chain:**
-- `lessons-learned` -> `pro/pm/project-manager/lessons-learned`
+- `lessons-learned` → `pm/lessons-learned`
 
 **Outputs:**
 - Friday close doc

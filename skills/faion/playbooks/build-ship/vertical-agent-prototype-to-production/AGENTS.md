@@ -45,11 +45,11 @@ The playbook is done when:
 - Run end-to-end on 10 golden tasks
 
 **Methodologies in chain:**
-- `plan-execute-vs-react` → `geek/ai/ai-agents/plan-execute-vs-react`
-- `reasoning-first-architectures` → `geek/ai/ai-agents/reasoning-first-architectures`
-- `claude-code-headless-default` → `geek/ai/ai-agents/claude-code-headless-default`
-- `agents-react-pattern` → `geek/ai/ml-engineer/agents-react-pattern`
-- `agents-framework-selection` → `geek/ai/ml-engineer/agents-framework-selection`
+- `plan-execute-vs-react` → `ai-agents/plan-execute-vs-react`
+- `reasoning-first-architectures` → `ai-agents/reasoning-first-architectures`
+- `claude-code-headless-default` → `ai-agents/claude-code-headless-default`
+- `agents-react-pattern` → `ml-engineering/agents-react-pattern`
+- `agents-framework-selection` → `ml-engineering/agents-framework-selection`
 
 **Outputs:**
 - Prototype repo with one-command run
@@ -68,18 +68,18 @@ The playbook is done when:
 - Decide bundle-vs-split per tool
 
 **Methodologies in chain:**
-- `discriminated-union-output` → `geek/ai/ai-agents/discriminated-union-output`
-- `refusal-field-strict-schema` → `geek/ai/ai-agents/refusal-field-strict-schema`
-- `strict-mode-required-fields` → `geek/ai/ai-agents/strict-mode-required-fields`
-- `field-descriptions-as-prompts` → `geek/ai/ai-agents/field-descriptions-as-prompts`
-- `semantic-field-naming` → `geek/ai/ai-agents/semantic-field-naming`
-- `tool-description-as-prompt` → `geek/ai/ai-agents/tool-description-as-prompt`
-- `verb-object-tool-naming` → `geek/ai/ai-agents/verb-object-tool-naming`
-- `bundle-vs-split-tools` → `geek/ai/ai-agents/bundle-vs-split-tools`
-- `idempotent-write-tools` → `geek/ai/ai-agents/idempotent-write-tools`
-- `structured-tool-errors` → `geek/ai/ai-agents/structured-tool-errors`
-- `semantic-xml-content` → `geek/ai/llm-integration/semantic-xml-content`
-- `two-pass-reason-then-extract` → `geek/ai/ai-agents/two-pass-reason-then-extract`
+- `discriminated-union-output` → `ai-agents/discriminated-union-output`
+- `refusal-field-strict-schema` → `ai-agents/refusal-field-strict-schema`
+- `strict-mode-required-fields` → `ai-agents/strict-mode-required-fields`
+- `field-descriptions-as-prompts` → `ai-agents/field-descriptions-as-prompts`
+- `semantic-field-naming` → `ai-agents/semantic-field-naming`
+- `tool-description-as-prompt` → `ai-agents/tool-description-as-prompt`
+- `verb-object-tool-naming` → `ai-agents/verb-object-tool-naming`
+- `bundle-vs-split-tools` → `ai-agents/bundle-vs-split-tools`
+- `idempotent-write-tools` → `ai-agents/idempotent-write-tools`
+- `structured-tool-errors` → `ai-agents/structured-tool-errors`
+- `semantic-xml-content` → `llm-integration/semantic-xml-content`
+- `two-pass-reason-then-extract` → `ai-agents/two-pass-reason-then-extract`
 
 **Outputs:**
 - Versioned schema doc
@@ -98,13 +98,13 @@ The playbook is done when:
 - Order prompt for cache prefix reuse
 
 **Methodologies in chain:**
-- `embedded-scratchpad-field` → `geek/ai/ai-agents/embedded-scratchpad-field`
-- `filesystem-as-working-memory` → `geek/ai/ai-agents/filesystem-as-working-memory`
-- `compaction-preserve-refs` → `geek/ai/ai-agents/compaction-preserve-refs`
-- `prompt-cache-prefix-order` → `geek/ai/ai-agents/prompt-cache-prefix-order`
-- `handoff-id-payload` → `geek/ai/ai-agents/handoff-id-payload`
-- `agents-memory-system` → `geek/ai/ml-engineer/agents-memory-system`
-- `inverted-header-content-first` → `geek/ai/ai-agents/inverted-header-content-first`
+- `embedded-scratchpad-field` → `ai-agents/embedded-scratchpad-field`
+- `filesystem-as-working-memory` → `ai-agents/filesystem-as-working-memory`
+- `compaction-preserve-refs` → `ai-agents/compaction-preserve-refs`
+- `prompt-cache-prefix-order` → `ai-agents/prompt-cache-prefix-order`
+- `handoff-id-payload` → `ai-agents/handoff-id-payload`
+- `agents-memory-system` → `ml-engineering/agents-memory-system`
+- `inverted-header-content-first` → `ai-agents/inverted-header-content-first`
 
 **Outputs:**
 - Memory architecture doc
@@ -123,18 +123,18 @@ The playbook is done when:
 - Cap turns with circuit breaker
 
 **Methodologies in chain:**
-- `cheap-guardrail-tripwire` → `geek/ai/ai-agents/cheap-guardrail-tripwire`
-- `confidence-thresholded-cascade` → `geek/ai/ai-agents/confidence-thresholded-cascade`
-- `weak-model-preselection` → `geek/ai/ai-agents/weak-model-preselection`
-- `role-specialized-models` → `geek/ai/ai-agents/role-specialized-models`
-- `preference-trained-router` → `geek/ai/ai-agents/preference-trained-router`
-- `gateway-fallback-chain` → `geek/ai/ai-agents/gateway-fallback-chain`
-- `max-turns-circuit-breaker` → `geek/ai/ai-agents/max-turns-circuit-breaker`
-- `posttool-hook-self-correction` → `geek/ai/ai-agents/posttool-hook-self-correction`
-- `headless-cli-four-guards` → `geek/ai/ai-agents/headless-cli-four-guards`
-- `cost-optimization` → `geek/ai/ml-engineer/cost-optimization`
-- `cost-reduction-strategies` → `geek/ai/ml-ops/cost-reduction-strategies`
-- `llm-cost-basics` → `geek/ai/ml-ops/llm-cost-basics`
+- `cheap-guardrail-tripwire` → `ai-agents/cheap-guardrail-tripwire`
+- `confidence-thresholded-cascade` → `ai-agents/confidence-thresholded-cascade`
+- `weak-model-preselection` → `ai-agents/weak-model-preselection`
+- `role-specialized-models` → `ai-agents/role-specialized-models`
+- `preference-trained-router` → `ai-agents/preference-trained-router`
+- `gateway-fallback-chain` → `ai-agents/gateway-fallback-chain`
+- `max-turns-circuit-breaker` → `ai-agents/max-turns-circuit-breaker`
+- `posttool-hook-self-correction` → `ai-agents/posttool-hook-self-correction`
+- `headless-cli-four-guards` → `ai-agents/headless-cli-four-guards`
+- `cost-optimization` → `ml-engineering/cost-optimization`
+- `cost-reduction-strategies` → `ml-engineering/cost-reduction-strategies`
+- `llm-cost-basics` → `ml-engineering/llm-cost-basics`
 
 **Outputs:**
 - Cascade policy doc
@@ -153,15 +153,15 @@ The playbook is done when:
 - Wire trajectory OTEL evals
 
 **Methodologies in chain:**
-- `llm-judge-rubric-evidence-first` → `geek/ai/ai-agents/llm-judge-rubric-evidence-first`
-- `chaos-eval-fault-injection` → `geek/ai/ai-agents/chaos-eval-fault-injection`
-- `record-replay-debugging` → `geek/ai/ai-agents/record-replay-debugging`
-- `trajectory-eval-otel` → `geek/ai/ai-agents/trajectory-eval-otel`
-- `model-evaluation` → `geek/ai/ml-engineer/model-evaluation`
-- `rag-evaluation` → `geek/ai/ml-engineer/rag-evaluation`
-- `evaluation-benchmarks` → `geek/ai/ml-ops/evaluation-benchmarks`
-- `evaluation-framework` → `geek/ai/ml-ops/evaluation-framework`
-- `evaluation-metrics` → `geek/ai/ml-ops/evaluation-metrics`
+- `llm-judge-rubric-evidence-first` → `ai-agents/llm-judge-rubric-evidence-first`
+- `chaos-eval-fault-injection` → `ai-agents/chaos-eval-fault-injection`
+- `record-replay-debugging` → `ai-agents/record-replay-debugging`
+- `trajectory-eval-otel` → `ai-agents/trajectory-eval-otel`
+- `model-evaluation` → `ml-engineering/model-evaluation`
+- `rag-evaluation` → `ml-engineering/rag-evaluation`
+- `evaluation-benchmarks` → `ml-engineering/evaluation-benchmarks`
+- `evaluation-framework` → `ml-engineering/evaluation-framework`
+- `evaluation-metrics` → `ml-engineering/evaluation-metrics`
 
 **Outputs:**
 - CI job that blocks regression
@@ -180,12 +180,12 @@ The playbook is done when:
 - Cut GA with rollback validated
 
 **Methodologies in chain:**
-- `agents-production-deployment` → `geek/ai/ml-engineer/agents-production-deployment`
-- `llm-observability-stack` → `geek/ai/ml-engineer/llm-observability-stack`
-- `llm-observability-stack-2026` → `geek/ai/ml-ops/llm-observability-stack-2026`
-- `rag-eval-production-monitoring` → `geek/ai/rag-engineer/rag-eval-production-monitoring`
-- `inc-runbook-as-markdown-tagged-steps` → `geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps`
-- `inc-tool-tier-approval-gate` → `geek/sdlc-ai/inc-tool-tier-approval-gate`
+- `agents-production-deployment` → `ml-engineering/agents-production-deployment`
+- `llm-observability-stack` → `ml-engineering/llm-observability-stack`
+- `llm-observability-stack-2026` → `ml-engineering/llm-observability-stack-2026`
+- `rag-eval-production-monitoring` → `ml-engineering/rag-eval-production-monitoring`
+- `inc-runbook-as-markdown-tagged-steps` → `sdlc-ai/inc-runbook-as-markdown-tagged-steps`
+- `inc-tool-tier-approval-gate` → `sdlc-ai/inc-tool-tier-approval-gate`
 
 **Outputs:**
 - Pilot report with N failure modes

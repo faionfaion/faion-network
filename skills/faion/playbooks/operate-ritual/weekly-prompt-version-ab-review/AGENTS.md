@@ -45,9 +45,9 @@ The playbook is done when:
 - Confirm prompt-cache prefix order didn't change
 
 **Methodologies in chain:**
-- `schema-version-pinning` → `geek/ai/ai-agents/schema-version-pinning`
-- `prompt-cache-prefix-order` → `geek/ai/ai-agents/prompt-cache-prefix-order`
-- `rag-eval-ab-testing` → `geek/ai/rag-engineer/rag-eval-ab-testing`
+- `schema-version-pinning` → `ai-agents/schema-version-pinning`
+- `prompt-cache-prefix-order` → `ai-agents/prompt-cache-prefix-order`
+- `rag-eval-ab-testing` → `ml-engineering/rag-eval-ab-testing`
 
 **Outputs:**
 - A/B trace bundle
@@ -65,10 +65,10 @@ The playbook is done when:
 - Score cost + quality delta
 
 **Methodologies in chain:**
-- `llm-judge-rubric-evidence-first` → `geek/ai/ai-agents/llm-judge-rubric-evidence-first`
-- `two-pass-reason-then-extract` → `geek/ai/ai-agents/two-pass-reason-then-extract`
-- `prompt-engineering-evaluation` → `geek/ai/ml-engineer/prompt-engineering-evaluation`
-- `prompt-engineering-production` → `geek/ai/ml-engineer/prompt-engineering-production`
+- `llm-judge-rubric-evidence-first` → `ai-agents/llm-judge-rubric-evidence-first`
+- `two-pass-reason-then-extract` → `ai-agents/two-pass-reason-then-extract`
+- `prompt-engineering-evaluation` → `ml-engineering/prompt-engineering-evaluation`
+- `prompt-engineering-production` → `ml-engineering/prompt-engineering-production`
 
 **Outputs:**
 - Comparison table

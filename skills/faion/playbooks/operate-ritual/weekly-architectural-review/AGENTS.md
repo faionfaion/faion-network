@@ -49,11 +49,11 @@ The playbook is done when:
 **Intent:** Rank the week's PRs by architectural impact; walk the top of the list.
 
 **Methodologies in chain:**
-- `mr-graph-vs-diff-reviewer` → `geek/sdlc-ai/mr-graph-vs-diff-reviewer`
-- `cloud-architecture` → `pro/dev/software-architect/cloud-architecture`
-- `distributed-patterns` → `pro/dev/software-architect/distributed-patterns`
-- `observability-architecture` → `pro/dev/software-architect/observability-architecture`
-- `quality-attributes-analysis` → `pro/dev/software-architect/quality-attributes-analysis`
+- `mr-graph-vs-diff-reviewer` → `sdlc-ai/mr-graph-vs-diff-reviewer`
+- `cloud-architecture` → `architecture/cloud-architecture`
+- `distributed-patterns` → `architecture/distributed-patterns`
+- `observability-architecture` → `architecture/observability-architecture`
+- `quality-attributes-analysis` → `architecture/quality-attributes-analysis`
 
 **Decision gate:**
 > Advance once the top 5-10 are walked. Don't extend the session to cover bottom-of-list items.
@@ -63,10 +63,10 @@ The playbook is done when:
 **Intent:** Flag drift; promote what we want repeated; queue ADRs for decisions.
 
 **Methodologies in chain:**
-- `pattern-memory` → `solo/sdd/sdd/pattern-memory`
-- `mistake-memory` → `solo/sdd/sdd/mistake-memory`
-- `tech-debt-management` → `solo/dev/code-quality/tech-debt-management`
-- `design-docs-patterns` → `solo/sdd/sdd/design-docs-patterns`
+- `pattern-memory` → `sdd/pattern-memory`
+- `mistake-memory` → `sdd/mistake-memory`
+- `tech-debt-management` → `dev/tech-debt-management`
+- `design-docs-patterns` → `sdd/design-docs-patterns`
 
 **Decision gate:**
 > Advance when each drift signal has an owner. Unassigned drift evaporates by next review.
@@ -76,8 +76,8 @@ The playbook is done when:
 **Intent:** Decisions worth memorialising land in the ADR queue.
 
 **Methodologies in chain:**
-- `architecture-decision-records` → `solo/dev/software-architect/architecture-decision-records`
-- `architecture-decision-records-sdd` → `solo/sdd/sdd/architecture-decision-records`
+- `architecture-decision-records` → `architecture/architecture-decision-records`
+- `architecture-decision-records` → `sdd/architecture-decision-records`
 
 **Decision gate:**
 > Required output: queued ADRs with owners. Verbal agreement = drift in 2 weeks.

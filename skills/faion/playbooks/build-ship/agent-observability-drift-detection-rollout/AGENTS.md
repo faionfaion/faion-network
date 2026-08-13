@@ -48,11 +48,11 @@ The playbook is done when:
 - Pin schema versions across traces
 
 **Methodologies in chain:**
-- `trajectory-eval-otel` → `geek/ai/ai-agents/trajectory-eval-otel`
-- `stream-json-orchestration` → `geek/ai/ai-agents/stream-json-orchestration`
-- `schema-version-pinning` → `geek/ai/ai-agents/schema-version-pinning`
-- `llm-observability` → `geek/ai/ml-engineer/llm-observability`
-- `llm-observability-stack` → `geek/ai/ml-engineer/llm-observability-stack`
+- `trajectory-eval-otel` → `ai-agents/trajectory-eval-otel`
+- `stream-json-orchestration` → `ai-agents/stream-json-orchestration`
+- `schema-version-pinning` → `ai-agents/schema-version-pinning`
+- `llm-observability` → `ml-engineering/llm-observability`
+- `llm-observability-stack` → `ml-engineering/llm-observability-stack`
 
 **Outputs:**
 - Trace dashboard
@@ -71,10 +71,10 @@ The playbook is done when:
 - Track scores over time
 
 **Methodologies in chain:**
-- `llm-judge-rubric-evidence-first` → `geek/ai/ai-agents/llm-judge-rubric-evidence-first`
-- `evaluation-framework` → `geek/ai/ml-ops/evaluation-framework`
-- `rag-eval-production-monitoring` → `geek/ai/rag-engineer/rag-eval-production-monitoring`
-- `vector-database-setup` → `geek/ai/rag-engineer/vector-database-setup`
+- `llm-judge-rubric-evidence-first` → `ai-agents/llm-judge-rubric-evidence-first`
+- `evaluation-framework` → `ml-engineering/evaluation-framework`
+- `rag-eval-production-monitoring` → `ml-engineering/rag-eval-production-monitoring`
+- `vector-database-setup` → `ml-engineering/vector-database-setup`
 
 **Outputs:**
 - Eval-in-prod sampler
@@ -93,10 +93,10 @@ The playbook is done when:
 - Wire cost spike monitor
 
 **Methodologies in chain:**
-- `guardrails-concepts` → `geek/ai/ml-engineer/guardrails-concepts`
-- `ai-governance-compliance` → `geek/ai/ml-engineer/ai-governance-compliance`
-- `eu-ai-act-compliance` → `geek/ai/ml-engineer/eu-ai-act-compliance`
-- `prompt-engineering-security` → `geek/ai/ml-engineer/prompt-engineering-security`
+- `guardrails-concepts` → `ml-engineering/guardrails-concepts`
+- `ai-governance-compliance` → `ml-engineering/ai-governance-compliance`
+- `eu-ai-act-compliance` → `ml-engineering/eu-ai-act-compliance`
+- `prompt-engineering-security` → `ml-engineering/prompt-engineering-security`
 
 **Outputs:**
 - Drift dashboard
@@ -115,10 +115,10 @@ The playbook is done when:
 - Auto-draft postmortem on incident
 
 **Methodologies in chain:**
-- `inc-runbook-as-markdown-tagged-steps` → `geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps`
-- `inc-read-only-investigation-default` → `geek/sdlc-ai/inc-read-only-investigation-default`
-- `inc-tool-tier-approval-gate` → `geek/sdlc-ai/inc-tool-tier-approval-gate`
-- `inc-postmortem-auto-draft-no-publish` → `geek/sdlc-ai/inc-postmortem-auto-draft-no-publish`
+- `inc-runbook-as-markdown-tagged-steps` → `sdlc-ai/inc-runbook-as-markdown-tagged-steps`
+- `inc-read-only-investigation-default` → `sdlc-ai/inc-read-only-investigation-default`
+- `inc-tool-tier-approval-gate` → `sdlc-ai/inc-tool-tier-approval-gate`
+- `inc-postmortem-auto-draft-no-publish` → `sdlc-ai/inc-postmortem-auto-draft-no-publish`
 
 **Outputs:**
 - Runbook doc

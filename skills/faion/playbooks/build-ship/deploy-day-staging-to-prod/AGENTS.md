@@ -50,10 +50,10 @@ The playbook is done when:
 - Confirm feature flag plan
 
 **Methodologies in chain:**
-- `e2e-testing` → `free/dev/testing-developer/e2e-testing`
-- `cd-basics` → `solo/dev/automation-tooling/cd-basics`
-- `cd-pipelines` → `solo/dev/automation-tooling/cd-pipelines`
-- `quality-gates-confidence` → `solo/sdd/sdd/quality-gates-confidence`
+- `e2e-testing-testing` → `dev/e2e-testing-testing`
+- `cd-basics` → `sdd/cd-basics`
+- `cd-pipelines` → `sdd/cd-pipelines`
+- `quality-gates-confidence` → `sdd/quality-gates-confidence`
 
 **Outputs:**
 - Pre-flight checklist complete
@@ -71,10 +71,10 @@ The playbook is done when:
 - Verify deploy version on prod
 
 **Methodologies in chain:**
-- `feature-flags-rollout-targeting` → `solo/dev/automation-tooling/feature-flags-rollout-targeting`
-- `feature-flags` → `solo/dev/software-developer/feature-flags`
-- `deploy-scripts` → `solo/infra/server-craft/deploy-scripts`
-- `release-planning` → `solo/product/product-planning/release-planning`
+- `feature-flags-rollout-targeting` → `sdd/feature-flags-rollout-targeting`
+- `feature-flags` → `dev/feature-flags`
+- `deploy-scripts` → `backend/deploy-scripts`
+- `release-planning-product-planning` → `pm/release-planning-product-planning`
 
 **Outputs:**
 - Deploy log
@@ -93,9 +93,9 @@ The playbook is done when:
 - Roll flag 5% → 25% → 50% → 100%
 
 **Methodologies in chain:**
-- `health-checks-autoheal` → `solo/infra/server-craft/health-checks-autoheal`
-- `monitoring-logging` → `solo/infra/server-craft/monitoring-logging`
-- `logging-patterns` → `solo/dev/automation-tooling/logging-patterns`
+- `health-checks-autoheal` → `backend/health-checks-autoheal`
+- `monitoring-logging` → `backend/monitoring-logging`
+- `logging-patterns` → `sdd/logging-patterns`
 
 **Outputs:**
 - Health-check pass log

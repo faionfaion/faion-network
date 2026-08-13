@@ -47,10 +47,10 @@ The playbook is done when:
 - Tag ICP segment
 
 **Methodologies in chain:**
-- `growth-seo-fundamentals` → `solo/marketing/seo-manager/growth-seo-fundamentals`
-- `seo-basics` → `solo/marketing/seo-manager/seo-basics`
-- `seo-techniques` → `solo/marketing/seo-manager/seo-techniques`
-- `topical-authority` → `solo/marketing/seo-manager/topical-authority`
+- `growth-seo-fundamentals` → `marketing/growth-seo-fundamentals`
+- `seo-basics` → `marketing/seo-basics`
+- `seo-techniques` → `marketing/seo-techniques`
+- `topical-authority` → `marketing/topical-authority`
 
 **Outputs:**
 - Topic brief
@@ -68,8 +68,8 @@ The playbook is done when:
 - Add concrete examples + screenshots
 
 **Methodologies in chain:**
-- `growth-content-marketing` → `solo/marketing/content-marketer/growth-content-marketing`
-- `growth-copywriting-fundamentals` → `solo/marketing/content-marketer/growth-copywriting-fundamentals`
+- `growth-content-marketing` → `marketing/growth-content-marketing`
+- `growth-copywriting-fundamentals` → `marketing/growth-copywriting-fundamentals`
 
 **Outputs:**
 - Draft v1
@@ -87,8 +87,8 @@ The playbook is done when:
 - Adapt for zero-click answer extraction
 
 **Methodologies in chain:**
-- `zero-click-search-adaptation` → `solo/marketing/seo-manager/zero-click-search-adaptation`
-- `search-everywhere-optimization` → `solo/marketing/content-marketer/search-everywhere-optimization`
+- `zero-click-search-adaptation` → `marketing/zero-click-search-adaptation`
+- `search-everywhere-optimization` → `marketing/search-everywhere-optimization`
 
 **Outputs:**
 - Published asset
@@ -106,8 +106,8 @@ The playbook is done when:
 - Engage with first 5 replies
 
 **Methodologies in chain:**
-- `growth-hacker-news-launch` → `solo/marketing/gtm-strategist/growth-hacker-news-launch`
-- `growth-indiehackers-strategy` → `solo/marketing/gtm-strategist/growth-indiehackers-strategy`
+- `growth-hacker-news-launch` → `marketing/growth-hacker-news-launch`
+- `growth-indiehackers-strategy` → `marketing/growth-indiehackers-strategy`
 
 **Outputs:**
 - 2 channel posts

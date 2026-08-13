@@ -49,10 +49,10 @@ The playbook is done when:
 - Lock outcome statement
 
 **Methodologies in chain:**
-- `competitive-positioning` -> `pro/product/product-planning/competitive-positioning`
-- `niche-evaluation` -> `solo/research/researcher/niche-evaluation`
-- `ops-pricing-strategy` -> `solo/marketing/gtm-strategist/ops-pricing-strategy`
-- `growth-brand-positioning` -> `pro/marketing/gtm-strategist/growth-brand-positioning`
+- `competitive-positioning-product-planning` → `pm/competitive-positioning-product-planning`
+- `niche-evaluation` → `research/niche-evaluation`
+- `ops-pricing-strategy` → `marketing/ops-pricing-strategy`
+- `growth-brand-positioning` → `marketing/growth-brand-positioning`
 
 **Outputs:**
 - Niche + outcome doc
@@ -71,7 +71,7 @@ The playbook is done when:
 - Baseline 1 A/B test on price or hero
 
 **Methodologies in chain:**
-- `funnel-tactics-basics` -> `pro/marketing/conversion-optimizer/funnel-tactics-basics`
+- `funnel-tactics-basics` → `marketing/funnel-tactics-basics`
 
 **Outputs:**
 - Landing live
@@ -90,9 +90,9 @@ The playbook is done when:
 - Lock financial + success metrics
 
 **Methodologies in chain:**
-- `ops-customer-success-basics` -> `pro/marketing/gtm-strategist/ops-customer-success-basics`
-- `ops-financial-basics` -> `pro/marketing/gtm-strategist/ops-financial-basics`
-- `ops-upselling-cross-selling` -> `pro/marketing/gtm-strategist/ops-upselling-cross-selling`
+- `ops-customer-success-basics` → `marketing/ops-customer-success-basics`
+- `ops-financial-basics` → `marketing/ops-financial-basics`
+- `ops-upselling-cross-selling` → `marketing/ops-upselling-cross-selling`
 
 **Outputs:**
 - SOP doc

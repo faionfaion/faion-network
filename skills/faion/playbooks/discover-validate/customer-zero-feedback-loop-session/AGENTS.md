@@ -45,8 +45,8 @@ The playbook is done when:
 - Ask 'what did you expect vs what happened'
 
 **Methodologies in chain:**
-- `trajectory-eval-otel` → `geek/ai/ai-agents/trajectory-eval-otel`
-- `llm-observability` → `geek/ai/ml-engineer/llm-observability`
+- `trajectory-eval-otel` → `ai-agents/trajectory-eval-otel`
+- `llm-observability` → `ml-engineering/llm-observability`
 
 **Outputs:**
 - Verbatim failure list
@@ -64,9 +64,9 @@ The playbook is done when:
 - Add roadmap entry if needed
 
 **Methodologies in chain:**
-- `llm-judge-rubric-evidence-first` → `geek/ai/ai-agents/llm-judge-rubric-evidence-first`
-- `evaluation-framework` → `geek/ai/ml-ops/evaluation-framework`
-- `rag-eval-production-monitoring` → `geek/ai/rag-engineer/rag-eval-production-monitoring`
+- `llm-judge-rubric-evidence-first` → `ai-agents/llm-judge-rubric-evidence-first`
+- `evaluation-framework` → `ml-engineering/evaluation-framework`
+- `rag-eval-production-monitoring` → `ml-engineering/rag-eval-production-monitoring`
 
 **Outputs:**
 - New eval rows committed

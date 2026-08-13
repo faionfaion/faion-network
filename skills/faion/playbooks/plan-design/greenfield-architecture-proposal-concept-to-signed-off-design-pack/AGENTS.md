@@ -36,10 +36,10 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `pro/dev/code-quality/domain-driven-design` (tier: pro)
-- `solo/dev/software-architect/arch-pattern-clean` (tier: solo)
-- `solo/dev/software-architect/decision-tree-architecture-style` (tier: solo)
-- `solo/dev/software-architect/trade-off-build-vs-buy` (tier: solo)
+- `dev/domain-driven-design` (tier: pro)
+- `architecture/arch-pattern-clean` (tier: solo)
+- `architecture/decision-tree-architecture-style` (tier: solo)
+- `architecture/trade-off-build-vs-buy` (tier: solo)
 
 ### Step 2 — Assess
 
@@ -56,10 +56,10 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Risk register
 
 **Backed by methodology**
-- `pro/dev/software-architect/observability-architecture` (tier: pro)
-- `solo/dev/software-architect/arch-pattern-ddd` (tier: solo)
-- `solo/dev/software-architect/decision-tree-build-vs-buy` (tier: solo)
-- `solo/dev/software-architect/trade-off-decision-matrix` (tier: solo)
+- `architecture/observability-architecture` (tier: pro)
+- `architecture/arch-pattern-ddd` (tier: solo)
+- `architecture/decision-tree-build-vs-buy` (tier: solo)
+- `architecture/trade-off-decision-matrix` (tier: solo)
 
 ### Step 3 — Plan
 
@@ -76,10 +76,10 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `pro/dev/software-architect/quality-attributes-analysis` (tier: pro)
-- `solo/dev/software-architect/arch-pattern-hexagonal` (tier: solo)
-- `solo/dev/software-architect/decision-tree-cloud-provider` (tier: solo)
-- `solo/dev/software-architect/trade-off-quality-attributes` (tier: solo)
+- `architecture/quality-attributes-analysis` (tier: pro)
+- `architecture/arch-pattern-hexagonal` (tier: solo)
+- `architecture/decision-tree-cloud-provider` (tier: solo)
+- `architecture/trade-off-quality-attributes` (tier: solo)
 
 ### Step 4 — Pilot
 
@@ -95,10 +95,10 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated rollback playbook
 
 **Backed by methodology**
-- `pro/dev/software-architect/reliability-architecture` (tier: pro)
-- `solo/dev/software-architect/architecture-decision-records` (tier: solo)
-- `solo/dev/software-architect/decision-tree-tech-stack` (tier: solo)
-- `solo/dev/software-architect/trade-off-stakeholder-communication` (tier: solo)
+- `architecture/reliability-architecture` (tier: pro)
+- `architecture/architecture-decision-records` (tier: solo)
+- `architecture/decision-tree-tech-stack` (tier: solo)
+- `architecture/trade-off-stakeholder-communication` (tier: solo)
 
 ### Step 5 — Execute
 
@@ -114,10 +114,10 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `pro/infra/cicd-engineer/finops-cost-visibility` (tier: pro)
-- `solo/dev/software-architect/c4-model` (tier: solo)
-- `solo/dev/software-architect/performance-architecture` (tier: solo)
-- `solo/dev/software-architect/trade-off-technical-debt` (tier: solo)
+- `infra/finops-cost-visibility` (tier: pro)
+- `architecture/c4-model` (tier: solo)
+- `architecture/performance-architecture` (tier: solo)
+- `architecture/trade-off-technical-debt` (tier: solo)
 
 ### Step 6 — Verify
 
@@ -133,9 +133,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `pro/infra/cicd-engineer/finops-framework` (tier: pro)
-- `solo/dev/software-architect/caching-architecture` (tier: solo)
-- `solo/dev/software-architect/quality-attributes` (tier: solo)
+- `infra/finops-framework` (tier: pro)
+- `architecture/caching-architecture` (tier: solo)
+- `architecture/quality-attributes` (tier: solo)
 
 ### Step 7 — Roll out
 
@@ -151,9 +151,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Stakeholder update
 
 **Backed by methodology**
-- `pro/infra/infrastructure-engineer/aws-cost-optimization` (tier: pro)
-- `solo/dev/software-architect/data-modeling` (tier: solo)
-- `solo/dev/software-architect/security-architecture` (tier: solo)
+- `infra/aws-cost-optimization` (tier: pro)
+- `architecture/data-modeling` (tier: solo)
+- `architecture/security-architecture` (tier: solo)
 
 ### Step 8 — Close
 
@@ -169,9 +169,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `pro/infra/infrastructure-engineer/aws-well-architected-framework` (tier: pro)
-- `solo/dev/software-architect/database-selection` (tier: solo)
-- `solo/dev/software-architect/system-design-process` (tier: solo)
+- `infra/aws-well-architected-framework` (tier: pro)
+- `architecture/database-selection` (tier: solo)
+- `architecture/system-design-process` (tier: solo)
 
 ## Decision points
 

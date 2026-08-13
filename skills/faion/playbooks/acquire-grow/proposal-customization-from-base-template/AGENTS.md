@@ -48,8 +48,8 @@ The playbook is done when:
 - Lock 3 explicit non-goals
 
 **Methodologies in chain:**
-- `requirements-prioritization` -> `pro/ba/business-analyst/requirements-prioritization`
-- `solution-assessment` -> `pro/ba/business-analyst/solution-assessment`
+- `requirements-prioritization` → `ba/requirements-prioritization`
+- `solution-assessment` → `ba/solution-assessment`
 
 **Outputs:**
 - Scope decision doc
@@ -67,8 +67,8 @@ The playbook is done when:
 - Add an upsell tier intentionally
 
 **Methodologies in chain:**
-- `ops-upselling-cross-selling` -> `pro/marketing/gtm-strategist/ops-upselling-cross-selling`
-- `ops-pricing-strategy` -> `solo/marketing/gtm-strategist/ops-pricing-strategy`
+- `ops-upselling-cross-selling` → `marketing/ops-upselling-cross-selling`
+- `ops-pricing-strategy` → `marketing/ops-pricing-strategy`
 
 **Outputs:**
 - Price card + tiers
@@ -86,8 +86,8 @@ The playbook is done when:
 - Add objection FAQ block
 
 **Methodologies in chain:**
-- `business-storytelling` -> `solo/comms/communicator/business-storytelling`
-- `growth-customer-testimonials` -> `solo/marketing/content-marketer/growth-customer-testimonials`
+- `business-storytelling` → `comms/business-storytelling`
+- `growth-customer-testimonials` → `marketing/growth-customer-testimonials`
 
 **Outputs:**
 - Customized proposal doc

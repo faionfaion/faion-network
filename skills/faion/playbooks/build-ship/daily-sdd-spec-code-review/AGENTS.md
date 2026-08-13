@@ -48,10 +48,10 @@ The playbook is done when:
 - Define non-goals
 
 **Methodologies in chain:**
-- `spec-requirements` → `solo/sdd/sdd-planning/spec-requirements`
-- `writing-specifications` → `solo/sdd/sdd/writing-specifications`
-- `impl-plan-100k-rule` → `solo/sdd/sdd-planning/impl-plan-100k-rule`
-- `impl-plan-task-format` → `solo/sdd/sdd-planning/impl-plan-task-format`
+- `spec-requirements` → `sdd/spec-requirements`
+- `writing-specifications` → `sdd/writing-specifications`
+- `impl-plan-100k-rule` → `sdd/impl-plan-100k-rule`
+- `impl-plan-task-format` → `sdd/impl-plan-task-format`
 
 **Outputs:**
 - spec.md ≤1 page
@@ -69,9 +69,9 @@ The playbook is done when:
 - Generate tests against acceptance criteria
 
 **Methodologies in chain:**
-- `api-first-development` → `solo/sdd/sdd/api-first-development`
-- `tdd-workflow` → `free/dev/software-developer/tdd-workflow`
-- `error-handling` → `free/dev/software-developer/error-handling`
+- `api-first-development` → `sdd/api-first-development`
+- `tdd-workflow` → `dev/tdd-workflow`
+- `error-handling` → `dev/error-handling`
 
 **Outputs:**
 - Implementation diff
@@ -90,11 +90,11 @@ The playbook is done when:
 - Run linter + typecheck
 
 **Methodologies in chain:**
-- `code-review` → `free/dev/code-quality/code-review`
-- `code-review-basics` → `free/dev/code-quality/code-review-basics`
-- `code-review-process` → `free/dev/code-quality/code-review-process`
-- `code-review-cycle` → `solo/sdd/sdd/code-review-cycle`
-- `unit-testing` → `free/dev/testing-developer/unit-testing`
+- `code-review-quality` → `dev/code-review-quality`
+- `code-review-basics` → `dev/code-review-basics`
+- `code-review-process` → `dev/code-review-process`
+- `code-review-cycle` → `sdd/code-review-cycle`
+- `unit-testing-testing` → `dev/unit-testing-testing`
 
 **Outputs:**
 - Review notes
@@ -112,8 +112,8 @@ The playbook is done when:
 - Smoke-test on staging URL
 
 **Methodologies in chain:**
-- `cd-basics` → `solo/dev/automation-tooling/cd-basics`
-- `quality-gates-confidence` → `solo/sdd/sdd/quality-gates-confidence`
+- `cd-basics` → `sdd/cd-basics`
+- `quality-gates-confidence` → `sdd/quality-gates-confidence`
 
 **Outputs:**
 - Staging URL with feature live

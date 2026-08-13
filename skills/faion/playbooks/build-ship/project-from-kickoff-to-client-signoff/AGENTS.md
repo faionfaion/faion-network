@@ -49,11 +49,11 @@ The playbook is done when:
 - Open risk register
 
 **Methodologies in chain:**
-- `communications-management` -> `pro/pm/project-manager/communications-management`
-- `raci-matrix` -> `pro/pm/project-manager/raci-matrix`
-- `risk-management` -> `pro/pm/project-manager/risk-management`
-- `risk-register` -> `pro/pm/project-manager/risk-register`
-- `stakeholder-engagement` -> `pro/pm/project-manager/stakeholder-engagement`
+- `communications-management` → `pm/communications-management`
+- `raci-matrix` → `pm/raci-matrix`
+- `risk-management` → `pm/risk-management`
+- `risk-register` → `pm/risk-register`
+- `stakeholder-engagement` → `pm/stakeholder-engagement`
 
 **Outputs:**
 - Kickoff deck
@@ -73,13 +73,13 @@ The playbook is done when:
 - Develop schedule with milestones
 
 **Methodologies in chain:**
-- `acceptance-criteria` -> `pro/ba/ba-modeling/acceptance-criteria`
-- `elicitation-techniques` -> `pro/ba/business-analyst/elicitation-techniques`
-- `requirements-documentation` -> `pro/ba/business-analyst/requirements-documentation`
-- `requirements-prioritization` -> `pro/ba/business-analyst/requirements-prioritization`
-- `requirements-traceability` -> `pro/ba/business-analyst/requirements-traceability`
-- `schedule-development` -> `pro/pm/project-manager/schedule-development`
-- `scope-management` -> `pro/pm/project-manager/scope-management`
+- `acceptance-criteria-ba-modeling` → `ba/acceptance-criteria-ba-modeling`
+- `elicitation-techniques` → `ba/elicitation-techniques`
+- `requirements-documentation` → `ba/requirements-documentation`
+- `requirements-prioritization` → `ba/requirements-prioritization`
+- `requirements-traceability` → `ba/requirements-traceability`
+- `schedule-development` → `pm/schedule-development`
+- `scope-management` → `pm/scope-management`
 
 **Outputs:**
 - Baselined requirements
@@ -99,12 +99,12 @@ The playbook is done when:
 - Earned-value review weekly
 
 **Methodologies in chain:**
-- `scrum-ceremonies` -> `pro/pm/pm-agile/scrum-ceremonies`
-- `kanban-scaled-agile-ceremonies` -> `pro/pm/pm-agile/kanban-scaled-agile-ceremonies`
-- `earned-value-management` -> `pro/pm/project-manager/earned-value-management`
-- `quality-management` -> `pro/pm/project-manager/quality-management`
-- `team-development` -> `pro/pm/project-manager/team-development`
-- `requirements-validation` -> `pro/ba/business-analyst/requirements-validation`
+- `scrum-ceremonies` → `pm/scrum-ceremonies`
+- `kanban-scaled-agile-ceremonies` → `pm/kanban-scaled-agile-ceremonies`
+- `earned-value-management` → `pm/earned-value-management`
+- `quality-management` → `pm/quality-management`
+- `team-development` → `pm/team-development`
+- `requirements-validation` → `ba/requirements-validation`
 
 **Outputs:**
 - Wave deliverables
@@ -123,9 +123,9 @@ The playbook is done when:
 - Get written approval before exec
 
 **Methodologies in chain:**
-- `change-control` -> `pro/pm/project-manager/change-control`
-- `solution-assessment` -> `pro/ba/business-analyst/solution-assessment`
-- `stakeholder-engagement-advanced` -> `pro/pm/project-manager/stakeholder-engagement-advanced`
+- `change-control` → `pm/change-control`
+- `solution-assessment` → `ba/solution-assessment`
+- `stakeholder-engagement-advanced` → `pm/stakeholder-engagement-advanced`
 
 **Outputs:**
 - CR log
@@ -144,11 +144,11 @@ The playbook is done when:
 - Book retainer or referral conversation
 
 **Methodologies in chain:**
-- `benefits-realization` -> `pro/pm/project-manager/benefits-realization`
-- `lessons-learned` -> `pro/pm/project-manager/lessons-learned`
-- `project-closure` -> `pro/pm/project-manager/project-closure`
-- `ops-customer-success-metrics` -> `pro/marketing/gtm-strategist/ops-customer-success-metrics`
-- `ops-upselling-cross-selling` -> `pro/marketing/gtm-strategist/ops-upselling-cross-selling`
+- `benefits-realization` → `pm/benefits-realization`
+- `lessons-learned` → `pm/lessons-learned`
+- `project-closure` → `pm/project-closure`
+- `ops-customer-success-metrics` → `marketing/ops-customer-success-metrics`
+- `ops-upselling-cross-selling` → `marketing/ops-upselling-cross-selling`
 
 **Outputs:**
 - Acceptance certificate

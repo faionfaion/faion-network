@@ -46,7 +46,7 @@ The playbook is done when:
 - Confirm decision-framework signal
 
 **Methodologies in chain:**
-- `llm-decision-framework` → `geek/ai/ml-engineer/llm-decision-framework`
+- `llm-decision-framework` → `ml-engineering/llm-decision-framework`
 
 **Outputs:**
 - Adapter PR
@@ -64,9 +64,9 @@ The playbook is done when:
 - Pick role assignment
 
 **Methodologies in chain:**
-- `gateway-fallback-chain` → `geek/ai/ai-agents/gateway-fallback-chain`
-- `preference-trained-router` → `geek/ai/ai-agents/preference-trained-router`
-- `role-specialized-models` → `geek/ai/ai-agents/role-specialized-models`
+- `gateway-fallback-chain` → `ai-agents/gateway-fallback-chain`
+- `preference-trained-router` → `ai-agents/preference-trained-router`
+- `role-specialized-models` → `ai-agents/role-specialized-models`
 
 **Outputs:**
 - Updated routing manifest
@@ -83,8 +83,8 @@ The playbook is done when:
 - Pin model id in manifest
 
 **Methodologies in chain:**
-- `model-evaluation` → `geek/ai/ml-engineer/model-evaluation`
-- `evaluation-benchmarks` → `geek/ai/ml-ops/evaluation-benchmarks`
+- `model-evaluation` → `ml-engineering/model-evaluation`
+- `evaluation-benchmarks` → `ml-engineering/evaluation-benchmarks`
 
 **Outputs:**
 - Bench results

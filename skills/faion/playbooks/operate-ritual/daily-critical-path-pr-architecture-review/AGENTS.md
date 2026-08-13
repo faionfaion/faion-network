@@ -36,8 +36,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `free/dev/code-quality/code-review` (tier: free)
-- `solo/dev/software-architect/quality-attributes` (tier: solo)
+- `dev/code-review-quality` (tier: free)
+- `architecture/quality-attributes` (tier: solo)
 
 ### Step 2 — Plan
 
@@ -54,8 +54,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `free/dev/code-quality/code-review-process` (tier: free)
-- `solo/dev/software-architect/trade-off-decision-matrix` (tier: solo)
+- `dev/code-review-process` (tier: free)
+- `architecture/trade-off-decision-matrix` (tier: solo)
 
 ### Step 3 — Execute
 
@@ -71,8 +71,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `geek/sdlc-ai/mr-graph-vs-diff-reviewer` (tier: geek)
-- `solo/sdd/sdd/code-review-cycle` (tier: solo)
+- `sdlc-ai/mr-graph-vs-diff-reviewer` (tier: geek)
+- `sdd/code-review-cycle` (tier: solo)
 
 ### Step 4 — Verify
 
@@ -88,8 +88,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `pro/dev/software-architect/quality-attributes-analysis` (tier: pro)
-- `solo/sdd/sdd/mistake-memory` (tier: solo)
+- `architecture/quality-attributes-analysis` (tier: pro)
+- `sdd/mistake-memory` (tier: solo)
 
 ### Step 5 — Close
 
@@ -105,7 +105,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `solo/dev/software-architect/architecture-decision-records` (tier: solo)
+- `architecture/architecture-decision-records` (tier: solo)
 
 ## Decision points
 

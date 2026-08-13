@@ -36,10 +36,10 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `free/dev/code-quality/code-decomposition-patterns` (tier: free)
-- `free/dev/software-developer/refactoring-patterns` (tier: free)
-- `solo/dev/code-quality/framework-decomposition-patterns` (tier: solo)
-- `solo/sdd/sdd/backlog-grooming-roadmapping` (tier: solo)
+- `dev/code-decomposition-patterns` (tier: free)
+- `dev/refactoring-patterns` (tier: free)
+- `dev/framework-decomposition-patterns` (tier: solo)
+- `sdd/backlog-grooming-roadmapping` (tier: solo)
 
 ### Step 2 — Assess
 
@@ -56,10 +56,10 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Risk register
 
 **Backed by methodology**
-- `free/dev/code-quality/code-decomposition-principles` (tier: free)
-- `free/dev/software-developer/unit-testing` (tier: free)
-- `solo/dev/code-quality/tech-debt-management` (tier: solo)
-- `solo/sdd/sdd/mistake-memory` (tier: solo)
+- `dev/code-decomposition-principles` (tier: free)
+- `dev/unit-testing` (tier: free)
+- `dev/tech-debt-management` (tier: solo)
+- `sdd/mistake-memory` (tier: solo)
 
 ### Step 3 — Plan
 
@@ -76,10 +76,10 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `free/dev/code-quality/code-quality-trends` (tier: free)
-- `geek/dev/software-developer/llm-friendly-architecture` (tier: geek)
-- `solo/dev/software-architect/trade-off-technical-debt` (tier: solo)
-- `solo/sdd/sdd/pattern-memory` (tier: solo)
+- `dev/code-quality-trends` (tier: free)
+- `dev/llm-friendly-architecture` (tier: geek)
+- `architecture/trade-off-technical-debt` (tier: solo)
+- `sdd/pattern-memory` (tier: solo)
 
 ### Step 4 — Execute
 
@@ -95,10 +95,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `free/dev/code-quality/refactoring-patterns` (tier: free)
-- `geek/sdlc-ai/lint-autofix-vs-flag-decision-rule` (tier: geek)
-- `solo/dev/software-developer/technical-debt` (tier: solo)
-- `solo/sdd/sdd/reflexion-learning` (tier: solo)
+- `dev/refactoring-patterns-quality` (tier: free)
+- `sdlc-ai/lint-autofix-vs-flag-decision-rule` (tier: geek)
+- `sdd/reflexion-learning` (tier: solo)
 
 ### Step 5 — Verify
 
@@ -114,9 +113,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `free/dev/code-quality/tech-debt-basics` (tier: free)
-- `geek/sdlc-ai/lint-staged-only-not-whole-tree` (tier: geek)
-- `solo/sdd/sdd-planning/task-creation-principles` (tier: solo)
+- `dev/tech-debt-basics` (tier: free)
+- `sdlc-ai/lint-staged-only-not-whole-tree` (tier: geek)
+- `sdd/task-creation-principles` (tier: solo)
 
 ### Step 6 — Close
 
@@ -132,9 +131,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `free/dev/software-developer/code-review` (tier: free)
-- `geek/sdlc-ai/mr-codemod-refactor-agent` (tier: geek)
-- `solo/sdd/sdd-planning/writing-implementation-plans` (tier: solo)
+- `dev/code-review` (tier: free)
+- `sdlc-ai/mr-codemod-refactor-agent` (tier: geek)
+- `sdd/writing-implementation-plans-planning` (tier: solo)
 
 ## Decision points
 

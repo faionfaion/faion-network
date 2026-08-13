@@ -48,9 +48,9 @@ The playbook is done when:
 **Intent:** Cover top-N items; classify maturity.
 
 **Methodologies in chain:**
-- `backlog-management` → `solo/product/product-operations/backlog-management`
-- `backlog-grooming-roadmapping` → `solo/sdd/sdd-planning/backlog-grooming-roadmapping`
-- `backlog-grooming-roadmapping-sdd` → `solo/sdd/sdd/backlog-grooming-roadmapping`
+- `backlog-management-product-ops` → `product/backlog-management-product-ops`
+- `backlog-grooming-roadmapping-planning` → `sdd/backlog-grooming-roadmapping-planning`
+- `backlog-grooming-roadmapping` → `sdd/backlog-grooming-roadmapping`
 
 **Decision gate:**
 > Advance once every top-N item has a maturity tag. Don't groom below the line — that's pretend-work.
@@ -60,12 +60,12 @@ The playbook is done when:
 **Intent:** Top-of-backlog items become spec-ready: AC + complexity tag.
 
 **Methodologies in chain:**
-- `acceptance-criteria` → `pro/ba/business-analyst/acceptance-criteria`
-- `user-story-mapping` → `pro/ba/business-analyst/user-story-mapping`
-- `task-creation-principles` → `solo/sdd/sdd-planning/task-creation-principles`
-- `impl-plan-100k-rule` → `solo/sdd/sdd-planning/impl-plan-100k-rule`
-- `task-creation-parallelization` → `solo/sdd/sdd/task-creation-parallelization`
-- `quality-gates-confidence` → `solo/sdd/sdd/quality-gates-confidence`
+- `acceptance-criteria` → `ba/acceptance-criteria`
+- `user-story-mapping` → `ba/user-story-mapping`
+- `task-creation-principles` → `sdd/task-creation-principles`
+- `impl-plan-100k-rule` → `sdd/impl-plan-100k-rule`
+- `task-creation-parallelization` → `sdd/task-creation-parallelization`
+- `quality-gates-confidence` → `sdd/quality-gates-confidence`
 
 **Decision gate:**
 > Advance when each spec-ready item has AC + complexity tag. Don't promote anything without both.
@@ -75,7 +75,7 @@ The playbook is done when:
 **Intent:** Honour tech-debt quota; write grooming-decisions log.
 
 **Methodologies in chain:**
-- `tech-debt-management` → `solo/dev/code-quality/tech-debt-management`
+- `tech-debt-management` → `dev/tech-debt-management`
 
 **Decision gate:**
 > Required: written log. Verbal-only grooming guarantees next week's session repeats the same arguments.

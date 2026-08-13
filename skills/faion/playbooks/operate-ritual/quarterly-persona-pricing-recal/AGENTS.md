@@ -47,8 +47,7 @@ The playbook is done when:
 - Note delta
 
 **Methodologies in chain:**
-- `product-analytics` → `solo/product/product-operations/product-analytics`
-- `market-researcher` → `solo/research/market-researcher`
+- `product-analytics` → `product/product-analytics`
 
 **Outputs:**
 - Paid-cohort trait doc
@@ -66,7 +65,7 @@ The playbook is done when:
 - Ship copy edit if delta is wide
 
 **Methodologies in chain:**
-- `growth-landing-page-design` → `solo/marketing/conversion-optimizer/growth-landing-page-design`
+- `growth-landing-page-design` → `marketing/growth-landing-page-design`
 
 **Outputs:**
 - Updated ICP one-liner
@@ -84,9 +83,9 @@ The playbook is done when:
 - Set success metric + date
 
 **Methodologies in chain:**
-- `ops-pricing-strategy` → `solo/marketing/gtm-strategist/ops-pricing-strategy`
-- `ops-subscription-models` → `solo/marketing/gtm-strategist/ops-subscription-models`
-- `architecture-decision-records` → `solo/sdd/sdd/architecture-decision-records`
+- `ops-pricing-strategy` → `marketing/ops-pricing-strategy`
+- `ops-subscription-models` → `marketing/ops-subscription-models`
+- `architecture-decision-records` → `sdd/architecture-decision-records`
 
 **Outputs:**
 - Pricing ADR

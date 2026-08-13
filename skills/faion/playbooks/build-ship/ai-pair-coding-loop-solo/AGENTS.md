@@ -48,8 +48,8 @@ The playbook is done when:
 - Write success test cases
 
 **Methodologies in chain:**
-- `spec-requirements` → `solo/sdd/sdd-planning/spec-requirements`
-- `writing-specifications` → `solo/sdd/sdd-planning/writing-specifications`
+- `spec-requirements` → `sdd/spec-requirements`
+- `writing-specifications-planning` → `sdd/writing-specifications-planning`
 
 **Outputs:**
 - spec.md ready
@@ -85,7 +85,7 @@ The playbook is done when:
 - Iterate with explicit feedback
 
 **Methodologies in chain:**
-- `feature-flags-rollout-targeting` → `solo/dev/automation-tooling/feature-flags-rollout-targeting`
+- `feature-flags-rollout-targeting` → `sdd/feature-flags-rollout-targeting`
 
 **Outputs:**
 - Implementation diff
@@ -103,7 +103,7 @@ The playbook is done when:
 - Add missing cases
 
 **Methodologies in chain:**
-- `tdd-workflow` → `free/dev/software-developer/tdd-workflow`
+- `tdd-workflow` → `dev/tdd-workflow`
 
 **Outputs:**
 - Validated test files
@@ -121,9 +121,9 @@ The playbook is done when:
 - Sign off OR push back
 
 **Methodologies in chain:**
-- `code-review-basics` → `free/dev/code-quality/code-review-basics`
-- `code-review-cycle` → `solo/sdd/sdd/code-review-cycle`
-- `task-creation-parallelization` → `solo/sdd/sdd/task-creation-parallelization`
+- `code-review-basics` → `dev/code-review-basics`
+- `code-review-cycle` → `sdd/code-review-cycle`
+- `task-creation-parallelization` → `sdd/task-creation-parallelization`
 
 **Outputs:**
 - Reviewed PR

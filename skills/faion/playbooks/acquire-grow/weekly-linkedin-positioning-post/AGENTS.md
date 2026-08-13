@@ -47,9 +47,9 @@ The playbook is done when:
 - Map to ICP's stated pain
 
 **Methodologies in chain:**
-- `growth-brand-positioning` -> `pro/marketing/gtm-strategist/growth-brand-positioning`
-- `growth-influencer-marketing` -> `pro/marketing/gtm-strategist/growth-influencer-marketing`
-- `growth-content-marketing` -> `solo/marketing/content-marketer/growth-content-marketing`
+- `growth-brand-positioning` → `marketing/growth-brand-positioning`
+- `growth-influencer-marketing` → `marketing/growth-influencer-marketing`
+- `growth-content-marketing` → `marketing/growth-content-marketing`
 
 **Outputs:**
 - Angle note
@@ -67,10 +67,10 @@ The playbook is done when:
 - End with an explicit ask or CTA
 
 **Methodologies in chain:**
-- `business-storytelling` -> `solo/comms/communicator/business-storytelling`
-- `storytelling` -> `solo/comms/communicator/storytelling`
-- `growth-copywriting-fundamentals` -> `solo/marketing/content-marketer/growth-copywriting-fundamentals`
-- `instagram-basics` -> `pro/marketing/smm-manager/instagram-basics`
+- `business-storytelling` → `comms/business-storytelling`
+- `storytelling` → `comms/storytelling`
+- `growth-copywriting-fundamentals` → `marketing/growth-copywriting-fundamentals`
+- `instagram-basics` → `marketing/instagram-basics`
 
 **Outputs:**
 - Draft post

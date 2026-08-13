@@ -49,10 +49,10 @@ The playbook is done when:
 - Pick top-1 pattern by frequency x margin
 
 **Methodologies in chain:**
-- `business-process-analysis` -> `pro/ba/business-analyst/business-process-analysis`
-- `business-model-research` -> `pro/research/market-researcher/business-model-research`
-- `market-analysis` -> `pro/research/market-researcher/market-analysis`
-- `competitive-positioning` -> `pro/product/product-planning/competitive-positioning`
+- `business-process-analysis` → `ba/business-process-analysis`
+- `business-model-research-market-research` → `research/business-model-research-market-research`
+- `market-analysis` → `research/market-analysis`
+- `competitive-positioning-product-planning` → `pm/competitive-positioning-product-planning`
 
 **Outputs:**
 - Engagement-pattern table
@@ -71,10 +71,10 @@ The playbook is done when:
 - Write 3 explicit non-goals
 
 **Methodologies in chain:**
-- `minimum-product-frameworks` -> `pro/product/product-manager/minimum-product-frameworks`
-- `mlp-planning` -> `pro/product/product-manager/mlp-planning`
-- `release-planning` -> `pro/product/product-manager/release-planning`
-- `use-case-modeling` -> `pro/ba/business-analyst/use-case-modeling`
+- `minimum-product-frameworks` → `pm/minimum-product-frameworks`
+- `mlp-planning` → `pm/mlp-planning`
+- `release-planning` → `pm/release-planning`
+- `use-case-modeling` → `ba/use-case-modeling`
 
 **Outputs:**
 - Scope-of-work doc
@@ -93,13 +93,13 @@ The playbook is done when:
 - Drop 3 case-study or testimonial blocks
 
 **Methodologies in chain:**
-- `growth-brand-positioning` -> `pro/marketing/gtm-strategist/growth-brand-positioning`
-- `growth-conversion-optimization` -> `pro/marketing/conversion-optimizer/growth-conversion-optimization`
-- `conversion-tracking` -> `pro/marketing/growth-marketer/conversion-tracking`
-- `growth-loops` -> `pro/marketing/growth-marketer/growth-loops`
-- `growth-copywriting-fundamentals` -> `solo/marketing/content-marketer/growth-copywriting-fundamentals`
-- `growth-customer-testimonials` -> `solo/marketing/content-marketer/growth-customer-testimonials`
-- `growth-seo-fundamentals` -> `solo/marketing/seo-manager/growth-seo-fundamentals`
+- `growth-brand-positioning` → `marketing/growth-brand-positioning`
+- `growth-conversion-optimization` → `marketing/growth-conversion-optimization`
+- `conversion-tracking` → `marketing/conversion-tracking`
+- `growth-loops` → `marketing/growth-loops`
+- `growth-copywriting-fundamentals` → `marketing/growth-copywriting-fundamentals`
+- `growth-customer-testimonials` → `marketing/growth-customer-testimonials`
+- `growth-seo-fundamentals` → `marketing/growth-seo-fundamentals`
 
 **Outputs:**
 - Public landing URL
@@ -118,11 +118,11 @@ The playbook is done when:
 - Record one demo session for the SOP
 
 **Methodologies in chain:**
-- `feedback-management` -> `pro/product/product-manager/feedback-management`
-- `methodologies-summary` -> `pro/product/product-manager/methodologies-summary`
-- `continuous-discovery-habits` -> `pro/product/product-manager/continuous-discovery-habits`
-- `growth-email-marketing` -> `solo/marketing/content-marketer/growth-email-marketing`
-- `growth-newsletter-growth` -> `solo/marketing/content-marketer/growth-newsletter-growth`
+- `feedback-management` → `pm/feedback-management`
+- `methodologies-summary` → `pm/methodologies-summary`
+- `continuous-discovery-habits` → `pm/continuous-discovery-habits`
+- `growth-email-marketing` → `marketing/growth-email-marketing`
+- `growth-newsletter-growth` → `marketing/growth-newsletter-growth`
 
 **Outputs:**
 - Sales script
@@ -141,11 +141,11 @@ The playbook is done when:
 - Measure margin + delivery hours + NPS
 
 **Methodologies in chain:**
-- `growth-press-coverage` -> `pro/marketing/gtm-strategist/growth-press-coverage`
-- `ops-customer-success-metrics` -> `pro/marketing/gtm-strategist/ops-customer-success-metrics`
-- `product-analytics` -> `pro/product/product-manager/product-analytics`
-- `competitive-intelligence` -> `pro/research/market-researcher/competitive-intelligence`
-- `competitor-analysis` -> `pro/research/market-researcher/competitor-analysis`
+- `growth-press-coverage` → `marketing/growth-press-coverage`
+- `ops-customer-success-metrics` → `marketing/ops-customer-success-metrics`
+- `product-analytics` → `pm/product-analytics`
+- `competitive-intelligence-market-research` → `research/competitive-intelligence-market-research`
+- `competitor-analysis-market-research` → `research/competitor-analysis-market-research`
 
 **Outputs:**
 - First paid invoice

@@ -46,10 +46,10 @@ The playbook is done when:
 **Intent:** PM brief becomes spec; Architect inherits + extends with design.
 
 **Methodologies in chain:**
-- `writing-design-documents` → `solo/sdd/sdd/writing-design-documents`
-- `backlog-grooming-roadmapping` → `solo/sdd/sdd/backlog-grooming-roadmapping`
-- `architecture-decision-records` → `solo/sdd/sdd/architecture-decision-records`
-- `task-spec-kit-three-step` → `geek/sdlc-ai/task-spec-kit-three-step`
+- `writing-design-documents` → `sdd/writing-design-documents`
+- `backlog-grooming-roadmapping` → `sdd/backlog-grooming-roadmapping`
+- `architecture-decision-records` → `sdd/architecture-decision-records`
+- `task-spec-kit-three-step` → `sdlc-ai/task-spec-kit-three-step`
 
 **Decision gate:**
 > Advance only after Definition of Ready is signed off. Missing AC = block.
@@ -59,8 +59,8 @@ The playbook is done when:
 **Intent:** Design becomes implementation-plan + worktrees + TDD split.
 
 **Methodologies in chain:**
-- `test-tdd-red-green-split-agents` → `geek/sdlc-ai/test-tdd-red-green-split-agents`
-- `code-review` → `free/dev/code-quality/code-review`
+- `test-tdd-red-green-split-agents` → `sdlc-ai/test-tdd-red-green-split-agents`
+- `code-review-quality` → `dev/code-review-quality`
 
 **Decision gate:**
 > Advance when implementation matches design + first tests are red.
@@ -70,8 +70,8 @@ The playbook is done when:
 **Intent:** Implementation delta + tests handed off to QA for acceptance signoff.
 
 **Methodologies in chain:**
-- `code-review` → `free/dev/code-quality/code-review`
-- `test-tdd-red-green-split-agents` → `geek/sdlc-ai/test-tdd-red-green-split-agents`
+- `code-review-quality` → `dev/code-review-quality`
+- `test-tdd-red-green-split-agents` → `sdlc-ai/test-tdd-red-green-split-agents`
 
 **Decision gate:**
 > Required: QA signoff. Implicit "looks fine" is not a signoff.
@@ -81,7 +81,7 @@ The playbook is done when:
 **Intent:** Tested artifact handed off to DevOps with runbook + observability checklist.
 
 **Methodologies in chain:**
-- `inc-runbook-as-markdown-tagged-steps` → `geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps`
+- `inc-runbook-as-markdown-tagged-steps` → `sdlc-ai/inc-runbook-as-markdown-tagged-steps`
 
 **Decision gate:**
 > Advance only when runbook is committed AND a fresh on-call has read it.
@@ -91,7 +91,7 @@ The playbook is done when:
 **Intent:** Production release + on-call rotation absorbs the new path.
 
 **Methodologies in chain:**
-- `inc-runbook-as-markdown-tagged-steps` → `geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps`
+- `inc-runbook-as-markdown-tagged-steps` → `sdlc-ai/inc-runbook-as-markdown-tagged-steps`
 
 **Decision gate:**
 > Required: on-call ack. Silent handoff = paging surprise.

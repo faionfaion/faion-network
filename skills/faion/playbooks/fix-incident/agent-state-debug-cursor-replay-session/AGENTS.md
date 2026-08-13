@@ -46,8 +46,8 @@ The playbook is done when:
 - Record-replay the full run
 
 **Methodologies in chain:**
-- `trajectory-eval-otel` → `geek/ai/ai-agents/trajectory-eval-otel`
-- `record-replay-debugging` → `geek/ai/ai-agents/record-replay-debugging`
+- `trajectory-eval-otel` → `ai-agents/trajectory-eval-otel`
+- `record-replay-debugging` → `ai-agents/record-replay-debugging`
 
 **Outputs:**
 - Local replay log
@@ -66,11 +66,11 @@ The playbook is done when:
 - Audit compaction preserve-refs
 
 **Methodologies in chain:**
-- `embedded-scratchpad-field` → `geek/ai/ai-agents/embedded-scratchpad-field`
-- `filesystem-as-working-memory` → `geek/ai/ai-agents/filesystem-as-working-memory`
-- `auto-evict-tool-results` → `geek/ai/ai-agents/auto-evict-tool-results`
-- `compaction-preserve-refs` → `geek/ai/ai-agents/compaction-preserve-refs`
-- `subagent-as-context-firewall` → `geek/ai/ai-agents/subagent-as-context-firewall`
+- `embedded-scratchpad-field` → `ai-agents/embedded-scratchpad-field`
+- `filesystem-as-working-memory` → `ai-agents/filesystem-as-working-memory`
+- `auto-evict-tool-results` → `ai-agents/auto-evict-tool-results`
+- `compaction-preserve-refs` → `ai-agents/compaction-preserve-refs`
+- `subagent-as-context-firewall` → `ai-agents/subagent-as-context-firewall`
 
 **Outputs:**
 - Annotated trajectory
@@ -89,11 +89,11 @@ The playbook is done when:
 - Verify max-turns circuit breaker
 
 **Methodologies in chain:**
-- `plan-execute-vs-react` → `geek/ai/ai-agents/plan-execute-vs-react`
-- `generator-critic-bounded-loop` → `geek/ai/ai-agents/generator-critic-bounded-loop`
-- `posttool-hook-self-correction` → `geek/ai/ai-agents/posttool-hook-self-correction`
-- `max-turns-circuit-breaker` → `geek/ai/ai-agents/max-turns-circuit-breaker`
-- `chaos-eval-fault-injection` → `geek/ai/ai-agents/chaos-eval-fault-injection`
+- `plan-execute-vs-react` → `ai-agents/plan-execute-vs-react`
+- `generator-critic-bounded-loop` → `ai-agents/generator-critic-bounded-loop`
+- `posttool-hook-self-correction` → `ai-agents/posttool-hook-self-correction`
+- `max-turns-circuit-breaker` → `ai-agents/max-turns-circuit-breaker`
+- `chaos-eval-fault-injection` → `ai-agents/chaos-eval-fault-injection`
 
 **Outputs:**
 - Failure category note

@@ -47,9 +47,7 @@ The playbook is done when:
 - Screenshot positioning copy
 
 **Methodologies in chain:**
-- `market-researcher` → `solo/research/market-researcher`
-- `researcher` → `solo/research/researcher`
-- `topical-authority` → `solo/marketing/seo-manager/topical-authority`
+- `topical-authority` → `marketing/topical-authority`
 
 **Outputs:**
 - Competitor audit table
@@ -67,10 +65,10 @@ The playbook is done when:
 - Note non-differentiating features in our roadmap
 
 **Methodologies in chain:**
-- `business-storytelling` → `solo/comms/communicator/business-storytelling`
-- `growth-copywriting-fundamentals` → `solo/marketing/content-marketer/growth-copywriting-fundamentals`
-- `growth-landing-page-design` → `solo/marketing/conversion-optimizer/growth-landing-page-design`
-- `ops-pricing-strategy` → `solo/marketing/gtm-strategist/ops-pricing-strategy`
+- `business-storytelling` → `comms/business-storytelling`
+- `growth-copywriting-fundamentals` → `marketing/growth-copywriting-fundamentals`
+- `growth-landing-page-design` → `marketing/growth-landing-page-design`
+- `ops-pricing-strategy` → `marketing/ops-pricing-strategy`
 
 **Outputs:**
 - Positioning diff doc
@@ -88,7 +86,7 @@ The playbook is done when:
 - Log decision
 
 **Methodologies in chain:**
-- `backlog-management` → `solo/product/product-manager/backlog-management`
+- `backlog-management` → `product/backlog-management`
 
 **Outputs:**
 - Landing-page diff

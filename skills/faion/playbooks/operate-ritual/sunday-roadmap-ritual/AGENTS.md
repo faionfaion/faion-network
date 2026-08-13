@@ -47,9 +47,9 @@ The playbook is done when:
 - Pull new signals from inbox + analytics
 
 **Methodologies in chain:**
-- `mistake-memory` → `solo/sdd/sdd/mistake-memory`
-- `pattern-memory` → `solo/sdd/sdd/pattern-memory`
-- `reflexion-learning` → `solo/sdd/sdd/reflexion-learning`
+- `mistake-memory` → `sdd/mistake-memory`
+- `pattern-memory` → `sdd/pattern-memory`
+- `reflexion-learning` → `sdd/reflexion-learning`
 
 **Outputs:**
 - Last-week review notes
@@ -67,10 +67,10 @@ The playbook is done when:
 - Cut to 3
 
 **Methodologies in chain:**
-- `feature-prioritization-rice` → `solo/product/product-manager/feature-prioritization-rice`
-- `feature-prioritization-moscow` → `solo/product/product-manager/feature-prioritization-moscow`
-- `backlog-management` → `solo/product/product-operations/backlog-management`
-- `outcome-based-roadmaps` → `solo/product/product-planning/outcome-based-roadmaps`
+- `feature-prioritization-rice` → `product/feature-prioritization-rice`
+- `feature-prioritization-moscow` → `product/feature-prioritization-moscow`
+- `backlog-management-product-ops` → `product/backlog-management-product-ops`
+- `outcome-based-roadmaps` → `pm/outcome-based-roadmaps`
 
 **Outputs:**
 - Top 3 outcomes list
@@ -88,7 +88,7 @@ The playbook is done when:
 - Prime AI prompt if applicable
 
 **Methodologies in chain:**
-- `writing-specifications` → `solo/sdd/sdd/writing-specifications`
+- `writing-specifications` → `sdd/writing-specifications`
 
 **Outputs:**
 - Monday spec.md

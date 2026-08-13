@@ -46,9 +46,9 @@ The playbook is done when:
 **Intent:** Pick the faion baseline + design the overlay shape that doesn't fork.
 
 **Methodologies in chain:**
-- `design-doc-structure` → `solo/sdd/sdd-planning/design-doc-structure`
-- `kb-agents-md-context-pyramid` → `geek/sdlc-ai/kb-agents-md-context-pyramid`
-- `kb-versioned-agent-memory-files` → `geek/sdlc-ai/kb-versioned-agent-memory-files`
+- `design-doc-structure` → `sdd/design-doc-structure`
+- `kb-agents-md-context-pyramid` → `sdlc-ai/kb-agents-md-context-pyramid`
+- `kb-versioned-agent-memory-files` → `sdlc-ai/kb-versioned-agent-memory-files`
 
 **Decision gate:**
 > Advance only with explicit overlay-vs-fork choice on paper. Forking is the failure mode.
@@ -58,8 +58,8 @@ The playbook is done when:
 **Intent:** Working agreement + per-role cheatsheets land in repo.
 
 **Methodologies in chain:**
-- `team-development` → `pro/pm/pm-agile/team-development`
-- `onboarding-30-day` → `pro/comms/hr-recruiter/onboarding-30-day`
+- `team-development-pm-agile` → `pm/team-development-pm-agile`
+- `onboarding-30-day` → `hr/onboarding-30-day`
 
 **Decision gate:**
 > Advance when charter + cheatsheets are merged. Verbal agreements decay in 4 weeks.
@@ -69,8 +69,8 @@ The playbook is done when:
 **Intent:** Overlay artefacts (ADR template, RFC template, tech-radar) live in repo with ADRs explaining why.
 
 **Methodologies in chain:**
-- `architecture-decision-records` → `solo/sdd/sdd/architecture-decision-records`
-- `pattern-memory` → `solo/sdd/sdd/pattern-memory`
+- `architecture-decision-records` → `sdd/architecture-decision-records`
+- `pattern-memory` → `sdd/pattern-memory`
 
 **Decision gate:**
 > Required output: ADRs + overlay artefacts. Without ADRs, a new dev re-litigates the overlay.

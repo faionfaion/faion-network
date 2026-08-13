@@ -36,7 +36,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `free/dev/software-developer/documentation` (tier: free)
+- `dev/documentation` (tier: free)
 
 ### Step 2 — Plan
 
@@ -53,7 +53,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `solo/dev/automation-tooling/trunk-based-branch-by-abstraction` (tier: solo)
+- `automation-tooling/trunk-based-branch-by-abstraction` (tier: solo)
 
 ### Step 3 — Execute
 
@@ -69,7 +69,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `solo/dev/automation-tooling/trunk-based-ci-gates` (tier: solo)
+- `automation-tooling/trunk-based-ci-gates` (tier: solo)
 
 ### Step 4 — Verify
 
@@ -85,7 +85,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `solo/dev/automation-tooling/trunk-based-dev-patterns` (tier: solo)
+- `automation-tooling/trunk-based-dev-patterns` (tier: solo)
 
 ### Step 5 — Close
 
@@ -101,7 +101,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `solo/dev/software-developer/trunk-based-development` (tier: solo)
+- `dev/trunk-based-dev-principles` (tier: solo)
 
 ## Decision points
 

@@ -47,12 +47,12 @@ The playbook is done when:
 **Intent:** Map controls to repo artifacts; find gaps.
 
 **Methodologies in chain:**
-- `strategy-analysis-current-state` → `pro/ba/business-analyst/strategy-analysis-current-state`
-- `strategy-analysis-gap-analysis` → `pro/ba/business-analyst/strategy-analysis-gap-analysis`
-- `data-analysis` → `pro/ba/business-analyst/data-analysis`
-- `interface-analysis` → `pro/ba/business-analyst/interface-analysis`
-- `process-mining-automation` → `pro/ba/business-analyst/process-mining-automation`
-- `stakeholder-register` → `pro/pm/pm-traditional/stakeholder-register`
+- `strategy-analysis-current-state` → `ba/strategy-analysis-current-state`
+- `strategy-analysis-gap-analysis` → `ba/strategy-analysis-gap-analysis`
+- `data-analysis` → `ba/data-analysis`
+- `interface-analysis` → `ba/interface-analysis`
+- `process-mining-automation` → `ba/process-mining-automation`
+- `stakeholder-register-pm-traditional` → `pm/stakeholder-register-pm-traditional`
 
 **Decision gate:**
 > Advance when every control has either a green status or a documented gap with owner.
@@ -62,14 +62,14 @@ The playbook is done when:
 **Intent:** Trivy / CodeQL / container / IaC scans + license compliance run + remediated.
 
 **Methodologies in chain:**
-- `sec-trivy-pinned-supply-chain-scan` → `geek/sdlc-ai/sec-trivy-pinned-supply-chain-scan`
-- `sec-secrets-defense-in-depth` → `geek/sdlc-ai/sec-secrets-defense-in-depth`
-- `gov-license-compliance-scan` → `geek/sdlc-ai/gov-license-compliance-scan`
-- `secrets-management` → `pro/infra/cicd-engineer/secrets-management`
-- `security-container-scanning` → `pro/infra/cicd-engineer/security-container-scanning`
-- `security-supply-chain` → `pro/infra/cicd-engineer/security-supply-chain`
-- `security-policy-as-code` → `pro/infra/cicd-engineer/security-policy-as-code`
-- `backup-verification-dr` → `pro/infra/cicd-engineer/backup-verification-dr`
+- `sec-trivy-pinned-supply-chain-scan` → `sdlc-ai/sec-trivy-pinned-supply-chain-scan`
+- `sec-secrets-defense-in-depth` → `sdlc-ai/sec-secrets-defense-in-depth`
+- `gov-license-compliance-scan` → `sdlc-ai/gov-license-compliance-scan`
+- `secrets-management` → `infra/secrets-management`
+- `security-container-scanning` → `infra/security-container-scanning`
+- `security-supply-chain` → `infra/security-supply-chain`
+- `security-policy-as-code` → `infra/security-policy-as-code`
+- `backup-verification-dr` → `infra/backup-verification-dr`
 
 **Decision gate:**
 > Advance when scan output is green within 30 days and all P0 supply-chain risks have remediation owners.
@@ -79,12 +79,12 @@ The playbook is done when:
 **Intent:** Approval-token JWT + conventional-commits + AI code gate trail = auditable engineering controls.
 
 **Methodologies in chain:**
-- `gov-approval-token-signed-jwt` → `geek/sdlc-ai/gov-approval-token-signed-jwt`
-- `gov-conventional-commits-enforced` → `geek/sdlc-ai/gov-conventional-commits-enforced`
-- `gov-sonarqube-ai-code-gate` → `geek/sdlc-ai/gov-sonarqube-ai-code-gate`
-- `eu-ai-act-compliance` → `geek/ai/ai-agents/eu-ai-act-compliance`
-- `quality-management` → `pro/pm/pm-traditional/quality-management`
-- `procurement-management` → `pro/pm/pm-traditional/procurement-management`
+- `gov-approval-token-signed-jwt` → `sdlc-ai/gov-approval-token-signed-jwt`
+- `gov-conventional-commits-enforced` → `sdlc-ai/gov-conventional-commits-enforced`
+- `gov-sonarqube-ai-code-gate` → `sdlc-ai/gov-sonarqube-ai-code-gate`
+- `eu-ai-act-compliance` → `ai-agents/eu-ai-act-compliance`
+- `quality-management-pm-traditional` → `pm/quality-management-pm-traditional`
+- `procurement-management-pm-traditional` → `pm/procurement-management-pm-traditional`
 
 **Decision gate:**
 > Advance when every privileged action has a JWT trail and there are no untagged commits on protected branches.
@@ -94,14 +94,14 @@ The playbook is done when:
 **Intent:** Rehearse the auditor walkthrough; log exceptions with owners + dates.
 
 **Methodologies in chain:**
-- `communications-management` → `pro/pm/pm-traditional/communications-management`
-- `change-control` → `pro/pm/pm-traditional/change-control`
-- `stakeholder-engagement-advanced` → `pro/pm/project-manager/stakeholder-engagement-advanced`
-- `stakeholder-register` → `pro/pm/pm-traditional/stakeholder-register`
-- `risk-register` → `pro/pm/pm-traditional/risk-register`
-- `lessons-learned` → `pro/pm/pm-traditional/lessons-learned`
-- `project-closure` → `pro/pm/pm-traditional/project-closure`
-- `benefits-realization` → `pro/pm/pm-traditional/benefits-realization`
+- `communications-management-pm-traditional` → `pm/communications-management-pm-traditional`
+- `change-control-pm-traditional` → `pm/change-control-pm-traditional`
+- `stakeholder-engagement-advanced` → `pm/stakeholder-engagement-advanced`
+- `stakeholder-register-pm-traditional` → `pm/stakeholder-register-pm-traditional`
+- `risk-register-pm-traditional` → `pm/risk-register-pm-traditional`
+- `lessons-learned-pm-traditional` → `pm/lessons-learned-pm-traditional`
+- `project-closure-pm-traditional` → `pm/project-closure-pm-traditional`
+- `benefits-realization-pm-traditional` → `pm/benefits-realization-pm-traditional`
 
 **Decision gate:**
 > Required output: rehearsed walkthrough + signed exception ledger. No 'we'll wing it'.

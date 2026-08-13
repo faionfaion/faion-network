@@ -36,9 +36,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `pro/dev/software-architect/quality-attributes-analysis` (tier: pro)
-- `pro/infra/devops-engineer/finops-devops-cost-rightsizing` (tier: pro)
-- `solo/dev/software-architect/caching-architecture` (tier: solo)
+- `architecture/quality-attributes-analysis` (tier: pro)
+- `infra/finops-devops-cost-rightsizing` (tier: pro)
+- `architecture/caching-architecture` (tier: solo)
 
 ### Step 2 — Assess
 
@@ -55,9 +55,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Risk register
 
 **Backed by methodology**
-- `pro/dev/software-architect/reliability-architecture` (tier: pro)
-- `pro/infra/devops-engineer/finops-devops-cost-tagging` (tier: pro)
-- `solo/dev/software-architect/performance-architecture` (tier: solo)
+- `architecture/reliability-architecture` (tier: pro)
+- `infra/finops-devops-cost-tagging` (tier: pro)
+- `architecture/performance-architecture` (tier: solo)
 
 ### Step 3 — Plan
 
@@ -74,9 +74,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `pro/infra/cicd-engineer/finops-cost-visibility` (tier: pro)
-- `pro/infra/infrastructure-engineer/aws-cost-optimization` (tier: pro)
-- `solo/dev/software-architect/trade-off-build-vs-buy` (tier: solo)
+- `infra/finops-cost-visibility` (tier: pro)
+- `infra/aws-cost-optimization` (tier: pro)
+- `architecture/trade-off-build-vs-buy` (tier: solo)
 
 ### Step 4 — Execute
 
@@ -92,8 +92,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `pro/infra/devops-engineer/finops` (tier: pro)
-- `pro/infra/infrastructure-engineer/aws-well-architected-framework` (tier: pro)
+- `infra/finops` (tier: pro)
+- `infra/aws-well-architected-framework` (tier: pro)
 
 ### Step 5 — Verify
 
@@ -109,8 +109,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `pro/infra/devops-engineer/finops-devops-cost-alerts` (tier: pro)
-- `pro/infra/infrastructure-engineer/k8s-scaling-availability` (tier: pro)
+- `infra/finops-devops-cost-alerts` (tier: pro)
+- `infra/k8s-scaling-availability` (tier: pro)
 
 ### Step 6 — Close
 
@@ -126,8 +126,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `pro/infra/devops-engineer/finops-devops-cost-commitments` (tier: pro)
-- `solo/dev/software-architect/architecture-decision-records` (tier: solo)
+- `infra/finops-devops-cost-commitments` (tier: pro)
+- `architecture/architecture-decision-records` (tier: solo)
 
 ## Decision points
 

@@ -36,7 +36,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `solo/dev/software-architect/architecture-decision-records` (tier: solo)
+- `architecture/architecture-decision-records` (tier: solo)
 
 ### Step 2 — Plan
 
@@ -53,7 +53,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `solo/dev/software-architect/c4-model` (tier: solo)
+- `architecture/c4-model` (tier: solo)
 
 ### Step 3 — Execute
 
@@ -69,7 +69,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `solo/dev/software-architect/patterns-overview` (tier: solo)
+- `architecture/patterns-overview` (tier: solo)
 
 ### Step 4 — Verify
 
@@ -85,7 +85,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `solo/sdd/sdd/living-documentation` (tier: solo)
+- `sdd/living-documentation` (tier: solo)
 
 ### Step 5 — Close
 
@@ -101,7 +101,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `solo/dev/software-architect/architecture-decision-records` (tier: solo)
+- `architecture/architecture-decision-records` (tier: solo)
 
 ## Decision points
 

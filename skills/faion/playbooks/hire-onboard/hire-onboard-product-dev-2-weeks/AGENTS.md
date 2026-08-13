@@ -53,9 +53,9 @@ The playbook is done when:
 - Confirm EVP messaging on day-1 welcome packet
 
 **Methodologies in chain:**
-- `employee-value-proposition` → `pro/comms/hr-recruiter/employee-value-proposition`
-- `30-60-90-day-plan` → `pro/comms/hr-recruiter/30-60-90-day-plan`
-- `secrets-management` → `pro/infra/cicd-engineer/secrets-management`
+- `employee-value-proposition` → `hr/employee-value-proposition`
+- `30-60-90-day-plan` → `hr/30-60-90-day-plan`
+- `secrets-management` → `infra/secrets-management`
 
 **Decision gate:**
 > Advance when laptop boots, repo clones, buddy and manager are calendared. Otherwise day 1 burns on logistics.
@@ -71,17 +71,16 @@ The playbook is done when:
 - Open and merge a small PR with conventional commits
 
 **Methodologies in chain:**
-- `onboarding-30-day` → `pro/comms/hr-recruiter/onboarding-30-day`
-- `onboarding` → `pro/comms/hr-recruiter/onboarding`
-- `claude-md-creation` → `geek/dev/code-quality/claude-md-creation`
-- `llm-friendly-architecture` → `geek/dev/code-quality/llm-friendly-architecture`
-- `kb-agents-md-context-pyramid` → `geek/sdlc-ai/kb-agents-md-context-pyramid`
-- `claude-code` → `geek/ai/claude-code`
-- `gov-conventional-commits-enforced` → `geek/sdlc-ai/gov-conventional-commits-enforced`
-- `lint-precommit-floor` → `geek/sdlc-ai/lint-precommit-floor`
-- `task-plan-mode-locked-execution` → `geek/sdlc-ai/task-plan-mode-locked-execution`
-- `task-spec-kit-three-step` → `geek/sdlc-ai/task-spec-kit-three-step`
-- `task-worktree-runtime-isolation` → `geek/sdlc-ai/task-worktree-runtime-isolation`
+- `onboarding-30-day` → `hr/onboarding-30-day`
+- `onboarding` → `hr/onboarding`
+- `claude-md-creation-quality` → `dev/claude-md-creation-quality`
+- `llm-friendly-architecture` → `dev/llm-friendly-architecture`
+- `kb-agents-md-context-pyramid` → `sdlc-ai/kb-agents-md-context-pyramid`
+- `gov-conventional-commits-enforced` → `sdlc-ai/gov-conventional-commits-enforced`
+- `lint-precommit-floor` → `sdlc-ai/lint-precommit-floor`
+- `task-plan-mode-locked-execution` → `sdlc-ai/task-plan-mode-locked-execution`
+- `task-spec-kit-three-step` → `sdlc-ai/task-spec-kit-three-step`
+- `task-worktree-runtime-isolation` → `sdlc-ai/task-worktree-runtime-isolation`
 
 **Decision gate:**
 > Advance when the hire has merged a PR they understand and can explain back to their buddy.
@@ -97,11 +96,11 @@ The playbook is done when:
 - Dry-run a postmortem auto-draft on a synthetic incident
 
 **Methodologies in chain:**
-- `onboarding-60-90-day` → `pro/comms/hr-recruiter/onboarding-60-90-day`
-- `inc-runbook-as-markdown-tagged-steps` → `geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps`
-- `inc-read-only-investigation-default` → `geek/sdlc-ai/inc-read-only-investigation-default`
-- `inc-tool-tier-approval-gate` → `geek/sdlc-ai/inc-tool-tier-approval-gate`
-- `inc-postmortem-auto-draft-no-publish` → `geek/sdlc-ai/inc-postmortem-auto-draft-no-publish`
+- `onboarding-60-90-day` → `hr/onboarding-60-90-day`
+- `inc-runbook-as-markdown-tagged-steps` → `sdlc-ai/inc-runbook-as-markdown-tagged-steps`
+- `inc-read-only-investigation-default` → `sdlc-ai/inc-read-only-investigation-default`
+- `inc-tool-tier-approval-gate` → `sdlc-ai/inc-tool-tier-approval-gate`
+- `inc-postmortem-auto-draft-no-publish` → `sdlc-ai/inc-postmortem-auto-draft-no-publish`
 
 **Decision gate:**
 > Advance when hire can articulate the read-only-investigation default and the approval-gate boundary unaided.
@@ -117,8 +116,8 @@ The playbook is done when:
 - Set retention checkpoint at day 60
 
 **Methodologies in chain:**
-- `retention-compliance` → `pro/comms/hr-recruiter/retention-compliance`
-- `lessons-learned` → `pro/pm/pm-traditional/lessons-learned`
+- `retention-compliance` → `hr/retention-compliance`
+- `lessons-learned-pm-traditional` → `pm/lessons-learned-pm-traditional`
 
 **Decision gate:**
 > Required output: written retro. If the hire stops at week 14 with no retro, the next hire repeats the same friction.

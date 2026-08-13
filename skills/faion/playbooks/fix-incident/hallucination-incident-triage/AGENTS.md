@@ -47,8 +47,8 @@ The playbook is done when:
 - Replay with record-replay
 
 **Methodologies in chain:**
-- `record-replay-debugging` → `geek/ai/ai-agents/record-replay-debugging`
-- `trajectory-eval-otel` → `geek/ai/ai-agents/trajectory-eval-otel`
+- `record-replay-debugging` → `ai-agents/record-replay-debugging`
+- `trajectory-eval-otel` → `ai-agents/trajectory-eval-otel`
 
 **Outputs:**
 - Reproduced failure
@@ -66,10 +66,10 @@ The playbook is done when:
 - Audit context compaction
 
 **Methodologies in chain:**
-- `rerank-before-reasoning` → `geek/ai/ai-agents/rerank-before-reasoning`
-- `refusal-field-strict-schema` → `geek/ai/ai-agents/refusal-field-strict-schema`
-- `compaction-preserve-refs` → `geek/ai/ai-agents/compaction-preserve-refs`
-- `rag-eval-retrieval-metrics` → `geek/ai/rag-engineer/rag-eval-retrieval-metrics`
+- `rerank-before-reasoning` → `ai-agents/rerank-before-reasoning`
+- `refusal-field-strict-schema` → `ai-agents/refusal-field-strict-schema`
+- `compaction-preserve-refs` → `ai-agents/compaction-preserve-refs`
+- `rag-eval-retrieval-metrics` → `ml-engineering/rag-eval-retrieval-metrics`
 
 **Outputs:**
 - Attribution note
@@ -88,9 +88,9 @@ The playbook is done when:
 - Draft customer-facing note
 
 **Methodologies in chain:**
-- `agents-safety-guardrails` → `geek/ai/ml-engineer/agents-safety-guardrails`
-- `eu-ai-act-compliance` → `geek/ai/ai-agents/eu-ai-act-compliance`
-- `rag-eval-retrieval-metrics` → `geek/ai/rag-engineer/rag-eval-retrieval-metrics`
+- `agents-safety-guardrails` → `ml-engineering/agents-safety-guardrails`
+- `eu-ai-act-compliance` → `ai-agents/eu-ai-act-compliance`
+- `rag-eval-retrieval-metrics` → `ml-engineering/rag-eval-retrieval-metrics`
 
 **Outputs:**
 - Guardrail PR

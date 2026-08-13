@@ -48,11 +48,11 @@ The playbook is done when:
 - Score against PMF rubric
 
 **Methodologies in chain:**
-- `aarrr-pirate-metrics` → `pro/marketing/growth-marketer/aarrr-pirate-metrics`
-- `cohort-basics` → `pro/marketing/growth-marketer/cohort-basics`
-- `cohort-implementation` → `pro/marketing/growth-marketer/cohort-implementation`
-- `north-star-metric` → `pro/marketing/growth-marketer/north-star-metric`
-- `retention-metrics` → `pro/marketing/growth-marketer/retention-metrics`
+- `aarrr-pirate-metrics` → `marketing/aarrr-pirate-metrics`
+- `cohort-implementation` → `marketing/cohort-implementation`
+- `cohort-implementation` → `marketing/cohort-implementation`
+- `north-star-metric` → `marketing/north-star-metric`
+- `retention-metrics` → `marketing/retention-metrics`
 
 **Outputs:**
 - PMF baseline scorecard
@@ -71,10 +71,10 @@ The playbook is done when:
 - Tag interview themes
 
 **Methodologies in chain:**
-- `mom-test` → `solo/comms/communicator/mom-test`
-- `continuous-discovery-habits` → `pro/product/product-planning/continuous-discovery-habits`
-- `user-interviews` → `solo/research/researcher/user-interviews`
-- `value-proposition-design` → `solo/research/researcher/value-proposition-design`
+- `mom-test` → `comms/mom-test`
+- `continuous-discovery-habits-product-planning` → `pm/continuous-discovery-habits-product-planning`
+- `user-interviews` → `research/user-interviews`
+- `value-proposition-design` → `research/value-proposition-design`
 
 **Outputs:**
 - 15 interview notes tagged by theme
@@ -93,10 +93,10 @@ The playbook is done when:
 - Diff against current copy
 
 **Methodologies in chain:**
-- `competitive-positioning` → `pro/product/product-planning/competitive-positioning`
-- `competitive-intelligence` → `pro/research/market-researcher/competitive-intelligence`
-- `competitor-analysis` → `pro/research/market-researcher/competitor-analysis`
-- `growth-landing-page-design` → `solo/marketing/conversion-optimizer/growth-landing-page-design`
+- `competitive-positioning-product-planning` → `pm/competitive-positioning-product-planning`
+- `competitive-intelligence-market-research` → `research/competitive-intelligence-market-research`
+- `competitor-analysis-market-research` → `research/competitor-analysis-market-research`
+- `growth-landing-page-design` → `marketing/growth-landing-page-design`
 
 **Outputs:**
 - New ICP + value-prop doc
@@ -115,10 +115,10 @@ The playbook is done when:
 - Ship and measure
 
 **Methodologies in chain:**
-- `ab-testing-basics` → `pro/marketing/growth-marketer/ab-testing-basics`
-- `ab-testing-setup` → `pro/marketing/growth-marketer/ab-testing-setup`
-- `activation-framework` → `pro/marketing/growth-marketer/activation-framework`
-- `activation-tactics` → `pro/marketing/growth-marketer/activation-tactics`
+- `ab-testing-basics` → `marketing/ab-testing-basics`
+- `ab-testing-setup` → `marketing/ab-testing-setup`
+- `activation-framework` → `marketing/activation-framework`
+- `activation-tactics` → `marketing/activation-tactics`
 
 **Outputs:**
 - 3 experiment results docs
@@ -137,8 +137,8 @@ The playbook is done when:
 - If pivot, define new hypothesis
 
 **Methodologies in chain:**
-- `architecture-decision-records` → `solo/dev/software-architect/architecture-decision-records`
-- `trade-off-decision-matrix` → `solo/dev/software-architect/trade-off-decision-matrix`
+- `architecture-decision-records` → `architecture/architecture-decision-records`
+- `trade-off-decision-matrix` → `architecture/trade-off-decision-matrix`
 
 **Outputs:**
 - Decision doc with PMF rubric output

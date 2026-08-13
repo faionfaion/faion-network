@@ -45,11 +45,11 @@ The playbook is done when:
 **Intent:** AI classifier routes; on-call reads service-ownership map.
 
 **Methodologies in chain:**
-- `tracker-ai-triage-classify-route` → `geek/sdlc-ai/tracker-ai-triage-classify-route`
-- `task-agent-fixable-triage-gate` → `geek/sdlc-ai/task-agent-fixable-triage-gate`
-- `api-monitoring-alerting` → `pro/dev/software-developer/api-monitoring-alerting`
-- `api-monitoring-metrics` → `pro/dev/software-developer/api-monitoring-metrics`
-- `api-monitoring-logging` → `pro/dev/software-developer/api-monitoring-logging`
+- `tracker-ai-triage-classify-route` → `sdlc-ai/tracker-ai-triage-classify-route`
+- `task-agent-fixable-triage-gate` → `sdlc-ai/task-agent-fixable-triage-gate`
+- `api-monitoring-alerting` → `dev/api-monitoring-alerting`
+- `api-monitoring-metrics` → `dev/api-monitoring-metrics`
+- `api-monitoring-logging` → `dev/api-monitoring-logging`
 
 **Decision gate:**
 > Advance only with an explicit verdict; "we'll see what it does" is not a verdict.
@@ -59,10 +59,10 @@ The playbook is done when:
 **Intent:** If 'new', investigate read-only; respect approval-gate boundaries.
 
 **Methodologies in chain:**
-- `inc-read-only-investigation-default` → `geek/sdlc-ai/inc-read-only-investigation-default`
-- `inc-runbook-as-markdown-tagged-steps` → `geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps`
-- `inc-tool-tier-approval-gate` → `geek/sdlc-ai/inc-tool-tier-approval-gate`
-- `mistake-memory` → `solo/sdd/sdd/mistake-memory`
+- `inc-read-only-investigation-default` → `sdlc-ai/inc-read-only-investigation-default`
+- `inc-runbook-as-markdown-tagged-steps` → `sdlc-ai/inc-runbook-as-markdown-tagged-steps`
+- `inc-tool-tier-approval-gate` → `sdlc-ai/inc-tool-tier-approval-gate`
+- `mistake-memory` → `sdd/mistake-memory`
 
 **Decision gate:**
 > If escalation is needed, hand off to `incident-postmortem-preventive-backlog` cleanly. Don't keep investigating solo past 15 minutes.
@@ -72,7 +72,7 @@ The playbook is done when:
 **Intent:** Document verdict; trigger postmortem flow if needed.
 
 **Methodologies in chain:**
-- `inc-postmortem-auto-draft-no-publish` → `geek/sdlc-ai/inc-postmortem-auto-draft-no-publish`
+- `inc-postmortem-auto-draft-no-publish` → `sdlc-ai/inc-postmortem-auto-draft-no-publish`
 
 **Decision gate:**
 > Required: written verdict. An alert that closes silently is a future trap.

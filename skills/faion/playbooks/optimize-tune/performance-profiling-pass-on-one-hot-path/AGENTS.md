@@ -36,8 +36,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `pro/dev/software-developer/api-monitoring-alerting` (tier: pro)
-- `solo/dev/software-architect/trade-off-quality-attributes` (tier: solo)
+- `dev/api-monitoring-alerting` (tier: pro)
+- `architecture/trade-off-quality-attributes` (tier: solo)
 
 ### Step 2 — Assess
 
@@ -54,8 +54,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Risk register
 
 **Backed by methodology**
-- `pro/dev/software-developer/api-monitoring-metrics` (tier: pro)
-- `solo/dev/software-developer/caching-strategy` (tier: solo)
+- `dev/api-monitoring-metrics` (tier: pro)
+- `dev/caching-strategy` (tier: solo)
 
 ### Step 3 — Plan
 
@@ -72,8 +72,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `solo/dev/automation-tooling/perf-test-basics` (tier: solo)
-- `solo/dev/software-developer/performance-testing` (tier: solo)
+- `sdd/perf-test-basics` (tier: solo)
+- `dev/performance-testing` (tier: solo)
 
 ### Step 4 — Execute
 
@@ -89,8 +89,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `solo/dev/automation-tooling/perf-test-tools` (tier: solo)
-- `solo/dev/software-developer/sql-optimization` (tier: solo)
+- `sdd/perf-test-tools` (tier: solo)
+- `dev/sql-optimization` (tier: solo)
 
 ### Step 5 — Verify
 
@@ -106,7 +106,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `solo/dev/software-architect/caching-architecture` (tier: solo)
+- `architecture/caching-architecture` (tier: solo)
 
 ### Step 6 — Close
 
@@ -122,7 +122,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `solo/dev/software-architect/performance-architecture` (tier: solo)
+- `architecture/performance-architecture` (tier: solo)
 
 ## Decision points
 

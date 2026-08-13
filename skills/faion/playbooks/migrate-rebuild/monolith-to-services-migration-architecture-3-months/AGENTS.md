@@ -36,9 +36,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `pro/dev/code-quality/domain-driven-design` (tier: pro)
-- `pro/dev/software-developer/ddd-anti-corruption-layer` (tier: pro)
-- `solo/dev/software-architect/architecture-decision-records` (tier: solo)
+- `dev/domain-driven-design` (tier: pro)
+- `dev/ddd-anti-corruption-layer` (tier: pro)
+- `architecture/architecture-decision-records` (tier: solo)
 
 ### Step 2 — Assess
 
@@ -55,9 +55,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Risk register
 
 **Backed by methodology**
-- `pro/dev/software-architect/distributed-patterns` (tier: pro)
-- `pro/dev/software-developer/microservices-circuit-breaker` (tier: pro)
-- `solo/dev/software-architect/c4-model` (tier: solo)
+- `architecture/distributed-patterns` (tier: pro)
+- `dev/microservices-circuit-breaker` (tier: pro)
+- `architecture/c4-model` (tier: solo)
 
 ### Step 3 — Plan
 
@@ -74,9 +74,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `pro/dev/software-architect/event-driven-architecture` (tier: pro)
-- `pro/dev/software-developer/microservices-inter-service-comm` (tier: pro)
-- `solo/dev/software-architect/decision-tree-architecture-style` (tier: solo)
+- `architecture/event-driven-architecture` (tier: pro)
+- `dev/microservices-inter-service-comm` (tier: pro)
+- `architecture/decision-tree-architecture-style` (tier: solo)
 
 ### Step 4 — Pilot
 
@@ -92,9 +92,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated rollback playbook
 
 **Backed by methodology**
-- `pro/dev/software-architect/microservices-architecture` (tier: pro)
-- `pro/dev/software-developer/microservices-observability` (tier: pro)
-- `solo/dev/software-architect/modular-monolith` (tier: solo)
+- `architecture/microservices-architecture` (tier: pro)
+- `dev/microservices-observability` (tier: pro)
+- `architecture/modular-monolith` (tier: solo)
 
 ### Step 5 — Execute
 
@@ -110,9 +110,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `pro/dev/software-architect/observability-architecture` (tier: pro)
-- `pro/dev/software-developer/microservices-saga-pattern` (tier: pro)
-- `solo/dev/software-architect/monolith-architecture` (tier: solo)
+- `architecture/observability-architecture` (tier: pro)
+- `dev/microservices-saga-pattern` (tier: pro)
+- `architecture/monolith-architecture` (tier: solo)
 
 ### Step 6 — Verify
 
@@ -128,9 +128,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `pro/dev/software-architect/reliability-architecture` (tier: pro)
-- `pro/dev/software-developer/microservices-service-boundaries` (tier: pro)
-- `solo/dev/software-architect/trade-off-decision-matrix` (tier: solo)
+- `architecture/reliability-architecture` (tier: pro)
+- `dev/microservices-service-boundaries` (tier: pro)
+- `architecture/trade-off-decision-matrix` (tier: solo)
 
 ### Step 7 — Roll out
 
@@ -146,9 +146,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Stakeholder update
 
 **Backed by methodology**
-- `pro/dev/software-architect/service-mesh` (tier: pro)
-- `pro/infra/cicd-engineer/backup-verification-dr` (tier: pro)
-- `solo/dev/software-architect/trade-off-technical-debt` (tier: solo)
+- `dev/service-mesh` (tier: pro)
+- `infra/backup-verification-dr` (tier: pro)
+- `architecture/trade-off-technical-debt` (tier: solo)
 
 ### Step 8 — Close
 
@@ -164,8 +164,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `pro/dev/software-developer/continuous-delivery` (tier: pro)
-- `solo/dev/software-architect/api-gateway-patterns` (tier: solo)
+- `dev/continuous-delivery` (tier: pro)
+- `architecture/api-gateway-patterns` (tier: solo)
 
 ## Decision points
 

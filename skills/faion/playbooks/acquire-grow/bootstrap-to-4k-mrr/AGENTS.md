@@ -48,9 +48,9 @@ The playbook is done when:
 - Define minimum viable cadence
 
 **Methodologies in chain:**
-- `growth-content-marketing` → `solo/marketing/content-marketer/growth-content-marketing`
-- `growth-cold-outreach` → `solo/marketing/gtm-strategist/growth-cold-outreach`
-- `search-everywhere-optimization` → `solo/marketing/content-marketer/search-everywhere-optimization`
+- `growth-content-marketing` → `marketing/growth-content-marketing`
+- `growth-cold-outreach` → `marketing/growth-cold-outreach`
+- `search-everywhere-optimization` → `marketing/search-everywhere-optimization`
 
 **Outputs:**
 - Channel bet doc
@@ -69,9 +69,9 @@ The playbook is done when:
 - Add in-app activation nudges
 
 **Methodologies in chain:**
-- `onboarding-flows` → `pro/marketing/conversion-optimizer/onboarding-flows`
-- `activation-framework` → `pro/marketing/growth-marketer/activation-framework`
-- `growth-onboarding-emails` → `solo/marketing/content-marketer/growth-onboarding-emails`
+- `onboarding-flows` → `marketing/onboarding-flows`
+- `activation-framework` → `marketing/activation-framework`
+- `growth-onboarding-emails` → `marketing/growth-onboarding-emails`
 
 **Outputs:**
 - Activation funnel doc
@@ -90,9 +90,9 @@ The playbook is done when:
 - Set churn alert thresholds
 
 **Methodologies in chain:**
-- `ops-churn-prevention` → `pro/marketing/growth-marketer/ops-churn-prevention`
-- `retention-strategies` → `pro/marketing/growth-marketer/retention-strategies`
-- `ops-metrics-basics` → `pro/marketing/growth-marketer/ops-metrics-basics`
+- `ops-churn-prevention` → `marketing/ops-churn-prevention`
+- `retention-strategies` → `marketing/retention-strategies`
+- `ops-metrics-basics` → `marketing/ops-metrics-basics`
 
 **Outputs:**
 - Churn cause doc
@@ -111,9 +111,9 @@ The playbook is done when:
 - Double content cadence
 
 **Methodologies in chain:**
-- `growth-loops` → `pro/marketing/growth-marketer/growth-loops`
-- `growth-referral-programs` → `pro/marketing/growth-marketer/growth-referral-programs`
-- `growth-newsletter-growth` → `solo/marketing/content-marketer/growth-newsletter-growth`
+- `growth-loops` → `marketing/growth-loops`
+- `growth-referral-programs` → `marketing/growth-referral-programs`
+- `growth-newsletter-growth` → `marketing/growth-newsletter-growth`
 
 **Outputs:**
 - Growth loop live
@@ -132,9 +132,9 @@ The playbook is done when:
 - Decide on subscription model
 
 **Methodologies in chain:**
-- `ops-pricing-strategy` → `solo/marketing/gtm-strategist/ops-pricing-strategy`
-- `ops-subscription-models` → `solo/marketing/gtm-strategist/ops-subscription-models`
-- `pricing-research` → `solo/research/market-researcher/pricing-research`
+- `ops-pricing-strategy` → `marketing/ops-pricing-strategy`
+- `ops-subscription-models` → `marketing/ops-subscription-models`
+- `pricing-research-market-research` → `research/pricing-research-market-research`
 
 **Outputs:**
 - Pricing decision doc
@@ -153,9 +153,9 @@ The playbook is done when:
 - Set MRR dashboard alerts
 
 **Methodologies in chain:**
-- `ops-customer-support` → `solo/marketing/gtm-strategist/ops-customer-support`
-- `ops-financial-planning` → `solo/marketing/gtm-strategist/ops-financial-planning`
-- `portfolio-strategy` → `pro/product/product-planning/portfolio-strategy`
+- `ops-customer-support` → `marketing/ops-customer-support`
+- `ops-financial-planning` → `marketing/ops-financial-planning`
+- `portfolio-strategy-product-planning` → `pm/portfolio-strategy-product-planning`
 
 **Outputs:**
 - Support SLA doc

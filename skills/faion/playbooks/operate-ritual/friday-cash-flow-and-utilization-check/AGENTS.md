@@ -47,9 +47,9 @@ The playbook is done when:
 - Send AR follow-ups for items overdue more than 30 days
 
 **Methodologies in chain:**
-- `ops-financial-basics` -> `pro/marketing/gtm-strategist/ops-financial-basics`
-- `ops-tax-basics` -> `pro/marketing/gtm-strategist/ops-tax-basics`
-- `ops-financial-planning` -> `solo/marketing/gtm-strategist/ops-financial-planning`
+- `ops-financial-basics` → `marketing/ops-financial-basics`
+- `ops-tax-basics` → `marketing/ops-tax-basics`
+- `ops-financial-planning` → `marketing/ops-financial-planning`
 
 **Outputs:**
 - Cash snapshot
@@ -68,7 +68,7 @@ The playbook is done when:
 - Tag over / under contractors
 
 **Methodologies in chain:**
-- `ops-contractor-management` -> `pro/marketing/gtm-strategist/ops-contractor-management`
+- `ops-contractor-management` → `marketing/ops-contractor-management`
 
 **Outputs:**
 - Utilization heat map

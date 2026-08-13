@@ -48,10 +48,10 @@ The playbook is done when:
 - Stand up production chunking service
 
 **Methodologies in chain:**
-- `chunking-document-structure` → `geek/ai/rag-engineer/chunking-document-structure`
-- `chunking-semantic` → `geek/ai/rag-engineer/chunking-semantic`
-- `chunking-production-service` → `geek/ai/rag-engineer/chunking-production-service`
-- `kb-codebase-rag-symbol-chunked` → `geek/sdlc-ai/kb-codebase-rag-symbol-chunked`
+- `chunking-document-structure` → `ml-engineering/chunking-document-structure`
+- `chunking-semantic` → `ml-engineering/chunking-semantic`
+- `chunking-production-service` → `ml-engineering/chunking-production-service`
+- `kb-codebase-rag-symbol-chunked` → `sdlc-ai/kb-codebase-rag-symbol-chunked`
 
 **Outputs:**
 - chunks.jsonl
@@ -70,12 +70,12 @@ The playbook is done when:
 - Wire BM25 + vector hybrid search
 
 **Methodologies in chain:**
-- `embedding-model-selection` → `geek/ai/rag-engineer/embedding-model-selection`
-- `embeddings-evaluation` → `geek/ai/ml-engineer/embeddings-evaluation`
-- `embeddings-batch-and-cache` → `geek/ai/ml-engineer/embeddings-batch-and-cache`
-- `embedding-caching` → `geek/ai/rag-engineer/embedding-caching`
-- `hybrid-search-implementation` → `geek/ai/rag-engineer/hybrid-search-implementation`
-- `rag-architecture` → `geek/ai/rag-engineer/rag-architecture`
+- `embedding-model-selection` → `ml-engineering/embedding-model-selection`
+- `embeddings-evaluation` → `ml-engineering/embeddings-evaluation`
+- `embeddings-batch-and-cache` → `ml-engineering/embeddings-batch-and-cache`
+- `embedding-caching` → `ml-engineering/embedding-caching`
+- `hybrid-search-implementation` → `ml-engineering/hybrid-search-implementation`
+- `rag-architecture` → `ml-engineering/rag-architecture`
 
 **Outputs:**
 - Embedding cache
@@ -94,16 +94,16 @@ The playbook is done when:
 - Integrate into context pipeline
 
 **Methodologies in chain:**
-- `reranking-two-stage` → `geek/ai/rag-engineer/reranking-two-stage`
-- `reranking-diversity-mmr` → `geek/ai/rag-engineer/reranking-diversity-mmr`
-- `reranking-pipeline-integration` → `geek/ai/rag-engineer/reranking-pipeline-integration`
-- `rerank-before-reasoning` → `geek/ai/ai-agents/rerank-before-reasoning`
-- `manifest-then-fetch` → `geek/ai/ai-agents/manifest-then-fetch`
-- `progressive-disclosure-skills` → `geek/ai/ai-agents/progressive-disclosure-skills`
-- `file-reference-passing` → `geek/ai/ai-agents/file-reference-passing`
-- `auto-evict-tool-results` → `geek/ai/ai-agents/auto-evict-tool-results`
-- `terse-default-tool-output` → `geek/ai/ai-agents/terse-default-tool-output`
-- `compaction-preserve-refs` → `geek/ai/ai-agents/compaction-preserve-refs`
+- `reranking-two-stage` → `ml-engineering/reranking-two-stage`
+- `reranking-diversity-mmr` → `ml-engineering/reranking-diversity-mmr`
+- `reranking-pipeline-integration` → `ml-engineering/reranking-pipeline-integration`
+- `rerank-before-reasoning` → `ai-agents/rerank-before-reasoning`
+- `manifest-then-fetch` → `ai-agents/manifest-then-fetch`
+- `progressive-disclosure-skills` → `ai-agents/progressive-disclosure-skills`
+- `file-reference-passing` → `ai-agents/file-reference-passing`
+- `auto-evict-tool-results` → `ai-agents/auto-evict-tool-results`
+- `terse-default-tool-output` → `ai-agents/terse-default-tool-output`
+- `compaction-preserve-refs` → `ai-agents/compaction-preserve-refs`
 
 **Outputs:**
 - Reranker service
@@ -122,10 +122,10 @@ The playbook is done when:
 - Pin schemas + memory snapshots
 
 **Methodologies in chain:**
-- `rag-eval-pipeline` → `geek/ai/rag-engineer/rag-eval-pipeline`
-- `rag-eval-production-monitoring` → `geek/ai/rag-engineer/rag-eval-production-monitoring`
-- `rag-eval-retrieval-metrics` → `geek/ai/rag-engineer/rag-eval-retrieval-metrics`
-- `kb-versioned-agent-memory-files` → `geek/sdlc-ai/kb-versioned-agent-memory-files`
+- `rag-eval-pipeline` → `ml-engineering/rag-eval-pipeline`
+- `rag-eval-production-monitoring` → `ml-engineering/rag-eval-production-monitoring`
+- `rag-eval-retrieval-metrics` → `ml-engineering/rag-eval-retrieval-metrics`
+- `kb-versioned-agent-memory-files` → `sdlc-ai/kb-versioned-agent-memory-files`
 
 **Outputs:**
 - Eval CI job
@@ -144,8 +144,8 @@ The playbook is done when:
 - Sign off on deployment
 
 **Methodologies in chain:**
-- `gov-license-compliance-scan` → `geek/sdlc-ai/gov-license-compliance-scan`
-- `eu-ai-act-compliance` → `geek/ai/ml-engineer/eu-ai-act-compliance`
+- `gov-license-compliance-scan` → `sdlc-ai/gov-license-compliance-scan`
+- `eu-ai-act-compliance` → `ml-engineering/eu-ai-act-compliance`
 
 **Outputs:**
 - Licence report

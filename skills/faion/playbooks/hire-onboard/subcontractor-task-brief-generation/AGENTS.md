@@ -47,8 +47,8 @@ The playbook is done when:
 - Flag any constraints (budget, brand, legal)
 
 **Methodologies in chain:**
-- `ops-contractor-basics` -> `pro/marketing/gtm-strategist/ops-contractor-basics`
-- `ops-contractor-management` -> `pro/marketing/gtm-strategist/ops-contractor-management`
+- `ops-contractor-basics` → `marketing/ops-contractor-basics`
+- `ops-contractor-management` → `marketing/ops-contractor-management`
 
 **Outputs:**
 - Context block
@@ -66,8 +66,8 @@ The playbook is done when:
 - Specify review cadence
 
 **Methodologies in chain:**
-- `acceptance-criteria` -> `pro/ba/business-analyst/acceptance-criteria`
-- `requirements-documentation` -> `pro/ba/business-analyst/requirements-documentation`
+- `acceptance-criteria` → `ba/acceptance-criteria`
+- `requirements-documentation` → `ba/requirements-documentation`
 
 **Outputs:**
 - AC list
@@ -86,8 +86,8 @@ The playbook is done when:
 - Set escalation trigger
 
 **Methodologies in chain:**
-- `raci-matrix` -> `pro/pm/project-manager/raci-matrix`
-- `team-development` -> `pro/pm/project-manager/team-development`
+- `raci-matrix` → `pm/raci-matrix`
+- `team-development` → `pm/team-development`
 
 **Outputs:**
 - RACI line
@@ -106,7 +106,7 @@ The playbook is done when:
 - Log brief in task tracker
 
 **Methodologies in chain:**
-- `feedback` -> `solo/comms/communicator/feedback`
+- `feedback` → `comms/feedback`
 
 **Outputs:**
 - Acceptance comment

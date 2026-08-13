@@ -46,8 +46,8 @@ The playbook is done when:
 - Pin response schema version
 
 **Methodologies in chain:**
-- `schema-version-pinning` → `geek/ai/ai-agents/schema-version-pinning`
-- `previous-response-id-reasoning-reuse` → `geek/ai/ai-agents/previous-response-id-reasoning-reuse`
+- `schema-version-pinning` → `ai-agents/schema-version-pinning`
+- `previous-response-id-reasoning-reuse` → `ai-agents/previous-response-id-reasoning-reuse`
 
 **Outputs:**
 - New adapter live
@@ -65,9 +65,9 @@ The playbook is done when:
 - Inspect refusal field behaviour
 
 **Methodologies in chain:**
-- `evaluation-benchmarks` → `geek/ai/ml-ops/evaluation-benchmarks`
-- `llm-decision-framework` → `geek/ai/ml-engineer/llm-decision-framework`
-- `refusal-field-strict-schema` → `geek/ai/ai-agents/refusal-field-strict-schema`
+- `evaluation-benchmarks` → `ml-engineering/evaluation-benchmarks`
+- `llm-decision-framework` → `ml-engineering/llm-decision-framework`
+- `refusal-field-strict-schema` → `ai-agents/refusal-field-strict-schema`
 
 **Outputs:**
 - Bench table
@@ -87,10 +87,10 @@ The playbook is done when:
 - Confirm reasoning-first architecture if applicable
 
 **Methodologies in chain:**
-- `preference-trained-router` → `geek/ai/ai-agents/preference-trained-router`
-- `confidence-thresholded-cascade` → `geek/ai/ai-agents/confidence-thresholded-cascade`
-- `role-specialized-models` → `geek/ai/ai-agents/role-specialized-models`
-- `reasoning-first-architectures` → `geek/ai/ai-agents/reasoning-first-architectures`
+- `preference-trained-router` → `ai-agents/preference-trained-router`
+- `confidence-thresholded-cascade` → `ai-agents/confidence-thresholded-cascade`
+- `role-specialized-models` → `ai-agents/role-specialized-models`
+- `reasoning-first-architectures` → `ai-agents/reasoning-first-architectures`
 
 **Outputs:**
 - Decision doc

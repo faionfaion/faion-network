@@ -48,9 +48,9 @@ The playbook is done when:
 - Reply within 24h with verdict (book / decline / clarify)
 
 **Methodologies in chain:**
-- `stakeholder-analysis` -> `pro/ba/business-analyst/stakeholder-analysis`
-- `funnel-tactics-advanced` -> `pro/marketing/conversion-optimizer/funnel-tactics-advanced`
-- `conversion-tracking` -> `pro/marketing/growth-marketer/conversion-tracking`
+- `stakeholder-analysis` → `ba/stakeholder-analysis`
+- `funnel-tactics-advanced` → `marketing/funnel-tactics-advanced`
+- `conversion-tracking` → `marketing/conversion-tracking`
 
 **Outputs:**
 - Triage verdict in pipeline log
@@ -69,9 +69,9 @@ The playbook is done when:
 - Capture decision-maker + signoff path
 
 **Methodologies in chain:**
-- `elicitation-techniques` -> `pro/ba/business-analyst/elicitation-techniques`
-- `strategy-analysis-current-state` -> `pro/ba/business-analyst/strategy-analysis-current-state`
-- `strategy-analysis-business-need` -> `pro/ba/business-analyst/strategy-analysis-business-need`
+- `elicitation-techniques` → `ba/elicitation-techniques`
+- `strategy-analysis-current-state` → `ba/strategy-analysis-current-state`
+- `strategy-analysis-business-need` → `ba/strategy-analysis-business-need`
 
 **Outputs:**
 - Discovery call notes
@@ -90,10 +90,10 @@ The playbook is done when:
 - Draft scope with 3 explicit non-goals
 
 **Methodologies in chain:**
-- `strategy-analysis-future-state` -> `pro/ba/business-analyst/strategy-analysis-future-state`
-- `strategy-analysis-change-strategy` -> `pro/ba/business-analyst/strategy-analysis-change-strategy`
-- `solution-assessment` -> `pro/ba/business-analyst/solution-assessment`
-- `growth-gtm-strategy` -> `pro/marketing/gtm-strategist/growth-gtm-strategy`
+- `strategy-analysis-future-state` → `ba/strategy-analysis-future-state`
+- `strategy-analysis-change-strategy` → `ba/strategy-analysis-change-strategy`
+- `solution-assessment` → `ba/solution-assessment`
+- `growth-gtm-strategy` → `marketing/growth-gtm-strategy`
 
 **Outputs:**
 - Scope draft
@@ -112,11 +112,11 @@ The playbook is done when:
 - Collect deposit before kickoff
 
 **Methodologies in chain:**
-- `ops-upselling-cross-selling` -> `pro/marketing/gtm-strategist/ops-upselling-cross-selling`
-- `ops-legal-basics` -> `pro/marketing/gtm-strategist/ops-legal-basics`
-- `ops-legal-compliance-checklist` -> `pro/marketing/gtm-strategist/ops-legal-compliance-checklist`
-- `ops-tax-basics` -> `pro/marketing/gtm-strategist/ops-tax-basics`
-- `ops-financial-basics` -> `pro/marketing/gtm-strategist/ops-financial-basics`
+- `ops-upselling-cross-selling` → `marketing/ops-upselling-cross-selling`
+- `ops-legal-basics` → `marketing/ops-legal-basics`
+- `ops-legal-compliance-checklist` → `marketing/ops-legal-compliance-checklist`
+- `ops-tax-basics` → `marketing/ops-tax-basics`
+- `ops-financial-basics` → `marketing/ops-financial-basics`
 
 **Outputs:**
 - Signed SOW
@@ -135,7 +135,7 @@ The playbook is done when:
 - Log decline reason for ICP refinement
 
 **Methodologies in chain:**
-- `ops-customer-success-basics` -> `pro/marketing/gtm-strategist/ops-customer-success-basics`
+- `ops-customer-success-basics` → `marketing/ops-customer-success-basics`
 
 **Outputs:**
 - Decline sent

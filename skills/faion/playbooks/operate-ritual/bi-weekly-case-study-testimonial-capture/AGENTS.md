@@ -47,9 +47,9 @@ The playbook is done when:
 - Tag it to a content pillar
 
 **Methodologies in chain:**
-- `retention-strategies` -> `pro/marketing/growth-marketer/retention-strategies`
-- `growth-conversion-optimization` -> `pro/marketing/conversion-optimizer/growth-conversion-optimization`
-- `ops-customer-success-basics` -> `pro/marketing/gtm-strategist/ops-customer-success-basics`
+- `retention-strategies` → `marketing/retention-strategies`
+- `growth-conversion-optimization` → `marketing/growth-conversion-optimization`
+- `ops-customer-success-basics` → `marketing/ops-customer-success-basics`
 
 **Outputs:**
 - Win candidate
@@ -67,9 +67,9 @@ The playbook is done when:
 - Offer 3 quote-length options
 
 **Methodologies in chain:**
-- `stakeholder-communication` -> `solo/comms/communicator/stakeholder-communication`
-- `growth-content-marketing` -> `solo/marketing/content-marketer/growth-content-marketing`
-- `growth-customer-testimonials` -> `solo/marketing/content-marketer/growth-customer-testimonials`
+- `stakeholder-communication` → `comms/stakeholder-communication`
+- `growth-content-marketing` → `marketing/growth-content-marketing`
+- `growth-customer-testimonials` → `marketing/growth-customer-testimonials`
 
 **Outputs:**
 - Returned microsurvey

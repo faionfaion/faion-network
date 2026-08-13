@@ -36,7 +36,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `geek/sdlc-ai/inc-postmortem-auto-draft-no-publish` (tier: geek)
+- `sdlc-ai/inc-postmortem-auto-draft-no-publish` (tier: geek)
 
 ### Step 2 — Assess
 
@@ -53,7 +53,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Risk register
 
 **Backed by methodology**
-- `geek/sdlc-ai/inc-read-only-investigation-default` (tier: geek)
+- `sdlc-ai/inc-read-only-investigation-default` (tier: geek)
 
 ### Step 3 — Plan
 
@@ -70,7 +70,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `pro/dev/software-architect/reliability-architecture` (tier: pro)
+- `architecture/reliability-architecture` (tier: pro)
 
 ### Step 4 — Pilot
 
@@ -86,7 +86,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated rollback playbook
 
 **Backed by methodology**
-- `solo/dev/software-architect/architecture-decision-records` (tier: solo)
+- `architecture/architecture-decision-records` (tier: solo)
 
 ### Step 5 — Execute
 
@@ -102,7 +102,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `solo/dev/software-architect/trade-off-decision-methods` (tier: solo)
+- `architecture/trade-off-decision-methods` (tier: solo)
 
 ### Step 6 — Verify
 
@@ -118,7 +118,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `solo/dev/software-architect/trade-off-stakeholder-communication` (tier: solo)
+- `architecture/trade-off-stakeholder-communication` (tier: solo)
 
 ### Step 7 — Roll out
 
@@ -134,7 +134,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Stakeholder update
 
 **Backed by methodology**
-- `geek/sdlc-ai/inc-postmortem-auto-draft-no-publish` (tier: geek)
+- `sdlc-ai/inc-postmortem-auto-draft-no-publish` (tier: geek)
 
 ### Step 8 — Close
 
@@ -150,7 +150,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `geek/sdlc-ai/inc-postmortem-auto-draft-no-publish` (tier: geek)
+- `sdlc-ai/inc-postmortem-auto-draft-no-publish` (tier: geek)
 
 ## Decision points
 

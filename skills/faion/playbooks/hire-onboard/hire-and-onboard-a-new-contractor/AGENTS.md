@@ -49,10 +49,10 @@ The playbook is done when:
 - Define escalation + decision authority
 
 **Methodologies in chain:**
-- `business-process-analysis` -> `pro/ba/business-analyst/business-process-analysis`
-- `ops-contractor-basics` -> `pro/marketing/gtm-strategist/ops-contractor-basics`
-- `ops-contractor-management` -> `pro/marketing/gtm-strategist/ops-contractor-management`
-- `resource-management` -> `pro/pm/project-manager/resource-management`
+- `business-process-analysis` → `ba/business-process-analysis`
+- `ops-contractor-basics` → `marketing/ops-contractor-basics`
+- `ops-contractor-management` → `marketing/ops-contractor-management`
+- `resource-management` → `pm/resource-management`
 
 **Outputs:**
 - Role brief doc
@@ -71,10 +71,10 @@ The playbook is done when:
 - Shortlist 3-5 for paid audition
 
 **Methodologies in chain:**
-- `employee-value-proposition` -> `pro/comms/hr-recruiter/employee-value-proposition`
-- `employer-branding` -> `pro/comms/hr-recruiter/employer-branding`
-- `recruiting-process` -> `pro/comms/hr-recruiter/recruiting-process`
-- `recruitment-funnel-optimization` -> `pro/comms/hr-recruiter/recruitment-funnel-optimization`
+- `employee-value-proposition` → `hr/employee-value-proposition`
+- `employer-branding` → `hr/employer-branding`
+- `recruiting-process` → `hr/recruiting-process`
+- `recruitment-funnel-optimization` → `hr/recruitment-funnel-optimization`
 
 **Outputs:**
 - Pipeline of 5-10 candidates
@@ -93,10 +93,10 @@ The playbook is done when:
 - Run 30-min synthesis interview with top-2
 
 **Methodologies in chain:**
-- `interview-methods` -> `pro/comms/hr-recruiter/interview-methods`
-- `star-interview-framework` -> `pro/comms/hr-recruiter/star-interview-framework`
-- `star-interview-method` -> `pro/comms/hr-recruiter/star-interview-method`
-- `structured-interview-design` -> `pro/comms/hr-recruiter/structured-interview-design`
+- `interview-methods` → `hr/interview-methods`
+- `star-interview-framework` → `hr/star-interview-framework`
+- `star-interview-method` → `hr/star-interview-method`
+- `structured-interview-design` → `hr/structured-interview-design`
 
 **Outputs:**
 - Audition rubric scores
@@ -115,11 +115,11 @@ The playbook is done when:
 - Set up payment + invoicing channel
 
 **Methodologies in chain:**
-- `retention-compliance` -> `pro/comms/hr-recruiter/retention-compliance`
-- `ops-legal-basics` -> `pro/marketing/gtm-strategist/ops-legal-basics`
-- `ops-legal-compliance` -> `pro/marketing/gtm-strategist/ops-legal-compliance`
-- `ops-legal-compliance-checklist` -> `pro/marketing/gtm-strategist/ops-legal-compliance-checklist`
-- `ops-tax-compliance` -> `pro/marketing/gtm-strategist/ops-tax-compliance`
+- `retention-compliance` → `hr/retention-compliance`
+- `ops-legal-basics` → `marketing/ops-legal-basics`
+- `ops-legal-compliance` → `marketing/ops-legal-compliance`
+- `ops-legal-compliance-checklist` → `marketing/ops-legal-compliance-checklist`
+- `ops-tax-compliance` → `marketing/ops-tax-compliance`
 
 **Outputs:**
 - Executed agreement
@@ -138,10 +138,10 @@ The playbook is done when:
 - Hand contractor an independent client task by week 3
 
 **Methodologies in chain:**
-- `30-60-90-day-plan` -> `pro/comms/hr-recruiter/30-60-90-day-plan`
-- `onboarding` -> `pro/comms/hr-recruiter/onboarding`
-- `onboarding-30-day` -> `pro/comms/hr-recruiter/onboarding-30-day`
-- `team-development` -> `pro/pm/project-manager/team-development`
+- `30-60-90-day-plan` → `hr/30-60-90-day-plan`
+- `onboarding` → `hr/onboarding`
+- `onboarding-30-day` → `hr/onboarding-30-day`
+- `team-development` → `pm/team-development`
 
 **Outputs:**
 - 30-60-90 plan doc

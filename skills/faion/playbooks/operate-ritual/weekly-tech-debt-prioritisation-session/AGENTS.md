@@ -36,8 +36,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `free/dev/code-quality/tech-debt-basics` (tier: free)
-- `solo/sdd/sdd/backlog-grooming-roadmapping` (tier: solo)
+- `dev/tech-debt-basics` (tier: free)
+- `sdd/backlog-grooming-roadmapping` (tier: solo)
 
 ### Step 2 — Plan
 
@@ -54,7 +54,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `pro/pm/project-manager/risk-register` (tier: pro)
+- `pm/risk-register` (tier: pro)
 
 ### Step 3 — Execute
 
@@ -70,7 +70,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `solo/dev/code-quality/tech-debt-management` (tier: solo)
+- `dev/tech-debt-management` (tier: solo)
 
 ### Step 4 — Verify
 
@@ -86,7 +86,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `solo/dev/software-architect/trade-off-decision-matrix` (tier: solo)
+- `architecture/trade-off-decision-matrix` (tier: solo)
 
 ### Step 5 — Close
 
@@ -102,7 +102,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `solo/dev/software-architect/trade-off-technical-debt` (tier: solo)
+- `architecture/trade-off-technical-debt` (tier: solo)
 
 ## Decision points
 

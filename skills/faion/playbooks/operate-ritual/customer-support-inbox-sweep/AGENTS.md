@@ -47,9 +47,9 @@ The playbook is done when:
 - Note any repeat question
 
 **Methodologies in chain:**
-- `active-listening` → `solo/comms/communicator/active-listening`
-- `stakeholder-communication` → `solo/comms/communicator/stakeholder-communication`
-- `ops-customer-support` → `solo/marketing/gtm-strategist/ops-customer-support`
+- `active-listening` → `comms/active-listening`
+- `stakeholder-communication` → `comms/stakeholder-communication`
+- `ops-customer-support` → `marketing/ops-customer-support`
 
 **Outputs:**
 - Tagged ticket list
@@ -67,7 +67,7 @@ The playbook is done when:
 - Tag churn-risk tickets red
 
 **Methodologies in chain:**
-- `mom-test` → `solo/comms/communicator/mom-test`
+- `mom-test` → `comms/mom-test`
 
 **Outputs:**
 - All tickets resolved or scheduled
@@ -85,9 +85,9 @@ The playbook is done when:
 - Update FAQ for repeat questions
 
 **Methodologies in chain:**
-- `continuous-discovery` → `solo/product/product-manager/continuous-discovery`
-- `feedback-management` → `solo/product/product-operations/feedback-management`
-- `backlog-management` → `solo/product/product-manager/backlog-management`
+- `continuous-discovery` → `product/continuous-discovery`
+- `feedback-management` → `product/feedback-management`
+- `backlog-management` → `product/backlog-management`
 
 **Outputs:**
 - 3 backlog entries

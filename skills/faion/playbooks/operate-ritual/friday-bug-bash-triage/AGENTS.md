@@ -47,9 +47,9 @@ The playbook is done when:
 - Merge duplicates
 
 **Methodologies in chain:**
-- `logging-patterns` → `solo/dev/automation-tooling/logging-patterns`
-- `feedback-management` → `solo/product/product-operations/feedback-management`
-- `backlog-management` → `solo/product/product-operations/backlog-management`
+- `logging-patterns` → `sdd/logging-patterns`
+- `feedback-management` → `product/feedback-management`
+- `backlog-management-product-ops` → `product/backlog-management-product-ops`
 
 **Outputs:**
 - Grouped issue list
@@ -67,12 +67,11 @@ The playbook is done when:
 - Update debt log
 
 **Methodologies in chain:**
-- `tech-debt-basics` → `free/dev/code-quality/tech-debt-basics`
-- `tech-debt-management` → `solo/dev/code-quality/tech-debt-management`
-- `technical-debt` → `solo/dev/software-developer/technical-debt`
-- `technical-debt-management` → `solo/product/product-operations/technical-debt-management`
-- `refactoring-patterns` → `free/dev/code-quality/refactoring-patterns`
-- `architecture-decision-records` → `solo/sdd/sdd/architecture-decision-records`
+- `tech-debt-basics` → `dev/tech-debt-basics`
+- `tech-debt-management` → `dev/tech-debt-management`
+- `technical-debt-management` → `product/technical-debt-management`
+- `refactoring-patterns-quality` → `dev/refactoring-patterns-quality`
+- `architecture-decision-records` → `sdd/architecture-decision-records`
 
 **Outputs:**
 - Debt log with decisions
@@ -90,7 +89,7 @@ The playbook is done when:
 - Push to staging
 
 **Methodologies in chain:**
-- `feature-flags` → `solo/dev/software-developer/feature-flags`
+- `feature-flags` → `dev/feature-flags`
 
 **Outputs:**
 - 3 fixes shipped

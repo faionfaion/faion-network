@@ -48,9 +48,9 @@ The playbook is done when:
 - Set beta exit date
 
 **Methodologies in chain:**
-- `feature-prioritization-moscow` → `solo/product/product-manager/feature-prioritization-moscow`
-- `success-metrics-definition` → `solo/research/researcher/success-metrics-definition`
-- `use-case-mapping` → `solo/research/researcher/use-case-mapping`
+- `feature-prioritization-moscow` → `product/feature-prioritization-moscow`
+- `success-metrics-definition` → `research/success-metrics-definition`
+- `use-case-mapping` → `research/use-case-mapping`
 
 **Outputs:**
 - Beta charter doc
@@ -69,8 +69,8 @@ The playbook is done when:
 - Document onboarding gaps
 
 **Methodologies in chain:**
-- `active-listening` → `solo/comms/communicator/active-listening`
-- `growth-landing-page-design` → `solo/marketing/conversion-optimizer/growth-landing-page-design`
+- `active-listening` → `comms/active-listening`
+- `growth-landing-page-design` → `marketing/growth-landing-page-design`
 
 **Outputs:**
 - Welcome sequence
@@ -89,11 +89,11 @@ The playbook is done when:
 - Tag confusion + bug events
 
 **Methodologies in chain:**
-- `heuristic-evaluation` → `solo/ux/ux-ui-designer/heuristic-evaluation`
-- `usability-testing` → `solo/ux/ux-ui-designer/usability-testing`
-- `user-interviews` → `solo/research/researcher/user-interviews`
-- `feedback-management` → `solo/product/product-operations/feedback-management`
-- `product-analytics` → `solo/product/product-operations/product-analytics`
+- `heuristic-evaluation` → `ux/heuristic-evaluation`
+- `usability-testing` → `ux/usability-testing`
+- `user-interviews` → `research/user-interviews`
+- `feedback-management` → `product/feedback-management`
+- `product-analytics` → `product/product-analytics`
 
 **Outputs:**
 - Confusion + bug log
@@ -112,8 +112,7 @@ The playbook is done when:
 - Re-test with beta cohort
 
 **Methodologies in chain:**
-- `technical-debt` → `solo/dev/software-developer/technical-debt`
-- `technical-debt-management` → `solo/product/product-operations/technical-debt-management`
+- `technical-debt-management` → `product/technical-debt-management`
 
 **Outputs:**
 - Iteration changelog
@@ -132,10 +131,10 @@ The playbook is done when:
 - Pick launch date + channels
 
 **Methodologies in chain:**
-- `growth-customer-testimonials` → `solo/marketing/content-marketer/growth-customer-testimonials`
-- `growth-reddit-marketing` → `solo/marketing/content-marketer/growth-reddit-marketing`
-- `growth-indiehackers-strategy` → `solo/marketing/gtm-strategist/growth-indiehackers-strategy`
-- `product-launch` → `solo/product/product-manager/product-launch`
+- `growth-customer-testimonials` → `marketing/growth-customer-testimonials`
+- `growth-reddit-marketing` → `marketing/growth-reddit-marketing`
+- `growth-indiehackers-strategy` → `marketing/growth-indiehackers-strategy`
+- `product-launch` → `product/product-launch`
 
 **Outputs:**
 - ≥5 testimonials

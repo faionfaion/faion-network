@@ -45,8 +45,8 @@ The playbook is done when:
 **Intent:** Team OKRs → personal OKRs in every 1:1.
 
 **Methodologies in chain:**
-- `okr-setting` → `solo/product/product-planning/okr-setting`
-- `reporting-basics` → `pro/pm/pm-agile/reporting-basics`
+- `okr-setting-product-planning` → `product/okr-setting-product-planning`
+- `reporting-basics` → `pm/reporting-basics`
 
 **Decision gate:**
 > Advance only when each dev has 1-3 personal OKRs traceable to team OKRs.
@@ -56,8 +56,8 @@ The playbook is done when:
 **Intent:** OKR progress reviewed weekly in 1:1; status doesn't drift.
 
 **Methodologies in chain:**
-- `reporting-basics` → `pro/pm/pm-agile/reporting-basics`
-- `reflexion-learning` → `solo/sdd/sdd/reflexion-learning`
+- `reporting-basics` → `pm/reporting-basics`
+- `reflexion-learning` → `sdd/reflexion-learning`
 
 **Decision gate:**
 > Skip the check-in once = drift. Two skips = the cadence is dead.
@@ -67,7 +67,7 @@ The playbook is done when:
 **Intent:** At ~6 weeks: keep / revise / kill each OKR.
 
 **Methodologies in chain:**
-- `okr-setting` → `solo/product/product-planning/okr-setting`
+- `okr-setting-product-planning` → `product/okr-setting-product-planning`
 
 **Decision gate:**
 > Required: written keep/revise/kill verdict per OKR. Inertia = death of OKRs.
@@ -77,8 +77,8 @@ The playbook is done when:
 **Intent:** Blameless retro + explicit carry-over rules.
 
 **Methodologies in chain:**
-- `reflexion-learning` → `solo/sdd/sdd/reflexion-learning`
-- `mistake-memory` → `solo/sdd/sdd/mistake-memory`
+- `reflexion-learning` → `sdd/reflexion-learning`
+- `mistake-memory` → `sdd/mistake-memory`
 
 **Decision gate:**
 > Required: retro published before next-quarter OKRs land. Otherwise the next quarter repeats the same misses.

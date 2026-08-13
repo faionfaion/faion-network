@@ -48,16 +48,16 @@ The playbook is done when:
 - Pick MCP-gateway composition if applicable
 
 **Methodologies in chain:**
-- `claude-api-integration` → `geek/ai/llm-integration/claude-api-integration`
-- `openai-api-integration` → `geek/ai/llm-integration/openai-api-integration`
-- `gemini-api-integration` → `geek/ai/llm-integration/gemini-api-integration`
-- `mcp-gateway-composition` → `geek/ai/ai-agents/mcp-gateway-composition`
-- `function-calling-patterns` → `geek/ai/llm-integration/function-calling-patterns`
-- `tool-use-basics` → `geek/ai/llm-integration/tool-use-basics`
-- `structured-output-basics` → `geek/ai/llm-integration/structured-output-basics`
-- `structured-output-patterns` → `geek/ai/llm-integration/structured-output-patterns`
-- `structured-output-mode-picker` → `geek/ai/ai-agents/structured-output-mode-picker`
-- `semantic-xml-content` → `geek/ai/llm-integration/semantic-xml-content`
+- `claude-api-integration` → `llm-integration/claude-api-integration`
+- `openai-api-integration` → `ml-engineering/openai-api-integration`
+- `gemini-api-integration` → `ml-engineering/gemini-api-integration`
+- `mcp-gateway-composition` → `ai-agents/mcp-gateway-composition`
+- `function-calling-patterns` → `ml-engineering/function-calling-patterns`
+- `tool-use-basics` → `ml-engineering/tool-use-basics`
+- `structured-output-basics` → `ml-engineering/structured-output-basics`
+- `structured-output-patterns` → `ml-engineering/structured-output-patterns`
+- `structured-output-mode-picker` → `ai-agents/structured-output-mode-picker`
+- `semantic-xml-content` → `llm-integration/semantic-xml-content`
 
 **Outputs:**
 - Adapter module
@@ -76,13 +76,13 @@ The playbook is done when:
 - Wire tool calling
 
 **Methodologies in chain:**
-- `local-llm-ollama` → `geek/ai/llm-integration/local-llm-ollama`
-- `ollama-setup-models` → `geek/ai/ml-engineer/ollama-setup-models`
-- `ollama-deployment` → `geek/ai/ml-engineer/ollama-deployment`
-- `ollama-prompt-engineering` → `geek/ai/ml-engineer/ollama-prompt-engineering`
-- `ollama-python-client` → `geek/ai/ml-engineer/ollama-python-client`
-- `ollama-tool-calling` → `geek/ai/ml-engineer/ollama-tool-calling`
-- `ollama-agent-integration` → `geek/ai/ml-engineer/ollama-agent-integration`
+- `local-llm-ollama` → `ml-engineering/local-llm-ollama`
+- `ollama-setup-models` → `ml-engineering/ollama-setup-models`
+- `ollama-deployment` → `ml-engineering/ollama-deployment`
+- `ollama-prompt-engineering` → `ml-engineering/ollama-prompt-engineering`
+- `ollama-python-client` → `ml-engineering/ollama-python-client`
+- `ollama-tool-calling` → `ml-engineering/ollama-tool-calling`
+- `ollama-agent-integration` → `ml-engineering/ollama-agent-integration`
 
 **Outputs:**
 - Local LLM endpoint
@@ -101,10 +101,10 @@ The playbook is done when:
 - Reuse previous response ids where available
 
 **Methodologies in chain:**
-- `gateway-fallback-chain` → `geek/ai/ai-agents/gateway-fallback-chain`
-- `preference-trained-router` → `geek/ai/ai-agents/preference-trained-router`
-- `previous-response-id-reasoning-reuse` → `geek/ai/ai-agents/previous-response-id-reasoning-reuse`
-- `weak-model-preselection` → `geek/ai/ai-agents/weak-model-preselection`
+- `gateway-fallback-chain` → `ai-agents/gateway-fallback-chain`
+- `preference-trained-router` → `ai-agents/preference-trained-router`
+- `previous-response-id-reasoning-reuse` → `ai-agents/previous-response-id-reasoning-reuse`
+- `weak-model-preselection` → `ai-agents/weak-model-preselection`
 
 **Outputs:**
 - Routing policy doc
@@ -123,11 +123,11 @@ The playbook is done when:
 - Pin output-mode picker per backend
 
 **Methodologies in chain:**
-- `record-replay-debugging` → `geek/ai/ai-agents/record-replay-debugging`
-- `structured-output-mode-picker` → `geek/ai/ai-agents/structured-output-mode-picker`
-- `model-evaluation` → `geek/ai/ml-engineer/model-evaluation`
-- `llm-observability-stack` → `geek/ai/ml-engineer/llm-observability-stack`
-- `rag-eval-ab-testing` → `geek/ai/rag-engineer/rag-eval-ab-testing`
+- `record-replay-debugging` → `ai-agents/record-replay-debugging`
+- `structured-output-mode-picker` → `ai-agents/structured-output-mode-picker`
+- `model-evaluation` → `ml-engineering/model-evaluation`
+- `llm-observability-stack` → `ml-engineering/llm-observability-stack`
+- `rag-eval-ab-testing` → `ml-engineering/rag-eval-ab-testing`
 
 **Outputs:**
 - Cross-backend eval table

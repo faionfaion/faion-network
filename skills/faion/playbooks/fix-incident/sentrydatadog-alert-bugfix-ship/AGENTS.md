@@ -36,8 +36,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `free/dev/software-developer/error-handling` (tier: free)
-- `pro/dev/software-developer/api-monitoring-logging` (tier: pro)
+- `dev/error-handling` (tier: free)
+- `dev/api-monitoring-logging` (tier: pro)
 
 ### Step 2 — Assess
 
@@ -54,8 +54,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Risk register
 
 **Backed by methodology**
-- `free/dev/software-developer/refactoring-patterns` (tier: free)
-- `pro/dev/software-developer/api-monitoring-metrics` (tier: pro)
+- `dev/refactoring-patterns` (tier: free)
+- `dev/api-monitoring-metrics` (tier: pro)
 
 ### Step 3 — Plan
 
@@ -72,8 +72,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `free/dev/testing-developer/integration-testing` (tier: free)
-- `solo/dev/automation-tooling/cd-pipelines` (tier: solo)
+- `dev/integration-testing-testing` (tier: free)
+- `sdd/cd-pipelines` (tier: solo)
 
 ### Step 4 — Execute
 
@@ -89,7 +89,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `free/dev/testing-developer/unit-testing` (tier: free)
+- `dev/unit-testing-testing` (tier: free)
 
 ### Step 5 — Verify
 
@@ -105,7 +105,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `pro/dev/software-developer/api-monitoring-alerting` (tier: pro)
+- `dev/api-monitoring-alerting` (tier: pro)
 
 ### Step 6 — Close
 
@@ -121,7 +121,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `pro/dev/software-developer/api-monitoring-health-checks` (tier: pro)
+- `dev/api-monitoring-health-checks` (tier: pro)
 
 ## Decision points
 

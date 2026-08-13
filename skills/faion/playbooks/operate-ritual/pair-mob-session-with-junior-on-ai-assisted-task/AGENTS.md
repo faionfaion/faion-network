@@ -36,8 +36,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `free/dev/software-developer/code-review` (tier: free)
-- `geek/dev/code-quality/llm-friendly-architecture` (tier: geek)
+- `dev/code-review` (tier: free)
+- `dev/llm-friendly-architecture` (tier: geek)
 
 ### Step 2 — Assess
 
@@ -54,7 +54,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Risk register
 
 **Backed by methodology**
-- `free/dev/software-developer/documentation` (tier: free)
+- `dev/documentation` (tier: free)
 
 ### Step 3 — Plan
 
@@ -71,7 +71,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `free/dev/software-developer/mob-programming` (tier: free)
+- `dev/mob-programming` (tier: free)
 
 ### Step 4 — Execute
 
@@ -87,7 +87,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `free/dev/software-developer/pair-programming` (tier: free)
+- `dev/pair-programming` (tier: free)
 
 ### Step 5 — Verify
 
@@ -103,7 +103,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `geek/dev/automation-tooling/ai-assisted-dev` (tier: geek)
+- `sdd/ai-assisted-dev` (tier: geek)
 
 ### Step 6 — Close
 
@@ -119,7 +119,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `geek/dev/code-quality/claude-md-creation` (tier: geek)
+- `dev/claude-md-creation-quality` (tier: geek)
 
 ## Decision points
 

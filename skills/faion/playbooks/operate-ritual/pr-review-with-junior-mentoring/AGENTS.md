@@ -45,11 +45,11 @@ The playbook is done when:
 **Intent:** AI clears the mechanical noise; humans review what's left.
 
 **Methodologies in chain:**
-- `lint-precommit-floor` → `geek/sdlc-ai/lint-precommit-floor`
-- `lint-autofix-vs-flag-decision-rule` → `geek/sdlc-ai/lint-autofix-vs-flag-decision-rule`
-- `lint-staged-only-not-whole-tree` → `geek/sdlc-ai/lint-staged-only-not-whole-tree`
-- `sec-codeql-autofix-on-pr` → `geek/sdlc-ai/sec-codeql-autofix-on-pr`
-- `sec-secrets-defense-in-depth` → `geek/sdlc-ai/sec-secrets-defense-in-depth`
+- `lint-precommit-floor` → `sdlc-ai/lint-precommit-floor`
+- `lint-autofix-vs-flag-decision-rule` → `sdlc-ai/lint-autofix-vs-flag-decision-rule`
+- `lint-staged-only-not-whole-tree` → `sdlc-ai/lint-staged-only-not-whole-tree`
+- `sec-codeql-autofix-on-pr` → `sdlc-ai/sec-codeql-autofix-on-pr`
+- `sec-secrets-defense-in-depth` → `sdlc-ai/sec-secrets-defense-in-depth`
 
 **Decision gate:**
 > Advance only after pre-commit + CodeQL autofix have run. Senior should not be reading whitespace.
@@ -59,13 +59,13 @@ The playbook is done when:
 **Intent:** Senior narrates; junior asks; reviewer-graph-vs-diff perspective applied.
 
 **Methodologies in chain:**
-- `code-review` → `free/dev/code-quality/code-review`
-- `code-review-process` → `free/dev/code-quality/code-review-process`
-- `code-review-basics` → `free/dev/code-quality/code-review-basics`
-- `pair-programming` → `free/dev/code-quality/pair-programming`
-- `mr-graph-vs-diff-reviewer` → `geek/sdlc-ai/mr-graph-vs-diff-reviewer`
-- `code-review-cycle` → `solo/sdd/sdd/code-review-cycle`
-- `quality-gates-confidence` → `solo/sdd/sdd/quality-gates-confidence`
+- `code-review-quality` → `dev/code-review-quality`
+- `code-review-process` → `dev/code-review-process`
+- `code-review-basics` → `dev/code-review-basics`
+- `pair-programming-quality` → `dev/pair-programming-quality`
+- `mr-graph-vs-diff-reviewer` → `sdlc-ai/mr-graph-vs-diff-reviewer`
+- `code-review-cycle` → `sdd/code-review-cycle`
+- `quality-gates-confidence` → `sdd/quality-gates-confidence`
 
 **Decision gate:**
 > Advance once junior can summarise the senior's reasoning back unaided. If not, slow down — the session failed its primary goal.
@@ -75,9 +75,9 @@ The playbook is done when:
 **Intent:** Convert the session into durable assets: junior's checklist + team memory.
 
 **Methodologies in chain:**
-- `pattern-memory` → `solo/sdd/sdd/pattern-memory`
-- `mistake-memory` → `solo/sdd/sdd/mistake-memory`
-- `reflexion-learning` → `solo/sdd/sdd/reflexion-learning`
+- `pattern-memory` → `sdd/pattern-memory`
+- `mistake-memory` → `sdd/mistake-memory`
+- `reflexion-learning` → `sdd/reflexion-learning`
 
 **Decision gate:**
 > Required output: written checklist. Verbal mentoring without artefact = lesson lost by next PR.

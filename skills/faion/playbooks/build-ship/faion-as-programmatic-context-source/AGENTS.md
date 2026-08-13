@@ -47,10 +47,10 @@ The playbook is done when:
 - Structured errors
 
 **Methodologies in chain:**
-- `discriminated-union-output` → `geek/ai/ai-agents/discriminated-union-output`
-- `strict-mode-required-fields` → `geek/ai/ai-agents/strict-mode-required-fields`
-- `structured-tool-errors` → `geek/ai/ai-agents/structured-tool-errors`
-- `schema-version-pinning` → `geek/ai/ai-agents/schema-version-pinning`
+- `discriminated-union-output` → `ai-agents/discriminated-union-output`
+- `strict-mode-required-fields` → `ai-agents/strict-mode-required-fields`
+- `structured-tool-errors` → `ai-agents/structured-tool-errors`
+- `schema-version-pinning` → `ai-agents/schema-version-pinning`
 
 **Outputs:**
 - Tool wrapper module
@@ -69,10 +69,10 @@ The playbook is done when:
 - Prompt-cache prefix order
 
 **Methodologies in chain:**
-- `manifest-then-fetch` → `geek/ai/ai-agents/manifest-then-fetch`
-- `progressive-disclosure-skills` → `geek/ai/ai-agents/progressive-disclosure-skills`
-- `auto-evict-tool-results` → `geek/ai/ai-agents/auto-evict-tool-results`
-- `prompt-cache-prefix-order` → `geek/ai/ai-agents/prompt-cache-prefix-order`
+- `manifest-then-fetch` → `ai-agents/manifest-then-fetch`
+- `progressive-disclosure-skills` → `ai-agents/progressive-disclosure-skills`
+- `auto-evict-tool-results` → `ai-agents/auto-evict-tool-results`
+- `prompt-cache-prefix-order` → `ai-agents/prompt-cache-prefix-order`
 
 **Outputs:**
 - Context-pruning rules

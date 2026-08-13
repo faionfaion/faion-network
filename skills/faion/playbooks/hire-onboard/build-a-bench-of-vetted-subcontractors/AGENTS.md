@@ -48,9 +48,9 @@ The playbook is done when:
 - Set bench size target
 
 **Methodologies in chain:**
-- `resource-management` -> `pro/pm/project-manager/resource-management`
-- `ops-contractor-basics` -> `pro/marketing/gtm-strategist/ops-contractor-basics`
-- `ops-contractor-management` -> `pro/marketing/gtm-strategist/ops-contractor-management`
+- `resource-management` → `pm/resource-management`
+- `ops-contractor-basics` → `marketing/ops-contractor-basics`
+- `ops-contractor-management` → `marketing/ops-contractor-management`
 
 **Outputs:**
 - Bench tier map
@@ -69,9 +69,9 @@ The playbook is done when:
 - Score against rubric
 
 **Methodologies in chain:**
-- `recruiting-process` -> `pro/comms/hr-recruiter/recruiting-process`
-- `star-interview-framework` -> `pro/comms/hr-recruiter/star-interview-framework`
-- `structured-interview-design` -> `pro/comms/hr-recruiter/structured-interview-design`
+- `recruiting-process` → `hr/recruiting-process`
+- `star-interview-framework` → `hr/star-interview-framework`
+- `structured-interview-design` → `hr/structured-interview-design`
 
 **Outputs:**
 - Auditioned candidates
@@ -90,8 +90,8 @@ The playbook is done when:
 - Onboard with bench runbook
 
 **Methodologies in chain:**
-- `onboarding` -> `pro/comms/hr-recruiter/onboarding`
-- `ops-legal-basics` -> `pro/marketing/gtm-strategist/ops-legal-basics`
+- `onboarding` → `hr/onboarding`
+- `ops-legal-basics` → `marketing/ops-legal-basics`
 
 **Outputs:**
 - Signed paperwork

@@ -53,16 +53,16 @@ The playbook is done when:
 - Define acceptance criteria + Definition of Ready
 
 **Methodologies in chain:**
-- `elicitation-techniques` → `pro/ba/business-analyst/elicitation-techniques`
-- `requirements-prioritization` → `pro/ba/business-analyst/requirements-prioritization`
-- `requirements-validation` → `pro/ba/business-analyst/requirements-validation`
-- `acceptance-criteria` → `pro/ba/business-analyst/acceptance-criteria`
-- `user-story-mapping` → `pro/ba/business-analyst/user-story-mapping`
-- `use-case-modeling` → `pro/ba/business-analyst/use-case-modeling`
-- `minimum-product-frameworks` → `pro/product/product-manager/minimum-product-frameworks`
-- `ai-assisted-specification-writing` → `geek/sdd/sdd-planning/ai-assisted-specification-writing`
-- `task-spec-kit-three-step` → `geek/sdlc-ai/task-spec-kit-three-step`
-- `task-agent-drafts-spec-before-coding` → `geek/sdlc-ai/task-agent-drafts-spec-before-coding`
+- `elicitation-techniques` → `ba/elicitation-techniques`
+- `requirements-prioritization` → `ba/requirements-prioritization`
+- `requirements-validation` → `ba/requirements-validation`
+- `acceptance-criteria` → `ba/acceptance-criteria`
+- `user-story-mapping` → `ba/user-story-mapping`
+- `use-case-modeling` → `ba/use-case-modeling`
+- `minimum-product-frameworks` → `pm/minimum-product-frameworks`
+- `ai-assisted-specification-writing-planning` → `sdd/ai-assisted-specification-writing-planning`
+- `task-spec-kit-three-step` → `sdlc-ai/task-spec-kit-three-step`
+- `task-agent-drafts-spec-before-coding` → `sdlc-ai/task-agent-drafts-spec-before-coding`
 
 **Decision gate:**
 > Advance when spec passes Definition of Ready: AC are testable, scope cuts are explicit, dependencies named.
@@ -78,14 +78,14 @@ The playbook is done when:
 - Author CLAUDE.md updates so agents stay LLM-friendly
 
 **Methodologies in chain:**
-- `quality-attributes-analysis` → `pro/dev/software-architect/quality-attributes-analysis`
-- `event-driven-architecture` → `pro/dev/software-architect/event-driven-architecture`
-- `microservices-architecture` → `pro/dev/software-architect/microservices-architecture`
-- `clean-architecture` → `pro/dev/code-quality/clean-architecture`
-- `domain-driven-design` → `pro/dev/code-quality/domain-driven-design`
-- `claude-md-creation` → `geek/dev/code-quality/claude-md-creation`
-- `llm-friendly-architecture` → `geek/dev/code-quality/llm-friendly-architecture`
-- `kb-agents-md-context-pyramid` → `geek/sdlc-ai/kb-agents-md-context-pyramid`
+- `quality-attributes-analysis` → `architecture/quality-attributes-analysis`
+- `event-driven-architecture` → `architecture/event-driven-architecture`
+- `microservices-architecture` → `architecture/microservices-architecture`
+- `clean-architecture-quality` → `dev/clean-architecture-quality`
+- `domain-driven-design` → `dev/domain-driven-design`
+- `claude-md-creation-quality` → `dev/claude-md-creation-quality`
+- `llm-friendly-architecture` → `dev/llm-friendly-architecture`
+- `kb-agents-md-context-pyramid` → `sdlc-ai/kb-agents-md-context-pyramid`
 
 **Decision gate:**
 > Advance when design.md is reviewed in the weekly architectural review and CLAUDE.md/AGENTS.md updates land.
@@ -102,12 +102,12 @@ The playbook is done when:
 - Pre-commit floor + ruff/biome lint gates
 
 **Methodologies in chain:**
-- `task-plan-mode-locked-execution` → `geek/sdlc-ai/task-plan-mode-locked-execution`
-- `task-worktree-runtime-isolation` → `geek/sdlc-ai/task-worktree-runtime-isolation`
-- `test-tdd-red-green-split-agents` → `geek/sdlc-ai/test-tdd-red-green-split-agents`
-- `lint-precommit-floor` → `geek/sdlc-ai/lint-precommit-floor`
-- `lint-ruff-and-biome-as-default` → `geek/sdlc-ai/lint-ruff-and-biome-as-default`
-- `gov-conventional-commits-enforced` → `geek/sdlc-ai/gov-conventional-commits-enforced`
+- `task-plan-mode-locked-execution` → `sdlc-ai/task-plan-mode-locked-execution`
+- `task-worktree-runtime-isolation` → `sdlc-ai/task-worktree-runtime-isolation`
+- `test-tdd-red-green-split-agents` → `sdlc-ai/test-tdd-red-green-split-agents`
+- `lint-precommit-floor` → `sdlc-ai/lint-precommit-floor`
+- `lint-ruff-and-biome-as-default` → `sdlc-ai/lint-ruff-and-biome-as-default`
+- `gov-conventional-commits-enforced` → `sdlc-ai/gov-conventional-commits-enforced`
 
 **Decision gate:**
 > Advance when implementation matches spec, all gates green, conventional commits enforced.
@@ -124,15 +124,15 @@ The playbook is done when:
 - Slash-command surface for reviewers
 
 **Methodologies in chain:**
-- `test-consumer-contract-from-spec` → `geek/sdlc-ai/test-consumer-contract-from-spec`
-- `test-mutation-feedback-loop` → `geek/sdlc-ai/test-mutation-feedback-loop`
-- `test-property-based-llm-invariants` → `geek/sdlc-ai/test-property-based-llm-invariants`
-- `test-self-healing-locators-audited` → `geek/sdlc-ai/test-self-healing-locators-audited`
-- `mr-graph-vs-diff-reviewer` → `geek/sdlc-ai/mr-graph-vs-diff-reviewer`
-- `mr-slash-command-surface` → `geek/sdlc-ai/mr-slash-command-surface`
-- `gov-sonarqube-ai-code-gate` → `geek/sdlc-ai/gov-sonarqube-ai-code-gate`
-- `gov-approval-token-signed-jwt` → `geek/sdlc-ai/gov-approval-token-signed-jwt`
-- `requirements-traceability` → `pro/ba/business-analyst/requirements-traceability`
+- `test-consumer-contract-from-spec` → `sdlc-ai/test-consumer-contract-from-spec`
+- `test-mutation-feedback-loop` → `sdlc-ai/test-mutation-feedback-loop`
+- `test-property-based-llm-invariants` → `sdlc-ai/test-property-based-llm-invariants`
+- `test-self-healing-locators-audited` → `sdlc-ai/test-self-healing-locators-audited`
+- `mr-graph-vs-diff-reviewer` → `sdlc-ai/mr-graph-vs-diff-reviewer`
+- `mr-slash-command-surface` → `sdlc-ai/mr-slash-command-surface`
+- `gov-sonarqube-ai-code-gate` → `sdlc-ai/gov-sonarqube-ai-code-gate`
+- `gov-approval-token-signed-jwt` → `sdlc-ai/gov-approval-token-signed-jwt`
+- `requirements-traceability` → `ba/requirements-traceability`
 
 **Decision gate:**
 > Advance when every AC traces to at least one passing test and code gates are green.
@@ -148,11 +148,11 @@ The playbook is done when:
 - Publish on-call runbook as markdown tagged steps
 
 **Methodologies in chain:**
-- `argocd-gitops` → `pro/infra/cicd-engineer/argocd-gitops`
-- `gitops-progressive-delivery` → `pro/infra/cicd-engineer/gitops-progressive-delivery`
-- `grafana-basics` → `pro/infra/cicd-engineer/grafana-basics`
-- `prometheus-monitoring` → `pro/infra/cicd-engineer/prometheus-monitoring`
-- `inc-runbook-as-markdown-tagged-steps` → `geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps`
+- `argocd-gitops-cicd` → `infra/argocd-gitops-cicd`
+- `gitops-progressive-delivery` → `infra/gitops-progressive-delivery`
+- `grafana-basics` → `infra/grafana-basics`
+- `prometheus-monitoring` → `infra/prometheus-monitoring`
+- `inc-runbook-as-markdown-tagged-steps` → `sdlc-ai/inc-runbook-as-markdown-tagged-steps`
 
 **Decision gate:**
 > Advance when flag is live, dashboards show green telemetry, runbook is committed and discoverable.
@@ -168,10 +168,10 @@ The playbook is done when:
 - Schedule post-launch review within 14 days
 
 **Methodologies in chain:**
-- `experimentation-at-scale` → `pro/product/product-manager/experimentation-at-scale`
-- `feedback-management` → `pro/product/product-manager/feedback-management`
-- `product-analytics` → `pro/product/product-manager/product-analytics`
-- `continuous-discovery-habits` → `pro/product/product-manager/continuous-discovery-habits`
+- `experimentation-at-scale` → `pm/experimentation-at-scale`
+- `feedback-management` → `pm/feedback-management`
+- `product-analytics` → `pm/product-analytics`
+- `continuous-discovery-habits` → `pm/continuous-discovery-habits`
 
 **Decision gate:**
 > Advance once GA criteria are met OR a kill decision is documented. No flag stays dark forever.

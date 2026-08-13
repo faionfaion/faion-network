@@ -47,8 +47,8 @@ The playbook is done when:
 - Flag blockers explicitly
 
 **Methodologies in chain:**
-- `scrum-ceremonies` -> `pro/pm/pm-agile/scrum-ceremonies`
-- `active-listening` -> `solo/comms/communicator/active-listening`
+- `scrum-ceremonies` → `pm/scrum-ceremonies`
+- `active-listening` → `comms/active-listening`
 
 **Outputs:**
 - Updates posted by deadline
@@ -66,10 +66,10 @@ The playbook is done when:
 - Reassign work if scope shifted
 
 **Methodologies in chain:**
-- `communications-management` -> `pro/pm/project-manager/communications-management`
-- `risk-management` -> `pro/pm/project-manager/risk-management`
-- `feedback` -> `solo/comms/communicator/feedback`
-- `stakeholder-communication` -> `solo/comms/communicator/stakeholder-communication`
+- `communications-management` → `pm/communications-management`
+- `risk-management` → `pm/risk-management`
+- `feedback` → `comms/feedback`
+- `stakeholder-communication` → `comms/stakeholder-communication`
 
 **Outputs:**
 - Blocker resolutions threaded

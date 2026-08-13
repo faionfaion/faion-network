@@ -47,12 +47,12 @@ The playbook is done when:
 **Intent:** Stop the bleeding under read-only-investigation default and approval-gate boundaries.
 
 **Methodologies in chain:**
-- `inc-read-only-investigation-default` → `geek/sdlc-ai/inc-read-only-investigation-default`
-- `inc-tool-tier-approval-gate` → `geek/sdlc-ai/inc-tool-tier-approval-gate`
-- `inc-runbook-as-markdown-tagged-steps` → `geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps`
-- `tracker-ai-triage-classify-route` → `geek/sdlc-ai/tracker-ai-triage-classify-route`
-- `microservices-circuit-breaker` → `pro/dev/software-developer/microservices-circuit-breaker`
-- `lb-high-availability` → `pro/infra/cicd-engineer/lb-high-availability`
+- `inc-read-only-investigation-default` → `sdlc-ai/inc-read-only-investigation-default`
+- `inc-tool-tier-approval-gate` → `sdlc-ai/inc-tool-tier-approval-gate`
+- `inc-runbook-as-markdown-tagged-steps` → `sdlc-ai/inc-runbook-as-markdown-tagged-steps`
+- `tracker-ai-triage-classify-route` → `sdlc-ai/tracker-ai-triage-classify-route`
+- `microservices-circuit-breaker` → `dev/microservices-circuit-breaker`
+- `lb-high-availability` → `infra/lb-high-availability`
 
 **Decision gate:**
 > Advance once user-facing impact is contained AND a senior engineer has confirmed read-only default was respected.
@@ -62,12 +62,12 @@ The playbook is done when:
 **Intent:** Walk logs, metrics, traces; chaos-eval evidence; reconstruct causal chain.
 
 **Methodologies in chain:**
-- `devops-elk-queries-alerting` → `pro/infra/devops-engineer/devops-elk-queries-alerting`
-- `elk-stack-logging` → `pro/infra/cicd-engineer/elk-stack-logging`
-- `grafana-basics` → `pro/infra/cicd-engineer/grafana-basics`
-- `prometheus-monitoring` → `pro/infra/cicd-engineer/prometheus-monitoring`
-- `aiops` → `pro/infra/cicd-engineer/aiops`
-- `chaos-eval-fault-injection` → `geek/ai/ai-agents/chaos-eval-fault-injection`
+- `devops-elk-queries-alerting` → `infra/devops-elk-queries-alerting`
+- `elk-stack-logging` → `infra/elk-stack-logging`
+- `grafana-basics` → `infra/grafana-basics`
+- `prometheus-monitoring` → `infra/prometheus-monitoring`
+- `aiops-cicd` → `infra/aiops-cicd`
+- `chaos-eval-fault-injection` → `ai-agents/chaos-eval-fault-injection`
 
 **Decision gate:**
 > Advance when the causal chain spans technical + organisational layers (not just 'a config was wrong').
@@ -77,10 +77,10 @@ The playbook is done when:
 **Intent:** AI drafts; humans edit + publish. Blameless tone enforced.
 
 **Methodologies in chain:**
-- `inc-postmortem-auto-draft-no-publish` → `geek/sdlc-ai/inc-postmortem-auto-draft-no-publish`
-- `communications-management` → `pro/pm/pm-traditional/communications-management`
-- `stakeholder-engagement-advanced` → `pro/pm/project-manager/stakeholder-engagement-advanced`
-- `mistake-memory` → `solo/sdd/sdd/mistake-memory`
+- `inc-postmortem-auto-draft-no-publish` → `sdlc-ai/inc-postmortem-auto-draft-no-publish`
+- `communications-management-pm-traditional` → `pm/communications-management-pm-traditional`
+- `stakeholder-engagement-advanced` → `pm/stakeholder-engagement-advanced`
+- `mistake-memory` → `sdd/mistake-memory`
 
 **Decision gate:**
 > Required output: published postmortem with timeline + actions. No 'we'll publish later'.
@@ -90,12 +90,12 @@ The playbook is done when:
 **Intent:** Action items become costed PRs slotted into the backlog with owners.
 
 **Methodologies in chain:**
-- `sec-codeql-autofix-on-pr` → `geek/sdlc-ai/sec-codeql-autofix-on-pr`
-- `risk-register` → `pro/pm/pm-traditional/risk-register`
-- `lessons-learned` → `pro/pm/pm-traditional/lessons-learned`
-- `security-sast` → `pro/infra/cicd-engineer/security-sast`
-- `security-dast` → `pro/infra/cicd-engineer/security-dast`
-- `gitops-progressive-delivery` → `pro/infra/cicd-engineer/gitops-progressive-delivery`
+- `sec-codeql-autofix-on-pr` → `sdlc-ai/sec-codeql-autofix-on-pr`
+- `risk-register-pm-traditional` → `pm/risk-register-pm-traditional`
+- `lessons-learned-pm-traditional` → `pm/lessons-learned-pm-traditional`
+- `security-sast` → `infra/security-sast`
+- `security-dast` → `infra/security-dast`
+- `gitops-progressive-delivery` → `infra/gitops-progressive-delivery`
 
 **Decision gate:**
 > Required: every action has an owner. Orphaned actions guarantee the next incident repeats.

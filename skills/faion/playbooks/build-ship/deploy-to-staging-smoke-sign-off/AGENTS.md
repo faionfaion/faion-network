@@ -36,8 +36,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `free/dev/software-developer/e2e-testing` (tier: free)
-- `solo/dev/automation-tooling/continuous-delivery` (tier: solo)
+- `dev/e2e-testing` (tier: free)
+- `sdd/continuous-delivery` (tier: solo)
 
 ### Step 2 — Plan
 
@@ -54,8 +54,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `pro/dev/software-developer/api-monitoring-health-checks` (tier: pro)
-- `solo/dev/automation-tooling/feature-flags-rollout-targeting` (tier: solo)
+- `dev/api-monitoring-health-checks` (tier: pro)
+- `sdd/feature-flags-rollout-targeting` (tier: solo)
 
 ### Step 3 — Execute
 
@@ -71,8 +71,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `pro/dev/software-developer/continuous-delivery` (tier: pro)
-- `solo/dev/automation-tooling/trunk-based-ci-gates` (tier: solo)
+- `dev/continuous-delivery` (tier: pro)
+- `automation-tooling/trunk-based-ci-gates` (tier: solo)
 
 ### Step 4 — Verify
 
@@ -88,7 +88,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `solo/dev/automation-tooling/cd-basics` (tier: solo)
+- `sdd/cd-basics` (tier: solo)
 
 ### Step 5 — Close
 
@@ -104,7 +104,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `solo/dev/automation-tooling/cd-pipelines` (tier: solo)
+- `sdd/cd-pipelines` (tier: solo)
 
 ## Decision points
 

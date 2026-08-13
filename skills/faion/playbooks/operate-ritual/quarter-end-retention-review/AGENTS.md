@@ -49,10 +49,10 @@ The playbook is done when:
 - Tag risk + upsell candidates
 
 **Methodologies in chain:**
-- `cohort-implementation` -> `pro/marketing/growth-marketer/cohort-implementation`
-- `ops-churn-basics` -> `pro/marketing/growth-marketer/ops-churn-basics`
-- `retention-metrics` -> `pro/marketing/growth-marketer/retention-metrics`
-- `ops-customer-success-metrics` -> `pro/marketing/gtm-strategist/ops-customer-success-metrics`
+- `cohort-implementation` → `marketing/cohort-implementation`
+- `ops-churn-basics` → `marketing/ops-churn-basics`
+- `retention-metrics` → `marketing/retention-metrics`
+- `ops-customer-success-metrics` → `marketing/ops-customer-success-metrics`
 
 **Outputs:**
 - Account-health table
@@ -71,10 +71,10 @@ The playbook is done when:
 - List 3 next-quarter options
 
 **Methodologies in chain:**
-- `benefits-realization` -> `pro/pm/project-manager/benefits-realization`
-- `feedback-management` -> `pro/product/product-manager/feedback-management`
-- `ops-customer-success-basics` -> `pro/marketing/gtm-strategist/ops-customer-success-basics`
-- `growth-customer-testimonials` -> `solo/marketing/content-marketer/growth-customer-testimonials`
+- `benefits-realization` → `pm/benefits-realization`
+- `feedback-management` → `pm/feedback-management`
+- `ops-customer-success-basics` → `marketing/ops-customer-success-basics`
+- `growth-customer-testimonials` → `marketing/growth-customer-testimonials`
 
 **Outputs:**
 - QBR pack per account
@@ -92,9 +92,9 @@ The playbook is done when:
 - Capture next-quarter commitments in writing
 
 **Methodologies in chain:**
-- `stakeholder-register` -> `pro/pm/project-manager/stakeholder-register`
-- `stakeholder-engagement-advanced` -> `pro/pm/project-manager/stakeholder-engagement-advanced`
-- `ops-upselling-cross-selling` -> `pro/marketing/gtm-strategist/ops-upselling-cross-selling`
+- `stakeholder-register` → `pm/stakeholder-register`
+- `stakeholder-engagement-advanced` → `pm/stakeholder-engagement-advanced`
+- `ops-upselling-cross-selling` → `marketing/ops-upselling-cross-selling`
 
 **Outputs:**
 - Per-account next-quarter plan
@@ -113,13 +113,13 @@ The playbook is done when:
 - Refresh reference pool
 
 **Methodologies in chain:**
-- `ops-churn-prevention` -> `pro/marketing/growth-marketer/ops-churn-prevention`
-- `retention-strategies` -> `pro/marketing/growth-marketer/retention-strategies`
-- `ops-annual-planning-process` -> `pro/marketing/gtm-strategist/ops-annual-planning-process`
-- `ops-annual-planning-templates` -> `pro/marketing/gtm-strategist/ops-annual-planning-templates`
-- `project-closure` -> `pro/pm/project-manager/project-closure`
-- `portfolio-strategy` -> `pro/product/product-manager/portfolio-strategy`
-- `portfolio-strategy` -> `pro/product/product-planning/portfolio-strategy`
+- `ops-churn-prevention` → `marketing/ops-churn-prevention`
+- `retention-strategies` → `marketing/retention-strategies`
+- `ops-annual-planning-process` → `marketing/ops-annual-planning-process`
+- `ops-annual-planning-templates` → `marketing/ops-annual-planning-templates`
+- `project-closure` → `pm/project-closure`
+- `portfolio-strategy` → `pm/portfolio-strategy`
+- `portfolio-strategy-product-planning` → `pm/portfolio-strategy-product-planning`
 
 **Outputs:**
 - Portfolio dashboard updated

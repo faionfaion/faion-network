@@ -48,12 +48,12 @@ The playbook is done when:
 - Score against 4 pivot dimensions
 
 **Methodologies in chain:**
-- `ops-churn-basics` → `pro/marketing/growth-marketer/ops-churn-basics`
-- `retention-metrics` → `pro/marketing/growth-marketer/retention-metrics`
-- `competitive-intelligence` → `pro/research/market-researcher/competitive-intelligence`
-- `market-analysis` → `pro/research/market-researcher/market-analysis`
-- `niche-evaluation` → `solo/research/market-researcher/niche-evaluation`
-- `pain-point-research` → `solo/research/researcher/pain-point-research`
+- `ops-churn-basics` → `marketing/ops-churn-basics`
+- `retention-metrics` → `marketing/retention-metrics`
+- `competitive-intelligence-market-research` → `research/competitive-intelligence-market-research`
+- `market-analysis` → `research/market-analysis`
+- `niche-evaluation-market-research` → `research/niche-evaluation-market-research`
+- `pain-point-research` → `research/pain-point-research`
 
 **Outputs:**
 - Failure diagnosis doc
@@ -72,11 +72,11 @@ The playbook is done when:
 - Set commitment runway (months + $)
 
 **Methodologies in chain:**
-- `jobs-to-be-done` → `solo/research/researcher/jobs-to-be-done`
-- `spec-writing` → `solo/product/product-manager/spec-writing`
-- `writing-specifications` → `solo/sdd/sdd/writing-specifications`
-- `architecture-decision-records` → `solo/dev/software-architect/architecture-decision-records`
-- `trade-off-decision-matrix` → `solo/dev/software-architect/trade-off-decision-matrix`
+- `jobs-to-be-done` → `research/jobs-to-be-done`
+- `spec-writing` → `product/spec-writing`
+- `writing-specifications` → `sdd/writing-specifications`
+- `architecture-decision-records` → `architecture/architecture-decision-records`
+- `trade-off-decision-matrix` → `architecture/trade-off-decision-matrix`
 
 **Outputs:**
 - Pivot decision doc
@@ -95,10 +95,10 @@ The playbook is done when:
 - Public announcement post
 
 **Methodologies in chain:**
-- `difficult-conversations` → `solo/comms/communicator/difficult-conversations`
-- `stakeholder-communication` → `solo/comms/communicator/stakeholder-communication`
-- `growth-email-marketing` → `solo/marketing/content-marketer/growth-email-marketing`
-- `growth-landing-page-design` → `solo/marketing/conversion-optimizer/growth-landing-page-design`
+- `difficult-conversations` → `comms/difficult-conversations`
+- `stakeholder-communication` → `comms/stakeholder-communication`
+- `growth-email-marketing` → `marketing/growth-email-marketing`
+- `growth-landing-page-design` → `marketing/growth-landing-page-design`
 
 **Outputs:**
 - Customer comms sent
@@ -117,8 +117,7 @@ The playbook is done when:
 - Off-board v1 users with refund policy
 
 **Methodologies in chain:**
-- `technical-debt` → `solo/dev/software-developer/technical-debt`
-- `product-launch` → `solo/product/product-manager/product-launch`
+- `product-launch` → `product/product-launch`
 
 **Outputs:**
 - v2 shipped on staging OR v1 sunset complete
@@ -136,8 +135,8 @@ The playbook is done when:
 - Write public retro post (optional)
 
 **Methodologies in chain:**
-- `mistake-memory` → `solo/sdd/sdd/mistake-memory`
-- `reflexion-learning` → `solo/sdd/sdd/reflexion-learning`
+- `mistake-memory` → `sdd/mistake-memory`
+- `reflexion-learning` → `sdd/reflexion-learning`
 
 **Outputs:**
 - Mistake-memory entry

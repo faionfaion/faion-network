@@ -47,13 +47,13 @@ The playbook is done when:
 **Intent:** Current/future state + gap analysis turn intuition into a written change strategy.
 
 **Methodologies in chain:**
-- `strategy-analysis-current-state` → `pro/ba/business-analyst/strategy-analysis-current-state`
-- `strategy-analysis-future-state` → `pro/ba/business-analyst/strategy-analysis-future-state`
-- `strategy-analysis-gap-analysis` → `pro/ba/business-analyst/strategy-analysis-gap-analysis`
-- `strategy-analysis-change-strategy` → `pro/ba/business-analyst/strategy-analysis-change-strategy`
-- `wbs-creation` → `pro/pm/pm-traditional/wbs-creation`
-- `risk-management` → `pro/pm/pm-traditional/risk-management`
-- `risk-register` → `pro/pm/pm-traditional/risk-register`
+- `strategy-analysis-current-state` → `ba/strategy-analysis-current-state`
+- `strategy-analysis-future-state` → `ba/strategy-analysis-future-state`
+- `strategy-analysis-gap-analysis` → `ba/strategy-analysis-gap-analysis`
+- `strategy-analysis-change-strategy` → `ba/strategy-analysis-change-strategy`
+- `wbs-creation-pm-traditional` → `pm/wbs-creation-pm-traditional`
+- `risk-management-pm-traditional` → `pm/risk-management-pm-traditional`
+- `risk-register-pm-traditional` → `pm/risk-register-pm-traditional`
 
 **Decision gate:**
 > Advance when change-strategy is signed off and risk register is reviewed across all impacted squads.
@@ -63,18 +63,18 @@ The playbook is done when:
 **Intent:** Service boundaries, quality attributes, and reliability/observability baselines defined.
 
 **Methodologies in chain:**
-- `microservices-architecture` → `pro/dev/software-architect/microservices-architecture`
-- `event-driven-architecture` → `pro/dev/software-architect/event-driven-architecture`
-- `quality-attributes-analysis` → `pro/dev/software-architect/quality-attributes-analysis`
-- `reliability-architecture` → `pro/dev/software-architect/reliability-architecture`
-- `observability-architecture` → `pro/dev/software-architect/observability-architecture`
-- `microservices-design` → `pro/dev/code-quality/microservices-design`
-- `ddd-aggregates` → `pro/dev/software-developer/ddd-aggregates`
-- `ddd-anti-corruption-layer` → `pro/dev/software-developer/ddd-anti-corruption-layer`
-- `microservices-service-boundaries` → `pro/dev/software-developer/microservices-service-boundaries`
-- `microservices-inter-service-comm` → `pro/dev/software-developer/microservices-inter-service-comm`
-- `microservices-circuit-breaker` → `pro/dev/software-developer/microservices-circuit-breaker`
-- `microservices-saga-pattern` → `pro/dev/software-developer/microservices-saga-pattern`
+- `microservices-architecture` → `architecture/microservices-architecture`
+- `event-driven-architecture` → `architecture/event-driven-architecture`
+- `quality-attributes-analysis` → `architecture/quality-attributes-analysis`
+- `reliability-architecture` → `architecture/reliability-architecture`
+- `observability-architecture` → `architecture/observability-architecture`
+- `microservices-design` → `dev/microservices-design`
+- `ddd-aggregates` → `dev/ddd-aggregates`
+- `ddd-anti-corruption-layer` → `dev/ddd-anti-corruption-layer`
+- `microservices-service-boundaries` → `dev/microservices-service-boundaries`
+- `microservices-inter-service-comm` → `dev/microservices-inter-service-comm`
+- `microservices-circuit-breaker` → `dev/microservices-circuit-breaker`
+- `microservices-saga-pattern` → `dev/microservices-saga-pattern`
 
 **Decision gate:**
 > Advance when boundaries are testable in a spike and the rejected patterns are written down with rationale.
@@ -84,13 +84,13 @@ The playbook is done when:
 **Intent:** Proven backups + verified restore + rollback plan before any cutover.
 
 **Methodologies in chain:**
-- `backup-database-postgres` → `pro/infra/cicd-engineer/backup-database-postgres`
-- `backup-database-mysql-mongo` → `pro/infra/cicd-engineer/backup-database-mysql-mongo`
-- `backup-kubernetes-velero` → `pro/infra/cicd-engineer/backup-kubernetes-velero`
-- `backup-verification-dr` → `pro/infra/cicd-engineer/backup-verification-dr`
-- `backup-strategies` → `pro/infra/devops-engineer/backup-strategies`
-- `argocd-gitops` → `pro/infra/cicd-engineer/argocd-gitops`
-- `gitops-progressive-delivery` → `pro/infra/cicd-engineer/gitops-progressive-delivery`
+- `backup-database-postgres` → `infra/backup-database-postgres`
+- `backup-database-mysql-mongo` → `infra/backup-database-mysql-mongo`
+- `backup-kubernetes-velero` → `infra/backup-kubernetes-velero`
+- `backup-verification-dr` → `infra/backup-verification-dr`
+- `backup-strategies` → `infra/backup-strategies`
+- `argocd-gitops-cicd` → `infra/argocd-gitops-cicd`
+- `gitops-progressive-delivery` → `infra/gitops-progressive-delivery`
 
 **Decision gate:**
 > Refuse to advance without a proven restore inside the last 30 days.
@@ -100,10 +100,10 @@ The playbook is done when:
 **Intent:** Run old and new side-by-side; capture parity evidence.
 
 **Methodologies in chain:**
-- `test-consumer-contract-from-spec` → `geek/sdlc-ai/test-consumer-contract-from-spec`
-- `test-golden-master-legacy-rewrite` → `geek/sdlc-ai/test-golden-master-legacy-rewrite`
-- `test-property-based-llm-invariants` → `geek/sdlc-ai/test-property-based-llm-invariants`
-- `dora-metrics` → `pro/infra/cicd-engineer/dora-metrics`
+- `test-consumer-contract-from-spec` → `sdlc-ai/test-consumer-contract-from-spec`
+- `test-golden-master-legacy-rewrite` → `sdlc-ai/test-golden-master-legacy-rewrite`
+- `test-property-based-llm-invariants` → `sdlc-ai/test-property-based-llm-invariants`
+- `dora-metrics-cicd` → `infra/dora-metrics-cicd`
 
 **Decision gate:**
 > Advance when parity is within target band on production traffic shape and open deltas have owners.
@@ -113,9 +113,9 @@ The playbook is done when:
 **Intent:** Tagged runbook executes end-to-end; comms loop closes.
 
 **Methodologies in chain:**
-- `inc-runbook-as-markdown-tagged-steps` → `geek/sdlc-ai/inc-runbook-as-markdown-tagged-steps`
-- `communications-management` → `pro/pm/pm-traditional/communications-management`
-- `change-control` → `pro/pm/pm-traditional/change-control`
+- `inc-runbook-as-markdown-tagged-steps` → `sdlc-ai/inc-runbook-as-markdown-tagged-steps`
+- `communications-management-pm-traditional` → `pm/communications-management-pm-traditional`
+- `change-control-pm-traditional` → `pm/change-control-pm-traditional`
 
 **Decision gate:**
 > Required: every tagged step has a 'done' marker. Skipped steps = block-and-investigate.
@@ -125,8 +125,8 @@ The playbook is done when:
 **Intent:** Audit verifies the new state; lessons close the loop.
 
 **Methodologies in chain:**
-- `lessons-learned` → `pro/pm/pm-traditional/lessons-learned`
-- `project-closure` → `pro/pm/pm-traditional/project-closure`
+- `lessons-learned-pm-traditional` → `pm/lessons-learned-pm-traditional`
+- `project-closure-pm-traditional` → `pm/project-closure-pm-traditional`
 
 **Decision gate:**
 > Required outputs: audit + lessons-learned. Migrations without retros teach nothing to the next one.

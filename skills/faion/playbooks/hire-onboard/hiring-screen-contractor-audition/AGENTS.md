@@ -47,8 +47,8 @@ The playbook is done when:
 - Confirm rate + timing in writing
 
 **Methodologies in chain:**
-- `acceptance-criteria` -> `pro/ba/business-analyst/acceptance-criteria`
-- `ops-contractor-basics` -> `pro/marketing/gtm-strategist/ops-contractor-basics`
+- `acceptance-criteria` → `ba/acceptance-criteria`
+- `ops-contractor-basics` → `marketing/ops-contractor-basics`
 
 **Outputs:**
 - Issued trial brief
@@ -67,9 +67,9 @@ The playbook is done when:
 - Tag risks (comms, quality, timing)
 
 **Methodologies in chain:**
-- `structured-interview-design` -> `pro/comms/hr-recruiter/structured-interview-design`
-- `interview-methods` -> `pro/comms/hr-recruiter/interview-methods`
-- `star-interview-framework` -> `pro/comms/hr-recruiter/star-interview-framework`
+- `structured-interview-design` → `hr/structured-interview-design`
+- `interview-methods` → `hr/interview-methods`
+- `star-interview-framework` → `hr/star-interview-framework`
 
 **Outputs:**
 - Rubric scores
@@ -88,9 +88,9 @@ The playbook is done when:
 - Confirm availability + rate
 
 **Methodologies in chain:**
-- `interview-methods` -> `pro/comms/hr-recruiter/interview-methods`
-- `onboarding` -> `pro/comms/hr-recruiter/onboarding`
-- `30-60-90-day-plan` -> `pro/comms/hr-recruiter/30-60-90-day-plan`
+- `interview-methods` → `hr/interview-methods`
+- `onboarding` → `hr/onboarding`
+- `30-60-90-day-plan` → `hr/30-60-90-day-plan`
 
 **Outputs:**
 - Interview notes

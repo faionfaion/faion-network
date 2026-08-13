@@ -46,9 +46,9 @@ The playbook is done when:
 - Note week-over-week deltas
 
 **Methodologies in chain:**
-- `aarrr-pirate-metrics` -> `pro/marketing/growth-marketer/aarrr-pirate-metrics`
-- `conversion-tracking` -> `pro/marketing/growth-marketer/conversion-tracking`
-- `ops-customer-success-metrics` -> `pro/marketing/gtm-strategist/ops-customer-success-metrics`
+- `aarrr-pirate-metrics` → `marketing/aarrr-pirate-metrics`
+- `conversion-tracking` → `marketing/conversion-tracking`
+- `ops-customer-success-metrics` → `marketing/ops-customer-success-metrics`
 
 **Outputs:**
 - Pipeline metrics snapshot
@@ -66,7 +66,7 @@ The playbook is done when:
 - Assign next-step per advancing deal
 
 **Methodologies in chain:**
-- `communications-management` -> `pro/pm/project-manager/communications-management`
+- `communications-management` → `pm/communications-management`
 
 **Outputs:**
 - Per-deal verdict + next step

@@ -36,10 +36,10 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `free/dev/code-quality/code-decomposition-patterns` (tier: free)
-- `geek/sdlc-ai/test-golden-master-legacy-rewrite` (tier: geek)
-- `solo/dev/code-quality/tech-debt-management` (tier: solo)
-- `solo/sdd/sdd/living-documentation` (tier: solo)
+- `dev/code-decomposition-patterns` (tier: free)
+- `sdlc-ai/test-golden-master-legacy-rewrite` (tier: geek)
+- `dev/tech-debt-management` (tier: solo)
+- `sdd/living-documentation` (tier: solo)
 
 ### Step 2 — Assess
 
@@ -56,9 +56,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Risk register
 
 **Backed by methodology**
-- `free/dev/code-quality/refactoring-patterns` (tier: free)
-- `pro/dev/software-developer/api-monitoring-metrics` (tier: pro)
-- `solo/dev/software-architect/architecture-decision-records` (tier: solo)
+- `dev/refactoring-patterns-quality` (tier: free)
+- `dev/api-monitoring-metrics` (tier: pro)
+- `architecture/architecture-decision-records` (tier: solo)
 
 ### Step 3 — Plan
 
@@ -75,9 +75,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `free/dev/code-quality/tech-debt-basics` (tier: free)
-- `solo/dev/automation-tooling/continuous-delivery` (tier: solo)
-- `solo/dev/software-architect/trade-off-technical-debt` (tier: solo)
+- `dev/tech-debt-basics` (tier: free)
+- `sdd/continuous-delivery` (tier: solo)
+- `architecture/trade-off-technical-debt` (tier: solo)
 
 ### Step 4 — Pilot
 
@@ -93,9 +93,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated rollback playbook
 
 **Backed by methodology**
-- `free/dev/software-developer/code-coverage` (tier: free)
-- `solo/dev/automation-tooling/perf-test-basics` (tier: solo)
-- `solo/dev/software-developer/contract-first-development` (tier: solo)
+- `dev/code-coverage` (tier: free)
+- `sdd/perf-test-basics` (tier: solo)
+- `dev/contract-first-development` (tier: solo)
 
 ### Step 5 — Execute
 
@@ -111,9 +111,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `free/dev/software-developer/e2e-testing` (tier: free)
-- `solo/dev/automation-tooling/perf-test-tools` (tier: solo)
-- `solo/dev/software-developer/feature-flags` (tier: solo)
+- `dev/e2e-testing` (tier: free)
+- `sdd/perf-test-tools` (tier: solo)
+- `dev/feature-flags` (tier: solo)
 
 ### Step 6 — Verify
 
@@ -129,9 +129,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `free/dev/software-developer/integration-testing` (tier: free)
-- `solo/dev/automation-tooling/trunk-based-branch-by-abstraction` (tier: solo)
-- `solo/dev/software-developer/performance-testing` (tier: solo)
+- `dev/integration-testing` (tier: free)
+- `automation-tooling/trunk-based-branch-by-abstraction` (tier: solo)
+- `dev/performance-testing` (tier: solo)
 
 ### Step 7 — Roll out
 
@@ -147,9 +147,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Stakeholder update
 
 **Backed by methodology**
-- `free/dev/software-developer/refactoring-patterns` (tier: free)
-- `solo/dev/automation-tooling/trunk-based-feature-flags` (tier: solo)
-- `solo/dev/software-developer/technical-debt` (tier: solo)
+- `dev/refactoring-patterns` (tier: free)
+- `dev/trunk-based-feature-flags` (tier: solo)
 
 ### Step 8 — Close
 
@@ -165,9 +164,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `geek/sdlc-ai/mr-codemod-refactor-agent` (tier: geek)
-- `solo/dev/code-quality/framework-decomposition-patterns` (tier: solo)
-- `solo/dev/software-developer/trunk-based-development` (tier: solo)
+- `sdlc-ai/mr-codemod-refactor-agent` (tier: geek)
+- `dev/framework-decomposition-patterns` (tier: solo)
+- `dev/trunk-based-dev-principles` (tier: solo)
 
 ## Decision points
 

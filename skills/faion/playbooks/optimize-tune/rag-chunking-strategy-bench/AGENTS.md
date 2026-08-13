@@ -47,8 +47,8 @@ The playbook is done when:
 - Pin schema version
 
 **Methodologies in chain:**
-- `schema-version-pinning` → `geek/ai/ai-agents/schema-version-pinning`
-- `rag-eval-test-set-generation` → `geek/ai/rag-engineer/rag-eval-test-set-generation`
+- `schema-version-pinning` → `ai-agents/schema-version-pinning`
+- `rag-eval-test-set-generation` → `ml-engineering/rag-eval-test-set-generation`
 
 **Outputs:**
 - Corpus snapshot id
@@ -68,10 +68,10 @@ The playbook is done when:
 - Production-service chunking variant
 
 **Methodologies in chain:**
-- `chunking-document-structure` → `geek/ai/rag-engineer/chunking-document-structure`
-- `chunking-semantic` → `geek/ai/rag-engineer/chunking-semantic`
-- `chunking-code-ast` → `geek/ai/rag-engineer/chunking-code-ast`
-- `chunking-production-service` → `geek/ai/rag-engineer/chunking-production-service`
+- `chunking-document-structure` → `ml-engineering/chunking-document-structure`
+- `chunking-semantic` → `ml-engineering/chunking-semantic`
+- `chunking-code-ast` → `ml-engineering/chunking-code-ast`
+- `chunking-production-service` → `ml-engineering/chunking-production-service`
 
 **Outputs:**
 - Variant index set
@@ -89,9 +89,9 @@ The playbook is done when:
 - Diversity rerank with MMR
 
 **Methodologies in chain:**
-- `hybrid-search-implementation` → `geek/ai/rag-engineer/hybrid-search-implementation`
-- `reranking-two-stage` → `geek/ai/rag-engineer/reranking-two-stage`
-- `reranking-diversity-mmr` → `geek/ai/rag-engineer/reranking-diversity-mmr`
+- `hybrid-search-implementation` → `ml-engineering/hybrid-search-implementation`
+- `reranking-two-stage` → `ml-engineering/reranking-two-stage`
+- `reranking-diversity-mmr` → `ml-engineering/reranking-diversity-mmr`
 
 **Outputs:**
 - Per-variant retrieval traces
@@ -109,9 +109,9 @@ The playbook is done when:
 - A/B significance check
 
 **Methodologies in chain:**
-- `rag-eval-retrieval-metrics` → `geek/ai/rag-engineer/rag-eval-retrieval-metrics`
-- `rag-eval-generation-metrics` → `geek/ai/rag-engineer/rag-eval-generation-metrics`
-- `rag-eval-ab-testing` → `geek/ai/rag-engineer/rag-eval-ab-testing`
+- `rag-eval-retrieval-metrics` → `ml-engineering/rag-eval-retrieval-metrics`
+- `rag-eval-generation-metrics` → `ml-engineering/rag-eval-generation-metrics`
+- `rag-eval-ab-testing` → `ml-engineering/rag-eval-ab-testing`
 
 **Outputs:**
 - Scorecard

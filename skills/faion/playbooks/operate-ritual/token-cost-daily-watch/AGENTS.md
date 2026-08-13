@@ -45,9 +45,9 @@ The playbook is done when:
 - Compare against trailing 7-day median
 
 **Methodologies in chain:**
-- `llm-observability` → `geek/ai/ml-engineer/llm-observability`
-- `cost-optimization` → `geek/ai/ml-engineer/cost-optimization`
-- `llm-cost-basics` → `geek/ai/ml-ops/llm-cost-basics`
+- `llm-observability` → `ml-engineering/llm-observability`
+- `cost-optimization` → `ml-engineering/cost-optimization`
+- `llm-cost-basics` → `ml-engineering/llm-cost-basics`
 
 **Outputs:**
 - Daily cost line
@@ -66,11 +66,11 @@ The playbook is done when:
 - Batch cache where applicable
 
 **Methodologies in chain:**
-- `prompt-cache-prefix-order` → `geek/ai/ai-agents/prompt-cache-prefix-order`
-- `confidence-thresholded-cascade` → `geek/ai/ai-agents/confidence-thresholded-cascade`
-- `weak-model-preselection` → `geek/ai/ai-agents/weak-model-preselection`
-- `max-turns-circuit-breaker` → `geek/ai/ai-agents/max-turns-circuit-breaker`
-- `batch-cache-stack` → `geek/ai/ai-agents/batch-cache-stack`
+- `prompt-cache-prefix-order` → `ai-agents/prompt-cache-prefix-order`
+- `confidence-thresholded-cascade` → `ai-agents/confidence-thresholded-cascade`
+- `weak-model-preselection` → `ai-agents/weak-model-preselection`
+- `max-turns-circuit-breaker` → `ai-agents/max-turns-circuit-breaker`
+- `batch-cache-stack` → `ai-agents/batch-cache-stack`
 
 **Outputs:**
 - Lever decision note

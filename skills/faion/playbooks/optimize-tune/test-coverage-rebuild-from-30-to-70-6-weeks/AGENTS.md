@@ -36,10 +36,10 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `free/dev/software-developer/api-testing` (tier: free)
-- `free/dev/testing-developer/mocking-strategies` (tier: free)
-- `geek/sdlc-ai/test-consumer-contract-from-spec` (tier: geek)
-- `solo/dev/software-developer/security-testing` (tier: solo)
+- `dev/api-testing` (tier: free)
+- `dev/mocking-strategies-testing` (tier: free)
+- `sdlc-ai/test-consumer-contract-from-spec` (tier: geek)
+- `dev/security-testing` (tier: solo)
 
 ### Step 2 — Assess
 
@@ -56,10 +56,10 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Risk register
 
 **Backed by methodology**
-- `free/dev/software-developer/code-coverage` (tier: free)
-- `free/dev/testing-developer/test-fixtures` (tier: free)
-- `geek/sdlc-ai/test-mutation-feedback-loop` (tier: geek)
-- `solo/dev/testing-developer/security-testing` (tier: solo)
+- `dev/code-coverage` (tier: free)
+- `dev/test-fixtures-testing` (tier: free)
+- `sdlc-ai/test-mutation-feedback-loop` (tier: geek)
+- `dev/security-testing-testing` (tier: solo)
 
 ### Step 3 — Plan
 
@@ -76,10 +76,10 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `free/dev/software-developer/e2e-testing` (tier: free)
-- `free/dev/testing-developer/testing-go` (tier: free)
-- `geek/sdlc-ai/test-property-based-llm-invariants` (tier: geek)
-- `solo/sdd/sdd/quality-gates-confidence` (tier: solo)
+- `dev/e2e-testing` (tier: free)
+- `dev/testing-go` (tier: free)
+- `sdlc-ai/test-property-based-llm-invariants` (tier: geek)
+- `sdd/quality-gates-confidence` (tier: solo)
 
 ### Step 4 — Pilot
 
@@ -95,9 +95,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated rollback playbook
 
 **Backed by methodology**
-- `free/dev/software-developer/integration-testing` (tier: free)
-- `free/dev/testing-developer/testing-javascript` (tier: free)
-- `pro/dev/backend-systems/rust-testing-property` (tier: pro)
+- `dev/integration-testing` (tier: free)
+- `dev/testing-javascript` (tier: free)
+- `backend/rust-testing-property` (tier: pro)
 
 ### Step 5 — Execute
 
@@ -113,9 +113,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `free/dev/software-developer/tdd-workflow` (tier: free)
-- `free/dev/testing-developer/testing-patterns` (tier: free)
-- `solo/dev/api-developer/api-testing` (tier: solo)
+- `dev/tdd-workflow` (tier: free)
+- `dev/testing-patterns` (tier: free)
+- `backend/api-testing` (tier: solo)
 
 ### Step 6 — Verify
 
@@ -131,9 +131,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `free/dev/software-developer/testing` (tier: free)
-- `free/dev/testing-developer/testing-pytest` (tier: free)
-- `solo/dev/automation-tooling/playwright-automation` (tier: solo)
+- `dev/testing` (tier: free)
+- `dev/testing-pytest` (tier: free)
+- `automation-tooling/playwright-automation` (tier: solo)
 
 ### Step 7 — Roll out
 
@@ -149,9 +149,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Stakeholder update
 
 **Backed by methodology**
-- `free/dev/testing-developer/e2e-testing` (tier: free)
-- `free/dev/testing-developer/unit-testing` (tier: free)
-- `solo/dev/automation-tooling/trunk-based-ci-gates` (tier: solo)
+- `dev/e2e-testing-testing` (tier: free)
+- `dev/unit-testing-testing` (tier: free)
+- `automation-tooling/trunk-based-ci-gates` (tier: solo)
 
 ### Step 8 — Close
 
@@ -167,9 +167,9 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `free/dev/testing-developer/integration-testing` (tier: free)
-- `geek/sdlc-ai/lint-staged-only-not-whole-tree` (tier: geek)
-- `solo/dev/software-developer/performance-testing` (tier: solo)
+- `dev/integration-testing-testing` (tier: free)
+- `sdlc-ai/lint-staged-only-not-whole-tree` (tier: geek)
+- `dev/performance-testing` (tier: solo)
 
 ## Decision points
 

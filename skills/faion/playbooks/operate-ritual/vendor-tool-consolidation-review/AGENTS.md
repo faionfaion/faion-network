@@ -47,8 +47,8 @@ The playbook is done when:
 - Tag each with active user count + last login
 
 **Methodologies in chain:**
-- `ops-financial-basics` -> `pro/marketing/gtm-strategist/ops-financial-basics`
-- `ops-tax-basics` -> `pro/marketing/gtm-strategist/ops-tax-basics`
+- `ops-financial-basics` → `marketing/ops-financial-basics`
+- `ops-tax-basics` → `marketing/ops-tax-basics`
 
 **Outputs:**
 - Tool inventory
@@ -66,8 +66,8 @@ The playbook is done when:
 - Identify overlap candidates
 
 **Methodologies in chain:**
-- `ops-partnership-strategy` -> `pro/marketing/gtm-strategist/ops-partnership-strategy`
-- `ops-pricing-strategy` -> `solo/marketing/gtm-strategist/ops-pricing-strategy`
+- `ops-partnership-strategy` → `marketing/ops-partnership-strategy`
+- `ops-pricing-strategy` → `marketing/ops-pricing-strategy`
 
 **Outputs:**
 - Kill list
@@ -86,9 +86,9 @@ The playbook is done when:
 - Log projected savings
 
 **Methodologies in chain:**
-- `communications-management` -> `pro/pm/project-manager/communications-management`
-- `cross-tool-migration` -> `pro/pm/project-manager/cross-tool-migration`
-- `tool-migration-process` -> `pro/pm/pm-agile/tool-migration-process`
+- `communications-management` → `pm/communications-management`
+- `cross-tool-migration` → `pm/cross-tool-migration`
+- `tool-migration-process` → `pm/tool-migration-process`
 
 **Outputs:**
 - Cancellations confirmed

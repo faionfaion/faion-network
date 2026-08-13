@@ -36,8 +36,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Scope boundary
 
 **Backed by methodology**
-- `solo/dev/software-architect/architecture-decision-records` (tier: solo)
-- `solo/dev/software-architect/trade-off-stakeholder-communication` (tier: solo)
+- `architecture/architecture-decision-records` (tier: solo)
+- `architecture/trade-off-stakeholder-communication` (tier: solo)
 
 ### Step 2 — Assess
 
@@ -54,8 +54,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Risk register
 
 **Backed by methodology**
-- `solo/dev/software-architect/decision-tree-build-vs-buy` (tier: solo)
-- `solo/sdd/sdd/architecture-decision-records` (tier: solo)
+- `architecture/decision-tree-build-vs-buy` (tier: solo)
+- `sdd/architecture-decision-records` (tier: solo)
 
 ### Step 3 — Plan
 
@@ -72,8 +72,8 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Rollback playbook
 
 **Backed by methodology**
-- `solo/dev/software-architect/trade-off-build-vs-buy` (tier: solo)
-- `solo/sdd/sdd/writing-design-documents` (tier: solo)
+- `architecture/trade-off-build-vs-buy` (tier: solo)
+- `sdd/writing-design-documents` (tier: solo)
 
 ### Step 4 — Execute
 
@@ -89,7 +89,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated tests + docs
 
 **Backed by methodology**
-- `solo/dev/software-architect/trade-off-decision-matrix` (tier: solo)
+- `architecture/trade-off-decision-matrix` (tier: solo)
 
 ### Step 5 — Verify
 
@@ -105,7 +105,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Metric delta vs baseline
 
 **Backed by methodology**
-- `solo/dev/software-architect/trade-off-decision-methods` (tier: solo)
+- `architecture/trade-off-decision-methods` (tier: solo)
 
 ### Step 6 — Close
 
@@ -121,7 +121,7 @@ Walk the stages in order. Do not advance until each stage's decision gate is met
 - Updated ADR / runbook / memory entry
 
 **Backed by methodology**
-- `solo/dev/software-architect/trade-off-quality-attributes` (tier: solo)
+- `architecture/trade-off-quality-attributes` (tier: solo)
 
 ## Decision points
 

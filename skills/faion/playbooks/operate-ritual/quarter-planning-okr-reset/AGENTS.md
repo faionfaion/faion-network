@@ -52,10 +52,10 @@ The playbook is done when:
 - Publish quarter-closure doc with explicit kept/changed/dropped items
 
 **Methodologies in chain:**
-- `lessons-learned` → `pro/pm/pm-traditional/lessons-learned`
-- `project-closure` → `pro/pm/pm-traditional/project-closure`
-- `benefits-realization` → `pro/pm/pm-traditional/benefits-realization`
-- `dora-metrics` → `pro/infra/cicd-engineer/dora-metrics`
+- `lessons-learned-pm-traditional` → `pm/lessons-learned-pm-traditional`
+- `project-closure-pm-traditional` → `pm/project-closure-pm-traditional`
+- `benefits-realization-pm-traditional` → `pm/benefits-realization-pm-traditional`
+- `dora-metrics-cicd` → `infra/dora-metrics-cicd`
 
 **Outputs:** Quarter-closure doc; lessons-learned synthesis.
 
@@ -73,11 +73,11 @@ The playbook is done when:
 - Validate against capacity reality
 
 **Methodologies in chain:**
-- `ba-planning` → `pro/ba/business-analyst/ba-planning`
-- `requirements-traceability` → `pro/ba/business-analyst/requirements-traceability`
-- `raci-matrix` → `pro/pm/pm-agile/raci-matrix`
-- `stakeholder-engagement-advanced` → `pro/pm/project-manager/stakeholder-engagement-advanced`
-- `communications-management` → `pro/pm/project-manager/communications-management`
+- `ba-planning` → `ba/ba-planning`
+- `requirements-traceability` → `ba/requirements-traceability`
+- `raci-matrix-pm-agile` → `pm/raci-matrix-pm-agile`
+- `stakeholder-engagement-advanced` → `pm/stakeholder-engagement-advanced`
+- `communications-management` → `pm/communications-management`
 
 **Outputs:** Team OKR sheet; RACI per objective.
 
@@ -95,12 +95,12 @@ The playbook is done when:
 - Size each bet (complexity tag + token estimate, no time estimates)
 
 **Methodologies in chain:**
-- `opportunity-solution-trees` → `pro/ux/user-researcher/opportunity-solution-trees`
-- `competitive-positioning` → `pro/product/product-manager/competitive-positioning`
-- `continuous-discovery-habits` → `pro/product/product-manager/continuous-discovery-habits`
-- `portfolio-strategy` → `pro/product/product-manager/portfolio-strategy`
-- `cost-estimation` → `pro/pm/pm-traditional/cost-estimation`
-- `methodologies-summary` → `pro/product/product-manager/methodologies-summary`
+- `opportunity-solution-trees` → `ux/opportunity-solution-trees`
+- `competitive-positioning` → `pm/competitive-positioning`
+- `continuous-discovery-habits` → `pm/continuous-discovery-habits`
+- `portfolio-strategy` → `pm/portfolio-strategy`
+- `cost-estimation-pm-traditional` → `pm/cost-estimation-pm-traditional`
+- `methodologies-summary` → `pm/methodologies-summary`
 
 **Outputs:** Sized bet list; killed-candidates list with rationale.
 
@@ -118,14 +118,14 @@ The playbook is done when:
 - Refresh risk register
 
 **Methodologies in chain:**
-- `release-planning` → `pro/product/product-manager/release-planning`
-- `scope-management` → `pro/pm/pm-traditional/scope-management`
-- `wbs-creation` → `pro/pm/pm-traditional/wbs-creation`
-- `resource-management` → `pro/pm/pm-traditional/resource-management`
-- `risk-management` → `pro/pm/pm-traditional/risk-management`
-- `risk-register` → `pro/pm/pm-traditional/risk-register`
-- `change-control` → `pro/pm/pm-traditional/change-control`
-- `quality-attributes-analysis` → `pro/dev/software-architect/quality-attributes-analysis`
+- `release-planning` → `pm/release-planning`
+- `scope-management-pm-traditional` → `pm/scope-management-pm-traditional`
+- `wbs-creation-pm-traditional` → `pm/wbs-creation-pm-traditional`
+- `resource-management-pm-traditional` → `pm/resource-management-pm-traditional`
+- `risk-management-pm-traditional` → `pm/risk-management-pm-traditional`
+- `risk-register-pm-traditional` → `pm/risk-register-pm-traditional`
+- `change-control-pm-traditional` → `pm/change-control-pm-traditional`
+- `quality-attributes-analysis` → `architecture/quality-attributes-analysis`
 
 **Outputs:** Quarter roadmap doc; refreshed risk register.
 
@@ -142,8 +142,8 @@ The playbook is done when:
 - Wire tracker handoff (Linear agent as assignee where possible)
 
 **Methodologies in chain:**
-- `ai-assisted-specification-writing` → `geek/sdd/sdd-planning/ai-assisted-specification-writing`
-- `tracker-linear-agent-as-assignee` → `geek/sdlc-ai/tracker-linear-agent-as-assignee`
+- `ai-assisted-specification-writing-planning` → `sdd/ai-assisted-specification-writing-planning`
+- `tracker-linear-agent-as-assignee` → `sdlc-ai/tracker-linear-agent-as-assignee`
 
 **Outputs:** Spec drafts in `backlog/`; tracker mirror per bet.
 

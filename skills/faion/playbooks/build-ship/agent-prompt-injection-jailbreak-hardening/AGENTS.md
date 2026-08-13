@@ -48,9 +48,9 @@ The playbook is done when:
 - Cheap guardrail tripwires on ingested content
 
 **Methodologies in chain:**
-- `bundle-vs-split-tools` → `geek/ai/ai-agents/bundle-vs-split-tools`
-- `idempotent-write-tools` → `geek/ai/ai-agents/idempotent-write-tools`
-- `cheap-guardrail-tripwire` → `geek/ai/ai-agents/cheap-guardrail-tripwire`
+- `bundle-vs-split-tools` → `ai-agents/bundle-vs-split-tools`
+- `idempotent-write-tools` → `ai-agents/idempotent-write-tools`
+- `cheap-guardrail-tripwire` → `ai-agents/cheap-guardrail-tripwire`
 
 **Outputs:**
 - Trust boundary table
@@ -67,8 +67,8 @@ The playbook is done when:
 - Discriminated union output
 
 **Methodologies in chain:**
-- `refusal-field-strict-schema` → `geek/ai/ai-agents/refusal-field-strict-schema`
-- `discriminated-union-output` → `geek/ai/ai-agents/discriminated-union-output`
+- `refusal-field-strict-schema` → `ai-agents/refusal-field-strict-schema`
+- `discriminated-union-output` → `ai-agents/discriminated-union-output`
 
 **Outputs:**
 - Hardened output schema
@@ -85,7 +85,7 @@ The playbook is done when:
 - Wire canary tokens for exfil detection
 
 **Methodologies in chain:**
-- `chaos-eval-fault-injection` → `geek/ai/ai-agents/chaos-eval-fault-injection`
+- `chaos-eval-fault-injection` → `ai-agents/chaos-eval-fault-injection`
 
 **Outputs:**
 - Red-team eval results

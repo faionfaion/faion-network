@@ -46,8 +46,8 @@ The playbook is done when:
 - Record-replay
 
 **Methodologies in chain:**
-- `record-replay-debugging` → `geek/ai/ai-agents/record-replay-debugging`
-- `trajectory-eval-otel` → `geek/ai/ai-agents/trajectory-eval-otel`
+- `record-replay-debugging` → `ai-agents/record-replay-debugging`
+- `trajectory-eval-otel` → `ai-agents/trajectory-eval-otel`
 
 **Outputs:**
 - Reproduced incident
@@ -64,8 +64,8 @@ The playbook is done when:
 - Generator-critic bound check
 
 **Methodologies in chain:**
-- `chaos-eval-fault-injection` → `geek/ai/ai-agents/chaos-eval-fault-injection`
-- `generator-critic-bounded-loop` → `geek/ai/ai-agents/generator-critic-bounded-loop`
+- `chaos-eval-fault-injection` → `ai-agents/chaos-eval-fault-injection`
+- `generator-critic-bounded-loop` → `ai-agents/generator-critic-bounded-loop`
 
 **Outputs:**
 - Attribution note
@@ -83,7 +83,7 @@ The playbook is done when:
 - Track action items
 
 **Methodologies in chain:**
-- `inc-postmortem-auto-draft-no-publish` → `geek/sdlc-ai/inc-postmortem-auto-draft-no-publish`
+- `inc-postmortem-auto-draft-no-publish` → `sdlc-ai/inc-postmortem-auto-draft-no-publish`
 
 **Outputs:**
 - Postmortem doc

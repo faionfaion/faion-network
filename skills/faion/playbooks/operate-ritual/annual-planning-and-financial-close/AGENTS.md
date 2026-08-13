@@ -49,12 +49,12 @@ The playbook is done when:
 - File taxes or schedule with accountant
 
 **Methodologies in chain:**
-- `ops-financial-basics` -> `pro/marketing/gtm-strategist/ops-financial-basics`
-- `ops-tax-basics` -> `pro/marketing/gtm-strategist/ops-tax-basics`
-- `ops-tax-compliance` -> `pro/marketing/gtm-strategist/ops-tax-compliance`
-- `ops-legal-basics` -> `pro/marketing/gtm-strategist/ops-legal-basics`
-- `ops-legal-compliance` -> `pro/marketing/gtm-strategist/ops-legal-compliance`
-- `ops-legal-compliance-checklist` -> `pro/marketing/gtm-strategist/ops-legal-compliance-checklist`
+- `ops-financial-basics` → `marketing/ops-financial-basics`
+- `ops-tax-basics` → `marketing/ops-tax-basics`
+- `ops-tax-compliance` → `marketing/ops-tax-compliance`
+- `ops-legal-basics` → `marketing/ops-legal-basics`
+- `ops-legal-compliance` → `marketing/ops-legal-compliance`
+- `ops-legal-compliance-checklist` → `marketing/ops-legal-compliance-checklist`
 
 **Outputs:**
 - Closed P&L + BS
@@ -73,12 +73,12 @@ The playbook is done when:
 - Run sensitivity analysis
 
 **Methodologies in chain:**
-- `ops-annual-planning-process` -> `pro/marketing/gtm-strategist/ops-annual-planning-process`
-- `ops-annual-planning-templates` -> `pro/marketing/gtm-strategist/ops-annual-planning-templates`
-- `growth-gtm-strategy` -> `pro/marketing/gtm-strategist/growth-gtm-strategy`
-- `growth-brand-positioning` -> `pro/marketing/gtm-strategist/growth-brand-positioning`
-- `trend-analysis` -> `pro/research/market-researcher/trend-analysis`
-- `predictive-analytics-pm` -> `pro/pm/project-manager/predictive-analytics-pm`
+- `ops-annual-planning-process` → `marketing/ops-annual-planning-process`
+- `ops-annual-planning-templates` → `marketing/ops-annual-planning-templates`
+- `growth-gtm-strategy` → `marketing/growth-gtm-strategy`
+- `growth-brand-positioning` → `marketing/growth-brand-positioning`
+- `trend-analysis-market-research` → `research/trend-analysis-market-research`
+- `predictive-analytics-pm` → `pm/predictive-analytics-pm`
 
 **Outputs:**
 - Target spreadsheet
@@ -97,9 +97,9 @@ The playbook is done when:
 - Adjust contractor + partnership commitments
 
 **Methodologies in chain:**
-- `portfolio-strategy` -> `pro/product/product-planning/portfolio-strategy`
-- `ops-contractor-management` -> `pro/marketing/gtm-strategist/ops-contractor-management`
-- `ops-partnership-strategy` -> `pro/marketing/gtm-strategist/ops-partnership-strategy`
+- `portfolio-strategy-product-planning` → `pm/portfolio-strategy-product-planning`
+- `ops-contractor-management` → `marketing/ops-contractor-management`
+- `ops-partnership-strategy` → `marketing/ops-partnership-strategy`
 
 **Outputs:**
 - Service-line decision doc
@@ -118,10 +118,10 @@ The playbook is done when:
 - Plan mitigations + owners
 
 **Methodologies in chain:**
-- `privacy-compliance` -> `pro/marketing/growth-marketer/privacy-compliance`
-- `risk-management` -> `pro/pm/project-manager/risk-management`
-- `risk-register` -> `pro/pm/project-manager/risk-register`
-- `risk-assessment` -> `pro/research/market-researcher/risk-assessment`
+- `privacy-compliance` → `marketing/privacy-compliance`
+- `risk-management` → `pm/risk-management`
+- `risk-register` → `pm/risk-register`
+- `risk-assessment-market-research` → `research/risk-assessment-market-research`
 
 **Outputs:**
 - Risk register v2

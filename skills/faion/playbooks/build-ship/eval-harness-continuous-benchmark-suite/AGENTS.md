@@ -48,10 +48,10 @@ The playbook is done when:
 - Tag each trajectory with expected behavior
 
 **Methodologies in chain:**
-- `rag-eval-test-set-generation` → `geek/ai/rag-engineer/rag-eval-test-set-generation`
-- `rag-eval-strategy` → `geek/ai/rag-engineer/rag-eval-strategy`
-- `record-replay-debugging` → `geek/ai/ai-agents/record-replay-debugging`
-- `schema-version-pinning` → `geek/ai/ai-agents/schema-version-pinning`
+- `rag-eval-test-set-generation` → `ml-engineering/rag-eval-test-set-generation`
+- `rag-eval-strategy` → `ml-engineering/rag-eval-strategy`
+- `record-replay-debugging` → `ai-agents/record-replay-debugging`
+- `schema-version-pinning` → `ai-agents/schema-version-pinning`
 
 **Outputs:**
 - golden-trajectories.jsonl
@@ -70,11 +70,11 @@ The playbook is done when:
 - Sample-check judge against humans
 
 **Methodologies in chain:**
-- `llm-judge-rubric-evidence-first` → `geek/ai/ai-agents/llm-judge-rubric-evidence-first`
-- `test-property-based-llm-invariants` → `geek/sdlc-ai/test-property-based-llm-invariants`
-- `model-evaluation` → `geek/ai/ml-engineer/model-evaluation`
-- `rag-eval-generation-metrics` → `geek/ai/rag-engineer/rag-eval-generation-metrics`
-- `rag-eval-retrieval-metrics` → `geek/ai/rag-engineer/rag-eval-retrieval-metrics`
+- `llm-judge-rubric-evidence-first` → `ai-agents/llm-judge-rubric-evidence-first`
+- `test-property-based-llm-invariants` → `sdlc-ai/test-property-based-llm-invariants`
+- `model-evaluation` → `ml-engineering/model-evaluation`
+- `rag-eval-generation-metrics` → `ml-engineering/rag-eval-generation-metrics`
+- `rag-eval-retrieval-metrics` → `ml-engineering/rag-eval-retrieval-metrics`
 
 **Outputs:**
 - Judge prompt set
@@ -93,9 +93,9 @@ The playbook is done when:
 - Add A/B harness for prompt versions
 
 **Methodologies in chain:**
-- `chaos-eval-fault-injection` → `geek/ai/ai-agents/chaos-eval-fault-injection`
-- `test-mutation-feedback-loop` → `geek/sdlc-ai/test-mutation-feedback-loop`
-- `rag-eval-ab-testing` → `geek/ai/rag-engineer/rag-eval-ab-testing`
+- `chaos-eval-fault-injection` → `ai-agents/chaos-eval-fault-injection`
+- `test-mutation-feedback-loop` → `sdlc-ai/test-mutation-feedback-loop`
+- `rag-eval-ab-testing` → `ml-engineering/rag-eval-ab-testing`
 
 **Outputs:**
 - adversarial-pack.jsonl
@@ -114,13 +114,13 @@ The playbook is done when:
 - Wire OTEL trace upload per run
 
 **Methodologies in chain:**
-- `trajectory-eval-otel` → `geek/ai/ai-agents/trajectory-eval-otel`
-- `llm-observability` → `geek/ai/ml-engineer/llm-observability`
-- `mr-error-tracker-draft-pr` → `geek/sdlc-ai/mr-error-tracker-draft-pr`
-- `test-self-healing-locators-audited` → `geek/sdlc-ai/test-self-healing-locators-audited`
-- `evaluation-benchmarks` → `geek/ai/ml-ops/evaluation-benchmarks`
-- `evaluation-framework` → `geek/ai/ml-ops/evaluation-framework`
-- `evaluation-metrics` → `geek/ai/ml-ops/evaluation-metrics`
+- `trajectory-eval-otel` → `ai-agents/trajectory-eval-otel`
+- `llm-observability` → `ml-engineering/llm-observability`
+- `mr-error-tracker-draft-pr` → `sdlc-ai/mr-error-tracker-draft-pr`
+- `test-self-healing-locators-audited` → `sdlc-ai/test-self-healing-locators-audited`
+- `evaluation-benchmarks` → `ml-engineering/evaluation-benchmarks`
+- `evaluation-framework` → `ml-engineering/evaluation-framework`
+- `evaluation-metrics` → `ml-engineering/evaluation-metrics`
 
 **Outputs:**
 - CI workflow YAML

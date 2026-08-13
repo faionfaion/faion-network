@@ -48,9 +48,9 @@ The playbook is done when:
 **Intent:** AI summarises mistakes + DORA + value-stream signals before the room sits.
 
 **Methodologies in chain:**
-- `mistake-memory` → `solo/sdd/sdd/mistake-memory`
-- `dora-metrics` → `pro/infra/devops-engineer/dora-metrics`
-- `value-stream-management` → `pro/pm/pm-agile/value-stream-management`
+- `mistake-memory` → `sdd/mistake-memory`
+- `dora-metrics` → `infra/dora-metrics`
+- `value-stream-management-pm-agile` → `pm/value-stream-management-pm-agile`
 
 **Decision gate:**
 > Advance when the pre-read is published. Retros that start without pre-read default to opinion-only.
@@ -60,10 +60,10 @@ The playbook is done when:
 **Intent:** Look at signals + opinions; converge on 2-3 experiments.
 
 **Methodologies in chain:**
-- `scrum-ceremonies` → `pro/pm/pm-agile/scrum-ceremonies`
-- `team-development` → `pro/pm/pm-agile/team-development`
-- `quality-gates-confidence` → `solo/sdd/sdd/quality-gates-confidence`
-- `reflexion-learning` → `solo/sdd/sdd/reflexion-learning`
+- `scrum-ceremonies` → `pm/scrum-ceremonies`
+- `team-development-pm-agile` → `pm/team-development-pm-agile`
+- `quality-gates-confidence` → `sdd/quality-gates-confidence`
+- `reflexion-learning` → `sdd/reflexion-learning`
 
 **Decision gate:**
 > End at 45 min. Spill is a sign of unfocused facilitation — schedule a follow-up if needed.
@@ -73,7 +73,7 @@ The playbook is done when:
 **Intent:** Experiments become real tickets in the next sprint with success criteria.
 
 **Methodologies in chain:**
-- `pattern-memory` → `solo/sdd/sdd/pattern-memory`
+- `pattern-memory` → `sdd/pattern-memory`
 
 **Decision gate:**
 > Required: tickets filed. Verbal experiments are next retro's complaints.

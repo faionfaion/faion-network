@@ -47,8 +47,8 @@ The playbook is done when:
 - Tag retention risk + upsell signal
 
 **Methodologies in chain:**
-- `ops-customer-success-metrics` -> `pro/marketing/gtm-strategist/ops-customer-success-metrics`
-- `benefits-realization` -> `pro/pm/project-manager/benefits-realization`
+- `ops-customer-success-metrics` → `marketing/ops-customer-success-metrics`
+- `benefits-realization` → `pm/benefits-realization`
 
 **Outputs:**
 - Health score row
@@ -66,8 +66,8 @@ The playbook is done when:
 - Run review with structured script
 
 **Methodologies in chain:**
-- `ops-upselling-cross-selling` -> `pro/marketing/gtm-strategist/ops-upselling-cross-selling`
-- `stakeholder-engagement-advanced` -> `pro/pm/project-manager/stakeholder-engagement-advanced`
+- `ops-upselling-cross-selling` → `marketing/ops-upselling-cross-selling`
+- `stakeholder-engagement-advanced` → `pm/stakeholder-engagement-advanced`
 
 **Outputs:**
 - Review deck
@@ -86,9 +86,9 @@ The playbook is done when:
 - Write offboarding plan if needed
 
 **Methodologies in chain:**
-- `project-closure` -> `pro/pm/project-manager/project-closure`
-- `difficult-conversations` -> `solo/comms/communicator/difficult-conversations`
-- `negotiation` -> `solo/comms/communicator/negotiation`
+- `project-closure` → `pm/project-closure`
+- `difficult-conversations` → `comms/difficult-conversations`
+- `negotiation` → `comms/negotiation`
 
 **Outputs:**
 - Signed renewal or scope change
