@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="UI Library Advanced Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the UI Library Advanced Patterns methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="UI Library Advanced Patterns Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules on compound-component wiring through context, the dialog focus contract, inert background handling, CSF 3 story shape, and keyboard-driven play functions. Each is checkable against the component source and its stories file.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for UI Library Advanced Patterns">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="compound-state-via-context-not-cloneelement" testable="true" depth="essential">
+      <statement>Compound APIs (`&lt;Tabs&gt;&lt;Tabs.List&gt;&lt;Tabs.Trigger/&gt;`) MUST share state through a context created by the root component. `React.Children.map` + `cloneElement` to inject props into children is rejected.</statement>
+      <rationale source="React composition patterns / Radix compound-component model">`cloneElement` reaches only direct children, so the moment a consumer wraps a trigger in a layout `&lt;div&gt;` or renders the list through `.map()`, the injected props stop arriving. Nothing throws: the trigger renders and simply does not respond, and the consumer concludes the component is broken rather than that the nesting is.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="context-hook-throws-outside-provider" testable="true" depth="essential">
+      <statement>The internal consumer hook MUST throw a named error when its context is `undefined` &#8212; e.g. `throw new Error('&lt;Tabs.Trigger&gt; must be rendered inside &lt;Tabs&gt;')` &#8212; rather than returning `null` or a default object.</statement>
+      <rationale source="React context default-value semantics">`createContext()` with no argument yields `undefined`, and a hook that tolerates it produces a component with no registered state: keyboard handlers no-op and ARIA ids point at nothing. The symptom appears at the far end of the interaction, so debugging starts at the event handler instead of at the misuse, which is one file away.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="dialog-focus-contract" testable="true" depth="essential">
+      <statement>A modal dialog MUST satisfy all six: rendered through a portal to `document.body`; `role="dialog"` with `aria-modal="true"`; labelled via `aria-labelledby` pointing at a rendered title; focus moved into the dialog on open; Tab and Shift+Tab cycled within it; Escape closes and focus is restored to the element that opened it.</statement>
+      <rationale source="W3C WAI-ARIA Authoring Practices Guide &#8212; Dialog (Modal) pattern">Each omission has a distinct failure. Without focus restoration the keyboard user is returned to document start and has to re-traverse the page to get back to where they were. Without a trap, Tab walks into the background content that is visually covered but still in the tab order, so the user is typing into controls they cannot see.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="background-marked-inert-and-scroll-locked" testable="true" depth="essential">
+      <statement>While a modal is open, background content MUST be made non-interactive with the `inert` attribute (or `aria-hidden="true"` on the app root sibling), and body scroll MUST be locked with layout-shift compensation (`scrollbar-gutter: stable`, or `padding-right` equal to the measured scrollbar width).</statement>
+      <rationale source="HTML `inert` attribute + assistive-technology virtual cursor behaviour">An overlay is paint only: without `inert`, the screen-reader virtual cursor and Tab both still reach the content behind it, so the dialog is modal visually and not at all semantically. Locking scroll with `overflow: hidden` alone removes the scrollbar, and on desktop the reclaimed width reflows the entire page &#8212; the visible jump every time a dialog opens.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="stories-in-csf3-object-form" testable="true" depth="essential">
+      <statement>Stories MUST use CSF 3: `const meta = { component: X } satisfies Meta&lt;typeof X&gt;`, `export default meta`, `type Story = StoryObj&lt;typeof meta&gt;`, and each story exported as an object with `args`. `storiesOf` and CSF 2 function stories are rejected.</statement>
+      <rationale source="Storybook Component Story Format 3 / portable stories">The object form is what `composeStories()` can re-hydrate outside Storybook &#8212; it applies `args`, decorators, loaders and `play` when the same story is imported into a Vitest or Jest test. A function story carries none of that metadata, so reusing it in a unit test silently drops the decorators and the test exercises a component that never renders that way in the app.</rationale>
+    </rule>
+
+    <rule id="play-function-drives-the-keyboard-path" testable="true" depth="essential">
+      <statement>Every interactive pattern MUST have a `play` function using `userEvent` from `@storybook/test` (`storybook/test` in Storybook 9+) that drives it with `keyboard`/`tab` &#8212; Tab, Enter, Space, Escape, Arrow keys as the pattern requires &#8212; and asserts resulting focus and ARIA state, not only that a click changed the DOM.</statement>
+      <rationale source="Storybook interaction testing + WAI-ARIA APG keyboard interaction sections">Pointer events bypass roving tabindex, focus traps and Escape handling entirely, because those are implemented in keydown handlers. A click-only test therefore passes on a dialog that traps nothing and a tablist where every tab is in the tab order &#8212; the exact defects the pattern exists to prevent.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
-    </rule>
-
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml`, emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-ui-lib-patterns.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+      <statement>Do NOT apply when (a) the library has no shipped primitives yet &#8212; run `ui-lib-basics` first, since compound APIs over unstable primitives churn twice; (b) the surface has no overlay, disclosure or composite widget (cards, static text, plain buttons only); (c) Radix, Headless UI or React Aria already provides the primitive &#8212; wrap and style it rather than re-implementing a focus trap, which is where hand-rolled dialogs fail.</statement>
+      <rationale source="Methodology preconditions">Focus management is the part of these patterns with the highest defect density and the least visibility in review. Re-implementing it to avoid one dependency trades a maintained, tested implementation for one whose bugs surface only for keyboard and screen-reader users, who rarely file reports.</rationale>
     </rule>
 
   </section>

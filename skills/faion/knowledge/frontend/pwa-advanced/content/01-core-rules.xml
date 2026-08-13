@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="PWA Advanced Features Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the PWA Advanced Features methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="PWA Advanced Features Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules on Web Push (VAPID key handling, subscription lifecycle, permission timing), offline mutation queues over IndexedDB + Background Sync, and the platform preconditions that make the whole feature set unavailable. Checkable against the subscribe call, the push-send worker and the sync handler.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for PWA Advanced Features">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="vapid-keypair-stable-and-server-held" testable="true" depth="essential">
+      <statement>One P-256 VAPID key pair per application. The public key is passed to `pushManager.subscribe({ userVisibleOnly: true, applicationServerKey })` as the raw 65-byte uncompressed point (base64url); the private key exists only server-side and MUST NOT be rotated without a re-subscribe migration.</statement>
+      <rationale source="RFC 8292 (Voluntary Application Server Identification for Web Push)">The push service records the application server key at subscribe time and validates the JWT on every send against it. Rotating the key does not invalidate anything client-side &#8212; existing subscriptions simply start returning 403 on send, so delivery drops to zero while the client still believes it is subscribed.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="every-push-shows-a-notification" testable="true" depth="essential">
+      <statement>The `push` handler MUST call `self.registration.showNotification()` inside `event.waitUntil()` on every delivery. Silent data-only pushes are forbidden on the web path.</statement>
+      <rationale source="Push API + Chromium userVisibleOnly enforcement">`subscribe()` without `userVisibleOnly: true` rejects with NotSupportedError in Chromium. When a handler resolves without showing a notification, the browser substitutes a generic "This site has been updated in the background" notification; repeated occurrences are treated as budget abuse and the origin's push permission is revoked without user action.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="permission-prompt-behind-user-gesture" testable="true" depth="essential">
+      <statement>`Notification.requestPermission()` MUST be called from a user gesture handler attached to an explicit opt-in control that states what will be sent. Calling it on page load, on first route render, or inside an effect is rejected.</statement>
+      <rationale source="Chromium quiet notification UI / abusive-permission-request policy">Permission state is per-origin and `denied` cannot be recovered from JavaScript &#8212; only through browser settings, which users never open. Origins with a low prompt-acceptance rate are additionally enrolled in quiet UI, where the prompt is suppressed for all future visitors, so one page-load prompt permanently caps the channel.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="prune-subscription-on-404-410" testable="true" depth="essential">
+      <statement>The send worker MUST delete the stored subscription row on HTTP 404 or 410 from the push endpoint, honour `Retry-After` on 429, and record `last_success_at` per subscription.</statement>
+      <rationale source="RFC 8030 (Generic Event Delivery Using HTTP Push)">410 Gone means the subscription is permanently invalid &#8212; the user cleared site data, uninstalled, or the browser rotated the endpoint. Retrying it forever inflates the queue with guaranteed failures and, because those failures are counted as sends, the reported delivery rate stays plausible while real reach collapses.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="queued-mutation-carries-idempotency-key" testable="true" depth="essential">
+      <statement>Every mutation written to the IndexedDB outbox MUST carry a client-generated idempotency key (UUIDv4) sent as a header or body field, and the server MUST dedupe on it for at least the retry window.</statement>
+      <rationale source="Background Synchronization API &#8212; retry semantics">A `sync` event fires again with backoff whenever the handler's `waitUntil` promise rejects, and it also fires again if the browser terminates the worker before the promise settles. A request that already reached the server but failed to return before termination is therefore replayed, so a non-idempotent POST creates duplicate records that look like user error.</rationale>
+    </rule>
+
+    <rule id="one-stable-sync-tag-drains-whole-queue" testable="true" depth="essential">
+      <statement>Background Sync MUST use a single stable tag (e.g. `outbox-flush`) whose handler drains every pending IndexedDB record in order. Per-item tags (`sync-&lt;recordId&gt;`) are rejected.</statement>
+      <rationale source="Background Synchronization API &#8212; tag uniqueness + registration limits">Registrations are keyed by tag, so re-registering a pending tag coalesces &#8212; which is the desired behaviour. Per-item tags instead create an unbounded set of registrations that the browser throttles and drops under its retry budget, and dropped registrations produce no event and no error, so the affected records sit in IndexedDB forever.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
-    </rule>
-
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml`, emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-pwa-advanced.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+      <statement>Do NOT apply when (a) iOS Safari is the primary platform and the requirement includes Background Sync or Periodic Background Sync &#8212; neither is implemented in WebKit; (b) Web Push is required on iOS below 16.4, or for users who will not add the app to the Home Screen, since iOS delivers Web Push only to home-screen-installed web apps; (c) a native shell (Capacitor, Tauri, React Native) is already present &#8212; use APNs/FCM through the shell instead of a second push channel.</statement>
+      <rationale source="WebKit feature status + methodology preconditions">Two parallel push channels on the same device double-deliver, because the web subscription and the native token are independent and neither knows about the other; the user sees every notification twice and disables both.</rationale>
     </rule>
 
   </section>

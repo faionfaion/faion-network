@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="shadcn/ui Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the shadcn/ui methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="shadcn/ui Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules on vendored-component ownership, `components.json` configuration, `cn()` className passthrough, Radix `asChild` composition, and the boundary between `components/ui/` and app code. Each is checkable against the repo tree, `components.json` and `package.json`.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for shadcn/ui">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="vendored-files-are-owned-source" testable="true" depth="essential">
+      <statement>Files emitted by `npx shadcn@latest add &lt;component&gt;` are committed as first-party source under the `aliases.ui` path and are edited in place. Re-running `add` for an already-vendored component requires reviewing the overwrite diff; `--overwrite` in a script or CI job is forbidden.</statement>
+      <rationale source="shadcn/ui CLI &#8212; add / overwrite behaviour">There is no installed package version to diff against: the registry copy is the only reference, and it is not stored in the repo. An unreviewed re-add therefore silently reverts every local change &#8212; variant additions, token swaps, a11y fixes &#8212; and the loss shows up as a visual regression with no obvious cause in the changelog.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="components-json-matches-tsconfig-paths" testable="true" depth="essential">
+      <statement>The repo MUST contain `components.json` declaring `style`, `tailwind.css`, `tailwind.baseColor`, `rsc`, and `aliases` for `components`, `utils`, `ui` and `lib`; every alias MUST have a matching entry in `tsconfig.json` `compilerOptions.paths` (and the bundler's resolver).</statement>
+      <rationale source="shadcn/ui components.json reference">The CLI writes literal alias imports (`@/lib/utils`, `@/components/ui/button`) into generated files based solely on `components.json`. If the alias is not also registered in tsconfig and the bundler, the generated file type-checks nowhere and fails at build with an unresolved-import error pointing at a file the developer did not write.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="className-merged-last-through-cn" testable="true" depth="essential">
+      <statement>Every vendored component MUST accept `className` and merge it as the last argument of `cn(...)`, where `cn = (...i) =&gt; twMerge(clsx(i))`. Raw template-string concatenation of the component's classes with the consumer's is rejected.</statement>
+      <rationale source="tailwind-merge &#8212; conflict resolution semantics">Tailwind emits utilities in stylesheet order, not class-attribute order, so `class="px-4 px-2"` resolves by which rule appears later in the generated CSS &#8212; the consumer's override loses non-deterministically. `twMerge` removes the losing class from the attribute entirely, and it keeps the last occurrence per conflict group, which only works if the consumer's `className` is passed last.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="polymorphism-via-radix-aschild" testable="true" depth="essential">
+      <statement>Rendering a primitive as a different element MUST use Radix `asChild` with the `Slot` component and exactly one React element child. An `as="a"` prop or an extra wrapper `&lt;div&gt;` around the interactive element is rejected.</statement>
+      <rationale source="Radix UI &#8212; Composition / Slot">`Slot` merges its props, event handlers and ref onto the single child; passing more than one child throws `React.Children.only expected to receive a single React element child`. A wrapper div is worse because it does not throw: Radix's generated `id`, `aria-controls` and `aria-expanded` land on the wrapper instead of the focusable element, so the widget is keyboard-operable but announces nothing.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="radix-primitive-versions-pinned" testable="true" depth="essential">
+      <statement>Each vendored component's `@radix-ui/react-*` package MUST be a direct dependency in `package.json` and locked in the lockfile. Relying on a transitive or floating range is rejected.</statement>
+      <rationale source="Radix UI packaging model">The copied JSX is only the styled shell; the focus trap, roving tabindex, dismissable layer and portal live in the Radix package. An unpinned bump therefore changes keyboard and focus behaviour with zero diff in the repo, so the regression is invisible to code review and only surfaces in an a11y or interaction test.</rationale>
+    </rule>
+
+    <rule id="no-app-logic-under-components-ui" testable="true" depth="essential">
+      <statement>Files under the `ui` alias directory MUST NOT contain data fetching, router imports, auth checks, or app-domain types. Feature composition lives under `components/&lt;feature&gt;/` and imports the primitive.</statement>
+      <rationale source="shadcn/ui project-structure guidance">The `ui` directory is the CLI's write target: an `add` or update writes the upstream shape over whatever is there. Business logic embedded in a primitive is therefore both destroyed on the next add and impossible to reuse on a second route, which is the failure that produces `button.tsx`, `button-2.tsx` and a copy in the feature folder.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
-    </rule>
-
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml`, emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-shadcn-ui.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+      <statement>Do NOT apply when (a) the project has no Tailwind &#8212; shadcn variants are Tailwind utility strings and there is nothing to compile them against; (b) supply-chain policy requires every UI dependency to be a versioned, auditable npm package, since vendored source has no version, no advisory feed and no `npm audit` surface; (c) the stack is not React with a bundler that resolves the configured path aliases.</statement>
+      <rationale source="Methodology preconditions">Vendoring trades dependency risk for maintenance ownership. Under a policy that audits by package version, vendored components are invisible to the audit &#8212; they pass review because nothing scans them, which is a worse position than an unpatched dependency that at least appears in a report.</rationale>
     </rule>
 
   </section>

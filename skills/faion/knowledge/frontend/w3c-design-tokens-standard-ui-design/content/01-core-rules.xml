@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="W3C Design Tokens Standard Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the W3C Design Tokens Standard methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+<text id="01-core-rules" title="W3C Design Tokens Standard Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules on the DTCG format itself: `$value`/`$type` and type inheritance, reserved `$` and forbidden name characters, alias resolution, draft-revision pinning, composite token structure, and file identity. Each is checkable by opening the `.tokens.json` file.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &gt;=1 verbatim citation from an auditable source (URL, transcript_id, ticket id, dashboard snapshot). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for W3C Design Tokens Standard">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="every-token-resolves-a-type" testable="true" depth="essential">
+      <statement>Every token object MUST have `$value`, and MUST resolve a `$type` either on itself or on the nearest ancestor group that declares one. A token whose type cannot be resolved by walking up the group chain is invalid.</statement>
+      <rationale source="W3C Design Tokens Community Group format spec &#8212; Design token / Type">Type is what every downstream transform keys on: it decides whether a value becomes `UIColor`, a Compose `Color`, or a CSS `oklch()` string. An untyped token falls through the transform table and is emitted as a raw string, so the platform build succeeds and ships a literal `{...}` or an unconverted hex into a place that cannot render it.</rationale>
     </rule>
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+
+    <rule id="dollar-reserved-and-name-charset" testable="true" depth="essential">
+      <statement>Group and token names MUST NOT begin with `$`, and MUST NOT contain `{`, `}` or `.`. Any object key starting with `$` that is not a spec-defined property (`$value`, `$type`, `$description`, `$extensions`, `$deprecated`) is invalid.</statement>
+      <rationale source="DTCG format spec &#8212; Groups / Character restrictions">`$` is the namespace the spec reserves for its own properties, so a group named `$brand` is indistinguishable from a format key and a strict parser either drops it or errors. `.` is the alias path delimiter, so a token literally named `color.brand` can never be referenced &#8212; `{color.brand}` resolves as a two-level path into a group that does not exist.</rationale>
     </rule>
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="aliases-point-at-tokens-not-groups" testable="true" depth="essential">
+      <statement>References MUST use the full-string brace form `"{group.subgroup.token}"` as the entire `$value`, MUST terminate at a token (never a group), MUST NOT form a cycle, and the resolved `$type` MUST match the referencing token's type.</statement>
+      <rationale source="DTCG format spec &#8212; Aliases / references">A group has no `$value`, so a reference to one resolves to `undefined`. Most tooling does not fail on that: it writes the unresolved literal `{color.brand}` into the output, producing a CSS declaration the browser discards as invalid at parse time &#8212; no build error, no console warning, just the property silently missing.</rationale>
     </rule>
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (commit, send, ramp, freeze, escalation, ledger write, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+
+    <rule id="draft-revision-pinned" testable="true" depth="essential">
+      <statement>The artefact MUST record which DTCG draft revision (date or commit) it targets, and the validator/transform toolchain MUST be pinned to a version that implements that revision.</statement>
+      <rationale source="DTCG format spec status &#8212; Community Group draft, not a W3C Recommendation">The `$value` shape for `color` and `dimension` changed across drafts &#8212; from plain strings (`"#ff0000"`, `"16px"`) to structured objects (`colorSpace`/`components`/`alpha`; `{ value, unit }`). A parser built for one revision rejects or silently mis-reads the other, and because both forms are valid JSON the error surfaces deep inside the platform build rather than at validation.</rationale>
     </rule>
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+
+    <rule id="composite-values-are-structured-not-shorthand" testable="true" depth="essential">
+      <statement>Composite types (`typography`, `border`, `shadow`, `transition`, `gradient`, `strokeStyle`) MUST express `$value` as an object of named sub-values, each itself a valid token value or an alias. CSS shorthand strings such as `"1px solid #000"` or `"600 16px/1.5 Inter"` are rejected.</statement>
+      <rationale source="DTCG format spec &#8212; Composite types">A shorthand is a CSS-specific serialisation, and it collapses exactly the structure the format exists to preserve. Android needs the width in dp and the colour as a packed int; iOS needs a `CGFloat` and a `UIColor`. Neither can be derived without re-parsing a string whose grammar the transform does not own, so shorthand composites are either dropped or hand-duplicated per platform &#8212; which is the drift tokens were adopted to remove.</rationale>
     </rule>
+
+    <rule id="file-identity-and-vendor-extensions" testable="true" depth="essential">
+      <statement>Token files MUST use the `.tokens` or `.tokens.json` extension (media type `application/design-tokens+json`), and all vendor-specific data MUST live under `$extensions` keyed in reverse-domain form (`com.figma.*`, `net.faion.*`). Vendor keys placed directly on a token object are rejected.</statement>
+      <rationale source="DTCG format spec &#8212; File format / $extensions">Tooling discovers token files by extension, so a `theme.json` is simply not picked up by the pipeline that was pointed at the directory. Un-namespaced vendor keys are worse: they occupy the same key space the spec may later define, so a strict parser drops them today and a future revision may reinterpret them, in both cases without an error.</rationale>
+    </rule>
+
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+      <statement>Do NOT apply when (a) exactly one platform consumes the tokens and there is no design-tool round-trip &#8212; plain CSS custom properties in one file are cheaper and lose nothing; (b) the transform tool in use has no DTCG support, in which case document its native schema rather than authoring a format nothing in the pipeline reads; (c) no build step consumes the file at all and the "tokens" are hand-copied into stylesheets.</statement>
+      <rationale source="Methodology preconditions">The DTCG format's value is interchange &#8212; one authored source feeding multiple platform transforms and a design tool. With a single consumer and no transform, the format adds a JSON layer plus a build step in front of the only file anyone edits, and the JSON drifts from the stylesheet as soon as one hotfix skips it.</rationale>
     </rule>
 
   </section>

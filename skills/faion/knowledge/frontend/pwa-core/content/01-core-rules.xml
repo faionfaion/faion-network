@@ -1,47 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="PWA Core Architecture Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the PWA Core Architecture methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="PWA Core Architecture Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules on Service Worker scope and registration, Web App Manifest identity and icons, Workbox strategy-per-route-shape, and the update flow. Each is checkable against sw.js, manifest.json and the registration module; the last rule is the routing/skip leaf.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for PWA Core Architecture">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="sw-served-from-scope-root" testable="true" depth="essential">
+      <statement>`sw.js` MUST be served from the origin root (`/sw.js`) with `Cache-Control: no-cache` (or `max-age=0`). Serving it from `/static/`, `/assets/` or any build subdirectory is rejected unless the response also carries `Service-Worker-Allowed: /`.</statement>
+      <rationale source="W3C Service Workers spec &#8212; scope + Service-Worker-Allowed header">Default scope is the path of the script URL, so `/static/sw.js` can only intercept fetches under `/static/`; navigations to `/` are never controlled and the app appears to have no offline support at all. A long-cached `sw.js` is worse: the browser byte-compares the script to decide whether an update exists, so a stale cached copy pins the app to an old precache manifest indefinitely.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="manifest-id-immutable" testable="true" depth="essential">
+      <statement>The manifest MUST declare an explicit `id` and it MUST NOT change after the first public release. `start_url` may change; `id` may not.</statement>
+      <rationale source="W3C Web App Manifest &#8212; `id` member">App identity is the `id` resolved against the manifest URL. With no `id`, identity falls back to `start_url`, so a routing change silently re-keys the app: the browser treats it as a second application, the existing home-screen shortcut keeps pointing at the old identity, and the install prompt reappears for users who already installed.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="maskable-icon-and-install-sizes" testable="true" depth="essential">
+      <statement>`icons` MUST include a 192x192 and a 512x512 PNG, and at least one entry with `purpose` containing `maskable`. Shipping every icon as `purpose: "any"` only is rejected.</statement>
+      <rationale source="W3C Web App Manifest `purpose` + Chromium installability criteria">Android composites the icon inside a platform-chosen mask; an icon drawn edge-to-edge instead of inside the ~80% safe zone gets its logo clipped on the home screen. The 192/512 pair is the installability gate &#8212; missing it removes the install prompt entirely with no console error.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="strategy-per-route-shape" testable="true" depth="essential">
+      <statement>Route strategies MUST be assigned by response shape: `NetworkFirst` with `networkTimeoutSeconds: 3` for navigations and `/api/*`; `CacheFirst` + `ExpirationPlugin` for images and fonts; `StaleWhileRevalidate` for content-hashed JS/CSS. Authenticated HTML and per-user API JSON MUST NOT be precached.</statement>
+      <rationale source="Workbox strategies documentation">A Cache Storage entry is keyed by request URL and carries no identity, so `CacheFirst` on a personalised response serves the previous user's HTML after logout on a shared device. `NetworkFirst` without a timeout is equivalent to network-only on a captive or transit connection: the request hangs on TCP rather than failing, so the cached fallback is never reached and the user sees a spinner instead of the offline shell.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="update-prompt-not-auto-skipwaiting" testable="true" depth="essential">
+      <statement>A waiting worker MUST be surfaced as a user-initiated reload: detect via `registration.addEventListener('updatefound')` &#8594; `installing.state === 'installed'` while `navigator.serviceWorker.controller` is non-null, then reload on `controllerchange` after the user accepts. Unconditional `self.skipWaiting()` inside `install` is forbidden.</statement>
+      <rationale source="Service Worker lifecycle / Workbox advanced recipes">`skipWaiting()` activates the new worker under an already-loaded page. That page then lazy-loads content-hashed chunks belonging to the previous build, which the new precache has just deleted, producing ChunkLoadError mid-session. Reloading without asking additionally discards in-flight form state.</rationale>
+    </rule>
+
+    <rule id="register-once-outside-react-effects" testable="true" depth="essential">
+      <statement>`navigator.serviceWorker.register()` MUST be called exactly once from a bootstrap module (`main.ts` / `index.html`), never inside a React `useEffect`. The deferred `beforeinstallprompt` event MUST be stored at module scope, not in component state of a remountable component.</statement>
+      <rationale source="React 18 StrictMode + BeforeInstallPromptEvent semantics">StrictMode double-invokes effects in development, producing two registrations and duplicated lifecycle events that make update debugging unreliable. `beforeinstallprompt` fires once per page load, so a component that unmounts before the user clicks Install loses the only reference to it and the install button becomes permanently inert.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
-    </rule>
-
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml`, emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-pwa-core.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+      <statement>Do NOT apply when (a) iOS Safari is the primary target and the requirement depends on Background Sync or offline data surviving more than 7 days &#8212; WebKit has no Background Sync API and evicts script-writable storage (IndexedDB, Cache Storage) after 7 days without user interaction; (b) the app is hard real-time (live trading, conferencing) where SW cache coherence adds risk with no offline upside; (c) a native shell (Capacitor, Tauri, React Native) already owns caching and install.</statement>
+      <rationale source="WebKit ITP storage policy + methodology preconditions">Promising offline behaviour on a platform that evicts the cache produces the worst outcome: the app works in testing, then silently loses the user's queued data after a week of non-use, which is indistinguishable from data loss.</rationale>
     </rule>
 
   </section>
 
   <see-also>
+    <link path="content/01-rules.xml"/>
+    <link path="content/02-patterns.xml"/>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
     <link path="content/06-decision-tree.xml"/>

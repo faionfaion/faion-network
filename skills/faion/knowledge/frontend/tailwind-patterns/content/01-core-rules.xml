@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Tailwind Patterns with CVA Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the Tailwind Patterns with CVA methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="Tailwind Patterns with CVA Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules on variant definition with `cva()`, literal class names for the Tailwind scanner, conflict-safe merging with `cn()`/tailwind-merge, compound variants, and defaults. Each is checkable by reading the component file and the merge utility.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Tailwind Patterns with CVA">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="variants-declared-in-one-cva-call" testable="true" depth="essential">
+      <statement>A reusable component's class logic MUST live in a single `cva(base, { variants, defaultVariants })` call at module scope, with `export type Props = VariantProps&lt;typeof componentVariants&gt;` feeding the component's prop types. Chains of ternaries in JSX are rejected.</statement>
+      <rationale source="class-variance-authority documentation">`VariantProps` derives the prop union from the variant keys, so an unknown value fails at type-check instead of rendering silently unstyled. Ternaries in JSX carry no type relationship to the class strings, so a renamed variant compiles cleanly and produces a component with no intent classes at all.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="class-names-always-complete-literals" testable="true" depth="essential">
+      <statement>Class names MUST appear as complete literal strings in source. Interpolation such as `` `text-${intent}-500` `` or `` `p-${size}` `` is rejected; use a lookup object whose values are full class strings.</statement>
+      <rationale source="Tailwind CSS &#8212; Dynamic class names / content detection">The scanner reads source files as plain text and matches complete candidate strings; it does not execute the module. A constructed name is therefore never emitted into the stylesheet. The bug is intermittent, because the class often exists in the build anyway thanks to an unrelated component &#8212; so it works in dev and disappears when that other component is deleted.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="cn-puts-consumer-classname-last" testable="true" depth="essential">
+      <statement>The merge helper MUST be `cn(...inputs) =&gt; twMerge(clsx(inputs))` and the call order MUST be `cn(componentVariants({ ... }), className)` &#8212; component classes first, incoming `className` last.</statement>
+      <rationale source="tailwind-merge &#8212; last-wins per conflict group">`twMerge` keeps the last class within each conflict group and drops earlier ones. Reversing the order means the component's own `px-4` is kept and the caller's `px-2` is deleted, so the override appears to do nothing and the caller escalates to `!important` &#8212; which then defeats every future override.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="twmerge-extended-for-custom-scales" testable="true" depth="essential">
+      <statement>Custom utilities, custom scale keys and plugin-generated classes (e.g. `text-display-lg`, `shadow-card`) MUST be registered via `extendTailwindMerge({ extend: { classGroups: ... } })`, and that extended instance MUST be the one `cn()` uses.</statement>
+      <rationale source="tailwind-merge &#8212; configuration / class groups">`twMerge` resolves conflicts from a static map of class groups built for the default Tailwind config; it does not read your `tailwind.config` or `@theme` block. An unregistered custom class is classified as non-conflicting, so both `text-display-lg` and the caller's `text-sm` survive in the attribute and the winner is decided by stylesheet order &#8212; exactly the drift the utility was added to eliminate.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="cross-axis-cases-in-compound-variants" testable="true" depth="essential">
+      <statement>Combinations that are not the independent product of two axes MUST go in `compoundVariants` (matching on multiple variant keys), never encoded as a fused key such as `variant: "destructive-outline"`.</statement>
+      <rationale source="class-variance-authority &#8212; compoundVariants">Fused keys make the variant set the Cartesian product: adding one size to an N-intent component requires authoring N new keys and updating every call site. Orthogonal axes plus compound overrides keep the additive cost at one entry, and the exception is visible as an exception rather than hidden inside a name.</rationale>
+    </rule>
+
+    <rule id="default-variants-cover-every-axis" testable="true" depth="essential">
+      <statement>Every `cva` call MUST declare `defaultVariants` with a value for each variant axis, and the corresponding component props MUST be optional.</statement>
+      <rationale source="class-variance-authority &#8212; defaultVariants">With no default, an omitted prop is `undefined`, cva matches no branch for that axis and emits only the base classes. The component renders &#8212; with no size or intent styling &#8212; rather than failing, so the regression reaches production as "the button looks wrong on one page" instead of a build error.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
-    </rule>
-
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml`, emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-tailwind-patterns.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+      <statement>Do NOT apply when (a) the codebase has fewer than ~5 reusable, multi-variant components &#8212; a single-use component's ternary is cheaper than a variant schema; (b) styling is CSS-in-JS or vanilla-extract, whose own recipe/variant APIs already provide typed variants and scoped class names; (c) Tailwind is not in the build pipeline at all.</statement>
+      <rationale source="Methodology preconditions">`cva` + `tailwind-merge` buys type-safety and conflict resolution at the cost of indirection. Below the reuse threshold there are no conflicts to resolve, so the abstraction only moves the class strings one file away from where they are read.</rationale>
     </rule>
 
   </section>

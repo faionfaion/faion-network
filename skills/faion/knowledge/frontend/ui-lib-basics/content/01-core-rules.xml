@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="UI Component Library Basics Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the UI Component Library Basics methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="UI Component Library Basics Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules on the token bridge, per-component file layout and public surface, DOM prop and ref forwarding, story coverage per state, and the two CI gates (axe + visual regression). Each is checkable against the package tree and the CI config.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for UI Component Library Basics">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="styles-reference-tokens-never-literals" testable="true" depth="essential">
+      <statement>Component styles MUST reference semantic token names exposed as CSS custom properties (`var(--color-surface-default)`, `var(--space-3)`). Literal hex colours, `rgb()` values and raw pixel spacing inside a component file are rejected &#8212; grep for `#[0-9a-fA-F]{3,8}` in the component directory MUST return zero hits.</statement>
+      <rationale source="Design-token practice / CSS custom property cascade">A custom property resolves against the scope it is read in, so a theme or dark-mode class on an ancestor re-values every consumer at once. A literal cannot participate in that cascade, so a theme flip leaves islands of the old palette in exactly the components nobody re-audited &#8212; and those islands are invisible in the light theme where they were authored.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="component-dir-with-barrel-only-public-surface" testable="true" depth="essential">
+      <statement>Each component occupies one directory containing `&lt;Name&gt;.tsx`, `&lt;Name&gt;.stories.tsx`, `&lt;Name&gt;.test.tsx` and `index.ts`. The package's `exports` map MUST expose only the barrel; consumer code MUST NOT deep-import internal file paths.</statement>
+      <rationale source="Node.js package `exports` field / library packaging practice">Without an `exports` map every internal path is part of the public API by accident. A consumer that imports `dist/Button/Button.internal.js` turns an internal rename into a breaking change that no semver bump signals, because the maintainer had no way to know the path was load-bearing.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="rest-props-and-ref-forwarded-to-dom" testable="true" depth="essential">
+      <statement>Every primitive wrapping a native element MUST spread `...rest` onto that element and forward its `ref` (via `forwardRef`, or the `ref`-as-prop form on React 19+). Hand-picking a prop allowlist is rejected.</statement>
+      <rationale source="React ref forwarding + WAI-ARIA attribute delivery">Positioning libraries, focus managers and `react-hook-form`'s `register()` all need the DOM node; without a forwarded ref they attach to nothing and fail silently. A prop allowlist drops whatever the author did not anticipate &#8212; `aria-describedby`, `data-testid`, and most damagingly `type="submit"`, so the button renders correctly and stops submitting the form.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="story-per-variant-and-state" testable="true" depth="essential">
+      <statement>Each primitive MUST have a story for every variant crossed with every interaction state it supports: default, hover, focus-visible, disabled, loading, and error/invalid. States are forced via story parameters or `pseudo` decorators, not left to manual interaction.</statement>
+      <rationale source="Storybook / visual-regression tooling (Chromatic, Percy) capture model">Snapshot tools diff only what a story renders. A state with no story is outside the baseline entirely, so a regression in the disabled or focus-visible appearance passes CI green &#8212; and those are precisely the states a token rename breaks first, because nobody looks at them by hand.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="axe-gate-blocks-on-serious-and-critical" testable="true" depth="essential">
+      <statement>CI MUST run axe-core across every story (`@storybook/addon-a11y` with the test-runner, `@axe-core/playwright`, or `jest-axe`) and fail the build on any violation of impact `serious` or `critical`. A non-blocking report is not a gate.</statement>
+      <rationale source="Deque axe-core rule impact levels + WCAG machine-checkable subset">axe detects only the machine-checkable subset of WCAG, but that subset &#8212; missing accessible name, insufficient contrast, invalid ARIA attribute combinations &#8212; is exactly the class of defect introduced mechanically by a token rename or a dropped prop. Gating there catches the regressions a human reviewer cannot see in a diff, while leaving the judgement calls (focus order, meaningful labels) to review.</rationale>
+    </rule>
+
+    <rule id="visual-baselines-on-a-pinned-runner" testable="true" depth="essential">
+      <statement>Visual-regression baselines MUST be captured in a pinned environment: fixed browser version, fixed container image, fixed fonts (self-hosted, not system), fixed device-pixel-ratio and viewport. Baselines recorded on a developer machine are rejected.</statement>
+      <rationale source="Screenshot-diffing practice (Chromatic / Playwright toolchain guidance)">Font rasterisation and subpixel antialiasing differ between macOS and Linux, so an unpinned runner produces sub-threshold diffs on unrelated PRs. The team's response is always to raise the diff threshold or mute the check, at which point the gate exists in the config and nowhere else.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
-    </rule>
-
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml`, emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-ui-lib-basics.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+      <statement>Do NOT apply when (a) exactly one application consumes the components and no second consumer is planned &#8212; ship them in-app and extract later; (b) an external design system (MUI, Mantine, Radix Themes) already covers the required surface, in which case build composition and theming on top rather than re-authoring primitives; (c) no design tokens exist yet and none are being defined &#8212; author the token set first, since a library built on literals cannot be retrofitted onto tokens without touching every file.</statement>
+      <rationale source="Methodology preconditions">A library is an API contract plus two CI gates. With a single consumer the contract costs a version-bump ceremony and buys nothing, because the only caller can be edited in the same commit as the change.</rationale>
     </rule>
 
   </section>
