@@ -233,13 +233,24 @@ def main() -> int:
     findings: list[str] = []
     for pack in every_pack:
         for path in fragment_files(pack):
-            if path.stem in all_names:
-                findings.append(
-                    f"{pack.name}/{path.name}: name {path.stem!r} already ships at "
-                    f"{all_names[path.stem].relative_to(FRAGMENTS)} — corpus names "
-                    "are flat, so the reference is ambiguous")
-            else:
-                all_names[path.stem] = path
+            all_names[path.stem] = path
+
+    # The corpus namespace is the basename minus its last extension, flat
+    # over every packable file under the prefix — `.md` and `.xml`, since
+    # those are what vfs-pack ships. So a per-pack INDEX.xml would collide
+    # with the library one exactly the way a duplicated fragment name does.
+    seen: dict[str, Path] = {}
+    for path in sorted(FRAGMENTS.rglob("*")):
+        if not path.is_file() or path.suffix not in (".md", ".xml"):
+            continue
+        name = path.name[: -len(path.suffix)]
+        if name in seen:
+            findings.append(
+                f"{path.relative_to(FRAGMENTS)}: corpus name {name!r} already "
+                f"ships at {seen[name].relative_to(FRAGMENTS)} — names are flat "
+                "over the whole prefix, so the reference is ambiguous")
+        else:
+            seen[name] = path
 
     targets = ([Path(d).resolve() for d in args.dirs] if args.dirs else every_pack)
     for target in targets:
