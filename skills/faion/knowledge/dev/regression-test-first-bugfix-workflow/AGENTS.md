@@ -63,7 +63,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/skeleton.md` | Workflow record skeleton with sections alert / red-test / fix / verification / review. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, alert_url, fix_pr_url, last_reviewed. |
 
 ## Scripts
 

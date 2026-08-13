@@ -61,6 +61,8 @@
 | `templates/pattern-constrained-string.py` | Constrained string with format + example |
 | `templates/_smoke-test.json` | Minimum valid extracted record for self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,66 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The root question asks whether the field has non-trivial semantics. Branches then ask whether format/units are obvious, whether edge cases exist, whether the model has mis-filled before. Each leaf gives the description-shape rule that should be applied.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pattern-numeric.py`
+
+```python
+"""Numeric-with-units template — total in cents, integer."""
+
+from pydantic import BaseModel, Field
+
+
+class Total(BaseModel):
+    total_cents: int = Field(
+        ge=0,
+        description=(
+            "Total in CENTS as integer. $19.99 -> 1999. "
+            "Never include currency symbol or decimals. Includes tax."
+        ),
+    )
+```
+
+### `templates/pattern-constrained-string.py`
+
+```python
+"""Constrained-string template — slug from title."""
+
+from pydantic import BaseModel, Field
+
+
+class Article(BaseModel):
+    title: str
+    slug: str = Field(
+        pattern=r"^[a-z0-9-]{1,60}$",
+        description=(
+            "kebab-case slug, max 60 chars, ASCII lowercase. Derived from `title`. "
+            "DO NOT include articles (a/an/the). DO NOT include the year unless "
+            "`title` mentions it. DO NOT use special characters or emoji."
+        ),
+    )
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "smallest valid audit-report for the validator",
+  "_consumes": "nothing",
+  "_produces": "example audit report matching the schema",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "~70 tokens",
+  "schema_id": "extraction/Article",
+  "fields_audited": 6,
+  "issues": [
+    {
+      "field": "title",
+      "kind": "too-vague",
+      "suggestion": "Sharp 6-10 word title derived from body. No clickbait."
+    }
+  ]
+}
+```

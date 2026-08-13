@@ -67,6 +67,8 @@
 | `templates/retrospective.md` | Retro template with mandatory action items. |
 | `templates/standup-bot.yaml` | Standup bot config. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,20 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals from the agile-ceremonies-setup input (precondition checks, scale thresholds, evidence presence) to a concrete action, with each leaf referencing a rule id from `01-core-rules.xml`. Consult it whenever the methodology could branch based on context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/standup-bot.yaml`
+
+```yaml
+team: <team-slug>
+channel: <slack/#stand-up>
+schedule: 0 9 * * MON-FRI
+questions:
+  - "Yesterday I shipped (link/PR/ticket):"
+  - "Today I focus on (one priority):"
+  - "I am blocked by (named blocker or 'none'):"
+skip_on_holiday: true
+```

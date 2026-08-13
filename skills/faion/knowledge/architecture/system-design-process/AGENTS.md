@@ -70,6 +70,8 @@
 | `templates/c4-context.mmd` | C4 L1 (system context) Mermaid skeleton. |
 | `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,22 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (brief, stakeholders, constraints, current diagrams)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/c4-context.mmd`
+
+```mermaid
+# faion_header_json: {"__faion_header__":{"purpose":"C4 L1 (system context) Mermaid skeleton.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#r1-numeric-nfrs","token_budget_impact":"~150 tokens when loaded"}}
+C4Context
+    title System Context
+    Person(user, "User")
+    System(svc, "My Service", "Description")
+    System_Ext(idp, "Identity Provider")
+    System_Ext(payments, "Payments")
+    Rel(user, svc, "Uses")
+    Rel(svc, idp, "AuthN")
+    Rel(svc, payments, "Charges")
+```

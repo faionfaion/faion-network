@@ -70,6 +70,8 @@
 | `templates/turbo.json` | Turborepo pipeline config with cached outputs |
 | `templates/tsconfig-base.json` | Shared tsconfig referenced by package tsconfigs |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,101 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps repo size, language scope, and caching payoff to a rule from `01-core-rules.xml`, telling the agent whether to apply Turborepo or skip for single-package / polyglot cases. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pnpm-workspace.yaml`
+
+```yaml
+packages:
+  - 'apps/*'
+  - 'packages/*'
+  - 'tools/*'
+```
+
+### `templates/turbo.json`
+
+```json
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    "**/.env.*local"
+  ],
+  "globalEnv": [
+    "NODE_ENV"
+  ],
+  "remoteCache": {
+    "signature": true
+  },
+  "tasks": {
+    "build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "env": [
+        "NEXT_PUBLIC_API_URL"
+      ],
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "!.next/cache/**"
+      ]
+    },
+    "lint": {
+      "dependsOn": [
+        "^build"
+      ]
+    },
+    "typecheck": {
+      "dependsOn": [
+        "^build"
+      ]
+    },
+    "test": {
+      "dependsOn": [
+        "build"
+      ],
+      "outputs": [
+        "coverage/**"
+      ]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "clean": {
+      "cache": false
+    }
+  }
+}
+```
+
+### `templates/tsconfig-base.json`
+
+```json
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
+    "target": "ES2022",
+    "lib": [
+      "ES2022"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  }
+}
+```

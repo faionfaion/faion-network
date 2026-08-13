@@ -61,6 +61,8 @@
 | `templates/idempotent_tool.py` | Reference Python implementation (Pydantic + key store) for a write tool with replay semantics |
 | `templates/_smoke-test.json` | Minimum valid idempotent-tool call body |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,69 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The root question is whether the tool mutates state. Branches then route to: no-key (pure read), key-required (write), or preview+apply pair (destructive/expensive). Each leaf maps to a rule.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/idempotent_tool.py`
+
+```python
+"""Reference idempotent write tool.
+
+Contract:
+- `idempotency_key` is REQUIRED and supplied by the agent (not generated here).
+- Result is persisted in `key_store` for ttl_seconds; replays return stored result.
+- Read tools never take the key — keep their schema clean.
+"""
+from __future__ import annotations
+
+import time
+from dataclasses import dataclass
+from typing import Any, Protocol
+
+
+class KeyStore(Protocol):
+    def get(self, key: str) -> Any | None: ...
+    def set(self, key: str, value: Any, ttl_seconds: int) -> None: ...
+
+
+@dataclass
+class WriteResult:
+    ok: bool
+    data: dict
+    replayed: bool = False
+
+
+def idempotent_write(
+    *,
+    idempotency_key: str,
+    payload: dict,
+    perform: callable,        # pure side-effect callable
+    store: KeyStore,
+    ttl_seconds: int = 86400,
+) -> WriteResult:
+    if not idempotency_key:
+        raise ValueError("idempotency_key is required for write tools")
+
+    if hit := store.get(idempotency_key):
+        return WriteResult(ok=True, data=hit, replayed=True)
+
+    data = perform(payload)
+    store.set(idempotency_key, data, ttl_seconds=ttl_seconds)
+    return WriteResult(ok=True, data=data, replayed=False)
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "smallest valid apply call for the validator",
+  "_consumes": "nothing",
+  "_produces": "example apply input matching content/02-output-contract.xml",
+  "_depends_on": "content/01-core-rules.xml",
+  "_token_budget_impact": "~50 tokens",
+  "preview_hash": "sha256:abc123abc123abc123abc123abc123abc123abc123abc123abc123abc123abc1",
+  "idempotency_key": "deploy-2026-04-25-001"
+}
+```

@@ -66,6 +66,8 @@
 | `templates/feature-spec.json` | Reference output document for a feature. |
 | `templates/context-provider.tsx` | AuthProvider + useAuth pattern reference. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,119 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree first asks whether the feature has shared state across more than two component levels: yes → Context provider with memoized value and null-sentinel hook; no → prop-drill. When an external store already owns the slice, the tree routes there instead of creating a parallel Context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/feature-spec.json`
+
+```json
+{
+  "_purpose": "Reference feature-module spec output for one React feature.",
+  "_consumes": "Feature brief + slices + existing folder convention.",
+  "_produces": "JSON for downstream codegen / review.",
+  "_depends-on": "content/02-output-contract.xml.",
+  "_token-budget-impact": "~120 tokens.",
+  "artefact_id": "auth-feature-spec",
+  "owner": "ruslan@faion.net",
+  "feature_name": "auth",
+  "react_version": "^19.0.0",
+  "folder_tree": [
+    "src/features/auth/AuthProvider.tsx",
+    "src/features/auth/api.ts",
+    "src/features/auth/components/LoginForm.tsx",
+    "src/features/auth/hooks/useAuth.ts",
+    "src/features/auth/types.ts"
+  ],
+  "components": [
+    {
+      "name": "AuthProvider",
+      "props_interface": "AuthProviderProps",
+      "declaration": "function-declaration"
+    },
+    {
+      "name": "LoginForm",
+      "props_interface": "LoginFormProps",
+      "declaration": "function-declaration"
+    }
+  ],
+  "context": {
+    "name": "AuthContext",
+    "null_sentinel": true,
+    "value_memoized": true,
+    "consumer_hook": "useAuth"
+  },
+  "state_routing": [
+    {
+      "slice": "currentUser",
+      "layer": "shared-context"
+    },
+    {
+      "slice": "loginForm",
+      "layer": "form"
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```
+
+### `templates/context-provider.tsx`
+
+```tsx
+import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+
+export interface User {
+  id: string;
+  email: string;
+}
+
+export interface Credentials {
+  email: string;
+  password: string;
+}
+
+export interface AuthContextValue {
+  user: User | null;
+  isAuthenticated: boolean;
+  login: (credentials: Credentials) => Promise<void>;
+  logout: () => void;
+}
+
+// rule r4-context-null-sentinel: initialise with null, throw in the consumer hook.
+const AuthContext = createContext<AuthContextValue | null>(null);
+
+export interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export function AuthProvider({ children }: AuthProviderProps) {
+  const [user, setUser] = useState<User | null>(null);
+
+  const login = useCallback(async (_credentials: Credentials) => {
+    // call the api here
+    setUser({ id: 'u-1', email: _credentials.email });
+  }, []);
+
+  const logout = useCallback(() => {
+    setUser(null);
+  }, []);
+
+  // rule r5-memoize-provider-value: stable reference for consumers.
+  const value = useMemo<AuthContextValue>(
+    () => ({ user, isAuthenticated: user !== null, login, logout }),
+    [user, login, logout],
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+export function useAuth(): AuthContextValue {
+  const ctx = useContext(AuthContext);
+  if (ctx === null) {
+    throw new Error('useAuth must be used within <AuthProvider>');
+  }
+  return ctx;
+}
+```

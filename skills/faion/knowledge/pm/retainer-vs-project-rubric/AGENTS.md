@@ -70,6 +70,8 @@
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum viable filled `EngagementRubric` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,70 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps aggregated rubric total to retainer / project / hybrid / decline. Every leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+owner:
+  role: ""
+  person: ""
+last_reviewed: ""
+version: ""
+reviewers: []
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "opportunity_id": "smoke",
+  "header": {
+    "owner": {
+      "role": "founder",
+      "person": "founder-handle"
+    },
+    "last_reviewed": "2026-05-10",
+    "version": "1.0",
+    "reviewers": [
+      "founder",
+      "partner"
+    ]
+  },
+  "dimensions": [
+    {
+      "dimension_id": "predictability",
+      "name": "Predictability of work",
+      "score": 4,
+      "anchor_text": "Recurring monthly cadence with stable shape",
+      "evidence": "brief#cadence"
+    },
+    {
+      "dimension_id": "churn_risk",
+      "name": "Churn risk",
+      "score": 3,
+      "anchor_text": "Stakeholder change every 12mo",
+      "evidence": "brief#stakeholders"
+    },
+    {
+      "dimension_id": "scope_creep_risk",
+      "name": "Scope creep risk",
+      "score": 3,
+      "anchor_text": "Some out-of-SOW history",
+      "evidence": "transcript-2026-04"
+    },
+    {
+      "dimension_id": "margin_profile",
+      "name": "Margin profile",
+      "score": 4,
+      "anchor_text": "28% margin estimate",
+      "evidence": "p_and_l-est.pdf"
+    }
+  ],
+  "aggregate_score": 14,
+  "recommendation": "project"
+}
+```

@@ -63,6 +63,8 @@
 | `templates/trello-kanban.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/trello-kanban.md` | Markdown skeleton for human-readable artefact rendering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[notion-pm]]
@@ -71,3 +73,50 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/trello-kanban.json`
+
+```json
+{
+  "artefact_id": "trello-kanban-ops-2026-q2",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "board_url": "https://trello.com/b/abc/ops",
+  "columns": [
+    "Backlog",
+    "Ready",
+    "In Progress",
+    "Review",
+    "Done"
+  ],
+  "wip_limits": {
+    "Ready": 8,
+    "In Progress": 6,
+    "Review": 5
+  },
+  "labels": [
+    "bug",
+    "feat",
+    "ops",
+    "sales",
+    "onboarding",
+    "billing"
+  ],
+  "powerups": [
+    "calendar",
+    "github"
+  ],
+  "butler_rules": [
+    {
+      "name": "auto-archive-done-30d",
+      "trigger": "card in Done >30d",
+      "action": "archive"
+    }
+  ],
+  "owner": "@ruslan"
+}
+```

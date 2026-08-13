@@ -72,6 +72,8 @@
 | `templates/supabase-stack.md` | Markdown spec listing posture per surface. |
 | `templates/_smoke-test.json` | Filled-in minimum viable stack spec for validator smoke-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,74 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree checks preconditions, then RLS posture, then policy permissiveness, then migration discipline, then bucket / Realtime privacy. Every leaf maps to a rule id from `content/01-core-rules.xml`, with skip-this-methodology as the default for non-Supabase stacks.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rls-audit.sql`
+
+```sql
+SELECT n.nspname AS schema,
+       c.relname AS table,
+       c.relowner::regrole AS owner,
+       c.relrowsecurity AS rls_enabled
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE c.relkind = 'r'
+  AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+  AND c.relrowsecurity = false
+ORDER BY schema, table;
+```
+
+### `templates/policy-template.sql`
+
+```sql
+-- Enable RLS
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+
+-- Select own
+CREATE POLICY orders_select_own ON public.orders
+FOR SELECT
+USING (auth.uid() = user_id);
+
+-- Insert own
+CREATE POLICY orders_insert_own ON public.orders
+FOR INSERT
+WITH CHECK (auth.uid() = user_id);
+
+-- Tenant-scoped
+CREATE POLICY tenants_select_by_role ON public.tenants
+FOR SELECT
+USING (tenant_id = current_setting('app.current_tenant', true)::uuid);
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "tables": [
+    {
+      "name": "orders",
+      "rls_enabled": true,
+      "policies": [
+        "select_own: auth.uid() = user_id"
+      ]
+    }
+  ],
+  "buckets": [
+    {
+      "name": "invoices",
+      "private": true
+    }
+  ],
+  "migrations_path": "supabase/migrations/",
+  "realtime_channels": [
+    {
+      "name": "orders:by-tenant",
+      "payload_columns_reviewed": true
+    }
+  ],
+  "owner": "ruslan@faion.net"
+}
+```

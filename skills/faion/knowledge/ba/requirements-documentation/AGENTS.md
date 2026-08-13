@@ -73,7 +73,6 @@
 | `templates/br-record.md` | Business requirement record. |
 | `templates/sh-record.md` | Stakeholder requirement record. |
 | `templates/sr-record.md` | Solution requirement record (FR/NFR). |
-| `templates/spec-frontmatter.yaml` | Frontmatter schema for all requirement records. |
 | `templates/_smoke-test.md` | Minimum filled-in BR/SH/SR triple. |
 
 ## Scripts

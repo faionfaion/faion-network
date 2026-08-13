@@ -68,6 +68,8 @@
 | `templates/model-selection-record.md` | Decision-record Markdown skeleton. |
 | `templates/litellm-router.py` | LiteLLM complexity-based router config snippet. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,37 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree walks two axes. Approach axis: is the data private/changing-frequently/cite-required → RAG; is behavior (writing style, persona, jargon) the specialization need AND volume ≥1M/month → fine-tune; otherwise prompt. Model axis (conditional on approach): simple extraction/classification → Haiku/DeepSeek; standard generation → Sonnet/GPT-4o; irreversible-error or deep reasoning → Opus. Every leaf tags the record with quarterly_review_due so pricing shifts and deprecations force re-evaluation.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/litellm-router.py`
+
+```python
+# LiteLLM complexity-based router: simple→DeepSeek, balanced→Sonnet, complex→Opus
+from litellm import Router
+
+router = Router(
+    model_list=[
+        {"model_name": "fast", "litellm_params": {"model": "deepseek/deepseek-chat"}},
+        {"model_name": "balanced", "litellm_params": {"model": "anthropic/claude-sonnet-4-20250514"}},
+        {"model_name": "powerful", "litellm_params": {"model": "anthropic/claude-opus-4-5-20251101"}},
+    ]
+)
+
+def route_by_complexity(task: str, complexity: str) -> str:
+    """
+    complexity: "simple" | "medium" | "complex"
+    - simple: extraction, classification, FAQ-like (<500 tokens)
+    - medium: standard generation, code, analysis
+    - complex: deep reasoning, contract analysis, research synthesis
+    """
+    model_map = {"simple": "fast", "medium": "balanced", "complex": "powerful"}
+    model = model_map.get(complexity, "balanced")
+    response = router.completion(
+        model=model,
+        messages=[{"role": "user", "content": task}],
+    )
+    return response.choices[0].message.content
+```

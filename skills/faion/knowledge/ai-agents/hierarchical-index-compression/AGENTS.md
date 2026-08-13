@@ -42,9 +42,67 @@
 | `templates/index-budget-record.yaml` | Fill-in record; ships valid against the contract. |
 | `templates/index-entry-format.md` | The entry shape, with a before/after showing what a discriminator removes. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - `retrieval-cost-per-answer-audit` — the required upstream. It measures the index share; this methodology acts on it. Re-run it afterwards to confirm the cut.
 - `context-graph-engineering` — its `warrant: none` exit routes here. This is the structure it declines to replace with a graph.
 - `chunking-document-structure` — how a leaf is split. Orthogonal: that governs the body, this governs the map to it.
 - `llamaindex-indexes-queries` — one framework's implementation of tiered indexes; the budget arithmetic here is framework-independent and applies to it too.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/index-budget-record.yaml`
+
+```yaml
+#
+# Validate:  validate-hierarchical-index-compression.py index-budget-record.yaml
+#
+# The shipped numbers are the TARGET state for the faion-network tree, not its
+# state as measured 2026-08-04 (largest single index ~30,000 tokens, well over
+# this ceiling). That is the point: a record states the bound, and the level
+# that breaches it is what the validator names.
+
+system: "methodology retrieval over a 2600-document corpus"
+corpus_size: 2600
+median_body_tokens: 3300            # from the upstream cost ledger
+
+# --- Ceiling (r1). Set against the median body, not against the context window. ---
+index_read_ceiling_tokens: 4000
+
+# --- Levels, root first. read_tokens is MEASURED, never estimated. ---
+levels:
+  - name: domains                   # L1: which domain
+    entry_count: 20
+    read_tokens: 1800
+    partition_key: domain
+  - name: domain-index              # L2: which leaf, within one domain shard
+    entry_count: 160
+    read_tokens: 1200
+    partition_key: null             # leaf-most index; nothing below it to partition
+
+# --- Shape (r3). fanout^max_depth must reach corpus_size: 160^2 = 25600 >= 2600. ---
+max_depth: 2                        # 2 index reads per cold lookup; hard cap is 3
+fanout: 160
+
+# --- Entries (r2). Discriminator answers "when would I open this, not its neighbour". ---
+discriminator_max_chars: 90
+entry_fields: [id, tier, produces, discriminator]
+leaf_owns: [summary, body, rationale]   # MUST NOT appear in any index entry
+
+# --- Shard trigger (r4). At or below the ceiling, so the split fires before the breach. ---
+shard_trigger_tokens: 4000
+shard_stub: true                    # must be true — caller routing does not change
+
+# --- Build (r5). This corpus nests by domain, so the hierarchy is free. ---
+corpus_nests_naturally: true
+build_pattern: shard                # shard | recursive_summary | hybrid
+build_tokens: 0                     # must be 0 for shard
+rebuild_trigger: "any leaf added, removed or retiered; stub regenerated in the same job"
+
+# --- Walk skipping (r6). A known leaf path is read directly. ---
+skip_walk_when_known: true
+```

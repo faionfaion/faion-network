@@ -56,7 +56,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/take-home-rubric.md` | Markdown skeleton with weighted criteria + band anchors. |
-| `templates/take-home-rubric.json` | Machine-readable JSON of the rubric. |
 | `templates/calibration-sample-score.md` | Filled-in calibration example. |
 | `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
 

@@ -69,6 +69,8 @@
 | `templates/ci-quality-gate-design.json` | JSON Schema for the ci-design artefact. |
 | `templates/ci-design.md` | Skeleton with three-tier tables and budget section. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,119 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree first asks signal-strength (does this check, when it fires, indicate a real bug?). High-signal → BLOCK. Medium-signal infra/style → WARN. Slow / exploratory / heavy → NIGHTLY. It then checks the budget arithmetic — if BLOCK sum exceeds the wall-clock budget, the tree forces re-classification. Leaves emit `commit-design`, `block-budget-exceeded`, or `block-missing-rationale`. Each leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ci-quality-gate-design.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ci-quality-gate-design.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "checks",
+    "budget",
+    "verdict",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^cgd-[a-z0-9-]{6,}$"
+    },
+    "checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "tier",
+          "runtime_p50_min",
+          "owner_email",
+          "last_reviewed"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tier": {
+            "enum": [
+              "BLOCK",
+              "WARN",
+              "NIGHTLY"
+            ]
+          },
+          "runtime_p50_min": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 120
+          },
+          "rationale": {
+            "type": "string"
+          },
+          "owner_email": {
+            "type": "string",
+            "format": "email"
+          },
+          "escalation": {
+            "type": "string"
+          },
+          "last_reviewed": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      }
+    },
+    "budget": {
+      "type": "object",
+      "required": [
+        "target_min",
+        "block_critical_path_min",
+        "headroom_min"
+      ],
+      "properties": {
+        "target_min": {
+          "type": "number",
+          "minimum": 1,
+          "maximum": 60
+        },
+        "block_critical_path_min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 120
+        },
+        "headroom_min": {
+          "type": "number"
+        },
+        "remediation": {
+          "type": "string"
+        }
+      }
+    },
+    "verdict": {
+      "enum": [
+        "commit-design",
+        "block-budget-exceeded",
+        "block-missing-rationale",
+        "block-config-drift"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

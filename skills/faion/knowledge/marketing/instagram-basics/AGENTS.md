@@ -73,6 +73,8 @@
 | `templates/carousel-template.txt` | 10-slide carousel narrative structure. |
 | `templates/prompt-reels.txt` | Prompt for generating 5 Reels scripts with pillar tags and hook scores. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -90,3 +92,133 @@
 
 See `content/06-decision-tree.xml`. The tree maps observable preconditions (audience-on-Instagram, video capacity, brand voice compatibility, regulatory load) to either `run-the-checklist` or `skip-this-methodology` from `01-core-rules.xml`. Use it whenever the SMM operator opens a fresh weekly brief and must decide whether to invest the Reels-first pack this week or route to a text-first channel.
 
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/instagram-basics.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/instagram-basics.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "decision",
+    "rationale",
+    "inputs_used",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 3
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 3
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 30
+    },
+    "inputs_used": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```
+
+### `templates/bio-template.txt`
+
+```text
+Line 1: [What you do] for [who you help]
+Line 2: [Credibility/proof point]
+Line 3: [CTA - what to do next]
+Link: [Link description]
+
+Example:
+Helping developers ship faster
+Built 5 products | 50K+ downloads
+FREE startup checklist below
+```
+
+### `templates/reel-script.txt`
+
+```text
+HOOK (0-2 sec):
+[On-screen text: Bold statement or question — max 8 words]
+[Action: match the hook visually]
+
+BODY BEAT 1 (3-10 sec):
+[On-screen text: Point 1]
+[Visual supporting beat 1]
+
+BODY BEAT 2 (11-18 sec):
+[On-screen text: Point 2]
+[Visual supporting beat 2]
+
+BODY BEAT 3 / RETENTION SPIKE (19-25 sec):
+[On-screen text: Point 3 — make viewer rewatch]
+[Visual supporting beat 3]
+
+CTA (26-30 sec):
+[Follow for more [topic]] OR [Save this for later]
+[Point to follow button or save gesture]
+```
+
+### `templates/carousel-template.txt`
+
+```text
+Slide 1 (Cover):
+[Hook headline — max 8 words, make them stop scrolling]
+[Eye-catching visual]
+
+Slides 2-8 (One point per slide):
+[Point N — large text, max 10 words per slide]
+[Supporting visual or icon]
+
+Slide 9 (Summary):
+[Recap 3 key points as bullets]
+
+Slide 10 (CTA):
+[Save + Share + Follow]
+[Your handle]
+```
+
+### `templates/prompt-reels.txt`
+
+```text
+Pillar mix: educational 40%, behind-scenes 30%, results 20%, inspirational 10%.
+Brand voice: <attached>.
+
+Output 5 Reels scripts. For each:
+- Hook (<2s): on-screen text only, max 8 words, score it 1-5
+- 3 body beats with on-screen text (max 10 words per beat)
+- Mark the retention spike beat (the moment that triggers a rewatch)
+- CTA (1 line)
+- Total length: 15-30 seconds
+- No emojis
+- Tag with pillar (educational/behind-scenes/results/inspirational)
+
+Only include scripts where hook score >= 4.
+```

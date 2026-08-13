@@ -66,6 +66,8 @@
 | `templates/bid-no-bid-scoring-rubric.json` | Skeleton artefact with required fields |
 | `templates/_smoke-test.json` | Minimum viable filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,48 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes on artefact-state signals to the active rule. Use when in doubt whether the artefact is ready for downstream consumption.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/bid-no-bid-scoring-rubric.json`
+
+```json
+{
+  "opportunity_id": "REPLACE",
+  "version": "v1.0.0",
+  "dimensions": [],
+  "scores": [],
+  "weighted_total": 0,
+  "threshold": 70,
+  "approver": {}
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "opportunity_id": "opp-acme",
+  "dimensions": [
+    {
+      "name": "fit",
+      "weight": 0.3
+    }
+  ],
+  "scores": [
+    {
+      "dim": "fit",
+      "score": 4
+    }
+  ],
+  "weighted_total": 78,
+  "threshold": 70,
+  "approver": {
+    "name": "Pedro Silva",
+    "role": "CFO",
+    "ts": "2026-05-23T17:00:00Z"
+  }
+}
+```

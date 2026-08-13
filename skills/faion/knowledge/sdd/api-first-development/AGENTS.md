@@ -64,6 +64,8 @@
 | `templates/api-first-development.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,88 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/api-first-development.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/api-first-development.json",
+  "title": "API-First Development Output Contract",
+  "type": "object",
+  "required": [
+    "openapi_spec_path",
+    "openapi_version",
+    "endpoints",
+    "mock_server_url",
+    "contract_test_config",
+    "version",
+    "owner",
+    "last_reviewed"
+  ],
+  "properties": {
+    "openapi_spec_path": {
+      "type": "string",
+      "description": "path to openapi.yaml"
+    },
+    "openapi_version": {
+      "type": "string",
+      "description": "must start with 3.1"
+    },
+    "endpoints": {
+      "type": "array",
+      "description": "list of {path, method, op_id}",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "mock_server_url": {
+      "type": "string",
+      "description": "Prism mock URL"
+    },
+    "contract_test_config": {
+      "type": "string",
+      "description": "path to schemathesis.yaml or equivalent"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver of the API itself"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named owner"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "openapi_spec_path": "sample-openapi_spec_path",
+  "openapi_version": "sample-openapi_version",
+  "endpoints": [
+    {
+      "k": "v"
+    }
+  ],
+  "mock_server_url": "sample-mock_server_url",
+  "contract_test_config": "sample-contract_test_config",
+  "version": "1.1.0",
+  "owner": "ruslan@faion.net",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

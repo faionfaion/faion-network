@@ -65,6 +65,8 @@
 | `templates/cache-config.yaml` | Redis cache config skeleton |
 | `templates/router-policy.yaml` | Confidence-gated routing policy |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,33 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root: Does the request stream contain repeat prompts (cache potential)? Branches route to a rule id from `content/01-core-rules.xml` (cache-key-sha256, compress-whitespace-first, batch-only-non-interactive, ...) so every leaf is traceable to a testable statement.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/cache-config.yaml`
+
+```yaml
+# cost-reduction-strategies — config skeleton
+version: 1.0.0
+slug: cost-reduction-strategies
+fields:
+  - name: example-field
+    type: string
+    required: true
+defaults: {}
+```
+
+### `templates/router-policy.yaml`
+
+```yaml
+# cost-reduction-strategies — config skeleton
+version: 1.0.0
+slug: cost-reduction-strategies
+fields:
+  - name: example-field
+    type: string
+    required: true
+defaults: {}
+```

@@ -63,8 +63,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/rollback-policy.yml` | Full policy YAML template (thresholds + window + canary + override + runbook) |
-| `templates/canary-ladder.yml` | Canary ratio + hold-time YAML |
 | `templates/post-rollback-runbook.md` | 4-step post-rollback runbook |
 
 ## Scripts

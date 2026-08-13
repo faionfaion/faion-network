@@ -66,6 +66,8 @@
 |------|---------|
 | `templates/tokens.json` | DTCG tokens.json skeleton with primitive + semantic layers |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,85 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on platform count, layer split, alias resolution, then contrast. Failure at any gate routes to the corresponding repair rule.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tokens.json`
+
+```json
+{
+  "$schema": "https://design-tokens.org/schema.json",
+  "color": {
+    "primitive": {
+      "blue-500": {
+        "$type": "color",
+        "$value": "#3B82F6",
+        "$description": "Raw blue value. Do not use directly in components."
+      },
+      "gray-900": {
+        "$type": "color",
+        "$value": "#111827",
+        "$description": "Raw near-black value."
+      },
+      "white": {
+        "$type": "color",
+        "$value": "#FFFFFF",
+        "$description": "Raw white value."
+      }
+    },
+    "brand": {
+      "primary": {
+        "$type": "color",
+        "$value": "{color.primitive.blue-500}",
+        "$description": "Primary brand color for CTAs and interactive elements."
+      }
+    },
+    "surface": {
+      "default": {
+        "$type": "color",
+        "$value": "{color.primitive.white}",
+        "$description": "Default page background surface."
+      }
+    },
+    "text": {
+      "primary": {
+        "$type": "color",
+        "$value": "{color.primitive.gray-900}",
+        "$description": "Primary body text color."
+      }
+    }
+  },
+  "spacing": {
+    "base": {
+      "$type": "dimension",
+      "$value": "4px",
+      "$description": "Base spacing unit. All spacing is a multiple of this."
+    },
+    "component": {
+      "button": {
+        "$type": "dimension",
+        "$value": "12px",
+        "$description": "Standard vertical padding for default-size buttons."
+      }
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "body": {
+        "$type": "fontFamily",
+        "$value": "Inter, system-ui, sans-serif",
+        "$description": "Body and UI text font stack."
+      }
+    },
+    "fontSize": {
+      "base": {
+        "$type": "dimension",
+        "$value": "16px",
+        "$description": "Base body font size."
+      }
+    }
+  }
+}
+```

@@ -63,7 +63,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/golden-set.jsonl` | Schema for golden-set rows: query_id, passage_id, grade. |
 | `templates/eval-report.md` | Markdown skeleton for the eval report. |
 
 ## Related

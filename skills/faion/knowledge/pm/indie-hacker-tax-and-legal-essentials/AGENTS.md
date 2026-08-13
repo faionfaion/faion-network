@@ -62,6 +62,8 @@
 | `templates/indie-hacker-tax-and-legal-essentials.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/indie-hacker-tax-and-legal-essentials.md` | Markdown skeleton for human-readable artefact rendering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,46 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/indie-hacker-tax-and-legal-essentials.json`
+
+```json
+{
+  "artefact_id": "legal-inventory-2026-q2",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "entity": {
+    "type": "sole-trader-PT",
+    "registration_id": "NIF-XXX",
+    "registered_at": "2025-09-10",
+    "rationale": "EU resident, <50K rev"
+  },
+  "tax_residency": "PT",
+  "vat_status": "stripe-tax-collected",
+  "sales_tax_status": "stripe-tax-collected-US-nexus-states",
+  "customer_contract": {
+    "terms_url": "https://faion.net/terms",
+    "version": "1.2.0"
+  },
+  "privacy_policy": {
+    "url": "https://faion.net/privacy",
+    "version": "1.1.0"
+  },
+  "processor_list": [
+    {
+      "name": "stripe",
+      "purpose": "billing"
+    },
+    {
+      "name": "cloudflare",
+      "purpose": "cdn"
+    }
+  ],
+  "next_review_date": "2027-05-23",
+  "owner": "@ruslan"
+}
+```

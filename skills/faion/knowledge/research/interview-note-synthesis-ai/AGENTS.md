@@ -65,6 +65,8 @@
 | `templates/synthesis-report.md` | Final synthesis report skeleton |
 | `templates/synthesis.json` | Machine-readable synthesis matching schema |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,37 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from the question "Do we have N >= 3 interviews and a redaction policy?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/synthesis.json`
+
+```json
+{
+  "research_question": "Why do solo developers churn from faion in week 2?",
+  "interview_count": 8,
+  "themes": [
+    {
+      "theme_id": "t1",
+      "label": "Auth flow friction",
+      "confidence": "H",
+      "supporting_interviews": [
+        "i01",
+        "i03",
+        "i04",
+        "i07"
+      ],
+      "quotes": [
+        {
+          "interview_id": "i01",
+          "line_range": "L42-L48",
+          "text": "I gave up after the third login redirect"
+        }
+      ]
+    }
+  ],
+  "verified_by": "ruslan@faion.net"
+}
+```

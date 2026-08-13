@@ -68,6 +68,8 @@
 | `templates/SnapshotStore.py` | Snapshot store with version + payload |
 | `templates/invalidate.py` | Schema-bump invalidation script |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,114 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (aggregate-length, replay cost, schema cadence) to a rule from `01-core-rules.xml`. Use it whenever introducing snapshots or revisiting the every-N policy.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/snapshot.sql`
+
+```sql
+CREATE TABLE IF NOT EXISTS aggregate_snapshots (
+    aggregate_type    TEXT NOT NULL,
+    stream_id         UUID NOT NULL,
+    snapshot_version  BIGINT NOT NULL,
+    schema_version    INTEGER NOT NULL,
+    payload           JSONB NOT NULL,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    PRIMARY KEY (aggregate_type, stream_id, snapshot_version)
+);
+
+CREATE INDEX IF NOT EXISTS idx_aggregate_snapshots_latest
+    ON aggregate_snapshots (aggregate_type, stream_id, snapshot_version DESC);
+```
+
+### `templates/SnapshotStore.py`
+
+```python
+from __future__ import annotations
+
+import json
+import logging
+from dataclasses import dataclass
+from typing import Optional, Protocol
+from uuid import UUID
+
+log = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class Snapshot:
+    aggregate_type: str
+    stream_id: UUID
+    snapshot_version: int
+    schema_version: int
+    payload: dict
+
+
+class DB(Protocol):
+    def execute(self, sql: str, *args) -> None: ...
+    def fetchone(self, sql: str, *args) -> Optional[tuple]: ...
+
+
+class SnapshotStore:
+    def __init__(self, db: DB, current_schema_version: int) -> None:
+        self._db = db
+        self._schema = current_schema_version
+
+    def get_latest(self, aggregate_type: str, stream_id: UUID) -> Optional[Snapshot]:
+        row = self._db.fetchone(
+            "SELECT snapshot_version, schema_version, payload "
+            "FROM aggregate_snapshots WHERE aggregate_type=%s AND stream_id=%s "
+            "ORDER BY snapshot_version DESC LIMIT 1",
+            aggregate_type, str(stream_id),
+        )
+        if row is None:
+            return None
+        snap_v, schema_v, payload = row
+        if schema_v != self._schema:
+            log.info("snapshot schema_version %s != current %s; falling back to replay", schema_v, self._schema)
+            return None
+        try:
+            return Snapshot(aggregate_type, stream_id, snap_v, schema_v, json.loads(payload))
+        except Exception as exc:
+            log.warning("snapshot deserialise failed for %s/%s: %s", aggregate_type, stream_id, exc)
+            return None
+
+    def write(self, snap: Snapshot) -> None:
+        self._db.execute(
+            "INSERT INTO aggregate_snapshots(aggregate_type, stream_id, snapshot_version, schema_version, payload) "
+            "VALUES (%s, %s, %s, %s, %s)",
+            snap.aggregate_type, str(snap.stream_id), snap.snapshot_version, snap.schema_version,
+            json.dumps(snap.payload),
+        )
+
+    def invalidate(self, aggregate_type: str) -> None:
+        self._db.execute("DELETE FROM aggregate_snapshots WHERE aggregate_type=%s", aggregate_type)
+```
+
+### `templates/invalidate.py`
+
+```python
+from __future__ import annotations
+
+import argparse
+import sys
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="invalidate all snapshots for an aggregate type before deploying a new event schema version")
+    ap.add_argument("aggregate_type", help="PascalCase aggregate type (e.g. Order)")
+    ap.add_argument("--dry-run", action="store_true")
+    args = ap.parse_args()
+    sys.stdout.write(
+        f"would DELETE FROM aggregate_snapshots WHERE aggregate_type='{args.aggregate_type}'\n"
+        if args.dry_run
+        else f"connect to DB and run invalidate('{args.aggregate_type}') on SnapshotStore\n"
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+```

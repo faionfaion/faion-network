@@ -64,6 +64,8 @@ none — methodology is self-contained.
 | `templates/place_order_service_spec.rb` | Isolated RSpec service spec (spec_helper only) |
 | `templates/shared_examples_auditable.rb` | Shared examples for the 'auditable' invariant across models |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,96 @@ none — methodology is self-contained.
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/place_order_service_spec.rb`
+
+```ruby
+# frozen_string_literal: true
+
+require "spec_helper"
+require_relative "../../../app/services/orders/place_order_service"
+require_relative "../../../app/services/service_result"
+
+RSpec.describe Orders::PlaceOrderService do
+  let(:user) { instance_double("User", id: 1) }
+  let(:orders_relation) { instance_double("Orders") }
+  let(:order) { instance_double("Order", id: 7, items: [], total_cents: 1000) }
+  let(:gateway) { instance_double("PaymentGateway") }
+  let(:inventory) { instance_double("InventoryService") }
+  let(:mailer) { class_double("OrderMailer") }
+
+  subject(:service) { described_class.new(user, gateway: gateway, inventory: inventory, mailer: mailer) }
+
+  before do
+    allow(user).to receive(:orders).and_return(orders_relation)
+    allow(orders_relation).to receive(:build).and_return(order)
+  end
+
+  context "when inventory sufficient and payment succeeds" do
+    before do
+      allow(order).to receive(:save).and_return(true)
+      allow(order).to receive(:update!)
+      allow(inventory).to receive(:reserve).and_return(double(success?: true))
+      allow(gateway).to receive(:charge).and_return(double(success?: true, id: "ch_1"))
+      allow(mailer).to receive_message_chain(:confirmation, :deliver_later)
+    end
+
+    it "returns success with the order" do
+      result = service.call(items: [{ sku: "X", qty: 1 }])
+      expect(result.success?).to be true
+      expect(result.data).to eq(order)
+    end
+  end
+
+  context "when inventory is insufficient" do
+    before do
+      allow(order).to receive(:save).and_return(true)
+      allow(inventory).to receive(:reserve).and_return(double(success?: false))
+    end
+
+    it "returns failure with :insufficient_stock" do
+      result = service.call(items: [])
+      expect(result.failure?).to be true
+      expect(result.error).to eq(:insufficient_stock)
+    end
+  end
+
+  context "when payment is declined" do
+    before do
+      allow(order).to receive(:save).and_return(true)
+      allow(inventory).to receive(:reserve).and_return(double(success?: true))
+      allow(gateway).to receive(:charge).and_return(double(success?: false))
+    end
+
+    it "returns failure with :payment_declined" do
+      result = service.call(items: [{ sku: "X", qty: 1 }])
+      expect(result.failure?).to be true
+      expect(result.error).to eq(:payment_declined)
+    end
+  end
+end
+```
+
+### `templates/shared_examples_auditable.rb`
+
+```ruby
+# frozen_string_literal: true
+
+RSpec.shared_examples_for "auditable" do
+  it "tracks created_by" do
+    expect(subject).to respond_to(:created_by_id)
+  end
+
+  it "tracks updated_by" do
+    expect(subject).to respond_to(:updated_by_id)
+  end
+
+  it "exposes audit_log association" do
+    expect(subject.class.reflect_on_association(:audit_log)).not_to be_nil
+  end
+end
+```

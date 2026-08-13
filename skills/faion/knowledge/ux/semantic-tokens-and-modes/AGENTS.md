@@ -68,6 +68,8 @@
 | `templates/style-dictionary.config.cjs` | Style Dictionary build config emitting CSS / Swift / Compose |
 | `templates/check-modes.mjs` | CI gate: fails build if any semantic token is missing a value in any required mode |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,127 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree branches on scope-of-theming (single / light+dark / multi-brand / density-aware) and platform count (web-only / multi-platform). Each leaf references a rule from `01-core-rules.xml` and dictates whether the system layer must add a mode collection, whether Style Dictionary needs a platform transform, and whether visual regression must snapshot every mode.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tokens-semantic.json`
+
+```json
+{
+  "color": {
+    "action": {
+      "primary": {
+        "$type": "color",
+        "intent": "primary interactive surface",
+        "values_by_mode": {
+          "light": "{color.blue.600}",
+          "dark": "{color.blue.400}",
+          "high-contrast": "{color.blue.900}"
+        }
+      },
+      "primary-hover": {
+        "$type": "color",
+        "intent": "primary interactive surface \u2014 hover state",
+        "values_by_mode": {
+          "light": "{color.blue.700}",
+          "dark": "{color.blue.300}",
+          "high-contrast": "{color.blue.950}"
+        }
+      }
+    },
+    "surface": {
+      "page": {
+        "$type": "color",
+        "intent": "page background",
+        "values_by_mode": {
+          "light": "{color.gray.50}",
+          "dark": "{color.gray.950}",
+          "high-contrast": "{color.gray.1000}"
+        }
+      }
+    }
+  }
+}
+```
+
+### `templates/style-dictionary.config.cjs`
+
+```javascript
+module.exports = {
+  source: ['tokens/reference.json', 'tokens/semantic.json'],
+  platforms: {
+    css: {
+      transformGroup: 'css',
+      buildPath: 'dist/css/',
+      files: [
+        { destination: 'tokens.css', format: 'css/variables', options: { selector: ':root' } },
+        { destination: 'tokens-dark.css', format: 'css/variables', options: { selector: '[data-theme="dark"]' }, filter: (t) => t.attributes && t.attributes.mode === 'dark' },
+        { destination: 'tokens-hc.css', format: 'css/variables', options: { selector: '[data-theme="high-contrast"]' }, filter: (t) => t.attributes && t.attributes.mode === 'high-contrast' }
+      ]
+    },
+    ios: {
+      transformGroup: 'ios-swift',
+      buildPath: 'dist/ios/',
+      files: [
+        { destination: 'Tokens.swift', format: 'ios-swift/class.swift', className: 'TokensTheme' }
+      ]
+    },
+    android: {
+      transformGroup: 'compose',
+      buildPath: 'dist/android/',
+      files: [
+        { destination: 'Tokens.kt', format: 'compose/object', className: 'TokensTheme', packageName: 'com.example.tokens' }
+      ]
+    }
+  }
+};
+```
+
+### `templates/check-modes.mjs`
+
+```javascript
+// Usage: node check-modes.mjs [tokens/semantic.json] [light,dark,hc]
+import { readFileSync } from 'node:fs';
+
+const tokenFile = process.argv[2] ?? 'tokens/semantic.json';
+const REQUIRED_MODES = (process.argv[3] ?? 'light,dark,hc').split(',').map(m => m.trim());
+
+let tokens;
+try {
+  tokens = JSON.parse(readFileSync(tokenFile, 'utf8'));
+} catch (e) {
+  console.error(`Cannot read ${tokenFile}: ${e.message}`);
+  process.exit(1);
+}
+
+const missing = [];
+
+function walk(node, path = []) {
+  if (!node || typeof node !== 'object') return;
+  if ('$value' in node) {
+    const v = node.$value;
+    // DTCG per-mode value: { light: '#fff', dark: '#000', hc: '#000' }
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      const definedModes = Object.keys(v);
+      const lacking = REQUIRED_MODES.filter(m => !definedModes.includes(m));
+      if (lacking.length) missing.push({ token: path.join('.'), missing: lacking });
+    }
+    return;
+  }
+  for (const [k, child] of Object.entries(node)) {
+    if (!k.startsWith('$')) walk(child, [...path, k]);
+  }
+}
+
+walk(tokens);
+
+if (missing.length) {
+  console.error(`\nToken mode coverage failures (${missing.length}):\n`);
+  console.error(JSON.stringify(missing, null, 2));
+  process.exit(1);
+}
+
+console.log(`All semantic tokens have values for modes: ${REQUIRED_MODES.join(', ')}`);
+```

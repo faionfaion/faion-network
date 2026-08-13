@@ -61,7 +61,6 @@
 |------|---------|
 | `templates/deployment-spec.md` | End-to-end deployment with residency + audit + monitoring. |
 | `templates/provider-due-diligence.md` | Vendor sovereignty checklist. |
-| `templates/audit-event-schema.json` | Required AI Act audit event shape. |
 | `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
 
 ## Scripts

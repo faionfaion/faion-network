@@ -69,6 +69,8 @@
 | `templates/output-schema.json` | JSON Schema (draft-07) for the test-validation report |
 | `templates/_smoke-test.json` | Minimum viable filled-in report for validator round-trip |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,86 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on (a) mutation_survival &gt;= 0.70, (b) static-rule rejections == 0, and (c) zero assertion-drift survivors. All three required for verdict=pass. Every leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-generated-test-validation.json",
+  "type": "object",
+  "required": [
+    "report_id",
+    "files_scanned",
+    "tests_inventoried",
+    "rejections",
+    "mutation_survival",
+    "verdict"
+  ],
+  "properties": {
+    "report_id": {
+      "type": "string",
+      "pattern": "^TVR-[A-Z0-9-]{2,40}$"
+    },
+    "files_scanned": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "tests_inventoried": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "rejections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "test",
+          "rule_violated",
+          "explanation"
+        ]
+      }
+    },
+    "mutation_survival": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "rework"
+      ]
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "report_id": "TVR-PRICING-API-Q2",
+  "files_scanned": 6,
+  "tests_inventoried": 18,
+  "rejections": [
+    {
+      "test": "tests/test_pricing.py::test_compute_total_mirrors_impl",
+      "rule_violated": "no-mirror-test",
+      "explanation": "Asserts price = qty * unit by re-implementing the same multiplication."
+    },
+    {
+      "test": "tests/test_pricing.py::test_apply_discount_no_assert",
+      "rule_violated": "behavioural-assertion",
+      "explanation": "Calls apply_discount but asserts nothing."
+    }
+  ],
+  "mutation_survival": 0.78,
+  "verdict": "pass"
+}
+```

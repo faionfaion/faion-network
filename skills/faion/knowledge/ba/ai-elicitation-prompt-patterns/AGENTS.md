@@ -66,6 +66,8 @@
 | `templates/prompt-pattern.yaml` | Prompt-pattern skeleton with slots + schema reference |
 | `templates/_smoke-test.yaml` | Minimum viable filled pattern for interview-prep |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,50 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes the BA from elicitation-phase observable (interview-prep vs follow-up vs paraphrase-back vs persona-probe) to a specific pattern + rule from `01-core-rules.xml`. Use when picking which pattern to instantiate for a given stakeholder session.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-pattern.yaml`
+
+```yaml
+pattern_id: REPLACE-with-kebab-case-id
+phase: interview-prep        # one of: interview-prep | follow-up | paraphrase-back | persona-probe
+slots:
+  - name: stakeholder_role
+    type: string
+    required: true
+  - name: project_brief
+    type: string
+    required: true
+skeleton: |
+  You are preparing an elicitation interview for {{stakeholder_role}}.
+  Project brief: {{project_brief}}
+  Draft 8 open questions; cite the brief paragraph each question is grounded in.
+output_schema_ref: templates/output-schema.json#/interview_questions
+eval_reference: evals/interview-prep-v1.jsonl
+budget:
+  tokens_in: 800
+  tokens_out: 400
+  cost_usd_cap: 0.05
+version_tag: v1.0.0
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+pattern_id: interview-prep-smoke
+phase: interview-prep
+slots:
+  - {name: stakeholder_role, type: string, required: true}
+  - {name: project_brief, type: string, required: true}
+skeleton: "Prepare 5 questions for {{stakeholder_role}}. Brief: {{project_brief}}."
+output_schema_ref: "templates/output-schema.json#/interview_questions"
+eval_reference: "evals/smoke.jsonl"
+budget:
+  tokens_in: 400
+  tokens_out: 200
+  cost_usd_cap: 0.01
+version_tag: v0.1.0
+```

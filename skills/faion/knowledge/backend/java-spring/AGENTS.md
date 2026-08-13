@@ -65,6 +65,8 @@
 |------|---------|
 | `templates/check.sh` | CI script verifying jakarta imports + MapStruct annotation processor + @Transactional on writes. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,27 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (Spring stack, endpoint shape, architecture style) to a rule from `01-core-rules.xml`. Use it before scaffolding a new endpoint or wiring DTO mapping.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/check.sh`
+
+```bash
+# check.sh — block PR if entities leak from controllers or build/style fails.
+# Usage: bash scripts/check.sh
+set -euo pipefail
+
+./mvnw -q -DskipTests compile spotless:check checkstyle:check
+
+# Forbid returning entity types from REST controllers
+if rg -nP 'public\s+(ResponseEntity<[A-Z]\w+>|[A-Z]\w+)\s+\w+\([^)]*\)\s*\{' \
+     src/main/java -g '*Controller.java' \
+   | grep -vE 'Response|Dto|ProblemDetail|Page<|Void|String|byte\[\]'; then
+  echo "ERROR: Controller appears to return an entity directly — return a DTO."
+  exit 1
+fi
+
+echo "OK: build clean, no entity leaks"
+```

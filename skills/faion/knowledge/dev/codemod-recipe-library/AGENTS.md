@@ -67,6 +67,8 @@
 | `templates/codemod-recipes-index.json` | JSON skeleton matching the output contract. |
 | `templates/smoke-test.sh` | Shell smoke test driver for every recipe. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,41 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree picks the AST tool by language + edit shape and gates recipes on fixture + smoke presence.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/codemod-recipes-index.json`
+
+```json
+{
+  "artefact_id": "codemod-react-18-2026-05-23",
+  "owner": "@ruslan",
+  "tool": "jscodeshift",
+  "target_framework": "react@18",
+  "recipes": [
+    {
+      "name": "render-to-create-root",
+      "fixture_before": "fixtures/render.before.js",
+      "fixture_after": "fixtures/render.after.js"
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+```
+
+### `templates/smoke-test.sh`
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+for r in recipes/*.js; do
+  name=$(basename "$r" .js)
+  out=$(mktemp -d)
+  cp "fixtures/${name}.before.js" "${out}/in.js"
+  jscodeshift -t "$r" "${out}/in.js"
+  diff -u "fixtures/${name}.after.js" "${out}/in.js"
+done
+```

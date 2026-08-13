@@ -69,6 +69,8 @@
 | `templates/cost_optimizer.py` | CostOptimizer config + lever applicator. |
 | `templates/cost-opt-config.json` | Config skeleton. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,68 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes cost level to lever priority — high-cost pipelines pull all 5 levers; small pipelines start with just dedup + cache.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/cost_optimizer.py`
+
+```python
+from __future__ import annotations
+
+import hashlib
+from dataclasses import dataclass
+
+
+@dataclass
+class CostOptConfig:
+    dedup_on_ingest: bool = True
+    batch_size: int = 512
+    cache_enabled: bool = True
+    matryoshka_dim: int = 512
+    two_stage_retrieval: bool = True
+    recall_tolerance_pp: float = 1.0
+
+
+@dataclass
+class CostOptimizer:
+    config: CostOptConfig
+
+    def __post_init__(self) -> None:
+        if not self.config.dedup_on_ingest:
+            raise ValueError("dedup_on_ingest must be true (rule r1)")
+        if self.config.batch_size < 32 or self.config.batch_size > 2048:
+            raise ValueError("batch_size out of [32,2048] (rule r2)")
+        if self.config.matryoshka_dim < 256:
+            raise ValueError("matryoshka_dim must be ≥256 (rule r4)")
+        if self.config.recall_tolerance_pp > 5.0:
+            raise ValueError("recall_tolerance_pp must be ≤5 (rule r4)")
+
+    def dedup(self, docs: list[dict]) -> list[dict]:
+        seen: set[str] = set()
+        out: list[dict] = []
+        for d in docs:
+            h = hashlib.sha256(d["text"].encode("utf-8")).hexdigest()
+            if h in seen:
+                continue
+            seen.add(h)
+            out.append({**d, "content_hash": h})
+        return out
+
+    def estimate_savings_pct(self, baseline_calls: int, new_calls: int) -> float:
+        return 100.0 * (baseline_calls - new_calls) / max(1, baseline_calls)
+```
+
+### `templates/cost-opt-config.json`
+
+```json
+{
+  "dedup_on_ingest": true,
+  "batch_size": 512,
+  "cache_enabled": true,
+  "matryoshka_dim": 512,
+  "two_stage_retrieval": true,
+  "recall_tolerance_pp": 1.0
+}
+```

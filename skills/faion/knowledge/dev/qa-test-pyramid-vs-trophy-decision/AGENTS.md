@@ -64,7 +64,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/qa-test-pyramid-vs-trophy-decision.json` | JSON skeleton matching the output contract. |
 | `templates/qa-test-pyramid-vs-trophy-decision.md` | Markdown skeleton with required fields. |
 
 ## Scripts

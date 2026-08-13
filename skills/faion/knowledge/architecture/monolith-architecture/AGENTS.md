@@ -65,6 +65,8 @@ none
 | `templates/deploy-pipeline.yaml` | Single deploy pipeline skeleton (GitHub Actions-style). |
 | `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,38 @@ none
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (functional list, single deployable, test pyramid, single pipeline)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/deploy-pipeline.yaml`
+
+```yaml
+# faion_header_json: {"__faion_header__":{"purpose":"Single deploy pipeline skeleton (GitHub Actions-style).","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#r1-monolith-first","token_budget_impact":"~150 tokens when loaded"}}
+name: monolith-deploy
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: install
+        run: pip install -e .[test]
+      - name: lint
+        run: ruff check .
+      - name: typecheck
+        run: mypy app
+      - name: test
+        run: pytest -x --tb=short
+      - name: build-image
+        run: docker build -t app:${{ github.sha }} .
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: deploy
+        run: ssh server 'docker pull app:${{ github.sha }} && systemctl restart app'
+```

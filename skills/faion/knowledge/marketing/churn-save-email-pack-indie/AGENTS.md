@@ -64,7 +64,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/churn-save-email-pack-indie.json` | JSON skeleton matching the output contract. |
 | `templates/churn-save-email-pack-indie.md` | Markdown skeleton with required fields. |
 
 ## Scripts

@@ -72,6 +72,8 @@
 | `templates/daily-posts.txt` | Morning/afternoon/evening post templates and multi-post thread format. |
 | `templates/prompt-ideation.txt` | Daily content pack ideation prompt with pillar tags and hook scoring. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,3 +91,151 @@
 
 See `content/06-decision-tree.xml`. The tree maps observable preconditions (audience-overlap-Instagram, reply capacity, brand-voice compatibility, regulatory load) to either `run-the-checklist` or `skip-this-methodology` from `01-core-rules.xml`. Use it whenever the SMM operator opens a fresh daily brief and must decide whether to invest the Threads pack today or route to a text-first sibling channel.
 
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/threads-basics.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/threads-basics.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "decision",
+    "rationale",
+    "inputs_used",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 3
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 3
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 30
+    },
+    "inputs_used": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```
+
+### `templates/bio-templates.txt`
+
+```text
+FOUNDER:
+Building [product] in public
+[What it does in <5 words]
+Sharing wins, fails, and lessons
+
+---
+
+EXPERT:
+[Topic] tips daily
+[Credibility: X years, Y clients, etc.]
+Let's chat in replies
+
+---
+
+CREATOR:
+Making content about [topic]
+[IG handle] for more
+Ask me anything
+```
+
+### `templates/daily-posts.txt`
+
+```text
+MORNING POST (engagement driver):
+"Starting the day with [activity].
+
+What's your morning routine look like?"
+
+---
+
+AFTERNOON POST (value):
+"One thing I learned this week about [topic]:
+
+[Insight in 2-3 sentences]
+
+Has anyone else experienced this?"
+
+---
+
+EVENING POST (conversation):
+"Honest question for [your audience]:
+
+[Question about their work/life]
+
+I'll go first: [Your answer]"
+
+---
+
+THREAD FORMAT (multi-post):
+
+POST 1:
+"I've been building [product] for [X] months.
+
+Here's what I've learned (thread):"
+
+POST 2 (reply to self):
+"1. [First lesson]
+
+[2-3 sentence explanation]"
+
+POST 3+ (reply to thread):
+"2. [Second lesson]
+
+[2-3 sentence explanation]"
+
+FINAL POST:
+"That's it for now. What would you add?
+
+Drop your lessons below"
+```
+
+### `templates/prompt-ideation.txt`
+
+```text
+Brand voice: <attached>. Pillars: opinions (40%), value (30%), questions (20%), personal (10%).
+Yesterday's top post: <text+stats>.
+Today's trending topics: <list>.
+
+Draft 12 candidate posts for today. For each:
+- Tag with pillar (opinions/value/questions/personal)
+- Keep under 500 characters (hard limit)
+- Assign hook score 1-5 (5 = strongest)
+- No emojis unless brand voice file explicitly allows them
+- No engagement-bait phrases ("comment X for Y", "tag a friend", "follow for more")
+- No links
+
+Output 12 posts sorted by hook score descending.
+Operator will select 7-10 to post manually within today's prime windows.
+```

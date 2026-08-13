@@ -64,6 +64,8 @@
 | `templates/design-docs-patterns.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,117 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/design-docs-patterns.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/design-docs-patterns.json",
+  "title": "Design Docs Patterns Output Contract",
+  "type": "object",
+  "required": [
+    "doc_id",
+    "title",
+    "scope",
+    "format",
+    "sections",
+    "non_goals",
+    "alternatives",
+    "review_deadline",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "doc_id": {
+      "type": "string",
+      "description": "stable id"
+    },
+    "title": {
+      "type": "string",
+      "description": "doc title"
+    },
+    "scope": {
+      "type": "string",
+      "description": "small | team | cross-org"
+    },
+    "format": {
+      "type": "string",
+      "description": "Google-lite | Amazon-6-pager | Uber-RFC | Stripe-ERD"
+    },
+    "sections": {
+      "type": "object",
+      "description": "required sections populated"
+    },
+    "non_goals": {
+      "type": "array",
+      "description": "\u22651 non-goal",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "alternatives": {
+      "type": "array",
+      "description": "\u22652 genuine",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "review_deadline": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named author"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "doc_id": "sample-doc_id",
+  "title": "sample-title",
+  "scope": "sample-scope",
+  "format": "sample-format",
+  "sections": {
+    "k": "v"
+  },
+  "non_goals": [
+    {
+      "k": "v"
+    }
+  ],
+  "alternatives": [
+    {
+      "k": "v"
+    }
+  ],
+  "review_deadline": "2026-05-23",
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

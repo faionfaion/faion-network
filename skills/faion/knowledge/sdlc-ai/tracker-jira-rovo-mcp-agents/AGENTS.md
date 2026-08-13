@@ -63,6 +63,8 @@
 |------|---------|
 | `templates/duo-flow.yaml` | Rovo MCP installation + client registration YAML (scope, audit, single-install). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,42 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/duo-flow.yaml`
+
+```yaml
+# Jira workflow embedding — agent at "In Design" status, human gate on transition.
+# Drop into the project workflow editor (or the equivalent automation rule).
+
+status: "In Design"
+
+on_enter:
+  agent: rovo.user-onboarding-designer
+  action: "draft end-to-end onboarding flow"
+  permissions: inherit_from_assignee   # agent cannot exceed assignee's scope
+  audit: jira_native                    # writes to issue history, not stdout
+  comment_template: |
+    Drafted onboarding flow per current/desired/plan structure.
+    Open Questions are listed at the bottom; please reply or transition.
+  timeout: 30m                          # if no agent reply, mark stalled
+
+# Transition out of "In Design" requires a human approver.
+next_transition:
+  to: "Ready for Implementation"
+  approvers:
+    - role: design-lead
+    - role: pm
+  require_all: false                    # any one approver advances
+  block_if:
+    - assignee_is_agent: true           # agent cannot advance itself
+
+# Hard rules enforced at the MCP layer, not in side scripts.
+forbidden:
+  - direct_rest_api                     # all writes via Rovo MCP
+  - shared_bot_token                    # use OAuth user grant
+  - cross_project_writes                # respect project configuration
+```

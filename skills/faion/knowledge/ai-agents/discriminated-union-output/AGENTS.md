@@ -62,6 +62,8 @@
 | `templates/agent_action.schema.json` | Equivalent JSON Schema 2020-12 with `oneOf` + discriminator for non-Python providers |
 | `templates/_smoke-test.json` | Minimum valid SearchAction payload for self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,188 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The root question is whether the output space has 2+ genuinely distinct shapes. The tree then checks field overlap (>90% means flatten), branch openness (open means registry), and decoder support (no discriminator support means two-call fallback). Each leaf points at a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/agent_action_union.py`
+
+```python
+"""Discriminated-union template: agent action selector.
+
+Use as a `text_format` (OpenAI Responses API) or `tools[*].input_schema`
+(Anthropic Messages API). The discriminator (`kind`) is the FIRST field
+of every branch so the model commits to a branch before any other token.
+"""
+from __future__ import annotations
+
+from typing import Annotated, Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class SearchAction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["search"] = "search"
+    query: str = Field(description="Web search query, plain text, no operators.")
+
+
+class FetchAction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["fetch"] = "fetch"
+    url: str = Field(description="Absolute https URL to fetch.")
+
+
+class AskUserAction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["ask_user"] = "ask_user"
+    question: str = Field(description="One concrete question for the user.")
+
+
+class FinishAction(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    kind: Literal["finish"] = "finish"
+    summary: str = Field(description="Final answer or short result summary.")
+
+
+AgentAction = Annotated[
+    SearchAction | FetchAction | AskUserAction | FinishAction,
+    Field(discriminator="kind"),
+]
+
+
+class AgentTurn(BaseModel):
+    """One turn of the agent loop. Reasoning first, then the chosen action."""
+
+    model_config = ConfigDict(extra="forbid")
+    reasoning: str = Field(description="Brief chain-of-thought before action.")
+    action: AgentAction
+```
+
+### `templates/agent_action.schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "_header": {
+    "_purpose": "JSON Schema 2020-12 form of the agent-action discriminated union",
+    "_consumes": "non-Python providers needing the schema directly",
+    "_produces": "validated agent turn objects",
+    "_depends_on": "content/02-output-contract.xml",
+    "_token_budget_impact": "~250 tokens when serialised inline"
+  },
+  "title": "AgentTurn",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "reasoning",
+    "action"
+  ],
+  "properties": {
+    "reasoning": {
+      "type": "string"
+    },
+    "action": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/SearchAction"
+        },
+        {
+          "$ref": "#/$defs/FetchAction"
+        },
+        {
+          "$ref": "#/$defs/AskUserAction"
+        },
+        {
+          "$ref": "#/$defs/FinishAction"
+        }
+      ],
+      "discriminator": {
+        "propertyName": "kind"
+      }
+    }
+  },
+  "$defs": {
+    "SearchAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "query"
+      ],
+      "properties": {
+        "kind": {
+          "const": "search"
+        },
+        "query": {
+          "type": "string"
+        }
+      }
+    },
+    "FetchAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "url"
+      ],
+      "properties": {
+        "kind": {
+          "const": "fetch"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri"
+        }
+      }
+    },
+    "AskUserAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "question"
+      ],
+      "properties": {
+        "kind": {
+          "const": "ask_user"
+        },
+        "question": {
+          "type": "string"
+        }
+      }
+    },
+    "FinishAction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "summary"
+      ],
+      "properties": {
+        "kind": {
+          "const": "finish"
+        },
+        "summary": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "smallest valid SearchAction payload for the validator",
+  "_consumes": "nothing",
+  "_produces": "example agent action matching content/02-output-contract.xml",
+  "_depends_on": "content/01-core-rules.xml",
+  "_token_budget_impact": "~50 tokens",
+  "kind": "search",
+  "query": "discriminated union pydantic"
+}
+```

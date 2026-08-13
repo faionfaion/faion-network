@@ -68,6 +68,8 @@
 | `templates/ecs-fargate.yaml` | ECS Fargate CloudFormation skeleton |
 | `templates/rds-postgres.yaml` | RDS PostgreSQL CFN skeleton with Secrets Manager |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,65 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, owner, downstream consumer) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before applying the AWS Infrastructure-as-Code Templates (CloudFormation and Terraform) methodology when in doubt about scope or fit.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/vpc.tf`
+
+```hcl
+# AWS Infrastructure-as-Code Templates (CloudFormation and Terraform) — vpc.tf
+# Terraform skeleton. Customise variables + tags before apply.
+
+variable "project" {
+  type    = string
+  default = "faion-net"
+}
+
+variable "environment" {
+  type    = string
+  default = "dev"
+}
+
+locals {
+  common_tags = {
+    Project     = var.project
+    Environment = var.environment
+    ManagedBy   = "terraform"
+    Methodology = "aws-cfn-terraform-templates"
+  }
+}
+
+# Resource block goes here. See AGENTS.md for the canonical pattern.
+```
+
+### `templates/ecs-fargate.yaml`
+
+```yaml
+# AWS Infrastructure-as-Code Templates (CloudFormation and Terraform) — ecs-fargate.yaml
+# Replace placeholder values per instance.
+
+artefact_id: "<slug-or-uuid>"
+owner: "<single-named-handle>"
+inputs_used: []
+decision: "<the-answer>"
+rationale: "<>=2 sentences referencing at least one input by name>"
+version: "1.0.0"
+last_reviewed: "2026-05-23"
+```
+
+### `templates/rds-postgres.yaml`
+
+```yaml
+# AWS Infrastructure-as-Code Templates (CloudFormation and Terraform) — rds-postgres.yaml
+# Replace placeholder values per instance.
+
+artefact_id: "<slug-or-uuid>"
+owner: "<single-named-handle>"
+inputs_used: []
+decision: "<the-answer>"
+rationale: "<>=2 sentences referencing at least one input by name>"
+version: "1.0.0"
+last_reviewed: "2026-05-23"
+```

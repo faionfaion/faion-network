@@ -64,6 +64,8 @@
 | `templates/use-case-mapping.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,116 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/use-case-mapping.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/use-case-mapping.json",
+  "title": "Use Case Mapping Output Contract",
+  "type": "object",
+  "required": [
+    "use_case_id",
+    "primary_actor",
+    "goal",
+    "preconditions",
+    "main_flow",
+    "alternative_flows",
+    "postcondition",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "use_case_id": {
+      "type": "string",
+      "description": "stable id (UC-001..)"
+    },
+    "primary_actor": {
+      "type": "string",
+      "description": "named role"
+    },
+    "goal": {
+      "type": "string",
+      "description": "active-verb statement"
+    },
+    "preconditions": {
+      "type": "array",
+      "description": "system + actor state before flow starts",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "main_flow": {
+      "type": "array",
+      "description": "numbered steps",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "alternative_flows": {
+      "type": "array",
+      "description": "\u22651 branching scenarios",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "postcondition": {
+      "type": "string",
+      "description": "observable end state"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "use_case_id": "sample-use_case_id",
+  "primary_actor": "sample-primary_actor",
+  "goal": "sample-goal",
+  "preconditions": [
+    {
+      "k": "v"
+    }
+  ],
+  "main_flow": [
+    {
+      "k": "v"
+    }
+  ],
+  "alternative_flows": [
+    {
+      "k": "v"
+    }
+  ],
+  "postcondition": "sample-postcondition",
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

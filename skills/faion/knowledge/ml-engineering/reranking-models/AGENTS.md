@@ -55,6 +55,8 @@
 |------|---------|
 | `templates/reranker-config.yaml` | Reranker config + warmup hook + fallback policy. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -70,3 +72,21 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` picks reranker type by traffic, self-host policy, and recall need. Each leaf references a rule id from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/reranker-config.yaml`
+
+```yaml
+choice: cross-encoder-local        # cross-encoder-local | cohere | mixedbread | llm-as-judge
+model: BAAI/bge-reranker-v2-m3
+version: revision:abc123           # pin exact hash
+warmup_on_start: true
+fallback: ann-top-k                # ann-top-k | none
+bench:
+  latency_p95_ms: 120
+  ndcg_at_10: 0.78
+  cost_per_query_usd: 0.0002
+```

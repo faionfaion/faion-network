@@ -66,6 +66,8 @@
 | `templates/observability-spec.md` | Service-level observability spec listing pillar status + SLO + alert rules |
 | `templates/otel-config.yaml` | OpenTelemetry Collector config: receivers + processors + exporters |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,52 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/otel-config.yaml`
+
+```yaml
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+  attributes:
+    actions:
+      - key: http.user.email
+        action: hash
+      - key: http.user.phone
+        action: delete
+      - key: network.peer.address
+        action: update
+        value: "redacted"
+
+exporters:
+  otlphttp:
+    endpoint: https://tempo.example.com:4318
+    headers:
+      Authorization: "Bearer ${OTEL_TOKEN}"
+  prometheus:
+    endpoint: 0.0.0.0:9464
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [attributes, batch]
+      exporters: [otlphttp]
+    metrics:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [prometheus]
+```

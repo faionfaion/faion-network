@@ -65,6 +65,8 @@
 |------|---------|
 | `templates/query-budget.sh` | CLI helper running query-budget assertions across test suite. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,35 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (workload shape, write multiplicity, dev-vs-prod) to a rule from `01-core-rules.xml`. Use it before scaffolding a model or refactoring a query.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/query-budget.sh`
+
+```bash
+# query-budget.sh — fail CI if any feature test exceeds N queries.
+# Usage: query-budget.sh BUDGET (default 15)
+# Requires: DB_LOG_QUERIES=true support in the test suite.
+set -euo pipefail
+BUDGET="${1:-15}"
+LOG=$(mktemp)
+DB_LOG_QUERIES=true php artisan test --log-junit "$LOG" --testdox 2>&1 | tee /tmp/test.out
+python3 - "$BUDGET" <<'PY'
+import re, sys
+budget = int(sys.argv[1])
+text = open("/tmp/test.out").read()
+fails = []
+for m in re.finditer(r"^\s*[\w\\:]+.*?queries:\s*(\d+)", text, re.M):
+    n = int(m.group(1))
+    if n > budget:
+        fails.append((m.group(0).strip(), n))
+if fails:
+    print(f"\nQuery budget {budget} exceeded:")
+    for name, q in fails:
+        print(f"  {name}: {q} queries")
+    sys.exit(1)
+print(f"OK: all tests within {budget} queries")
+PY
+```

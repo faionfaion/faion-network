@@ -68,6 +68,8 @@
 | `templates/error.rs.thiserror.tmpl` | `thiserror`-based Error enum scaffold for libraries |
 | `templates/clippy.toml` | Clippy lint block forbidding `unwrap_used`, `expect_used` outside tests |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,38 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree first asks crate type (library / binary / build-script) → picks `thiserror` (lib), `anyhow` (bin), or `Box<dyn Error>` (build). Then asks whether downstream needs variant matching → yes ⇒ enum with `#[from]` source chains; no ⇒ opaque error with `.context()`. All leaves reference rules from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/error.rs.thiserror.tmpl`
+
+```text
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum CrateError {
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
+
+    #[error("parse error: {0}")]
+    Parse(#[from] serde_json::Error),
+
+    #[error("resource '{id}' not found")]
+    NotFound { id: String },
+
+    #[error("invalid state: {0}")]
+    InvalidState(String),
+}
+
+pub type Result<T, E = CrateError> = std::result::Result<T, E>;
+```
+
+### `templates/clippy.toml`
+
+```toml
+# Place at crate root. Override per-file with #[allow(clippy::unwrap_used)] in tests.
+
+avoid-breaking-exported-api = false
+```

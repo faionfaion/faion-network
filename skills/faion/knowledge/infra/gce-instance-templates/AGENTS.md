@@ -67,6 +67,8 @@
 | `templates/gce-instance-templates.yaml` | Skeleton for the config artefact this methodology produces. |
 | `templates/_smoke-test.yaml` | Minimum viable filled-in example. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,30 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree branches on observable workload / configuration signals and routes to a specific rule id from `01-core-rules.xml`. Use it whenever the input shape is ambiguous between two adjacent methodologies in this sub-skill (e.g. gce-instance-templates vs an adjacent sibling).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/gce-instance-templates.yaml`
+
+```yaml
+name: example-name
+machine_type: example-machine_type
+image: example-image
+service_account: 0  # int|number|string
+startup_script: example-startup_script
+metadata: example-metadata
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+# minimum viable filled-in example of gce-instance-templates.yaml
+name: example-name
+machine_type: example-machine_type
+image: example-image
+service_account: 1
+startup_script: example-startup_script
+metadata: example-metadata
+```

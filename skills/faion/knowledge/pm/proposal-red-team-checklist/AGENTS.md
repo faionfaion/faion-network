@@ -70,6 +70,8 @@
 | `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root, mode |
 | `templates/_smoke-test.json` | Minimum-viable filled `RedTeamChecklist` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,78 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (trigger present, owner named, killer-anchor populated, pause-point size, staleness) to a concrete action — run-the-checklist, suppress, repair-anchors, or refresh-cadence. Every leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+owner:
+  role: ""
+  person: ""
+mode: ""              # READ-DO | DO-CONFIRM
+last_reviewed: ""     # YYYY-MM-DD (within 90 days)
+version: ""           # semver
+evidence_root: ""     # URL or path where artefacts live
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "proposal_id": "smoke",
+  "header": {
+    "owner": {
+      "role": "delivery-manager",
+      "person": "dm-handle"
+    },
+    "mode": "DO-CONFIRM",
+    "last_reviewed": "2026-04-10",
+    "version": "2.3"
+  },
+  "pause_points": [
+    {
+      "name": "Scope & Assumptions",
+      "items": [
+        {
+          "item_id": "S1",
+          "text": "Out-of-scope list explicit and acknowledged",
+          "executor": "BA",
+          "artefact": "link://gdoc/oos-list",
+          "killer_anchor": "incident-2025-Q3-acme"
+        },
+        {
+          "item_id": "S2",
+          "text": "Estimation buffers split by work-type per Flow Framework",
+          "executor": "architect",
+          "artefact": "link://wbs/v2",
+          "killer_anchor": "postmortem-2025-12"
+        },
+        {
+          "item_id": "S3",
+          "text": "Risk register attached and reviewed",
+          "executor": "PM",
+          "artefact": "link://risks",
+          "killer_anchor": "policy-pmo-risk"
+        },
+        {
+          "item_id": "S4",
+          "text": "Change-control clause referenced in SOW",
+          "executor": "PM",
+          "artefact": "link://sow",
+          "killer_anchor": "incident-2025-Q4"
+        },
+        {
+          "item_id": "S5",
+          "text": "Acceptance criteria observable per leaf",
+          "executor": "BA",
+          "artefact": "link://wbs-dict",
+          "killer_anchor": "postmortem-2026-Q1"
+        }
+      ]
+    }
+  ]
+}
+```

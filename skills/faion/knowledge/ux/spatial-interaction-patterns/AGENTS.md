@@ -65,6 +65,8 @@
 | `templates/interaction-spec.json` | Skeleton interaction spec |
 | `templates/state-machine.dot` | Graphviz template for one interaction state machine |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,47 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches by interaction class (select/manipulation/navigation) → picks modalities; checks state-machine completeness. Each leaf cites a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/interaction-spec.json`
+
+```json
+{
+  "platforms": [
+    "visionos",
+    "quest"
+  ],
+  "interactions": [
+    {
+      "name": "select",
+      "primary_modality": "gaze+dwell",
+      "fallback_modality": "voice",
+      "state_machine": [
+        "idle",
+        "hover",
+        "active",
+        "cancel",
+        "error"
+      ]
+    }
+  ]
+}
+```
+
+### `templates/state-machine.dot`
+
+```dot
+digraph SelectWindow {
+  idle -> hover [label="gaze enter"];
+  hover -> active [label="dwell 350ms OR voice \"select\""];
+  hover -> idle [label="gaze leave"];
+  active -> idle [label="success"];
+  active -> cancel [label="tracking lost"];
+  active -> error [label="invalid target"];
+  cancel -> idle;
+  error -> idle [label="user dismiss"];
+}
+```

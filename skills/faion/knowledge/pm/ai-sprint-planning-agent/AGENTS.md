@@ -59,9 +59,7 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-sprint-planning-agent.json` | JSON schema for the sprint plan |
 | `templates/ai-sprint-planning-agent.md` | Markdown skeleton for the plan review |
-| `templates/_smoke-test.json` | Minimum-viable filled plan |
 
 ## Scripts
 

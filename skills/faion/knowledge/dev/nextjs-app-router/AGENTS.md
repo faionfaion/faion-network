@@ -67,6 +67,8 @@
 |------|---------|
 | `templates/next.config.ts` | Next.js config with experimental flags + image domains |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,44 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps Next.js version, routing scope, and team familiarity to a rule from `01-core-rules.xml`, telling the agent whether to apply App Router patterns or skip for Pages Router / static-only. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/next.config.ts`
+
+```typescript
+// next.config.ts — production-ready baseline
+// Requires: npm i -D @next/bundle-analyzer
+import type { NextConfig } from 'next';
+import bundleAnalyzer from '@next/bundle-analyzer';
+
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+});
+
+const config: NextConfig = {
+  experimental: {
+    typedRoutes: true,
+    serverActions: { bodySizeLimit: '2mb' },
+  },
+  images: {
+    remotePatterns: [{ protocol: 'https', hostname: 'cdn.example.com' }],
+  },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=()' },
+        ],
+      },
+    ];
+  },
+};
+
+export default withBundleAnalyzer(config);
+```

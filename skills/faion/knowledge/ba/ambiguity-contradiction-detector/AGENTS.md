@@ -66,6 +66,8 @@
 | `templates/report.md` | Markdown report skeleton — finding rows with severity + evidence + owner |
 | `templates/report-instance.json` | JSON instance of a filled report (machine-readable mirror) |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,36 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/report-instance.json`
+
+```json
+{
+  "doc_ref": "/docs/req/v3.2/checkout.md",
+  "run_id": "amb-2026-05-23-001",
+  "findings": [
+    {
+      "id": "f-1",
+      "category": "vague_quantifier",
+      "severity": "major",
+      "evidence_quote": "the system should respond quickly",
+      "section_ref": "3.2.1",
+      "remediation_owner": "jane@team.io"
+    },
+    {
+      "id": "f-2",
+      "category": "contradictory_ac",
+      "severity": "blocking",
+      "evidence_quote": "AC-12 says 5s p95; AC-19 says 2s p95",
+      "section_ref": "AC-12 + AC-19",
+      "remediation_owner": "jane@team.io"
+    }
+  ],
+  "owner": "jane@team.io",
+  "last_reviewed": "2026-05-23"
+}
+```

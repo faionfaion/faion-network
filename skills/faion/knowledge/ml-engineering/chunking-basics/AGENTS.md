@@ -62,6 +62,8 @@
 | `templates/recursive_chunker.py` | RecursiveChunker reference with token-accurate measurement and overlap. |
 | `templates/chunk-schema.json` | JSON Schema for one chunk record emitted by the pipeline. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,153 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` routes by content type (code / markdown / html / prose) and corpus profile (legal/technical vs QA vs general) to the splitter + size band. Use it before writing any pipeline code so the chunker choice is explicit and auditable.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/recursive_chunker.py`
+
+```python
+"""Token-accurate recursive splitter with content-based IDs and metadata."""
+from __future__ import annotations
+
+import hashlib
+from typing import Iterable
+
+import tiktoken
+
+
+class RecursiveChunker:
+    """Splits prose into chunks of ~chunk_size tokens with `overlap` tokens of carry-over."""
+
+    SEPARATORS: tuple[str, ...] = ("\n\n", "\n", ". ", " ", "")
+
+    def __init__(
+        self,
+        chunk_size: int = 500,
+        overlap: int = 50,
+        encoding: str = "cl100k_base",
+        strategy: str = "recursive",
+        version: str = "1.0.0",
+    ) -> None:
+        if not 0 <= overlap < chunk_size:
+            raise ValueError("overlap must be in [0, chunk_size)")
+        self.chunk_size = chunk_size
+        self.overlap = overlap
+        self.enc = tiktoken.get_encoding(encoding)
+        self.strategy = strategy
+        self.version = version
+
+    def chunk(self, text: str, source: str, page: int | None = None) -> list[dict]:
+        token_ids = self.enc.encode(text)
+        records: list[dict] = []
+        start = 0
+        index = 0
+        while start < len(token_ids):
+            end = min(start + self.chunk_size, len(token_ids))
+            window = token_ids[start:end]
+            chunk_text = self.enc.decode(window)
+            records.append({
+                "id": self._cid(source, index),
+                "text": chunk_text,
+                "token_count": len(window),
+                "source": source,
+                "page": page,
+                "chunk_index": index,
+                "strategy": self.strategy,
+                "version": self.version,
+                "overlap": self.overlap,
+            })
+            index += 1
+            if end == len(token_ids):
+                break
+            start = end - self.overlap
+        return records
+
+    def _cid(self, source: str, index: int) -> str:
+        key = f"{source}|{index}|{self.strategy}@{self.version}"
+        return hashlib.md5(key.encode("utf-8")).hexdigest()
+
+
+def chunks_to_jsonl(records: Iterable[dict]) -> str:
+    import json
+    return "\n".join(json.dumps(r, ensure_ascii=False) for r in records)
+```
+
+### `templates/chunk-schema.json`
+
+```json
+{
+  "_header": {
+    "purpose": "JSON Schema for one chunk emitted by the chunking pipeline",
+    "consumes": "chunk dict produced by RecursiveChunker / SentenceChunker / etc.",
+    "produces": "pass/fail validation result",
+    "depends-on": "content/02-output-contract.xml",
+    "token-budget-impact": "small"
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://chunking-basics/chunk.schema.json",
+  "type": "object",
+  "required": [
+    "id",
+    "text",
+    "token_count",
+    "source",
+    "chunk_index",
+    "strategy",
+    "version"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{32}$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "token_count": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 4000
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "page": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 1
+    },
+    "chunk_index": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "strategy": {
+      "type": "string",
+      "enum": [
+        "fixed",
+        "sentence",
+        "paragraph",
+        "recursive",
+        "markdown",
+        "code-ast",
+        "html",
+        "semantic"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "overlap": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}
+```

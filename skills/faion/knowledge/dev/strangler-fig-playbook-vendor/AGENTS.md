@@ -67,6 +67,8 @@
 | `templates/spec.json` | JSON skeleton for the spec artefact |
 | `templates/spec.md` | Markdown skeleton for the spec artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,56 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/spec.json`
+
+```json
+{
+  "monolith_inventory": [
+    {
+      "route_or_job_name": "GET /api/products/recs",
+      "traffic_rps": 120,
+      "error_rate_baseline": 0.002,
+      "p99_latency_ms_baseline": 180
+    }
+  ],
+  "slice_scoring_table": [
+    {
+      "slice_id": "S1",
+      "coupling_depth": 2,
+      "traffic_risk": 2,
+      "business_priority": 4,
+      "selection_order": 1
+    }
+  ],
+  "cutover_runbook_per_slice": [
+    {
+      "slice_id": "S1",
+      "steps": [
+        {
+          "command_or_action": "shift weight 10%",
+          "rollback_command": "shift weight 0%"
+        }
+      ],
+      "kill_switch_test_passed_at": "2026-05-15T10:00:00Z"
+    }
+  ],
+  "parity_burn_in_record": {
+    "window_start": "2026-05-16T00:00:00Z",
+    "window_end": "2026-05-23T00:00:00Z",
+    "duration_hours": 168,
+    "error_rate_delta_percent": 1.2,
+    "p99_latency_delta_percent": 3.5
+  },
+  "exit_criteria_signoff": {
+    "legacy_5xx_for_7_days": true,
+    "parity_within_threshold": true,
+    "runbook_handed_off": true,
+    "client_architect_signature_date": "2026-05-23"
+  }
+}
+```

@@ -66,6 +66,8 @@
 | `templates/skeleton.json` | Skeleton template |
 | `templates/skeleton.md` | Skeleton template |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,52 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/skeleton.json`
+
+```json
+{
+  "report_period": "2026-Q2",
+  "sources": [
+    {
+      "name": "S3 -> internet (downloads)",
+      "type": "internet_egress",
+      "monthly_gb": 12000,
+      "cost_usd": 1080,
+      "attributed_feature": "media-downloads"
+    },
+    {
+      "name": "RDS replica -> cross-AZ",
+      "type": "cross_az",
+      "monthly_gb": 800,
+      "cost_usd": 80,
+      "attributed_feature": "read-replicas"
+    }
+  ],
+  "budgets": [
+    {
+      "region": "us-east-1",
+      "monthly_cap_usd": 5000,
+      "alert_at_80pct": true,
+      "freeze_at_100pct": true
+    }
+  ],
+  "worst_case_model": {
+    "peak_multiplier": 4,
+    "projected_gb": 48000,
+    "projected_cost": 4320
+  },
+  "nat_gw_alternatives_review": [
+    {
+      "nat_gw_id": "nat-abc",
+      "alternative": "VPC endpoint S3",
+      "est_savings_usd": 200
+    }
+  ],
+  "review_date": "2026-05-15"
+}
+```

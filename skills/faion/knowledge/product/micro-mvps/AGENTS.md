@@ -65,6 +65,8 @@
 | `templates/micro-mvps.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,94 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/micro-mvps.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/micro-mvps.json",
+  "title": "Micro MVPs Output Contract",
+  "type": "object",
+  "required": [
+    "hypothesis",
+    "gate_event",
+    "gate_threshold",
+    "build_window",
+    "manual_backend_plan",
+    "decision_at",
+    "decision",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "hypothesis": {
+      "type": "string",
+      "description": "single falsifiable claim with numeric prediction"
+    },
+    "gate_event": {
+      "type": "string",
+      "description": "named gate"
+    },
+    "gate_threshold": {
+      "type": "number",
+      "description": "numeric gate"
+    },
+    "build_window": {
+      "type": "object",
+      "description": "ISO start/end \u22647 days"
+    },
+    "manual_backend_plan": {
+      "type": "string",
+      "description": "explicit description of manual back-end"
+    },
+    "decision_at": {
+      "type": "string",
+      "description": "ISO datetime \u2264 window_close + 7 days"
+    },
+    "decision": {
+      "type": "string",
+      "description": "go | kill | iterate"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "hypothesis": "sample-hypothesis",
+  "gate_event": "sample-gate_event",
+  "gate_threshold": 1,
+  "build_window": {
+    "k": "v"
+  },
+  "manual_backend_plan": "sample-manual_backend_plan",
+  "decision_at": "sample-decision_at",
+  "decision": "sample-decision",
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

@@ -64,6 +64,8 @@
 | `templates/prompt-pr-checklist.json` | JSON skeleton matching 02-output-contract. |
 | `templates/prompt-pr-checklist.md` | Markdown checklist for PR template. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,61 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree picks READ-DO vs DO-CONFIRM mode based on PR risk (touched file count + production traffic exposure). Walk it before assigning pause-point mode.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-pr-checklist.json`
+
+```json
+{
+  "artefact_id": "prompt-pr-checklist-<period>",
+  "owner": "<handle>@faion.net",
+  "mode": "READ-DO",
+  "pause_points": [
+    {
+      "name": "pre-merge",
+      "items": [
+        {
+          "id": "i1",
+          "statement": "Power-calc spec attached",
+          "executor": "author",
+          "artefact": "git://<repo>/specs/<file>.json",
+          "killer_anchor": "incident-<id>"
+        },
+        {
+          "id": "i2",
+          "statement": "Refusal-style policy unchanged",
+          "executor": "reviewer",
+          "artefact": "diff-comment",
+          "killer_anchor": "policy-line:<path>#L<n>"
+        },
+        {
+          "id": "i3",
+          "statement": "Eval delta within tolerance",
+          "executor": "ci",
+          "artefact": "ci-run-url",
+          "killer_anchor": "incident-<id>"
+        },
+        {
+          "id": "i4",
+          "statement": "Tool-schema unchanged or migrated",
+          "executor": "reviewer",
+          "artefact": "schema-diff",
+          "killer_anchor": "incident-<id>"
+        },
+        {
+          "id": "i5",
+          "statement": "Production rollout plan attached",
+          "executor": "author",
+          "artefact": "rollout-doc",
+          "killer_anchor": "postmortem-<id>"
+        }
+      ]
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```

@@ -73,6 +73,8 @@
 | `templates/reasoning-routing.schema.yaml` | Schema for the routing spec |
 | `templates/_smoke-test.yaml` | Minimum-viable routing spec |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,3 +90,173 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes a task by inferred type and difficulty score to one of {standard, Extended Thinking, o4-mini, o3, DeepSeek R1} with a thinking-budget envelope per node.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/extended-thinking.py`
+
+```python
+"""Claude Extended Thinking invocation with task-type budget selector."""
+import anthropic
+
+client = anthropic.Anthropic()
+
+
+def reasoning_budget(task_type: str) -> int:
+    """Return thinking token budget by task type."""
+    budgets = {
+        "format": 1024,       # Reformatting, extraction
+        "analysis": 4096,     # Code review, logic check
+        "planning": 8192,     # Architecture, multi-step plan
+        "research": 32768,    # Deep synthesis, theorem proving
+    }
+    return budgets.get(task_type, 4096)
+
+
+def think(
+    task: str,
+    task_type: str = "analysis",
+    model: str = "claude-opus-4-5",
+) -> str:
+    """Invoke Claude Extended Thinking and return the final answer only."""
+    budget = reasoning_budget(task_type)
+
+    response = client.messages.create(
+        model=model,
+        max_tokens=budget + 4000,  # thinking budget + answer buffer
+        thinking={"type": "enabled", "budget_tokens": budget},
+        messages=[{"role": "user", "content": task}],
+    )
+
+    # content[0] is ThinkingBlock (internal), content[1] is TextBlock (answer)
+    for block in response.content:
+        if block.type == "text":
+            return block.text
+
+    return ""
+
+
+def route_and_think(task: str) -> str:
+    """Classify task complexity, choose model, invoke thinking if needed."""
+    classifier = client.messages.create(
+        model="claude-haiku-4-5",
+        max_tokens=20,
+        messages=[{"role": "user", "content":
+            f"Classify task complexity: simple/complex. Task: {task[:200]}"}],
+    )
+    complexity = classifier.content[0].text.lower()
+
+    if "complex" in complexity:
+        return think(task, task_type="analysis", model="claude-opus-4-5")
+    else:
+        # Simple task: standard model, no extended thinking
+        response = client.messages.create(
+            model="claude-haiku-4-5",
+            max_tokens=1024,
+            messages=[{"role": "user", "content": task}],
+        )
+        return response.content[0].text
+```
+
+### `templates/prompt-reasoning.txt`
+
+```text
+You are a careful reasoning assistant. For every task:
+
+1. ANALYZE: Break the problem into parts. Identify what is known, what is unknown, and what assumptions you are making.
+
+2. REASON: Work through each part step by step. Show your intermediate conclusions. If you encounter a contradiction, flag it explicitly.
+
+3. VERIFY: Before giving your final answer, check:
+   - Does the answer satisfy all the stated requirements?
+   - Are there edge cases or exceptions you haven't considered?
+   - Is there a simpler alternative that achieves the same result?
+
+4. ANSWER: Give a clear, direct final answer. Separate it from your reasoning with "FINAL ANSWER:".
+
+Important:
+- Do not skip steps. The value is in the explicit reasoning chain.
+- Do not express false confidence. If uncertain, say "I'm not certain, but..." and explain why.
+- Do not take irreversible actions without explicitly confirming with the user first.
+- If the task is ambiguous, state your interpretation before proceeding.
+
+Task: {task}
+```
+
+### `templates/reasoning-routing.schema.yaml`
+
+```yaml
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+required: [version, classifier, task_types, eval_evidence, budget_cap, human_gate]
+properties:
+  version: { type: string, pattern: "^\\d+\\.\\d+\\.\\d+$" }
+  classifier:
+    type: object
+    required: [model, prompt_version, confidence_field]
+  task_types:
+    type: object
+    minProperties: 2
+    additionalProperties:
+      type: object
+      required: [route, thinking_budget, standard_fallback]
+      properties:
+        route: { type: string, enum: [standard, extended-thinking, o3, o4-mini, deepseek-r1] }
+        thinking_budget: { type: integer, minimum: 0, maximum: 131072 }
+        standard_fallback:
+          type: object
+          required: [model, trigger]
+  eval_evidence:
+    type: object
+    required: [set_path, sample_size, reasoning_lift]
+    properties:
+      sample_size: { type: integer, minimum: 50 }
+      reasoning_lift:
+        type: object
+        additionalProperties: { type: number }
+  budget_cap:
+    type: object
+    required: [monthly_usd, on_cap_hit]
+    properties:
+      monthly_usd: { type: number, minimum: 0 }
+      on_cap_hit: { type: string, enum: [fall-through, fail] }
+  human_gate:
+    type: object
+    required: [enabled, actions, confidence_floor]
+    properties:
+      enabled: { type: boolean }
+      actions: { type: array, items: { type: string } }
+      confidence_floor: { type: number, minimum: 0, maximum: 1 }
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+version: 1.0.0
+classifier:
+  model: claude-haiku
+  prompt_version: cr-classifier-v3
+  confidence_field: difficulty_score
+task_types:
+  code_review_simple:
+    route: standard
+    thinking_budget: 0
+    standard_fallback: {model: claude-sonnet-4-5, trigger: always}
+  code_review_hard:
+    route: extended-thinking
+    thinking_budget: 8192
+    standard_fallback: {model: claude-sonnet-4-5, trigger: provider_unhealthy}
+eval_evidence:
+  set_path: evals/cr-routing-2026-05.jsonl
+  sample_size: 78
+  reasoning_lift: {code_review_hard: 0.18}
+budget_cap:
+  monthly_usd: 3500
+  on_cap_hit: fall-through
+human_gate:
+  enabled: true
+  actions: [deploy, db-migration]
+  confidence_floor: 0.65
+```

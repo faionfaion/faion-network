@@ -64,6 +64,8 @@
 | `templates/training-jsonl.jsonl` | Sample chat-messages training row |
 | `templates/cost-estimate.yaml` | Cost projection skeleton |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,26 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root: Does the dataset have ≥50 examples? Branches route to a rule id from `content/01-core-rules.xml` (min-50-examples, token-budget-computed, role-alternation, ...) so every leaf is traceable to a testable statement.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/training-jsonl.jsonl`
+
+```json
+{"messages": [{"role": "system", "content": "You are a fine-tuning-openai-basics assistant."}, {"role": "user", "content": "{user prompt}"}, {"role": "assistant", "content": "{ideal response}"}]}
+```
+
+### `templates/cost-estimate.yaml`
+
+```yaml
+# fine-tuning-openai-basics — config skeleton
+version: 1.0.0
+slug: fine-tuning-openai-basics
+fields:
+  - name: example-field
+    type: string
+    required: true
+defaults: {}
+```

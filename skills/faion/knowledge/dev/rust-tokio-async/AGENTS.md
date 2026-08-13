@@ -72,6 +72,8 @@
 | `templates/user-service.rs` | Tokio service example: async handlers + tracing + tower middleware. |
 | `templates/_smoke-test.json` | Minimum viable tokio-async artefact for validator smoke-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,181 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs - runtime config, blocking inventory, channel boundedness, timeout coverage - onto a rule from `content/01-core-rules.xml`. Use it before merging Tokio code: it catches blocking-in-async, unbounded mpsc, and missing timeouts upstream.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/main.rs`
+
+```rust
+use std::time::Duration;
+use tokio::sync::mpsc;
+use tokio::task::JoinSet;
+use tokio::time::timeout;
+use tokio_util::sync::CancellationToken;
+
+#[tokio::main(flavor = "multi_thread", worker_threads = 8)]
+async fn main() -> anyhow::Result<()> {
+    let shutdown = CancellationToken::new();
+    let (tx, mut rx) = mpsc::channel::<u64>(1024);
+
+    let mut set = JoinSet::new();
+    for n in 0..16u64 {
+        let token = shutdown.clone();
+        let tx = tx.clone();
+        set.spawn(async move {
+            tokio::select! {
+                _ = token.cancelled() => Ok::<(), anyhow::Error>(()),
+                r = timeout(Duration::from_secs(3), do_work(n)) => {
+                    let v = r??;
+                    tx.send(v).await?;
+                    Ok(())
+                }
+            }
+        });
+    }
+    drop(tx);
+
+    let _ = tokio::signal::ctrl_c().await;
+    shutdown.cancel();
+    while let Some(res) = set.join_next().await {
+        let _ = res?;
+    }
+    while let Some(_v) = rx.recv().await {}
+    Ok(())
+}
+
+async fn do_work(n: u64) -> anyhow::Result<u64> { Ok(n * 2) }
+```
+
+### `templates/Cargo.toml`
+
+```toml
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "signal", "time", "sync"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+anyhow = "1"
+```
+
+### `templates/batch-processor.rs`
+
+```rust
+// Semaphore-bounded concurrent batch processor.
+// Input: Vec<T> + async processor function + concurrency limit
+// Output: Vec<Result<R, E>> in original order
+
+use futures::stream::{self, StreamExt};
+use std::sync::Arc;
+use tokio::sync::Semaphore;
+
+pub struct BatchProcessor {
+    concurrency: usize,
+}
+
+impl BatchProcessor {
+    pub fn new(concurrency: usize) -> Self { Self { concurrency } }
+
+    pub async fn process<T, F, Fut, R, E>(
+        &self,
+        items: Vec<T>,
+        processor: F,
+    ) -> Vec<Result<R, E>>
+    where
+        T: Send + 'static,
+        F: Fn(T) -> Fut + Send + Sync + 'static,
+        Fut: std::future::Future<Output = Result<R, E>> + Send,
+        R: Send + 'static,
+        E: Send + 'static,
+    {
+        let sem = Arc::new(Semaphore::new(self.concurrency));
+        let proc = Arc::new(processor);
+
+        stream::iter(items)
+            .map(|item| {
+                let sem = sem.clone();
+                let proc = proc.clone();
+                async move {
+                    let _permit = sem.acquire().await.unwrap();
+                    proc(item).await
+                }
+            })
+            .buffer_unordered(self.concurrency)
+            .collect()
+            .await
+    }
+}
+
+// Usage:
+// let bp = BatchProcessor::new(10);
+// let results = bp.process(user_ids, |id| async move { fetch_user(id).await }).await;
+```
+
+### `templates/user-service.rs`
+
+```rust
+// Reference async service: try_join! for parallel queries, spawn_blocking for CPU work.
+// Input: &Database reference
+// Output: Result<T, AppError> on all methods
+
+use argon2::{password_hash::{rand_core::OsRng, PasswordHasher, SaltString}, Argon2};
+use crate::{db::Database, error::AppError, models::User};
+
+pub struct UserService<'a> {
+    db: &'a Database,
+}
+
+impl<'a> UserService<'a> {
+    pub fn new(db: &'a Database) -> Self { Self { db } }
+
+    pub async fn list(&self, page: u32, per_page: u32) -> Result<(Vec<User>, i64), AppError> {
+        let offset = ((page - 1) * per_page) as i64;
+        // Both queries run in parallel — total time = max(query_a, query_b)
+        let (users, total) = tokio::try_join!(
+            self.db.fetch_users(per_page as i64, offset),
+            self.db.count_users()
+        )?;
+        Ok((users, total))
+    }
+
+    pub async fn get_by_id(&self, id: i32) -> Result<User, AppError> {
+        self.db.fetch_user_by_id(id).await?
+            .ok_or(AppError::NotFound("User not found".into()))
+    }
+
+    pub async fn create(&self, name: &str, email: &str, password: &str) -> Result<User, AppError> {
+        if self.db.fetch_user_by_email(email).await?.is_some() {
+            return Err(AppError::Conflict("Email already exists".into()));
+        }
+        // CPU-intensive: move to blocking thread to avoid stalling the runtime
+        let password_hash = tokio::task::spawn_blocking({
+            let password = password.to_string();
+            move || {
+                let salt = SaltString::generate(&mut OsRng);
+                Argon2::default()
+                    .hash_password(password.as_bytes(), &salt)
+                    .map(|h| h.to_string())
+            }
+        })
+        .await??; // outer ? = JoinError, inner ? = hash error
+
+        self.db.insert_user(name, email, &password_hash).await
+    }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "runtime_flavour": "multi_thread",
+  "worker_threads": 4,
+  "blocking_offload": "spawn_blocking",
+  "channel_policy": {
+    "bounded": true,
+    "default_capacity": 512
+  },
+  "timeout_default_ms": 3000,
+  "shutdown_signal": "ctrl_c"
+}
+```

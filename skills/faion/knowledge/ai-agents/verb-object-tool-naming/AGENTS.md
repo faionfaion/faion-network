@@ -62,8 +62,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/verb-object-namespace.py` | Reference Python tool definitions following verb_object + namespace pattern |
-| `templates/mcp-gateway-naming.ts` | MCP gateway plugin enforcing verb_object + namespace at registration time |
 | `templates/name-rewrite-prompt.md` | Prompt template for the naming-rewrite subagent |
 
 ## Scripts

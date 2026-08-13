@@ -71,6 +71,8 @@
 | `templates/ice-scorer.py` | Dataclass for ICE-scoring tactic backlog; bucket() returns test_now / this_quarter / if_capacity / backlog |
 | `templates/tactic-backlog.md` | Ranked report skeleton with one row per tactic + columns for hypothesis, ICE, instrumentation |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,3 +90,53 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps the observable funnel-drop step (activation / free-to-paid / expansion) to the tactic family the agent must sample from, each leaf pinning a rule from `01-core-rules.xml`. Use it before ranking — choosing the wrong family wastes ICE-scoring effort.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ice-scorer.py`
+
+```python
+"""
+ice-scorer.py — ICE scoring for PLG tactic backlog.
+
+Agents emit Tactic(...) instances from each tactic-catalog section,
+then call rank() to produce a prioritized test queue.
+
+ICE = Impact + Confidence + Ease (each 1-10).
+Bucket thresholds are calibrated for quarterly sprint planning.
+"""
+from dataclasses import dataclass
+
+
+@dataclass
+class Tactic:
+    name: str
+    impact: int       # 1-10: expected lift on target metric
+    confidence: int   # 1-10: evidence strength (own data > industry > guess)
+    ease: int         # 1-10: inverse cost (eng + design weeks; 10 = hours)
+    metric: str       # which metric this tactic moves (required)
+    baseline: float   # current value of that metric (required; rejects if 0)
+
+    @property
+    def ice(self) -> int:
+        return self.impact + self.confidence + self.ease
+
+    def bucket(self) -> str:
+        if self.ice >= 24:
+            return "test_now"
+        if self.ice >= 18:
+            return "this_quarter"
+        if self.ice >= 12:
+            return "if_capacity"
+        return "backlog"
+
+
+def rank(tactics: list[Tactic]) -> list[Tactic]:
+    """Return tactics sorted by ICE descending. Raises on missing baseline."""
+    for t in tactics:
+        if t.baseline <= 0:
+            raise ValueError(f"Tactic '{t.name}' has no baseline — reject (rule baseline-required).")
+    return sorted(tactics, key=lambda t: t.ice, reverse=True)
+```

@@ -64,6 +64,8 @@
 | `templates/agent-pickup.yml` | GitHub Actions workflow dispatching an agent only on `agent-fixable` label-add. |
 | `templates/triage-checklist.md` | Pre-label checklist a human or read-only triage bot must satisfy before applying agent-fixable. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,48 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/agent-pickup.yml`
+
+```yaml
+# .github/workflows/agent-pickup.yml
+# Dispatch a coding agent only when a human (or read-only triage bot)
+# applies the `agent-fixable` label to an issue.
+name: agent-pickup
+
+on:
+  issues:
+    types: [labeled]
+
+jobs:
+  dispatch:
+    if: github.event.label.name == 'agent-fixable'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: read
+    steps:
+      - name: Reject self-labelling by bots
+        if: endsWith(github.actor, '-bot') || startsWith(github.actor, 'agent-')
+        run: |
+          gh issue edit ${{ github.event.issue.number }} \
+            --remove-label agent-fixable
+          echo "Rejected: agents may not self-label." && exit 1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Route to agent
+        run: |
+          # Router decides vendor based on path / size / availability.
+          gh agent run "$AGENT" --issue ${{ github.event.issue.number }}
+          gh issue edit ${{ github.event.issue.number }} \
+            --add-label "agent:$AGENT"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AGENT: devin
+```

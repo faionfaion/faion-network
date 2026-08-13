@@ -62,6 +62,8 @@
 | `templates/tools.yaml` | Tool tier catalog |
 | `templates/gate-runtime.py` | Reference tier gate evaluator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,57 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tools.yaml`
+
+```yaml
+default_tier: T3
+gates:
+  T0: audit
+  T1: audit
+  T2: signed-token
+  T3: two-person-cooling
+tools:
+  - name: grep
+    tier: T0
+  - name: kubectl-logs
+    tier: T0
+  - name: dashboard-fetch
+    tier: T0
+  - name: agent-self-restart
+    tier: T1
+  - name: rollback-service
+    tier: T2
+    action_class: rollback:payments-service
+  - name: cluster-drain
+    tier: T3
+    action_class: drain:prod-cluster
+```
+
+### `templates/gate-runtime.py`
+
+```python
+"""Tier-gate evaluator."""
+from __future__ import annotations
+
+
+def evaluate(tool: dict, ctx: dict) -> tuple[bool, str]:
+    tier = tool.get("tier", "T3")
+    if tier in ("T0", "T1"):
+        return True, "audit-only"
+    if tier == "T2":
+        if not ctx.get("signed_token_valid"):
+            return False, "T2 requires signed token"
+        return True, "token-ok"
+    if tier == "T3":
+        if not ctx.get("two_person_approved"):
+            return False, "T3 requires two-person rule"
+        if ctx.get("cooling_seconds_remaining", 0) > 0:
+            return False, f"T3 cooling {ctx['cooling_seconds_remaining']}s remaining"
+        return True, "two-person-cooling-ok"
+    return False, f"unknown tier {tier}"
+```

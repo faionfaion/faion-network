@@ -64,6 +64,8 @@
 | `templates/value-proposition-design.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,86 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/value-proposition-design.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/value-proposition-design.json",
+  "title": "Value Proposition Design Output Contract",
+  "type": "object",
+  "required": [
+    "customer_profile",
+    "value_map",
+    "alignment_gaps",
+    "value_prop_statement",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "customer_profile": {
+      "type": "object",
+      "description": "jobs + pains + gains arrays with citations"
+    },
+    "value_map": {
+      "type": "object",
+      "description": "products + pain_relievers + gain_creators arrays"
+    },
+    "alignment_gaps": {
+      "type": "array",
+      "description": "pain/gain ids with no matching reliever/creator",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "value_prop_statement": {
+      "type": "string",
+      "description": "\u2264140 chars; cites a named job"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "customer_profile": {
+    "k": "v"
+  },
+  "value_map": {
+    "k": "v"
+  },
+  "alignment_gaps": [
+    {
+      "k": "v"
+    }
+  ],
+  "value_prop_statement": "sample-value_prop_statement",
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

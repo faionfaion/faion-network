@@ -65,8 +65,9 @@
 | `templates/pyproject.toml` | PEP 621 pyproject with ruff + mypy strict |
 | `templates/.pre-commit-config.yaml` | Pre-commit hooks: ruff + mypy on staged files |
 | `templates/ci.yml` | GitHub Actions workflow for Python |
-| `templates/py-typed` | Empty marker advertising the library as typed (filename: py.typed) |
 | `templates/artefact.json` | Sample artefact metadata for validator |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -83,3 +84,103 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pyproject.toml`
+
+```toml
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "myproject"
+version = "0.1.0"
+description = "Project description"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "T20"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+disallow_untyped_defs = true
+no_implicit_optional = true
+warn_unreachable = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+```
+
+### `templates/.pre-commit-config.yaml`
+
+```yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.10.0
+    hooks:
+      - id: mypy
+        args: [--strict]
+        additional_dependencies: []
+```
+
+### `templates/ci.yml`
+
+```yaml
+name: CI
+on: [push, pull_request]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.12']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install uv
+      - run: uv sync --frozen
+      - run: uv run ruff check .
+      - run: uv run mypy src
+      - run: uv run pytest -q
+```
+
+### `templates/artefact.json`
+
+```json
+{
+  "uses_pyproject": true,
+  "src_layout": true,
+  "ruff_configured": true,
+  "mypy_strict": true,
+  "lockfile_present": true,
+  "pre_commit_present": true,
+  "no_print_rule": true,
+  "py_typed_marker": true,
+  "python_min": "3.11"
+}
+```

@@ -68,6 +68,8 @@
 | `templates/wa-checklist.json` | JSON checklist artefact (validator target) |
 | `templates/_smoke-test.json` | Minimum checklist artefact used by validate-aws-well-architected-checklists.py --self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,147 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it whenever scoping a launch review or quarterly WA audit.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/wa-checklist.json`
+
+```json
+{
+  "workload": "",
+  "date": "2026-05-23",
+  "pillars": {
+    "operational_excellence": [],
+    "security": [],
+    "reliability": [],
+    "performance_efficiency": [],
+    "cost_optimization": [],
+    "sustainability": []
+  },
+  "gap_summary": {
+    "operational_excellence": {
+      "high": 0,
+      "med": 0,
+      "low": 0
+    },
+    "security": {
+      "high": 0,
+      "med": 0,
+      "low": 0
+    },
+    "reliability": {
+      "high": 0,
+      "med": 0,
+      "low": 0
+    },
+    "performance_efficiency": {
+      "high": 0,
+      "med": 0,
+      "low": 0
+    },
+    "cost_optimization": {
+      "high": 0,
+      "med": 0,
+      "low": 0
+    },
+    "sustainability": {
+      "high": 0,
+      "med": 0,
+      "low": 0
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "workload": "checkout-api",
+  "date": "2026-05-23",
+  "pillars": {
+    "operational_excellence": [
+      {
+        "id": "oe-1",
+        "item": "CloudWatch dashboard exists",
+        "cli_check": "aws cloudwatch list-dashboards | grep checkout",
+        "pass": true
+      }
+    ],
+    "security": [
+      {
+        "id": "sec-1",
+        "item": "IAM root MFA enabled",
+        "cli_check": "aws iam get-account-summary | grep AccountMFAEnabled",
+        "pass": true
+      }
+    ],
+    "reliability": [
+      {
+        "id": "rel-1",
+        "item": "Multi-AZ DB",
+        "cli_check": "aws rds describe-db-instances --query MultiAZ",
+        "pass": true
+      }
+    ],
+    "performance_efficiency": [
+      {
+        "id": "pe-1",
+        "item": "Right-size EC2",
+        "cli_check": "compute-optimizer get-ec2-recommendations",
+        "pass": true
+      }
+    ],
+    "cost_optimization": [
+      {
+        "id": "co-1",
+        "item": "RI coverage > 70%",
+        "cli_check": "cost-explorer get-reservation-coverage",
+        "pass": true
+      }
+    ],
+    "sustainability": [
+      {
+        "id": "sus-1",
+        "item": "Graviton workloads",
+        "cli_check": "ec2 describe-instances --filter architecture=arm64",
+        "pass": true
+      }
+    ]
+  },
+  "gap_summary": {
+    "operational_excellence": {
+      "high": 0,
+      "med": 0,
+      "low": 0
+    },
+    "security": {
+      "high": 0,
+      "med": 0,
+      "low": 0
+    },
+    "reliability": {
+      "high": 0,
+      "med": 0,
+      "low": 0
+    },
+    "performance_efficiency": {
+      "high": 0,
+      "med": 0,
+      "low": 0
+    },
+    "cost_optimization": {
+      "high": 0,
+      "med": 0,
+      "low": 0
+    },
+    "sustainability": {
+      "high": 0,
+      "med": 0,
+      "low": 0
+    }
+  }
+}
+```

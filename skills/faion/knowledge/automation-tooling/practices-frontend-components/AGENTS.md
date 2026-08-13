@@ -70,6 +70,8 @@
 | `templates/Component.stories.tsx` | Storybook sibling story with 3 variants |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,99 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/Component.tsx`
+
+```tsx
+import * as React from 'react';
+import styles from './Component.module.css';
+
+export interface ComponentProps {
+  id: string;
+  label: string;
+  selected?: boolean;
+  onSelect: (id: string) => void;
+}
+
+export function Component({ id, label, selected = false, onSelect }: ComponentProps) {
+  return (
+    <button
+      type="button"
+      role="option"
+      aria-selected={selected}
+      className={selected ? styles.selected : styles.row}
+      onClick={() => onSelect(id)}
+    >
+      {label}
+    </button>
+  );
+}
+```
+
+### `templates/Component.module.css`
+
+```css
+.row {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+}
+
+.selected {
+  composes: row;
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+```
+
+### `templates/Component.test.tsx`
+
+```tsx
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { Component } from './Component';
+
+test('renders label and reports selection', async () => {
+  const onSelect = jest.fn();
+  render(<Component id="o1" label="Order #1" onSelect={onSelect} />);
+  const btn = screen.getByRole('option', { name: /order #1/i });
+  await userEvent.click(btn);
+  expect(onSelect).toHaveBeenCalledWith('o1');
+});
+```
+
+### `templates/Component.stories.tsx`
+
+```tsx
+import type { Meta, StoryObj } from '@storybook/react';
+import { Component } from './Component';
+
+const meta: Meta<typeof Component> = { title: 'Orders/Component', component: Component };
+export default meta;
+
+type Story = StoryObj<typeof Component>;
+export const Default: Story = { args: { id: 'o1', label: 'Order #1', onSelect: () => {} } };
+export const Selected: Story = { args: { ...Default.args!, selected: true } };
+export const LongLabel: Story = { args: { ...Default.args!, label: 'Order #1 — very long descriptive label' } };
+```
+
+### `templates/artefact.json`
+
+```json
+{
+  "component_name": "OrderRow",
+  "framework": "react",
+  "typed_props": true,
+  "a11y_attrs_present": true,
+  "style_scope": "css-modules",
+  "controlled_mode": "stateless",
+  "lines": 64,
+  "has_test": true,
+  "has_story": true
+}
+```

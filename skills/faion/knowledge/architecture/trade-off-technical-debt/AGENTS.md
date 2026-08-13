@@ -70,6 +70,8 @@
 | `templates/debt-record.md` | Markdown skeleton for one debt item with Fowler quadrant + trigger |
 | `templates/_smoke-test.json` | Minimum viable filled-in debt-record for validator round-trip |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,124 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on (a) Fowler quadrant — inadvertent-reckless escalates to ATAM not debt, (b) touch frequency — <1/quarter routes to "document and accept", (c) budget headroom — over-budget blocks new debt and forces repayment first. Every leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/trade-off-technical-debt.json",
+  "type": "object",
+  "required": [
+    "debt_id",
+    "title",
+    "intent",
+    "prudence",
+    "severity",
+    "code_area",
+    "shortcut",
+    "better_solution",
+    "repayment_trigger",
+    "budget_cost_pct"
+  ],
+  "properties": {
+    "debt_id": {
+      "type": "string",
+      "pattern": "^DEBT-[0-9]{3,5}$"
+    },
+    "title": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 120
+    },
+    "intent": {
+      "type": "string",
+      "enum": [
+        "deliberate",
+        "inadvertent"
+      ]
+    },
+    "prudence": {
+      "type": "string",
+      "enum": [
+        "prudent",
+        "reckless"
+      ]
+    },
+    "severity": {
+      "type": "string",
+      "enum": [
+        "localized",
+        "systemic"
+      ]
+    },
+    "code_area": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "shortcut": {
+      "type": "string",
+      "minLength": 16
+    },
+    "better_solution": {
+      "type": "string",
+      "minLength": 16
+    },
+    "repayment_trigger": {
+      "type": "object",
+      "required": [
+        "metric",
+        "operator",
+        "threshold",
+        "source"
+      ]
+    },
+    "budget_cost_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 25
+    },
+    "current_total_debt_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "linked_adr": {
+      "type": "string"
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "debt_id": "DEBT-0014",
+  "title": "Inline auth check in /orders POST; not extracted to middleware",
+  "intent": "deliberate",
+  "prudence": "prudent",
+  "severity": "localized",
+  "code_area": [
+    "api/orders.py"
+  ],
+  "shortcut": "Auth check inlined in handler to ship the Stripe webhook integration in time for the Q2 launch.",
+  "better_solution": "Extract to FastAPI dependency injector; covers /orders + 6 future endpoints uniformly.",
+  "repayment_trigger": {
+    "metric": "endpoints_requiring_same_auth_check",
+    "operator": ">=",
+    "threshold": 3,
+    "source": "git grep + endpoint count in api/routers/"
+  },
+  "budget_cost_pct": 0.6,
+  "current_total_debt_pct": 14.2,
+  "linked_adr": "ADR-0018"
+}
+```

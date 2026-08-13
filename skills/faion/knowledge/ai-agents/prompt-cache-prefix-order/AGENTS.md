@@ -58,7 +58,6 @@
 | File | Purpose |
 |---|---|
 | `templates/prompt-cache-prefix-order-spec.md` | Markdown wrapper for the JSON spec. |
-| `templates/_smoke-test.yaml` | Minimum input fixture. |
 
 ## Scripts
 

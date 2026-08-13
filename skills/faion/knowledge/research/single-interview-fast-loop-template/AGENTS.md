@@ -63,6 +63,8 @@
 | `templates/single-interview-fast-loop-template.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,102 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/single-interview-fast-loop-template.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/single-interview-fast-loop-template.json",
+  "title": "Single Interview Fast Loop Template Output Contract",
+  "type": "object",
+  "required": [
+    "loop_id",
+    "decision_under_test",
+    "must_asks",
+    "interview_at",
+    "synthesis_due_at",
+    "synthesis_outcome",
+    "citation_path",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "loop_id": {
+      "type": "string",
+      "description": "stable id"
+    },
+    "decision_under_test": {
+      "type": "string",
+      "description": "the one decision the loop informs"
+    },
+    "must_asks": {
+      "type": "array",
+      "description": "3\u20135 past-tense questions",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "interview_at": {
+      "type": "string",
+      "description": "ISO datetime",
+      "format": "date-time"
+    },
+    "synthesis_due_at": {
+      "type": "string",
+      "description": "interview_at + \u226436h",
+      "format": "date-time"
+    },
+    "synthesis_outcome": {
+      "type": "string",
+      "description": "decide-yes | decide-no | park | re-interview"
+    },
+    "citation_path": {
+      "type": "string",
+      "description": "path to transcript in research repo"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named researcher"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "loop_id": "sample-loop_id",
+  "decision_under_test": "sample-decision_under_test",
+  "must_asks": [
+    {
+      "k": "v"
+    }
+  ],
+  "interview_at": "2026-05-23T12:00:00Z",
+  "synthesis_due_at": "2026-05-23T12:00:00Z",
+  "synthesis_outcome": "sample-synthesis_outcome",
+  "citation_path": "sample-citation_path",
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

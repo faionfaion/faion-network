@@ -68,6 +68,8 @@
 | `templates/decision-record.json` | JSON example of the decision record |
 | `templates/decision-record.md` | Markdown skeleton for the SOW appendix |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,40 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes signal scores to one of three engagement shapes (fixed / hourly / hybrid) and pins the rule from `01-core-rules.xml`. Use it before drafting the SOW — picking the wrong shape costs 10-30% of margin.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/decision-record.json`
+
+```json
+{
+  "decision_id": "fvh-acme-onboarding-rebuild",
+  "engagement": {
+    "client": "Acme",
+    "scope_summary": "Rebuild onboarding flow over 6 weeks; deliver A/B framework + 3 variants."
+  },
+  "signals": {
+    "scope_clarity": "high",
+    "change_rate": "low",
+    "client_maturity": "high",
+    "domain_familiarity": "high"
+  },
+  "options_considered": [
+    "fixed",
+    "hourly",
+    "hybrid"
+  ],
+  "chosen": "fixed",
+  "kill_criteria": {
+    "fixed": "If change requests >3/week sustained 2 weeks, reopen as hybrid",
+    "hourly": "n/a (rejected): client maturity high supports fixed",
+    "hybrid": "n/a (rejected): scope clarity high reduces need for T&M buffer"
+  },
+  "reversal_trigger": "Change-request rate exceeding 3/week sustained for 2 weeks AND total change-effort > 15% of fixed scope",
+  "decider": "@ruslan",
+  "decided_at": "2026-05-23",
+  "reassessment_at_25pct": "2026-06-04"
+}
+```

@@ -63,6 +63,8 @@
 | `templates/weekly-gsc-diagnostic-template.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/weekly-gsc-diagnostic-template.md` | Markdown skeleton for human-readable artefact rendering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,82 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/weekly-gsc-diagnostic-template.json`
+
+```json
+{
+  "artefact_id": "gsc-diagnostic-2026-w21",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "top_winners": [
+    {
+      "query": "faion cli install",
+      "clicks_delta": 42
+    },
+    {
+      "query": "agent sdk skills",
+      "clicks_delta": 31
+    },
+    {
+      "query": "solo founder dev stack",
+      "clicks_delta": 22
+    },
+    {
+      "query": "claude code plugin",
+      "clicks_delta": 18
+    },
+    {
+      "query": "sdd methodology",
+      "clicks_delta": 14
+    }
+  ],
+  "top_losers": [
+    {
+      "query": "ai marketplace",
+      "clicks_delta": -18
+    },
+    {
+      "query": "faion alternative",
+      "clicks_delta": -12
+    },
+    {
+      "query": "open source agent",
+      "clicks_delta": -9
+    },
+    {
+      "query": "claude vs cursor",
+      "clicks_delta": -7
+    },
+    {
+      "query": "best ide for ai",
+      "clicks_delta": -5
+    }
+  ],
+  "intent_mismatches": [
+    {
+      "query": "ai marketplace",
+      "page_intent": "info",
+      "query_intent": "commercial"
+    }
+  ],
+  "indexation_status": {
+    "discovered": 220,
+    "indexed": 180,
+    "excluded": 40,
+    "indexed_ratio": 0.82
+  },
+  "named_actions": [
+    {
+      "action": "Rewrite /ai-marketplace landing to commercial intent",
+      "owner": "@ruslan",
+      "due": "2026-05-30"
+    }
+  ],
+  "owner": "@ruslan"
+}
+```

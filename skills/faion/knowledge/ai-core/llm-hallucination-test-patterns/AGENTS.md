@@ -66,6 +66,8 @@
 | `templates/test-case.py` | Python test-case scaffold (pytest-style) wired to the output contract |
 | `templates/suite-config.yaml` | Suite-level config: per-attack-class or per-pattern coverage thresholds |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,61 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/test-case.py`
+
+```python
+"""Test-case scaffold for LLM Hallucination Test Patterns.
+
+Wire each case to the schema in content/02-output-contract.xml.
+Run with pytest. Add ≥10 cases per attack-class / pattern.
+"""
+from __future__ import annotations
+
+
+CASES = [
+    # (case_id, attack_class_or_pattern, input_text, expected_behavior)
+    ("case-001", "<class>", "<input>", "<expected: refusal | grounded | etc>"),
+]
+
+
+def evaluate(model_response: str, expected: str) -> bool:
+    # Concrete evaluator per pattern; see content/01-core-rules.xml
+    # for per-pattern pass/fail criteria.
+    raise NotImplementedError("wire to your eval pipeline")
+
+
+def test_all_cases():
+    for case_id, cls, inp, expected in CASES:
+        # response = call_model(inp)
+        # assert evaluate(response, expected), f"{case_id} ({cls}) failed"
+        pass
+```
+
+### `templates/suite-config.yaml`
+
+```yaml
+suite_version: "1.0.0"
+owner: "<email-or-handle>"
+last_reviewed: "2026-05-23"
+patterns:
+  - fact_probes
+  - grounding_required
+  - refusal_correctness
+  - citation_verification
+  - contradiction_tests
+  - off_topic_rejection
+
+
+# Per-class coverage threshold; CI rejects suite with fewer cases per class.
+per_class_min_n: 10
+
+# Significance gate
+significance:
+  test: "two-sided-z"
+  threshold: 0.05
+```

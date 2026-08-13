@@ -65,6 +65,8 @@
 | `templates/config.json` | Config skeleton matching the output schema. |
 | `templates/_smoke-test.json` | Minimum viable filled artefact. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,76 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/config.json`
+
+```json
+{
+  "namespace": "acme-team-a",
+  "compute": {
+    "requests_cpu": "10",
+    "requests_memory": "20Gi",
+    "limits_cpu": "40",
+    "limits_memory": "80Gi"
+  },
+  "storage": {
+    "requests_storage": "200Gi",
+    "persistentvolumeclaims": 20
+  },
+  "objects": {
+    "pods": 50,
+    "services": 20,
+    "configmaps": 100,
+    "secrets": 100
+  },
+  "scope_selector": {
+    "matchExpressions": [
+      {
+        "scopeName": "PriorityClass",
+        "operator": "In",
+        "values": [
+          "best-effort"
+        ]
+      }
+    ]
+  },
+  "owner": {
+    "name": "Olha Petrenko",
+    "role": "team-a lead"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "namespace": "acme-team-a",
+  "compute": {
+    "requests_cpu": "10",
+    "requests_memory": "20Gi",
+    "limits_cpu": "40",
+    "limits_memory": "80Gi"
+  },
+  "storage": {
+    "requests_storage": "200Gi",
+    "persistentvolumeclaims": 20
+  },
+  "objects": {
+    "pods": 50,
+    "services": 20,
+    "configmaps": 100,
+    "secrets": 100
+  },
+  "owner": {
+    "name": "Olha Petrenko",
+    "role": "team-a lead"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+```

@@ -63,6 +63,8 @@
 | `templates/pm-1on1-template-engineering-design.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/pm-1on1-template-engineering-design.md` | Markdown skeleton for human-readable artefact rendering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,34 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pm-1on1-template-engineering-design.json`
+
+```json
+{
+  "artefact_id": "1on1-designer-x-2026-w22",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "teammate": "@designer-x",
+  "meeting_date": "2026-05-23",
+  "career": "interested in expanding to design-systems work; will pair on storybook 30 min/wk",
+  "project": "/pricing v1 shipped; /home hero blocked on copy",
+  "craft": "exploring Figma variables; share token strategy doc",
+  "blockers": [
+    {
+      "id": "b1",
+      "what": "waiting on /home hero copy"
+    }
+  ],
+  "feedback": {
+    "from_pm": "great pace on /pricing",
+    "to_pm": "earlier copy briefs help"
+  },
+  "notes_log_url": "notion://workspace/1on1/designer-x",
+  "owner": "@ruslan"
+}
+```

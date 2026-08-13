@@ -58,6 +58,8 @@
 | `templates/monitor-config.yaml` | Monitor config with window, signals, thresholds. |
 | `templates/query-log-schema.json` | JSON schema for per-query log lines. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -73,3 +75,71 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` decides per-query monitoring scope based on traffic and feedback availability. Each leaf references a rule id from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/monitor-config.yaml`
+
+```yaml
+window: 24h
+signals:
+  - latency_ms
+  - source_count
+  - thumbs_up
+  - thumbs_down
+thresholds:
+  latency_p95_ms: 2000
+  hit_rate_min: 0.88
+  thumbs_down_ratio_max: 0.1
+sampled_llm_judge:
+  fraction: 0.05
+  judge_model: gpt-4o
+  seed: 42
+```
+
+### `templates/query-log-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "rag-query-log-line",
+  "type": "object",
+  "required": [
+    "ts",
+    "query_id",
+    "latency_ms",
+    "source_count",
+    "top1_chunk_id"
+  ],
+  "properties": {
+    "ts": {
+      "type": "string"
+    },
+    "query_id": {
+      "type": "string"
+    },
+    "latency_ms": {
+      "type": "number"
+    },
+    "source_count": {
+      "type": "integer"
+    },
+    "top1_chunk_id": {
+      "type": "string"
+    },
+    "thumb": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "up",
+        "down",
+        null
+      ]
+    }
+  }
+}
+```

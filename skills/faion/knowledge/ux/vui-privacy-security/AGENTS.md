@@ -64,6 +64,8 @@
 |------|---------|
 | `templates/privacy-spec.json` | Skeleton spec |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,36 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches by data sensitivity + jurisdiction; enforces redaction, consent, step-up, and retention rules. Each leaf cites a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/privacy-spec.json`
+
+```json
+{
+  "jurisdictions": [
+    "EU",
+    "US"
+  ],
+  "trust_indicators": {
+    "visual": true,
+    "audio": true
+  },
+  "step_up_auth": {
+    "sensitive_actions": []
+  },
+  "redaction": {
+    "on_device": true,
+    "categories": [
+      "name",
+      "account_number"
+    ]
+  },
+  "retention": {
+    "transcript_days": 14
+  },
+  "deletion_control": true
+}
+```

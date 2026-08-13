@@ -65,6 +65,8 @@
 | `templates/spatial-spec.json` | Skeleton spatial spec |
 | `templates/spatial-spec-linter.py` | Lint script for zone + anchor + chin-region violations |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,55 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches by element role and enforces zone + anchor rules; recenter-affordance check fires on every spec. Each leaf cites a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/spatial-spec.json`
+
+```json
+{
+  "platform": "visionos",
+  "elements": [
+    {
+      "id": "main",
+      "zone": "mid",
+      "distance_m": 1.8,
+      "interactive": true,
+      "anchor": "head-locked-with-decay"
+    }
+  ],
+  "recenter_affordance": {
+    "button": true,
+    "voice_command": true
+  }
+}
+```
+
+### `templates/spatial-spec-linter.py`
+
+```python
+"""
+import json, sys
+from pathlib import Path
+if len(sys.argv) < 2:
+    print("usage: spatial-spec-linter.py <spec.json>", file=sys.stderr); sys.exit(2)
+obj = json.loads(Path(sys.argv[1]).read_text())
+errs = []
+for i, e in enumerate(obj.get("elements") or []):
+    if e.get("interactive") and e.get("zone") == "far":
+        errs.append(f"elements[{i}] interactive control in far field")
+    if e.get("interactive") and e.get("anchor") == "world-locked":
+        errs.append(f"elements[{i}] primary interactive anchored world-locked")
+    if e.get("in_chin_region"):
+        errs.append(f"elements[{i}] in chin region")
+ra = obj.get("recenter_affordance") or {}
+if not ra.get("button") or not ra.get("voice_command"):
+    errs.append("recenter_affordance missing button and/or voice_command")
+if errs:
+    for e in errs:
+        print(f"VIOLATION: {e}", file=sys.stderr)
+    sys.exit(1)
+print("OK")
+```

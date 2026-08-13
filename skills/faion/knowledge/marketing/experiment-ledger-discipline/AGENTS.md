@@ -69,6 +69,8 @@
 | `templates/ledger-entry.json` | JSON example of one ledger entry |
 | `templates/ledger-config.yaml` | Storage + tag taxonomy + retention config |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,55 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes on entry state (proposed / shipped / closed / superseded) to the next action and pins the rule from `01-core-rules.xml`. Use it before mutating an entry — direct edits violate append-only.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ledger-entry.json`
+
+```json
+{
+  "entry_id": "ent-2026q2-pricing-social-proof",
+  "status": "closed",
+  "producer": "@alex",
+  "consumer": "@beth",
+  "decision_fed": "Reposition pricing social proof for Q3 cycle",
+  "hypothesis": "Moving social proof above the fold on /pricing increases pricing-to-signup conversion.",
+  "variants": [
+    "control",
+    "above-fold"
+  ],
+  "result": "+5.2% conversion lift, p=0.03, n=12400 sessions",
+  "learning_summary": "Above-fold social proof lifts /pricing conversion 5.2% (n=12.4k, p=0.03). Effect concentrated in returning visitors (+8.1%); new visitors flat. Ship to all; revisit new-visitor variant in Q3.",
+  "tags": [
+    "pricing",
+    "social-proof",
+    "above-fold"
+  ],
+  "cycle_id": "2026-Q2",
+  "created_at": "2026-04-15T09:00:00Z",
+  "closed_at": "2026-05-20T17:00:00Z",
+  "prev_entry_id": null,
+  "superseded_by": null
+}
+```
+
+### `templates/ledger-config.yaml`
+
+```yaml
+version: "1.0.0"
+storage:
+  layer: "notion-db"        # one of: notion-db | git-yaml | sqlite | postgres
+  url_or_path: "https://notion.so/<workspace>/<db>"
+  index_fields: ["tags", "status", "cycle_id"]
+query_latency_budget_seconds: 5
+tag_taxonomy:
+  surface: [landing, pricing, signup, onboarding, in-product, billing, lifecycle-email]
+  lever: [copy, layout, social-proof, ctas, pricing, feature-gate, onboarding-flow]
+  result: [winner, loser, inconclusive, killed-early]
+retention:
+  closed_entries: forever
+  proposed_entries_max_age_days: 90       # auto-archive proposed entries that don't ship
+  superseded_chain_kept: forever
+```

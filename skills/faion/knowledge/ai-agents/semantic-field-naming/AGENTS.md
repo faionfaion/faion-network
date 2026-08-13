@@ -63,6 +63,8 @@
 | `templates/rename-rubric.md` | Side-by-side template: `old_name → new_name`, reason, evidence row(s). |
 | `templates/pydantic-rename.py` | Skeleton Pydantic model showing legacy `validation_alias` pattern for safe migration. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,59 @@
 ## Decision tree
 
 The tree at `content/06-decision-tree.xml` picks the rename target from the field's type and role: numeric → suffix the unit (`age_years`, `monthly_spend_usd`); boolean → prefix the direction (`is_paid`, `has_promo_code`); enum-mapped string → semantic literal vocabulary (`approve|reject`, `low|medium|high|critical`); string with format constraint → encode format in the name (`body_markdown`, `slug_kebab`, `iso_published_date`). Use it whenever the question is "what new name encodes the strongest prior", not "should I rename at all".
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pydantic-rename.py`
+
+```python
+from __future__ import annotations
+
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class Order(BaseModel):
+    """Semantically renamed schema with backwards-compat aliases.
+
+    External clients still POST `{"flag": true, "total": 1999, "label": "a"}`; the
+    model accepts those keys via `validation_alias` and exposes the new names
+    internally. For LLM-facing structured outputs the model will see the new
+    names because Pydantic emits the canonical name in `model_json_schema()`.
+    """
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    customer_id: str = Field(description="Stable customer identifier (UUID).")
+    is_paid: bool = Field(
+        validation_alias="flag",
+        description="True iff the order has been paid in full.",
+    )
+    total_cents: int = Field(
+        validation_alias="total",
+        ge=0,
+        description="Order total in integer minor units (cents).",
+    )
+    priority: Literal["low", "medium", "high", "critical"] = Field(
+        validation_alias="label",
+        description="Triage priority; semantic vocabulary replaces legacy a|b|c|d.",
+    )
+
+
+def _smoke_test() -> None:
+    legacy_payload = {"customer_id": "u-1", "flag": True, "total": 1999, "label": "high"}
+    order = Order.model_validate(legacy_payload)
+    assert order.is_paid is True
+    assert order.total_cents == 1999
+    assert order.priority == "high"
+    schema = Order.model_json_schema()
+    assert "is_paid" in schema["properties"]
+    assert schema["additionalProperties"] is False
+
+
+if __name__ == "__main__":
+    _smoke_test()
+```

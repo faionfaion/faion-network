@@ -60,6 +60,8 @@
 | `templates/pyproject.toml.fragment` | Full [tool.ruff] + [tool.mypy] + [tool.pytest.ini_options] config. |
 | `templates/.pre-commit-config.yaml` | Pre-commit hooks: ruff, ruff-format, mypy, pytest, bandit. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -75,3 +77,44 @@
 ## Decision tree
 
 The tree at content/06-decision-tree.xml decides Ruff-only vs Ruff+legacy, mypy strict vs gradual, and library vs application gating. Walk it before editing any [tool.*] block in pyproject.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pyproject.toml.fragment`
+
+```toml
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "T20", "S", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --cov --cov-fail-under=80 -n auto"
+testpaths = ["tests"]
+markers = ["integration: requires external services"]
+```
+
+### `templates/.pre-commit-config.yaml`
+
+```yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.2
+    hooks:
+      - id: mypy
+        additional_dependencies: [pydantic]
+```

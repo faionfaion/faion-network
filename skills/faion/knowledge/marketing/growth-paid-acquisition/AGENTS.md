@@ -69,6 +69,8 @@
 | `templates/unit-economics.csv` | Unit economics CSV header. |
 | `templates/growth-plan.json` | Schema-conformant sample artefact used by validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,50 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/unit-economics.csv`
+
+```csv
+metric,value,unit
+ltv,2400,USD
+gross_margin_pct,0.7,ratio
+payback_months,6,months
+cac_ceiling,280,USD
+```
+
+### `templates/growth-plan.json`
+
+```json
+{
+  "unit_economics": {
+    "ltv": 2400,
+    "gross_margin_pct": 0.7,
+    "payback_months": 6,
+    "cac_ceiling": 280
+  },
+  "channel_mix": [
+    {
+      "channel": "meta",
+      "fit_rationale": "B2C SMB on FB+IG",
+      "weekly_budget": 1500
+    },
+    {
+      "channel": "google_search",
+      "fit_rationale": "high-intent demand capture",
+      "weekly_budget": 1000
+    }
+  ],
+  "scaling_plan": {
+    "weekly_ramp_pct": 20,
+    "stability_days": 14
+  },
+  "stop_loss": {
+    "cac_breach_pct": 30,
+    "auto_pause_days": 14
+  }
+}
+```

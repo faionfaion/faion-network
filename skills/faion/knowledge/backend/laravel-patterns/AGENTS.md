@@ -67,6 +67,8 @@
 |------|---------|
 | `templates/query-budget.php` | Pest test helper enforcing query count budget per request. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,40 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (write multiplicity, queue use, eager-load gaps) to a rule from `01-core-rules.xml`. Use it before authoring or refactoring a controller / job.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/query-budget.php`
+
+```php
+// Fail tests that exceed a query count budget (N+1 detector).
+// Add to tests/TestCase.php and call $this->failOnNPlusOne() in setUp or per-test.
+//
+// Usage:
+//   protected function setUp(): void {
+//       parent::setUp();
+//       $this->failOnNPlusOne(max: 10);
+//   }
+
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Listen to queries and throw RuntimeException if the budget is exceeded.
+ * Call this at the start of a test that should have bounded DB access.
+ */
+function failOnNPlusOne(int $max = 10): void
+{
+    $count = 0;
+    DB::listen(function (QueryExecuted $event) use (&$count, $max) {
+        if (++$count > $max) {
+            throw new \RuntimeException(
+                "Query budget exceeded: {$count} queries issued (max {$max}). "
+                . "Last query: {$event->sql}"
+            );
+        }
+    });
+}
+```

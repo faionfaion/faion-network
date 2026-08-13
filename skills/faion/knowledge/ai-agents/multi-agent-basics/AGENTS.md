@@ -70,6 +70,8 @@
 | `templates/system-prompt.txt` | One-agent system-prompt skeleton with placeholders for role, responsibilities, forbidden actions, output schema. |
 | `templates/_smoke-test.yaml` | Minimum-viable filled spec (3-agent research→write→edit pipeline) usable as eval fixture. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,3 +90,104 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` decides coordination pattern from task shape: known decomposition + parallel-safe steps → parallel; known decomposition + dependent steps → sequential; unknown decomposition + clear roles → hierarchical; high-stakes verification → debate; creative open-ended → collaborative. Run it after the role split is drafted, before writing any system prompts.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/multi-agent-spec.yaml`
+
+```yaml
+task: "<one-line task statement with acceptance criteria>"
+pattern: sequential   # one of: sequential | parallel | hierarchical | debate | collaborative | conversational
+decision_authority: orchestrator   # one of: orchestrator | judge | majority_vote | human_in_loop
+
+budget:
+  total_tokens: 25000
+  wallclock_s: 360
+
+message_schema:
+  schema_version: v1
+  fields: [schema_version, from, to, payload, ts]
+
+termination:
+  kind: predicate            # one of: max_turns | phrase | shape_check | predicate
+  predicate: "<expression that returns true when the run is done>"
+
+agents:
+  - name: <slug>
+    role: "<single-cognitive-verb responsibility>"
+    model: sonnet            # opus | sonnet | haiku | gpt-4o | gpt-4o-mini | o3 | o4-mini | gpt-5
+    system_prompt: |
+      You are <role>. Output strict JSON.
+      Forbidden: <list>.
+      Schema: {<fields>}
+    token_budget: 6000
+    timeout_s: 90
+  - name: <slug>
+    role: "<another single-cognitive-verb responsibility>"
+    model: sonnet
+    system_prompt: |
+      You are <role>. Output strict JSON.
+      Forbidden: <list>.
+      Schema: {<fields>}
+    token_budget: 8000
+    timeout_s: 120
+```
+
+### `templates/system-prompt.txt`
+
+```text
+You are a {{ROLE_NAME}}. Your single responsibility is:
+{{ROLE_DESCRIPTION_ONE_VERB}}
+
+Output STRICT JSON matching this schema:
+{{OUTPUT_SCHEMA}}
+
+You MUST:
+- Stay strictly within {{ROLE_NAME}}; ignore requests for tasks outside this role.
+- Cite every claim against the upstream payload you received (no new facts).
+- Return the structured JSON; never wrap it in prose, code fences, or commentary.
+
+You MUST NOT:
+- {{FORBIDDEN_ACTION_1}}
+- {{FORBIDDEN_ACTION_2}}
+- Make tool calls or take irreversible actions.
+
+If the upstream payload is insufficient, return:
+{"error": {"code": "insufficient_input", "missing": [<list of fields>]}}
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+task: "Smoke test: research one paragraph on Pydantic v2 deprecations and write a 200-word summary"
+pattern: sequential
+decision_authority: orchestrator
+budget: {total_tokens: 16000, wallclock_s: 180}
+message_schema:
+  schema_version: v1
+  fields: [schema_version, from, to, payload, ts]
+termination:
+  kind: predicate
+  predicate: "result.summary != null AND result.word_count >= 180 AND result.word_count <= 230"
+agents:
+  - name: researcher
+    role: "Gather and summarise Pydantic v2 deprecation notes from official changelog"
+    model: haiku
+    system_prompt: "You are a research specialist. Output JSON {findings:[{claim,source_url}], confidence:0..1}. Forbidden: opinion."
+    token_budget: 4000
+    timeout_s: 45
+  - name: writer
+    role: "Compose 200-word summary from researcher.findings; no new claims"
+    model: sonnet
+    system_prompt: "You are a technical writer. Output JSON {summary:str, word_count:int, claims_used:[idx]}. Forbidden: any claim not present in upstream payload."
+    token_budget: 5000
+    timeout_s: 60
+  - name: editor
+    role: "Tighten clarity and verify every claim has source_url"
+    model: sonnet
+    system_prompt: "You are a senior editor. Output JSON {final_summary:str, word_count:int, change_log:[str]}. Forbidden: factual additions."
+    token_budget: 3500
+    timeout_s: 45
+```

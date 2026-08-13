@@ -67,6 +67,8 @@
 | `templates/ingest.py` | Python scaffold realising the artefact in code. |
 | `templates/_smoke-test.csv` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,43 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Does the suite show ≥1% sustained flake rate with no central record?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ledger.csv`
+
+```csv
+# faion_header_json: {"__faion_header__":{"purpose":"CSV template for tabular artefacts.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#one-row-per-test","token_budget_impact":"~150 tokens when loaded"}}
+id,name,owner,severity,evidence_link
+sample-1,Sample row,alice,S2,https://example.invalid/evidence
+```
+
+### `templates/ingest.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Python scaffold realising the artefact in code.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#one-row-per-test","token_budget_impact":"~150 tokens when loaded"}}
+"""QA Flake Ledger Template scaffold. See AGENTS.md for context and content/02-output-contract.xml for the contract."""
+from __future__ import annotations
+
+# Minimal scaffold for the qa-flake-ledger-template methodology.
+# Replace this stub with real implementation; keep the header intact.
+
+def main() -> int:
+    """Entrypoint; returns exit code."""
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())
+```
+
+### `templates/_smoke-test.csv`
+
+```csv
+# faion_header_json: {"__faion_header__":{"purpose":"Minimum viable filled-in artefact for sanity-checking the schema.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#one-row-per-test","token_budget_impact":"~150 tokens when loaded"}}
+id,note
+smoke,Minimum viable filled-in artefact; see templates/ for production-grade skeletons.
+```

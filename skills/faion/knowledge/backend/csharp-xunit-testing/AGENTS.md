@@ -67,6 +67,8 @@
 | `templates/integration-test.cs` | WebApplicationFactory integration-test skeleton. |
 | `templates/run-tests-with-coverage.sh` | CI wrapper that runs tests + emits coverlet JSON + enforces thresholds. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,152 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (layer under test, branch count, persistence dependency) to a rule from `01-core-rules.xml`. Use it before authoring or refactoring a test class.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/controller-test.cs`
+
+```csharp
+// Controller unit test skeleton using xUnit + Moq + FluentAssertions
+// Replace: TService, TController, TDto, CreateDto, RouteValues as needed
+
+using FluentAssertions;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Xunit;
+
+namespace MyApp.Tests.Controllers;
+
+public class ExampleControllerTests
+{
+    private readonly Mock<IExampleService> _mockService;
+    private readonly ExampleController _controller;
+
+    public ExampleControllerTests()
+    {
+        _mockService = new Mock<IExampleService>();
+        _controller = new ExampleController(
+            _mockService.Object,
+            Mock.Of<ILogger<ExampleController>>()
+        );
+    }
+
+    [Fact]
+    public async Task GetById_WhenFound_ReturnsOkWithDto()
+    {
+        // Arrange
+        var dto = new ExampleDto { Id = 1, Name = "Test" };
+        _mockService.Setup(s => s.GetByIdAsync(1)).ReturnsAsync(dto);
+
+        // Act
+        var result = await _controller.GetById(1);
+
+        // Assert
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        ok.Value.Should().BeEquivalentTo(dto);
+    }
+
+    [Fact]
+    public async Task GetById_WhenNotFound_ReturnsNotFound()
+    {
+        _mockService.Setup(s => s.GetByIdAsync(999)).ReturnsAsync((ExampleDto?)null);
+        var result = await _controller.GetById(999);
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
+
+    [Theory]
+    [InlineData("", "Name is required")]
+    [InlineData("x", "Name too short")]
+    public async Task Create_WithInvalidName_ReturnsBadRequest(string name, string expectedError)
+    {
+        var dto = new CreateExampleDto { Name = name };
+        var result = await _controller.Create(dto);
+        var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
+        bad.Value?.ToString().Should().Contain(expectedError);
+    }
+}
+```
+
+### `templates/integration-test.cs`
+
+```csharp
+// Integration test skeleton using WebApplicationFactory
+// Requires: public partial class Program {} in Program.cs (minimal hosting)
+// Requires: Respawn NuGet for DB reset between tests
+
+using Microsoft.AspNetCore.Mvc.Testing;
+using System.Net;
+using System.Net.Http.Json;
+using Xunit;
+
+namespace MyApp.Tests.Integration;
+
+[Collection("Integration")]
+public class ExampleApiTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly HttpClient _client;
+
+    public ExampleApiTests(WebApplicationFactory<Program> factory)
+    {
+        _client = factory.CreateClient();
+    }
+
+    [Fact]
+    public async Task GetList_ReturnsSuccessWithJsonContentType()
+    {
+        var response = await _client.GetAsync("/api/v1/examples");
+        response.EnsureSuccessStatusCode();
+        Assert.Equal("application/json; charset=utf-8",
+            response.Content.Headers.ContentType?.ToString());
+    }
+
+    [Fact]
+    public async Task Create_WithValidData_ReturnsCreated()
+    {
+        var dto = new CreateExampleDto { Name = "Integration Test" };
+        var response = await _client.PostAsJsonAsync("/api/v1/examples", dto);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var created = await response.Content.ReadFromJsonAsync<ExampleDto>();
+        Assert.NotNull(created);
+        Assert.Equal("Integration Test", created.Name);
+    }
+}
+
+// Tag DB-touching tests to prevent parallel execution
+[CollectionDefinition("Integration", DisableParallelization = true)]
+public class IntegrationCollection { }
+```
+
+### `templates/run-tests-with-coverage.sh`
+
+```bash
+# run-tests-with-coverage.sh — agent entry point for test + coverage loop
+# Usage: bash run-tests-with-coverage.sh <test-project-path> [threshold]
+# Example: bash run-tests-with-coverage.sh MyApp.Tests/ 80
+set -euo pipefail
+
+PROJ="${1:?test project path required}"
+THRESHOLD="${2:-80}"
+
+dotnet test "$PROJ" \
+  --collect:"XPlat Code Coverage" \
+  --results-directory ./TestResults \
+  --logger "trx;LogFileName=test_results.trx" \
+  /p:Threshold="$THRESHOLD" /p:ThresholdType=line /p:ThresholdStat=total
+
+COV=$(find TestResults -name 'coverage.cobertura.xml' | head -1)
+if [[ -z "$COV" ]]; then
+  echo "No coverage file found" >&2; exit 1
+fi
+
+reportgenerator \
+  -reports:"$COV" \
+  -targetdir:./coverage \
+  -reporttypes:JsonSummary
+
+jq '.summary.linecoverage' coverage/Summary.json
+```

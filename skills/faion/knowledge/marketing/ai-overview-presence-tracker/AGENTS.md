@@ -69,6 +69,8 @@
 | `templates/ai-overview-presence-tracker.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,51 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ai-overview-presence-tracker.example.json`
+
+```json
+{
+  "slug": "ai-overview-presence-tracker",
+  "owner": "analytics owner",
+  "period_start": "2026-05-01",
+  "period_end": "2026-05-22",
+  "metrics": [
+    {
+      "name": "activation_rate",
+      "value": 0.31,
+      "unit": "ratio"
+    }
+  ],
+  "findings": [
+    "activation rate up 4pp WoW; biggest lift from onboarding checklist v2"
+  ],
+  "deviation_log_reference": "ops/deviation-log.md#L88"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "slug": "ai-overview-presence-tracker",
+  "owner": "analytics owner",
+  "period_start": "2026-05-01",
+  "period_end": "2026-05-22",
+  "metrics": [
+    {
+      "name": "activation_rate",
+      "value": 0.31,
+      "unit": "ratio"
+    }
+  ],
+  "findings": [
+    "activation rate up 4pp WoW; biggest lift from onboarding checklist v2"
+  ],
+  "deviation_log_reference": "ops/deviation-log.md#L88"
+}
+```

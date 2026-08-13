@@ -59,6 +59,8 @@
 | `templates/test_unit.py` | Python AAA skeleton with mock at boundary. |
 | `templates/test_unit.ts` | Vitest AAA skeleton. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -74,3 +76,36 @@
 ## Decision tree
 
 The tree at content/06-decision-tree.xml decides whether a test is genuinely a unit, which boundary to mock, and fake vs mock. Walk it whenever the test feels slow or uses real I/O.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/test_unit.py`
+
+```python
+"""
+
+import pytest
+
+
+def add(a: int, b: int) -> int:
+    return a + b
+
+
+def test_add_returns_sum_when_both_positive():
+    # Arrange
+    a, b = 2, 3
+    # Act
+    result = add(a, b)
+    # Assert
+    assert result == 5
+```
+
+### `templates/test_unit.ts`
+
+```typescript
+ */
+
+export {};
+```

@@ -64,6 +64,8 @@
 | `templates/ai-slop-detector-checklist.json` | SlopScore JSON skeleton. |
 | `templates/ai-slop-detector-checklist.md` | Scoring rubric + rewrite suggestions. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,29 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ai-slop-detector-checklist.json`
+
+```json
+{
+  "artefact_id": "slop-<date>-<n>",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "draft_path": "<path/to/draft.md>",
+  "scores": {
+    "originality": 0,
+    "specificity": 0,
+    "grounding": 0,
+    "voice": 0,
+    "tics": 0
+  },
+  "total_score": 0,
+  "verdict": "rework",
+  "hedging_count": 0,
+  "owner": "<@handle>"
+}
+```

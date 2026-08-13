@@ -68,6 +68,8 @@
 | `templates/stress-corpus.sh` | Bash: mix clean utterances with ambient noise at 20/10/5dB SNR via ffmpeg |
 | `templates/llm-judge-prompt.txt` | Per-turn LLM judge prompt scoring intent_match, naturalness, brevity, error_recovery |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[core-vui-design-principles]]
@@ -77,3 +79,43 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes from observable inputs to a rule-grounded conclusion, every leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/stress-corpus.sh`
+
+```bash
+set -euo pipefail
+CLEAN_DIR=${1:-fixtures/clean}
+NOISE_DIR=${2:-fixtures/noise}
+OUT=${3:-fixtures/mixed}
+mkdir -p "$OUT"
+for u in "$CLEAN_DIR"/*.wav; do
+  for n in "$NOISE_DIR"/*.wav; do
+    for snr in 20 10 5; do
+      base="$(basename "$u" .wav)_$(basename "$n" .wav)_${snr}dB.wav"
+      ffmpeg -y -i "$u" -i "$n" \
+        -filter_complex "[1:a]volume=-${snr}dB[bg];[0:a][bg]amix=inputs=2:duration=first" \
+        "$OUT/$base" 2>/dev/null
+    done
+  done
+done
+```
+
+### `templates/llm-judge-prompt.txt`
+
+```text
+Conversation so far: {transcript}
+User utterance: "{utterance}"
+Assistant response: "{response}"
+
+Score (1-5) each independently. DO NOT see the expected answer.
+- intent_match: did the response address the user's likely intent?
+- naturalness: would a human speak this way?
+- brevity: is the response single-idea and <=15 sec spoken?
+- error_recovery: if the previous turn errored, did the response vary + add scaffolding?
+
+Return JSON. Penalise if the response invents facts not in {kb}.
+```

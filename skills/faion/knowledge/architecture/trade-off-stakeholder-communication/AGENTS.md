@@ -71,6 +71,8 @@
 | `templates/adr-consequences.md` | Drop-in Consequences block for the parent ADR |
 | `templates/_smoke-test.json` | Minimum viable filled-in bundle for validator round-trip |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,162 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on (a) reversibility — Type-2 short-circuits to engineer-note-only, (b) stakeholder count — <2 roles skips full bundle, and (c) risk severity — high-severity decisions force the convergence-check rule. Every leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/trade-off-stakeholder-communication.json",
+  "type": "object",
+  "required": [
+    "decision_id",
+    "decision_title",
+    "reversibility",
+    "key_risk",
+    "artefacts"
+  ],
+  "properties": {
+    "decision_id": {
+      "type": "string",
+      "pattern": "^ADR-[0-9]{3,5}$"
+    },
+    "decision_title": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 120
+    },
+    "reversibility": {
+      "type": "string",
+      "enum": [
+        "type-1",
+        "type-2"
+      ]
+    },
+    "key_risk": {
+      "type": "string",
+      "minLength": 24,
+      "maxLength": 320
+    },
+    "artefacts": {
+      "type": "object",
+      "required": [
+        "exec_summary",
+        "pm_brief",
+        "engineer_note",
+        "ops_delta"
+      ],
+      "properties": {
+        "exec_summary": {
+          "type": "object",
+          "required": [
+            "body",
+            "word_count",
+            "embeds_key_risk"
+          ],
+          "properties": {
+            "body": {
+              "type": "string"
+            },
+            "word_count": {
+              "type": "integer",
+              "maximum": 120
+            },
+            "embeds_key_risk": {
+              "type": "boolean",
+              "const": true
+            }
+          }
+        },
+        "pm_brief": {
+          "type": "object",
+          "required": [
+            "body",
+            "roadmap_impact",
+            "dependency_changes",
+            "embeds_key_risk"
+          ]
+        },
+        "engineer_note": {
+          "type": "object",
+          "required": [
+            "body",
+            "sacrificed",
+            "embeds_key_risk"
+          ],
+          "properties": {
+            "sacrificed": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "ops_delta": {
+          "type": "object",
+          "required": [
+            "body",
+            "runbook_changes",
+            "alert_changes",
+            "embeds_key_risk"
+          ]
+        }
+      }
+    },
+    "convergence_check_passed": {
+      "type": "boolean"
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "decision_id": "ADR-0023",
+  "decision_title": "Adopt Postgres-only persistence; defer Redis cache to Phase 2",
+  "reversibility": "type-1",
+  "key_risk": "Read-heavy endpoints will hit p95 latency ceiling at ~5x current load; Phase 2 cache rollout is on the critical path for 10x growth.",
+  "artefacts": {
+    "exec_summary": {
+      "body": "We are standardising on Postgres for the next 18 months and deferring Redis. Key risk: Read-heavy endpoints will hit p95 latency ceiling at ~5x current load; Phase 2 cache rollout is on the critical path for 10x growth. Re-evaluate Q3.",
+      "word_count": 40,
+      "embeds_key_risk": true
+    },
+    "pm_brief": {
+      "body": "Phase 2 cache rollout becomes P0. Key risk: Read-heavy endpoints will hit p95 latency ceiling at ~5x current load; Phase 2 cache rollout is on the critical path for 10x growth.",
+      "roadmap_impact": "Phase 2 (Q3) adds a 4-week cache rollout task.",
+      "dependency_changes": [
+        "Phase 2 milestone requires cache layer"
+      ],
+      "embeds_key_risk": true
+    },
+    "engineer_note": {
+      "body": "Postgres-only Phase 1. Key risk: Read-heavy endpoints will hit p95 latency ceiling at ~5x current load; Phase 2 cache rollout is on the critical path for 10x growth.",
+      "sacrificed": [
+        "Sub-millisecond p99 read latency",
+        "Independent cache scaling"
+      ],
+      "embeds_key_risk": true
+    },
+    "ops_delta": {
+      "body": "Single oncall surface. Key risk: Read-heavy endpoints will hit p95 latency ceiling at ~5x current load; Phase 2 cache rollout is on the critical path for 10x growth.",
+      "runbook_changes": [
+        "Postgres pool saturation entry"
+      ],
+      "alert_changes": [
+        "p95 latency 250ms read endpoints"
+      ],
+      "embeds_key_risk": true
+    }
+  },
+  "convergence_check_passed": true
+}
+```

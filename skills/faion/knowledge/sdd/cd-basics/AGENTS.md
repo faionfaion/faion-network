@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/expand_contract_migration.sql` | Expand–contract migration: phase 1 (add nullable column) + phase 2 (backfill) + phase 3 (drop old) |
 | `templates/release_checklist.md` | Per-commit release checklist: green CI + flag-default-off + DB migration phase |
-| `templates/_smoke-test.sql` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,21 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Are CI, automated tests, and IaC already in place?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/expand_contract_migration.sql`
+
+```sql
+-- faion_header_json: {"__faion_header__":{"purpose":"Expand\u2013contract migration: phase 1 (add nullable column) + phase 2 (backfill) + phase 3 (drop old)","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#releasable-mainline","token_budget_impact":"~150 tokens when loaded"}}
+-- PHASE 1: expand (deploy with new column nullable)
+ALTER TABLE users ADD COLUMN email_canonical TEXT;
+
+-- PHASE 2: backfill (run as a job; idempotent)
+UPDATE users SET email_canonical = LOWER(TRIM(email)) WHERE email_canonical IS NULL;
+
+-- PHASE 3: contract (only after writers stopped using old column)
+ALTER TABLE users DROP COLUMN email_old;
+```

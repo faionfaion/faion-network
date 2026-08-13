@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/schema.graphql` | SDL skeleton: Node/Timestamped interfaces, Relay Connection/Edge/PageInfo, payload with error union |
 | `templates/dataloader.py` | Strawberry DataLoader: per-request batch loading with key-order preservation |
-| `templates/_smoke-test.graphql` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,74 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is the use case multi-client with nested reads or single-client CRUD?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/schema.graphql`
+
+```graphql
+<!-- faion_header_json: {"__faion_header__":{"purpose":"SDL skeleton: Node/Timestamped interfaces, Relay Connection/Edge/PageInfo, payload with error union","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#schema-first","token_budget_impact":"~150 tokens when loaded"}} -->
+scalar DateTime
+scalar UUID
+scalar Email
+
+interface Node { id: ID! }
+interface Timestamped { createdAt: DateTime!; updatedAt: DateTime! }
+
+enum UserRole { ADMIN MODERATOR MEMBER }
+
+type User implements Node & Timestamped {
+  id: ID!
+  email: Email!
+  name: String!
+  role: UserRole!
+  isActive: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  orders(first: Int, after: String): OrderConnection!
+}
+
+type OrderConnection {
+  edges: [OrderEdge!]!
+  pageInfo: PageInfo!
+}
+type OrderEdge { cursor: String!; node: Order! }
+type PageInfo { endCursor: String; hasNextPage: Boolean! }
+
+type Order implements Node { id: ID!; total: Float! }
+
+type UserError { field: String; message: String!; code: String! }
+
+input CreateUserInput { email: Email!; name: String!; role: UserRole }
+type CreateUserPayload { user: User; errors: [UserError!] }
+
+type Mutation {
+  createUser(input: CreateUserInput!): CreateUserPayload!
+}
+
+type Query {
+  user(id: ID!): User
+}
+```
+
+### `templates/dataloader.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Strawberry DataLoader: per-request batch loading with key-order preservation","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#schema-first","token_budget_impact":"~150 tokens when loaded"}}
+from typing import List
+from uuid import UUID
+from strawberry.dataloader import DataLoader
+
+
+class OrganizationLoader(DataLoader):
+    def __init__(self, repository):
+        super().__init__(load_fn=self.batch_load_fn)
+        self.repository = repository
+
+    async def batch_load_fn(self, keys: List[UUID]):
+        orgs = await self.repository.find_by_ids(keys)
+        org_map = {org.id: org for org in orgs}
+        return [org_map.get(key) for key in keys]
+```

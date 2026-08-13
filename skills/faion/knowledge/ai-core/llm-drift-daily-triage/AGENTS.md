@@ -65,6 +65,8 @@
 | `templates/runner.py` | Reference runner that produces triage-report.json from telemetry sources. |
 | `templates/_smoke-test.json` | Minimum-viable triage report. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,164 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` decides the day's action: small deltas → continue (log only); medium deltas → mitigate (revert last change, page owner); large deltas → escalate (incident + page on-call). Thresholds are configurable per call site.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/triage-report.schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/llm-drift-daily-triage",
+  "_purpose": "Schema for the daily drift triage report.",
+  "_consumes": "operator-filled or runner-emitted triage-report.json",
+  "_produces": "validation verdict",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "validator only",
+  "type": "object",
+  "required": [
+    "date",
+    "owner",
+    "deltas",
+    "failing_traces",
+    "decision"
+  ],
+  "properties": {
+    "date": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string"
+    },
+    "deltas": {
+      "type": "object",
+      "required": [
+        "eval_score_pp",
+        "refusal_rate_pp",
+        "cost_pct"
+      ],
+      "properties": {
+        "eval_score_pp": {
+          "type": "number"
+        },
+        "refusal_rate_pp": {
+          "type": "number"
+        },
+        "cost_pct": {
+          "type": "number"
+        }
+      }
+    },
+    "failing_traces": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "summary",
+          "expected",
+          "got"
+        ]
+      }
+    },
+    "decision": {
+      "enum": [
+        "continue",
+        "mitigate",
+        "escalate"
+      ]
+    },
+    "follow_up": {
+      "type": "string"
+    }
+  }
+}
+```
+
+### `templates/runner.py`
+
+```python
+"""
+from __future__ import annotations
+
+import argparse
+import json
+from datetime import date
+from pathlib import Path
+
+
+def compute_deltas(yest: dict, baseline: dict) -> dict:
+    return {
+        "eval_score_pp": round((yest["eval_score"] - baseline["eval_score"]) * 100, 2),
+        "refusal_rate_pp": round((yest["refusal_rate"] - baseline["refusal_rate"]) * 100, 2),
+        "cost_pct": round((yest["cost_per_call"] - baseline["cost_per_call"]) / baseline["cost_per_call"] * 100, 2) if baseline["cost_per_call"] else 0.0,
+    }
+
+
+def pick_top_traces(traces: list[dict]) -> list[dict]:
+    failing = [t for t in traces if t.get("passed") is False]
+    return [{"id": t["id"], "summary": t.get("summary", ""), "expected": t.get("expected", ""), "got": t.get("got", "")} for t in failing[:3]]
+
+
+def decide(deltas: dict) -> str:
+    if abs(deltas["eval_score_pp"]) >= 5 or abs(deltas["refusal_rate_pp"]) >= 8 or abs(deltas["cost_pct"]) >= 25:
+        return "escalate"
+    if abs(deltas["eval_score_pp"]) >= 2 or abs(deltas["refusal_rate_pp"]) >= 3 or abs(deltas["cost_pct"]) >= 10:
+        return "mitigate"
+    return "continue"
+
+
+def main(argv: list[str]) -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--yesterday", type=Path, required=True)
+    ap.add_argument("--baseline", type=Path, required=True)
+    ap.add_argument("--traces", type=Path, required=True)
+    ap.add_argument("--owner", required=True)
+    ap.add_argument("--out", type=Path, required=True)
+    args = ap.parse_args(argv)
+
+    yest = json.loads(args.yesterday.read_text(encoding="utf-8"))
+    baseline = json.loads(args.baseline.read_text(encoding="utf-8"))
+    traces = [json.loads(line) for line in args.traces.read_text(encoding="utf-8").splitlines() if line.strip()]
+    deltas = compute_deltas(yest, baseline)
+    report = {
+        "date": str(date.today()),
+        "owner": args.owner,
+        "deltas": deltas,
+        "failing_traces": pick_top_traces(traces),
+        "decision": decide(deltas),
+        "follow_up": "",
+    }
+    args.out.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main(sys.argv[1:]))
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "Minimum viable triage report that passes the validator.",
+  "_consumes": "validate-llm-drift-daily-triage.py",
+  "_produces": "ok verdict",
+  "_depends_on": "templates/triage-report.schema.json",
+  "_token_budget_impact": "docs-only",
+  "date": "2026-05-22",
+  "owner": "alex.engineer",
+  "deltas": {
+    "eval_score_pp": -0.5,
+    "refusal_rate_pp": 0.2,
+    "cost_pct": 1.0
+  },
+  "failing_traces": [],
+  "decision": "continue",
+  "follow_up": ""
+}
+```

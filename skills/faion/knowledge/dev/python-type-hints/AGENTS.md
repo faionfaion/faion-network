@@ -70,6 +70,8 @@
 | `templates/mypy.toml` | `[tool.mypy]` strict block with test + migration overrides |
 | `templates/typecheck-touched.sh` | CI script: run `mypy --strict` only on `git diff` changed `.py` files |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,59 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree branches on Python version (3.9 / 3.10 / 3.11 / 3.12+) → checker choice (mypy / pyright) → adoption mode (greenfield strict / legacy diff-only). Greenfield gets `strict = true` globally; legacy gets `disallow_untyped_defs` per-file via `files = [...]` allowlist that grows on each PR. All leaves reference rules from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/mypy.toml`
+
+```toml
+# Paste under [tool] in pyproject.toml.
+# Adjust python_version and per-module overrides as needed.
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+strict = false
+
+[[tool.mypy.overrides]]
+module = "migrations.*"
+ignore_errors = true
+```
+
+### `templates/typecheck-touched.sh`
+
+```bash
+#!/usr/bin/env bash
+# scripts/typecheck-touched.sh
+# Run mypy --strict only on Python files changed vs base branch.
+# Usage: bash scripts/typecheck-touched.sh [base-ref]
+# Exits 0 if no files changed or all pass.
+set -euo pipefail
+
+BASE_REF="${1:-origin/main}"
+
+mapfile -t files < <(
+  git diff --name-only --diff-filter=AM "$BASE_REF" -- '*.py' \
+    | grep -v -E '^(migrations/|tests/fixtures/|conftest\.py$)'
+)
+
+if [[ ${#files[@]} -eq 0 ]]; then
+  echo "No Python files changed."
+  exit 0
+fi
+
+echo "Typechecking ${#files[@]} file(s) with mypy --strict..."
+mypy --strict "${files[@]}"
+```

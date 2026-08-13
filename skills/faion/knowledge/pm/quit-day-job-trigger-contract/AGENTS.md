@@ -67,6 +67,8 @@
 | `templates/contract-skeleton.md` | Canonical contract sections (trigger / reversal / evidence / owner / review) |
 | `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,17 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes by trigger specificity, output shape, evidence presence, owner naming, and review staleness onto a rule from `content/01-core-rules.xml`. Walk it on every quarterly review.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+owner: ""           # named person, not a team/channel
+version: 1.0.0
+last_reviewed: ""   # YYYY-MM-DD
+evidence_root: ""   # path or URL prefix where evidence links resolve
+review_cadence: quarterly
+```

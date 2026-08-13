@@ -68,6 +68,8 @@
 | `templates/gap-analysis.md` | Current-vs-future gap table with closure plan. |
 | `templates/validate-ka6.sh` | Shell validator for BABOK KA6 artefacts. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,17 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/validate-ka6.sh`
+
+```bash
+#!/usr/bin/env bash
+# Validate BABOK KA6 artefacts (business_need ≥ 80 chars, gaps non-empty).
+set -euo pipefail
+[ -f "${1:-}" ] || { echo 'usage: validate-ka6.sh <ka6.json>'; exit 2; }
+jq -e '.business_need | length >= 80' "$1" >/dev/null && echo 'OK' || { echo 'FAIL: business_need < 80'; exit 1; }
+```

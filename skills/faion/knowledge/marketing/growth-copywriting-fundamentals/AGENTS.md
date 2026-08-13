@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/growth-copywriting-fundamentals.json` | JSON skeleton matching the output contract. |
 | `templates/growth-copywriting-fundamentals.md` | Markdown skeleton with required fields. |
 
 ## Scripts

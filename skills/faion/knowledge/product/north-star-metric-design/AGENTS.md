@@ -67,6 +67,8 @@
 | `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
 | `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,44 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/artefact-instance.json`
+
+```json
+{
+  "nsm_id": "nsm-acme-2026q2",
+  "owner": "cpo@acme.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "candidates": [
+    {
+      "name": "weekly_active_users",
+      "formula": "count(distinct user_id where active_7d=true)",
+      "type": "leading",
+      "evidence": "BI table fct_activity"
+    },
+    {
+      "name": "monthly_revenue",
+      "formula": "sum(stripe_charges where month=this_month)",
+      "type": "lagging",
+      "evidence": "Stripe export 2026-05"
+    },
+    {
+      "name": "weekly_engaged_minutes",
+      "formula": "sum(minutes_per_user where active_7d=true)",
+      "type": "leading",
+      "evidence": "BI table fct_engagement"
+    }
+  ],
+  "selected": "weekly_engaged_minutes",
+  "rationale": "leading indicator + ties to value hypothesis 'users save time by doing X'",
+  "formula": "sum(minutes_per_user where active_7d=true)",
+  "cadence": "weekly",
+  "review_cadence": "quarterly NSM review",
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}
+```

@@ -69,6 +69,8 @@
 | `templates/cross-timezone-standup-rotation.schema.json` | JSON Schema for the output contract |
 | `templates/_smoke-test.md` | minimum viable filled-in example |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,92 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, stakes, recurrence) onto a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply or whether to skip the methodology entirely.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/cross-timezone-standup-rotation.schema.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/cross-timezone-standup-rotation.json",
+  "title": "Cross Timezone Standup Rotation",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "decision",
+    "rationale",
+    "inputs_used",
+    "version",
+    "last_reviewed"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$",
+      "minLength": 3,
+      "maxLength": 80
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 80
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 4,
+      "maxLength": 4000
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 40,
+      "maxLength": 4000
+    },
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "source"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 2
+          },
+          "source": {
+            "type": "string",
+            "minLength": 4
+          }
+        }
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "pending",
+        "active",
+        "deprecated"
+      ]
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 2000
+    }
+  }
+}
+```

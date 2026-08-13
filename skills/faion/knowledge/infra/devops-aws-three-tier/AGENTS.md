@@ -68,6 +68,8 @@
 | `templates/aurora.tf` | Terraform Aurora Serverless v2 in isolated DB subnets |
 | `templates/_smoke-test.json` | Minimum config used by validate-devops-aws-three-tier.py --self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,91 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it when standing up a new HA web-app baseline on AWS.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/vpc.tf`
+
+```hcl
+module "vpc" {
+  source             = "terraform-aws-modules/vpc/aws"
+  version            = "~> 5.8"
+  name               = "${var.project}-vpc"
+  cidr               = "10.0.0.0/16"
+  azs                = ["${var.region}a", "${var.region}b"]
+  public_subnets     = ["10.0.0.0/24",  "10.0.1.0/24"]
+  private_subnets    = ["10.0.10.0/24", "10.0.11.0/24"]
+  database_subnets   = ["10.0.20.0/24", "10.0.21.0/24"]
+  enable_nat_gateway = true
+  single_nat_gateway = var.environment != "prod"   # per-AZ NAT in prod
+  create_database_subnet_group = true
+}
+```
+
+### `templates/alb.tf`
+
+```hcl
+module "alb" {
+  source  = "terraform-aws-modules/alb/aws"
+  version = "~> 9.0"
+  name    = "${var.project}-alb"
+  vpc_id  = module.vpc.vpc_id
+  subnets = module.vpc.public_subnets
+  enable_deletion_protection = true
+  listeners = {
+    https = {
+      port     = 443
+      protocol = "HTTPS"
+      certificate_arn = var.acm_cert_arn
+      forward = { target_group_key = "app" }
+    }
+  }
+  target_groups = {
+    app = { name_prefix = "app-", protocol = "HTTP", port = 8080, target_type = "ip", health_check = { path = "/health" } }
+  }
+}
+```
+
+### `templates/aurora.tf`
+
+```hcl
+module "aurora" {
+  source  = "terraform-aws-modules/rds-aurora/aws"
+  version = "~> 9.0"
+  name    = "${var.project}-db"
+  engine  = "aurora-postgresql"
+  engine_mode = "provisioned"
+  serverlessv2_scaling_configuration = { min_capacity = 0.5, max_capacity = 8 }
+  vpc_id                = module.vpc.vpc_id
+  db_subnet_group_name  = module.vpc.database_subnet_group_name
+  storage_encrypted     = true
+  apply_immediately     = false
+  skip_final_snapshot   = false
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "project": "checkout-app",
+  "az_count": 2,
+  "tiers": {
+    "public": [
+      "alb"
+    ],
+    "private": [
+      "app"
+    ],
+    "database": [
+      "aurora"
+    ]
+  },
+  "nat_gateway_per_az_prod": true,
+  "sg_reference_by_id": true,
+  "aurora_serverless_v2": true,
+  "encryption_at_rest": true
+}
+```

@@ -61,6 +61,8 @@
 | `templates/pre-commit-config.yaml` | Pre-commit pipeline: ruff format/check + mypy + bandit + djlint. |
 | `templates/pyproject-ruff.toml` | pyproject.toml [tool.ruff] section preset for Django. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,72 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` keys off the observable inputs documented in Prerequisites and routes to either "run the methodology" (preconditions hold) or "skip and route elsewhere" (preconditions fail). Use it before invoking the methodology, not after.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pre-commit-config.yaml`
+
+```yaml
+# .pre-commit-config.yaml — modern Django project
+# NO black, NO isort, NO flake8 — ruff covers all three.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.6
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-added-large-files
+
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.9
+    hooks:
+      - id: bandit
+        args: ["-c", "pyproject.toml"]
+        additional_dependencies: ["bandit[toml]"]
+```
+
+### `templates/pyproject-ruff.toml`
+
+```toml
+# pyproject.toml — modern Django quality stack (ruff + mypy)
+# Drop black, isort, flake8. This replaces all three.
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "DJ", "T20", "PT", "RUF", "S"]
+ignore = ["E501", "S101"]  # E501 handled by formatter; S101 allows assert in tests
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/*.py" = ["S105", "S106"]
+"**/settings/*.py" = ["S105"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "core", "config"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.11"
+plugins = ["mypy_django_plugin.main"]
+strict = false
+warn_unused_ignores = true
+warn_redundant_casts = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings.development"
+```

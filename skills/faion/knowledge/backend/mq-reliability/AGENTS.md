@@ -64,6 +64,8 @@
 |------|---------|
 | `templates/reliability-config.yaml` | Reliability config skeleton |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,23 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/reliability-config.yaml`
+
+```yaml
+publisher_confirms: true
+dlq:
+  queue: orders.v1.dlq
+  alert_threshold: 1
+retry_policy:
+  max_retries: 5
+  backoff: exponential
+  jitter_pct: 30
+prefetch_count: 10
+queue_length_limit: 100000
+schema_registry: https://schema.acme.net
+```

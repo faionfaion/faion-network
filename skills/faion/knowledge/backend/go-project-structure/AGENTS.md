@@ -67,6 +67,8 @@
 | `templates/Makefile` | Build / run / test / lint / tidy targets |
 | `templates/new-resource.sh` | Scaffold handler/service/repository/model for a new resource |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,164 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/Dockerfile`
+
+```text
+# Multi-stage distroless Dockerfile for Go services.
+# Build stage
+FROM golang:1.22-alpine AS builder
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/server ./cmd/api
+
+# Runtime stage — distroless for minimal attack surface
+FROM gcr.io/distroless/static-debian12
+
+WORKDIR /app
+
+COPY --from=builder /app/server .
+
+EXPOSE 8080
+
+USER nonroot:nonroot
+
+ENTRYPOINT ["/app/server"]
+```
+
+### `templates/Makefile`
+
+```text
+.PHONY: build run test lint fmt tidy clean docker-build
+
+BINARY_NAME ?= api
+BUILD_DIR   := ./build
+MAIN_PATH   := ./cmd/api
+
+build:
+	go build -o $(BUILD_DIR)/$(BINARY_NAME) $(MAIN_PATH)
+
+build-linux:
+	GOOS=linux GOARCH=amd64 go build -o $(BUILD_DIR)/$(BINARY_NAME)-linux $(MAIN_PATH)
+
+run:
+	go run $(MAIN_PATH)
+
+dev:
+	air -c .air.toml
+
+test:
+	go test -race -shuffle=on ./...
+
+test-coverage:
+	go test -race -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
+
+lint:
+	golangci-lint run ./...
+
+fmt:
+	gofmt -s -w .
+	goimports -w .
+
+tidy:
+	go mod tidy
+	go mod verify
+
+clean:
+	rm -rf $(BUILD_DIR) coverage.out coverage.html
+
+docker-build:
+	docker build -t $(BINARY_NAME):latest .
+
+docker-run:
+	docker run --rm -p 8080:8080 $(BINARY_NAME):latest
+```
+
+### `templates/new-resource.sh`
+
+```bash
+# Scaffold handler/service/repository/model for a new resource.
+# Usage: bash scripts/new-resource.sh users
+set -euo pipefail
+
+N="$1"
+T="$(echo "${N}" | sed 's/.*/\u&/' | sed 's/s$//')"  # users -> User
+
+mkdir -p internal/{model,repository,service,handler}
+
+cat > "internal/model/${N}.go" <<EOF
+package model
+
+import "time"
+
+type ${T} struct {
+    ID        string    \`db:"id" json:"id"\`
+    Name      string    \`db:"name" json:"name"\`
+    CreatedAt time.Time \`db:"created_at" json:"createdAt"\`
+}
+EOF
+
+cat > "internal/repository/${N}.go" <<EOF
+package repository
+
+import (
+    "context"
+    "github.com/jmoiron/sqlx"
+    m "yourmod/internal/model"
+)
+
+type ${T}Repo interface {
+    Create(context.Context, *m.${T}) error
+    FindByID(context.Context, string) (*m.${T}, error)
+}
+
+type ${N}Repo struct{ db *sqlx.DB }
+
+func New${T}Repo(db *sqlx.DB) ${T}Repo { return &${N}Repo{db} }
+
+func (r *${N}Repo) Create(ctx context.Context, x *m.${T}) error {
+    return nil // TODO
+}
+
+func (r *${N}Repo) FindByID(ctx context.Context, id string) (*m.${T}, error) {
+    return nil, nil // TODO
+}
+EOF
+
+cat > "internal/service/${N}.go" <<EOF
+package service
+
+import (
+    "context"
+    m "yourmod/internal/model"
+)
+
+type ${T}Repository interface {
+    Create(context.Context, *m.${T}) error
+    FindByID(context.Context, string) (*m.${T}, error)
+}
+
+type ${T}Service struct{ repo ${T}Repository }
+
+func New${T}Service(repo ${T}Repository) *${T}Service {
+    return &${T}Service{repo: repo}
+}
+
+func (s *${T}Service) Create(ctx context.Context, x *m.${T}) error {
+    return s.repo.Create(ctx, x)
+}
+EOF
+
+echo "Scaffolded ${N} across model/repository/service. Add handler + routes manually."
+```

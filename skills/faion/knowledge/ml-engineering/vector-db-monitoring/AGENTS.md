@@ -68,6 +68,8 @@
 | `templates/prometheus-rules.yaml` | Reference rule set |
 | `templates/_smoke-test.yaml` | Minimum-viable spec |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,99 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes alert by metric class + severity → page / ticket / suppress.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/monitoring.schema.yaml`
+
+```yaml
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+required: [metrics, alerts, capacity, dashboard]
+properties:
+  metrics:
+    type: array
+    minItems: 4
+    items:
+      type: object
+      required: [name, pillar, slo]
+      properties:
+        name: {type: string}
+        pillar: {type: string, enum: [latency, error, memory, disk]}
+        slo: {type: object, required: [target]}
+  alerts:
+    type: array
+    minItems: 1
+    items:
+      type: object
+      required: [name, expr, severity, runbook_url]
+      properties:
+        severity: {type: string, enum: [page, ticket]}
+        runbook_url: {type: string, minLength: 10}
+  capacity:
+    type: object
+    required: [forecast_window_days, alert_when_lt_days]
+    properties:
+      forecast_window_days: {type: integer, minimum: 7}
+      alert_when_lt_days: {type: integer, minimum: 14}
+  dashboard:
+    type: object
+    required: [slo_overlay]
+    properties:
+      slo_overlay: {type: boolean}
+```
+
+### `templates/prometheus-rules.yaml`
+
+```yaml
+groups:
+  - name: vector-db
+    interval: 30s
+    rules:
+      - alert: QdrantP95Breach
+        expr: histogram_quantile(0.95, query_latency_bucket) > 0.08
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "Qdrant p95 latency > 80ms"
+          runbook_url: "https://runbooks.example.com/qdrant-latency"
+
+      - alert: QdrantMemoryHigh
+        expr: memory_used_ratio > 0.85
+        for: 10m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Qdrant memory > 85% used"
+          runbook_url: "https://runbooks.example.com/qdrant-memory"
+
+      - alert: QdrantDiskCapacity30d
+        expr: predict_linear(disk_used_bytes[7d], 30 * 86400) > disk_capacity_bytes
+        for: 1h
+        labels:
+          severity: ticket
+        annotations:
+          summary: "Qdrant disk forecast OOM <30d"
+          runbook_url: "https://runbooks.example.com/qdrant-capacity"
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+metrics:
+  - {name: query_latency_p95, pillar: latency, slo: {target: "<80ms"}}
+  - {name: error_rate_5m, pillar: error, slo: {target: "<1%"}}
+  - {name: memory_used_ratio, pillar: memory, slo: {target: "<0.85"}}
+  - {name: disk_used_ratio, pillar: disk, slo: {target: "<0.80"}}
+alerts:
+  - {name: P95Breach, expr: "p95 > 0.08", severity: page, runbook_url: "https://runbooks.example.com/p95"}
+  - {name: MemoryHigh, expr: "memory_used_ratio > 0.85", severity: ticket, runbook_url: "https://runbooks.example.com/memory"}
+capacity:
+  forecast_window_days: 30
+  alert_when_lt_days: 14
+dashboard:
+  slo_overlay: true
+```

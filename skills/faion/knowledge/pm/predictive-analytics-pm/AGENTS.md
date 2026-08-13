@@ -69,6 +69,8 @@
 | `templates/model-spec.md` | Model card: features, target, training data, calibration metrics, ethics. |
 | `templates/forecast-output.json` | Forecast envelope: point + 80% PI + 95% PI per risk dimension. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,39 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observables (history_count, data_eng_capability, decision_acceptance_of_intervals) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/forecast-output.json`
+
+```json
+{
+  "project_id": "REPLACE",
+  "risk_dimension": "schedule_slip_weeks",
+  "point_estimate": 2.4,
+  "pi_80": [
+    1.0,
+    4.0
+  ],
+  "pi_95": [
+    0.5,
+    6.0
+  ],
+  "top_features": [
+    {
+      "feature": "REPLACE",
+      "contribution": 0.0
+    },
+    {
+      "feature": "REPLACE",
+      "contribution": 0.0
+    },
+    {
+      "feature": "REPLACE",
+      "contribution": 0.0
+    }
+  ]
+}
+```

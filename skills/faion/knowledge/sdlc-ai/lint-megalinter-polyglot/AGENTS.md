@@ -68,6 +68,8 @@
 | `templates/.mega-linter.yml` | Committed MegaLinter config. |
 | `templates/megalinter-workflow.yml` | GH Actions job. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,38 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (precondition flag, repo metric, capability flag) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on a rule that triggers the procedure or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/.mega-linter.yml`
+
+```yaml
+APPLY_FIXES: none
+DEFAULT_BRANCH: main
+FORMATTERS_DISABLE_ERRORS: false
+FILTER_REGEX_EXCLUDE: '(\.git/|node_modules/|vendor/|dist/)'
+OUTPUT_FORMAT: sarif
+OUTPUT_DETAIL: simple
+```
+
+### `templates/megalinter-workflow.yml`
+
+```yaml
+name: mega-linter
+on: [pull_request, push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: MegaLinter
+        uses: oxsecurity/megalinter@v7.13.0
+        env:
+          VALIDATE_ALL_CODEBASE: true
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with: {sarif_file: megalinter-reports/megalinter.sarif}
+```

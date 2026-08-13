@@ -64,6 +64,8 @@
 | `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
 | `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root, incident_url. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,17 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` decides whether the case warrants a full pinned spec (≥3 expected hits/year, named owner, evidence ≥1) or a smaller pytest comment + `pytest.mark.regression`. Use it the moment the QA engineer hits a tricky scenario in triage — before they start typing the spec.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+version: "1.0.0"            # semver
+owner: "qa-eng:<person>"     # person + role; team-level ownership is forbidden
+last_reviewed: "2026-05-22"  # ISO date; staleness window = 6 months
+incident_url: "https://..."  # MUST be a real URL to the originating incident
+evidence_root: "tests/regression/"   # where the pinned test will live
+```

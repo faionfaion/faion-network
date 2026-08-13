@@ -60,7 +60,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/timeboxed-refactor-session-template.json` | JSON skeleton matching the output contract. |
 | `templates/timeboxed-refactor-session-template.md` | Markdown skeleton with required fields. |
 
 ## Scripts

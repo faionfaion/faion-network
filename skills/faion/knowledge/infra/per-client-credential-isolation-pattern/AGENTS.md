@@ -67,6 +67,8 @@
 | `templates/per-client-credential-isolation-pattern.yaml` | Working skeleton for the `per-client-credential-isolation-pattern` artefact with required fields and `not_applicable: <reason>` markers per row. |
 | `templates/_smoke-test.yaml` | Minimum viable filled artefact used by the validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,45 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, owner presence, trigger naming, evidence presence) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/per-client-credential-isolation-pattern.yaml`
+
+```yaml
+slug: per-client-credential-isolation-pattern
+title: Per-Client Credential Isolation Pattern
+owner:
+  name: "<named person>"
+  role: "<role>"
+produced_at: "2026-05-23T10:00:00Z"
+evidence:
+  - claim: "<claim>"
+    link: "<https://...>"
+version: 1.0.0
+last_reviewed: 2026-05-23
+status: active
+config:
+  example_key: example_value
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+slug: per-client-credential-isolation-pattern
+title: Per-Client Credential Isolation Pattern
+owner:
+  name: Tetiana Lytvyn
+  role: lead engineer
+produced_at: "2026-05-23T10:00:00Z"
+evidence:
+  - claim: baseline captured
+    link: "https://wiki.example.com/baseline"
+version: 1.0.0
+last_reviewed: 2026-05-23
+status: active
+config:
+  example_key: example_value
+```

@@ -60,14 +60,6 @@
 | `compose-script` | sonnet | Wire credentials + waits + JSON output |
 | `dry-run-review` | haiku | Linter pass over the script |
 
-## Templates
-
-| File | Purpose |
-|------|---------|
-| `templates/ec2-launch.sh` | EC2 launch + tag + wait shell snippet |
-| `templates/s3-sync.sh` | S3 sync with retention pattern |
-| `templates/lambda-deploy.sh` | Lambda zip + update-function-code skeleton |
-
 ## Scripts
 
 | File | Purpose | When to call |

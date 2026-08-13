@@ -70,6 +70,8 @@
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum viable filled `RetroActionItem` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,45 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates an action item on (a) numeric threshold present, (b) owner role named, (c) deadline sprint-bounded, (d) measurement source available. Every leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+owner:
+  role: ""
+  person: ""
+last_reviewed: ""
+version: ""
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "sprint_id": "S14",
+  "header": {
+    "owner": {
+      "role": "team-lead",
+      "person": "tl-handle"
+    },
+    "last_reviewed": "2026-05-10",
+    "version": "1.0"
+  },
+  "actions": [
+    {
+      "action_id": "S14-1",
+      "experiment": "Rotate PR-review-day owner on Fri; cap reviewer WIP at 5",
+      "input_signal": "cycle_time_p95_days",
+      "measurement_source": "Jira filter",
+      "threshold": "reduce 4d to 3d by end S15",
+      "deadline_sprint": "S15",
+      "owner_role": "tech-lead",
+      "outcome_verdict": "pending"
+    }
+  ]
+}
+```

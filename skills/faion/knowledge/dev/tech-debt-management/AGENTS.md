@@ -69,6 +69,8 @@
 | `templates/tech-debt-management.json` | JSON Schema for the management-plan artefact. |
 | `templates/strategy-fit-table.md` | Per-strategy fit profile + exit criteria. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,118 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree picks strategy by score: low (Boy Scout), medium-and-localized (feature-attached), high-and-broad (dedicated sprint or Strangler Fig). It then verifies a CI gate exists for the debt category. Leaves emit `adopt-plan`, `block-no-gate`, `block-no-exit-criteria`, or `block-low-score-skip`. Each leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tech-debt-management.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/tech-debt-management.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "register_ref",
+    "items",
+    "verdict",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^tdm-[a-z0-9-]{6,}$"
+    },
+    "register_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "debt_item_id",
+          "strategy",
+          "exit_criterion",
+          "gate",
+          "owner_email"
+        ],
+        "properties": {
+          "debt_item_id": {
+            "type": "string",
+            "pattern": "^debt-[a-z0-9-]{4,}$"
+          },
+          "strategy": {
+            "enum": [
+              "boy-scout",
+              "feature-attached",
+              "dedicated-sprint",
+              "strangler-fig"
+            ]
+          },
+          "exit_criterion": {
+            "type": "string",
+            "minLength": 10
+          },
+          "gate": {
+            "type": "object",
+            "required": [
+              "kind",
+              "definition"
+            ],
+            "properties": {
+              "kind": {
+                "enum": [
+                  "ruff",
+                  "eslint",
+                  "regex",
+                  "ast-visitor",
+                  "test-name",
+                  "loc-cap",
+                  "complexity-cap",
+                  "custom"
+                ]
+              },
+              "definition": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "owner_email": {
+            "type": "string",
+            "format": "email"
+          },
+          "target_sprint": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "verdict": {
+      "enum": [
+        "adopt-plan",
+        "block-no-gate",
+        "block-no-exit-criteria",
+        "block-low-score-skip"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

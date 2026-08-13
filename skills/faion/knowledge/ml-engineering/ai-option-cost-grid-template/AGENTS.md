@@ -61,6 +61,8 @@
 | `templates/grid.md` | Markdown grid skeleton with every column header + N/A discipline. |
 | `templates/output-schema.json` | JSON Schema for the structured grid. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -74,3 +76,61 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` decides whether to ship the full grid (≥2 options + eval set + named owner) or a lightweight 1-pager. Use it as the gate before any vendor contract conversation.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "_header": {
+    "purpose": "JSON Schema for the AI option cost grid output",
+    "consumes": "grid dict produced by the methodology",
+    "produces": "pass/fail validation",
+    "depends-on": "content/02-output-contract.xml",
+    "token-budget-impact": "small"
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://ai-option-cost-grid-template/output.schema.json",
+  "type": "object",
+  "required": [
+    "template_version",
+    "decision_owner",
+    "eval_set_hash",
+    "rows",
+    "recommendation",
+    "last_reviewed"
+  ],
+  "properties": {
+    "template_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "decision_owner": {
+      "type": "string",
+      "minLength": 3
+    },
+    "eval_set_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{16,64}$"
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object"
+      }
+    },
+    "recommendation": {
+      "type": "string",
+      "minLength": 20
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

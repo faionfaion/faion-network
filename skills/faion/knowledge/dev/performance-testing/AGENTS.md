@@ -72,6 +72,8 @@
 | `templates/baseline.json` | Baseline metrics committed under .perf/baseline.json. |
 | `templates/_smoke-test.json` | Minimum viable verdict report for validator smoke-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,3 +90,71 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs - SLO present?, staging fidelity, test type, regression vs SLO - onto a rule from `content/01-core-rules.xml`. Use it before drafting the test plan: it decides apply-vs-skip, picks the correct test type, and routes regressions to the CI gate.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/k6-scenario.js`
+
+```javascript
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+
+export const options = {
+  scenarios: {
+    steady: {
+      executor: 'constant-arrival-rate',
+      rate: 500, timeUnit: '1s', duration: '10m',
+      preAllocatedVUs: 200, maxVUs: 500,
+    },
+  },
+  thresholds: {
+    http_req_duration: ['p(95)<300', 'p(99)<800'],
+    http_req_failed: ['rate<0.01'],
+  },
+  discardResponseBodies: true,
+};
+
+export default function () {
+  const r = http.get('https://staging.example.com/api/users/123');
+  check(r, { 'status 200': (res) => res.status === 200 });
+}
+```
+
+### `templates/baseline.json`
+
+```json
+{
+  "git_sha": "REPLACE",
+  "env": "staging",
+  "dataset_size_rows": 1000000,
+  "p50_ms": 110,
+  "p95_ms": 240,
+  "p99_ms": 470,
+  "rps": 500,
+  "error_rate": 0.002
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "test_type": "load",
+  "slo": {
+    "p95_ms": 300,
+    "rps": 500,
+    "error_rate_ceiling": 0.01
+  },
+  "baseline_sha": "deadbeef",
+  "results": {
+    "p50_ms": 100,
+    "p95_ms": 200,
+    "p99_ms": 400,
+    "rps": 500,
+    "error_rate": 0.001
+  },
+  "verdict": "pass"
+}
+```

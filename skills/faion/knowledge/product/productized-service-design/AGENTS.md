@@ -67,6 +67,8 @@
 | `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
 | `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,71 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/artefact-instance.json`
+
+```json
+{
+  "design_id": "psd-acme-onboarding-2026q2",
+  "owner": "ops@acme.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "canvas_ref": "psc-acme-onboarding-2026q2",
+  "sop": [
+    {
+      "step": 1,
+      "name": "kickoff",
+      "deliverable": "kickoff doc"
+    },
+    {
+      "step": 2,
+      "name": "discovery",
+      "deliverable": "audit memo"
+    },
+    {
+      "step": 3,
+      "name": "impl",
+      "deliverable": "shipped flow"
+    },
+    {
+      "step": 4,
+      "name": "handover",
+      "deliverable": "ops SOP + dashboard"
+    }
+  ],
+  "deliverables": [
+    "audit memo",
+    "shipped onboarding flow",
+    "instrumentation dashboard",
+    "handover SOP"
+  ],
+  "pricing": {
+    "model": "fixed",
+    "amount": 12000,
+    "currency": "USD"
+  },
+  "guarantees": [
+    "+15pp conversion OR refund 50%",
+    "deliver within 4 weeks OR 10% credit"
+  ],
+  "refund_policy": {
+    "window_days": 14,
+    "conditions": [
+      "deliverable missed",
+      "guarantee unmet"
+    ]
+  },
+  "escalation": [
+    {
+      "trigger": "client unresponsive 5 days",
+      "escalator": "founder",
+      "action": "pause + reassign"
+    }
+  ],
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}
+```

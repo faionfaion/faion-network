@@ -63,6 +63,8 @@
 | `templates/Chart.yaml` | Working scaffold (Chart.yaml / Jenkinsfile / nginx.conf depending on slug) |
 | `templates/_smoke-test.yaml` | Minimum viable filled-in version of the template used by `--self-test` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,49 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts at `Are all preconditions satisfied?`; the negative branch terminates with `skip-this-methodology` and the positive branch routes via `scope_explicit` to either `chart-yaml-v2-strict` (apply end-to-end) or a guarded entry. Use it whenever the input source or scope is ambiguous.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/Chart.yaml`
+
+```yaml
+apiVersion: v2
+name: example
+description: Helm chart skeleton produced by helm-charts methodology
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+kubeVersion: ">=1.27.0-0"
+maintainers:
+  - name: faion-network
+    email: ops@example.com
+icon: https://example.com/icon.png
+home: https://example.com
+sources:
+  - https://github.com/example/example
+dependencies:
+  - name: redis
+    version: "18.5.0"
+    repository: oci://registry-1.docker.io/bitnamicharts
+    condition: redis.enabled
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+# Minimum viable filled-in code scaffold; consumed by --self-test.
+{
+  "slug": "helm-charts",
+  "language": "yaml",
+  "entrypoint": "Chart.yaml",
+  "files": [
+    "Chart.yaml",
+    "values.yaml",
+    "templates/deployment.yaml"
+  ],
+  "build_command": "helm lint .",
+  "test_command": "helm template . | kubeconform -"
+}
+```

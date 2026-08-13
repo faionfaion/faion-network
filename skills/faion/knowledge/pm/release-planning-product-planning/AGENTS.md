@@ -66,7 +66,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/release-planning.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/release-planning.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Related

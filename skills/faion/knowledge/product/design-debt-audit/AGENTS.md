@@ -65,6 +65,8 @@
 | `templates/design-debt-audit.schema.json` | JSON Schema for the artefact (mirrors content/02-output-contract.xml) |
 | `templates/_smoke-test.md` | Minimum-viable filled-in version exercised by scripts/validate-design-debt-audit.py --self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,34 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions hold, inputs typed, rules pass) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before producing the artefact to confirm the methodology applies and the rules pass.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/design-debt-audit.schema.json`
+
+```json
+{
+  "__faion_header__": {
+    "purpose": "JSON Schema for design-debt-audit",
+    "consumes": "validated against artefacts produced by the methodology",
+    "produces": "schema document for validator script",
+    "depends_on": "content/02-output-contract.xml",
+    "token_budget_impact": "small"
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/design-debt-audit.json",
+  "type": "object",
+  "required": ["artefact_id", "owner", "decision", "version", "last_reviewed", "inputs_used"],
+  "properties": {
+    "artefact_id": { "type": "string", "pattern": "^[a-z][a-z0-9-]+$" },
+    "owner": { "type": "string", "minLength": 2 },
+    "decision": { "type": "string", "minLength": 2 },
+    "rationale": { "type": "string" },
+    "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+    "last_reviewed": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "inputs_used": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+  }
+}
+```

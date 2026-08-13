@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/peft-config.yaml` | PEFT LoRA config skeleton |
-| `templates/sft-trainer.py` | TRL SFTTrainer skeleton |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Related
 
@@ -72,3 +73,20 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root: Is the target attention layer set defined? Branches route to a rule id from `content/01-core-rules.xml` (target-attention-projections, rank-8-to-64, checkpoint-best-eval, ...) so every leaf is traceable to a testable statement.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/peft-config.yaml`
+
+```yaml
+# fine-tuning-lora — config skeleton
+version: 1.0.0
+slug: fine-tuning-lora
+fields:
+  - name: example-field
+    type: string
+    required: true
+defaults: {}
+```

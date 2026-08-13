@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/handoff-spec-template.json` | JSON skeleton conforming to the output-contract schema. |
 | `templates/handoff-spec-template.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

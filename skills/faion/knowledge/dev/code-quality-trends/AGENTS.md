@@ -67,6 +67,8 @@
 | `templates/audit-prompt.txt` | LLM prompt to drive the per-category audit |
 | `templates/detect-stack.sh` | Shell script for stack detection |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,59 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree branches on detected stack → per-category lookup (lint / types / tests / perf / sec). Strict-mode default unless legacy escape-hatch is named in the manifest.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/audit-prompt.txt`
+
+```text
+Audit this repo against the 2026 Code Quality Checklist for stack={{STACK}}.
+
+Output a JSON array of objects. Each object:
+{
+  "item": "<checklist item text>",
+  "status": "pass | fail | na",
+  "evidence": "<file:line or command output that proves status>",
+  "fix_command": "<shell command to fix, or null if manual>"
+}
+
+Rules:
+- Cap output at 30 items; pick the highest-leverage from the matched stack checklist.
+- Do not invent configs that do not exist; mark missing tools as "fail" and propose installation.
+- Do not cite benchmarks or statistics from memory; use only the attached checklist.
+- Mark "na" for items that do not apply to this stack.
+- Every "fail" must have a non-null fix_command or a clear manual instruction.
+- Use only the attached 2026 Code Quality Checklist as source of truth.
+```
+
+### `templates/detect-stack.sh`
+
+```bash
+#!/usr/bin/env bash
+# detect-stack.sh — coarse stack classifier for the audit agent.
+# Reads manifest files and emits lang/framework/version tags.
+# Usage: detect-stack.sh [directory]
+set -euo pipefail
+
+ROOT="${1:-.}"
+cd "$ROOT"
+
+[ -f tsconfig.json ] && echo "lang:ts" || { [ -f package.json ] && echo "lang:js"; }
+{ [ -f pyproject.toml ] || [ -f requirements.txt ] || [ -f setup.py ]; } && echo "lang:py"
+[ -f go.mod ] && echo "lang:go"
+[ -f Cargo.toml ] && echo "lang:rust"
+
+[ -f next.config.js ] || [ -f next.config.mjs ] && echo "fw:next"
+[ -f remix.config.js ] && echo "fw:remix"
+[ -f svelte.config.js ] && echo "fw:svelte"
+[ -f manage.py ] && echo "fw:django"
+[ -f main.go ] && grep -q "gin" go.mod 2>/dev/null && echo "fw:gin"
+
+[ -f package.json ] && grep -q '"react"' package.json 2>/dev/null && echo "lib:react"
+[ -f package.json ] && grep -q '"vue"' package.json 2>/dev/null && echo "lib:vue"
+
+[ -f pyproject.toml ] && grep -m1 'requires-python' pyproject.toml | sed 's/.*= */python:/'
+[ -f package.json ] && jq -r '.engines.node // empty' package.json 2>/dev/null | sed 's/^/node:/'
+```

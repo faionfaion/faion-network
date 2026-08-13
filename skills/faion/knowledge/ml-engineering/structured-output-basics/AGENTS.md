@@ -67,6 +67,8 @@
 | `templates/openai-extract.py` | OpenAI response_format=json_schema extraction example |
 | `templates/retry-on-parse-fail.py` | 1-shot retry helper injecting validation error |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,127 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-schema-first`, `r2-provider-native`, `r3-validate-on-receipt`, `r4-retry-on-parse-fail`, `r5-strict-when-stakes-high` from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/extraction-schema.py`
+
+```python
+"""Skeleton for the `structured-output-basics` template `extraction-schema.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "structured-output-basics"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/claude-extract.py`
+
+```python
+"""Skeleton for the `structured-output-basics` template `claude-extract.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "structured-output-basics"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/openai-extract.py`
+
+```python
+"""Skeleton for the `structured-output-basics` template `openai-extract.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "structured-output-basics"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/retry-on-parse-fail.py`
+
+```python
+"""Skeleton for the `structured-output-basics` template `retry-on-parse-fail.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "structured-output-basics"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```

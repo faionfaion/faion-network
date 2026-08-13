@@ -71,7 +71,6 @@
 |------|---------|
 | `templates/parking-lot-canvas.md` | Markdown canvas with verbatim quote + requester + meeting context columns. |
 | `templates/requester-response.md` | 48h response template. |
-| `templates/triage-handoff.yaml` | Schema bridge between parking lot and the classifier. |
 | `templates/_smoke-test.md` | Minimum filled-in parking lot. |
 
 ## Scripts

@@ -64,6 +64,8 @@
 | `templates/AsyncConfig.java` | `ThreadPoolTaskExecutor` configuration with CallerRunsPolicy + graceful shutdown + TaskDecorator. |
 | `templates/async-service.java` | Service method returning `CompletableFuture<T>` with `@Async("emailExecutor")`. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,118 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (durability requirement, in-JVM vs cross-host, CPU vs IO) to a rule from `01-core-rules.xml`. Use it before introducing `@Async` to a service.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/AsyncConfig.java`
+
+```java
+// AsyncConfig.java — Spring @Async executor configuration skeleton
+// Replace pool sizes with profiled values: cores * (1 + wait/compute) for IO-bound
+
+package com.example.config;
+
+import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.task.TaskDecorator;
+import org.springframework.scheduling.annotation.AsyncConfigurer;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+
+import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
+
+@Configuration
+@EnableAsync
+public class AsyncConfig implements AsyncConfigurer {
+
+    @Bean(name = "taskExecutor")
+    public Executor taskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(8);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("Task-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
+        executor.setTaskDecorator(new MdcTaskDecorator()); // propagates MDC, SecurityContext
+        executor.initialize();
+        return executor;
+    }
+
+    @Bean(name = "emailExecutor")
+    public Executor emailExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(2);
+        executor.setMaxPoolSize(4);
+        executor.setQueueCapacity(50);
+        executor.setThreadNamePrefix("Email-");
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
+        executor.initialize();
+        return executor;
+    }
+
+    @Override
+    public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
+        return (ex, method, params) ->
+            LoggerFactory.getLogger(AsyncConfig.class)
+                .error("Uncaught async exception in {}", method.getName(), ex);
+    }
+}
+```
+
+### `templates/async-service.java`
+
+```java
+// @Async service method skeleton — returns CompletableFuture<Void>
+// Replace: NotificationService, emailExecutor, EmailService, Order
+
+package com.example.service;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
+import java.util.concurrent.CompletableFuture;
+
+@Service
+@RequiredArgsConstructor
+@Slf4j
+public class NotificationService {
+
+    private final EmailService emailService;
+
+    /**
+     * Sends order confirmation email asynchronously on the "emailExecutor" pool.
+     * Returns CompletableFuture<Void> — callers can chain or await.
+     *
+     * @param order the order to confirm (pass ID in production — re-fetch here)
+     * @return completed future on success, failed future on error
+     */
+    @Async("emailExecutor")
+    public CompletableFuture<Void> sendOrderConfirmation(Order order) {
+        log.info("Sending order confirmation for order {}", order.getId());
+        try {
+            emailService.send(
+                order.getUser().getEmail(),
+                "Order Confirmation #" + order.getId(),
+                buildEmailBody(order)
+            );
+            return CompletableFuture.completedFuture(null);
+        } catch (Exception e) {
+            log.error("Failed to send confirmation for order {}", order.getId(), e);
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    private String buildEmailBody(Order order) {
+        return "Your order #" + order.getId() + " has been confirmed.";
+    }
+}
+```

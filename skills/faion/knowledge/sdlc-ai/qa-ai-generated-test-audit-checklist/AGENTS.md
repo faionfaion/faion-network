@@ -67,6 +67,8 @@
 | `templates/audit-checklist.yaml` | The 12 items with pass / flag fields per item. |
 | `templates/pr-description-section.md` | PR description snippet the reviewer fills in. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,33 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from observable signals (PR touches tests? AI involvement detected? reviewer slot available?) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether to invoke the audit — the tree terminates either on the active rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/audit-checklist.yaml`
+
+```yaml
+pr_id: "#NNN"
+reviewer: "<github-handle>"
+run_at: "2026-05-23T10:00:00Z"
+items:
+  - {item_id: 1, verdict: pass, verdict_note: "behaviour assertion present"}
+  - {item_id: 2, verdict: pass, verdict_note: "failure-case test exists per error AC"}
+  - {item_id: 3, verdict: pass, verdict_note: "zero/negative/boundary covered"}
+  - {item_id: 4, verdict: pass, verdict_note: "empty/single/large covered"}
+  - {item_id: 5, verdict: "n/a", verdict_note: "no string inputs"}
+  - {item_id: 6, verdict: pass, verdict_note: "mocks within allowlist"}
+  - {item_id: 7, verdict: pass, verdict_note: "system-under-test not mocked"}
+  - {item_id: 8, verdict: pass, verdict_note: "names follow when_X_then_Y"}
+  - {item_id: 9, verdict: pass, verdict_note: "no shared mutable state"}
+  - {item_id: 10, verdict: pass, verdict_note: "per-test setup"}
+  - {item_id: 11, verdict: pass, verdict_note: "AC mapping walks assertions"}
+  - {item_id: 12, verdict: "n/a", verdict_note: "mutation CI not adopted"}
+overall_verdict: approve
+pre_lint_results:
+  mocks_per_test_max: 2
+  structural_only_count: 0
+  failure_case_present: true
+```

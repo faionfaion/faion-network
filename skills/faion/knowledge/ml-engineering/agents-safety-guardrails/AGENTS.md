@@ -68,6 +68,8 @@
 | `templates/pii-scrubber.py` | Input + log PII scrubber |
 | `templates/trip-handler.py` | Recovery-path dispatch helper |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,113 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-five-categories`, `r2-trip-conditions`, `r3-recovery-path`, `r4-human-loop-irreversible`, `r5-cost-cap` from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/guardrails.yaml`
+
+```yaml
+slug: agents-safety-guardrails
+version: "1.1.0"
+owner: "role:person"
+approver: "role:person"
+produced_at: "2026-05-22T00:00:00Z"
+scope:
+  title: "<fill>"
+  context_link: "<https://...>"
+review:
+  cadence: quarterly
+  next_review_at: "2026-08-22"
+```
+
+### `templates/human-loop-gate.py`
+
+```python
+"""Skeleton for the `agents-safety-guardrails` template `human-loop-gate.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "agents-safety-guardrails"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/pii-scrubber.py`
+
+```python
+"""Skeleton for the `agents-safety-guardrails` template `pii-scrubber.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "agents-safety-guardrails"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/trip-handler.py`
+
+```python
+"""Skeleton for the `agents-safety-guardrails` template `trip-handler.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "agents-safety-guardrails"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```

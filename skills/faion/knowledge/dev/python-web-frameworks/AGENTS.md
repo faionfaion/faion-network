@@ -61,6 +61,8 @@
 |------|---------|
 | `templates/pick-framework.sh` | Interactive picker that asks the decision-tree questions and prints `framework = …` plus the loaded-methodology list. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,39 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` keys off four observables: needs built-in admin Y/N, native async needs Y/N, team size, and target throughput floor. Each leaf maps to one of `django | fastapi | flask` plus the set of downstream methodologies to load next.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pick-framework.sh`
+
+```bash
+set -euo pipefail
+
+python - <<'PY'
+import json, sys
+
+brief = sys.stdin.read().lower()
+score = {"django": 0, "fastapi": 0, "flask": 0}
+
+# Django signals
+for kw in ["admin panel", "cms", "full-stack", "html template", "migrations", "enterprise"]:
+    if kw in brief: score["django"] += 2
+if "rapid development" in brief: score["django"] += 1
+
+# FastAPI signals
+for kw in ["ml model", "high concurrency", "async", "websocket", "openapi", "pydantic"]:
+    if kw in brief: score["fastapi"] += 2
+if "microservice" in brief: score["fastapi"] += 2
+if "ai" in brief or "inference" in brief: score["fastapi"] += 1
+
+# Flask signals
+for kw in ["prototype", "internal tool", "minimal", "small", "flexibility"]:
+    if kw in brief: score["flask"] += 2
+if "learning" in brief: score["flask"] += 1
+
+choice = max(score, key=score.get)
+print(json.dumps({"framework": choice, "scores": score}, indent=2))
+PY
+```

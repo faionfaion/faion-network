@@ -67,6 +67,8 @@
 | `templates/bug-bash-ledger.csv` | CSV template for tabular artefacts. |
 | `templates/_smoke-test.csv` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,23 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is the release scope broad enough to warrant a multi-persona exploratory pass?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/bug-bash-ledger.csv`
+
+```csv
+# faion_header_json: {"__faion_header__":{"purpose":"CSV template for tabular artefacts.","consumes":"see content/02-output-contract.xml","produces":"playbook-step","depends_on":"content/01-core-rules.xml#charter-per-persona","token_budget_impact":"~150 tokens when loaded"}}
+id,name,owner,severity,evidence_link
+sample-1,Sample row,alice,S2,https://example.invalid/evidence
+```
+
+### `templates/_smoke-test.csv`
+
+```csv
+# faion_header_json: {"__faion_header__":{"purpose":"Minimum viable filled-in artefact for sanity-checking the schema.","consumes":"see content/02-output-contract.xml","produces":"playbook-step","depends_on":"content/01-core-rules.xml#charter-per-persona","token_budget_impact":"~150 tokens when loaded"}}
+id,note
+smoke,Minimum viable filled-in artefact; see templates/ for production-grade skeletons.
+```

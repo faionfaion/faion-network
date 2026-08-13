@@ -70,6 +70,8 @@
 | `templates/prompt-transcript-annotation.txt` | Prompt to annotate a transcript with RASA labels and quality flags |
 | `templates/speaker-ratio.py` | Python snippet to measure interviewer word-share from a transcript |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,90 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts with "is this a live conversation or pre/post analysis", then routes by stakes and conflict level to either a script generation rule, a transcript annotation rule, or a skip conclusion when the methodology cannot apply (live execution).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-rasa-question-flow.txt`
+
+```text
+Generate a RASA-structured question flow for: <CONVERSATION_GOAL>.
+Interviewee profile: <ROLE/CONTEXT>.
+
+Output format:
+- Receive: [opening statement to set attention and signal full focus]
+- Appreciate: [2-3 acknowledgment phrases to use during the conversation]
+- Summarize: [3 paraphrase starters keyed to likely themes]
+- Ask: [5 open follow-up questions]
+
+Constraints:
+- No yes/no questions
+- No "Is...", "Do you...", or "Did you..." openers
+- No leading questions that embed assumptions
+- Questions must be ordered from broad to specific
+```
+
+### `templates/prompt-transcript-annotation.txt`
+
+```text
+Annotate this conversation transcript using RASA labels and quality flags.
+
+For each interviewer turn:
+1. Label as R (Receive), A (Appreciate), S (Summarize), or Ask (open question)
+2. Flag if it is a closed question (yes/no answerable)
+3. Flag if it contains a leading assumption
+
+After annotation, provide:
+- RASA step coverage: which steps were skipped or underused
+- Word-share check: flag any 3-turn window where interviewer speaks > 20% of words
+- Top 3 recommendations for the next session
+
+Transcript:
+<TRANSCRIPT>
+```
+
+### `templates/speaker-ratio.py`
+
+```python
+def speaker_ratio(transcript: list[dict]) -> dict[str, float]:
+    """
+    Measure word-share per speaker from a labeled transcript.
+
+    Input:
+        transcript: list of {"speaker": "INTERVIEWER"|"INTERVIEWEE", "text": "..."}
+
+    Output:
+        dict mapping speaker name to word-share float (0.0 to 1.0)
+
+    Rule: if ratio["INTERVIEWER"] > 0.20 in any 3-turn window, flag as dominated.
+    """
+    from collections import defaultdict
+    counts: dict[str, int] = defaultdict(int)
+    for turn in transcript:
+        counts[turn["speaker"]] += len(turn["text"].split())
+    total = sum(counts.values()) or 1
+    return {k: round(v / total, 3) for k, v in counts.items()}
+
+
+def check_dominance(transcript: list[dict], window: int = 3) -> list[int]:
+    """
+    Return start indices of 3-turn windows where INTERVIEWER word-share > 20%.
+    """
+    dominated = []
+    for i in range(len(transcript) - window + 1):
+        window_turns = transcript[i:i + window]
+        ratio = speaker_ratio(window_turns)
+        if ratio.get("INTERVIEWER", 0) > 0.20:
+            dominated.append(i)
+    return dominated
+
+
+# Usage example:
+# transcript = [
+#     {"speaker": "INTERVIEWER", "text": "How does that affect your team?"},
+#     {"speaker": "INTERVIEWEE", "text": "It slows everything down..."},
+# ]
+# print(speaker_ratio(transcript))
+# print(check_dominance(transcript))
+```

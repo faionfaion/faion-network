@@ -62,7 +62,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/ADR-evidence-template.md` | MADR-shape ADR template with evidence-binding section |
-| `templates/evidence-anchor.schema.json` | JSON Schema for a single evidence-anchor entry |
 
 ## Scripts
 

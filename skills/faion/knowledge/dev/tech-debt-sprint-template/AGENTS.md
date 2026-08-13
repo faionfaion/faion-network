@@ -68,6 +68,8 @@
 | `templates/tech-debt-sprint-template.md` | Markdown skeleton for the Tech Debt Sprint Template artefact. |
 | `templates/_smoke-test.json` | Minimum viable tech-debt-sprint-template record for validator smoke-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,38 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps measurable-debt, capacity, and named-ownership signals onto a rule from 01-core-rules.xml. Use it before opening a sprint: it catches blind-sprint and collective-owner upstream.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "artefact_id": "td-2026-q2",
+  "owner": "ruslan@faion.net",
+  "sprint_window": {
+    "start": "2026-05-26",
+    "end": "2026-06-06"
+  },
+  "scope_items": [
+    {
+      "id": "i1",
+      "title": "Drop deprecated v1 auth shim",
+      "size": "M"
+    }
+  ],
+  "guardrails": [
+    "no new features",
+    "no migrations"
+  ],
+  "exit_metrics": {
+    "lint_warn_before": 87,
+    "lint_warn_target": 40,
+    "coverage_pct_target": 75.0
+  },
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+```

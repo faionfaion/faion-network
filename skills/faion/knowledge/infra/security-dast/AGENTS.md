@@ -67,6 +67,8 @@
 | `templates/nuclei-scan.yml` | GitHub Actions workflow: Nuclei targeted scan with pinned templates |
 | `templates/_smoke-test.json` | Minimum DAST CI config artefact used by validate-security-dast.py --self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,103 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it when wiring DAST into a new pipeline or auditing an existing one.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/zap-baseline.yml`
+
+```yaml
+name: zap-baseline
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"   # nightly 02:00 UTC
+  workflow_run:
+    workflows: ["deploy-staging"]
+    types: [completed]
+
+permissions:
+  contents: read
+  security-events: write
+  issues: write
+
+jobs:
+  zap:
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name != 'workflow_run' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: ZAP Baseline
+        uses: zaproxy/action-baseline@v0.13.0
+        with:
+          target: https://staging.example.com
+          rules_file_name: .zap/rules.tsv
+          cmd_options: "-a"
+          fail_action: false
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with: { sarif_file: report_json.json }
+```
+
+### `templates/.zap/rules.tsv`
+
+```tsv
+# rule_id	action	description
+10010	IGNORE	Cookie No HttpOnly Flag (acceptable on this app)
+10011	WARN	Cookie Without Secure Flag
+10015	FAIL	Incomplete or No Cache-control Header Set
+10017	FAIL	Cross-Domain JavaScript Source File Inclusion
+10019	FAIL	Content-Type Header Missing
+10027	IGNORE	Information Disclosure - Suspicious Comments
+```
+
+### `templates/nuclei-scan.yml`
+
+```yaml
+name: nuclei-scan
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 3 * * 0"   # weekly Sun 03:00 UTC
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  nuclei:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Nuclei
+        uses: projectdiscovery/nuclei-action@v3.2.0
+        with:
+          target: https://staging.example.com
+          templates: cves,vulnerabilities,misconfigurations
+          template-version: v9.7.0
+          output: nuclei.txt
+          sarif-export: nuclei.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with: { sarif_file: nuclei.sarif }
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "tool": "zap",
+  "tool_version": "v0.13.0",
+  "target_env": "staging",
+  "target_url": "https://staging.example.com",
+  "scope_file": ".zap/rules.tsv",
+  "cadence": [
+    "post-deploy",
+    "nightly"
+  ],
+  "templates_pinned": true,
+  "sarif_uploaded": true
+}
+```

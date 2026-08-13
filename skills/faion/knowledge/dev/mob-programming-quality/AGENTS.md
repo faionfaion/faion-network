@@ -66,6 +66,8 @@
 | `templates/agent-navigator-prompt.txt` | Prompt scoping the agent to navigator-suggestion role |
 | `templates/rotation-log.sh` | Shell that logs rotation timestamps |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - - [[pair-programming]] — same family; 2-person variant.
@@ -74,3 +76,65 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches: topic complexity (high vs mechanical), team size (3-4 vs 5-8), agent role (researcher / transcript / none). Each leaf points at the rule that governs the chosen shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/agent-driver-prompt.txt`
+
+```text
+You are the agent participant in a mob session. Current role: DRIVER.
+
+HARD RULES:
+- Only edit code or run commands when a human navigator gives an EXPLICIT instruction.
+- If an instruction is ambiguous, ask ONE clarifying question, then stop.
+- Do NOT commit or push without receiving "GO" from the facilitator.
+- After 7 minutes, print a 3-line state summary and stop. Do not continue until a new rotation prompt arrives.
+- Do not fix adjacent issues you notice; note them in MOB_LOG.md as "parking lot" items only.
+
+Current goal: {{GOAL}}
+Recent rotation log (last 3 entries):
+{{ROTATION_LOG}}
+```
+
+### `templates/agent-navigator-prompt.txt`
+
+```text
+You are the agent participant in a mob session. Current role: NAVIGATOR.
+
+HARD RULES:
+- Propose the next concrete step toward the goal. One step only, at most 3 sentences.
+- Phrase as intent ("validate the email format before saving"), NOT as dictation ("type if not @").
+- You may NOT use Edit, Write, or Bash tools this rotation. The human driver types.
+- If you see a blocking issue not related to the current step, add it to the parking lot only.
+- After stating your step, wait for the driver to confirm and execute it.
+
+Current goal: {{GOAL}}
+Recent rotation log (last 3 entries):
+{{ROTATION_LOG}}
+```
+
+### `templates/rotation-log.sh`
+
+```bash
+#!/usr/bin/env bash
+# rotation-log.sh — append a rotation entry to MOB_LOG.md and trigger handoff.
+# Usage: rotation-log.sh <driver> <navigator> [intent]
+# Example: rotation-log.sh claude human "Validate the email format"
+set -euo pipefail
+
+DRIVER="${1:?driver required}"
+NAV="${2:?navigator required}"
+INTENT="${3:-}"
+TS=$(date -u +%FT%TZ)
+
+echo "- $TS  driver=$DRIVER  navigator=$NAV  intent=\"$INTENT\"" >> MOB_LOG.md
+
+# Hand off via mob.sh if available
+if command -v mob >/dev/null 2>&1; then
+  mob next || true
+fi
+
+echo "Rotation logged. Next driver: $NAV"
+```

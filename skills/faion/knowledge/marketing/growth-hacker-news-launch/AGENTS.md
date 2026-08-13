@@ -60,7 +60,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/growth-hacker-news-launch.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/growth-hacker-news-launch.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

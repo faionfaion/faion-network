@@ -64,7 +64,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/synthetic-panel-report.md` | Markdown report skeleton with persona table + response panel + validation plan |
-| `templates/synthetic-response.schema.json` | JSON Schema for an individual synthetic response row |
 
 ## Scripts
 

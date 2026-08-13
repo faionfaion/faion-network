@@ -68,6 +68,8 @@
 | `templates/calibration.py` | Reference script computing calibration score against prior forecasts. |
 | `templates/forecast-report.md` | Markdown skeleton for the forecast report with predictions table + calibration block. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - parent skill: `pro/pm/` (see neighbouring methodologies).
@@ -81,3 +83,115 @@ See `content/06-decision-tree.xml`. The tree maps observable signals (input
 preconditions, source-of-truth access, named-consumer presence) onto a concrete
 verdict — apply the methodology, downgrade to draft, or skip — with each leaf
 referencing a rule id from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/predictive-analytics-pm.json",
+  "type": "object",
+  "required": [
+    "forecast_id",
+    "program_id",
+    "dataset_window",
+    "model_version",
+    "predictions",
+    "calibration",
+    "decision_owner"
+  ],
+  "properties": {
+    "forecast_id": {
+      "type": "string"
+    },
+    "program_id": {
+      "type": "string"
+    },
+    "dataset_window": {
+      "type": "object",
+      "required": [
+        "from",
+        "to"
+      ]
+    },
+    "model_version": {
+      "type": "string"
+    },
+    "predictions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "target",
+          "p50",
+          "p85",
+          "p95"
+        ]
+      }
+    },
+    "calibration": {
+      "type": "object",
+      "required": [
+        "score",
+        "prior_forecasts_compared"
+      ]
+    },
+    "decision_owner": {
+      "type": "string"
+    },
+    "bias_audit_due": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```
+
+### `templates/calibration.py`
+
+```python
+"""
+
+
+"""calibration.py — check predicted-probability calibration on a holdout set.
+
+Usage: python calibration.py holdout.parquet
+Input parquet columns: y_true (0/1 int), y_prob (float 0..1)
+Output: Brier score, calibration table, pass/fail (threshold: Brier < 0.20).
+Exit 0 = calibration OK, exit 1 = fails threshold.
+"""
+from __future__ import annotations
+import json
+import sys
+
+import pandas as pd
+from sklearn.calibration import calibration_curve
+
+
+def main(path: str) -> int:
+    df = pd.read_parquet(path)  # cols: y_true (0/1), y_prob (0..1)
+    prob_true, prob_pred = calibration_curve(
+        df["y_true"], df["y_prob"], n_bins=10
+    )
+    brier = float(((df["y_prob"] - df["y_true"]) ** 2).mean())
+    out = {
+        "brier": brier,
+        "calibration_table": list(
+            zip(map(float, prob_pred), map(float, prob_true))
+        ),
+        "ok": brier < 0.20,  # threshold; tune per project
+    }
+    print(json.dumps(out, indent=2))
+    if not out["ok"]:
+        print(f"FAIL: Brier score {brier:.3f} exceeds threshold 0.20", file=sys.stderr)
+    return 0 if out["ok"] else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1]))
+```

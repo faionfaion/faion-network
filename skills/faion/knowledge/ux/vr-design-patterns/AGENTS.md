@@ -64,6 +64,8 @@
 |------|---------|
 | `templates/vr-pattern-spec.json` | Skeleton VR-pattern spec |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,45 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches by audience and per-scene comfort signals; enforces locomotion + anchoring + accessibility defaults. Each leaf cites a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/vr-pattern-spec.json`
+
+```json
+{
+  "scenes": [
+    {
+      "id": "lobby",
+      "has_ground": true,
+      "has_horizon": true
+    }
+  ],
+  "locomotion": {
+    "default": "teleport",
+    "options": [
+      "teleport",
+      "smooth"
+    ],
+    "turning": {
+      "default": "snap",
+      "options": [
+        "snap",
+        "smooth"
+      ]
+    }
+  },
+  "ui_anchoring": {
+    "primary": "world-anchored",
+    "head_locked_for_safety_only": true
+  },
+  "accessibility": {
+    "seated_toggle": true,
+    "one_handed_path": true,
+    "subtitles": true,
+    "audio_descriptions": true
+  }
+}
+```

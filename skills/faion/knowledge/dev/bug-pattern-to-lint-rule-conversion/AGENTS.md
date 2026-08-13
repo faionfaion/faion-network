@@ -69,6 +69,8 @@
 | `templates/bug-pattern-to-lint-rule-conversion.json` | JSON Schema for the decision-record artefact. |
 | `templates/bug-pattern-to-lint-rule-conversion.md` | Markdown skeleton authors fill before wiring the rule. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,108 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree first checks recurrence (≥3 in 30 days OR ≥5 in 90 days). It then verifies a mechanical detector exists (rule id, regex, AST visitor) and that false-positive rate against historical code ≤ 5%. Leaves emit `record-and-wire`, `block-low-recurrence`, `block-no-detector`, or `block-fp-too-high`. Each leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/bug-pattern-to-lint-rule-conversion.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/bug-pattern-to-lint-rule-conversion.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "pattern_id",
+    "ticket_refs",
+    "detector",
+    "fix",
+    "owner_email",
+    "fp_rate_pct",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^bplrc-[a-z0-9-]{6,}$"
+    },
+    "pattern_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{3,63}$"
+    },
+    "ticket_refs": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "detector": {
+      "type": "object",
+      "required": [
+        "kind",
+        "definition"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "ruff",
+            "eslint",
+            "regex",
+            "ast-visitor",
+            "test-name",
+            "shellcheck",
+            "custom"
+          ]
+        },
+        "definition": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rule_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "fix": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner_email": {
+      "type": "string",
+      "format": "email"
+    },
+    "fp_rate_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "wired_into_pre_commit": {
+      "type": "boolean"
+    },
+    "verdict": {
+      "enum": [
+        "record-and-wire",
+        "block-low-recurrence",
+        "block-no-detector",
+        "block-fp-too-high"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

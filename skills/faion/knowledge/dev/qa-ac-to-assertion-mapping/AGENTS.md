@@ -72,6 +72,8 @@
 | `templates/pr-mapping-section.md` | PR-description snippet reviewers expect to find. |
 | `templates/_smoke-test.json` | Minimum viable filled-in mapping used by the validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,54 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs — AC count, mapping presence, assertion class, reviewer-walked flag — onto a rule id from `content/01-core-rules.xml`. Walk it on every PR open and again at pre-merge; the leaf "skip-this-methodology" is the only legal escape when the precondition gate fails.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ac-mapping.yaml`
+
+```yaml
+story:
+  id: STORY-REPLACE
+  url: https://issues.example.com/STORY-REPLACE
+acceptance_criteria:
+  - ac_id: AC-1
+    description: replace with the AC text from the story
+    tests:
+      - file_path: tests/replace.spec.ts
+        test_name: describes the behaviour the test verifies
+        asserted_behavior: response 201 AND db.users row created with expected email
+        assertion_class: state
+orphan_tests: []
+orphan_acs: []
+mapping_committed_at: 2026-05-23T00:00:00Z
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "story": {
+    "id": "STORY-1",
+    "url": "https://issues.example.com/STORY-1"
+  },
+  "acceptance_criteria": [
+    {
+      "ac_id": "AC-1",
+      "description": "user can submit valid form",
+      "tests": [
+        {
+          "file_path": "tests/signup.spec.ts",
+          "test_name": "submits valid form and persists user",
+          "asserted_behavior": "response status 201 AND db.users row exists with expected email",
+          "assertion_class": "state"
+        }
+      ]
+    }
+  ],
+  "orphan_tests": [],
+  "orphan_acs": [],
+  "mapping_committed_at": "2026-05-23T10:00:00Z"
+}
+```

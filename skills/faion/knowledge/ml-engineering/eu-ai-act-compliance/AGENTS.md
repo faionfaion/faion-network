@@ -69,6 +69,8 @@
 | `templates/prompt-risk-classification.txt` | LLM prompt to draft risk-tier classification. |
 | `templates/technical-doc-article11.md` | Article 11 technical documentation skeleton. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,75 @@
 ## Decision tree
 
 Risk-tier decision tree at `content/06-decision-tree.xml` decides which Articles apply BEFORE engineering invests in conformity work.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-bias-assessment.txt`
+
+```text
+-->
+
+You are an AI fairness expert conducting bias assessment for EU AI Act Article 10 compliance.
+
+System: {purpose}
+Protected attributes in data: {attributes}
+Decision type: {decision_type}
+Evaluation results: {metrics}
+
+Analyze:
+1. Demographic parity — are outcomes equally distributed across groups?
+2. Equal opportunity — do true positive rates differ?
+3. Predictive equality — do false positive rates differ?
+4. Intersectional effects — compounded impacts for multiple attributes?
+
+Output JSON:
+{
+  "overall": "pass|fail|concerns",
+  "findings": [
+    {"metric": "...", "status": "pass|fail", "value": 0.0, "threshold": 0.0, "notes": "..."}
+  ],
+  "risks": "...",
+  "recommendations": [],
+  "monitoring_plan": "..."
+}
+
+Rules:
+- Cite Article 10 for every data governance finding
+- Flag disparities > 0.1 disparity score as high priority
+- Distinguish between statistical disparity and causal bias
+```
+
+### `templates/prompt-risk-classification.txt`
+
+```text
+-->
+
+You are an EU AI Act compliance expert. Classify the following AI system.
+
+System description:
+{system_description}
+
+Steps:
+1. Check Article 5 — does it match any prohibited practice?
+2. Check Annex III — does the primary use case match any high-risk domain?
+3. Check Article 50 — does it interact with humans or generate synthetic content?
+
+Output JSON:
+{
+  "risk_tier": "prohibited|high|limited|minimal",
+  "confidence": "low|medium|high",
+  "prohibited_practices": [],
+  "annex_iii_match": null,
+  "article_50_applicable": false,
+  "applicable_articles": [],
+  "rationale": "...",
+  "ambiguities_for_legal_review": []
+}
+
+Rules:
+- Cite specific article numbers for every finding
+- Never make a binding determination — flag ambiguities for legal review
+- If systemic risk applies (GPAI > 10^25 FLOPs), note additional obligations
+```

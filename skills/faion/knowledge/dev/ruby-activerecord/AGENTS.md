@@ -65,6 +65,8 @@
 |------|---------|
 | `templates/order.rb` | ActiveRecord model with enum, scopes, includes-friendly associations |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,36 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/order.rb`
+
+```ruby
+class Order < ApplicationRecord
+  belongs_to :customer
+  has_many :items, class_name: "OrderItem", dependent: :destroy
+
+  enum status: { pending: 0, paid: 1, shipped: 2, cancelled: 3 }, _prefix: true
+
+  validates :status, presence: true
+  validates :total_cents, numericality: { greater_than_or_equal_to: 0 }
+
+  scope :recent, -> { where("created_at >= ?", 30.days.ago) }
+  scope :for_user, ->(user) { where(customer_id: user.customer_id) }
+  scope :priced, -> { where("total_cents > 0") }
+
+  def total
+    Money.new(total_cents, currency)
+  end
+
+  def cancel!
+    transaction do
+      update!(status: :cancelled, cancelled_at: Time.current)
+      items.each(&:release_inventory!)
+    end
+  end
+end
+```

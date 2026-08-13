@@ -58,14 +58,6 @@
 | `run_ab_eval` | haiku | Mechanical eval execution. |
 | `monitor_extraction_fidelity` | haiku | Schema-violation counting. |
 
-## Templates
-
-| File | Purpose |
-|------|---------|
-| `templates/two-pass-anthropic.py` | Anthropic SDK two-pass: Opus extended-thinking → Haiku structured-output extraction |
-| `templates/two-pass-openai.py` | OpenAI SDK two-pass: o-series reasoning model → gpt-4.1-nano structured outputs |
-| `templates/ab-eval-runner.py` | A/B eval harness comparing single-pass strict-SO vs two-pass on a fixture set |
-
 ## Scripts
 
 | File | Purpose | When to call |

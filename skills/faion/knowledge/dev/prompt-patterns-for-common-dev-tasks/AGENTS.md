@@ -62,6 +62,8 @@
 | `templates/rubric.json` | JSON template scaffolding the artefact contract. |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,41 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is the prompt asking for code, tests, docs, or a structured artefact?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rubric.json`
+
+```json
+{
+  "prompt_id": "2026-05-23-001",
+  "pattern": "Bug-Repro",
+  "intent": "Reproduce the 500 on POST /refund when amount=0.",
+  "inputs": [
+    "apps/payments/views.py",
+    "tests/payments/test_refund.py"
+  ],
+  "format": "pytest test that fails on main and passes after your fix",
+  "success_criterion": "pytest tests/payments/test_refund.py::test_zero_amount_refund exits 0",
+  "score": 3
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "prompt_id": "2026-05-23-001",
+  "pattern": "Bug-Repro",
+  "intent": "Reproduce the 500 on POST /refund when amount=0.",
+  "inputs": [
+    "apps/payments/views.py",
+    "tests/payments/test_refund.py"
+  ],
+  "format": "pytest test that fails on main and passes after your fix",
+  "success_criterion": "pytest tests/payments/test_refund.py::test_zero_amount_refund exits 0",
+  "score": 3
+}
+```

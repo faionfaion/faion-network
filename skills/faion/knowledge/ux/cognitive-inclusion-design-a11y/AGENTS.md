@@ -63,7 +63,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/cognitive-spec.md` | Markdown skeleton for cognitive-inclusion design spec. |
-| `templates/readability-gate.py` | Stdlib readability scorer. |
 
 ## Related
 

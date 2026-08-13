@@ -60,7 +60,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/_smoke-test.yaml` | Minimum-viable filled-in example used by the validator self-test. |
-| `templates/config.yaml.tmpl` | YAML config skeleton with the required keys and bounded defaults. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -77,3 +78,17 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` walks the agent from the input shape to a concrete rule id in `01-core-rules.xml`. Use it before applying any rule: the root question filters whether `ollama-deployment` applies at all; branches narrow on observable input fields; every leaf is a `<conclusion ref="...">` pointing at a rule id, so the agent never lands on free-text guidance.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+env: dev
+keys:
+  timeout: 30
+forbidden_seen: []
+signature: 94c78c7fd9f816c5
+```

@@ -71,6 +71,8 @@
 | `templates/_smoke-test.yaml` | Minimum-viable spec |
 | `templates/deploy-checklist.md` | Pre+post deploy checklist |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,133 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes by DB kind + scale + ops profile to {single-node compose, StatefulSet/Helm, managed}.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/qdrant-statefulset.yaml`
+
+```yaml
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: qdrant
+  namespace: vector-db
+spec:
+  serviceName: qdrant
+  replicas: 1
+  selector:
+    matchLabels: {app: qdrant}
+  template:
+    metadata:
+      labels: {app: qdrant}
+    spec:
+      containers:
+        - name: qdrant
+          image: qdrant/qdrant:v1.10.0   # pinned
+          ports:
+            - {name: http, containerPort: 6333}
+            - {name: grpc, containerPort: 6334}
+          resources:
+            requests: {cpu: "2", memory: "16Gi"}
+            limits: {cpu: "4", memory: "24Gi"}
+          volumeMounts:
+            - {name: data, mountPath: /qdrant/storage}
+          readinessProbe:
+            httpGet: {path: /healthz, port: 6333}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /healthz, port: 6333}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+  volumeClaimTemplates:
+    - metadata: {name: data}
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: ebs-gp3
+        resources: {requests: {storage: 200Gi}}
+```
+
+### `templates/backup-cronjob.yaml`
+
+```yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: qdrant-snapshot
+  namespace: vector-db
+spec:
+  schedule: "0 3 * * *"
+  successfulJobsHistoryLimit: 7
+  failedJobsHistoryLimit: 7
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: snapshot
+              image: amazon/aws-cli:2.17.0
+              command: ["/bin/sh", "-c"]
+              args:
+                - |
+                  curl -fsS -X POST http://qdrant.vector-db.svc.cluster.local:6333/collections/support-kb/snapshots
+                  curl -fsS http://qdrant.vector-db.svc.cluster.local:6333/collections/support-kb/snapshots -o snap.tar
+                  aws s3 cp snap.tar s3://prod-backups/qdrant-snapshots/$(date +%F).tar
+              envFrom:
+                - secretRef: {name: aws-creds}
+```
+
+### `templates/prod-deploy.schema.yaml`
+
+```yaml
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+required: [deploy_mode, storage, resources, ha, backup, checklist]
+properties:
+  deploy_mode: {type: string, enum: [docker-compose, k8s-statefulset, managed]}
+  storage:
+    type: object
+    required: [class, size_gb, durable]
+    properties:
+      class: {type: string}
+      size_gb: {type: integer, minimum: 1}
+      durable: {type: boolean}
+  resources:
+    type: object
+    required: [cpu_request, cpu_limit, memory_request_gb, memory_limit_gb]
+  ha:
+    type: object
+    required: [strategy, replicas]
+  backup:
+    type: object
+    required: [schedule_cron, retention_days, destination, last_restore_drill]
+    properties:
+      retention_days: {type: integer, minimum: 7}
+      last_restore_drill: {type: string, format: date}
+  checklist:
+    type: object
+    required: [pre_deploy_passed, post_deploy_passed]
+    properties:
+      pre_deploy_passed: {type: boolean}
+      post_deploy_passed: {type: boolean}
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+deploy_mode: k8s-statefulset
+storage: {class: ebs-gp3, size_gb: 200, durable: true}
+resources: {cpu_request: "2", cpu_limit: "4", memory_request_gb: 16, memory_limit_gb: 24}
+ha: {strategy: single-with-snapshot, replicas: 1}
+backup:
+  schedule_cron: "0 3 * * *"
+  retention_days: 30
+  destination: "s3://prod-backups/qdrant/"
+  last_restore_drill: "2026-04-15"
+checklist:
+  pre_deploy_passed: true
+  post_deploy_passed: true
+```

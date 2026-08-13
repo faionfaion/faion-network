@@ -65,6 +65,8 @@
 | `templates/research-report.md` | Final research report skeleton |
 | `templates/perplexity_research.py` | Runnable Perplexity batch caller |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,51 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from the question "Does the question need live web data with citations?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/perplexity_research.py`
+
+```python
+"""perplexity_research.py — batch Pro Search caller.
+
+Set PPLX_API_KEY before running.
+"""
+from __future__ import annotations
+
+import json
+import os
+import sys
+import urllib.request
+
+PPLX_URL = "https://api.perplexity.ai/chat/completions"
+
+
+def query(q: str, recency: str = "year") -> dict:
+    api_key = os.environ.get("PPLX_API_KEY", "")
+    if not api_key:
+        raise RuntimeError("PPLX_API_KEY missing")
+    payload = {
+        "model": "sonar-pro",
+        "messages": [{"role": "user", "content": q}],
+        "search_recency_filter": recency,
+    }
+    data = json.dumps(payload).encode()
+    req = urllib.request.Request(
+        PPLX_URL,
+        data=data,
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+    )
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        return json.loads(resp.read())
+
+
+if __name__ == "__main__":
+    out = [query(line.strip()) for line in sys.stdin if line.strip()]
+    sys.stdout.write(json.dumps(out, indent=2))
+```

@@ -69,6 +69,8 @@
 | `templates/outcome-based-roadmaps-advanced.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/outcome-based-roadmaps-advanced.md` | Markdown skeleton for human-readable artefact rendering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,39 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/outcome-based-roadmaps-advanced.json`
+
+```json
+{
+  "artefact_id": "outcome-based-roadmaps-advanced-example",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "business_goal": "business_goal value",
+  "product_outcomes": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "leading_indicators": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "experiments": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "confidence_labels": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "owner": "@solo-founder"
+}
+```

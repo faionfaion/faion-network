@@ -64,6 +64,8 @@
 | `templates/decision-record.md` | Filled-in decision-record skeleton for an embedding model choice |
 | `templates/decision-record.json` | Machine-readable decision-record matching 02-output-contract schema |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,27 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from the question "Does the corpus need semantic similarity beyond keyword matching?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/decision-record.json`
+
+```json
+{
+  "model_name": "text-embedding-3-large",
+  "provider": "openai",
+  "dimensions": 1024,
+  "max_input_tokens": 8191,
+  "cost_per_million_tokens_usd": 0.13,
+  "languages_supported": [
+    "en"
+  ],
+  "rationale": "Production RAG with English-only corpus and quality SLA above cost; Matryoshka allows safe 1024-dim truncation at ~95% quality.",
+  "alternatives_considered": [
+    "text-embedding-3-small",
+    "embed-english-v3.0"
+  ]
+}
+```

@@ -69,6 +69,8 @@
 | `templates/alarms.tf` | Terraform tiered alarms with SNS topics (critical / warning / info) |
 | `templates/_smoke-test.json` | Minimum spec used by validate-devops-aws-monitoring-dr.py --self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,84 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it when scoping monitoring + DR for any prod AWS workload.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/dashboard.tf`
+
+```hcl
+resource "aws_cloudwatch_dashboard" "main" {
+  dashboard_name = "${var.project}-main"
+  dashboard_body = jsonencode({
+    widgets = [
+      {
+        type   = "metric"
+        width  = 12
+        height = 6
+        properties = {
+          metrics = [["AWS/ApiGateway", "Count", "ApiName", var.api_name], [".", "5XXError", ".", "."]]
+          period  = 300
+          region  = var.region
+          title   = "API Requests + 5xx"
+        }
+      },
+      {
+        type   = "metric"
+        width  = 12
+        height = 6
+        properties = {
+          metrics = [["AWS/Lambda", "Duration", "FunctionName", var.lambda_name], [".", "Errors", ".", "."], [".", "Throttles", ".", "."]]
+          period  = 300
+          region  = var.region
+          title   = "Lambda"
+        }
+      }
+    ]
+  })
+}
+```
+
+### `templates/alarms.tf`
+
+```hcl
+resource "aws_sns_topic" "critical" { name = "${var.project}-critical" }
+resource "aws_sns_topic" "warning" { name = "${var.project}-warning" }
+
+resource "aws_cloudwatch_metric_alarm" "api_5xx_critical" {
+  alarm_name          = "${var.project}-api-5xx-critical"
+  comparison_operator = "GreaterThanThreshold"
+  evaluation_periods  = 2
+  metric_name         = "5XXError"
+  namespace           = "AWS/ApiGateway"
+  period              = 60
+  statistic           = "Sum"
+  threshold           = 10
+  alarm_actions       = [aws_sns_topic.critical.arn]
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "workload": "checkout-api",
+  "rto_hours": 4,
+  "rpo_hours": 1,
+  "dashboards_per_tier": [
+    "api",
+    "lambda",
+    "dynamodb"
+  ],
+  "alarm_severities": [
+    "critical",
+    "warning",
+    "info"
+  ],
+  "xray_active": true,
+  "dr_strategy": "warm-standby",
+  "dr_region_pair": "us-east-1->us-west-2",
+  "drill_cadence_months": 3
+}
+```

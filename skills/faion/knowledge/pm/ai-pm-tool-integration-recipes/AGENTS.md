@@ -61,6 +61,8 @@
 | `templates/skeleton.py` | Python recipe skeleton: pull from Jira → call Claude with canonical prompt → post to Slack. |
 | `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,43 @@
 ## Decision tree
 
 The mandatory decision tree at `content/06-decision-tree.xml` Decides whether to ship a recipe (all four feeds + scripting access), block (no API/key), or fall back to no-code AI PM tools. Run before any recipe code is touched.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/skeleton.py`
+
+```python
+"""Methodology scaffold — fill the gaps in `produce()` and pipe to scripts/validate-<slug>.py."""
+from __future__ import annotations
+
+import json
+from datetime import date
+
+
+def produce() -> dict:
+    return {
+        "header": {
+            "version": "0.1.0",
+            "owner": "<role>:<person>",
+            "last_reviewed": date.today().isoformat(),
+        },
+        "body": {},
+        "evidence": [],
+        "decisions": {"next_actions": [], "next_review": "YYYY-MM-DD"},
+    }
+
+
+if __name__ == "__main__":
+    print(json.dumps(produce(), indent=2))  # noqa: T201
+```
+
+### `templates/header.yaml`
+
+```yaml
+version: 0.1.0           # bump on every refresh; semver
+owner: <role>:<person>   # named person, never a team
+last_reviewed: YYYY-MM-DD
+evidence_root: <link>    # URL or file path that anchors body claims
+```

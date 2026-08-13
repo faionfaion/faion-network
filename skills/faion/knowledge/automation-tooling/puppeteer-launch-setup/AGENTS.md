@@ -67,6 +67,8 @@
 | `templates/worker.ts` | Worker showing try/finally browser.close discipline |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,75 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/launch.ts`
+
+```typescript
+import puppeteer, { Browser, LaunchOptions } from 'puppeteer';
+
+export interface LaunchEnv {
+  env: 'local' | 'docker' | 'ci' | 'serverless';
+  defaultTimeoutMs?: number;
+}
+
+export async function launch(env: LaunchEnv): Promise<Browser> {
+  const args = ['--disable-dev-shm-usage'];
+  if (env.env !== 'local') {
+    args.push('--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu');
+  }
+  const opts: LaunchOptions = {
+    headless: 'new',
+    args,
+  };
+  return puppeteer.launch(opts);
+}
+```
+
+### `templates/goto.ts`
+
+```typescript
+import { Page } from 'puppeteer';
+
+export async function safeGoto(page: Page, url: string, anchorSelector: string, timeoutMs = 20000) {
+  page.setDefaultTimeout(timeoutMs);
+  await page.goto(url, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector(anchorSelector, { timeout: timeoutMs });
+}
+```
+
+### `templates/worker.ts`
+
+```typescript
+import { launch } from './launch';
+import { safeGoto } from './goto';
+
+const url = process.argv[2];
+if (!url) { console.error('URL required'); process.exit(2); }
+
+const browser = await launch({ env: process.env.RUN_ENV as any ?? 'ci', defaultTimeoutMs: 20000 });
+try {
+  const page = await browser.newPage();
+  await safeGoto(page, url, '[data-testid="root"]');
+  // ... do work ...
+} finally {
+  await browser.close();
+}
+```
+
+### `templates/artefact.json`
+
+```json
+{
+  "env": "ci",
+  "sandbox_flags_set": true,
+  "chromium_pinned": true,
+  "cache_dir_set": true,
+  "close_in_finally": true,
+  "default_wait_until": "domcontentloaded",
+  "default_timeout_ms": 20000
+}
+```

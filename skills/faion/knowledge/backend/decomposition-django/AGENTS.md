@@ -68,6 +68,8 @@
 | `templates/move_model_migration.py` | Python scaffold realising the artefact in code. |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,107 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is the Django repo above the decomposition threshold (>25k LOC, >6 apps, ownership leakage)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/importlinter.ini`
+
+```ini
+; faion_header_json: {"__faion_header__":{"purpose":"INI configuration scaffolding the artefact.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#ownership-defines-boundary","token_budget_impact":"~150 tokens when loaded"}}
+[importlinter]
+root_packages =
+    apps
+
+[importlinter:contract:layered]
+name = Apps follow ownership layers
+type = layers
+layers =
+    apps.notifications
+    apps.orders
+    apps.payments
+    apps.users
+```
+
+### `templates/contracts.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Python scaffold realising the artefact in code.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#ownership-defines-boundary","token_budget_impact":"~150 tokens when loaded"}}
+"""Decomposition: Django Monolith to Bounded Apps scaffold. See AGENTS.md for context and content/02-output-contract.xml for the contract."""
+from __future__ import annotations
+
+# Minimal scaffold for the decomposition-django methodology.
+# Replace this stub with real implementation; keep the header intact.
+
+def main() -> int:
+    """Entrypoint; returns exit code."""
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())
+```
+
+### `templates/move_model_migration.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Python scaffold realising the artefact in code.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#ownership-defines-boundary","token_budget_impact":"~150 tokens when loaded"}}
+"""Decomposition: Django Monolith to Bounded Apps scaffold. See AGENTS.md for context and content/02-output-contract.xml for the contract."""
+from __future__ import annotations
+
+# Minimal scaffold for the decomposition-django methodology.
+# Replace this stub with real implementation; keep the header intact.
+
+def main() -> int:
+    """Entrypoint; returns exit code."""
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "boundary_id": "decomp-2026-q2",
+  "apps": [
+    "payments",
+    "orders",
+    "users",
+    "notifications",
+    "contracts_shared"
+  ],
+  "dependency_edges": [
+    "payments->users",
+    "orders->payments",
+    "orders->users",
+    "notifications->orders",
+    "notifications->payments"
+  ],
+  "forbidden_edges": [
+    "users->payments",
+    "users->orders",
+    "payments->orders"
+  ],
+  "owner_map": {
+    "payments": "core-platform",
+    "orders": "commerce",
+    "users": "identity",
+    "notifications": "growth",
+    "contracts_shared": "core-platform"
+  },
+  "migration_plan": [
+    {
+      "model": "Refund",
+      "from": "orders",
+      "to": "payments",
+      "pr": "#812"
+    }
+  ]
+}
+```

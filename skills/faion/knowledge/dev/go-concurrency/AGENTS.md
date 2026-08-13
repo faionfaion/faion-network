@@ -61,6 +61,8 @@
 | `templates/ci-race.sh` | CI script: `go vet`, `go test -race -count=3`, `staticcheck`. |
 | `templates/goleak-test-main.go` | TestMain with goleak.VerifyTestMain for leak detection per package. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,34 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters by whether goroutines exist; for code that does, it asks whether ctx cancellation is wired and whether CI runs the race detector.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ci-race.sh`
+
+```bash
+set -euo pipefail
+go vet ./...
+go test -race -count=3 -timeout=120s ./...
+go run honnef.co/go/tools/cmd/staticcheck@latest ./...
+```
+
+### `templates/goleak-test-main.go`
+
+```go
+package mypkg_test
+
+import (
+	"testing"
+
+	"go.uber.org/goleak"
+)
+
+// TestMain verifies no goroutine leaks after every test in this package.
+// Add this to every package with concurrency-heavy code.
+func TestMain(m *testing.M) {
+	goleak.VerifyTestMain(m)
+}
+```

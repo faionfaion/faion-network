@@ -62,8 +62,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ts-server.ts` | Minimal TypeScript MCP server with one tool |
-| `templates/py-server.py` | Minimal Python MCP server with one tool |
 | `templates/install-readme.md` | README install-command template |
 
 ## Scripts

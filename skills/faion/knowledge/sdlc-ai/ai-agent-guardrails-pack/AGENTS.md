@@ -66,6 +66,8 @@
 | `templates/guardrails.yaml` | Neutral rule source: deny patterns + lint mapping + signoff block. |
 | `templates/copilot-rules.md` | Per-agent rendered example for Copilot Business. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,36 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/guardrails.yaml`
+
+```yaml
+artefact_id: ai-agent-guardrails-pack-<client>-<YYYY-MM-DD>
+owner: <Full Name> <email>
+version: 1.0.0
+last_reviewed: 2026-05-23
+
+precedence:
+  - client
+  - faion
+  - engine
+
+signoff:
+  owner: <Client Owner Name>
+  email: <owner@client.example>
+  date: 2026-05-23
+  commit: <sha>
+
+inputs_used:
+  - name: <input name>
+    source: <path or URL>
+
+entries:
+  - key: <rule.key>
+    value: <value>
+    source: <source path with section anchor>
+```

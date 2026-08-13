@@ -61,6 +61,8 @@
 | `templates/mvp-instrumentation-checklist.json` | JSON Schema for the output contract (machine-validatable). |
 | `templates/mvp-instrumentation-checklist.md` | Markdown skeleton with the required fields. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,74 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/mvp-instrumentation-checklist.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/mvp-instrumentation-checklist.json",
+  "title": "MVP Instrumentation Checklist Output Contract",
+  "type": "object",
+  "required": [
+    "product_name",
+    "acquire",
+    "activate",
+    "retain",
+    "revenue",
+    "dashboard_url",
+    "launch_gated",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "product_name": {
+      "type": "string",
+      "description": "named product"
+    },
+    "acquire": {
+      "type": "object",
+      "description": "event_name + dashboard_segment"
+    },
+    "activate": {
+      "type": "object",
+      "description": "event_name + dashboard_segment"
+    },
+    "retain": {
+      "type": "object",
+      "description": "event_name + dashboard_segment"
+    },
+    "revenue": {
+      "type": "object",
+      "description": "event_name + dashboard_segment"
+    },
+    "dashboard_url": {
+      "type": "string",
+      "description": "public URL"
+    },
+    "launch_gated": {
+      "type": "boolean",
+      "description": "true means checklist gates launch event"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named human owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```

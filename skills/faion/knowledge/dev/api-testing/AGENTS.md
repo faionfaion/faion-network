@@ -62,6 +62,8 @@
 |------|---------|
 | `templates/api-contract-check.sh` | Pre-merge CI step: snapshot openapi.json, run oasdiff against base, fail on breaking change. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,45 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` routes each new test into one of {unit, integration-with-schema, contract, E2E} from observable inputs (does it touch I/O? does it cross a team boundary?), so the suite stays pyramid-shaped over time.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/api-contract-check.sh`
+
+```bash
+set -euo pipefail
+
+SPEC=${1:-openapi.json}
+BASE=${2:-http://localhost:8000}
+
+python - <<PY
+import json, sys
+import httpx
+from openapi_core import OpenAPI
+
+spec = OpenAPI.from_file_path("$SPEC")
+
+# Add endpoints to check: (method, path, expected_status)
+endpoints = [
+    ("GET",  "/health",           200),
+    ("GET",  "/api/v1/users/",    200),
+    ("GET",  "/api/v1/users/bad", 404),
+]
+
+errors = []
+with httpx.Client(base_url="$BASE") as c:
+    for method, path, expected in endpoints:
+        r = c.request(method, path)
+        if r.status_code != expected:
+            errors.append(f"STATUS  {method} {path}: expected {expected}, got {r.status_code}")
+
+if errors:
+    for e in errors:
+        print(e, file=sys.stderr)
+    sys.exit(1)
+
+print("OK — all endpoints match spec")
+PY
+```

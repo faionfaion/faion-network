@@ -68,6 +68,8 @@
 | `templates/skeleton.json` | JSON instance matching the output contract |
 | `templates/skeleton.md` | Markdown skeleton with the required fields |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,34 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/skeleton.json`
+
+```json
+{
+  "artefact_id": "team-rfc-process-for-devs-2026Q2-001",
+  "owner": "ruslan@faion.net",
+  "title": "Example spec for team-rfc-process-for-devs",
+  "sections": [
+    {
+      "name": "Constraints",
+      "body": "Quoted client mandate."
+    },
+    {
+      "name": "Options",
+      "body": "\u22652 options within mandate."
+    }
+  ],
+  "rationale": "Closes the gap surfaced by the parent skill \u2014 input artefact 'task-brief.md' explicitly names the constraint set; output ties decisions to rule r1.",
+  "inputs_used": [
+    "task-brief.md",
+    "constitution.md"
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+```

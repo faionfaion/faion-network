@@ -59,9 +59,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/pilot-playbook.md.tmpl` | 1-page pilot playbook with all five sections. |
-| `templates/scope-contract.md.tmpl` | Use cases + thresholds + time-box contract. |
-| `templates/mid-pilot-review.md.tmpl` | Week-4 traffic-light review template. |
 | `templates/_smoke-test.md` | Filled example for a customer-support pilot. |
 
 ## Scripts

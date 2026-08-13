@@ -75,6 +75,8 @@
 | `templates/grafana-dashboard.json` | Dashboard JSON skeleton with the four panels |
 | `templates/_smoke-test.yaml` | Minimum-viable drift-alerts.yaml that validates clean |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -91,3 +93,221 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches on metric class (query-KL vs Jaccard vs score-histogram vs neighbour-recency), magnitude, and sustained window — routes to P1 page, P3 ticket, or auto-safer-mode gate.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/drift-alerts.schema.yaml`
+
+```yaml
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+required: [baseline, metrics, routing, gate]
+properties:
+  baseline:
+    type: object
+    required: [path, window_days, captured_at]
+    properties:
+      path: { type: string }
+      window_days: { type: integer, minimum: 7 }
+      captured_at: { type: string, format: date }
+  metrics:
+    type: array
+    minItems: 4
+    items:
+      type: object
+      required: [name, kind, threshold_sigma]
+      properties:
+        name:
+          type: string
+          enum: [query-embedding-kl, retrieval-set-jaccard, score-histogram-ks, neighbour-recency]
+        kind: { type: string, enum: [distribution, set, histogram, recency] }
+        threshold_sigma: { type: number, minimum: 1 }
+  routing:
+    type: object
+    required: [p1_dual_metric, p3_single_metric_sustained_min]
+    properties:
+      p1_dual_metric: { type: integer, minimum: 2 }
+      p3_single_metric_sustained_min: { type: integer, minimum: 1 }
+  gate:
+    type: object
+    required: [enabled, mode, flag_name]
+    properties:
+      enabled: { type: boolean }
+      mode: { type: string, enum: [citations-only, refuse, fall-through] }
+      flag_name: { type: string }
+```
+
+### `templates/prometheus-rules.yaml`
+
+```yaml
+groups:
+  - name: rag-retrieval-drift
+    interval: 5m
+    rules:
+      - alert: RetrievalDriftP1Dual
+        expr: count by (env) (drift_metric_sigma > 1) >= 2
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: "RAG retrieval drift: 2+ metrics breach"
+          runbook: "https://runbooks.example.com/rag-drift-p1"
+
+      - alert: RetrievalDriftP1SingleSevere
+        expr: drift_metric_sigma >= 3
+        for: 10m
+        labels:
+          severity: page
+        annotations:
+          summary: "RAG retrieval drift: single metric 3σ"
+
+      - alert: RetrievalDriftP3Sustained
+        expr: drift_metric_sigma >= 1 and drift_metric_sigma < 3
+        for: 60m
+        labels:
+          severity: ticket
+        annotations:
+          summary: "RAG retrieval drift: sustained low-intensity (recontract candidate)"
+```
+
+### `templates/grafana-dashboard.json`
+
+```json
+{
+  "_header": [
+    "purpose: Grafana dashboard skeleton with 4 panels (one per drift metric)",
+    "consumes: drift_metric_sigma{name=...} Prometheus series",
+    "produces: config (Grafana dashboard JSON import payload)",
+    "depends-on: grafana >= 10.0",
+    "token-budget-impact: 0 at runtime"
+  ],
+  "title": "RAG Retrieval Drift",
+  "uid": "rag-retrieval-drift",
+  "schemaVersion": 39,
+  "version": 1,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Query-embedding KL divergence",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "drift_metric_sigma{name=\"query-embedding-kl\"}"
+        }
+      ],
+      "thresholds": {
+        "steps": [
+          {
+            "value": 1,
+            "color": "yellow"
+          },
+          {
+            "value": 3,
+            "color": "red"
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "title": "Retrieval-set Jaccard drift",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "drift_metric_sigma{name=\"retrieval-set-jaccard\"}"
+        }
+      ],
+      "thresholds": {
+        "steps": [
+          {
+            "value": 1,
+            "color": "yellow"
+          },
+          {
+            "value": 3,
+            "color": "red"
+          }
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "title": "Score-histogram KS",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "drift_metric_sigma{name=\"score-histogram-ks\"}"
+        }
+      ],
+      "thresholds": {
+        "steps": [
+          {
+            "value": 1,
+            "color": "yellow"
+          },
+          {
+            "value": 3,
+            "color": "red"
+          }
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "title": "Neighbour recency",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "drift_metric_sigma{name=\"neighbour-recency\"}"
+        }
+      ],
+      "thresholds": {
+        "steps": [
+          {
+            "value": 1,
+            "color": "yellow"
+          },
+          {
+            "value": 3,
+            "color": "red"
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+baseline:
+  path: "s3://rag-baselines/2026-05-01.parquet"
+  window_days: 14
+  captured_at: "2026-05-01"
+
+metrics:
+  - name: query-embedding-kl
+    kind: distribution
+    threshold_sigma: 1.0
+  - name: retrieval-set-jaccard
+    kind: set
+    threshold_sigma: 1.0
+  - name: score-histogram-ks
+    kind: histogram
+    threshold_sigma: 1.0
+  - name: neighbour-recency
+    kind: recency
+    threshold_sigma: 1.0
+
+routing:
+  p1_dual_metric: 2
+  p3_single_metric_sustained_min: 60
+
+gate:
+  enabled: true
+  mode: citations-only
+  flag_name: rag.safer_mode
+```

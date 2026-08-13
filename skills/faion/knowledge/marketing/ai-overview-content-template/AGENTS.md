@@ -60,7 +60,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/section-schema.json` | JSON schema for retrofit-eligible sections |
 | `templates/aio-snippets.md` | Real examples of each section type with attribution |
 | `templates/retrofit-log.md` | Per-piece retrofit log: sections added, citation added, date |
 | `templates/_smoke-test.md` | Minimum-viable filled section |

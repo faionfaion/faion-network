@@ -77,6 +77,8 @@
 | `templates/sme-interview-guide.md` | 45-minute structured interview with the SME, role-play of edge cases |
 | `templates/_smoke-test.yaml` | Minimum-viable two-intent contract that validates clean |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -93,3 +95,122 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes on (a) intent-count ≥2, (b) SME availability, (c) eval-set size ≥50 — drives whether to author the contract, defer, or downgrade to a preference-label flow.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/acceptance-contract.schema.yaml`
+
+```yaml
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+required: [feature, version, intents, signatures, recontract_triggers]
+properties:
+  feature:
+    type: string
+    pattern: "^[a-z][a-z0-9-]+$"
+  version:
+    type: string
+    pattern: "^\\d+\\.\\d+\\.\\d+$"
+  intents:
+    type: object
+    minProperties: 2
+    additionalProperties:
+      type: object
+      required: [pm_outcome, acceptable_failure, sme_rubric, offline, online]
+      properties:
+        pm_outcome: { type: string, minLength: 20 }
+        acceptable_failure: { type: string, minLength: 20 }
+        sme_rubric:
+          type: object
+          required: [pass, fail]
+          properties:
+            pass: { type: string, minLength: 10 }
+            borderline: { type: string }
+            fail: { type: string, minLength: 10 }
+        offline:
+          type: object
+          minProperties: 2
+          additionalProperties:
+            type: object
+            required: [threshold, baseline]
+            properties:
+              threshold: { type: string }
+              baseline: { type: string, minLength: 5 }
+        online:
+          type: object
+          minProperties: 1
+          additionalProperties:
+            type: object
+            required: [threshold, baseline]
+            properties:
+              threshold: { type: string }
+              baseline: { type: string, minLength: 5 }
+  signatures:
+    type: object
+    required: [pm, sme, ml_engineer]
+    properties:
+      pm: { type: string, pattern: ".+@.+ \\d{4}-\\d{2}-\\d{2} .+" }
+      sme: { type: string, pattern: ".+@.+ \\d{4}-\\d{2}-\\d{2} .+" }
+      ml_engineer: { type: string, pattern: ".+@.+ \\d{4}-\\d{2}-\\d{2} .+" }
+  recontract_triggers:
+    type: array
+    minItems: 2
+    items: { type: string, minLength: 10 }
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+feature: example-rag
+version: 1.0.0
+
+intents:
+  policy-lookup:
+    pm_outcome: "Resolve customer policy questions without human escalation"
+    acceptable_failure: "Refusal to answer is acceptable; hallucination is not"
+    sme_rubric:
+      pass: "Cites correct policy section with verbatim quote"
+      borderline: "Cites correct section but paraphrases"
+      fail: "No citation or wrong citation"
+    offline:
+      faithfulness:
+        threshold: ">= 0.90"
+        baseline: "junior agent baseline 0.92"
+      context-precision:
+        threshold: ">= 0.80"
+        baseline: "current production 0.75"
+    online:
+      thumbs-down-rate:
+        threshold: "<= 5%"
+        baseline: "today 9%"
+
+  troubleshooting:
+    pm_outcome: "Walk user through fix; partial diagnosis acceptable"
+    acceptable_failure: "Wrong-but-safe step ok; destructive step not"
+    sme_rubric:
+      pass: "Steps in correct order, no destructive action first"
+      fail: "Recommends destructive action without backup"
+    offline:
+      answer-relevance:
+        threshold: ">= 0.80"
+        baseline: "previous prompt 0.71"
+      destructive-step-detector:
+        threshold: "== 0"
+        baseline: "hard zero by PM"
+    online:
+      follow-up-rephrase-rate:
+        threshold: "<= 20%"
+        baseline: "today 31%"
+
+signatures:
+  pm: "alice@example.com 2026-05-22 v1.0"
+  sme: "ravi@example.com 2026-05-22 v1.0"
+  ml_engineer: "jonas@example.com 2026-05-22 v1.0"
+
+recontract_triggers:
+  - "query_intent_distribution_shift_chi2_p < 0.01"
+  - "embedding_model_upgrade"
+  - "online_vs_offline_divergence >= 0.20"
+```

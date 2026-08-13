@@ -42,9 +42,65 @@
 | `templates/retrieval-cost-ledger.yaml` | Fill-in ledger with ten rows; ships valid against the contract. |
 | `templates/measure-lookup.md` | Instrumentation recipe: where to put the counter for the four common retrieval shapes. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - `context-graph-engineering` — consumes this ledger. Its `Skip If` refuses the methodology outright when the incumbent cost is unmeasured; this is the upstream that supplies it.
 - `inference-cost-unit-economics` — money per feature and gross margin. This methodology is one input to it, denominated in tokens per lookup rather than currency per outcome.
 - `rag-eval-retrieval-metrics` — recall and MRR. Correctness here is a coarse binary used only to make cost-per-correct-answer computable; use that methodology for real quality measurement.
 - `retrieval-drift-alerting-recipe` — after the ledger establishes a baseline, that recipe watches it for movement.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/retrieval-cost-ledger.yaml`
+
+```yaml
+#
+# Validate:  validate-retrieval-cost-per-answer-audit.py retrieval-cost-ledger.yaml
+#
+# The numbers below are the shipped illustrative case, modelled on the
+# faion-network two-level tree measured 2026-08-04: median ~33k tokens per
+# lookup at a ~10:1 overhead ratio. Replace every row with your own.
+# Do NOT hand-edit the summary block — recompute it; the validator recomputes
+# it from the rows and fails on any disagreement.
+
+system: "methodology retrieval over a 2600-document corpus"
+structure: tree                    # flat | tree | graph | hybrid — the INCUMBENT
+measured_on: "2026-08-04"
+model: "claude-opus, provider usage field"
+sampling: "ten consecutive real lookups from the orchestrator task log"
+
+# --- Rows (r1, r2, r3). index_tokens = routing + taxonomy + index reads.
+#     candidate_tokens = everything retrieved, including what was discarded.
+#     body_tokens = the content that actually answered. Must be > 0. ---
+queries:
+  - {id: q01, text: "real query 1",  shape: fact,      index_tokens: 30000, candidate_tokens:  2400, body_tokens: 3200, correct: true}
+  - {id: q02, text: "real query 2",  shape: fact,      index_tokens: 28000, candidate_tokens:  1800, body_tokens: 2600, correct: true}
+  - {id: q03, text: "real query 3",  shape: multi_hop, index_tokens: 44000, candidate_tokens:  9000, body_tokens: 6100, correct: true}
+  - {id: q04, text: "real query 4",  shape: fact,      index_tokens: 12000, candidate_tokens:  1500, body_tokens: 1400, correct: true}
+  - {id: q05, text: "real query 5",  shape: multi_hop, index_tokens: 44000, candidate_tokens: 11000, body_tokens: 7400, correct: false}
+  - {id: q06, text: "real query 6",  shape: fact,      index_tokens: 18000, candidate_tokens:  2100, body_tokens: 2000, correct: true}
+  - {id: q07, text: "real query 7",  shape: fact,      index_tokens: 28000, candidate_tokens:  2000, body_tokens: 3400, correct: true}
+  - {id: q08, text: "real query 8",  shape: multi_hop, index_tokens: 36000, candidate_tokens:  6400, body_tokens: 5200, correct: true}
+  - {id: q09, text: "real query 9",  shape: fact,      index_tokens: 12000, candidate_tokens:  1200, body_tokens: 1150, correct: false}
+  - {id: q10, text: "real query 10", shape: fact,      index_tokens: 18000, candidate_tokens:  1700, body_tokens: 1800, correct: true}
+
+# --- Derived (r4, r5). Recomputed by the validator; see its docstring for the
+#     rounding conventions. Never assert these by hand. ---
+median_tokens_per_lookup: 32900
+p90_tokens_per_lookup: 59100
+p90_query_id: q03                  # the tail case must be a row you can open
+overhead_ratio: 9.8                # tokens burned per token of answer delivered
+tokens_per_correct_answer: 42919   # all tokens / count of correct rows
+
+# --- Build cost, amortised (r6). 0 for flat retrieval with no build step. ---
+index_build_tokens: 0
+corpus_change_frequency: "per merge to main"
+
+# --- Routed from content/06-decision-tree.xml. index share is 88% here, so the
+#     bill is the routing tier, not the content: compress the index first. ---
+verdict: compress                  # leave_alone | compress | restructure
+```

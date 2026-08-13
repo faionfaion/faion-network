@@ -68,6 +68,8 @@
 | `templates/vector-db.schema.yaml` | Schema for vector-db.yaml |
 | `templates/_smoke-test.yaml` | Minimum-viable vector-db spec |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,100 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes by (a) Postgres-exists, (b) scale tier (1M/100M/1B), (c) managed-vs-self-host, (d) hybrid search need → {Qdrant, pgvector, Pinecone, Weaviate, Milvus, Chroma}.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/qdrant-setup.py`
+
+```python
+"""Qdrant collection setup: HNSW + scalar quantization + payload index."""
+from qdrant_client import QdrantClient
+from qdrant_client.models import (
+    Distance, VectorParams, HnswConfigDiff,
+    ScalarQuantizationConfig, ScalarType, QuantizationConfig
+)
+
+client = QdrantClient("localhost", port=6333)
+
+client.create_collection(
+    collection_name="docs",
+    vectors_config=VectorParams(size=1536, distance=Distance.COSINE),
+    hnsw_config=HnswConfigDiff(m=16, ef_construct=200),
+    quantization_config=QuantizationConfig(
+        scalar=ScalarQuantizationConfig(type=ScalarType.INT8, always_ram=True)
+    ),
+)
+
+# Create payload index BEFORE bulk upsert — not after
+client.create_payload_index(
+    collection_name="docs",
+    field_name="tenant_id",
+    field_schema="keyword",
+)
+
+client.create_payload_index(
+    collection_name="docs",
+    field_name="source_file",
+    field_schema="keyword",
+)
+```
+
+### `templates/vector-db.schema.yaml`
+
+```yaml
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+required: [kind, connection, collection, multi_tenant, hybrid_search]
+properties:
+  kind: {type: string, enum: [qdrant, weaviate, milvus, pgvector, pinecone, chroma]}
+  connection:
+    type: object
+    required: [host]
+  collection:
+    type: object
+    required: [name, dim, metric, embedding_model]
+    properties:
+      name: {type: string}
+      dim: {type: integer, minimum: 32, maximum: 4096}
+      metric: {type: string, enum: [cosine, dot, euclidean]}
+      embedding_model:
+        type: object
+        required: [name, version]
+        properties:
+          name: {type: string}
+          version: {type: string}
+  multi_tenant:
+    type: object
+    required: [enabled, filter_field]
+    properties:
+      enabled: {type: boolean}
+      filter_field: {type: string}
+  hybrid_search:
+    type: object
+    required: [enabled]
+    properties:
+      enabled: {type: boolean}
+      fusion: {type: string, enum: [rrf, distribution-based, weighted-sum]}
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+kind: qdrant
+connection:
+  host: qdrant.internal
+  port: 6333
+collection:
+  name: support-kb
+  dim: 1024
+  metric: cosine
+  embedding_model: {name: voyage-3-large, version: "2026-04"}
+multi_tenant:
+  enabled: true
+  filter_field: tenant_id
+hybrid_search:
+  enabled: true
+  fusion: rrf
+```

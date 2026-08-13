@@ -63,7 +63,6 @@
 |------|---------|
 | `templates/ai-policy.md` | 1-page policy Markdown template (owner, review, three lists, IR runbook) |
 | `templates/ir-runbook.md` | 4-step incident-response runbook template |
-| `templates/review-cadence.yml` | Quarterly review cadence YAML for CI flagging |
 
 ## Scripts
 

@@ -74,6 +74,8 @@
 | `templates/prompt-verification.xml` | LLM prompt for AC quality review. |
 | `templates/ac-coverage.sh` | Shell helper computing AC coverage across stories. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[requirements-documentation]]
@@ -82,3 +84,17 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ac-coverage.sh`
+
+```bash
+#!/usr/bin/env bash
+# AC coverage: ratio of stories with AC linked.
+set -euo pipefail
+[ -f "${1:-}" ] || { echo 'usage: ac-coverage.sh <stories.json>'; exit 2; }
+jq '{total: (.stories | length), with_ac: ([.stories[] | select(.acs | length > 0)] | length)}' "$1"
+```

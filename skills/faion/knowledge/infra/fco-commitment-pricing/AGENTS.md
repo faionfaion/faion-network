@@ -62,6 +62,8 @@
 | `templates/commitment-plan.md` | Decision record: workload + baseline + commitment shape + utilization plan |
 | `templates/backup-config.example.json` | Filled decision-record artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,20 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/backup-config.example.json`
+
+```json
+{
+  "baseline_months": 3,
+  "commitment_kind": "standard-ri",
+  "term_years": 1,
+  "base_coverage_percentile": 10,
+  "utilization_alert_pct": 70,
+  "staggered_renewal": true
+}
+```

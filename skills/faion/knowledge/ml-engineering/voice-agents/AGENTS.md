@@ -63,7 +63,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/system-prompt.txt` | Voice agent system prompt skeleton |
-| `templates/retell-webhook.py` | Minimal Retell AI webhook handler (FastAPI) |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -78,3 +79,23 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root: Is the deployment phone-based? Branches route to a rule id from `content/01-core-rules.xml` (latency-budget-800, tcpa-gdpr-consent, filler-phrase-on-tool, ...) so every leaf is traceable to a testable statement.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/system-prompt.txt`
+
+```text
+# Voice agent system prompt skeleton
+
+## Context
+{Insert situational context for voice-agents: audience, channel, constraints.}
+
+## Body
+{Insert main body. Keep it scoped to one purpose.}
+
+## Constraints
+- {Constraint 1 from 01-core-rules.xml}
+- {Constraint 2}
+```

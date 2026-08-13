@@ -69,6 +69,8 @@
 | `templates/voice-map.py` | Semantic voice routing by content type (`news`, `assistant`, `narrator`). |
 | `templates/prompt-tts.txt` | Agent task prompt for the TTS subagent (structured input/output contract). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,155 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` decides provider routing before the synthesize call: SSML markup present → Google or Azure (never OpenAI); voice clone required → ElevenLabs; language not covered by OpenAI (≤30 supported) → Google or ElevenLabs; cost cap below $0.020/1k chars → OpenAI tts-1; default → OpenAI tts-1 with semantic voice map. Use the tree at the routing step inside the synthesize() entry point — before any API call.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tts_basic.py`
+
+```python
+"""TTS basics: text_to_speech() for OpenAI + SSMLBuilder for Google/Azure."""
+from openai import OpenAI
+from pathlib import Path
+
+
+def text_to_speech(
+    text: str,
+    output_path: str,
+    voice: str = "alloy",
+    model: str = "tts-1",
+    speed: float = 1.0,
+    response_format: str = "mp3",
+) -> str:
+    """
+    Convert text to speech using OpenAI TTS.
+    voice: alloy | echo | fable | onyx | nova | shimmer
+    model: tts-1 (faster/cheaper) | tts-1-hd (production quality)
+    speed: 0.25–4.0 (default 1.0)
+    response_format: mp3 | opus | aac | flac | wav | pcm
+    """
+    client = OpenAI()
+    response = client.audio.speech.create(
+        model=model,
+        voice=voice,
+        input=text,
+        speed=speed,
+        response_format=response_format,
+    )
+    response.stream_to_file(output_path)
+    return output_path
+
+
+class SSMLBuilder:
+    """
+    Build SSML markup for Google Cloud or Azure TTS.
+    DO NOT pass output to OpenAI TTS — SSML tags are read verbatim by OpenAI.
+    """
+
+    def __init__(self):
+        self.content = []
+
+    def say(self, text: str) -> "SSMLBuilder":
+        self.content.append(text)
+        return self
+
+    def pause(self, duration_ms: int) -> "SSMLBuilder":
+        self.content.append(f'<break time="{duration_ms}ms"/>')
+        return self
+
+    def emphasis(self, text: str, level: str = "moderate") -> "SSMLBuilder":
+        """level: strong | moderate | reduced"""
+        self.content.append(f'<emphasis level="{level}">{text}</emphasis>')
+        return self
+
+    def say_as(self, text: str, interpret_as: str) -> "SSMLBuilder":
+        """interpret_as: date | cardinal | characters | ordinal | etc."""
+        self.content.append(f'<say-as interpret-as="{interpret_as}">{text}</say-as>')
+        return self
+
+    def prosody(
+        self,
+        text: str,
+        rate: str | None = None,
+        pitch: str | None = None,
+        volume: str | None = None,
+    ) -> "SSMLBuilder":
+        """rate/pitch/volume: slow|medium|fast or low|medium|high"""
+        attrs = []
+        if rate:
+            attrs.append(f'rate="{rate}"')
+        if pitch:
+            attrs.append(f'pitch="{pitch}"')
+        if volume:
+            attrs.append(f'volume="{volume}"')
+        attr_str = " ".join(attrs)
+        self.content.append(f'<prosody {attr_str}>{text}</prosody>')
+        return self
+
+    def build(self) -> str:
+        return f'<speak>{"".join(self.content)}</speak>'
+```
+
+### `templates/voice-map.py`
+
+```python
+"""Semantic voice routing: labels stay portable across providers."""
+
+OPENAI_VOICE_MAP: dict[str, str] = {
+    "news": "onyx",       # authoritative male
+    "assistant": "nova",  # friendly female
+    "narrator": "fable",  # storytelling tone
+    "neutral": "alloy",   # balanced default
+    "whisper": "shimmer", # soft, gentle
+    "formal": "echo",     # neutral male
+}
+
+GOOGLE_VOICE_MAP: dict[str, str] = {
+    "news": "en-US-Neural2-D",
+    "assistant": "en-US-Neural2-F",
+    "narrator": "en-US-Neural2-J",
+    "neutral": "en-US-Neural2-A",
+}
+
+
+def select_voice(
+    content_type: str,
+    provider: str = "openai",
+) -> str:
+    """
+    Return provider-specific voice name for a semantic content type.
+    Falls back to neutral/alloy if content_type is unknown.
+    """
+    if provider == "openai":
+        return OPENAI_VOICE_MAP.get(content_type, "alloy")
+    elif provider == "google":
+        return GOOGLE_VOICE_MAP.get(content_type, "en-US-Neural2-A")
+    raise ValueError(f"Unknown provider: {provider}")
+```
+
+### `templates/prompt-tts.txt`
+
+```text
+<task>
+Convert text to speech.
+
+Text: {{TEXT}}
+Voice type: {{VOICE_TYPE}}  (news|assistant|narrator|neutral|whisper|formal)
+Model: {{MODEL}}  (tts-1 for speed, tts-1-hd for production quality)
+Speed: {{SPEED}}  (0.25–4.0, default 1.0)
+Output path: {{OUTPUT_PATH}}
+
+Rules:
+- Preprocess text: strip Markdown/HTML, expand abbreviations (API → A-P-I), replace $ with "dollars"
+- Select OpenAI voice from VOICE_TYPE using voice-map.py
+- Cache by sha256(text + voice + speed + model) before calling API
+- Return cached path if hit
+
+Return JSON:
+{"path": "...", "duration_s": N, "cached": true|false}
+
+On error:
+{"error": "...", "path": null}
+</task>
+```

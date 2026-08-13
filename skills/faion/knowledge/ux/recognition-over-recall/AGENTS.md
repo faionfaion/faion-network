@@ -67,6 +67,8 @@
 | `templates/recognition-audit.md` | Recognition audit report skeleton. |
 | `templates/prompt-audit.txt` | Agent prompt skeleton for the audit run. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,31 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, prototype reachable, audience type) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-audit.txt`
+
+```text
+You are a UX auditor applying Nielsen's Recognition Rather Than Recall heuristic (Heuristic #6).
+
+Given the screen description below, identify:
+1. Every place where users must remember information from a previous screen or step
+2. Every icon or control with no visible text label (exclude: magnifying glass for search, X for close, these are universal)
+3. Every input field with no autocomplete, recent values, or suggestions
+4. Every multi-step flow where prior selections are not shown in context alongside the current step
+
+For each finding:
+- Describe the recall burden specifically
+- Rate impact: High (blocks task completion) / Medium (causes errors or backtracking) / Low (minor friction)
+- Propose a specific recognition-based alternative (not "add labels" — name the exact control)
+
+Output as a table: Element | Recall Burden | Recognition Alternative | Priority
+
+Note at the end: any findings that require prototype or live product testing (cannot be audited from static description alone).
+
+SCREEN DESCRIPTION:
+[paste screen description, wireframe annotation, or component spec here]
+```

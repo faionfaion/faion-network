@@ -69,6 +69,8 @@
 | `templates/pre-registration.json` | JSON example of a pre-registration |
 | `templates/pre-registration.md` | Pre-registration markdown template |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,37 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes observable signals to one of the rules in `01-core-rules.xml`. Use it before producing the output — picking the wrong branch is the most common failure.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pre-registration.json`
+
+```json
+{
+  "test_id": "EXP-2026-031",
+  "hypothesis": "Shortening the hero copy increases primary CTA CTR for cold pricing traffic.",
+  "primary_metric": {
+    "name": "cta_ctr",
+    "baseline": 0.062
+  },
+  "secondary_metrics": [
+    {
+      "name": "signup_cr"
+    },
+    {
+      "name": "d7_retention"
+    }
+  ],
+  "mde": 0.05,
+  "sample_size": 12400,
+  "split": {
+    "control": 0.5,
+    "treatment": 0.5
+  },
+  "starts_at": "2026-05-06",
+  "closes_at": "2026-05-20",
+  "owner": "@ruslan"
+}
+```

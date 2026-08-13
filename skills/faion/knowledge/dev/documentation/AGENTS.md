@@ -59,6 +59,8 @@
 | `templates/AGENTS-universal.md` | Canonical AGENTS.md skeleton (20-80 lines, file table, key types, commands, gotchas). |
 | `templates/audit-agents-md.sh` | Sweep the repo and report directories missing CLAUDE.md / AGENTS.md. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -74,3 +76,31 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` keys off the observable inputs documented in Prerequisites and routes to either "run the methodology" (preconditions hold) or "skip and route elsewhere" (preconditions fail). Use it before invoking the methodology, not after.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/audit-agents-md.sh`
+
+```bash
+# audit-agents-md.sh — flag dirs where source files are newer than AGENTS.md by >14 days.
+# Usage: bash audit-agents-md.sh [repo-root]
+set -e
+THRESH=$((14*24*60*60))
+fail=0
+while IFS= read -r dir; do
+  agents="$dir/AGENTS.md"
+  [ -f "$agents" ] || continue
+  agents_ts=$(stat -c %Y "$agents")
+  newest_src=$(find "$dir" -maxdepth 1 -type f \
+      \( -name '*.py' -o -name '*.ts' -o -name '*.tsx' -o -name '*.go' \) \
+      -printf '%T@\n' 2>/dev/null | sort -n | tail -1 | cut -d. -f1)
+  [ -z "$newest_src" ] && continue
+  if [ $((newest_src - agents_ts)) -gt $THRESH ]; then
+    echo "DRIFT: $agents (source newer by >14 days)"
+    fail=1
+  fi
+done < <(find "${1:-.}" -type d -not -path '*/node_modules/*' -not -path '*/.git/*' -not -path '*/dist/*')
+exit $fail
+```

@@ -66,6 +66,8 @@
 | `templates/growth-newsletter-growth.md` | Markdown skeleton: artefact body + per-section table. |
 | `templates/growth-newsletter-growth.json` | newsletter-growth-plan JSON skeleton validating against scripts/. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,33 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/growth-newsletter-growth.json`
+
+```json
+{
+  "artefact_id": "growth-newsletter-growth-<client>-<YYYY-MM-DD>",
+  "owner": "<Full Name> <email>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "inputs_used": [
+    {
+      "name": "<input name>",
+      "source": "<path or URL>"
+    }
+  ],
+  "findings": [
+    {
+      "id": "f1",
+      "summary": "<finding summary>",
+      "severity": "medium"
+    }
+  ],
+  "decision": "<verdict; one sentence>",
+  "rationale": "<rationale citing \u22651 input by name; \u226520 chars>"
+}
+```

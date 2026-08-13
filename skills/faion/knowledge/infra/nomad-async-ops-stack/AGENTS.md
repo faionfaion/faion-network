@@ -63,7 +63,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/nomad-async-ops-stack.json` | JSON skeleton matching the output contract. |
 | `templates/nomad-async-ops-stack.md` | Markdown skeleton with required fields. |
 
 ## Scripts

@@ -68,6 +68,8 @@
 | `templates/Aggregate.cs` | C# aggregate root with private setters |
 | `templates/invariant-tests.md` | Markdown checklist of invariant→test mappings |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,149 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (consistency boundary, aggregate size, transaction scope) to a rule from `01-core-rules.xml`. Use it whenever proposing a new aggregate or refactoring a large one.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/Aggregate.py`
+
+```python
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import List
+from uuid import UUID, uuid4
+
+
+@dataclass(frozen=True)
+class OrderPlaced:
+    order_id: UUID
+    customer_id: UUID
+    occurred_at: datetime
+    event_id: UUID = field(default_factory=uuid4)
+
+
+@dataclass(frozen=True)
+class OrderCancelled:
+    order_id: UUID
+    occurred_at: datetime
+    event_id: UUID = field(default_factory=uuid4)
+
+
+class Order:
+    def __init__(self, order_id: UUID, customer_id: UUID) -> None:
+        self._id = order_id
+        self._customer_id = customer_id          # identity-only cross-aggregate ref
+        self._status = "draft"
+        self._items: List["OrderItem"] = []
+        self._events: List[object] = []
+
+    @property
+    def id(self) -> UUID:
+        return self._id
+
+    @property
+    def items(self) -> tuple["OrderItem", ...]:
+        return tuple(self._items)
+
+    @property
+    def status(self) -> str:
+        return self._status
+
+    def add_item(self, sku: str, price: float, quantity: int) -> None:
+        if self._status != "draft":
+            raise ValueError(f"cannot modify order in status {self._status}")
+        self._items.append(OrderItem(sku, price, quantity))
+
+    def place(self) -> None:
+        if not self._items:
+            raise ValueError("cannot place empty order")
+        if self._status != "draft":
+            raise ValueError(f"cannot place order in status {self._status}")
+        self._status = "placed"
+        self._events.append(OrderPlaced(self._id, self._customer_id, datetime.utcnow()))
+
+    def cancel(self) -> None:
+        if self._status == "shipped":
+            raise ValueError("cannot cancel shipped order")
+        self._status = "cancelled"
+        self._events.append(OrderCancelled(self._id, datetime.utcnow()))
+
+    def collect_events(self) -> list[object]:
+        events, self._events = self._events, []
+        return events
+
+
+@dataclass(frozen=True)
+class OrderItem:
+    sku: str
+    price: float
+    quantity: int
+```
+
+### `templates/Aggregate.cs`
+
+```csharp
+namespace Faion.Domain.Orders;
+
+public sealed class Order
+{
+    private readonly List<OrderItem> _items = new();
+    private readonly List<object> _events = new();
+
+    public Guid Id { get; private set; }
+    public Guid CustomerId { get; private set; }
+    public OrderStatus Status { get; private set; } = OrderStatus.Draft;
+    public IReadOnlyList<OrderItem> Items => _items.AsReadOnly();
+    public IReadOnlyList<object> Events => _events.AsReadOnly();
+
+    private Order() { }
+
+    public Order(Guid id, Guid customerId)
+    {
+        if (customerId == Guid.Empty) throw new ArgumentException("customer required", nameof(customerId));
+        Id = id;
+        CustomerId = customerId;
+        Status = OrderStatus.Draft;
+    }
+
+    public void AddItem(string sku, decimal price, int quantity)
+    {
+        if (Status != OrderStatus.Draft)
+            throw new InvalidOperationException($"cannot modify order in status {Status}");
+        _items.Add(new OrderItem(sku, price, quantity));
+    }
+
+    public void Place()
+    {
+        if (_items.Count == 0)
+            throw new InvalidOperationException("cannot place empty order");
+        if (Status != OrderStatus.Draft)
+            throw new InvalidOperationException($"cannot place order in status {Status}");
+        Status = OrderStatus.Placed;
+        _events.Add(new OrderPlaced(Id, CustomerId, DateTime.UtcNow));
+    }
+
+    public void Cancel()
+    {
+        if (Status == OrderStatus.Shipped)
+            throw new InvalidOperationException("cannot cancel shipped order");
+        Status = OrderStatus.Cancelled;
+        _events.Add(new OrderCancelled(Id, DateTime.UtcNow));
+    }
+
+    public List<object> CollectEvents()
+    {
+        var snapshot = _events.ToList();
+        _events.Clear();
+        return snapshot;
+    }
+}
+
+public sealed record OrderItem(string Sku, decimal Price, int Quantity);
+public enum OrderStatus { Draft, Placed, Shipped, Cancelled }
+public sealed record OrderPlaced(Guid OrderId, Guid CustomerId, DateTime OccurredAt);
+public sealed record OrderCancelled(Guid OrderId, DateTime OccurredAt);
+```

@@ -69,6 +69,8 @@
 | `templates/ddd-prompt.txt` | Prompt template for domain-expert modeling session. |
 | `templates/domain-purity-check.sh` | Shell script: greps domain/ for framework imports; exits 1 if any. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,70 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree gates DDD on domain complexity, expert availability, and team willingness to enforce model purity.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/aggregate.py`
+
+```python
+"""
+from __future__ import annotations
+from dataclasses import dataclass, field
+from typing import List
+from uuid import UUID, uuid4
+
+
+@dataclass
+class OrderLine:
+    sku: str
+    quantity: int
+    unit_price_cents: int
+
+
+@dataclass
+class Order:
+    id: UUID = field(default_factory=uuid4)
+    lines: List[OrderLine] = field(default_factory=list)
+    placed: bool = False
+
+    def add_line(self, line: OrderLine) -> None:
+        if self.placed:
+            raise ValueError("cannot modify a placed order")
+        self.lines.append(line)
+
+    def place(self) -> None:
+        if not self.lines:
+            raise ValueError("cannot place an empty order")
+        self.placed = True
+```
+
+### `templates/ddd-prompt.txt`
+
+```text
+Goals:
+1. Capture ubiquitous-language terms (entities, value objects, events, commands) as the expert speaks.
+2. For each entity, list the invariants that MUST hold (what makes the entity 'valid').
+3. Identify aggregate roots — entities that own a cluster of objects with shared invariants.
+4. Capture bounded-context boundaries: where does this language stop applying?
+5. Note context-map relationships (upstream/downstream/anti-corruption-layer).
+
+Questions to ask:
+- 'When this changes, what else must change?' (invariant signal)
+- 'When you say X, do you always mean the same thing?' (ubiquitous-language signal)
+- 'Who is allowed to do Y?' (aggregate boundary signal)
+```
+
+### `templates/domain-purity-check.sh`
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT=${1:-myapp/domain}
+if grep -RnE "^(from|import) (django|sqlalchemy|flask|fastapi|requests|aiohttp|httpx)" "$ROOT"; then
+  echo "FAIL: framework import found in domain layer"
+  exit 1
+fi
+echo OK
+```

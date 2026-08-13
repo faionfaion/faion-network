@@ -68,7 +68,8 @@
 |------|---------|
 | `templates/basic-voice-agent.py` | BasicVoiceAgent with listen / think / speak loop. |
 | `templates/vad-recording.py` | webrtcvad-based recorder stopping on silence. |
-| `templates/prompt-design.txt` | System prompt + per-turn prompt patterns for voice agents. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Related
 
@@ -79,3 +80,118 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` decides whether to use the chained STT/LLM/TTS pipeline (latency 650-1900ms, max flexibility) or to escalate to OpenAI Realtime API (sub-300ms, tighter contract). It also picks the Whisper language tag and the voice selection. Use it during session bootstrap before the first turn.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/basic-voice-agent.py`
+
+```python
+"""BasicVoiceAgent: turn-based STT→LLM→TTS loop with VAD + history cap."""
+
+from __future__ import annotations
+import collections, io, re, time, wave
+from typing import Optional
+import sounddevice as sd
+import webrtcvad
+from openai import OpenAI
+
+SAMPLE_RATE = 16000
+
+
+class BasicVoiceAgent:
+    def __init__(self, system_prompt: str, voice: str = "nova", language: str = "en",
+                 max_pairs: int = 10) -> None:
+        self.system_prompt = system_prompt
+        self.voice = voice
+        self.language = language
+        self.max_pairs = max_pairs
+        self.history = [{"role": "system", "content": system_prompt}]
+        self.client = OpenAI()
+
+    def listen(self, silence_ms: int = 1000, max_s: int = 30) -> bytes:
+        vad = webrtcvad.Vad(2)
+        frame_samples = SAMPLE_RATE * 30 // 1000
+        silence_frames = silence_ms // 30
+        ring = collections.deque(maxlen=silence_frames)
+        frames: list[bytes] = []
+        t0 = time.monotonic()
+        with sd.RawInputStream(samplerate=SAMPLE_RATE, channels=1, dtype="int16") as s:
+            while time.monotonic() - t0 < max_s:
+                data, _ = s.read(frame_samples)
+                frame = bytes(data)
+                ring.append(vad.is_speech(frame, SAMPLE_RATE))
+                frames.append(frame)
+                if len(frames) > silence_frames and not any(ring):
+                    break
+        buf = io.BytesIO()
+        with wave.open(buf, "wb") as w:
+            w.setnchannels(1); w.setsampwidth(2); w.setframerate(SAMPLE_RATE)
+            w.writeframes(b"".join(frames))
+        return buf.getvalue()
+
+    def transcribe(self, wav: bytes) -> str:
+        return self.client.audio.transcriptions.create(
+            model="whisper-1", file=("audio.wav", io.BytesIO(wav)),
+            language=self.language).text
+
+    def reason(self, user_text: str) -> str:
+        self.history.append({"role": "user", "content": user_text})
+        self.history = self.history[:1] + self.history[1:][-(self.max_pairs * 2):]
+        resp = self.client.chat.completions.create(
+            model="gpt-4o", messages=self.history, max_tokens=200)
+        text = self._strip_markdown(resp.choices[0].message.content or "")
+        self.history.append({"role": "assistant", "content": text})
+        return text
+
+    def speak(self, text: str, out_path: str) -> str:
+        with self.client.audio.speech.with_streaming_response.create(
+                model="tts-1", voice=self.voice, input=text,
+                response_format="mp3") as r:
+            with open(out_path, "wb") as f:
+                for chunk in r.iter_bytes(1024):
+                    f.write(chunk)
+        return out_path
+
+    @staticmethod
+    def _strip_markdown(t: str) -> str:
+        return re.sub(r"[*_`#>]", "", t).strip()
+```
+
+### `templates/vad-recording.py`
+
+```python
+"""record_until_silence(): WebRTC-VAD-based recorder."""
+
+from __future__ import annotations
+import collections, io, time, wave
+import sounddevice as sd
+import webrtcvad
+
+SAMPLE_RATE = 16000
+FRAME_MS = 30
+
+
+def record_until_silence(silence_ms: int = 1000, max_s: int = 30,
+                         aggressiveness: int = 2) -> bytes:
+    vad = webrtcvad.Vad(aggressiveness)
+    frame_samples = SAMPLE_RATE * FRAME_MS // 1000
+    silence_frames = silence_ms // FRAME_MS
+    ring = collections.deque(maxlen=silence_frames)
+    frames: list[bytes] = []
+    t0 = time.monotonic()
+    with sd.RawInputStream(samplerate=SAMPLE_RATE, channels=1, dtype="int16") as stream:
+        while time.monotonic() - t0 < max_s:
+            data, _ = stream.read(frame_samples)
+            frame = bytes(data)
+            ring.append(vad.is_speech(frame, SAMPLE_RATE))
+            frames.append(frame)
+            if len(frames) > silence_frames and not any(ring):
+                break
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(SAMPLE_RATE)
+        w.writeframes(b"".join(frames))
+    return buf.getvalue()
+```

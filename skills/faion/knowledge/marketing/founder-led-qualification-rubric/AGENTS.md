@@ -67,6 +67,8 @@
 | `templates/qualification-rubric.json` | JSON example of one qualification run |
 | `templates/rubric-card.md` | Markdown skeleton for one qualification card |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,40 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes observable signals to one of the rules in `01-core-rules.xml`. Use it before producing the output — picking the wrong branch is the most common failure.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/qualification-rubric.json`
+
+```json
+{
+  "prospect_id": "p-101",
+  "checks": {
+    "budget": {
+      "yes": true,
+      "evidence": "Discovery transcript: '$50k allocated for Q3'"
+    },
+    "authority": {
+      "yes": true,
+      "evidence": "Decision-maker @vp-growth confirmed in 2nd call"
+    },
+    "need": {
+      "yes": true,
+      "evidence": "Specific pain: conversion plateau at 4.2%"
+    },
+    "timeline": {
+      "yes": false,
+      "evidence": "Start date 5 months out \u2014 outside 90d window"
+    },
+    "fit": {
+      "yes": true,
+      "evidence": "B2B SaaS, 30 employees \u2014 matches ICP"
+    }
+  },
+  "verdict": "borderline",
+  "owner": "@ruslan",
+  "evaluated_at": "2026-05-23"
+}
+```

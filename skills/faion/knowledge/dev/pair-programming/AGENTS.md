@@ -59,6 +59,8 @@
 | `templates/pair-session.sh` | Pomodoro timer + role-switch reminder script. |
 | `templates/strong-style-prompt.txt` | Prompt setting Strong-Style rules for an AI navigator. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -73,3 +75,40 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` checks: two participants, complex/learning task, mode chosen.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pair-session.sh`
+
+```bash
+# scripts/pair-session.sh — start a logged pair session with terminal transcript.
+# The transcript can be fed to the AI navigator as prior context on session resume.
+set -euo pipefail
+
+session_dir="$HOME/.pair-sessions/$(date +%Y-%m-%d_%H%M)"
+mkdir -p "$session_dir"
+echo "Session: $session_dir"
+echo "To resume: cat $session_dir/typescript | claude --session"
+# script(1) records all terminal I/O to a file.
+exec script -q "$session_dir/typescript"
+```
+
+### `templates/strong-style-prompt.txt`
+
+```text
+Session mode: pair-programming, strong-style. You are the navigator; I am the driver.
+
+Rules:
+- Output ONE instruction per turn. Maximum 2 lines.
+- Always explain WHY before the instruction (1 sentence).
+- Wait for my result (test output or diff) before the next instruction.
+- Do NOT generate full files or multi-step plans.
+- If I report a test failure, propose the next single change only.
+
+When I say "retro", produce:
+- 5 bullets: what worked, what stalled, smell to address next, missing test, follow-up.
+
+Start: state the goal in one sentence, then give the first instruction.
+```

@@ -42,6 +42,8 @@
 | `templates/gate-failure-contract.yaml` | Judge gate — the full five-mode case. Ships valid against the contract. |
 | `templates/gate-failure-contract-static.yaml` | Rung-1 static gate — where the leak is the runner, not the model. Ships valid against the contract. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - `verification-rung-placement-rule` — which instrument a check belongs on. That decides what the gate is; this decides what it does when it breaks.
@@ -49,3 +51,96 @@
 - `ci-eval-gate-config` — the CI shape for eval gates; the fail-closed clause belongs in that config.
 - `quality-gates-confidence` — phase-promotion gates; each of its levels needs a Gate Failure Contract of its own.
 - `regression-eval-before-fix-rule` — the fault-injection proof is the same move applied to gates instead of to bugs.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/gate-failure-contract.yaml`
+
+```yaml
+#
+# Validate:  validate-gate-fail-closed-rule.py gate-failure-contract.yaml
+
+gate: "uk prose judge"
+instrument: judge          # static | trigger-eval | judge | manual
+invocation: "python3 scripts/llm-judge.py content/uk.mdx --rubric rubrics/uk-quality.yaml --max-high 0"
+verdict_channel: both      # exit_code | findings | both
+blocking_severity: high    # the level the gate's own threshold already blocks on
+
+# All five model modes are mandatory for instrument: judge (r2).
+# `emits` is the synthetic finding's rule id — never pass, warn, or exit:0 (r1, r3).
+failure_modes:
+  - mode: parse
+    detect: "json.JSONDecodeError on the reply, or the reply does not start with '['"
+    emits: judge-parse-failure
+    severity: high
+  - mode: refusal
+    detect: "reply contains no JSON array and matches the refusal phrase set"
+    emits: judge-refusal
+    severity: high
+  - mode: truncation
+    detect: "stop_reason == 'max_tokens', or the reply ends mid-token"
+    emits: judge-truncated
+    severity: high
+  - mode: transport
+    detect: "non-2xx, timeout, or connection reset after the retry budget is spent"
+    emits: judge-unreachable
+    severity: critical
+  - mode: empty
+    detect: "schema-valid reply carrying zero verdict entries — survives the structured-output fix"
+    emits: judge-empty-verdict
+    severity: high
+
+# Quoted with file and line, so a reviewer can grep for their return (r1).
+forbidden_paths:
+  - "llm-judge.py:175 `except json.JSONDecodeError: return []`"
+  - "any `except Exception: return default` in the response path"
+
+# One named, logged, expiring hatch — or allowed: false and nothing else (r6).
+degraded_override:
+  allowed: true
+  flag: "--allow-degraded"
+  expires: "2026-11-01"
+  logged: true
+
+# Fail-closed is demonstrated, not asserted (r4).
+fault_injection_proof: "FAION_JUDGE_FORCE=parse-error make judge -> expect exit 1 and one high-severity finding"
+last_proved: "2026-08-04"
+```
+
+### `templates/gate-failure-contract-static.yaml`
+
+```yaml
+#
+# Validate:  validate-gate-fail-closed-rule.py gate-failure-contract-static.yaml
+#
+# A static gate has no model, so it has no parse / refusal / truncation / transport
+# mode. It fails open in exactly two other ways: it crashes and nobody notices, or
+# a configured checker is never invoked. Both are enumerated below.
+
+gate: "corpus validator sweep"
+instrument: static
+invocation: "bash scripts/f066-validate-all.sh"
+verdict_channel: exit_code
+
+failure_modes:
+  - mode: crash
+    detect: "any sub-validator exits >1, is killed, or its status is lost to a pipe"
+    emits: "exit:2"
+    severity: high
+  - mode: absent_input
+    detect: "target directory, meta.json, or a checker binary is missing"
+    emits: "exit:2"
+    severity: high
+
+forbidden_paths:
+  - "f066-validate-all.sh: run() pipes through tail|tee and never reads ${PIPESTATUS[0]}; the script ends on echo, so it exits 0 whatever the validators find"
+  - ".vale.ini is configured and no runner invokes vale — coverage claimed, never exercised (r5)"
+
+degraded_override:
+  allowed: false
+
+fault_injection_proof: "corrupt one meta.json, run the sweep -> expect exit 1 naming that directory"
+last_proved: "2026-08-04"
+```

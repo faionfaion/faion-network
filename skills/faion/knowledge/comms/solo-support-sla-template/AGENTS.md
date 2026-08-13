@@ -70,6 +70,8 @@
 | `templates/canned-replies.yaml` | 4 canned reply skeletons |
 | `templates/sla-policy.json` | Machine-readable policy |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,67 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Gates on support volume and team size. Below 5/week or above 1 person the methodology refuses to apply; otherwise 3-tier SLA emitted.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/canned-replies.yaml`
+
+```yaml
+ack: |
+  Got it — I'll reply within SLA. Tracking your ticket as <TICKET_ID>.
+deflect: |
+  This is covered in the docs at <URL>. If that doesn't unblock you, reply here and I'll dig in.
+escalate: |
+  Escalating to my phone. Expect a reply within <X>h.
+after_hours: |
+  Outside business hours — I'll reply first thing tomorrow. If urgent, reply with URGENT in the subject.
+```
+
+### `templates/sla-policy.json`
+
+```json
+{
+  "tiers": [
+    {
+      "name": "community",
+      "response_time_h": 72,
+      "channels": [
+        "email",
+        "discord"
+      ]
+    },
+    {
+      "name": "paid",
+      "response_time_h": 24,
+      "channels": [
+        "email",
+        "in-app"
+      ]
+    },
+    {
+      "name": "enterprise",
+      "response_time_h": 4,
+      "channels": [
+        "email",
+        "in-app",
+        "slack"
+      ]
+    }
+  ],
+  "business_hours": {
+    "timezone": "Europe/Lisbon",
+    "days": [
+      "Mon",
+      "Tue",
+      "Wed",
+      "Thu",
+      "Fri"
+    ],
+    "start": "09:00",
+    "end": "18:00"
+  },
+  "escalation_trigger": "Paying customer with 0 reply 48h after first message auto-escalates to operator phone."
+}
+```

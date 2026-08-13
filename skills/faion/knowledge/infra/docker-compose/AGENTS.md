@@ -62,7 +62,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/docker-compose.json` | JSON skeleton matching the output contract. |
 | `templates/docker-compose.md` | Markdown skeleton with required fields. |
 
 ## Scripts

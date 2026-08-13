@@ -62,10 +62,11 @@
 | File | Purpose |
 |------|---------|
 | `templates/skeleton.md` | Markdown skeleton of the artefact with all required sections. |
-| `templates/header.yaml` | Frontmatter schema (owner, version, last_reviewed, trigger_url). |
 | `templates/_smoke-test.json` | Minimum-viable filled JSON instance, parseable by the validator. |
 | `templates/gen-tests.sh` | Call Claude Code in `--print` mode to generate pytest test stubs. |
 | `templates/prompt-code.txt` | Structured code-generation prompt template (context/task/requirements/output). |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -82,3 +83,72 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` first checks whether preconditions hold (named trigger + named owner + typed inputs). If yes, it routes between the full artefact form and a minimal-record fallback when the trigger is below the materiality threshold. If preconditions don't hold, the conclusion is to skip this methodology and route the work upstream.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "trigger": {
+    "kind": "weekly-review",
+    "url": "https://example.com/trigger/1"
+  },
+  "owner": "swe:alice",
+  "inputs": [
+    {
+      "name": "scope",
+      "value": "billing"
+    }
+  ],
+  "decision": "Adopt variant A behind feature flag.",
+  "evidence": [
+    "https://example.com/pr/1"
+  ],
+  "review": {
+    "cadence": "quarterly",
+    "next_review_at": "2026-08-22"
+  }
+}
+```
+
+### `templates/gen-tests.sh`
+
+```bash
+# gen-tests.sh — Generate pytest test stubs using Claude Code.
+# Usage: bash gen-tests.sh <source_file>
+# Input:  Python source file path
+# Output: pytest test file at tests/test_<basename>.py (review before committing)
+
+SOURCE=$1
+if [ -z "$SOURCE" ]; then
+  echo "Usage: gen-tests.sh <source_file>" && exit 1
+fi
+
+OUTFILE="tests/test_$(basename "$SOURCE" .py).py"
+echo "Generating tests for $SOURCE → $OUTFILE"
+
+claude --print "Generate pytest tests for the following Python file.
+Cover: happy path, validation errors, edge cases, exception handling.
+Use pytest fixtures. Follow AAA pattern (Arrange, Act, Assert).
+Output only the Python code — no explanatory prose.
+
+$(cat "$SOURCE")" > "$OUTFILE"
+
+echo "Review $OUTFILE assertions for logical correctness before committing."
+echo "Green CI from AI-generated tests does not guarantee meaningful coverage."
+```
+
+### `templates/prompt-code.txt`
+
+```text
+Context: [Project type, language/framework version, existing patterns, file path of related code]
+Task: [Specific action — "Generate", "Refactor", "Review", "Add tests for"]
+Requirements:
+- [Must-have 1, e.g., cover happy path and error cases]
+- [Must-have 2, e.g., use existing fixture pattern from conftest.py]
+- [Constraint, e.g., no print() statements, follow AAA pattern]
+Output: [Exact format — "Complete Python file at tests/test_X.py", "TypeScript function only, no explanation"]
+```

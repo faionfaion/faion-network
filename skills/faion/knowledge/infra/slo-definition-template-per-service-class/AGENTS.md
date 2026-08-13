@@ -67,6 +67,8 @@
 | `templates/skeleton.json` | Skeleton template |
 | `templates/skeleton.md` | Skeleton template |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,24 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/skeleton.json`
+
+```json
+{
+  "slo_name": "api-availability-30d",
+  "service_id": "checkout-api",
+  "service_class": "http_api",
+  "sli_query": "level:checkout_api_requests:rate5m_good_ratio",
+  "target": {
+    "good_ratio_min": 0.999
+  },
+  "window_days": 28,
+  "rationale": "Customer SLA 99.9% monthly; revenue impact 10k/h breach.",
+  "owner": "platform-team"
+}
+```

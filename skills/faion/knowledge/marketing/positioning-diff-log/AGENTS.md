@@ -63,6 +63,8 @@
 | `templates/positioning-diff-log.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/positioning-diff-log.md` | Markdown skeleton for human-readable artefact rendering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,24 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/positioning-diff-log.json`
+
+```json
+{
+  "artefact_id": "positioning-diff-log-<project>-<period>",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "trigger": "<trigger>",
+  "old_wording": "<old_wording>",
+  "new_wording": "<new_wording>",
+  "expected_effect": {},
+  "check_30d": {},
+  "check_90d": {},
+  "owner": "<@handle>"
+}
+```

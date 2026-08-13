@@ -70,6 +70,8 @@
 | `templates/webhook-handler.py` | Reference signature-verification snippet (Stripe SDK, optional). |
 | `templates/_smoke-test.yaml` | Minimum viable filled-in catalog (1 SKU, 1 channel). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,151 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on `billing_model` (one-off → Payment Link branch; recurring → Checkout Session or Billing API), then on `connect_required` (yes → reject, escalate; no → continue), then on `custom_amount_per_buyer` (yes → Checkout Session; no → Payment Link). Each leaf cites a rule id in 01-core-rules.xml so the spec always records which rule drove the branch — auditable replay.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/catalog.yaml`
+
+```yaml
+catalog:
+  - sku: TODO              # short stable id, kebab-case
+    price_cents: 0         # integer, cents (USD/EUR/etc.)
+    currency: usd          # ISO 4217 lowercase
+    name: TODO
+    fulfill_action: TODO   # email-license-key | sheet-row | discord-ping | ...
+
+drivers:
+  billing_model: one-off            # one-off | recurring
+  custom_amount_per_buyer: false    # true forces Checkout Session
+  connect_required: false           # true forces backend escalation
+
+fulfillment_channels:
+  - {channel: email, address: TODO}
+
+webhook_events_needed:
+  - checkout.session.completed
+  - charge.refunded
+
+idempotency_store: TODO   # Sheets URL / KV bucket / DB table
+owner: TODO               # single human (handle / email / role with rotation)
+```
+
+### `templates/zapier-blueprint.json`
+
+```json
+{
+  "_header": {
+    "purpose": "Zapier scenario blueprint for the no-backend Stripe webhook fanout",
+    "consumes": "spec.json + STRIPE_WEBHOOK_SECRET (Zapier env)",
+    "produces": "running Zap on import \u2014 triggers on checkout.session.completed",
+    "depends-on": "Stripe app connection in Zapier; signing-secret env var",
+    "token-budget-impact": "~200 tokens"
+  },
+  "trigger": {
+    "app": "stripe",
+    "event": "checkout.session.completed",
+    "auth_account": "<stripe-account-handle>"
+  },
+  "steps": [
+    {
+      "step": "code-by-zapier",
+      "name": "verify-signature",
+      "language": "python",
+      "inputs": {
+        "raw_body": "{{trigger.raw_body}}",
+        "sig_header": "{{trigger.headers.Stripe-Signature}}",
+        "secret": "{{env.STRIPE_WEBHOOK_SECRET}}"
+      },
+      "purpose": "HMAC-SHA256 verification per r1/r2 in core-rules"
+    },
+    {
+      "step": "google-sheets",
+      "name": "idempotency-guard",
+      "action": "lookup-row-or-create",
+      "inputs": {
+        "event_id": "{{trigger.id}}",
+        "sheet": "<idempotency_store URL>"
+      },
+      "purpose": "Guards fulfillment against retry duplication per r3"
+    },
+    {
+      "step": "gmail",
+      "name": "fulfill-email",
+      "action": "send-email",
+      "inputs": {
+        "to": "{{trigger.customer_details.email}}",
+        "subject": "Your purchase",
+        "body": "License key: {{license_key}}"
+      }
+    }
+  ]
+}
+```
+
+### `templates/webhook-handler.py`
+
+```python
+"""Reference snippet — copy into Zapier Code (Python) step or serverless handler."""
+from __future__ import annotations
+
+import hashlib
+import hmac
+import json
+import time
+
+
+class SignatureVerificationError(Exception):
+    """Raised when Stripe-Signature header fails HMAC verification."""
+
+
+def verify_stripe_signature(raw_body: bytes, sig_header: str, secret: str, tolerance_seconds: int = 300) -> dict:
+    """Verify Stripe webhook payload and return the parsed event.
+
+    raw_body must be the exact bytes Stripe sent — no framework re-serialisation.
+    """
+    if not isinstance(raw_body, (bytes, bytearray)):
+        raise SignatureVerificationError("raw_body must be bytes — preserve raw request body")
+    parts = dict(p.split("=", 1) for p in sig_header.split(","))
+    ts = int(parts["t"])
+    sig = parts["v1"]
+    if abs(time.time() - ts) > tolerance_seconds:
+        raise SignatureVerificationError("timestamp outside tolerance — possible replay")
+    signed_payload = f"{ts}.".encode() + raw_body
+    expected = hmac.new(secret.encode(), signed_payload, hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(expected, sig):
+        raise SignatureVerificationError("HMAC mismatch — payload forged or secret wrong")
+    return json.loads(raw_body)
+
+
+if __name__ == "__main__":
+    import sys
+    if "--help" in sys.argv:
+        print(__doc__)
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+catalog:
+  - sku: smoke-29
+    price_cents: 2900
+    currency: usd
+    name: "Smoke Test Lifetime Deal"
+    fulfill_action: email-license-key
+
+drivers:
+  billing_model: one-off
+  custom_amount_per_buyer: false
+  connect_required: false
+
+fulfillment_channels:
+  - {channel: email, address: smoke@faion.net}
+
+webhook_events_needed:
+  - checkout.session.completed
+
+idempotency_store: "https://docs.google.com/spreadsheets/d/SMOKE/edit"
+owner: smoke-test@faion.net
+```

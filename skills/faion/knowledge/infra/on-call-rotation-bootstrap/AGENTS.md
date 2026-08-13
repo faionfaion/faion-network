@@ -71,6 +71,8 @@
 | `templates/pagerduty-schedule.yaml` | PagerDuty schedule config skeleton |
 | `templates/comp-time-policy.md` | HR-handbook-ready comp-time policy document |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,22 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pagerduty-schedule.yaml`
+
+```yaml
+name: <team> primary
+time_zone: UTC
+schedule_layers:
+  - name: weekly-primary
+    rotation_virtual_start: 2026-06-01T00:00:00Z
+    rotation_turn_length_seconds: 604800
+    users:
+      - <user1>
+      - <user2>
+      - <user3>
+```

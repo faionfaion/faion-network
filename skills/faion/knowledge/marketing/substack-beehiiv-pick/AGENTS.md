@@ -57,8 +57,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/decision-record.md.tmpl` | Decision record skeleton: inputs, scorecard, recommendation, migration cost, signature. |
-| `templates/scorecard.md.tmpl` | 4-criteria × 4-vendor scorecard. |
 | `templates/_smoke-test.md` | Filled example for indie hacker shipping paid sub newsletter. |
 
 ## Scripts

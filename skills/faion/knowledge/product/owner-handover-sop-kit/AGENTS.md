@@ -67,6 +67,8 @@
 | `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
 | `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,53 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/artefact-instance.json`
+
+```json
+{
+  "kit_id": "handover-acme-2026q2",
+  "owner": "alex@acme.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "credentials": [
+    {
+      "system": "Stripe",
+      "transfer_path": "team admin invite + 2FA codes",
+      "evidence": "Stripe Team page 2026-05-22"
+    }
+  ],
+  "runbooks": [
+    {
+      "name": "deploy-prod",
+      "location": "notion://runbooks/deploy-prod",
+      "evidence": "ops Notion 2026-05-22"
+    }
+  ],
+  "financials": {
+    "location": "gdrive://finance/2025-pnl.xlsx",
+    "evidence": "accounting export 2026-05-22"
+  },
+  "contracts": [
+    {
+      "id": "c-bigco",
+      "type": "customer",
+      "location": "gdrive://contracts/bigco.pdf",
+      "evidence": "drive 2026-05-22"
+    }
+  ],
+  "escalation_paths": [
+    {
+      "event": "Stripe outage",
+      "primary": "alex@acme.io",
+      "secondary": "ops@acme.io"
+    }
+  ],
+  "completeness_score": 0.78,
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}
+```

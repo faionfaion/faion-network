@@ -62,6 +62,8 @@
 | `templates/ruff-django.toml` | ruff config tuned for Django (DJ + B + E + F + I + UP). |
 | `templates/service-stub.py` | Service-layer module skeleton with @transaction.atomic. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,73 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` keys off the observable inputs documented in Prerequisites and routes to either "run the methodology" (preconditions hold) or "skip and route elsewhere" (preconditions fail). Use it before invoking the methodology, not after.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ruff-django.toml`
+
+```toml
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "DJ", "T20", "RUF", "PT"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "core", "config"]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/migrations/*.py" = ["E", "F", "UP"]
+"**/tests/*.py" = ["S101"]
+```
+
+### `templates/service-stub.py`
+
+```python
+"""Service stub template for Django service-layer functions."""
+from django.db import transaction
+
+
+def do_something(
+    entity: Entity,
+    param: str,
+    *,
+    optional_flag: bool = True,
+) -> Entity:
+    """
+    One-line description of what this service does.
+
+    Args:
+        entity: The primary domain object being acted on
+        param: Description of the parameter
+        optional_flag: Description of the optional flag
+
+    Returns:
+        The modified Entity instance
+
+    Raises:
+        Entity.DoesNotExist: If entity is not found
+        ValidationError: If precondition is violated
+    """
+    # 1. Load and lock if mutating
+    obj = Entity.objects.select_for_update().get(pk=entity.pk)
+
+    # 2. Guard preconditions
+    # if obj.already_done:
+    #     raise ValidationError("Already processed")
+
+    # 3. Apply changes — always list all modified fields
+    obj.some_field = param
+    obj.save(update_fields=["some_field", "updated_at"])
+
+    # 4. Enqueue side effects after commit
+    if optional_flag:
+        transaction.on_commit(lambda: side_effect_task.delay(obj.pk))
+
+    return obj
+```

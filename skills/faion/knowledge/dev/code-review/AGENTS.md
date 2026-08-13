@@ -63,6 +63,8 @@
 | `templates/pr-checks.yml` | Required GitHub Actions checks (lint, types, tests, coverage, oasdiff, security). |
 | `templates/pr-description.md` | PR description template with risk / scope / test sections. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,85 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` keys off the observable inputs documented in Prerequisites and routes to either "run the methodology" (preconditions hold) or "skip and route elsewhere" (preconditions fail). Use it before invoking the methodology, not after.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pr-balance.sh`
+
+```bash
+# pr-balance.sh — assign the least-loaded reviewer from CODEOWNERS.
+# Usage: pr-balance.sh <PR_NUMBER>
+# Requires: gh CLI authenticated
+set -euo pipefail
+PR="${1:?PR number required}"
+REPO="$(gh repo view --json nameWithOwner -q .nameWithOwner)"
+OWNERS_RAW="$(gh api "repos/$REPO/contents/CODEOWNERS" -q .content | base64 -d)"
+
+# Extract unique GitHub usernames (skip teams with /)
+CANDIDATES=$(echo "$OWNERS_RAW" | grep -oE '@[A-Za-z0-9_-]+' \
+             | sed 's/@//' | grep -v '/' | sort -u)
+
+LOWEST=""
+LOWEST_COUNT=99999
+
+for user in $CANDIDATES; do
+  N=$(gh search prs --repo "$REPO" --review-requested "$user" \
+      --state open --json number -q '. | length' 2>/dev/null || echo 0)
+  echo "$user: $N pending review(s)"
+  if (( N < LOWEST_COUNT )); then
+    LOWEST_COUNT=$N
+    LOWEST="$user"
+  fi
+done
+
+[ -n "$LOWEST" ] || { echo "no candidates found in CODEOWNERS"; exit 1; }
+gh pr edit "$PR" --add-reviewer "$LOWEST"
+echo "assigned $LOWEST ($LOWEST_COUNT pending)"
+```
+
+### `templates/pr-checks.yml`
+
+```yaml
+name: PR Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run linters
+        run: make lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests
+        run: make test
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check coverage threshold
+        run: pytest --cov=src --cov-fail-under=80
+
+  pr-size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Warn on large PR
+        run: |
+          CHANGED=$(git diff --stat origin/${{ github.base_ref }} | tail -1 | awk '{print $4}')
+          if [ "${CHANGED:-0}" -gt 400 ]; then
+            echo "::warning::PR has ${CHANGED} changed lines (>400). Consider splitting."
+          fi
+```

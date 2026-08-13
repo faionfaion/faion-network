@@ -68,6 +68,8 @@
 | `templates/guardrail-plan.json` | JSON skeleton of the output artefact |
 | `templates/_smoke-test.json` | Minimum viable filled-in plan for a basic pipeline |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,82 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches on pipeline shape (basic / RAG / multi-agent), then on compliance scope and latency budget. Leaves reference the rule that picks the rail set, action policy, and framework slot.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/guardrail-plan.json`
+
+```json
+{
+  "_header": "purpose: skeleton guardrail-plan.json | consumes: pipeline + threat model | produces: report | depends-on: 01-core-rules + 02-output-contract | token-budget-impact: +200t",
+  "artefact_id": "gp-<slug>-<yyyy-mm>",
+  "version": "1.0.0",
+  "last_reviewed": "YYYY-MM-DD",
+  "pipeline_shape": "basic|rag|multi-agent",
+  "rails": [
+    {
+      "stage": "input|output|dialog|retrieval|execution",
+      "rail_type": "short-kebab-name",
+      "action": "block|filter|transform|warn|log",
+      "framework": "nemo|guardrails-ai|llama-guard|custom|embedded",
+      "severity": "low|medium|high|critical"
+    }
+  ],
+  "tiers": [
+    {
+      "order": 1,
+      "kind": "regex",
+      "max_latency_ms": 5
+    },
+    {
+      "order": 2,
+      "kind": "classifier",
+      "max_latency_ms": 50
+    }
+  ],
+  "frameworks": [
+    "custom"
+  ]
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_header": "purpose: minimum viable filled-in plan | consumes: basic chat pipeline | produces: report | depends-on: 02-output-contract | token-budget-impact: +120t",
+  "artefact_id": "gp-smoke-2026-05",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22",
+  "pipeline_shape": "basic",
+  "rails": [
+    {
+      "stage": "input",
+      "rail_type": "length-cap",
+      "action": "block",
+      "framework": "custom",
+      "severity": "low"
+    },
+    {
+      "stage": "output",
+      "rail_type": "schema-validate",
+      "action": "block",
+      "framework": "guardrails-ai",
+      "severity": "high"
+    }
+  ],
+  "tiers": [
+    {
+      "order": 1,
+      "kind": "regex",
+      "max_latency_ms": 5
+    }
+  ],
+  "frameworks": [
+    "custom",
+    "guardrails-ai"
+  ]
+}
+```

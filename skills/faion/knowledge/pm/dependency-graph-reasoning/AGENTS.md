@@ -61,6 +61,8 @@
 | `templates/skeleton.mmd` | Mermaid skeleton for the program graph with team-prefixed node naming and typed edges. |
 | `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,30 @@
 ## Decision tree
 
 The mandatory decision tree at `content/06-decision-tree.xml` Decides whether to build the graph (>=3 teams + recurring blockers + chosen storage) or skip it (overhead exceeds value). Run before the first graph file is committed.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/skeleton.mmd`
+
+```mermaid
+%% purpose: Mermaid skeleton for the program graph with team-prefixed node naming and typed edges.
+%% consumes: methodology inputs listed in AGENTS.md `## Prerequisites`
+%% produces: a filled artefact matching the JSON Schema in content/02-output-contract.xml
+%% depends-on: templates/header.yaml for frontmatter contract; AGENTS.md for body sections
+%% token-budget-impact: ~500-900 tokens to fill end-to-end; ~200 to validate
+graph TD
+  team_a_task1["team-a:task-1"] -->|fs| team_b_task1["team-b:task-1"]
+  team_b_task1 -->|ss| team_c_task1["team-c:task-1"]
+  team_c_task1 -->|fs| milestone_q3["milestone:q3-release"]
+```
+
+### `templates/header.yaml`
+
+```yaml
+version: 0.1.0           # bump on every refresh; semver
+owner: <role>:<person>   # named person, never a team
+last_reviewed: YYYY-MM-DD
+evidence_root: <link>    # URL or file path that anchors body claims
+```

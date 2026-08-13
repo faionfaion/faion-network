@@ -67,6 +67,8 @@
 | `templates/Resilience4jBreakerConfig.java` | Resilience4j CircuitBreakerRegistry + named breaker for one downstream |
 | `templates/PaymentService.java` | Decorator composition Retry(Breaker(Call)) with fallback enqueue |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,85 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/Resilience4jBreakerConfig.java`
+
+```java
+package com.example.resilience;
+
+import java.time.Duration;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+public class Resilience4jBreakerConfig {
+
+    @Bean
+    public CircuitBreakerRegistry circuitBreakerRegistry() {
+        return CircuitBreakerRegistry.ofDefaults();
+    }
+
+    @Bean
+    public CircuitBreaker paymentGatewayBreaker(CircuitBreakerRegistry registry) {
+        CircuitBreakerConfig cfg = CircuitBreakerConfig.custom()
+            .failureRateThreshold(50)
+            .slowCallRateThreshold(80)
+            .slowCallDurationThreshold(Duration.ofMillis(3000))
+            .slidingWindowSize(50)
+            .minimumNumberOfCalls(10)
+            .waitDurationInOpenState(Duration.ofSeconds(10))
+            .permittedNumberOfCallsInHalfOpenState(3)
+            .build();
+        return registry.circuitBreaker("payment-gateway", cfg);
+    }
+}
+```
+
+### `templates/PaymentService.java`
+
+```java
+package com.example.payment;
+
+import java.time.Duration;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.decorators.Decorators;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
+import io.vavr.control.Try;
+import org.springframework.stereotype.Service;
+
+@Service
+public class PaymentService {
+
+    private final PaymentGatewayClient client;
+    private final CircuitBreaker breaker;
+    private final ChargeQueue queue;
+    private final Retry retry;
+
+    public PaymentService(PaymentGatewayClient client, CircuitBreaker paymentGatewayBreaker, ChargeQueue queue) {
+        this.client = client;
+        this.breaker = paymentGatewayBreaker;
+        this.queue = queue;
+        this.retry = Retry.of("payment-retry", RetryConfig.custom()
+            .maxAttempts(3)
+            .waitDuration(Duration.ofMillis(200))
+            .build());
+    }
+
+    public ChargeResult charge(ChargeRequest req) {
+        return Try.ofSupplier(Decorators.ofSupplier(() -> client.charge(req))
+                .withCircuitBreaker(breaker)
+                .withRetry(retry)
+                .decorate())
+            .recover(ex -> queue.enqueueForRetry(req))
+            .get();
+    }
+}
+```

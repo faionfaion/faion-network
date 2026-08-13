@@ -66,6 +66,8 @@
 | `templates/saga-definition.md` | Saga spec template (steps + compensations + coordination + outbox) |
 | `templates/OrderSagaWorkflow.java` | Temporal workflow skeleton with reverse-order compensations |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,66 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/OrderSagaWorkflow.java`
+
+```java
+package com.example.saga;
+
+import io.temporal.activity.ActivityOptions;
+import io.temporal.workflow.Workflow;
+import io.temporal.workflow.WorkflowInterface;
+import io.temporal.workflow.WorkflowMethod;
+import java.time.Duration;
+
+@WorkflowInterface
+public interface OrderSagaWorkflow {
+
+    @WorkflowMethod
+    OrderResult placeOrder(OrderRequest req);
+}
+
+public class OrderSagaWorkflowImpl implements OrderSagaWorkflow {
+
+    private final OrderActivities order = Workflow.newActivityStub(OrderActivities.class,
+        ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(10)).build());
+    private final BillingActivities billing = Workflow.newActivityStub(BillingActivities.class,
+        ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(10)).build());
+    private final InventoryActivities inventory = Workflow.newActivityStub(InventoryActivities.class,
+        ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(10)).build());
+    private final ShippingActivities shipping = Workflow.newActivityStub(ShippingActivities.class,
+        ActivityOptions.newBuilder().setStartToCloseTimeout(Duration.ofSeconds(10)).build());
+
+    @Override
+    public OrderResult placeOrder(OrderRequest req) {
+        String sagaId = Workflow.randomUUID().toString();
+        String orderId = order.createPending(req, sagaId);
+        try {
+            String chargeId = billing.charge(req, sagaId);
+            try {
+                String reservationId = inventory.reserve(req, sagaId);
+                try {
+                    shipping.schedulePickup(req, sagaId);
+                    return new OrderResult(orderId, "confirmed");
+                } catch (Exception e) {
+                    inventory.releaseStock(reservationId, sagaId);
+                    billing.refundCard(chargeId, sagaId);
+                    order.cancelOrder(orderId, sagaId);
+                    throw Workflow.wrap(e);
+                }
+            } catch (Exception e) {
+                billing.refundCard(chargeId, sagaId);
+                order.cancelOrder(orderId, sagaId);
+                throw Workflow.wrap(e);
+            }
+        } catch (Exception e) {
+            order.cancelOrder(orderId, sagaId);
+            throw Workflow.wrap(e);
+        }
+    }
+}
+```

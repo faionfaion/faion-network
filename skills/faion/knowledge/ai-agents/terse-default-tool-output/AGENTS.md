@@ -64,6 +64,8 @@
 |------|---------|
 | `templates/search_tool.py` | Reference Python tool with `format: Literal["summary","full"]`, primary-key in summary, `reason` requirement on full, `truncated` + `total_hits` always returned. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,71 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree first asks whether the tool's measured p95 response exceeds 500 tokens (skip if not), then whether the tool is a final-result or intermediate planning tool (final-result keeps full-by-default), then whether each row has a stable primary key (introduce one before applying summary mode if not). Each leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/search_tool.py`
+
+```python
+"""Reference search tool with terse-default output and verbosity opt-in.
+
+Contract:
+- `format="summary"` returns one Markdown row per hit (id, ts, level, headline).
+- `format="full"`    returns the raw record list AND requires a `reason` argument.
+- Always returns `truncated` + `total_hits` so the agent knows when to paginate.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Literal
+
+
+@dataclass
+class LogRow:
+    id: str
+    ts: str
+    level: str
+    msg: str
+
+    def headline(self) -> str:
+        return self.msg[:80]
+
+
+def search_logs(
+    query: str,
+    limit: int = 20,
+    format: Literal["summary", "full"] = "summary",
+    reason: str | None = None,
+    *,
+    backend,
+) -> dict:
+    rows: list[LogRow] = backend.search(query, size=limit + 1)
+    truncated = len(rows) > limit
+    rows = rows[:limit]
+    total_hits = backend.count(query) if hasattr(backend, "count") else len(rows)
+
+    if format == "summary":
+        body = "\n".join(
+            f"| {r.id} | {r.ts} | {r.level} | {r.headline()} |" for r in rows
+        )
+        header = "| id | ts | level | msg |\n|----|----|-------|-----|"
+        return {
+            "format": "summary",
+            "total_hits": total_hits,
+            "truncated": truncated,
+            "table": f"{header}\n{body}" if rows else "(no hits)",
+        }
+
+    if not reason or len(reason) < 4:
+        raise ValueError("format='full' requires non-empty `reason` argument (e.g. 'audit', 'debug', 'exact-match')")
+
+    return {
+        "format": "full",
+        "total_hits": total_hits,
+        "truncated": truncated,
+        "rows": [{"id": r.id, "ts": r.ts, "level": r.level, "msg": r.msg} for r in rows],
+        "reason": reason,
+    }
+```

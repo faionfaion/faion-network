@@ -67,6 +67,8 @@
 |------|---------|
 | `templates/pql-scorer.py` | Product-Qualified-Lead scorer from usage signals |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - parent skill: `skills/faion/knowledge/pro/product/product-operations/`
@@ -76,3 +78,43 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, owner present, prior-cycle output available, cycle window fit) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology this cycle or defer.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pql-scorer.py`
+
+```python
+import argparse, json, sys
+
+WEIGHTS = {"workspaces": 2, "integrations": 3, "invited_collaborators": 4, "depth_events": 1}
+
+def score(d):
+    s = 0
+    for k, w in WEIGHTS.items():
+        s += min(d.get(k, 0), 10) * w
+    return s
+
+def tier(s):
+    if s >= 60: return "hot"
+    if s >= 30: return "warm"
+    return "cold"
+
+def main():
+    p = argparse.ArgumentParser()
+    p.add_argument("--self-test", action="store_true")
+    a = p.parse_args()
+    if a.self_test:
+        d = {"workspaces": 3, "integrations": 4, "invited_collaborators": 5, "depth_events": 8}
+        s = score(d); t = tier(s)
+        ok = s > 30 and t in ("warm", "hot")
+        sys.stdout.write(f"self-test s={s} t={t} pass={ok}\n")
+        sys.exit(0 if ok else 1)
+    d = json.load(sys.stdin)
+    s = score(d)
+    sys.stdout.write(json.dumps({"score": s, "tier": tier(s)}) + "\n")
+
+if __name__ == "__main__":
+    main()
+```

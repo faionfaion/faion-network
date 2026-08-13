@@ -69,6 +69,8 @@
 | `templates/spec-comment.md` | Spec-comment skeleton with current state / desired state / proposed plan blocks. |
 | `templates/approval-gate.yaml` | Tracker automation snippet (Linear / Jira) for `agent:approved` label transition. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,44 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from observable signals (ticket scope, reviewer presence, auto-approve label) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether the rule applies on a given ticket — the tree terminates either on the active rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/approval-gate.yaml`
+
+```yaml
+# The agent's `proceed_to_implementation` event fires ONLY when one of
+# these signals is detected from a non-bot identity AFTER the spec
+# comment has been posted. Self-approval and agent-to-agent approval
+# are rejected by the actor_filter.
+
+bot_identity_pattern: '^(claude|copilot|devin|cursor|rovo|duo|bot)-.*$'
+
+approval:
+  linear:
+    event: reaction.added
+    on_comment: agent_spec_comment_id    # set by the agent after posting
+    emoji: thumbsup
+    actor_filter: human_only             # rejects bot_identity_pattern matches
+    record_event: linear.reaction_id     # idempotent gate clearance
+
+  jira:
+    event: comment.created
+    body_match: '^/agent\s+approve\b'
+    actor_filter: project_role_developer
+    record_event: jira.comment_id
+
+  github:
+    event: issue.labeled
+    label: 'agent:approved'
+    actor_filter: write_permission
+    record_event: github.label_event_id
+
+# Hard rejections — the agent MUST abort and post a refusal comment.
+reject_when:
+  - actor matches bot_identity_pattern
+  - approval event timestamp < spec_comment timestamp
+  - duplicate record_event already cleared this ticket
+```

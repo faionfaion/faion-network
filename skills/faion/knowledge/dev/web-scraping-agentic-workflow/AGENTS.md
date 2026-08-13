@@ -72,6 +72,8 @@
 | `templates/scrape-run-report.md` | Markdown skeleton authors fill at end-of-run. |
 | `templates/agent-prompt.md` | Prompt skeleton for an LLM scrape agent (forces robots.txt + tool order). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,111 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree first checks render mode (SSR / JS / managed) and routes to the matching tool. It then walks: locator strategy (roles/text vs classes), validation rate (rows_valid / rows_seen ≥ 0.9), drift score (disappeared fields ≤ 5%). Leaves emit `promote`, `block-validation-low`, `block-drift-high`, or `block-tool-mismatch`, each referencing a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/web-scraping-agentic-workflow.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/web-scraping-agentic-workflow.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "source",
+    "run_id",
+    "render_mode",
+    "tool",
+    "rows_seen",
+    "rows_valid",
+    "drift_score",
+    "robots_check",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^wsr-[a-z0-9-]{6,}$"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}\\d{2}Z-[a-z0-9]+$"
+    },
+    "render_mode": {
+      "enum": [
+        "ssr",
+        "js",
+        "managed"
+      ]
+    },
+    "tool": {
+      "enum": [
+        "httpx-selectolax",
+        "playwright",
+        "firecrawl",
+        "jina-reader"
+      ]
+    },
+    "rows_seen": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "rows_valid": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "drift_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "robots_check": {
+      "type": "object",
+      "required": [
+        "fetched_at",
+        "allowed"
+      ],
+      "properties": {
+        "fetched_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "allowed": {
+          "type": "boolean"
+        }
+      }
+    },
+    "raw_path": {
+      "type": "string"
+    },
+    "user_agent": {
+      "type": "string"
+    },
+    "verdict": {
+      "enum": [
+        "promote",
+        "block-validation-low",
+        "block-drift-high",
+        "block-tool-mismatch",
+        "block-robots-disallow"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

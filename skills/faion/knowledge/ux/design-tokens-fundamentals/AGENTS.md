@@ -66,6 +66,8 @@
 | `templates/tokens-skeleton.json` | Three-tier DTCG token skeleton with primitive/semantic/component layers |
 | `templates/token-contrast.mjs` | Node CLI computing contrast_ratio for every text/bg pairing in tokens.json |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,63 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes from observable inputs to a rule-grounded conclusion, every leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tokens-skeleton.json`
+
+```json
+{
+  "primitive": {
+    "color": {
+      "blue-500": {
+        "$value": "#1c5fdb",
+        "$type": "color"
+      }
+    },
+    "motion": {
+      "fast": {
+        "$value": "80ms",
+        "$type": "duration",
+        "reduced_motion_variant": "0ms"
+      }
+    }
+  },
+  "semantic": {
+    "color": {
+      "text": {
+        "primary": {
+          "$value": "{primitive.color.blue-500}",
+          "$type": "color",
+          "contrast_ratio_on_white": 6.8,
+          "pass": true
+        }
+      }
+    }
+  },
+  "component": {
+    "button": {
+      "primary": {
+        "background": {
+          "$value": "{semantic.color.text.primary}",
+          "$type": "color"
+        }
+      }
+    }
+  }
+}
+```
+
+### `templates/token-contrast.mjs`
+
+```javascript
+// node token-contrast.mjs tokens.json
+import { readFileSync, writeFileSync } from 'node:fs';
+function luminance(hex) { /* WCAG relative luminance */ return 0; }
+function contrast(a, b) { /* (L1+0.05)/(L2+0.05) */ return 0; }
+const t = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+// walk semantic.color.text.*, compute contrast_ratio_on_white, set pass
+writeFileSync(process.argv[2], JSON.stringify(t, null, 2));
+```

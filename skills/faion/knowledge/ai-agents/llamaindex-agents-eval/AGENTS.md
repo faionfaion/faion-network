@@ -66,6 +66,8 @@
 | `templates/agent.py` | Working LlamaIndex agent wiring. |
 | `templates/_smoke-test.yaml` | Minimum profile. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,52 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on reasoning_style (openai → OpenAIAgent; react → ReActAgent), then on eval_budget (high → full faithfulness+relevancy+correctness; low → relevancy only), then on streaming. Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/agent-profile.yaml`
+
+```yaml
+reasoning_style: TODO          # fill with concrete value per the driver definition
+tools_count: TODO          # fill with concrete value per the driver definition
+eval_budget_usd: TODO          # fill with concrete value per the driver definition
+latency_target_ms: TODO          # fill with concrete value per the driver definition
+```
+
+### `templates/agent.py`
+
+```python
+"""Reference artefact for llamaindex-agents-eval. Self-test only verifies the scaffold compiles."""
+from __future__ import annotations
+
+
+def build(decision: dict):
+    """Build the runtime object from a validated decision-record."""
+    if not isinstance(decision, dict):
+        raise TypeError("decision must be dict from validated decision-record")
+    return decision  # placeholder: real implementations wire here
+
+
+def _self_test() -> int:
+    out = build({"slug": "llamaindex-agents-eval", "version": "2.0.0"})
+    return 0 if out["slug"] == "llamaindex-agents-eval" else 1
+
+
+if __name__ == "__main__":
+    import sys
+    if "--self-test" in sys.argv:
+        raise SystemExit(_self_test())
+    if "--help" in sys.argv:
+        print(__doc__)
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+reasoning_style: low
+tools_count: low
+eval_budget_usd: low
+latency_target_ms: low
+```

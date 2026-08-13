@@ -65,6 +65,8 @@
 | `templates/server_stdio.py` | Working stdio scaffold. |
 | `templates/_smoke-test.yaml` | Minimum. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,77 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on multi_tenant (true → streamable-http; false → stdio), then on auth_required (true with http → OAuth 2.1 mandatory), then on resumable_streams (always true for streamable-http). Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/deployment-profile.yaml`
+
+```yaml
+multi_tenant: TODO          # fill with concrete value per the driver definition
+auth_required: TODO          # fill with concrete value per the driver definition
+client_targets: TODO          # fill with concrete value per the driver definition
+```
+
+### `templates/server_http.py`
+
+```python
+"""Reference artefact for mcp-transport-stdio-vs-http. Self-test only verifies the scaffold compiles."""
+from __future__ import annotations
+
+
+def build(decision: dict):
+    """Build the runtime object from a validated decision-record."""
+    if not isinstance(decision, dict):
+        raise TypeError("decision must be dict from validated decision-record")
+    return decision  # placeholder: real implementations wire here
+
+
+def _self_test() -> int:
+    out = build({"slug": "mcp-transport-stdio-vs-http", "version": "2.0.0"})
+    return 0 if out["slug"] == "mcp-transport-stdio-vs-http" else 1
+
+
+if __name__ == "__main__":
+    import sys
+    if "--self-test" in sys.argv:
+        raise SystemExit(_self_test())
+    if "--help" in sys.argv:
+        print(__doc__)
+```
+
+### `templates/server_stdio.py`
+
+```python
+"""Reference artefact for mcp-transport-stdio-vs-http. Self-test only verifies the scaffold compiles."""
+from __future__ import annotations
+
+
+def build(decision: dict):
+    """Build the runtime object from a validated decision-record."""
+    if not isinstance(decision, dict):
+        raise TypeError("decision must be dict from validated decision-record")
+    return decision  # placeholder: real implementations wire here
+
+
+def _self_test() -> int:
+    out = build({"slug": "mcp-transport-stdio-vs-http", "version": "2.0.0"})
+    return 0 if out["slug"] == "mcp-transport-stdio-vs-http" else 1
+
+
+if __name__ == "__main__":
+    import sys
+    if "--self-test" in sys.argv:
+        raise SystemExit(_self_test())
+    if "--help" in sys.argv:
+        print(__doc__)
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+multi_tenant: low
+auth_required: low
+client_targets: low
+```

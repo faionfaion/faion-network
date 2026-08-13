@@ -63,6 +63,8 @@
 | `templates/instagram-growth.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,101 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/instagram-growth.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/instagram-growth.json",
+  "title": "Instagram Growth Output Contract",
+  "type": "object",
+  "required": [
+    "operator",
+    "pillar",
+    "reel_batch",
+    "stories_cadence",
+    "dm_trigger",
+    "engagement_block",
+    "kpi_set",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "operator": {
+      "type": "string",
+      "description": "named account owner"
+    },
+    "pillar": {
+      "type": "object",
+      "description": "{niche, icp, voice_attributes}"
+    },
+    "reel_batch": {
+      "type": "array",
+      "description": "\u226528 scripts with hook + payoff + CTA",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "stories_cadence": {
+      "type": "object",
+      "description": "{daily_count, dm_cta_frequency}"
+    },
+    "dm_trigger": {
+      "type": "object",
+      "description": "{phrase, lead_magnet_url}"
+    },
+    "engagement_block": {
+      "type": "string",
+      "description": "30-min daily slot with criterion"
+    },
+    "kpi_set": {
+      "type": "object",
+      "description": "{reach, profile_visits, dm_starts, qualified_dms}"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "operator": "sample-operator",
+  "pillar": {
+    "key": "value"
+  },
+  "reel_batch": [
+    {
+      "key": "value"
+    }
+  ],
+  "stories_cadence": {
+    "key": "value"
+  },
+  "dm_trigger": {
+    "key": "value"
+  },
+  "engagement_block": "sample-engagement_block",
+  "kpi_set": {
+    "key": "value"
+  },
+  "version": "sample-version",
+  "last_reviewed": "2026-05-23"
+}
+```

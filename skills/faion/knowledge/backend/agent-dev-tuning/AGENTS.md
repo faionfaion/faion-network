@@ -69,6 +69,8 @@
 | `templates/_smoke-test.md` | Minimum viable filled-in tuning report. |
 | `templates/60-agent-dev.conf` | sysctl drop-in for agent workloads (inotify + memory + FD). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,26 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, status of prerequisites) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/60-agent-dev.conf`
+
+```conf
+# /etc/sysctl.d/60-agent-dev.conf
+# Apply: sudo sysctl --system
+
+fs.inotify.max_user_watches = 524288
+fs.inotify.max_user_instances = 1024
+fs.inotify.max_queued_events = 65536
+
+fs.file-max = 2097152
+
+vm.swappiness = 10
+vm.vfs_cache_pressure = 50
+vm.max_map_count = 1048576
+
+kernel.pid_max = 4194304
+```

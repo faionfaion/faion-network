@@ -68,6 +68,8 @@
 | `templates/cloud-run-vpc-access.yaml` | Skeleton for the config artefact this methodology produces. |
 | `templates/_smoke-test.yaml` | Minimum viable filled-in example. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,26 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree branches on observable workload / configuration signals and routes to a specific rule id from `01-core-rules.xml`. Use it whenever the input shape is ambiguous between two adjacent methodologies in this sub-skill (e.g. cloud-run-vpc-access vs an adjacent sibling).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/cloud-run-vpc-access.yaml`
+
+```yaml
+service: example-service
+egress_mode: example-egress_mode
+connector_or_subnet: example-connector_or_subnet
+egress_setting: example-egress_setting
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+# minimum viable filled-in example of cloud-run-vpc-access.yaml
+service: example-service
+egress_mode: example-egress_mode
+connector_or_subnet: example-connector_or_subnet
+egress_setting: example-egress_setting
+```

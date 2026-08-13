@@ -67,6 +67,8 @@
 |------|---------|
 | `templates/role-overlap.sh` | Emit per-author file-area distribution from git history |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - parent skill: `skills/faion/knowledge/pro/product/product-operations/`
@@ -76,3 +78,27 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, owner present, prior-cycle output available, cycle window fit) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology this cycle or defer.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/role-overlap.sh`
+
+```bash
+set -euo pipefail
+SINCE="${1:-3 months ago}"
+git log --since="$SINCE" --pretty=format: --name-only \
+  | awk 'NF' \
+  | sed 's|/.*||' \
+  | sort | uniq -c | sort -rn \
+  | head -20
+echo "---"
+echo "by author (top 5 dirs each):"
+for a in $(git log --since="$SINCE" --format="%ae" | sort -u | head -10); do
+  echo "== $a =="
+  git log --since="$SINCE" --author="$a" --pretty=format: --name-only \
+    | awk 'NF' | sed 's|/.*||' \
+    | sort | uniq -c | sort -rn | head -5
+done
+```

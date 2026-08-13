@@ -66,6 +66,8 @@
 | `templates/output-schema.json` | JSON Schema for the agent-shape decision record. |
 | `templates/shape-record.example.json` | Filled minimal valid example. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,167 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Asks five framing questions in order: turn count, agent count, tool surface size, deployment surface (hosted / custom), eval surface availability. Leaves point to one of: single-turn-single-agent, multi-turn-single-agent, multi-agent, hosted-only (use Claude Code headless), or escalate-to-research.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/agent-shape-decision-frame/record.json",
+  "title": "Agent Shape Decision Record",
+  "description": "purpose=schema; consumes=feature-brief+tool-inventory; produces=shape-decision-record; depends-on=01-core-rules.xml; token-budget-impact=low",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "shape_id",
+    "chosen_shape",
+    "framing",
+    "rejected_shapes",
+    "owner",
+    "version",
+    "produced_at"
+  ],
+  "properties": {
+    "shape_id": {
+      "type": "string"
+    },
+    "chosen_shape": {
+      "type": "string",
+      "enum": [
+        "single-turn-single-agent",
+        "single-turn-with-human-gate",
+        "multi-turn-single-agent",
+        "multi-agent",
+        "hosted-only",
+        "escalate"
+      ]
+    },
+    "framing": {
+      "type": "object",
+      "required": [
+        "turn_count",
+        "agent_count",
+        "tool_surface",
+        "deployment_surface",
+        "eval_available"
+      ],
+      "properties": {
+        "turn_count": {
+          "type": "string",
+          "enum": [
+            "single",
+            "multi"
+          ]
+        },
+        "agent_count": {
+          "type": "string",
+          "enum": [
+            "single",
+            "multi"
+          ]
+        },
+        "tool_surface": {
+          "type": "object",
+          "required": [
+            "read",
+            "scratch",
+            "prod_mutating"
+          ],
+          "properties": {
+            "read": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "scratch": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "prod_mutating": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        },
+        "deployment_surface": {
+          "type": "string",
+          "enum": [
+            "hosted-only",
+            "custom"
+          ]
+        },
+        "eval_available": {
+          "type": "boolean"
+        }
+      }
+    },
+    "rejected_shapes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "shape",
+          "reason"
+        ],
+        "properties": {
+          "shape": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 5
+          }
+        }
+      }
+    },
+    "owner": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
+```
+
+### `templates/shape-record.example.json`
+
+```json
+{
+  "shape_id": "shape-support-agent-v1",
+  "chosen_shape": "multi-turn-single-agent",
+  "framing": {
+    "turn_count": "multi",
+    "agent_count": "single",
+    "tool_surface": {
+      "read": 2,
+      "scratch": 2,
+      "prod_mutating": 0
+    },
+    "deployment_surface": "custom",
+    "eval_available": true
+  },
+  "rejected_shapes": [
+    {
+      "shape": "single-turn-single-agent",
+      "reason": "feature is conversational"
+    },
+    {
+      "shape": "multi-agent",
+      "reason": "one domain, tool count well below the 25 threshold"
+    }
+  ],
+  "owner": "alex@faion.net",
+  "version": "1.0.0",
+  "produced_at": "2026-05-22T12:00:00Z"
+}
+```

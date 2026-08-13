@@ -69,6 +69,8 @@
 | `templates/executive-pitch.txt` | Executive pitch skeleton (insight + full SPIN + CTA) |
 | `templates/one-pager.txt` | One-pager skeleton (Pyramid + SPIN + CTA box) |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,89 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on pain validation first; without it the methodology refuses to apply. Otherwise it routes by format to the matching structure rule.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/elevator-pitch.txt`
+
+```text
+# Elevator Pitch Template (7-line)
+
+For [TARGET CUSTOMER]
+Who [HAS THIS PROBLEM]
+Our [PRODUCT/IDEA]
+Is a [CATEGORY]
+That [KEY BENEFIT]
+Unlike [COMPETITORS/CURRENT APPROACH]
+We [UNIQUE DIFFERENTIATOR]
+
+---
+
+# Example: CI/CD Pipeline
+
+For engineering teams
+Who waste hours on manual deployments
+Our CI/CD pipeline
+Is an automation platform
+That deploys code in minutes with confidence
+Unlike Jenkins or manual scripts
+We require zero maintenance and integrate in 30 minutes
+
+---
+
+# 10-Second Version
+
+"We help [WHO] [DO WHAT] [BETTER/FASTER/CHEAPER]."
+
+Example: "We help engineering teams deploy daily instead of weekly."
+```
+
+### `templates/executive-pitch.txt`
+
+```text
+# Executive Pitch Structure (4 blocks, 30 seconds each)
+
+## Block 1: Problem (30s)
+[Business pain stated with a number]
+Example: "We spend $200K/year on manual QA that could be automated."
+
+## Block 2: Solution (30s)
+[High-level approach — no technical depth]
+Example: "We implement automated test coverage that catches bugs before production."
+
+## Block 3: Impact (30s)
+[Expected outcomes with numbers]
+Example: "Based on industry benchmarks, 80% coverage reduces production incidents by 60%."
+
+## Block 4: Ask (30s)
+[Specific decision + timeline]
+Example: "I'm asking for $30K and 6 weeks to implement a pilot. Can we schedule a review of the proposal?"
+```
+
+### `templates/one-pager.txt`
+
+```text
+# [IDEA NAME]
+
+## Problem
+[1-2 sentences describing the pain with numbers if possible]
+
+## Solution
+[1-2 sentences describing the approach — what it does, not how]
+
+## Benefits
+- [Benefit 1 with number: e.g., "40% reduction in deployment time"]
+- [Benefit 2 with number]
+- [Benefit 3 with number]
+
+## Cost/Effort
+[Time, money, and resources required — be specific]
+
+## Risk
+[What could go wrong + mitigation for each]
+
+## Ask
+[Specific decision needed: budget approval / resource allocation / go/no-go]
+```

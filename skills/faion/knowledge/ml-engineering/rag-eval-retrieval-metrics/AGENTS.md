@@ -55,6 +55,8 @@
 |------|---------|
 | `templates/retrieval-metrics.py` | Per-query metric functions: precision_at_k, recall_at_k, mrr, ndcg. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -70,3 +72,44 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` picks metric set based on label type (binary vs graded vs missing). Each leaf references a rule id from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/retrieval-metrics.py`
+
+```python
+import math
+from typing import List, Dict, Optional
+
+
+def precision_at_k(retrieved: List[str], relevant: List[str], k: int) -> float:
+    if k <= 0:
+        return 0.0
+    return sum(1 for x in retrieved[:k] if x in set(relevant)) / k
+
+
+def recall_at_k(retrieved: List[str], relevant: List[str], k: int) -> float:
+    if not relevant:
+        return 0.0
+    return sum(1 for x in retrieved[:k] if x in set(relevant)) / len(relevant)
+
+
+def mrr(retrieved: List[str], relevant: List[str]) -> float:
+    s = set(relevant)
+    for i, x in enumerate(retrieved, 1):
+        if x in s:
+            return 1.0 / i
+    return 0.0
+
+
+def ndcg_at_k(retrieved: List[str], graded: Dict[str, float], k: int) -> float:
+    dcg = 0.0
+    for i, x in enumerate(retrieved[:k]):
+        rel = graded.get(x, 0.0)
+        dcg += (2 ** rel - 1) / math.log2(i + 2)
+    ideal = sorted(graded.values(), reverse=True)[:k]
+    idcg = sum((2 ** r - 1) / math.log2(i + 2) for i, r in enumerate(ideal))
+    return dcg / idcg if idcg > 0 else 0.0
+```

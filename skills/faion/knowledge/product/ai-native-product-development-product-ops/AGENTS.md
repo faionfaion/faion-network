@@ -64,6 +64,8 @@
 | `templates/ai-feature-prd.md` | AI-feature PRD skeleton with eval + guardrail sections baked in |
 | `templates/guardrail-review-checklist.yaml` | Reviewable guardrail checklist with sign-off slots |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[ai-feature-trust-metrics]]
@@ -73,3 +75,33 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from the question "Does the feature include LLM/AI behavior in production?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/guardrail-review-checklist.yaml`
+
+```yaml
+# guardrail-review-checklist.yaml — required pre-rollout review.
+feature_id: <support-bot-summary>
+prompt_version: v2.1.0
+checks:
+  prompt_injection:
+    fixtures_path: tests/guardrails/injection.jsonl
+    passed: false
+    reviewer: ""
+  pii_leak:
+    deny_list_path: configs/pii-deny.yaml
+    passed: false
+    reviewer: ""
+  jailbreak:
+    fixtures_path: tests/guardrails/jailbreak.jsonl
+    passed: false
+    reviewer: ""
+  refusal_calibration:
+    max_refusal_rate: 0.05
+    passed: false
+    reviewer: ""
+status: pending  # pending | passed | failed
+```

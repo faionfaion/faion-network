@@ -62,8 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/openai-router.py` | Router that splits traffic between base and fine-tune by percentage. |
-| `templates/model-id-registry.yaml` | Version-controlled model-ID registry. |
-| `templates/rollback-signal.yaml` | Rollback signal definitions (latency, cost, quality). |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -80,3 +80,15 @@
 ## Decision tree
 
 Decision tree at `content/06-decision-tree.xml` decides per-ramp-step: continue, hold, or rollback based on observed metrics vs thresholds.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/openai-router.py`
+
+```python
+"""
+
+# Stub — see methodology AGENTS.md ## Templates table.
+```

@@ -60,11 +60,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/stack-blueprint.md.tmpl` | Architecture diagram + vendor decision + cost model. |
 | `templates/otel-instrumentation.py.tmpl` | Python OTel instrumentation skeleton for LLM/tool/retrieval calls. |
-| `templates/cost-ledger.sql.tmpl` | DDL for the cost ledger table. |
-| `templates/drift-alert.yaml.tmpl` | Drift alert rule template. |
 | `templates/_smoke-test.md` | Filled blueprint for a 2-model agent on Langfuse self-host. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -82,3 +81,25 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters whether agent-observability-stack-blueprint applies: root question — "Is the agent in production OR pre-prod with paying users?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/otel-instrumentation.py.tmpl`
+
+```python
+OTel skeleton
+"""
+from __future__ import annotations
+
+
+def main() -> None:
+    """Entry point. Fill per methodology procedure."""
+    # TODO: implement per 04-procedure.xml
+    raise NotImplementedError
+
+
+if __name__ == "__main__":
+    main()
+```

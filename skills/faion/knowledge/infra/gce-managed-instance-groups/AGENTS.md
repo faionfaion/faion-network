@@ -67,6 +67,8 @@
 | `templates/gce-managed-instance-groups.yaml` | Skeleton for the config artefact this methodology produces. |
 | `templates/_smoke-test.yaml` | Minimum viable filled-in example. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,30 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree branches on observable workload / configuration signals and routes to a specific rule id from `01-core-rules.xml`. Use it whenever the input shape is ambiguous between two adjacent methodologies in this sub-skill (e.g. gce-managed-instance-groups vs an adjacent sibling).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/gce-managed-instance-groups.yaml`
+
+```yaml
+name: example-name
+template: example-template
+placement: example-placement
+target_size: 0  # int|number|string
+rolling_update: example-rolling_update
+health_check: example-health_check
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+# minimum viable filled-in example of gce-managed-instance-groups.yaml
+name: example-name
+template: example-template
+placement: example-placement
+target_size: 1
+rolling_update: example-rolling_update
+health_check: example-health_check
+```

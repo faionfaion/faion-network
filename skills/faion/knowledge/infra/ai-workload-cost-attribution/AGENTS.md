@@ -60,8 +60,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/attribution-report.md` | Monthly per-tenant cost report skeleton. |
-| `templates/pricing-catalogue.yaml` | Provider pricing as machine-readable YAML. |
-| `templates/usage-event-schema.json` | Canonical usage event JSON Schema. |
 | `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
 
 ## Scripts

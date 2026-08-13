@@ -69,6 +69,8 @@
 | `templates/entry-event.md` | Event-triggered entry template |
 | `templates/diary-reminders.py` | Python reminder scheduler emitting push + SMS based on participant timezone |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,28 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes from observable inputs to a rule-grounded conclusion, every leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/diary-reminders.py`
+
+```python
+"""diary-reminders.py — schedule push + SMS reminders per participant timezone."""
+from __future__ import annotations
+import datetime
+import json
+from pathlib import Path
+
+def schedule(participants_path: str) -> None:
+    participants = json.loads(Path(participants_path).read_text())
+    for p in participants:
+        # 22:00 local push + 23:30 SMS fallback if no entry by then
+        print(f"schedule push {p['id']} @22:00 {p['tz']}")
+        print(f"schedule sms-fallback {p['id']} @23:30 {p['tz']}")
+
+if __name__ == "__main__":
+    import sys
+    schedule(sys.argv[1])
+```

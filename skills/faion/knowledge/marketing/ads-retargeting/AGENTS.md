@@ -69,6 +69,8 @@
 | `templates/frequency-matrix.csv` | Per-stage frequency cap matrix. |
 | `templates/retargeting-plan.json` | Schema-conformant sample artefact used by validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,49 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/frequency-matrix.csv`
+
+```csv
+intent_depth,segment,frequency_cap_wk
+1,visitors,3
+2,blog_readers,4
+3,product_viewers,5
+4,pricing_viewers,6
+5,cart_abandoners,7
+```
+
+### `templates/retargeting-plan.json`
+
+```json
+{
+  "segments": [
+    {
+      "name": "visitors_30d",
+      "intent_depth": 1,
+      "frequency_cap_wk": 3,
+      "message_stage": "reminder"
+    },
+    {
+      "name": "product_viewers_30d",
+      "intent_depth": 3,
+      "frequency_cap_wk": 5,
+      "message_stage": "benefits"
+    },
+    {
+      "name": "cart_abandoners_7d",
+      "intent_depth": 5,
+      "frequency_cap_wk": 7,
+      "message_stage": "urgency"
+    }
+  ],
+  "spend_share_pct": 25,
+  "exclusions": [
+    "purchasers_90d"
+  ]
+}
+```

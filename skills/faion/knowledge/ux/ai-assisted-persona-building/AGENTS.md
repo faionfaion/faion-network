@@ -64,6 +64,8 @@
 | `templates/prompt-refine-cluster.txt` | Haiku prompt for per-cluster refinement. |
 | `templates/_smoke-test.json` | Filled time-poor-parent persona example. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,111 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the report; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/persona-report.json`
+
+```json
+{
+  "personas": [
+    {
+      "id": "p1",
+      "name": "Time-poor parent",
+      "goals": [
+        "plan meals quickly",
+        "minimise app friction"
+      ],
+      "quotes": [
+        "I open the app on the bus; if it takes more than 30 s I quit."
+      ],
+      "confidence": "High"
+    }
+  ],
+  "source_count": 84,
+  "passes": 2,
+  "stakeholder_reviews": [
+    "pm@",
+    "research@",
+    "design@"
+  ],
+  "open_questions": [
+    "How does the persona differ on iOS vs Android?"
+  ]
+}
+```
+
+### `templates/prompt-broad-cluster.txt`
+
+```text
+Prompt template — Sonnet prompt for broad clustering.
+
+Fill the slots below per task.
+
+[CONTEXT]
+...
+
+[TASK]
+...
+
+[OUTPUT_FORMAT]
+...
+
+[CONSTRAINTS]
+- Follow content/01-core-rules.xml.
+- Output MUST validate against content/02-output-contract.xml.
+```
+
+### `templates/prompt-refine-cluster.txt`
+
+```text
+Prompt template — Haiku prompt for per-cluster refinement.
+
+Fill the slots below per task.
+
+[CONTEXT]
+...
+
+[TASK]
+...
+
+[OUTPUT_FORMAT]
+...
+
+[CONSTRAINTS]
+- Follow content/01-core-rules.xml.
+- Output MUST validate against content/02-output-contract.xml.
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "personas": [
+    {
+      "id": "p1",
+      "name": "Time-poor parent",
+      "goals": [
+        "plan meals quickly",
+        "minimise app friction"
+      ],
+      "quotes": [
+        "I open the app on the bus; if it takes more than 30 s I quit."
+      ],
+      "confidence": "High"
+    }
+  ],
+  "source_count": 84,
+  "passes": 2,
+  "stakeholder_reviews": [
+    "pm@",
+    "research@",
+    "design@"
+  ],
+  "open_questions": [
+    "How does the persona differ on iOS vs Android?"
+  ]
+}
+```

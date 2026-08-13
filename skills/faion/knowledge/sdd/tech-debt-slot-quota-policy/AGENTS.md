@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/debt-quota.yml` | YAML debt-quota policy with owner + quarterly review log |
-| `templates/debt-quota.schema.json` | JSON Schema for the quota policy |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -78,3 +79,22 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/debt-quota.yml`
+
+```yaml
+slug: tech-debt-slot-quota-policy
+version: 1.0.0
+owner: TODO-name@example.com
+produced_at: 2026-05-22T12:00:00Z
+evidence:
+  - https://example.com/adr/0001
+body:
+  summary: TODO short summary
+ai_drafted: false
+reviewer: TODO-reviewer@example.com
+```

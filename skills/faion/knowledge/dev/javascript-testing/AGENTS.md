@@ -65,6 +65,8 @@
 | `templates/test-setup.ts` | Testing Library + MSW setup |
 | `templates/msw-server.ts` | MSW server skeleton |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,59 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches: build tool (Vite / Webpack) → Vitest default if Vite. UI surface? → Testing Library. HTTP surface? → MSW. Coverage gate? → branch + diff thresholds.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/vitest.config.ts`
+
+```typescript
+import { defineConfig } from 'vitest/config'
+
+export default defineConfig({
+  test: {
+    environment: 'jsdom',
+    globals: true,
+    setupFiles: ['./templates/test-setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'lcov', 'html'],
+      branches: true,
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: ['src/**/*.test.{ts,tsx}', 'src/**/__tests__/**', 'src/generated/**'],
+      thresholds: {
+        lines: 80,
+        branches: 80,
+        functions: 80,
+        statements: 80,
+      },
+    },
+  },
+})
+```
+
+### `templates/test-setup.ts`
+
+```typescript
+import '@testing-library/jest-dom/vitest'
+import { afterAll, afterEach, beforeAll } from 'vitest'
+import { server } from './msw-server'
+
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
+afterEach(() => server.resetHandlers())
+afterAll(() => server.close())
+```
+
+### `templates/msw-server.ts`
+
+```typescript
+import { setupServer } from 'msw/node'
+import { http, HttpResponse } from 'msw'
+
+export const handlers = [
+  http.get('/api/health', () => HttpResponse.json({ ok: true })),
+]
+
+export const server = setupServer(...handlers)
+```

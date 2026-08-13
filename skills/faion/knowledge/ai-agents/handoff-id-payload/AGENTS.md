@@ -60,6 +60,8 @@
 | `templates/supervisor-decision.json` | JSON Schema for the supervisor router's structured output |
 | `templates/_smoke-test.json` | Minimum valid handoff payload |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -75,3 +77,151 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The root question is whether the work map is supervisor-routed, peer-to-peer collaborative, or hierarchical teams. Branches route to one of three topology shapes with the matching handoff and store conventions.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/handoff.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "_header": {
+    "_purpose": "JSON Schema for the handoff payload object",
+    "_consumes": "agent A's output",
+    "_produces": "validated handoff payload for agent B",
+    "_depends_on": "content/02-output-contract.xml",
+    "_token_budget_impact": "~80 tokens"
+  },
+  "title": "AgentHandoff",
+  "type": "object",
+  "required": [
+    "task_id",
+    "target_agent",
+    "decision_metadata"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "description": "Key into the shared task store. The receiving agent loads full state from store.get(task_id)."
+    },
+    "target_agent": {
+      "type": "string",
+      "description": "Role name of the receiving agent (must match a registered worker)."
+    },
+    "decision_metadata": {
+      "type": "object",
+      "description": "Small set of facts the target needs to plan its first action. NOT the input.",
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "lang": {
+          "type": "string"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "low",
+            "normal",
+            "high"
+          ]
+        },
+        "source_count": {
+          "type": "integer"
+        }
+      }
+    },
+    "deadline": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Optional. Best-effort completion target."
+    },
+    "trace_id": {
+      "type": "string",
+      "description": "Optional. For OTel-style tracing across agent hops."
+    }
+  },
+  "not": {
+    "anyOf": [
+      {
+        "required": [
+          "history"
+        ]
+      },
+      {
+        "required": [
+          "messages"
+        ]
+      },
+      {
+        "required": [
+          "raw_input"
+        ]
+      }
+    ]
+  }
+}
+```
+
+### `templates/supervisor-decision.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "_header": {
+    "_purpose": "JSON Schema for the supervisor router's structured output",
+    "_consumes": "user task",
+    "_produces": "validated SupervisorDecision object",
+    "_depends_on": "content/02-output-contract.xml",
+    "_token_budget_impact": "~80 tokens"
+  },
+  "title": "SupervisorDecision",
+  "type": "object",
+  "required": [
+    "target_agent",
+    "reason",
+    "decision_metadata"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "target_agent": {
+      "type": "string",
+      "description": "Role name of the next worker. MUST be one of the registered roles; supervisor is responsible for picking a valid name."
+    },
+    "reason": {
+      "type": "string",
+      "maxLength": 200,
+      "description": "One-line rationale for the routing decision. Audited, not consumed by the worker."
+    },
+    "decision_metadata": {
+      "type": "object",
+      "description": "The same shape as AgentHandoff.decision_metadata; passed directly into the handoff payload."
+    },
+    "fallback_agent": {
+      "type": "string",
+      "description": "Optional. Agent to retry with if target_agent fails or rejects."
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "smallest valid handoff payload for the validator",
+  "_consumes": "nothing",
+  "_produces": "example handoff matching content/02-output-contract.xml",
+  "_depends_on": "content/01-core-rules.xml",
+  "_token_budget_impact": "~50 tokens",
+  "task_id": "t_8821",
+  "target_agent": "neromedia_writer",
+  "decision_metadata": {
+    "category": "AI",
+    "lang": "uk"
+  }
+}
+```

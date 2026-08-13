@@ -73,6 +73,8 @@
 | `templates/diff-store-schema.sql` | Postgres DDL for the `parity_diffs` table the sampler writes to. |
 | `templates/normalizer-skeleton.py` | Python skeleton of a deterministic diff normalizer (timestamp/UUID/list rules). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,3 +90,199 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree first checks whether production traffic is non-zero and whether the observable list has been written — these are hard prerequisites. It then branches on diff-rate vs threshold at each ramp stage, routing to one of `promote-next-stage`, `freeze-investigate`, or `revert-previous-stage`. Each leaf references a rule id in `01-core-rules.xml`. Use it before every ramp-promotion decision.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/parity-report.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/behavior-parity-verification.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "scope",
+    "observable_fields",
+    "ramp_stage",
+    "window_start",
+    "window_end",
+    "total_compared",
+    "diff_rate",
+    "clusters",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^bpv-[a-z0-9-]{6,}$"
+    },
+    "scope": {
+      "type": "string",
+      "minLength": 1
+    },
+    "observable_fields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "ramp_stage": {
+      "type": "integer",
+      "enum": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "window_start": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "window_end": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "total_compared": {
+      "type": "integer",
+      "minimum": 1000
+    },
+    "diff_rate": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "clusters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "cluster_id",
+          "sample_count",
+          "disposition"
+        ],
+        "properties": {
+          "cluster_id": {
+            "type": "string"
+          },
+          "sample_count": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "disposition": {
+            "enum": [
+              "fixed",
+              "accepted-with-justification",
+              "open"
+            ]
+          },
+          "justification": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "verdict": {
+      "enum": [
+        "promote",
+        "freeze",
+        "revert"
+      ]
+    },
+    "signed_off_by": {
+      "type": "string"
+    },
+    "signed_off_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```
+
+### `templates/diff-store-schema.sql`
+
+```sql
+CREATE TABLE IF NOT EXISTS parity_diffs (
+    id                BIGSERIAL PRIMARY KEY,
+    scope             TEXT NOT NULL,
+    ramp_stage        SMALLINT NOT NULL CHECK (ramp_stage BETWEEN 1 AND 4),
+    sampled_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    input_fingerprint TEXT NOT NULL,
+    legacy_hash       TEXT NOT NULL,
+    new_hash          TEXT NOT NULL,
+    diff_json         JSONB NOT NULL,
+    cluster_id        TEXT,
+    redaction_applied BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+CREATE INDEX IF NOT EXISTS idx_parity_diffs_scope_stage  ON parity_diffs (scope, ramp_stage);
+CREATE INDEX IF NOT EXISTS idx_parity_diffs_cluster      ON parity_diffs (cluster_id) WHERE cluster_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_parity_diffs_sampled_at   ON parity_diffs (sampled_at);
+
+COMMENT ON COLUMN parity_diffs.redaction_applied IS 'MUST be true on insert. PII redaction precedes persistence.';
+```
+
+### `templates/normalizer-skeleton.py`
+
+```python
+from __future__ import annotations
+
+import hashlib
+import re
+import uuid
+from typing import Any
+
+
+_UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", re.I)
+_TS_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?$")
+
+
+def quantize_timestamp(s: str) -> str:
+    """Drop sub-second precision so independently-generated times can match."""
+    if _TS_RE.match(s):
+        return s[:19] + "Z"
+    return s
+
+
+def canonicalize_uuid(s: str) -> str:
+    """Normalise UUID casing; non-UUIDs pass through."""
+    if _UUID_RE.match(s):
+        return str(uuid.UUID(s))
+    return s
+
+
+def redact_pii(value: str) -> str:
+    """Hash PII rather than persist plaintext. Email-shaped strings only."""
+    if "@" in value and "." in value.split("@")[-1]:
+        return "pii:" + hashlib.sha1(value.encode()).hexdigest()[:12]
+    return value
+
+
+def normalize(value: Any) -> Any:
+    """Recursive canonicalizer. Same code path for legacy and new outputs."""
+    if isinstance(value, dict):
+        return {k: normalize(v) for k, v in sorted(value.items())}
+    if isinstance(value, list):
+        items = [normalize(v) for v in value]
+        # Sort only if items are scalar or shape allows deterministic ordering.
+        if all(isinstance(i, (str, int, float, bool)) for i in items):
+            items = sorted(items, key=lambda x: (type(x).__name__, str(x)))
+        return items
+    if isinstance(value, str):
+        return redact_pii(canonicalize_uuid(quantize_timestamp(value)))
+    return value
+```

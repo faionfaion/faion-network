@@ -63,6 +63,8 @@
 | `templates/factories-spec.json` | Reference output document. |
 | `templates/factories-conftest.py` | Reference root conftest with register() calls. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,88 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Per model: does it have post_save signal handlers with external side effects? → mute_signals scope. Per factory with @post_generation: Django ≥ 4.2? → skip_postgeneration_save=True. Per relationship: FK → SubFactory; M2M → @post_generation.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/factories-spec.json`
+
+```json
+{
+  "_purpose": "Reference pytest-factoryboy factories spec output.",
+  "_consumes": "Model list + FK graph + signal handlers.",
+  "_produces": "JSON for tests/factories/ + conftest codegen.",
+  "_depends-on": "content/02-output-contract.xml.",
+  "_token-budget-impact": "~140 tokens.",
+  "artefact_id": "billing-factories",
+  "owner": "ruslan@faion.net",
+  "django_version": "5.2.1",
+  "factories": [
+    {
+      "name": "UserFactory",
+      "model": "accounts.User",
+      "subfactories": [],
+      "post_generation": [
+        "set_password"
+      ],
+      "mute_signals": true,
+      "skip_postgeneration_save": true
+    },
+    {
+      "name": "CustomerFactory",
+      "model": "accounts.Customer",
+      "subfactories": [
+        "user=UserFactory"
+      ],
+      "post_generation": [],
+      "mute_signals": false,
+      "skip_postgeneration_save": true
+    },
+    {
+      "name": "InvoiceFactory",
+      "model": "billing.Invoice",
+      "subfactories": [
+        "customer=CustomerFactory"
+      ],
+      "post_generation": [],
+      "mute_signals": false,
+      "skip_postgeneration_save": true
+    }
+  ],
+  "register_calls": [
+    {
+      "factory": "UserFactory"
+    },
+    {
+      "factory": "CustomerFactory"
+    },
+    {
+      "factory": "InvoiceFactory"
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```
+
+### `templates/factories-conftest.py`
+
+```python
+"""
+
+from __future__ import annotations
+
+from pytest_factoryboy import register
+
+from tests.factories.accounts import CustomerFactory, UserFactory
+from tests.factories.billing import InvoiceFactory
+
+# Single register() per factory; do NOT manually add @pytest.fixture for the same name.
+register(UserFactory)            # creates 'user' + 'user_factory'
+register(CustomerFactory)        # creates 'customer' + 'customer_factory'
+register(InvoiceFactory)         # creates 'invoice' + 'invoice_factory'
+
+# Multi-factory registration for the same model: use _name to avoid collision.
+# register(AdminUserFactory, _name="admin_user")
+```

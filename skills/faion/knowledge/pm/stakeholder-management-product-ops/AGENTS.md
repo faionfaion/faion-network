@@ -67,7 +67,6 @@
 |------|---------|
 | `templates/communication-plan.md` | Per-stakeholder communication cadence + channel |
 | `templates/meeting-template.md` | Stakeholder meeting agenda template |
-| `templates/stakeholder-lint.py` | Lint stakeholder register for missing owners/cadence |
 | `templates/stakeholder-register.md` | Power/Interest + Attitude register |
 
 ## Related

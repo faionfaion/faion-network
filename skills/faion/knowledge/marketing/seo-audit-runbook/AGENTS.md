@@ -61,7 +61,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/seo-audit-runbook.md` | Audit report skeleton with six-phase sections + executive summary |
-| `templates/findings-backlog.csv` | CSV template for the ranked findings backlog |
 | `templates/_smoke-test.md` | Minimum-viable filled audit report |
 
 ## Scripts

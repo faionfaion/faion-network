@@ -64,6 +64,8 @@
 | `templates/output.example.json` | Filled example. |
 | `templates/evict-middleware.py` | Python middleware skeleton. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,146 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Asks: (1) can any tool return >N tokens? (2) is scratch storage available? (3) can a paired read-tool be exposed? Leaves point to "install", "raise hard tool caps instead", or "skip — not applicable".
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/auto-evict-tool-results/output.json",
+  "title": "Auto Evict Tool Results Output",
+  "description": "purpose=schema; consumes=brief+context; produces=artefact; depends-on=01-core-rules.xml; token-budget-impact=low",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "version",
+    "version_stamp",
+    "produced_at",
+    "rationale",
+    "inputs_used"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "version_stamp": {
+      "type": "string"
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fields": {
+      "type": "object"
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 20
+    },
+    "inputs_used": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    }
+  }
+}
+```
+
+### `templates/output.example.json`
+
+```json
+{
+  "artefact_id": "auto-evict-tool-results-example-001",
+  "owner": "alex@faion.net",
+  "version": "1.0.0",
+  "version_stamp": "auto-evict-tool-results@1.0.0",
+  "produced_at": "2026-05-22T12:00:00Z",
+  "fields": {
+    "placeholder_field": "filled-by-author"
+  },
+  "rationale": "Example output for Auto Evict Tool Results; references at least one named input.",
+  "inputs_used": [
+    "docs/brief.md"
+  ]
+}
+```
+
+### `templates/evict-middleware.py`
+
+```python
+"""Minimal eviction middleware for agent tool runtimes.
+
+Usage:
+    @evict(threshold=20_000, scratch="/tmp/agent")
+    def my_tool(...): ...
+
+Pair with a `read_file(path, lines)` tool exposed to the agent so it can
+recover slices on demand. Source pattern: LangChain Deep Agents
+filesystemMiddleware (`toolTokenLimitBeforeEvict`, default 20000).
+"""
+
+from __future__ import annotations
+
+import functools
+import json
+import uuid
+from pathlib import Path
+from typing import Any, Callable
+
+
+def count_tokens(text: str) -> int:
+    """Replace with your tokeniser (tiktoken, anthropic, etc.)."""
+    # Cheap heuristic: ~4 chars per token.
+    return max(1, len(text) // 4)
+
+
+def evict(
+    threshold: int = 20_000,
+    scratch: str = "/tmp/agent",
+    preview_chars: int = 400,
+) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+    Path(scratch).mkdir(parents=True, exist_ok=True)
+
+    def decorator(tool: Callable[..., Any]) -> Callable[..., Any]:
+        @functools.wraps(tool)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            raw = tool(*args, **kwargs)
+            text = raw if isinstance(raw, str) else json.dumps(raw)
+            n = count_tokens(text)
+            if n <= threshold:
+                return raw
+            path = Path(scratch) / f"{tool.__name__}_{uuid.uuid4().hex}.txt"
+            path.write_text(text)
+            return {
+                "path": str(path),
+                "preview": text[:preview_chars],
+                "total_tokens": n,
+                "evicted": True,
+            }
+
+        return wrapper
+
+    return decorator
+
+
+def read_file(path: str, start: int = 0, end: int | None = None) -> str:
+    """Recovery tool — agent calls this to pull a slice from an evicted result."""
+    lines = Path(path).read_text().splitlines()
+    return "\n".join(lines[start:end])
+```

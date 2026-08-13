@@ -65,6 +65,8 @@
 | `templates/usage-log.json` | Per-call usage log schema |
 | `templates/cost-dashboard.md` | Weekly cost dashboard skeleton |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,20 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root: Is per-call metadata logged? Branches route to a rule id from `content/01-core-rules.xml` (per-call-metadata, cache-as-baseline, truncate-history-default, ...) so every leaf is traceable to a testable statement.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/usage-log.json`
+
+```json
+{
+  "month": "",
+  "total_usd": 0.0,
+  "by_feature": {},
+  "by_tenant": {},
+  "by_model": {},
+  "baseline_applied": {}
+}
+```

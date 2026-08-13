@@ -70,6 +70,8 @@
 | `templates/structured-output.schema.yaml` | Schema for the typed call result |
 | `templates/_smoke-test.yaml` | Minimum-viable spec |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,123 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches by provider availability + schema complexity → {OpenAI response_format, Anthropic tool-use JSON, Gemini structured response, Mistral function-call}.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/entity-extraction.py`
+
+```python
+"""
+Entity extraction Pydantic schema.
+Works with OpenAI native structured output and instructor (Claude/others).
+"""
+from pydantic import BaseModel, Field
+from typing import List, Optional
+from enum import Enum
+
+
+class EntityType(str, Enum):
+    PERSON = "person"
+    ORGANIZATION = "organization"
+    LOCATION = "location"
+    DATE = "date"
+    MONEY = "money"
+    PRODUCT = "product"
+    EVENT = "event"
+    CONCEPT = "concept"
+
+
+class Entity(BaseModel):
+    text: str = Field(description="Entity text as it appears in source")
+    type: EntityType = Field(description="Entity category")
+    normalized: Optional[str] = Field(default=None, description="Canonical form")
+    confidence: float = Field(ge=0, le=1, default=1.0, description="Extraction confidence")
+    raw_quote: str = Field(description="Verbatim quote from source that supports this entity")
+
+
+class EntityExtractionResult(BaseModel):
+    entities: List[Entity] = Field(description="All extracted entities")
+    summary: str = Field(description="One-sentence summary of the source text")
+    language: str = Field(default="en", description="Detected language (ISO 639-1)")
+```
+
+### `templates/safe-parse.py`
+
+````python
+"""
+Safe structured output extraction: strips markdown fences, validates, retries with error context.
+Use when not using instructor's automatic retry (e.g., with prompt-based JSON output).
+"""
+import json
+import re
+from pydantic import BaseModel, ValidationError
+from typing import TypeVar, Type
+
+T = TypeVar("T", bound=BaseModel)
+
+
+def safe_parse(raw: str, model: Type[T], retries: int = 3) -> T:
+    """
+    Strip markdown fences and validate JSON against a Pydantic model.
+    Raises RuntimeError after all retries are exhausted.
+    """
+    content = raw.strip()
+    # Strip ```json ... ``` or ``` ... ``` wrappers
+    content = re.sub(r"^```(?:json)?\s*", "", content)
+    content = re.sub(r"\s*```$", "", content)
+    for attempt in range(retries):
+        try:
+            return model.model_validate_json(content)
+        except (json.JSONDecodeError, ValidationError) as e:
+            if attempt == retries - 1:
+                raise RuntimeError(
+                    f"Structured output parse failed after {retries} attempts: {e}\n"
+                    f"Raw output: {raw[:500]}"
+                ) from e
+    raise RuntimeError("unreachable")
+
+
+def extract_with_retry(prompt: str, model_class: Type[T], llm_fn, max_retries: int = 3) -> T:
+    """
+    Call llm_fn(prompt) and parse with retry.
+    On failure, inject the validation error into the next prompt.
+    """
+    current_prompt = prompt
+    for attempt in range(max_retries):
+        raw = llm_fn(current_prompt)
+        try:
+            return safe_parse(raw, model_class)
+        except RuntimeError as e:
+            if attempt == max_retries - 1:
+                raise
+            current_prompt = f"{prompt}\n\nPrevious attempt failed validation:\n{e}\n\nPlease correct and try again."
+    raise RuntimeError("unreachable")
+````
+
+### `templates/structured-output.schema.yaml`
+
+```yaml
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+required: [provider, mode, model_name, schema_ref, repair_strategy, log_raw_on_failure]
+properties:
+  provider: { type: string, enum: [openai, anthropic, gemini, mistral, cohere] }
+  mode: { type: string, enum: [response_format, tool_use_json, schema_response, function_call] }
+  model_name: { type: string, minLength: 3 }
+  schema_ref: { type: string, minLength: 3 }
+  repair_strategy: { type: string, enum: [once, none] }
+  log_raw_on_failure: { type: boolean }
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+provider: openai
+mode: response_format
+model_name: gpt-4o-2024-08-06
+schema_ref: schemas/SupportTicket.json
+repair_strategy: once
+log_raw_on_failure: true
+```

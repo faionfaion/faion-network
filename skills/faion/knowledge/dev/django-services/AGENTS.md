@@ -67,6 +67,8 @@
 |------|---------|
 | `templates/service-module.py` | Service module skeleton with function signatures + docstrings |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,61 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps codebase size, logic reuse, and current architecture to a rule from `01-core-rules.xml`, telling the agent whether to extract services or skip when the pattern doesn't fit. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/service-module.py`
+
+```python
+# Service module skeleton for Django
+# Copy and fill in: Feature, Model, app, verb, noun, params
+# Conventions: lazy model imports, keyword-only args, domain exception, transaction.atomic
+
+from __future__ import annotations
+from typing import TYPE_CHECKING
+from django.db import transaction
+
+if TYPE_CHECKING:
+    from apps.<app>.models import <Model>
+    from apps.users.models import User
+
+
+class <Feature>Error(Exception):
+    """Domain errors raised by <feature> service."""
+
+
+@transaction.atomic
+def <verb>_<noun>(
+    user: "User",
+    *,
+    param: str,
+) -> "<Model>":
+    """One-line summary.
+
+    Business logic:
+    - bullet describing each rule
+
+    Args:
+        user: User performing the action.
+        param: Description.
+
+    Returns:
+        The created/updated <Model> instance.
+
+    Raises:
+        <Feature>Error: When a business rule is violated.
+    """
+    from apps.<app>.models import <Model>
+
+    try:
+        obj = <Model>.objects.select_for_update().get(field=param)
+    except <Model>.DoesNotExist:
+        raise <Feature>Error(f"<Model> {param!r} not found")
+
+    # mutate
+    obj.field = ...
+    obj.save(update_fields=["field", "updated_at"])
+    return obj
+```

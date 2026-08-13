@@ -66,7 +66,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/product-discovery.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/product-discovery.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

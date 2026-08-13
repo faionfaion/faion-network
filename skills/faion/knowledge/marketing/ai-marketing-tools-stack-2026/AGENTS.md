@@ -60,7 +60,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/tool-evaluation.md` | Per-tool evaluation skeleton with function bucket and scoring axes |
-| `templates/ai-marketing-tools-stack-2026.json` | JSON schema for the decision record |
 | `templates/_smoke-test.md` | Minimum-viable filled evaluation |
 
 ## Scripts

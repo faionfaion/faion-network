@@ -75,6 +75,8 @@
 | `templates/rollback-runbook.md` | Step-by-step rollback procedure |
 | `templates/_smoke-test.yaml` | Minimum-viable shadow-report.yaml that validates clean |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -90,3 +92,66 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Three-gate promotion logic: scoring delta within contract + cost ≤ baseline × 1.1 + schema parity = 100% — only ALL-green promotes; any red routes to fix or kill.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/shadow-report.schema.yaml`
+
+```yaml
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+required: [candidate_id, baseline_router_id, window_start, window_end, judge, metrics, gate_evaluation, decision]
+properties:
+  candidate_id: { type: string, minLength: 3 }
+  baseline_router_id: { type: string, minLength: 3 }
+  window_start: { type: string, format: date }
+  window_end: { type: string, format: date }
+  judge:
+    type: object
+    required: [model, prompt_version, sme_agreement]
+    properties:
+      model: { type: string }
+      prompt_version: { type: string }
+      sme_agreement: { type: number, minimum: 0, maximum: 1 }
+  metrics:
+    type: object
+    required: [scoring_delta_median, cost_delta_mean, schema_parity_min_daily]
+    properties:
+      scoring_delta_median: { type: number }
+      scoring_delta_95ci: { type: array, items: { type: number }, minItems: 2, maxItems: 2 }
+      cost_delta_mean: { type: number }
+      schema_parity_min_daily: { type: number, minimum: 0, maximum: 1 }
+  gate_evaluation:
+    type: object
+    required: [scoring_gate, cost_gate, schema_gate]
+    properties:
+      scoring_gate: { type: string, enum: [PASS, FAIL] }
+      cost_gate: { type: string, enum: [PASS, FAIL] }
+      schema_gate: { type: string, enum: [PASS, FAIL] }
+  decision: { type: string, enum: [GO, NO-GO] }
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+candidate_id: router-v2-rc2
+baseline_router_id: router-v1
+window_start: "2026-04-25"
+window_end: "2026-05-02"
+judge:
+  model: claude-sonnet-4-5
+  prompt_version: judge-v3
+  sme_agreement: 0.89
+metrics:
+  scoring_delta_median: -0.008
+  scoring_delta_95ci: [-0.015, -0.001]
+  cost_delta_mean: 0.97
+  schema_parity_min_daily: 1.00
+gate_evaluation:
+  scoring_gate: PASS
+  cost_gate: PASS
+  schema_gate: PASS
+decision: GO
+```

@@ -66,6 +66,8 @@
 | `templates/fanout.py` | Working Send / gather wrapper. |
 | `templates/_smoke-test.yaml` | Minimum. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,52 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on mutates_shared_state (true → reject fan-out, recommend queue+workers), then on idempotent (false → reject or wrap in idempotency-key store), then on framework (langgraph → Send; adk → ParallelAgent; plain → asyncio.gather + Semaphore). Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/fanout-profile.yaml`
+
+```yaml
+item_count: TODO          # fill with concrete value per the driver definition
+mutates_shared_state: TODO          # fill with concrete value per the driver definition
+idempotent: TODO          # fill with concrete value per the driver definition
+framework: TODO          # fill with concrete value per the driver definition
+```
+
+### `templates/fanout.py`
+
+```python
+"""Reference artefact for map-reduce-send-fanout. Self-test only verifies the scaffold compiles."""
+from __future__ import annotations
+
+
+def build(decision: dict):
+    """Build the runtime object from a validated decision-record."""
+    if not isinstance(decision, dict):
+        raise TypeError("decision must be dict from validated decision-record")
+    return decision  # placeholder: real implementations wire here
+
+
+def _self_test() -> int:
+    out = build({"slug": "map-reduce-send-fanout", "version": "2.0.0"})
+    return 0 if out["slug"] == "map-reduce-send-fanout" else 1
+
+
+if __name__ == "__main__":
+    import sys
+    if "--self-test" in sys.argv:
+        raise SystemExit(_self_test())
+    if "--help" in sys.argv:
+        print(__doc__)
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+item_count: low
+mutates_shared_state: low
+idempotent: low
+framework: low
+```

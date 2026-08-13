@@ -60,7 +60,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/feature-prioritization-rice.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/feature-prioritization-rice.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Related

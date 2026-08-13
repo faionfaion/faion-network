@@ -61,7 +61,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/disclosure-checklist.yml` | YAML disclosure-checklist artefact template (5 axes + jurisdictions + signoffs) |
 | `templates/confidence-band-spec.md` | Confidence-band-to-UI mapping spec template |
 | `templates/opt-out-ux-pattern.md` | Reference opt-out UX pattern (settings + per-surface toggle) |
 

@@ -63,7 +63,8 @@
 |------|---------|
 | `templates/experiment_event.py` | Typed ExperimentEvent (exposure + conversion) with stable schema |
 | `templates/analyzer.py` | Two-proportion z-test with Wilson 95% CI |
-| `templates/_smoke-test.py` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -80,3 +81,57 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is there a managed platform with an analyzer, or do we own plumbing?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/experiment_event.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Typed ExperimentEvent (exposure + conversion) with stable schema","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/01-core-rules.xml#typed-event-schema","token_budget_impact":"~150 tokens when loaded"}}
+from dataclasses import dataclass, field
+from datetime import datetime
+from typing import Literal
+
+
+@dataclass
+class ExperimentEvent:
+    experiment_id: str
+    user_id: str
+    variant_id: str
+    kind: Literal["exposure", "conversion"]
+    ts: datetime
+    properties: dict = field(default_factory=dict)
+```
+
+### `templates/analyzer.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Two-proportion z-test with Wilson 95% CI","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/01-core-rules.xml#typed-event-schema","token_budget_impact":"~150 tokens when loaded"}}
+import math
+
+
+def two_proportion_z(c1: int, n1: int, c2: int, n2: int) -> dict:
+    if n1 == 0 or n2 == 0:
+        return {"p_value": None, "reason": "empty arm"}
+    p1, p2 = c1 / n1, c2 / n2
+    p_pool = (c1 + c2) / (n1 + n2)
+    se = math.sqrt(p_pool * (1 - p_pool) * (1 / n1 + 1 / n2))
+    if se == 0:
+        return {"p_value": 1.0, "lift": 0.0}
+    z = (p2 - p1) / se
+    # two-sided p via normal CDF approximation
+    p_value = math.erfc(abs(z) / math.sqrt(2))
+    return {"p1": p1, "p2": p2, "z": z, "p_value": p_value, "lift": p2 - p1}
+
+
+def wilson_ci(c: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    if n == 0:
+        return (0.0, 0.0)
+    phat = c / n
+    denom = 1 + z * z / n
+    centre = (phat + z * z / (2 * n)) / denom
+    half = (z * math.sqrt(phat * (1 - phat) / n + z * z / (4 * n * n))) / denom
+    return (max(0.0, centre - half), min(1.0, centre + half))
+```

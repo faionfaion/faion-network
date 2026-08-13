@@ -58,9 +58,10 @@
 
 | File | Purpose |
 |---|---|
-| `templates/figma_client.py` | Python Figma REST client with rate-limiter + audit log + per-operation handlers. |
 | `templates/operation-spec.yaml` | YAML schema for operation + file_key + auth + output_uri. |
 | `templates/_smoke-test.yaml` | Filled minimum-viable a11y-audit operation spec. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Related
 
@@ -70,3 +71,33 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the code; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/operation-spec.yaml`
+
+```yaml
+# operation-spec.yaml — AI Plugin Ecosystem (Figma REST)
+# Fill per task; validator: scripts/validate-ai-plugin-ecosystem.py
+
+operation: a11y-audit
+file_key: AbCdEf1234567890
+auth_type: pat
+rate_limit_rpm: 55
+output_uri: s3://reports/a11y/AbCdEf-2026-05-22.json
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+# _smoke-test.yaml — AI Plugin Ecosystem (Figma REST)
+# Fill per task; validator: scripts/validate-ai-plugin-ecosystem.py
+
+operation: a11y-audit
+file_key: AbCdEf1234567890
+auth_type: pat
+rate_limit_rpm: 55
+output_uri: s3://reports/a11y/AbCdEf-2026-05-22.json
+```

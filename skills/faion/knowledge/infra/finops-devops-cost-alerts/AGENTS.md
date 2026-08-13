@@ -60,8 +60,9 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
 | `templates/config-instance.json` | JSON instance of a filled config artefact |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -78,3 +79,34 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/config-instance.json`
+
+```json
+{
+  "thresholds_pct": [
+    50,
+    75,
+    90,
+    100
+  ],
+  "anomaly_detector": {
+    "enabled": true,
+    "provider": "aws_cost_anomaly"
+  },
+  "alert_routing": [
+    {
+      "team": "platform",
+      "channel": "slack:#cost-platform"
+    }
+  ],
+  "investigation_template_path": "docs/finops/anomaly-template.md",
+  "exec_report_cadence": "monthly",
+  "owner": "finops@acme.io",
+  "last_reviewed": "2026-05-23"
+}
+```

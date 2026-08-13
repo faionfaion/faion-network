@@ -66,6 +66,8 @@
 | `templates/ollama-config.schema.json` | JSON Schema for ollama-config.json. |
 | `templates/_smoke-test.json` | Minimum valid ollama-config. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,164 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` decides local-vs-cloud: privacy required + hardware sufficient → run local; bursty / frontier-reasoning → skip; mixed → use local primary + cloud fallback.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/Modelfile`
+
+```text
+FROM llama3.1:8b
+
+# Pin sampling defaults for deterministic outputs
+PARAMETER temperature 0.2
+PARAMETER top_p 0.9
+PARAMETER num_ctx 8192
+
+SYSTEM """You are a concise assistant. Answer in the user's language. Refuse unsafe requests."""
+
+# Optional Modelfile template override for chat
+TEMPLATE """{{ if .System }}<|system|>
+{{ .System }}<|end|>
+{{ end }}{{ if .Prompt }}<|user|>
+{{ .Prompt }}<|end|>
+<|assistant|>
+{{ end }}"""
+```
+
+### `templates/ollama-client.py`
+
+```python
+"""
+from __future__ import annotations
+
+import requests
+from openai import OpenAI
+
+OLLAMA_BASE = "http://localhost:11434"
+
+
+def ollama_ready(base_url: str = OLLAMA_BASE) -> bool:
+    try:
+        return requests.get(f"{base_url}/api/tags", timeout=2).status_code == 200
+    except Exception:
+        return False
+
+
+def make_local_client(base_url: str = OLLAMA_BASE) -> OpenAI:
+    """OpenAI SDK pointed at local /v1 endpoint."""
+    return OpenAI(base_url=f"{base_url}/v1", api_key="ollama")
+
+
+def generate(prompt: str, model: str = "llama3.1:8b", cloud_fallback: OpenAI | None = None,
+             cloud_model: str = "claude-sonnet-4-6") -> str:
+    if not ollama_ready():
+        if cloud_fallback is None:
+            raise RuntimeError("Ollama not running. Start with: systemctl start ollama")
+        return _cloud(cloud_fallback, prompt, cloud_model)
+    local = make_local_client()
+    try:
+        resp = local.chat.completions.create(
+            model=model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.2,
+        )
+        return resp.choices[0].message.content or ""
+    except Exception:
+        if cloud_fallback is not None:
+            return _cloud(cloud_fallback, prompt, cloud_model)
+        raise
+
+
+def _cloud(client: OpenAI, prompt: str, model: str) -> str:
+    resp = client.chat.completions.create(
+        model=model, messages=[{"role": "user", "content": prompt}]
+    )
+    return resp.choices[0].message.content or ""
+```
+
+### `templates/ollama-config.schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/local-llm-ollama-config",
+  "_purpose": "Schema for ollama-config.json; enforces /v1 endpoint, ram floor, fallback.",
+  "_consumes": "ollama-config.json from caller",
+  "_produces": "validation report for validate-local-llm-ollama.py",
+  "_depends_on": "content/01-core-rules.xml r1-r5",
+  "_token_budget_impact": "0 \u2014 schema-only file",
+  "type": "object",
+  "required": [
+    "base_url",
+    "model",
+    "ram_floor_gb",
+    "health_check_required",
+    "openai_compat",
+    "fallback_cloud_model"
+  ],
+  "properties": {
+    "base_url": {
+      "type": "string",
+      "format": "uri"
+    },
+    "model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "modelfile_path": {
+      "type": "string"
+    },
+    "quantisation": {
+      "enum": [
+        "q4_K_M",
+        "q5_K_M",
+        "q6_K",
+        "q8_0",
+        "f16"
+      ]
+    },
+    "ram_floor_gb": {
+      "type": "integer",
+      "minimum": 4
+    },
+    "health_check_required": {
+      "type": "boolean",
+      "const": true
+    },
+    "openai_compat": {
+      "type": "boolean",
+      "const": true
+    },
+    "systemd_service": {
+      "type": "boolean"
+    },
+    "fallback_cloud_model": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "Minimum valid ollama-config \u2014 used by validate-local-llm-ollama.py --self-test.",
+  "_consumes": "none",
+  "_produces": "passes validator",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "0",
+  "base_url": "http://localhost:11434/v1",
+  "model": "llama3.1:8b",
+  "modelfile_path": "templates/Modelfile",
+  "quantisation": "q5_K_M",
+  "ram_floor_gb": 8,
+  "health_check_required": true,
+  "openai_compat": true,
+  "systemd_service": true,
+  "fallback_cloud_model": "claude-sonnet-4-6"
+}
+```

@@ -57,7 +57,6 @@
 | File | Purpose |
 |---|---|
 | `templates/reasoning-first-architectures-spec.md` | Markdown wrapper for the JSON spec. |
-| `templates/_smoke-test.yaml` | Minimum input fixture. |
 
 ## Scripts
 

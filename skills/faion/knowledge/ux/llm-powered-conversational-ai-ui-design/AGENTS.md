@@ -64,6 +64,8 @@
 | `templates/safety-policy.yaml` | Jailbreak detector + grounding source list + refusal templates. |
 | `templates/_smoke-test.json` | Filled voice-tier1 conversational AI spec. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[multimodal-vui-design]]
@@ -72,3 +74,64 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the spec; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/convo-spec.json`
+
+```json
+{
+  "modality": "FILL_ME",
+  "asr_provider": "FILL_ME",
+  "llm_model": "FILL_ME",
+  "latency_budget_ms": {
+    "asr": 300,
+    "llm": 1200,
+    "tts": 600
+  },
+  "safety_filters": [
+    "jailbreak-detector",
+    "factual-grounding"
+  ],
+  "fallback_target": "FILL_ME",
+  "audit_log_path": "FILL_ME"
+}
+```
+
+### `templates/safety-policy.yaml`
+
+```yaml
+# safety-policy.yaml — LLM-Powered Conversational AI
+# Fill per task; validator: scripts/validate-llm-powered-conversational-ai.py
+
+modality: voice
+asr_provider: deepgram-nova-2
+llm_model: claude-sonnet-4.7
+latency_budget_ms: {"asr": 300, "llm": 1200, "tts": 600}
+safety_filters: ["jailbreak-detector", "factual-grounding"]
+fallback_target: human-queue-tier1
+audit_log_path: s3://audit/convo/{date}.jsonl
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "modality": "FILL_ME",
+  "asr_provider": "FILL_ME",
+  "llm_model": "FILL_ME",
+  "latency_budget_ms": {
+    "asr": 300,
+    "llm": 1200,
+    "tts": 600
+  },
+  "safety_filters": [
+    "jailbreak-detector",
+    "factual-grounding"
+  ],
+  "fallback_target": "FILL_ME",
+  "audit_log_path": "FILL_ME"
+}
+```

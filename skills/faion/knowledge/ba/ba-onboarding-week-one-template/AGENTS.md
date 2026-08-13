@@ -68,6 +68,8 @@
 | `templates/kickoff-interview-script.md` | 12 standard kickoff questions + recording-consent prompt |
 | `templates/_smoke-test.json` | Minimum viable pack manifest |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,47 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes on pack state (which day's output is missing) to the rule firing. Use when reviewing whether Day-5 sign-off is achievable.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "project_name": "Acme Migration",
+  "ba_name": "Maria Lopes",
+  "week_range": "2026-05-18/2026-05-22",
+  "files": {
+    "inventory_md": {
+      "path": "pack/inventory.md",
+      "row_count": 47
+    },
+    "stakeholders_md": {
+      "path": "pack/stakeholders.md",
+      "named_rows": 8,
+      "approve_authority_count": 2
+    },
+    "glossary_md": {
+      "path": "pack/glossary.md",
+      "term_count": 22
+    },
+    "processes_md": {
+      "path": "pack/processes.md",
+      "diagram_files": [
+        "pack/processes.svg"
+      ]
+    },
+    "risks_md": {
+      "path": "pack/risks.md",
+      "gap_count": 5,
+      "risk_count": 6
+    }
+  },
+  "signoff": {
+    "engagement_manager_name": "Pedro Silva",
+    "signoff_ts": "2026-05-22T17:00:00Z"
+  }
+}
+```

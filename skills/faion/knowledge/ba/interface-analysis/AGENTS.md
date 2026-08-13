@@ -75,6 +75,8 @@
 | `templates/landscape-register.md` | Top-level integration landscape register skeleton. |
 | `templates/_smoke-test.md` | Minimum viable filled-in interface spec. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -91,3 +93,19 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The mandatory tree maps observable signals (engagement type, perspective set, scope, audit needs, baseline presence) to a single rule from `01-core-rules.xml`; every leaf references either a numbered core rule or the `skip-this-methodology` conclusion that routes the agent to a different methodology when this one does not apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/landscape-merge.sh`
+
+```bash
+set -euo pipefail
+
+echo "[interface-analysis] skeleton helper — replace with real logic."
+
+# Example: list candidate frameworks for the current KA.
+KA="${1:-KA-1}"
+echo "KA: $KA"
+```

@@ -69,6 +69,8 @@
 | `templates/exclusion-matrix.csv` | Per-stage exclusion matrix seed. |
 | `templates/targeting-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,55 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/exclusion-matrix.csv`
+
+```csv
+stage,exclusion
+TOFU,current_customers
+TOFU,recent_converters
+MOFU,purchasers_30d
+BOFU,converters_7d
+```
+
+### `templates/targeting-spec.json`
+
+```json
+{
+  "interest_stacks": [
+    {
+      "mode": "or",
+      "themes": [
+        "SaaS",
+        "Developer Tools"
+      ]
+    }
+  ],
+  "behavioral_filters": [
+    "tech_early_adopters"
+  ],
+  "advantage_plus": {
+    "enabled": false,
+    "rationale": "niche B2B"
+  },
+  "exclusion_matrix": {
+    "tofu": [
+      "current_customers"
+    ],
+    "mofu": [
+      "purchasers_30d"
+    ],
+    "bofu": [
+      "converters_7d"
+    ]
+  },
+  "dynamic_creative": {
+    "enabled": false,
+    "audience_breadth": "manual_tier_2"
+  }
+}
+```

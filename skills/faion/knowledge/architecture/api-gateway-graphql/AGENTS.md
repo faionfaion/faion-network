@@ -67,6 +67,8 @@
 |------|---------|
 | `templates/router.yaml` | Apollo Router config with auth, depth/complexity limits, and SARIF output. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,47 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/router.yaml`
+
+```yaml
+artefact_id: api-gateway-graphql-<client>-2026-05-23
+owner: <Full Name> <email>
+version: 1.0.0
+last_reviewed: 2026-05-23
+
+supergraph:
+  introspection: false
+  listen: 0.0.0.0:4000
+
+limits:
+  max_depth: 15
+  max_aliases: 30
+  max_root_fields: 20
+  max_height: 200
+  max_age_seconds: 60
+
+authentication:
+  router:
+    jwt:
+      jwks:
+        - url: https://example.com/.well-known/jwks.json
+      header_name: authorization
+      header_value_prefix: Bearer
+
+persisted_queries:
+  enabled: true
+  safelist:
+    enabled: true
+    require_id: true
+
+telemetry:
+  metrics:
+    prometheus:
+      enabled: true
+      listen: 0.0.0.0:9090
+```

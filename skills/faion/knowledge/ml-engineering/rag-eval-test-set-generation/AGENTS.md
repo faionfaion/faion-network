@@ -56,6 +56,8 @@
 |------|---------|
 | `templates/synth-prompt.txt` | Prompt template for LLM hard-case synthesis. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -71,3 +73,18 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` decides reuse / extend / regenerate based on existing test-set state. Each leaf references a rule id from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/synth-prompt.txt`
+
+```text
+Generate ONE evaluation question of type {query_type} that requires reading the following corpus excerpt.
+Return ONLY JSON: {"query": "...", "relevant_chunk_ids": ["..."], "expected_answer": "..."}.
+Adversarial types should include negation, ambiguity, or out-of-scope phrasing.
+
+Corpus excerpt:
+{excerpt}
+```

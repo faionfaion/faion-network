@@ -64,6 +64,8 @@
 |------|---------|
 | `templates/integration_test.rs` | Rust integration test skeleton: oneshot + testcontainers + insta. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,37 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree picks unit vs integration-with-mock vs integration-with-testcontainers based on whether the SUT touches I/O and what state isolation is feasible.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/integration_test.rs`
+
+```rust
+use axum::body::Body;
+use axum::http::{Request, StatusCode};
+use tower::ServiceExt;
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn it_returns_user_on_get_users_id() {
+    let app = my_app::build_router(test_db_pool().await).await;
+    let resp = app
+        .oneshot(
+            Request::builder()
+                .uri("/users/1")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .expect("router should respond");
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = axum::body::to_bytes(resp.into_body(), 64 * 1024).await.unwrap();
+    insta::assert_json_snapshot!(serde_json::from_slice::<serde_json::Value>(&body).unwrap());
+}
+
+async fn test_db_pool() -> sqlx::PgPool {
+    // Per-test schema: CREATE SCHEMA test_<uuid>, run migrations, DROP on teardown.
+    todo!("replace with project-specific fixture")
+}
+```

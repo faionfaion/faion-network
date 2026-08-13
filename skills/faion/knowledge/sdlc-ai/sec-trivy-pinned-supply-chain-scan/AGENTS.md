@@ -69,6 +69,8 @@
 | `templates/trivy-action.yml` | Trivy fs + image workflow with SHA-pinned action. |
 | `templates/release-sbom.sh` | Release-time script that emits CycloneDX SBOM and attaches to gh release. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,78 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from observable signals (produces container/IaC/release? egress? compliance need?) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether to enable Trivy — the tree terminates either on the active rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/trivy-action.yml`
+
+```yaml
+# Replace SHA with the latest verified commit; cosign-verify against aquasecurity keys before bumping.
+name: Trivy
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  fs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trivy fs
+        # SHA pin (placeholder — bump deliberately, verify cosign sig).
+        uses: aquasecurity/trivy-action@b1f3df9b1bf1ec2c0e3d12345abcdef0123456789
+        with:
+          scan-type: fs
+          scan-ref: '.'
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          ignore-unfixed: 'true'
+          version: v0.70.2
+          format: sarif
+          output: trivy-fs.sarif
+      - uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-fs.sarif
+
+  image:
+    needs: fs
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t local/$GITHUB_REPOSITORY:${{ github.sha }} .
+      - uses: aquasecurity/trivy-action@b1f3df9b1bf1ec2c0e3d12345abcdef0123456789
+        with:
+          scan-type: image
+          image-ref: local/${{ github.repository }}:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+          version: v0.70.2
+```
+
+### `templates/release-sbom.sh`
+
+```bash
+# Invoked from a tag-triggered workflow.
+set -euo pipefail
+
+: "${TAG:?TAG must be set to the release tag (e.g. v1.2.3)}"
+: "${GITHUB_TOKEN:?GITHUB_TOKEN must be set}"
+
+OUT_SBOM="sbom-${TAG}.cdx.json"
+OUT_SIG="${OUT_SBOM}.sig"
+
+trivy sbom --format cyclonedx --output "${OUT_SBOM}" .
+cosign sign-blob --yes "${OUT_SBOM}" --output-signature "${OUT_SIG}"
+gh release upload "${TAG}" "${OUT_SBOM}" "${OUT_SIG}" --clobber
+
+echo "ok: SBOM and signature uploaded to release ${TAG}"
+```

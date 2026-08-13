@@ -69,6 +69,8 @@
 | `templates/eck-manifest.yaml` | Sample ECK Elasticsearch CRD with role split + hot-warm tiers |
 | `templates/_smoke-test.json` | Minimum spec used by validate-devops-elk-architecture.py --self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,61 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it when sizing a new ELK cluster or auditing an existing one.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/eck-manifest.yaml`
+
+```yaml
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: prod-logs
+spec:
+  version: 8.13.0
+  nodeSets:
+    - name: master
+      count: 3
+      config:
+        node.roles: ["master"]
+        node.store.allow_mmap: false
+    - name: data-hot
+      count: 3
+      config:
+        node.roles: ["data_hot", "ingest"]
+      volumeClaimTemplates:
+        - metadata: { name: elasticsearch-data }
+          spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 1Ti } }, storageClassName: gp3-nvme }
+    - name: data-warm
+      count: 2
+      config:
+        node.roles: ["data_warm"]
+      volumeClaimTemplates:
+        - metadata: { name: elasticsearch-data }
+          spec: { accessModes: [ReadWriteOnce], resources: { requests: { storage: 4Ti } }, storageClassName: gp3 }
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "cluster": "prod-logs",
+  "variant": "elk",
+  "volume_gb_per_day": 200,
+  "retention_days": 90,
+  "node_roles": {
+    "master": 3,
+    "data_hot": 3,
+    "data_warm": 2,
+    "coordinating": 2
+  },
+  "tiers": {
+    "hot_days": 7,
+    "warm_days": 30,
+    "cold_days": 53
+  },
+  "deployment": "eck"
+}
+```

@@ -68,6 +68,8 @@
 | `templates/scorecard.yaml` | 5-dimension scorecard with per-dimension weight. |
 | `templates/decision-record.md` | ADR-style decision with context, options, decision, consequences, reversal. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,26 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observables (active_users, budget_band, current_tool_satisfaction) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/scorecard.yaml`
+
+```yaml
+weights:
+  ecosystem: 0.20
+  governance: 0.15
+  integrations: 0.25
+  agent_api: 0.20
+  tco: 0.20
+options:
+  - vendor: REPLACE
+    scorecard:
+      ecosystem: REPLACE
+      governance: REPLACE
+      integrations: REPLACE
+      agent_api: REPLACE
+      tco: REPLACE
+```

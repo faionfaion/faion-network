@@ -64,6 +64,8 @@
 | `templates/pydantic-extraction.py` | Full structured-extraction caller with refusal handling and retry. |
 | `templates/whisper-chunked.py` | Whisper transcription helper for &gt;25MB audio (chunked upload). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,110 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` picks (a) `parse` vs `json_object` vs free-form by strictness need, (b) `tool_choice=required` vs `auto` by whether the pipeline depends on a tool result, and (c) parallel vs sequential by whether tool effects are commutative. Use it at every tool-using call site.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pydantic-extraction.py`
+
+```python
+"""
+from typing import Type, TypeVar, Optional
+from pydantic import BaseModel, ValidationError
+import json
+from openai import OpenAI
+
+T = TypeVar('T', bound=BaseModel)
+
+
+def extract(
+    client: OpenAI,
+    text: str,
+    output_class: Type[T],
+    model: str = "gpt-4o",
+    max_retries: int = 3,
+) -> Optional[T]:
+    """Extract structured data using OpenAI Structured Outputs.
+
+    Falls back to json_object mode if parse raises (model not supported).
+    Returns None after max_retries exhausted — never raises.
+    """
+    for attempt in range(max_retries):
+        try:
+            response = client.beta.chat.completions.parse(
+                model=model,
+                messages=[{"role": "user", "content": text}],
+                response_format=output_class,
+            )
+            msg = response.choices[0].message
+            if msg.refusal:
+                return None
+            return msg.parsed
+        except NotImplementedError:
+            # Model does not support Structured Outputs — use JSON mode
+            schema = output_class.model_json_schema()
+            response = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system",
+                     "content": f"Return valid JSON matching: {json.dumps(schema)}"},
+                    {"role": "user", "content": text},
+                ],
+                response_format={"type": "json_object"},
+            )
+            try:
+                data = json.loads(response.choices[0].message.content)
+                return output_class(**data)
+            except (json.JSONDecodeError, ValidationError):
+                pass
+        except (json.JSONDecodeError, ValidationError):
+            pass
+    return None
+```
+
+### `templates/whisper-chunked.py`
+
+```python
+"""
+import subprocess
+import tempfile
+import os
+from pathlib import Path
+from openai import OpenAI
+
+
+def transcribe_large(
+    client: OpenAI,
+    audio_path: str,
+    chunk_minutes: int = 10,
+    prompt: str = "",
+) -> str:
+    """Transcribe large audio file by splitting into chunks.
+
+    Args:
+        audio_path: Path to audio file (any ffmpeg-supported format).
+        chunk_minutes: Duration of each chunk in minutes.
+        prompt: Proper noun hints repeated on every chunk for consistency.
+    Returns:
+        Full transcript as a single joined string.
+    """
+    chunks_dir = tempfile.mkdtemp()
+    chunk_pattern = os.path.join(chunks_dir, "chunk_%03d.mp3")
+
+    subprocess.run([
+        "ffmpeg", "-i", audio_path,
+        "-f", "segment", "-segment_time", str(chunk_minutes * 60),
+        "-c", "copy", chunk_pattern,
+    ], check=True, capture_output=True)
+
+    parts = []
+    for chunk in sorted(Path(chunks_dir).glob("chunk_*.mp3")):
+        with open(chunk, "rb") as f:
+            kwargs = {"model": "whisper-1", "file": f}
+            if prompt:
+                kwargs["prompt"] = prompt  # repeat hint on every chunk
+            parts.append(client.audio.transcriptions.create(**kwargs).text)
+
+    return " ".join(parts)
+```

@@ -65,6 +65,8 @@
 |------|---------|
 | `templates/register-entry.yaml` | Single-row register entry template. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,21 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals from the stakeholder-register input (precondition checks, scale thresholds, evidence presence) to a concrete action, with each leaf referencing a rule id from `01-core-rules.xml`. Consult it whenever the methodology could branch based on context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/register-entry.yaml`
+
+```yaml
+id: S-001
+name: <full name>
+role: <title + org>
+power: <low|high>
+interest: <low|high>
+attitude: <champion|supporter|neutral|critic|blocker>
+strategy: <one-paragraph differentiated approach>
+evidence: <path to minutes / decision log / sign-off>
+last_reviewed: YYYY-MM-DD
+```

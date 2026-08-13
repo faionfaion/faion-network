@@ -68,6 +68,8 @@
 | `templates/grafana-dashboard.json` | LB dashboard with per-backend panels |
 | `templates/promtail-haproxy.yaml` | Promtail config shipping HAProxy logs to Loki |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,163 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (LB tech, alert sensitivity, log destination) to a concrete monitoring stack, each leaf referencing a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prometheus-rules.yaml`
+
+```yaml
+groups:
+  - name: load_balancer_alerts
+    rules:
+      - alert: BackendDown
+        expr: haproxy_backend_up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backend {{ $labels.backend }} on {{ $labels.instance }} is down"
+
+      - alert: HighErrorRate
+        expr: |
+          sum by (backend, instance) (
+            rate(haproxy_backend_http_responses_total{code="5xx"}[5m])
+          )
+          /
+          sum by (backend, instance) (
+            rate(haproxy_backend_http_responses_total[5m])
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "5xx rate > 5% on {{ $labels.backend }}"
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.99,
+            sum by (backend, instance, le) (
+              rate(haproxy_backend_http_response_time_seconds_bucket[5m])
+            )
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "p99 latency > 2 s on {{ $labels.backend }}"
+
+      - alert: ConnectionPoolExhausted
+        expr: |
+          haproxy_backend_current_sessions
+          / haproxy_backend_limit_sessions > 0.9
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Connection pool > 90% on {{ $labels.backend }}"
+```
+
+### `templates/grafana-dashboard.json`
+
+```json
+{
+  "title": "Load Balancer",
+  "schemaVersion": 38,
+  "templating": {
+    "list": [
+      {
+        "name": "instance",
+        "type": "query",
+        "query": "label_values(haproxy_backend_up, instance)",
+        "refresh": 1
+      },
+      {
+        "name": "backend",
+        "type": "query",
+        "query": "label_values(haproxy_backend_up{instance=~\"$instance\"}, backend)",
+        "refresh": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "title": "Backend up",
+      "type": "stat",
+      "targets": [
+        {
+          "expr": "haproxy_backend_up{instance=~\"$instance\",backend=~\"$backend\"}"
+        }
+      ]
+    },
+    {
+      "title": "Request rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (backend) (rate(haproxy_backend_http_responses_total{instance=~\"$instance\",backend=~\"$backend\"}[1m]))"
+        }
+      ]
+    },
+    {
+      "title": "5xx rate",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "sum by (backend) (rate(haproxy_backend_http_responses_total{code=\"5xx\",instance=~\"$instance\",backend=~\"$backend\"}[5m]))"
+        }
+      ]
+    },
+    {
+      "title": "p99 latency",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum by (backend, le) (rate(haproxy_backend_http_response_time_seconds_bucket{instance=~\"$instance\",backend=~\"$backend\"}[5m])))"
+        }
+      ]
+    },
+    {
+      "title": "Connection pool",
+      "type": "timeseries",
+      "targets": [
+        {
+          "expr": "haproxy_backend_current_sessions{instance=~\"$instance\",backend=~\"$backend\"} / haproxy_backend_limit_sessions"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### `templates/promtail-haproxy.yaml`
+
+```yaml
+server:
+  http_listen_port: 9080
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+positions:
+  filename: /var/lib/promtail/positions.yaml
+
+scrape_configs:
+  - job_name: haproxy
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: haproxy
+          host: ${HOSTNAME}
+          __path__: /var/log/haproxy.log
+    pipeline_stages:
+      - regex:
+          expression: '(?P<remote_addr>\S+) (?P<frontend>\S+) (?P<backend>\S+)/(?P<server>\S+) (?P<tq>\d+)/(?P<tw>\d+)/(?P<tc>\d+)/(?P<tr>\d+)/(?P<tt>\d+) (?P<status>\d+) (?P<bytes>\d+).+ \"(?P<request>[^\"]+)\"'
+      - labels:
+          backend:
+          status:
+      - timestamp:
+          source: time
+          format: RFC3339
+```

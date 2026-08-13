@@ -62,6 +62,8 @@
 | `templates/constants.py` | Reference per-app constants.py with one TextChoices + one IntegerChoices + named limits. |
 | `templates/constants-spec.json` | Reference output document. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,109 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Per field: is the set small + fixed + human-readable? → TextChoices. Storage-cost-critical at very large scale? → IntegerChoices. Per limit: referenced in ≥ 2 files? → constants.py UPPER_SNAKE_CASE; otherwise inline.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/constants.py`
+
+```python
+"""
+
+from __future__ import annotations
+
+from django.db import models
+
+
+class OrderStatus(models.TextChoices):
+    PENDING = "pending", "Pending Payment"
+    PAID = "paid", "Paid"
+    SHIPPED = "shipped", "Shipped"
+    DELIVERED = "delivered", "Delivered"
+    CANCELLED = "cancelled", "Cancelled"
+
+
+class UserRole(models.TextChoices):
+    OWNER = "owner", "Owner"
+    ADMIN = "admin", "Administrator"
+    MEMBER = "member", "Member"
+    VIEWER = "viewer", "Viewer"
+
+
+# Business limits — referenced by services, models, and tests.
+# Reviewed quarterly per ops/limits-policy.md.
+MAX_ORDERS_PER_USER: int = 100
+DEFAULT_PAGE_SIZE: int = 25
+MAX_PAGE_SIZE: int = 100
+ORDER_CANCEL_WINDOW_HOURS: int = 24
+RETRY_BACKOFF_SECONDS: tuple[int, ...] = (1, 5, 30, 120)
+```
+
+### `templates/constants-spec.json`
+
+```json
+{
+  "_purpose": "Reference per-app constants spec output.",
+  "_consumes": "Enum field list + cross-file limit list.",
+  "_produces": "JSON for constants.py codegen.",
+  "_depends-on": "content/02-output-contract.xml.",
+  "_token-budget-impact": "~150 tokens.",
+  "artefact_id": "orders-constants",
+  "owner": "ruslan@faion.net",
+  "app": "orders",
+  "django_version": "5.2.1",
+  "enums": [
+    {
+      "name": "OrderStatus",
+      "kind": "TextChoices",
+      "members": [
+        {
+          "name": "PENDING",
+          "value": "pending",
+          "label": "Pending Payment"
+        },
+        {
+          "name": "PAID",
+          "value": "paid",
+          "label": "Paid"
+        },
+        {
+          "name": "SHIPPED",
+          "value": "shipped",
+          "label": "Shipped"
+        },
+        {
+          "name": "DELIVERED",
+          "value": "delivered",
+          "label": "Delivered"
+        },
+        {
+          "name": "CANCELLED",
+          "value": "cancelled",
+          "label": "Cancelled"
+        }
+      ]
+    }
+  ],
+  "limits": [
+    {
+      "name": "MAX_ORDERS_PER_USER",
+      "value": 100,
+      "rationale": "Compliance + abuse cap; reviewed quarterly."
+    },
+    {
+      "name": "DEFAULT_PAGE_SIZE",
+      "value": 25,
+      "rationale": "Matches mobile UI list size."
+    },
+    {
+      "name": "MAX_PAGE_SIZE",
+      "value": 100,
+      "rationale": "Hard cap to prevent table scans."
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```

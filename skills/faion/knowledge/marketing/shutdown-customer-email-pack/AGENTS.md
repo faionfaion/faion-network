@@ -62,6 +62,8 @@
 | `templates/shutdown-customer-email-pack.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,100 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/shutdown-customer-email-pack.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/shutdown-customer-email-pack.json",
+  "title": "Shutdown Customer Email Pack Output Contract",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "service_off_date",
+    "announce_email",
+    "refund_email",
+    "final_thanks_email",
+    "real_reason_sentence",
+    "refund_or_migration",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "description": "kebab-case slug for the shutdown sequence"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named human signing the emails"
+    },
+    "service_off_date": {
+      "type": "string",
+      "description": "ISO date the product stops",
+      "format": "date"
+    },
+    "announce_email": {
+      "type": "object",
+      "description": "subject + body + send_date (T-30)"
+    },
+    "refund_email": {
+      "type": "object",
+      "description": "subject + body + send_date (T-14) + refund_terms"
+    },
+    "final_thanks_email": {
+      "type": "object",
+      "description": "subject + body + send_date (T+1)"
+    },
+    "real_reason_sentence": {
+      "type": "string",
+      "description": "one honest sentence on cause"
+    },
+    "refund_or_migration": {
+      "type": "object",
+      "description": "{type: refund|migrate, terms: string}"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "artefact_id": "sample-artefact_id",
+  "owner": "sample-owner",
+  "service_off_date": "2026-05-23",
+  "announce_email": {
+    "key": "value"
+  },
+  "refund_email": {
+    "key": "value"
+  },
+  "final_thanks_email": {
+    "key": "value"
+  },
+  "real_reason_sentence": "sample-real_reason_sentence",
+  "refund_or_migration": {
+    "key": "value"
+  },
+  "version": "sample-version",
+  "last_reviewed": "2026-05-23"
+}
+```

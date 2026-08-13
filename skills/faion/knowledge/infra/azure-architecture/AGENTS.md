@@ -69,6 +69,8 @@
 | `templates/policy-initiative.json` | Sample Azure Policy initiative JSON enforcing baseline controls |
 | `templates/_smoke-test.json` | Minimum spec artefact used by validate-azure-architecture.py --self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,91 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it when scoping a new Azure tenant or hardening an existing one.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/main.bicep`
+
+```bicep
+targetScope = 'subscription'
+
+param location string = 'westeurope'
+param projectName string
+
+module rg 'br/public:avm/res/resources/resource-group:0.4.0' = {
+  name: 'rg-${projectName}'
+  params: {
+    name: 'rg-${projectName}'
+    location: location
+  }
+}
+
+module vnet 'br/public:avm/res/network/virtual-network:0.5.0' = {
+  name: 'vnet-${projectName}'
+  scope: resourceGroup('rg-${projectName}')
+  params: {
+    name: 'vnet-${projectName}'
+    addressPrefixes: ['10.10.0.0/16']
+    subnets: [
+      { name: 'app', addressPrefix: '10.10.1.0/24' }
+      { name: 'data', addressPrefix: '10.10.2.0/24' }
+    ]
+  }
+}
+```
+
+### `templates/policy-initiative.json`
+
+```json
+{
+  "properties": {
+    "displayName": "baseline-initiative",
+    "policyDefinitions": [
+      {
+        "policyDefinitionReferenceId": "deny-public-ip",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/d416745a-506c-48b6-8ab1-83cb814bcaa3"
+      },
+      {
+        "policyDefinitionReferenceId": "allowed-locations",
+        "policyDefinitionId": "/providers/Microsoft.Authorization/policyDefinitions/e56962a6-4747-49cd-b67b-bf8b01975c4c",
+        "parameters": {
+          "listOfAllowedLocations": {
+            "value": [
+              "westeurope",
+              "northeurope"
+            ]
+          }
+        }
+      }
+    ]
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "org": "acme",
+  "tenant_id": "00000000-0000-0000-0000-000000000000",
+  "iac_engine": "avm-bicep",
+  "mg_hierarchy_levels": 3,
+  "policy_initiative": "baseline-initiative",
+  "identity": {
+    "entra_id": true,
+    "managed_identity": true,
+    "pim_enabled": true
+  },
+  "network": {
+    "topology": "hub-spoke",
+    "private_endpoints": true
+  },
+  "bcdr": {
+    "immutable_backup": true,
+    "rto_hours": 4,
+    "rpo_hours": 1
+  }
+}
+```

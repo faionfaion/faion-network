@@ -63,7 +63,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/supersession-report.md` | Markdown report listing candidate pairs with overlap % |
-| `templates/supersession.schema.json` | JSON Schema for the report artefact |
 
 ## Scripts
 

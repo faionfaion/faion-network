@@ -68,6 +68,8 @@
 | `templates/alt-input-matrix.ts` | TypeScript auditor: each interaction must have ≥2 modalities and seated-mode flag |
 | `templates/spatial-a11y-report.md` | Markdown report skeleton with interaction matrix + comfort options + tester log |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,59 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree branches on platform (visionOS / Quest / WebXR), input model (hand-track-primary / controller-primary), and required comfort policy. Each leaf references a rule in `01-core-rules.xml` and dictates whether seated-mode toggling, captioning defaults, or assistive-tester recruitment must escalate.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/alt-input-matrix.ts`
+
+```typescript
+type Modality = "gaze" | "voice" | "hand" | "controller" | "switch";
+
+interface Interaction {
+  name: string;
+  primary: Modality;
+  supports: Modality[];
+  seatedCompatible: boolean;
+}
+
+interface AuditResult {
+  passing: number;
+  gaps: { name: string; missing: number; seatedIssue: boolean }[];
+}
+
+const REQUIRED_MODALITIES = 2; // minimum distinct input paths per interaction
+
+export function audit(interactions: Interaction[]): AuditResult {
+  const gaps: AuditResult["gaps"] = [];
+
+  for (const interaction of interactions) {
+    const allModalities = new Set([interaction.primary, ...interaction.supports]);
+    const modalityCount = allModalities.size;
+    const modalityGap = Math.max(0, REQUIRED_MODALITIES - modalityCount);
+    const seatedIssue = !interaction.seatedCompatible;
+
+    if (modalityGap > 0 || seatedIssue) {
+      gaps.push({
+        name: interaction.name,
+        missing: modalityGap,
+        seatedIssue,
+      });
+    }
+  }
+
+  return {
+    passing: interactions.length - gaps.length,
+    gaps,
+  };
+}
+
+// Example usage:
+// const result = audit([
+//   { name: "Select object", primary: "gaze", supports: ["voice", "controller"], seatedCompatible: true },
+//   { name: "Grab item", primary: "hand", supports: [], seatedCompatible: false },
+// ]);
+// console.log(result);
+// → { passing: 1, gaps: [{ name: "Grab item", missing: 1, seatedIssue: true }] }
+```

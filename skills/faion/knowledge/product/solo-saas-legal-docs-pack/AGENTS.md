@@ -63,7 +63,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/solo-saas-legal-docs-pack.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/solo-saas-legal-docs-pack.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

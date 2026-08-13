@@ -63,6 +63,8 @@
 | `templates/backlog-management.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/backlog-management.md` | Markdown skeleton for human-readable artefact rendering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[feature-prioritization-rice]]
@@ -71,3 +73,28 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/backlog-management.json`
+
+```json
+{
+  "artefact_id": "backlog-management-example",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "states": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "age_caps_days": {
+    "key": "value"
+  },
+  "grooming_cadence": "grooming_cadence value",
+  "capacity_ratio": 1.0,
+  "owner": "@solo-founder"
+}
+```

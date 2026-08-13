@@ -65,6 +65,8 @@
 | `templates/trial-protocol.md` | 30-day trial plan with workload migration checklist. |
 | `templates/rollback-gate.yaml` | Rollback criteria + responsible-owner block. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,57 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` first checks whether ≥2 candidates exist and a trial sandbox is feasible. If only one candidate → skip and document. If trial is blocked → escalate to procurement. If multi-stakeholder scoring is impossible (no finance representative) → defer until alignment is possible. Otherwise → emit the rubric.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rubric.yaml`
+
+```yaml
+version: "1.0.0"
+category: "<saas-category>"      # e.g. apm, ticketing, ci-cd, hosting
+candidates:
+  - "<vendor-a>"
+  - "<vendor-b>"
+axes:
+  - id: fit
+    weight: 0.25
+    scored_by: "eng-lead:<person>"
+  - id: integrations
+    weight: 0.15
+    scored_by: "ops-lead:<person>"
+  - id: pricing
+    weight: 0.20
+    scored_by: "finance:<person>"
+  - id: support
+    weight: 0.10
+    scored_by: "ops-lead:<person>"
+  - id: security
+    weight: 0.15
+    scored_by: "security:<person>"
+  - id: exit_cost
+    weight: 0.15
+    scored_by: "eng-lead:<person>"
+scoring_scale: "1-5 (1 worst, 5 best)"
+```
+
+### `templates/rollback-gate.yaml`
+
+```yaml
+version: "1.0.0"
+candidate: "<vendor>"
+criteria:
+  - axis: "fit"
+    threshold: 3        # minimum acceptable axis score on 1-5
+  - axis: "pricing"
+    threshold: 3
+  - axis: "security"
+    threshold: 4
+day_60_check_date: "<ISO date>"
+responsible_owner: "tech-lead:<person>"
+switch_back_path:
+  - "Re-enable previous vendor at <link>"
+  - "Restore data from snapshot <id>"
+  - "Communicate to team via #eng-ops"
+```

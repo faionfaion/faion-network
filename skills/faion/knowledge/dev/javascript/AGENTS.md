@@ -66,6 +66,8 @@
 | `templates/prettierrc.json` | Shared Prettier config (single quotes, trailing commas, LF). |
 | `templates/vitest.config.ts` | Vitest config with jsdom + coverage (v8) + setup file. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,121 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters: TS 5.x adoptable, strict mode acceptable, pnpm acceptable. Any "no" -> defer or partial adoption.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tsconfig.json`
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": true,
+    "target": "ES2022",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@components/*": [
+        "./src/components/*"
+      ],
+      "@utils/*": [
+        "./src/utils/*"
+      ]
+    },
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
+```
+
+### `templates/eslint.config.js`
+
+```javascript
+// eslint.config.js — ESLint 9.x flat config with TypeScript strict + React hooks
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import react from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
+
+export default tseslint.config(
+  eslint.configs.recommended,
+  ...tseslint.configs.strictTypeChecked,
+  {
+    plugins: { react, 'react-hooks': reactHooks },
+    rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/explicit-function-return-type': ['error', { allowExpressions: true }],
+      '@typescript-eslint/no-explicit-any': 'error',
+    },
+  },
+);
+```
+
+### `templates/prettierrc.json`
+
+```json
+{
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "printWidth": 80,
+  "tabWidth": 2,
+  "useTabs": false,
+  "arrowParens": "always",
+  "endOfLine": "lf"
+}
+```
+
+### `templates/vitest.config.ts`
+
+```typescript
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+
+export default defineConfig({
+  plugins: [react()],
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      exclude: ['node_modules/', 'src/test/', '**/*.d.ts'],
+      thresholds: { lines: 80, branches: 80, functions: 80, statements: 80 },
+    },
+  },
+});
+```

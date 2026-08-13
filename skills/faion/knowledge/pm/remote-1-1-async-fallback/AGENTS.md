@@ -70,6 +70,8 @@
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum viable filled `Async11Note` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,61 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observed response state (within window, late, missing) to ack / escalate / reschedule. Each leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+owner:
+  role: ""
+  person: ""
+last_reviewed: ""
+version: ""
+response_window_business_hours: 48
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "pair_id": "pm-handle--ic-handle",
+  "cycle_iso": "2026-W21",
+  "header": {
+    "owner": {
+      "role": "PM",
+      "person": "pm-handle"
+    },
+    "last_reviewed": "2026-05-10",
+    "version": "1.0",
+    "response_window_business_hours": 48
+  },
+  "prompts": {
+    "blockers": "What is blocking your current sprint goals? Cite WBS id.",
+    "decisions_needed": "What decision are you waiting on and from whom?",
+    "morale": "Workload 1-10, autonomy 1-10, clarity 1-10."
+  },
+  "ic_response": {
+    "received_at": "2026-05-22T09:30:00Z",
+    "blockers": "PR review stalled",
+    "decisions_needed": "Token TTL",
+    "morale": "7/8/6"
+  },
+  "pm_ack": {
+    "acked_at": "2026-05-22T17:00:00Z",
+    "next_actions": [
+      {
+        "action": "Ping security-lead",
+        "owner_role": "PM",
+        "deadline_sprint": "S14"
+      }
+    ]
+  },
+  "escalation": {
+    "unresponsive_count": 0,
+    "action": "none"
+  }
+}
+```

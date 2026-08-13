@@ -64,6 +64,8 @@
 | `templates/safety-defaults.yaml` | Default safety thresholds per category. |
 | `templates/_smoke-test.json` | Minimum valid gemini-config. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,187 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` selects this methodology when Gemini is the chosen vendor. Branches by model choice (Pro vs Flash) given cost/quality budget; routes media-heavy calls to use Files API; skips when vendor is not Gemini.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/gemini-config.schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/gemini-config",
+  "_purpose": "Schema for the per-call-site Gemini config.",
+  "_consumes": "operator-authored gemini-config.json",
+  "_produces": "validation verdict",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "validator only",
+  "type": "object",
+  "required": [
+    "model",
+    "generation_config",
+    "safety_settings"
+  ],
+  "properties": {
+    "model": {
+      "type": "string",
+      "pattern": "^gemini-"
+    },
+    "generation_config": {
+      "type": "object",
+      "required": [
+        "temperature",
+        "max_output_tokens"
+      ],
+      "properties": {
+        "temperature": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "max_output_tokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "response_mime_type": {
+          "enum": [
+            "text/plain",
+            "application/json"
+          ]
+        }
+      }
+    },
+    "safety_settings": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": [
+          "category",
+          "threshold"
+        ],
+        "properties": {
+          "category": {
+            "enum": [
+              "HARM_CATEGORY_HARASSMENT",
+              "HARM_CATEGORY_HATE_SPEECH",
+              "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              "HARM_CATEGORY_DANGEROUS_CONTENT"
+            ]
+          },
+          "threshold": {
+            "enum": [
+              "BLOCK_NONE",
+              "BLOCK_LOW_AND_ABOVE",
+              "BLOCK_MEDIUM_AND_ABOVE",
+              "BLOCK_ONLY_HIGH"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### `templates/gemini-client.py`
+
+```python
+"""
+from __future__ import annotations
+
+import time
+from pathlib import Path
+
+try:
+    from google import genai
+    from google.genai import types
+except ImportError:
+    genai = None
+    types = None
+
+
+def make_client(api_key: str):
+    if genai is None:
+        raise SystemExit("google-genai required: pip install google-genai")
+    return genai.Client(api_key=api_key)
+
+
+def upload_if_large(client, path: Path, threshold_kb: int = 10240):
+    size_kb = path.stat().st_size / 1024
+    if size_kb < threshold_kb:
+        return path.read_bytes()
+    return client.files.upload(file=str(path))
+
+
+def call_with_retry(client, model: str, contents, gen_cfg: dict, safety: list[dict], max_attempts: int = 5) -> dict:
+    for attempt in range(max_attempts):
+        try:
+            resp = client.models.generate_content(
+                model=model,
+                contents=contents,
+                config=types.GenerateContentConfig(**gen_cfg, safety_settings=[types.SafetySetting(**s) for s in safety]),
+            )
+            cand = resp.candidates[0]
+            return {
+                "text": resp.text if cand.finish_reason.name == "STOP" else "",
+                "finish_reason": cand.finish_reason.name,
+                "block_reason": getattr(resp.prompt_feedback, "block_reason", None),
+            }
+        except Exception as e:
+            if "429" in str(e) and attempt < max_attempts - 1:
+                time.sleep(min(2 ** attempt, 60))
+                continue
+            raise
+    return {"text": "", "finish_reason": "RETRY_EXHAUSTED", "block_reason": None}
+```
+
+### `templates/safety-defaults.yaml`
+
+```yaml
+safety_settings:
+  - category: HARM_CATEGORY_HARASSMENT
+    threshold: BLOCK_MEDIUM_AND_ABOVE
+  - category: HARM_CATEGORY_HATE_SPEECH
+    threshold: BLOCK_MEDIUM_AND_ABOVE
+  - category: HARM_CATEGORY_SEXUALLY_EXPLICIT
+    threshold: BLOCK_MEDIUM_AND_ABOVE
+  - category: HARM_CATEGORY_DANGEROUS_CONTENT
+    threshold: BLOCK_MEDIUM_AND_ABOVE
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "Minimum valid gemini-config that passes the validator.",
+  "_consumes": "validate-gemini-api-integration.py",
+  "_produces": "ok verdict",
+  "_depends_on": "templates/gemini-config.schema.json",
+  "_token_budget_impact": "docs-only",
+  "model": "gemini-2.5-flash",
+  "generation_config": {
+    "temperature": 0.2,
+    "max_output_tokens": 2048
+  },
+  "safety_settings": [
+    {
+      "category": "HARM_CATEGORY_HARASSMENT",
+      "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+    },
+    {
+      "category": "HARM_CATEGORY_HATE_SPEECH",
+      "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+    },
+    {
+      "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+      "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+    },
+    {
+      "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+      "threshold": "BLOCK_MEDIUM_AND_ABOVE"
+    }
+  ]
+}
+```

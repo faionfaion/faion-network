@@ -58,9 +58,10 @@
 
 | File | Purpose |
 |---|---|
-| `templates/firefly_client.py` | Python client: OAuth + batch submit + poll + provenance attach. |
 | `templates/brand-rules.yaml` | Brand pre-filter rules skeleton (forbidden + required terms + style adherence). |
 | `templates/_smoke-test.json` | Filled minimum-viable single-asset request. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Related
 
@@ -70,3 +71,36 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the code; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/brand-rules.yaml`
+
+```yaml
+# brand-rules.yaml — Adobe Firefly Integration
+# Fill per task; validator: scripts/validate-adobe-firefly-integration.py
+
+model: firefly-image-v3
+prompt: Studio product shot of a teal water bottle on neutral background, soft top-down lighting.
+brand_check_passed: true
+provenance: {"prompt_hash": "sha256:ab12...", "model_version": "v3.2.1", "content_credentials_url": "https://cai.adobe.com/..."}
+alt_text: Teal stainless-steel water bottle on a beige seamless background lit from above.
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "model": "FILL_ME",
+  "prompt": "FILL_ME",
+  "brand_check_passed": true,
+  "provenance": {
+    "prompt_hash": "sha256:ab12...",
+    "model_version": "v3.2.1",
+    "content_credentials_url": "https://cai.adobe.com/..."
+  },
+  "alt_text": "FILL_ME"
+}
+```

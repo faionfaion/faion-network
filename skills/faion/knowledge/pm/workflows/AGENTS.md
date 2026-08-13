@@ -67,6 +67,8 @@
 |------|---------|
 | `templates/rice-reorder.sh` | Rank backlog by RICE score, write sorted INDEX.md |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,25 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, owner present, prior-cycle output available, cycle window fit) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology this cycle or defer.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rice-reorder.sh`
+
+```bash
+set -euo pipefail
+BACKLOG="${1:-.aidocs/features/backlog}"
+OUT="${BACKLOG}/INDEX.md"
+echo "# Backlog (RICE-sorted)" > "$OUT"
+for f in "$BACKLOG"/*/spec.md; do
+  r=$(awk '/^reach:/{print $2}' "$f" 2>/dev/null || echo 0)
+  i=$(awk '/^impact:/{print $2}' "$f" 2>/dev/null || echo 0)
+  c=$(awk '/^confidence:/{print $2}' "$f" 2>/dev/null || echo 0)
+  e=$(awk '/^effort:/{print $2}' "$f" 2>/dev/null || echo 1)
+  rice=$(awk "BEGIN{printf \"%.2f\", ($r*$i*$c)/$e}" 2>/dev/null || echo 0)
+  echo "$rice $f"
+done | sort -rn | awk '{print "- ["$2"]("$2")  rice="$1}' >> "$OUT"
+echo "wrote: $OUT"
+```

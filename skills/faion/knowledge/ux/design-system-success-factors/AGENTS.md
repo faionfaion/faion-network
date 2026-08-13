@@ -65,6 +65,8 @@
 |------|---------|
 | `templates/ds-coverage.mjs` | Node script computing per-team adoption + system coverage from import graph |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,23 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes from observable inputs to a rule-grounded conclusion, every leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ds-coverage.mjs`
+
+```javascript
+// Run: node ds-coverage.mjs <repo-root>
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+// Walk packages, parse imports, compute per-team adoption + coverage.
+async function main(root) {
+  // 1. enumerate packages / teams
+  // 2. count imports from design system vs alternatives
+  // 3. compute coverage_pct
+  // 4. write ds-health-report.json
+}
+main(process.argv[2]).catch(e => { console.error(e); process.exit(1); });
+```

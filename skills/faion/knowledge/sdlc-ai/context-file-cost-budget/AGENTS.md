@@ -43,9 +43,109 @@
 | `templates/context-budget-record.yaml` | Fill-in record for an audited file; ships valid against the contract. |
 | `templates/context-budget-record-delete.yaml` | The delete case — an LLM-generated file nobody confirmed, which the evidence says to remove. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - `agents-md-per-module-bootstrap` — nesting and closest-file-wins; this methodology bounds what each of those nested files may contain.
 - `context-window-curation-for-coding-agents` — the per-task bundle, which is a different budget: task-scoped and paid once, not standing and paid per turn.
 - `claude-md-creation-quality` — how to write the body; no cost evidence attached, so pair it with this.
 - `ai-convention-anchoring` — where a convention belongs once it is cut from the context file: a lint rule the agent cannot ignore rather than a line it might over-comply with.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/context-budget-record.yaml`
+
+```yaml
+#
+# If the file was LLM-generated and nobody confirmed its lines, do NOT edit this
+# file - use context-budget-record-delete.yaml, which stops before measurement.
+# Validate:  validate-context-file-cost-budget.py context-budget-record.yaml
+
+file: "AGENTS.md"
+authored_by: mixed          # human | llm | mixed
+current_lines: 318
+ceiling: 200                # >200 requires ceiling_justification
+
+# --- Classification (r4, r5, r6). Every line of the file lands in exactly one block. ---
+blocks:
+  - lines: "1-14"
+    kind: instruction
+    decision: keep
+    confirmed_by_human: true      # build, test and lint commands - the highest-value lines
+  - lines: "15-96"
+    kind: overview
+    decision: cut                 # directory tree + module inventory; the agent lists these on demand
+  - lines: "97-140"
+    kind: overview
+    decision: relocate
+    relocate_to: "docs/architecture.md"   # useful to humans, not per-turn agent context
+  - lines: "141-188"
+    kind: instruction
+    decision: keep
+    confirmed_by_human: true      # commit format, branch rules, the never-do list
+  - lines: "189-244"
+    kind: instruction
+    decision: relocate
+    relocate_to: ".claude/rules/frontend.md"   # applies only under web/; scope it (r5)
+  - lines: "245-286"
+    kind: preference
+    decision: keep
+    confirmed_by_human: true
+    marked_as_preference: true    # rewritten to "prefer X unless the task says otherwise"
+  - lines: "287-318"
+    kind: overview
+    decision: cut                 # dependency table, regenerated from the lockfile anyway
+
+kept_lines: 104                   # 14 + 48 + 42; must not exceed ceiling
+
+# --- Measurement (r7). Five runs per arm minimum, medians, cost in currency. ---
+runs: 5
+cost_usd_baseline: 0.94
+cost_usd_after: 1.07
+cost_accepted_because: >
+  13 cents per run buys a measured 5-point success gain on the same task set;
+  the pre-cut file cost 1.31 USD for a smaller gain than this.
+success_baseline: 0.61
+success_after: 0.66
+input_tokens_baseline: 41200      # diagnostic only, never the headline figure
+input_tokens_after: 47600
+
+verdict: cut
+verdict_rationale: >
+  318 lines to 104. The two overview blocks and the dependency table were pure
+  standing cost; the frontend rules moved to a path-scoped file and now load only
+  on turns that touch web/. Success moved 61% to 66% at 13 cents per run more.
+```
+
+### `templates/context-budget-record-delete.yaml`
+
+```yaml
+#
+# The stop condition: authored_by llm with zero human-confirmed blocks resolves to
+# delete without measurement. Do not add runs or cost fields below - spending money
+# to re-derive a published result is the thing this branch exists to avoid.
+# Validate:  validate-context-file-cost-budget.py context-budget-record-delete.yaml
+
+file: "packages/ingest/AGENTS.md"
+authored_by: llm
+current_lines: 212
+ceiling: 200
+
+blocks:
+  - lines: "1-212"
+    kind: overview
+    decision: cut
+
+kept_lines: 0
+
+verdict: delete
+verdict_rationale: >
+  Written by a repo-wide bootstrap pass on 2026-07-11, never read by anyone, and
+  it is a module summary plus a directory tree - the derivable category. This is
+  the variant the ETH/LogicStar measurement found slightly negative on task
+  success while still charging the full inference premium. Deleted, not audited.
+  A stub can be written by hand later if a real instruction turns up for it.
+```

@@ -64,6 +64,8 @@
 |------|---------|
 | `templates/schema.cypher` | Neo4j schema skeleton (labels, indexes, constraints) |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,18 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/schema.cypher`
+
+```cypher
+// indexes + constraints
+CREATE CONSTRAINT IF NOT EXISTS FOR (u:User) REQUIRE u.user_id IS UNIQUE;
+CREATE INDEX IF NOT EXISTS FOR (p:Product) ON (p.product_id);
+
+// sample bounded traversal
+PROFILE MATCH (u:User {user_id: $id})-[:PURCHASED*..3]->(p:Product) RETURN p LIMIT 50;
+```

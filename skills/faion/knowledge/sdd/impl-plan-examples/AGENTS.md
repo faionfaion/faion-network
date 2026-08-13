@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/impl-plan-examples.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/impl-plan-examples.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

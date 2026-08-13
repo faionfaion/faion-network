@@ -63,6 +63,8 @@
 |------|---------|
 | `templates/embed-and-search.py` | Reusable embed() + cosine() + top_k() functions with model+dims pinning. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,48 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` chooses (a) Batch API vs synchronous based on the 24-hour latency budget, (b) text-embedding-3-small vs text-embedding-3-large by measured recall, and (c) full dims vs reduced dims by cost ceiling. Use it before the first ingestion run — switching after re-indexes the entire corpus.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/embed-and-search.py`
+
+```python
+"""
+import numpy as np
+from typing import List, Tuple
+from openai import OpenAI
+
+client = OpenAI()
+
+
+def embed(
+    texts: List[str],
+    model: str = "text-embedding-3-small",
+    dims: int = 1536,
+) -> List[List[float]]:
+    """Embed a list of texts. Use same model+dims as ingestion for queries."""
+    resp = client.embeddings.create(model=model, input=texts, dimensions=dims)
+    return [d.embedding for d in resp.data]
+
+
+def cosine(a: List[float], b: List[float]) -> float:
+    """Cosine similarity between two embedding vectors."""
+    va, vb = np.array(a), np.array(b)
+    return float(np.dot(va, vb) / (np.linalg.norm(va) * np.linalg.norm(vb)))
+
+
+def top_k(
+    query_emb: List[float],
+    corpus_embs: List[List[float]],
+    corpus_texts: List[str],
+    k: int = 5,
+) -> List[Tuple[float, str]]:
+    """Return top-k (score, text) pairs sorted by descending similarity."""
+    scores = [
+        (cosine(query_emb, e), t)
+        for e, t in zip(corpus_embs, corpus_texts)
+    ]
+    return sorted(scores, key=lambda x: x[0], reverse=True)[:k]
+```

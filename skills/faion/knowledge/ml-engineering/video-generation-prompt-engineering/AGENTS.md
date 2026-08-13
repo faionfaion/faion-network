@@ -67,6 +67,8 @@
 | `templates/prompt-template.schema.yaml` | Schema |
 | `templates/_smoke-test.yaml` | Minimum-viable spec |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,59 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes prompt-style adjustments by chosen provider (Runway / Luma / Veo / Sora).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-template.schema.yaml`
+
+```yaml
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+required: [provider, sasscl, provider_overlay, max_chars, eval, brand_locks]
+properties:
+  provider: {type: string, enum: [runway, luma, veo, sora, kling]}
+  sasscl:
+    type: object
+    required: [subject_slot, action_slot, setting, style, camera, lighting]
+    properties:
+      subject_slot: {type: string}
+      action_slot: {type: string}
+      setting: {type: string}
+      style: {type: string}
+      camera: {type: string}
+      lighting: {type: string}
+  provider_overlay: {type: string, minLength: 5}
+  max_chars: {type: integer, minimum: 100, maximum: 4000}
+  eval:
+    type: object
+    required: [rubric_path, sample_size, promotion_threshold]
+    properties:
+      sample_size: {type: integer, minimum: 5}
+      promotion_threshold: {type: number, minimum: 0.8, maximum: 1.0}
+  brand_locks:
+    type: array
+    items: {type: string, enum: [style, camera, lighting]}
+    minItems: 3
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+provider: runway
+provider_overlay: "tracking shot from right, slow dolly, motion blur"
+max_chars: 480
+sasscl:
+  subject_slot: "character X mid-30s wearing brand wardrobe"
+  action_slot: "walking confidently looking forward"
+  setting: "Lisbon riverside late afternoon"
+  style: "cinematic 35mm slight desaturation"
+  camera: "tracking right 24mm wide"
+  lighting: "golden hour warm rim light"
+eval:
+  rubric_path: evals/brand-x-rubric.yaml
+  sample_size: 5
+  promotion_threshold: 0.8
+brand_locks: [style, camera, lighting]
+```

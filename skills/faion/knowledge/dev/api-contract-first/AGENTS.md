@@ -70,6 +70,8 @@
 | `templates/output-schema.json` | JSON Schema (draft-07) for the api-contract-first artefact |
 | `templates/_smoke-test.json` | Minimum viable filled-in api-contract-first artefact for validator round-trip |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,229 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on the schema's required cross-field checks; every leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/contract-ci.yaml`
+
+```yaml
+name: API Contract CI
+
+on:
+  pull_request:
+    paths:
+      - 'openapi.yaml'
+      - 'server/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint OpenAPI spec
+        run: npx --yes @stoplight/spectral-cli lint openapi.yaml
+
+      - name: Generate server stubs
+        run: |
+          docker run --rm -v "${PWD}:/local" openapitools/openapi-generator-cli generate \
+            -i /local/openapi.yaml \
+            -g python-fastapi \
+            -o /local/generated \
+            --additional-properties=packageName=api
+
+      - name: Compare generated models with implementation
+        run: diff -r ./generated/models ./server/models
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements-test.txt
+
+      - name: Run contract tests
+        run: pytest tests/contract/ -v
+```
+
+### `templates/openapi-base.yaml`
+
+```yaml
+openapi: "3.1.0"
+info:
+  title: Payment API
+  version: "1.0.0"
+
+paths:
+  /payments:
+    post:
+      operationId: createPayment
+      summary: Create a new payment
+      description: Initiates a payment for the given customer.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePaymentRequest'
+      responses:
+        "201":
+          description: Payment created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Payment'
+        "400":
+          $ref: '#/components/responses/ValidationError'
+        "422":
+          $ref: '#/components/responses/BusinessError'
+
+components:
+  schemas:
+    CreatePaymentRequest:
+      type: object
+      required: [amount, currency, customer_id]
+      properties:
+        amount:
+          type: integer
+          minimum: 1
+          description: Amount in cents
+        currency:
+          type: string
+          enum: [USD, EUR, GBP]
+        customer_id:
+          type: string
+          format: uuid
+
+    Payment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        amount:
+          type: integer
+        currency:
+          type: string
+        status:
+          type: string
+          enum: [pending, completed, failed]
+
+    ProblemDetail:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        traceId:
+          type: string
+
+  responses:
+    ValidationError:
+      description: Request body validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    BusinessError:
+      description: Business rule violation
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+```
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/api-contract-first.json",
+  "type": "object",
+  "required": [
+    "pack_id",
+    "spec_path",
+    "spec_version",
+    "ci_diff_job",
+    "codegen_targets",
+    "verdict"
+  ],
+  "properties": {
+    "pack_id": {
+      "type": "string",
+      "pattern": "^CPACK-[A-Z0-9-]{2,40}$"
+    },
+    "spec_path": {
+      "type": "string",
+      "minLength": 4
+    },
+    "spec_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "ci_diff_job": {
+      "type": "string",
+      "minLength": 4
+    },
+    "codegen_targets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "python",
+          "typescript",
+          "go",
+          "rust",
+          "java",
+          "csharp",
+          "ruby"
+        ]
+      }
+    },
+    "examples_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "operations_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "pack_id": "CPACK-PUBLIC-API-V1",
+  "spec_path": "openapi/public-api.yaml",
+  "spec_version": "1.4.0",
+  "ci_diff_job": ".github/workflows/contract-ci.yaml",
+  "codegen_targets": [
+    "typescript",
+    "python"
+  ],
+  "examples_count": 42,
+  "operations_count": 18,
+  "verdict": "pass"
+}
+```

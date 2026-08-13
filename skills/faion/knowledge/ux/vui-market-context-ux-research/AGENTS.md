@@ -66,6 +66,8 @@
 | `templates/refresh-script.py` | Anthropic web_search refresh runner emitting `vui_market_brief.json` |
 | `templates/brief.md` | Markdown brief skeleton with stats + platform comparison sections |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[market-researcher]]
@@ -75,3 +77,87 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes from observable inputs (brief age, presence of geo scope, denominator type) to an action, each leaf referencing a rule from `01-core-rules.xml`. Use it when deciding whether to publish, refresh, or reject a candidate stat.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/refresh-script.py`
+
+```python
+"""refresh-script.py - refresh VUI market statistics via Claude web_search."""
+from __future__ import annotations
+
+import datetime
+import json
+import pathlib
+import re
+import sys
+
+try:
+    import anthropic
+except ImportError:
+    sys.stderr.write("pip install anthropic\n")
+    sys.exit(2)
+
+METRICS = [
+    "voice assistants in use globally (total devices or users)",
+    "percentage of internet queries using voice search",
+    "percentage of US adults using voice assistants",
+    "percentage of US households with smart speakers",
+    "percentage of users preferring voice over typing for some tasks",
+]
+
+TRUSTED_SOURCES = [
+    "statista.com",
+    "voicebot.ai",
+    "edisonresearch.com",
+    "nngroup.com",
+    "pewresearch.org",
+    "gartner.com",
+]
+
+
+def refresh() -> dict:
+    client = anthropic.Anthropic()
+    msg = client.messages.create(
+        model="claude-opus-4-7",
+        max_tokens=2000,
+        tools=[{"type": "web_search_20250305", "name": "web_search"}],
+        messages=[{
+            "role": "user",
+            "content": (
+                f"Find most recent (2025-2026) figures for each metric below. "
+                f"Restrict sources to: {', '.join(TRUSTED_SOURCES)}. "
+                "Reject sources older than 18 months unless no newer primary source exists. "
+                "Reject SEO listicles; require primary research sources only.\n\n"
+                "Metrics:\n" + "\n".join(f"- {m}" for m in METRICS) + "\n\n"
+                "Return JSON array of: [{metric, value, year, source_url, geo, denominator, confidence}]"
+            ),
+        }],
+    )
+    text = msg.content[-1].text
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        match = re.search(r"\[.*\]", text, re.DOTALL)
+        data = json.loads(match.group()) if match else []
+    return {
+        "refreshed_at": datetime.date.today().isoformat(),
+        "model": "claude-opus-4-7",
+        "data": data,
+        "platforms": [
+            {"name": "Alexa", "reach_by_geo": {}, "sdk_health": "maintained"},
+            {"name": "Google Assistant", "reach_by_geo": {}, "sdk_health": "maintained"},
+            {"name": "Siri", "reach_by_geo": {}, "sdk_health": "maintained"},
+            {"name": "Bixby", "reach_by_geo": {}, "sdk_health": "maintained"},
+            {"name": "Custom LLM-VUI", "reach_by_geo": {}, "sdk_health": "active"},
+        ],
+    }
+
+
+if __name__ == "__main__":
+    out = refresh()
+    pathlib.Path("vui_market_brief.json").write_text(json.dumps(out, indent=2))
+    sys.stdout.write(f"refreshed {len(out['data'])} metrics @ {out['refreshed_at']}\n")
+```

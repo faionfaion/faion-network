@@ -63,6 +63,8 @@
 | `templates/threads-growth.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,89 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/threads-growth.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/threads-growth.json",
+  "title": "Threads Growth Output Contract",
+  "type": "object",
+  "required": [
+    "operator",
+    "daily_post_target",
+    "daily_reply_target",
+    "adaptation_log",
+    "voice_register",
+    "kpi_set",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "operator": {
+      "type": "string",
+      "description": "named account owner"
+    },
+    "daily_post_target": {
+      "type": "integer",
+      "description": "\u22655"
+    },
+    "daily_reply_target": {
+      "type": "integer",
+      "description": "\u226510 to larger accounts"
+    },
+    "adaptation_log": {
+      "type": "array",
+      "description": "X/IG source \u2192 Threads adapted text",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "voice_register": {
+      "type": "string",
+      "description": "casual|playful (formal rejected)"
+    },
+    "kpi_set": {
+      "type": "object",
+      "description": "{impressions, replies_from_strangers, profile_visits, qualified_follows}"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "operator": "sample-operator",
+  "daily_post_target": 1,
+  "daily_reply_target": 1,
+  "adaptation_log": [
+    {
+      "key": "value"
+    }
+  ],
+  "voice_register": "value",
+  "kpi_set": {
+    "key": "value"
+  },
+  "version": "sample-version",
+  "last_reviewed": "2026-05-23"
+}
+```

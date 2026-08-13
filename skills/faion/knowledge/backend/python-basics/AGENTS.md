@@ -58,6 +58,8 @@
 | `templates/dataclass.py` | Frozen + slotted dataclass skeleton with __post_init__ validation. |
 | `templates/pyproject.toml.fragment` | Minimal pyproject for 3.12+: build-system, requires-python, ruff target-version, mypy python_version. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -73,3 +75,47 @@
 ## Decision tree
 
 The tree at content/06-decision-tree.xml picks the right primitive (list / dict / set / dataclass / NamedTuple) and the right error pattern (EAFP vs LBYL) for the case at hand. Walk it any time you reach for typing.* imports or hasattr.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/dataclass.py`
+
+```python
+"""
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True, slots=True)
+class Money:
+    amount_cents: int
+    currency: str = "EUR"
+
+    def __post_init__(self) -> None:
+        if self.amount_cents < 0:
+            raise ValueError("Money cannot be negative")
+        if len(self.currency) != 3:
+            raise ValueError("ISO 4217 currency code expected")
+```
+
+### `templates/pyproject.toml.fragment`
+
+```toml
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "T20", "S", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --cov --cov-fail-under=80 -n auto"
+testpaths = ["tests"]
+markers = ["integration: requires external services"]
+```

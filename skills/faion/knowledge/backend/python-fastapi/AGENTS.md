@@ -61,6 +61,8 @@
 | `templates/service.py` | Service function skeleton: AsyncSession dependency, returns Pydantic response model. |
 | `templates/schemas.py` | Pydantic v2 BaseModel pair: <Entity>In + <Entity>Out with model_config. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,64 @@
 ## Decision tree
 
 The tree at content/06-decision-tree.xml decides BackgroundTasks vs job queue, Depends scope, and fan-out strategy inside a request. Walk it before adding any new endpoint or background job.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/router.py`
+
+```python
+"""
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from .schemas import ItemIn, ItemOut
+from .service import create_item
+from .deps import get_session
+
+router = APIRouter()
+
+
+@router.post("/items", response_model=ItemOut, status_code=201)
+async def create_item_endpoint(
+    payload: ItemIn,
+    session: AsyncSession = Depends(get_session),
+) -> ItemOut:
+    return await create_item(session, payload)
+```
+
+### `templates/service.py`
+
+```python
+"""
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from .schemas import ItemIn, ItemOut
+
+
+async def create_item(session: AsyncSession, payload: ItemIn) -> ItemOut:
+    # ORM logic lives here; route stays thin.
+    return ItemOut(id=1, name=payload.name)
+```
+
+### `templates/schemas.py`
+
+```python
+"""
+
+from pydantic import BaseModel, ConfigDict
+
+
+class ItemIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+
+
+class ItemOut(BaseModel):
+    id: int
+    name: str
+```

@@ -67,6 +67,8 @@
 | `templates/system_checks.py` | system checks for SECRET_KEY default + missing Sentry DSN |
 | `templates/audit-report.md` | output skeleton matching `02-output-contract` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,105 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes from "is the service public?" through "are there auth endpoints?" and "is it behind a trusted reverse proxy?" to one of: full baseline rollout, baseline-minus-rate-limit, or skip-this-methodology (internal-only on VPN). The proxy check exists because django-axes / django-ratelimit lock out all users when X-Forwarded-For trust is misconfigured behind a load balancer.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/production_settings.py`
+
+```python
+from .base import *  # noqa: F401, F403
+
+DEBUG = False
+
+# Transport
+SECURE_SSL_REDIRECT = True
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Cookies
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+# Headers
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+
+# HSTS — ramp 300 -> 3600 -> 31536000 across deploys; START AT 300
+SECURE_HSTS_SECONDS = 300
+SECURE_HSTS_INCLUDE_SUBDOMAINS = False
+SECURE_HSTS_PRELOAD = False
+
+# CSP (Django 6.0+ native). Start report-only; switch to enforce after telemetry clean.
+MIDDLEWARE.insert(1, "django.middleware.csp.ContentSecurityPolicyMiddleware")  # noqa: F405
+CONTENT_SECURITY_POLICY_REPORT_ONLY = {
+    "default-src": ["'self'"],
+    "script-src": ["'self'", "'nonce-<CSP_NONCE_SENTINEL>'"],
+    "style-src": ["'self'", "'nonce-<CSP_NONCE_SENTINEL>'"],
+    "img-src": ["'self'", "data:", "https:"],
+    "font-src": ["'self'", "https://fonts.gstatic.com"],
+    "connect-src": ["'self'"],
+    "frame-ancestors": ["'none'"],
+    "form-action": ["'self'"],
+}
+
+# Before deploy:
+#   python manage.py check --deploy --fail-level WARNING --settings=config.settings.production
+```
+
+### `templates/system_checks.py`
+
+```python
+from django.conf import settings
+from django.core.checks import Error, Tags, Warning, register
+
+
+@register(Tags.security)
+def check_secret_key_not_default(app_configs, **kwargs):
+    errors = []
+    key = settings.SECRET_KEY or ""
+    if key.startswith("django-insecure-") or key == "django-insecure-change-me":
+        errors.append(
+            Error(
+                "SECRET_KEY is the django-insecure default.",
+                hint=(
+                    "Generate via python -c 'from django.core.management.utils "
+                    "import get_random_secret_key; print(get_random_secret_key())' "
+                    "and load from env."
+                ),
+                id="security.E001",
+            )
+        )
+    return errors
+
+
+@register(Tags.security, deploy=True)
+def check_sentry_dsn_present(app_configs, **kwargs):
+    warnings = []
+    if not getattr(settings, "SENTRY_DSN", None) and not settings.DEBUG:
+        warnings.append(
+            Warning(
+                "SENTRY_DSN is not configured for production.",
+                hint="Set SENTRY_DSN env var; load it in production.py.",
+                id="monitoring.W001",
+            )
+        )
+    return warnings
+
+
+@register()
+def check_cache_not_locmem_in_prod(app_configs, **kwargs):
+    warnings = []
+    if not settings.DEBUG:
+        backend = settings.CACHES.get("default", {}).get("BACKEND", "")
+        if "LocMemCache" in backend:
+            warnings.append(
+                Warning(
+                    "Using LocMemCache in production.",
+                    hint="Configure Redis/Memcached for production caching.",
+                    id="caching.W001",
+                )
+            )
+    return warnings
+```

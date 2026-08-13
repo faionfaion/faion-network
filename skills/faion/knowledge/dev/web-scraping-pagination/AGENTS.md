@@ -71,6 +71,8 @@
 | `templates/walker.ts` | Three walker functions (next-button, infinite-scroll, load-more) in TypeScript. |
 | `templates/browser-pool.ts` | Bounded browser-context pool with p-limit. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,239 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree first detects pattern via DOM features (next-button selector / scrollHeight growth / load-more button). It then routes to the matching walker, verifies the stop condition matches the pattern, checks dedupe applied, and verifies the concurrency cap. Leaves emit `approve`, `block-wrong-pattern`, `block-no-dedupe`, or `block-unbounded-concurrency`. Each leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/web-scraping-pagination.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/web-scraping-pagination.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "source",
+    "pattern",
+    "pages_walked",
+    "items_collected",
+    "duplicate_count",
+    "concurrency_cap",
+    "pool_high_water_mark",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^wsp-[a-z0-9-]{6,}$"
+    },
+    "source": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pattern": {
+      "enum": [
+        "next-button",
+        "infinite-scroll",
+        "load-more"
+      ]
+    },
+    "pages_walked": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "items_collected": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "duplicate_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "concurrency_cap": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50
+    },
+    "pool_high_water_mark": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "stop_condition_observed": {
+      "type": "string"
+    },
+    "verdict": {
+      "enum": [
+        "approve",
+        "block-wrong-pattern",
+        "block-no-dedupe",
+        "block-unbounded-concurrency"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```
+
+### `templates/walker.ts`
+
+```typescript
+import type { Page, Locator } from "playwright";
+
+const HARD_CEILING = 500;
+
+export interface WalkTelemetry {
+  pattern: "next-button" | "infinite-scroll" | "load-more";
+  pages_walked: number;
+  items_collected: number;
+  duplicate_count: number;
+  stop_condition_observed: string;
+}
+
+export async function walkNextButton<T>(
+  page: Page,
+  extract: () => Promise<T[]>,
+  keyOf: (t: T) => string,
+  nextSelector: string
+): Promise<{ items: T[]; telemetry: WalkTelemetry }> {
+  const seen = new Set<string>();
+  const items: T[] = [];
+  let duplicate = 0;
+  let pages = 0;
+  let stop = "";
+  while (pages < HARD_CEILING) {
+    pages++;
+    for (const it of await extract()) {
+      const k = keyOf(it);
+      if (seen.has(k)) { duplicate++; continue; }
+      seen.add(k);
+      items.push(it);
+    }
+    const next = page.locator(nextSelector);
+    const exists = await next.count() > 0;
+    const disabled = exists && (await next.first().isDisabled().catch(() => false));
+    if (!exists || disabled) { stop = !exists ? "button absent" : "button disabled"; break; }
+    await Promise.all([next.first().click(), page.waitForLoadState("networkidle")]);
+  }
+  return { items, telemetry: { pattern: "next-button", pages_walked: pages, items_collected: items.length, duplicate_count: duplicate, stop_condition_observed: stop || "ceiling reached" } };
+}
+
+export async function walkInfiniteScroll<T>(
+  page: Page,
+  extract: () => Promise<T[]>,
+  keyOf: (t: T) => string,
+  idleMs = 4000
+): Promise<{ items: T[]; telemetry: WalkTelemetry }> {
+  const seen = new Set<string>();
+  const items: T[] = [];
+  let duplicate = 0;
+  let pages = 0;
+  let lastHeight = -1;
+  let stableMs = 0;
+  while (pages < HARD_CEILING) {
+    pages++;
+    await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+    await page.waitForTimeout(500);
+    const h = await page.evaluate(() => document.body.scrollHeight);
+    stableMs = h === lastHeight ? stableMs + 500 : 0;
+    lastHeight = h;
+    for (const it of await extract()) {
+      const k = keyOf(it);
+      if (seen.has(k)) { duplicate++; continue; }
+      seen.add(k);
+      items.push(it);
+    }
+    if (stableMs >= idleMs) break;
+  }
+  return { items, telemetry: { pattern: "infinite-scroll", pages_walked: pages, items_collected: items.length, duplicate_count: duplicate, stop_condition_observed: `scrollHeight stable ${idleMs}ms` } };
+}
+
+export async function walkLoadMore<T>(
+  page: Page,
+  extract: () => Promise<T[]>,
+  keyOf: (t: T) => string,
+  buttonSelector: string
+): Promise<{ items: T[]; telemetry: WalkTelemetry }> {
+  const seen = new Set<string>();
+  const items: T[] = [];
+  let duplicate = 0;
+  let pages = 0;
+  let stop = "";
+  while (pages < HARD_CEILING) {
+    pages++;
+    for (const it of await extract()) {
+      const k = keyOf(it);
+      if (seen.has(k)) { duplicate++; continue; }
+      seen.add(k);
+      items.push(it);
+    }
+    const btn = page.locator(buttonSelector);
+    if ((await btn.count()) === 0) { stop = "button absent"; break; }
+    if (!(await btn.first().isVisible())) { stop = "button hidden"; break; }
+    await btn.first().click();
+    await page.waitForTimeout(500);
+  }
+  return { items, telemetry: { pattern: "load-more", pages_walked: pages, items_collected: items.length, duplicate_count: duplicate, stop_condition_observed: stop || "ceiling reached" } };
+}
+```
+
+### `templates/browser-pool.ts`
+
+```typescript
+import type { Browser, BrowserContext, Page } from "playwright";
+
+export interface Pool {
+  withPage<T>(fn: (page: Page) => Promise<T>): Promise<T>;
+  highWaterMark(): number;
+  drain(): Promise<void>;
+}
+
+export function createPool(browser: Browser, cap: number = 3): Pool {
+  if (cap < 1 || cap > 50) throw new Error(`cap out of range: ${cap}`);
+  let inUse = 0;
+  let hwm = 0;
+  const waiters: Array<() => void> = [];
+
+  async function acquire(): Promise<BrowserContext> {
+    while (inUse >= cap) {
+      await new Promise<void>(resolve => waiters.push(resolve));
+    }
+    inUse++;
+    if (inUse > hwm) hwm = inUse;
+    return browser.newContext();
+  }
+
+  function release(ctx: BrowserContext): Promise<void> {
+    inUse--;
+    const w = waiters.shift();
+    if (w) w();
+    return ctx.close();
+  }
+
+  async function withPage<T>(fn: (page: Page) => Promise<T>): Promise<T> {
+    const ctx = await acquire();
+    const page = await ctx.newPage();
+    try {
+      return await fn(page);
+    } finally {
+      await page.close().catch(() => {});
+      await release(ctx);
+    }
+  }
+
+  function highWaterMark() { return hwm; }
+  async function drain() { /* contexts close in their own finally */ }
+
+  return { withPage, highWaterMark, drain };
+}
+```

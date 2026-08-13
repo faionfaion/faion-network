@@ -68,6 +68,8 @@
 | `templates/fastapi_client.py` | FastAPI TestClient and AsyncClient fixtures with dependency override. |
 | `templates/_smoke-test.yaml` | Minimum service graph (one Postgres, one FastAPI app). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[testing-pytest]]
@@ -77,3 +79,145 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on `db_engine_required` (yes → Testcontainers + rollback; no → in-memory), then on `parallel_target` (≥2 → unique-ID factories; 1 → sequence-based), then on `external_http_calls` (none → no mock; few/simple → respx; many/complex → WireMock container). Each leaf cites a rule id.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/conftest_postgres.py`
+
+```python
+"""
+conftest.py — PostgreSQL integration test setup.
+Session-scoped Testcontainers container + function-scoped transaction rollback.
+"""
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from testcontainers.postgres import PostgresContainer
+
+from app.models import Base
+
+
+@pytest.fixture(scope="session")
+def postgres_container():
+    """Start PostgreSQL container once per test session."""
+    with PostgresContainer("postgres:16-alpine") as postgres:
+        yield postgres
+
+
+@pytest.fixture(scope="session")
+def engine(postgres_container):
+    """Create SQLAlchemy engine and all tables."""
+    engine = create_engine(postgres_container.get_connection_url())
+    Base.metadata.create_all(engine)
+    return engine
+
+
+@pytest.fixture
+def session(engine):
+    """Fresh session per test with automatic transaction rollback."""
+    connection = engine.connect()
+    transaction = connection.begin()
+    Session = sessionmaker(bind=connection)
+    db = Session()
+
+    yield db
+
+    db.close()
+    transaction.rollback()
+    connection.close()
+```
+
+### `templates/conftest_django.py`
+
+```python
+"""
+conftest.py — Django integration test setup with Factory Boy.
+Requires: pytest-django, factory-boy
+"""
+import factory
+import pytest
+from factory.django import DjangoModelFactory
+
+from myapp.models import User
+
+
+class UserFactory(DjangoModelFactory):
+    class Meta:
+        model = User
+
+    email = factory.Sequence(lambda n: f"user{n}@example.com")
+    name = factory.Faker("name")
+    is_active = True
+
+
+@pytest.fixture
+def user(db):
+    return UserFactory()
+
+
+@pytest.fixture
+def admin_user(db):
+    return UserFactory(is_staff=True, is_superuser=True)
+```
+
+### `templates/fastapi_client.py`
+
+```python
+"""
+FastAPI test client fixtures — sync (TestClient) and async (AsyncClient).
+Add to conftest.py; requires httpx.
+"""
+import pytest
+from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
+
+from app.main import app
+from app.database import get_db
+
+
+# --- Synchronous ---
+
+@pytest.fixture
+def client(session):
+    """Sync TestClient with test DB session injected via dependency override."""
+    def override_get_db():
+        yield session
+
+    app.dependency_overrides[get_db] = override_get_db
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
+
+
+# --- Asynchronous ---
+
+@pytest.fixture
+async def async_client(session):
+    """Async client — required when app uses async DB drivers (asyncpg, motor)."""
+    app.dependency_overrides[get_db] = lambda: session
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as c:
+        yield c
+    app.dependency_overrides.clear()
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+services:
+  - service: api
+    framework: fastapi
+    db_engine: postgres
+    external_apis:
+      - {name: billing, url: https://billing.example.com}
+
+drivers:
+  db_engine_required: true
+  commit_time_behavior_under_test: false
+  parallel_target: 4
+  external_http_calls: few
+```

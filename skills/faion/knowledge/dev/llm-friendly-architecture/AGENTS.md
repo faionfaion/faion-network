@@ -63,10 +63,11 @@
 | File | Purpose |
 |------|---------|
 | `templates/skeleton.md` | Markdown skeleton of the artefact with all required sections. |
-| `templates/header.yaml` | Frontmatter schema (owner, version, last_reviewed, trigger_url). |
 | `templates/_smoke-test.json` | Minimum-viable filled JSON instance, parseable by the validator. |
 | `templates/claude-md-project.md` | CLAUDE.md skeleton tuned for LLM-friendly architecture rules. |
 | `templates/llm-arch-audit.sh` | Shell audit: file size, directory depth, naming-clarity rules. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -83,3 +84,63 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` first checks whether preconditions hold (named trigger + named owner + typed inputs). If yes, it routes between the full artefact form and a minimal-record fallback when the trigger is below the materiality threshold. If preconditions don't hold, the conclusion is to skip this methodology and route the work upstream.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "trigger": {
+    "kind": "weekly-review",
+    "url": "https://example.com/trigger/1"
+  },
+  "owner": "swe:alice",
+  "inputs": [
+    {
+      "name": "scope",
+      "value": "billing"
+    }
+  ],
+  "decision": "Adopt variant A behind feature flag.",
+  "evidence": [
+    "https://example.com/pr/1"
+  ],
+  "review": {
+    "cadence": "quarterly",
+    "next_review_at": "2026-08-22"
+  }
+}
+```
+
+### `templates/llm-arch-audit.sh`
+
+```bash
+# llm-arch-audit.sh — Find files violating LLM-friendly architecture limits.
+# Usage: bash llm-arch-audit.sh [src-dir] [line-limit]
+# Input:  source directory (default: src), line limit (default: 250)
+# Output: files exceeding limit (sorted by size desc), barrel re-export files
+
+DIR=${1:-src}
+LIMIT=${2:-250}
+
+echo "=== Files exceeding ${LIMIT} lines in ${DIR} ==="
+find "$DIR" -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.py" \) \
+  | while read -r f; do
+      lines=$(wc -l < "$f")
+      if [ "$lines" -gt "$LIMIT" ]; then
+        echo "$lines  $f"
+      fi
+    done \
+  | sort -rn
+
+echo ""
+echo "=== Barrel re-exports (agent navigation traps) ==="
+if command -v rg &>/dev/null; then
+  rg --glob "*.ts" "^export \* from" "$DIR" -l
+else
+  grep -rl "^export \* from" "$DIR" --include="*.ts"
+fi
+```

@@ -67,6 +67,8 @@
 | `templates/kill-batch.json` | JSON example of one weekly kill batch |
 | `templates/thresholds.yaml` | Threshold config |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,71 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps deal state (numeric counters + champion status) to kill / keep / escalate, pinning the rule from `01-core-rules.xml`. Use it during the Monday review — bypassing turns the triage back into emotional debate.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/kill-batch.json`
+
+```json
+{
+  "batch_id": "kb-2026-05-23",
+  "run_date": "2026-05-23",
+  "owner": "@ruslan",
+  "thresholds": {
+    "no_reply_days": 21,
+    "last_meeting_days": 30
+  },
+  "deals": [
+    {
+      "deal_id": "d-101",
+      "trips": [
+        "no_reply",
+        "last_meeting"
+      ],
+      "action": "killed",
+      "reversal_window_days": 30
+    },
+    {
+      "deal_id": "d-102",
+      "trips": [
+        "budget_unconfirmed"
+      ],
+      "action": "kept"
+    },
+    {
+      "deal_id": "d-103",
+      "trips": [
+        "champion_left",
+        "no_reply"
+      ],
+      "action": "killed",
+      "reversal_window_days": 30
+    },
+    {
+      "deal_id": "d-104",
+      "trips": [
+        "missed_milestone",
+        "last_meeting",
+        "champion_left"
+      ],
+      "action": "escalated"
+    }
+  ],
+  "killed": 2,
+  "escalated": 1
+}
+```
+
+### `templates/thresholds.yaml`
+
+```yaml
+version: "1.0.0"
+last_retro: "2026-04-01"
+no_reply_days: 21        # > X days since last prospect reply
+last_meeting_days: 30    # > Y days since last meeting
+missed_milestone: true   # >= 1 missed milestone = trip
+budget_confirmed_required_at_stage: ["proposal-sent", "negotiation"]
+champion_left_check: true
+```

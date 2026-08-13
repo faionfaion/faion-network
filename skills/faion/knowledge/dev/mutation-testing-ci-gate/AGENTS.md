@@ -69,6 +69,8 @@
 | `templates/pitest.xml` | Pitest profile for incremental mutation. |
 | `templates/ci-mutation.yml` | GitHub Actions snippet for non-blocking → blocking mutation gate. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,64 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree picks the mutator by language, gates shadow→blocking on noise rate, and routes survivors through triage.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/stryker.conf.json`
+
+```json
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "mutate": [
+    "src/**/*.ts",
+    "!src/**/*.test.ts"
+  ],
+  "testRunner": "jest",
+  "reporters": [
+    "html",
+    "clear-text",
+    "dashboard"
+  ],
+  "incremental": true,
+  "incrementalFile": ".stryker-tmp/incremental.json",
+  "thresholds": {
+    "high": 80,
+    "low": 60,
+    "break": 60
+  },
+  "timeoutMS": 60000
+}
+```
+
+### `templates/mutmut.cfg`
+
+```ini
+[mutmut]
+paths_to_mutate=src/
+runtests=pytest -q
+backup=false
+use_coverage=true
+tests_dir=tests/
+```
+
+### `templates/ci-mutation.yml`
+
+```yaml
+name: mutation
+on:
+  pull_request:
+jobs:
+  mutation:
+    runs-on: ubuntu-latest
+    continue-on-error: true   # FLIP TO false AFTER 14-DAY SHADOW PERIOD
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: incremental mutation
+        run: scripts/incremental-mutator.sh
+      - name: triage survivors
+        run: python scripts/triage-survivors.py
+```

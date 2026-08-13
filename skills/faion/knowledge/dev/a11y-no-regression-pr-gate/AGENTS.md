@@ -67,6 +67,8 @@
 | `templates/a11y-no-regression-pr-gate.md` | Markdown skeleton for the A11y No-Regression PR Gate artefact. |
 | `templates/_smoke-test.json` | Minimum viable a11y-no-regression-pr-gate record for validator smoke-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,30 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree filters on scanner presence, VCS-baseline discipline, and per-PR new-violation severity; routes critical/serious new violations to block and moderate/minor to ack-required.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "artefact_id": "a11y-gate-2026-q2",
+  "owner": "frontend@faion.net",
+  "baseline_path": ".a11y/baseline.json",
+  "waiver_path": ".a11y-waivers.json",
+  "route_map_path": ".a11y/route-map.json",
+  "severity_block": [
+    "critical",
+    "serious"
+  ],
+  "severity_ack": [
+    "moderate"
+  ],
+  "waiver_max_days": 90,
+  "nightly_full_scan": true,
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+```

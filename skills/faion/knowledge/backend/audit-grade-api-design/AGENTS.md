@@ -66,6 +66,8 @@
 | `templates/deprecation-policy.md` | Deprecation policy template |
 | `templates/_smoke-test.md` | Filled-in spec for a payments-create endpoint |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,30 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/openapi.yaml`
+
+```yaml
+openapi: 3.0.3
+info:
+  title: Sample API
+  version: 1.0.0
+paths:
+  /v1/ping:
+    get:
+      summary: Health probe
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+```

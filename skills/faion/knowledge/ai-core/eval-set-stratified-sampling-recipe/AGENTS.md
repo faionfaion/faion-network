@@ -65,6 +65,8 @@
 | `templates/sampling-recipe.example.json` | Reference filled recipe for a 4×3×2 grid. |
 | `templates/strata-quota.py` | Proportional-with-floor quota calculator. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,201 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters: eval-set size ≥500, multi-stratum, traffic data available, then chooses between fresh-recipe or carry-forward branches based on traffic drift vs prior recipe.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/sampling-recipe.schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/eval-sampling-recipe",
+  "title": "Stratified eval sampling recipe",
+  "type": "object",
+  "required": [
+    "version",
+    "parent_version",
+    "created_at",
+    "N_daily",
+    "seed",
+    "tail_floor",
+    "head_cap_share",
+    "strata",
+    "drift_policy"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "parent_version": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "N_daily": {
+      "type": "integer",
+      "minimum": 10,
+      "maximum": 5000
+    },
+    "seed": {
+      "type": "integer"
+    },
+    "tail_floor": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50,
+      "default": 5
+    },
+    "head_cap_share": {
+      "type": "number",
+      "minimum": 0.1,
+      "maximum": 0.6,
+      "default": 0.4
+    },
+    "drift_policy": {
+      "type": "object",
+      "required": [
+        "abs_share_threshold",
+        "max_age_days"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "abs_share_threshold": {
+          "type": "number",
+          "minimum": 0.01,
+          "maximum": 0.5
+        },
+        "max_age_days": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 90
+        }
+      }
+    },
+    "strata": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "key",
+          "traffic_share",
+          "quota"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z0-9._=-]+$"
+          },
+          "traffic_share": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "quota": {
+            "type": "integer",
+            "minimum": 1
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### `templates/sampling-recipe.example.json`
+
+```json
+{
+  "version": "1.2.0",
+  "parent_version": "1.1.0",
+  "created_at": "2026-05-22T07:00:00Z",
+  "N_daily": 200,
+  "seed": 42,
+  "tail_floor": 5,
+  "head_cap_share": 0.4,
+  "drift_policy": {
+    "abs_share_threshold": 0.1,
+    "max_age_days": 30
+  },
+  "strata": [
+    {
+      "key": "cohort=ent.tool=search.intent=lookup",
+      "traffic_share": 0.55,
+      "quota": 80
+    },
+    {
+      "key": "cohort=ent.tool=summarise.intent=long-form",
+      "traffic_share": 0.2,
+      "quota": 50
+    },
+    {
+      "key": "cohort=smb.tool=search.intent=lookup",
+      "traffic_share": 0.15,
+      "quota": 40
+    },
+    {
+      "key": "cohort=trial.tool=search.intent=lookup",
+      "traffic_share": 0.1,
+      "quota": 30
+    }
+  ]
+}
+```
+
+### `templates/strata-quota.py`
+
+```python
+"""Proportional-with-floor quota calculator for stratified eval sampling."""
+from __future__ import annotations
+
+
+def compute_quotas(
+    strata: list[tuple[str, float]],
+    n_daily: int,
+    tail_floor: int = 5,
+    head_cap_share: float = 0.4,
+) -> list[tuple[str, int]]:
+    if not strata or n_daily < 1:
+        return []
+    head_cap = int(n_daily * head_cap_share)
+    raw = [(k, max(tail_floor, min(head_cap, round(n_daily * s)))) for k, s in strata]
+    total = sum(q for _, q in raw)
+    delta = n_daily - total
+    if delta == 0:
+        return raw
+    # Redistribute to tail strata (sorted by share asc) one case at a time.
+    order = sorted(range(len(raw)), key=lambda i: strata[i][1])
+    out = [list(t) for t in raw]
+    i = 0
+    step = 1 if delta > 0 else -1
+    while delta != 0 and order:
+        idx = order[i % len(order)]
+        new_q = out[idx][1] + step
+        # Respect bounds.
+        if new_q >= tail_floor and new_q <= head_cap:
+            out[idx][1] = new_q
+            delta -= step
+        i += 1
+        if i > len(order) * (abs(delta) + 10):
+            break
+    return [(k, q) for k, q in out]
+
+
+if __name__ == "__main__":
+    demo = [("head", 0.55), ("mid", 0.20), ("smb", 0.15), ("trial", 0.10)]
+    for k, q in compute_quotas(demo, n_daily=200):
+        # Documented stdout for demo only.
+        import sys
+        sys.stdout.write(f"{k}\t{q}\n")
+```

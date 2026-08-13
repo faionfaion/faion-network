@@ -62,7 +62,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/catalog.md` | Catalog Markdown template (per-category sections) |
-| `templates/catalog.json` | Machine-readable catalog JSON |
 | `templates/scorecard.md` | Per-server scorecard template |
 
 ## Scripts

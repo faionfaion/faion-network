@@ -56,9 +56,7 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/anti-slop-rubric.json` | JSON schema for the anti-slop rubric output contract |
 | `templates/anti-slop-rubric.md` | Markdown skeleton with all required fields |
-| `templates/_smoke-test.json` | Minimum-viable filled example |
 
 ## Scripts
 

@@ -66,6 +66,8 @@
 | `templates/forced-tool-extract.py` | tool_choice extraction pattern for typed JSON output. |
 | `templates/_smoke-test.json` | Minimum-valid tool definition for the validator. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,180 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters whether to use this Claude-specific pattern: non-Claude models route to `[[function-calling-patterns]]` or vendor-specific siblings; streaming-only UX → use streaming response API directly; ≤1 tool call → bypass the loop and call directly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tool-definition.json`
+
+```json
+{
+  "name": "get_weather",
+  "description": "Get current weather for a location. Call this when the user asks about weather or temperature in a specific city.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "location": {
+        "type": "string",
+        "description": "City name with country code, e.g., 'Kyiv, UA' or 'London, UK'"
+      },
+      "unit": {
+        "type": "string",
+        "enum": [
+          "celsius",
+          "fahrenheit"
+        ],
+        "description": "Temperature unit for the response"
+      }
+    },
+    "required": [
+      "location"
+    ]
+  }
+}
+```
+
+### `templates/agent-loop.py`
+
+```python
+Canonical Claude agentic loop with parallel tool execution.
+
+Usage:
+    tools = [{"name": "...", "description": "...", "input_schema": {...}}]
+    result = run_agent_loop(client, tools, execute_fn, user_input)
+"""
+import json
+from concurrent.futures import ThreadPoolExecutor
+from typing import Callable
+import anthropic
+
+MODEL = "claude-sonnet-4-20250514"
+MAX_TURNS = 15
+
+
+def run_agent_loop(
+    client: anthropic.Anthropic,
+    tools: list[dict],
+    execute_fn: Callable[[str, dict], str],
+    user_input: str,
+    system: str = "",
+) -> str:
+    """Run the agentic loop. Returns the final text response."""
+    messages = [{"role": "user", "content": user_input}]
+
+    for _ in range(MAX_TURNS):
+        response = client.messages.create(
+            model=MODEL,
+            max_tokens=4096,
+            system=system,
+            tools=tools,
+            messages=messages,
+        )
+        # Append full content list (includes tool_use blocks)
+        messages.append({"role": "assistant", "content": response.content})
+
+        if response.stop_reason != "tool_use":
+            break
+
+        # Execute all tool calls in parallel
+        tool_uses = [b for b in response.content if b.type == "tool_use"]
+        with ThreadPoolExecutor() as executor:
+            futures = {b.id: executor.submit(execute_fn, b.name, b.input) for b in tool_uses}
+
+        results = [
+            {"type": "tool_result", "tool_use_id": bid, "content": f.result()}
+            for bid, f in futures.items()
+        ]
+        messages.append({"role": "user", "content": results})
+
+    return next(
+        (b.text for b in response.content if b.type == "text"),
+        "",
+    )
+
+
+def safe_execute(name: str, input_data: dict) -> str:
+    """Example tool executor — replace with real implementations."""
+    try:
+        if name == "example_tool":
+            return json.dumps({"result": "ok"})
+        return json.dumps({"error": f"Unknown tool: {name}"})
+    except Exception as e:
+        return json.dumps({"error": str(e), "tool": name})
+```
+
+### `templates/forced-tool-extract.py`
+
+```python
+"""
+from __future__ import annotations
+
+import anthropic
+
+MODEL = "claude-sonnet-4-5"
+
+
+def force_extract(client: anthropic.Anthropic, system: str, user: str, schema: dict, tool_name: str = "extract") -> dict:
+    """Force Claude to call `extract` with input matching schema; return tool_use.input."""
+    tools = [{
+        "name": tool_name,
+        "description": "Return the structured result. Always call this tool exactly once with the data.",
+        "input_schema": schema,
+    }]
+    resp = client.messages.create(
+        model=MODEL,
+        max_tokens=2048,
+        system=system,
+        tools=tools,
+        tool_choice={"type": "tool", "name": tool_name},
+        messages=[{"role": "user", "content": user}],
+    )
+    for block in resp.content:
+        if block.type == "tool_use" and block.name == tool_name:
+            return block.input
+    raise RuntimeError("forced tool did not fire; check tool_choice + schema")
+
+
+if __name__ == "__main__":
+    # Example: extract person {name, age} from free text.
+    schema = {
+        "type": "object",
+        "properties": {"name": {"type": "string"}, "age": {"type": "integer"}},
+        "required": ["name", "age"],
+    }
+    print(schema)  # noqa: T201 - sample only
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "Minimum valid Claude tool definition for the validator.",
+  "_consumes": "validate-claude-tool-use.py",
+  "_produces": "ok verdict",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "docs-only",
+  "name": "get_weather",
+  "description": "Get current weather for a location. Call this when the user asks about weather or temperature.",
+  "input_schema": {
+    "type": "object",
+    "properties": {
+      "location": {
+        "type": "string",
+        "description": "City name with country code"
+      },
+      "unit": {
+        "type": "string",
+        "enum": [
+          "celsius",
+          "fahrenheit"
+        ]
+      }
+    },
+    "required": [
+      "location"
+    ]
+  }
+}
+```

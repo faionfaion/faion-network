@@ -59,10 +59,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/cross-team-estimation-normalisation.json` | JSON schema for the program report |
 | `templates/cross-team-estimation-normalisation.md` | Markdown program report skeleton |
 | `templates/non-comparability-caveat.md` | Reusable explainer for the steering committee |
-| `templates/_smoke-test.json` | Minimum-viable filled report |
 
 ## Scripts
 

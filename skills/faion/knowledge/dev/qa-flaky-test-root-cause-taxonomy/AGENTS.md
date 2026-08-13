@@ -62,6 +62,8 @@
 | `templates/classify.py` | Python scaffold realising the artefact in code. |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,85 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Are we classifying flakes by root cause to drive remediation?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/taxonomy.json`
+
+```json
+{
+  "taxonomy_version": "1.0.0",
+  "categories": [
+    {
+      "id": "time",
+      "label": "Time-sensitive",
+      "detectors": [
+        "assert .* in .* sleep",
+        "now\\(\\) compared"
+      ],
+      "fix_family": "freezegun + monotonic clock"
+    },
+    {
+      "id": "order",
+      "label": "Order-dependent",
+      "detectors": [
+        "passes alone, fails in suite"
+      ],
+      "fix_family": "explicit setup/teardown + pytest-randomly"
+    }
+  ],
+  "default_unknown_window_days": 7,
+  "mask_window_days": 30
+}
+```
+
+### `templates/classify.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Python scaffold realising the artefact in code.","consumes":"see content/02-output-contract.xml","produces":"rubric","depends_on":"content/01-core-rules.xml#closed-enum","token_budget_impact":"~150 tokens when loaded"}}
+"""QA Flaky Test Root-Cause Taxonomy scaffold. See AGENTS.md for context and content/02-output-contract.xml for the contract."""
+from __future__ import annotations
+
+# Minimal scaffold for the qa-flaky-test-root-cause-taxonomy methodology.
+# Replace this stub with real implementation; keep the header intact.
+
+def main() -> int:
+    """Entrypoint; returns exit code."""
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "taxonomy_version": "1.0.0",
+  "categories": [
+    {
+      "id": "time",
+      "label": "Time-sensitive",
+      "detectors": [
+        "assert .* in .* sleep",
+        "now\\(\\) compared"
+      ],
+      "fix_family": "freezegun + monotonic clock"
+    },
+    {
+      "id": "order",
+      "label": "Order-dependent",
+      "detectors": [
+        "passes alone, fails in suite"
+      ],
+      "fix_family": "explicit setup/teardown + pytest-randomly"
+    }
+  ],
+  "default_unknown_window_days": 7,
+  "mask_window_days": 30
+}
+```

@@ -68,6 +68,8 @@
 | `templates/retry.ts` | Bounded retry helper with exponential backoff |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,85 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/stealth-worker.ts`
+
+```typescript
+// STEALTH STANCE: plugin-only.
+// Reason: puppeteer-extra-plugin-stealth is the maintained baseline. We do not
+// stack manual navigator overrides on top; assertions never depend on overridden props.
+import puppeteer from 'puppeteer-extra';
+import Stealth from 'puppeteer-extra-plugin-stealth';
+puppeteer.use(Stealth());
+
+export async function launch(opts: { proxyHost?: string } = {}) {
+  const args = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'];
+  if (opts.proxyHost) args.push(`--proxy-server=${opts.proxyHost}`);
+  return puppeteer.launch({ headless: 'new', args });
+}
+```
+
+### `templates/proxy-pool.ts`
+
+```typescript
+import fetch from 'node-fetch';
+
+export interface Proxy { host: string; auth?: { user: string; pass: string } }
+
+export async function healthy(pool: Proxy[], probeUrl: string, timeoutMs = 5000): Promise<Proxy[]> {
+  const out: Proxy[] = [];
+  for (const p of pool) {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), timeoutMs);
+      const res = await fetch(probeUrl, { signal: ctrl.signal });
+      clearTimeout(t);
+      if (res.ok) out.push(p);
+    } catch { /* dead proxy */ }
+  }
+  return out;
+}
+
+export class CircuitBreaker {
+  private fails = 0;
+  constructor(private threshold = 5) {}
+  recordFail() { this.fails++; }
+  reset() { this.fails = 0; }
+  open(): boolean { return this.fails >= this.threshold; }
+}
+```
+
+### `templates/retry.ts`
+
+```typescript
+export async function retry<T>(fn: () => Promise<T>, max = 2, baseMs = 500): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i <= max; i++) {
+    try { return await fn(); }
+    catch (e) {
+      lastErr = e;
+      if (i === max) break;
+      await new Promise((r) => setTimeout(r, baseMs * 2 ** i));
+    }
+  }
+  throw lastErr;
+}
+```
+
+### `templates/artefact.json`
+
+```json
+{
+  "stance": "plugin",
+  "stance_documented": true,
+  "max_retries": 2,
+  "circuit_breaker": true,
+  "proxy_pool_size": 8,
+  "proxy_health_check": true,
+  "proxy_auth_method": "authenticate_api"
+}
+```

@@ -73,6 +73,8 @@
 | `templates/cva-variant-example.tsx` | cva variant authoring example: typed Variants + slot composition. |
 | `templates/_smoke-test.json` | Minimum viable tailwind architecture artefact for validator smoke-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,3 +90,152 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs - tokens source, cn() shape, extraction threshold, @apply scope - onto a rule from `content/01-core-rules.xml`. Use it before merging styling work: it catches arbitrary-values-creep and raw-clsx-conflicts upstream.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tailwind.config.ts`
+
+```typescript
+import type { Config } from 'tailwindcss';
+
+export default {
+  darkMode: ['class'],
+  content: ['./src/**/*.{ts,tsx,mdx}'],
+  theme: {
+    extend: {
+      colors: {
+        background: 'hsl(var(--background))',
+        foreground: 'hsl(var(--foreground))',
+        primary: { DEFAULT: 'hsl(var(--primary))', foreground: 'hsl(var(--primary-foreground))' },
+        destructive: { DEFAULT: 'hsl(var(--destructive))', foreground: 'hsl(var(--destructive-foreground))' },
+      },
+      borderRadius: { lg: 'var(--radius)', md: 'calc(var(--radius) - 2px)', sm: 'calc(var(--radius) - 4px)' },
+    },
+  },
+  plugins: [],
+} satisfies Config;
+```
+
+### `templates/utils.ts`
+
+```typescript
+import { clsx, type ClassValue } from 'clsx';
+import { extendTailwindMerge } from 'tailwind-merge';
+
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      'font-size': [{ text: ['brand-display', 'brand-body'] }],
+    },
+  },
+});
+
+export function cn(...inputs: ClassValue[]): string {
+  return twMerge(clsx(inputs));
+}
+```
+
+### `templates/cn.ts`
+
+```typescript
+// lib/cn.ts — Project-tuned class merging utility
+// Combines clsx (conditional joining) + tailwind-merge (conflict resolution).
+// Export ONLY this cn(); ban raw clsx() calls in eslint.
+
+import { clsx, type ClassValue } from 'clsx';
+import { extendTailwindMerge, twMerge } from 'tailwind-merge';
+
+// Extend tailwind-merge if you have custom token utilities in tailwind.config.ts
+// Example: theme.extend.spacing adds custom spacing utilities
+const customTwMerge = extendTailwindMerge({
+  // Uncomment and adapt when using custom token utilities:
+  // extend: {
+  //   classGroups: {
+  //     'font-size': [{ text: ['display', 'hero'] }],  // custom font-size tokens
+  //   },
+  // },
+});
+
+export function cn(...inputs: ClassValue[]): string {
+  return customTwMerge(clsx(inputs));
+}
+
+// Usage:
+// <div className={cn('base-class', isActive && 'active-class', className)} />
+// <Button className={cn(button({ intent: 'primary' }), props.className)} />
+```
+
+### `templates/cva-variant-example.tsx`
+
+```tsx
+// cva-variant-example.tsx — Button with cva variants + cn() passthrough
+// Pattern: define base + variants in cva, accept className prop for overrides.
+
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '@/lib/cn';
+import type { ButtonHTMLAttributes } from 'react';
+
+const button = cva(
+  // Base classes shared by all variants
+  'inline-flex items-center justify-center rounded-button font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50',
+  {
+    variants: {
+      intent: {
+        primary:     'bg-primary text-primary-foreground hover:bg-primary/90',
+        secondary:   'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+        ghost:       'hover:bg-muted hover:text-foreground',
+        outline:     'border border-input bg-background hover:bg-muted',
+      },
+      size: {
+        sm: 'h-8 px-3 text-xs',
+        md: 'h-10 px-4 text-sm',
+        lg: 'h-12 px-6 text-base',
+        icon: 'h-10 w-10',
+      },
+    },
+    defaultVariants: {
+      intent: 'primary',
+      size: 'md',
+    },
+  }
+);
+
+interface ButtonProps
+  extends ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof button> {
+  // className passthrough for per-use overrides via cn()
+}
+
+export function Button({ className, intent, size, ...props }: ButtonProps) {
+  return (
+    <button
+      className={cn(button({ intent, size }), className)}
+      {...props}
+    />
+  );
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "tailwind_version": "v3",
+  "token_source": "tailwind.config.ts",
+  "cn_util": {
+    "path": "src/lib/utils.ts",
+    "uses_tailwind_merge": true
+  },
+  "extraction_threshold": {
+    "min_utilities": 5,
+    "min_call_sites": 3
+  },
+  "lint_rules": [
+    "no-arbitrary-values"
+  ],
+  "dark_mode_strategy": "semantic_tokens"
+}
+```

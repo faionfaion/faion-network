@@ -66,6 +66,8 @@
 | `templates/provider-comparison.json` | Provider scoring matrix consumed by the decision script. |
 | `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,52 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (investment stack, workload profile, compliance matrix, cost envelope)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/provider-comparison.json`
+
+```json
+{
+  "criteria": [
+    {
+      "name": "existing_investment_fit",
+      "weight": 0.35
+    },
+    {
+      "name": "workload_type_fit",
+      "weight": 0.25
+    },
+    {
+      "name": "compliance_certifications",
+      "weight": 0.2
+    },
+    {
+      "name": "12mo_tco",
+      "weight": 0.2
+    }
+  ],
+  "scores": {
+    "aws": {
+      "existing_investment_fit": 3,
+      "workload_type_fit": 4,
+      "compliance_certifications": 5,
+      "12mo_tco": 3
+    },
+    "azure": {
+      "existing_investment_fit": 5,
+      "workload_type_fit": 4,
+      "compliance_certifications": 5,
+      "12mo_tco": 3
+    },
+    "gcp": {
+      "existing_investment_fit": 2,
+      "workload_type_fit": 5,
+      "compliance_certifications": 4,
+      "12mo_tco": 4
+    }
+  }
+}
+```

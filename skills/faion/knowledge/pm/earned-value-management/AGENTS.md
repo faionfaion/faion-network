@@ -67,7 +67,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/evm-report.md` | Period report: PV, EV, AC, CPI, SPI, EAC, TCPI table + variance narrative. |
-| `templates/pv-curve.csv` | Time-phased planned-value curve. |
 
 ## Scripts
 

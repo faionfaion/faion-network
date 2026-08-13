@@ -60,7 +60,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/weekly-branch-hygiene-checklist.json` | JSON skeleton matching the output contract. |
 | `templates/weekly-branch-hygiene-checklist.md` | Markdown skeleton with required fields. |
 
 ## Scripts

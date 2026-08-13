@@ -65,10 +65,7 @@
 | File | Purpose |
 |------|---------|
 | `templates/design-qa-checklist.md` | 10-item checklist printable card. |
-| `templates/design-qa-record.json` | JSON skeleton for the per-PR record. |
 | `templates/pr-comment.md` | PR comment template with per-item status. |
-| `templates/scan-pr-for-raw-values.py` | Lints PR diff for raw colors / spacing / px instead of token usage. |
-| `templates/audit-component-reuse.py` | Detects new components vs design-system catalog. |
 
 ## Scripts
 

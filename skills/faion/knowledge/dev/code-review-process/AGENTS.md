@@ -66,6 +66,8 @@
 | `templates/pr-description.md` | PR description template |
 | `templates/pr-size-guard.sh` | Shell guard that fails CI on oversize PRs |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,79 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches on platform (GitHub / GitLab / Bitbucket) → emits the right protection format; then on team size (4-10 vs 10+) — larger teams get stricter required-reviewers count.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pr-checks.yml`
+
+```yaml
+name: PR Checks
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run linters
+        run: make lint
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run tests
+        run: make test
+
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check coverage threshold
+        run: |
+          pytest --cov=src --cov-fail-under=80
+
+  pr-size:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check PR size
+        run: bash scripts/pr-size-guard.sh
+```
+
+### `templates/pr-size-guard.sh`
+
+```bash
+#!/usr/bin/env bash
+# pr-size-guard.sh — Warn above 400 lines, block above 1500 lines.
+# Outputs GitHub Actions annotations: ::warning and ::error.
+# Run: bash pr-size-guard.sh  (uses origin/main as base by default)
+
+set -euo pipefail
+
+BASE="${BASE:-origin/main}"
+git fetch -q origin "${BASE#origin/}"
+
+LINES=$(git diff --shortstat "$BASE"...HEAD | awk '{n=$4+$6} END{print n+0}')
+WARN=400
+FAIL=1500
+
+echo "PR adds/removes $LINES lines total."
+
+if [ "$LINES" -ge "$FAIL" ]; then
+  echo "::error::PR too large ($LINES lines). Split into smaller PRs before merging."
+  exit 1
+fi
+
+if [ "$LINES" -ge "$WARN" ]; then
+  echo "::warning::PR is large ($LINES lines). Agent review quality drops above $WARN lines. Consider splitting."
+fi
+
+exit 0
+```

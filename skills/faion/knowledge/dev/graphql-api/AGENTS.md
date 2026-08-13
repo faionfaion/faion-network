@@ -69,6 +69,8 @@
 | `templates/codegen.yml` | graphql-codegen config for TS/server + client types |
 | `templates/dataloader-pattern.ts` | DataLoader factory pattern per request |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,92 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps protocol choice, consumer shape, and DataLoader readiness to a rule from `01-core-rules.xml`, telling the agent whether to apply GraphQL conventions or skip for REST/gRPC. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/codegen.yml`
+
+```yaml
+# codegen.yml — graphql-codegen config for TypeScript + typed document nodes
+# Run: pnpm graphql-codegen
+# Generates: TypeScript resolver types + typed operation documents
+
+schema: 'src/schema/**/*.graphql'
+documents: 'src/**/*.{ts,tsx,graphql}'
+
+generates:
+  src/__generated__/types.ts:
+    plugins:
+      - typescript
+      - typescript-resolvers
+    config:
+      contextType: '../context#GraphQLContext'
+      mappers:
+        User: '../db/user#UserRecord'
+        Order: '../db/order#OrderRecord'
+      # Prefer undefined over null for optional fields
+      maybeValue: T | undefined
+
+  src/__generated__/operations.ts:
+    plugins:
+      - typescript-operations
+      - typed-document-node
+
+hooks:
+  afterAllFileWrite:
+    - prettier --write
+```
+
+### `templates/dataloader-pattern.ts`
+
+```typescript
+// dataloader-pattern.ts — Per-request DataLoader context factory
+// Wire into your GraphQL server context function.
+// Each request gets fresh DataLoader instances — never share across requests.
+
+import DataLoader from 'dataloader';
+import { db } from './db';
+
+// Batch function: receives array of IDs, returns array of items in same order
+async function batchUsers(ids: readonly string[]) {
+  const users = await db.user.findMany({ where: { id: { in: [...ids] } } });
+  const userMap = new Map(users.map((u) => [u.id, u]));
+  // Must return items in the same order as input IDs, null for missing
+  return ids.map((id) => userMap.get(id) ?? null);
+}
+
+async function batchProductsByOrderId(orderIds: readonly string[]) {
+  const items = await db.orderItem.findMany({
+    where: { orderId: { in: [...orderIds] } },
+    include: { product: true },
+  });
+  const grouped = new Map<string, typeof items>();
+  for (const item of items) {
+    const list = grouped.get(item.orderId) ?? [];
+    list.push(item);
+    grouped.set(item.orderId, list);
+  }
+  return orderIds.map((id) => grouped.get(id) ?? []);
+}
+
+export interface GraphQLContext {
+  userId: string | null;
+  loaders: {
+    user: DataLoader<string, Awaited<ReturnType<typeof batchUsers>>[number]>;
+    productsByOrder: DataLoader<string, Awaited<ReturnType<typeof batchProductsByOrderId>>[number]>;
+  };
+}
+
+// Called once per request by the GraphQL server
+export function createContext(req: { user?: { id: string } }): GraphQLContext {
+  return {
+    userId: req.user?.id ?? null,
+    loaders: {
+      user: new DataLoader(batchUsers),
+      productsByOrder: new DataLoader(batchProductsByOrderId),
+    },
+  };
+}
+```

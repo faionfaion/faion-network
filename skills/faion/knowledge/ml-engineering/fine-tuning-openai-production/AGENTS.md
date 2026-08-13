@@ -62,8 +62,9 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/finetune-pipeline.py` | Pipeline orchestrator skeleton |
 | `templates/model-registry.yaml` | Registry schema skeleton |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -79,3 +80,20 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root: Has the file been uploaded? Branches route to a rule id from `content/01-core-rules.xml` (idempotent-resume, hyperparameter-explicit, eval-on-held-out, ...) so every leaf is traceable to a testable statement.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/model-registry.yaml`
+
+```yaml
+# fine-tuning-openai-production — config skeleton
+version: 1.0.0
+slug: fine-tuning-openai-production
+fields:
+  - name: example-field
+    type: string
+    required: true
+defaults: {}
+```

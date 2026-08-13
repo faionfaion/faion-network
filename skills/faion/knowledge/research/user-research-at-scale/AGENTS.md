@@ -75,6 +75,8 @@
 | `templates/code-batch.sh` | Bash launcher: coding-frozen-book agent over a batch of transcripts |
 | `templates/research-ops-report.md` | Weekly research-ops report skeleton |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -90,3 +92,93 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals onto a rule id from `content/01-core-rules.xml`, so the agent can decide in one read whether to run the methodology, halt, or route elsewhere. Use it whenever the inputs feel ambiguous.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/codebook.yaml`
+
+```yaml
+# codebook.yaml — frozen taxonomy for AI-assisted research coding
+# Version: 1.0.0 — bump version with documented change entry when modifying
+# Do NOT add codes mid-study. Use proposed_codes overflow channel instead.
+
+version: 1.0.0
+
+codes:
+  - id: ONB-FRICTION
+    label: Onboarding friction
+    valence_default: -1
+    examples:
+      - "I had to enter my email three times"
+      - "I didn't know where to start"
+
+  - id: PRICE-SHOCK
+    label: Pricing surprise (unexpected cost)
+    valence_default: -2
+    examples:
+      - "I didn't realize I'd be charged for that"
+      - "The price jumped when I added a second user"
+
+  - id: AHA
+    label: Aha moment (value realization)
+    valence_default: 2
+    examples:
+      - "Oh, it does that automatically — that's exactly what I needed"
+      - "When I saw the dashboard for the first time I got it"
+
+  - id: MISSING-FEATURE
+    label: Feature gap (desired capability absent)
+    valence_default: -1
+    examples:
+      - "I wish I could export this as CSV"
+      - "There's no way to share this with my team"
+
+  - id: TRUST
+    label: Trust signal (security, reliability, brand)
+    valence_default: 1
+    examples:
+      - "I felt confident it would keep my data safe"
+      - "The company has been around for 10 years"
+
+segments:
+  - persona     # mapped to persona definition in study-spec.md
+  - plan        # free | starter | pro | enterprise
+  - region      # ISO 3166-1 alpha-2
+  - device      # web | mobile | desktop
+```
+
+### `templates/code-batch.sh`
+
+```bash
+#!/usr/bin/env bash
+# code-batch.sh — run theme-coder agent over a transcript directory
+# Input: transcripts/*.json (one file per session)
+# Output: .aidocs/research/coded/*.jsonl + coded.parquet
+# Skips already-coded transcripts (idempotent via output file check).
+set -euo pipefail
+
+CODEBOOK=.aidocs/research/codebook.yaml
+PROMPTS=prompts/theme-coder.xml
+OUT=.aidocs/research/coded
+mkdir -p "$OUT"
+
+for f in transcripts/*.json; do
+  base=$(basename "$f" .json)
+  if [ -f "$OUT/$base.jsonl" ]; then
+    echo "skip: $base (already coded)"
+    continue
+  fi
+  echo "coding: $base"
+  claude -p "$(cat "$PROMPTS")" \
+    --input-file "$f" \
+    --context-file "$CODEBOOK" \
+    --output-file "$OUT/$base.jsonl" \
+    --model claude-sonnet-4-5
+done
+
+# Aggregate coded JSONL into parquet for analysis
+duckdb -c "COPY (SELECT * FROM read_json_auto('$OUT/*.jsonl')) TO 'coded.parquet'"
+echo "Parquet written: coded.parquet"
+```

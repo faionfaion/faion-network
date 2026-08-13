@@ -66,6 +66,8 @@
 |------|---------|
 | `templates/n-plus-one-assertion.java` | Test assertion enforcing query count budget on a list endpoint. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,46 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (domain richness, search shape, observability target) to a rule from `01-core-rules.xml`. Use it before standing up new service infrastructure.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/n-plus-one-assertion.java`
+
+```java
+// N+1 detection helper for Spring Boot integration tests using Hibernate Statistics.
+// Wire in a @TestConfiguration that enables statistics, then call in @Test methods.
+//
+// Usage:
+//   1. Enable stats in test config:
+//      sessionFactory.unwrap(SessionFactory.class).getStatistics().setStatisticsEnabled(true);
+//   2. Call NPlusOneAssertion.assertNoNPlusOne(stats, User.class.getName(), 1);
+
+package com.example.app.test;
+
+import org.hibernate.stat.Statistics;
+
+public final class NPlusOneAssertion {
+
+    private NPlusOneAssertion() {}
+
+    /**
+     * Asserts that the given entity was fetched at most {@code max} times.
+     * Fails with an AssertionError if the fetch count exceeds the allowed maximum.
+     *
+     * @param stats      Hibernate Statistics (must have setStatisticsEnabled(true))
+     * @param entityName Fully-qualified entity class name (e.g. "com.example.app.entity.User")
+     * @param max        Maximum allowed fetch count (typically 1 for a single-load test)
+     */
+    public static void assertNoNPlusOne(Statistics stats, String entityName, int max) {
+        long count = stats.getEntityStatistics(entityName).getFetchCount();
+        if (count > max) {
+            throw new AssertionError(
+                "N+1 detected on " + entityName + ": fetched " + count
+                + " times, max allowed is " + max
+            );
+        }
+    }
+}
+```

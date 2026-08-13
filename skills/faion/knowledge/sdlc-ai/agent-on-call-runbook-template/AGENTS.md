@@ -63,7 +63,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/on-call-runbook.md` | Markdown runbook skeleton with step IDs + tool tier column |
-| `templates/runbook.schema.json` | JSON Schema for the runbook artefact |
 
 ## Scripts
 

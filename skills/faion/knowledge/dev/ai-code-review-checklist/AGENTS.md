@@ -69,6 +69,8 @@
 | `templates/ai-code-review-checklist.json` | JSON Schema for the review-decision artefact. |
 | `templates/checklist-trace.md` | Markdown skeleton the reviewer fills (12 rows + verdict). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,92 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree iterates through the 12 checks; any block-tier failure forces verdict=block; any request-changes failure with no block forces verdict=request-changes; all approved-with-note OR pass = approve. Leaves emit `approve`, `request-changes`, or `block` and reference the specific check id from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ai-code-review-checklist.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-code-review-checklist.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "pr_ref",
+    "ai_pct_lines",
+    "checks",
+    "verdict",
+    "reviewer_email",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^aicr-[a-z0-9-]{6,}$"
+    },
+    "pr_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ai_pct_lines": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "checks": {
+      "type": "object",
+      "required": [
+        "c01-hallucinated-imports",
+        "c02-silent-skip-tests",
+        "c03-convention-drift",
+        "c04-supply-chain",
+        "c05-secret-exposure",
+        "c06-deferred-debt",
+        "c07-error-handling-coverage",
+        "c08-overscoped-changes",
+        "c09-test-quality",
+        "c10-perf-regression",
+        "c11-deferred-impl",
+        "c12-ai-disclosure"
+      ],
+      "additionalProperties": {
+        "enum": [
+          "approve",
+          "approve-with-note",
+          "request-changes",
+          "block"
+        ]
+      }
+    },
+    "verdict": {
+      "enum": [
+        "approve",
+        "request-changes",
+        "block"
+      ]
+    },
+    "block_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "reviewer_email": {
+      "type": "string",
+      "format": "email"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

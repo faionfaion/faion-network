@@ -65,6 +65,8 @@
 | `templates/mypy-config.toml` | Strict mypy config with `django-stubs` plugin and per-module overrides for `tests.*` and `migrations.*`. |
 | `templates/no-new-any.sh` | CI guard: greps the diff for new `: Any`, `-> Any`, `dict[str, Any]`; exits 1 if introduced. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,97 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` picks the annotation strategy from the input shape (dict-shaped payload → TypedDict; structural contract → Protocol; class hierarchy with `super()` chains → ABC; generic container → PEP 695 generic). Use it whenever the right answer is "what type construct fits this case", not "should I annotate at all".
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/mypy-config.toml`
+
+```toml
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unused_ignores = true
+warn_return_any = true
+
+# Django-stubs plugin
+plugins = ["mypy_django_plugin.main"]
+
+[tool.mypy.plugins.django-stubs]
+django_settings_module = "config.settings.development"
+# Strict mode for Django models (requires django-stubs 5.0+)
+strict_settings = true
+
+# ─── Per-module overrides ────────────────────────────────────────────────────
+
+# Tests: allow untyped fixtures and parametrize helpers
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_any_generics = false
+
+# Migrations: generated code, skip entirely
+[[tool.mypy.overrides]]
+module = ["*.migrations.*", "conftest"]
+ignore_errors = true
+
+# Third-party packages without stubs
+[[tool.mypy.overrides]]
+module = [
+    "boto3.*",
+    "botocore.*",
+    "celery.*",
+    "redis.*",
+    "factory.*",
+]
+ignore_missing_imports = true
+
+# Incrementally typed modules — add strict as they are annotated:
+# [[tool.mypy.overrides]]
+# module = ["apps.orders.services", "apps.users.services"]
+# strict = true
+```
+
+### `templates/no-new-any.sh`
+
+```bash
+set -euo pipefail
+
+# Get list of staged .py files
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$' || true)
+
+if [ -z "$STAGED_FILES" ]; then
+    exit 0
+fi
+
+echo "==> Checking for new Any annotations in staged files..."
+
+# Run mypy on staged files, grep for error codes that indicate Any
+MYPY_OUTPUT=$(uv run mypy --no-error-summary $STAGED_FILES 2>&1 || true)
+
+# Check for Any-related errors
+ANY_ERRORS=$(echo "$MYPY_OUTPUT" | grep -E "(no-any-return|type\[Any\]|Returning Any|has type.*Any)" || true)
+
+if [ -n "$ANY_ERRORS" ]; then
+    echo "ERROR: New Any annotations detected in staged files:"
+    echo "$ANY_ERRORS"
+    echo ""
+    echo "Fix: Replace Any with a specific type or use TypedDict/Protocol."
+    echo "If unavoidable: use '# type: ignore[return-value]' with a justification comment."
+    exit 1
+fi
+
+echo "==> No new Any annotations found."
+exit 0
+
+# ─── .pre-commit-config.yaml snippet ─────────────────────────────────────────
+# - repo: local
+#   hooks:
+#     - id: no-new-any
+#       name: No new Any annotations
+#       entry: bash skills/faion/knowledge/free/dev/python-developer/python-typing/templates/no-new-any.sh
+#       language: system
+#       stages: [pre-push]
+#       pass_filenames: false
+```

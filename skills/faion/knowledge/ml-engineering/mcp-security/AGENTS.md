@@ -64,7 +64,6 @@
 |------|---------|
 | `templates/security-rubric.md` | Rubric skeleton with sections + score bands. |
 | `templates/consent-flow.md` | Consent-UI flow description per primitive type. |
-| `templates/oauth-config.yaml` | OAuth 2.1 + PKCE config for remote MCP servers. |
 
 ## Scripts
 

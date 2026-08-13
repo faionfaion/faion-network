@@ -73,6 +73,8 @@
 | `templates/margin-alert-message.md` | Diplomatic client message for bleed > 5% |
 | `templates/_smoke-test.json` | Minimum viable filled `MarginBleedReport` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,3 +90,39 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (per-pattern severity, cumulative bleed, SALES_INVESTMENT tag, recurrence count) to suppress / report / alert / pause-clause. Every leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/bleed-report.json`
+
+```json
+{
+  "project_id": "",
+  "week_iso": "",
+  "baseline_margin_pct": 0,
+  "current_realised_margin_pct": 0,
+  "bleeds": [],
+  "cumulative_bleed_pct": 0,
+  "alerts_triggered": [],
+  "recommended_actions": [],
+  "comms_drafted": false
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "project_id": "smoke",
+  "week_iso": "2026-W21",
+  "baseline_margin_pct": 30,
+  "current_realised_margin_pct": 28,
+  "bleeds": [],
+  "cumulative_bleed_pct": 0,
+  "alerts_triggered": [],
+  "recommended_actions": [],
+  "comms_drafted": false
+}
+```

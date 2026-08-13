@@ -68,6 +68,8 @@
 | `templates/tts-config.schema.yaml` | Schema for tts-config |
 | `templates/_smoke-test.yaml` | Minimum-viable tts-config |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,185 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes by (a) latency budget, (b) voice-cloning need, (c) on-prem requirement → {Aura, ElevenLabs Turbo, OpenAI tts-1, Google Chirp, Coqui local}.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tts-cached.py`
+
+```python
+"""TTS with content-hash caching to avoid redundant API calls."""
+import hashlib
+import os
+from pathlib import Path
+
+from elevenlabs.client import ElevenLabs
+from elevenlabs import stream
+
+
+CACHE_DIR = Path(os.environ.get("TTS_CACHE_DIR", "/tmp/tts-cache"))
+CACHE_DIR.mkdir(parents=True, exist_ok=True)
+
+client = ElevenLabs(api_key=os.environ["ELEVENLABS_API_KEY"])
+
+DEFAULT_VOICE = "JBFqnCBsd6RMkjVDRZzb"   # Rachel
+DEFAULT_MODEL = "eleven_flash_v2_5"
+DEFAULT_FORMAT = "mp3_44100_128"
+
+
+def _cache_key(text: str, voice_id: str, model_id: str, output_format: str) -> str:
+    raw = f"{text}|{voice_id}|{model_id}|{output_format}"
+    return hashlib.sha256(raw.encode()).hexdigest()
+
+
+def synthesize(
+    text: str,
+    voice_id: str = DEFAULT_VOICE,
+    model_id: str = DEFAULT_MODEL,
+    output_format: str = DEFAULT_FORMAT,
+) -> bytes:
+    """Generate TTS audio with cache. Returns audio bytes."""
+    key = _cache_key(text, voice_id, model_id, output_format)
+    cache_path = CACHE_DIR / f"{key}.mp3"
+
+    if cache_path.exists():
+        return cache_path.read_bytes()
+
+    audio = b"".join(client.text_to_speech.convert(
+        voice_id=voice_id,
+        text=text,
+        model_id=model_id,
+        output_format=output_format,
+    ))
+    cache_path.write_bytes(audio)
+    return audio
+
+
+def synthesize_streaming(
+    text: str,
+    voice_id: str = DEFAULT_VOICE,
+    model_id: str = DEFAULT_MODEL,
+) -> None:
+    """Stream TTS audio to speakers with minimal latency. Does not cache."""
+    audio_stream = client.text_to_speech.stream(
+        voice_id=voice_id,
+        text=text,
+        model_id=model_id,
+        output_format="mp3_44100_128",
+    )
+    stream(audio_stream)
+```
+
+### `templates/chunk-text.py`
+
+````python
+"""Text normalization and sentence-boundary chunking for TTS pipelines."""
+import re
+from typing import Generator
+
+
+def normalize_for_tts(text: str) -> str:
+    """Clean LLM output and markdown for TTS consumption."""
+    # Strip markdown formatting
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)          # **bold**
+    text = re.sub(r'\*(.*?)\*', r'\1', text)               # *italic*
+    text = re.sub(r'`[^`]+`', '', text)                    # `inline code`
+    text = re.sub(r'```[\s\S]*?```', '', text)             # code blocks
+    text = re.sub(r'\[([^\]]+)\]\([^)]+\)', r'\1', text)  # [text](url)
+    text = re.sub(r'^#{1,6}\s+', '', text, flags=re.MULTILINE)  # headings
+
+    # Expand common abbreviations for clearer speech
+    abbreviations = {
+        "e.g.": "for example",
+        "i.e.": "that is",
+        "vs.": "versus",
+        "etc.": "and so on",
+        "Dr.": "Doctor",
+        "Mr.": "Mister",
+        "Mrs.": "Missus",
+        "API": "A P I",
+        "URL": "U R L",
+        "UI": "U I",
+    }
+    for abbr, expansion in abbreviations.items():
+        text = text.replace(abbr, expansion)
+
+    # Normalize whitespace
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+
+def chunk_for_streaming(
+    text: str,
+    max_sentences: int = 2,
+    min_chars: int = 20,
+) -> Generator[str, None, None]:
+    """
+    Split text at sentence boundaries for streaming TTS.
+    Yields chunks of max_sentences sentences, never mid-word.
+    """
+    # Split on sentence-ending punctuation followed by space
+    sentence_re = re.compile(r'(?<=[.!?])\s+')
+    sentences = [s.strip() for s in sentence_re.split(text.strip()) if s.strip()]
+
+    buffer: list[str] = []
+    for sentence in sentences:
+        buffer.append(sentence)
+        chunk = ' '.join(buffer)
+        if len(buffer) >= max_sentences and len(chunk) >= min_chars:
+            yield chunk
+            buffer = []
+
+    if buffer:
+        remaining = ' '.join(buffer)
+        if remaining:
+            yield remaining
+
+
+def prepare_for_tts(text: str, chunk: bool = True) -> list[str]:
+    """Full pipeline: normalize then optionally chunk into streaming segments."""
+    normalized = normalize_for_tts(text)
+    if not chunk:
+        return [normalized]
+    return list(chunk_for_streaming(normalized))
+````
+
+### `templates/tts-config.schema.yaml`
+
+```yaml
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+required: [provider, model, voice, cache, fallback]
+properties:
+  provider: {type: string, enum: [openai, elevenlabs, google, azure, deepgram, local-coqui]}
+  model: {type: string}
+  voice:
+    type: object
+    required: [id, clone_consent]
+    properties:
+      id: {type: string}
+      clone_consent: {type: boolean}
+  cache:
+    type: object
+    required: [enabled]
+    properties:
+      enabled: {type: boolean}
+      ttl_days: {type: integer, minimum: 1}
+  fallback:
+    type: object
+    required: [provider]
+    properties:
+      provider: {type: string}
+      model: {type: string}
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+provider: elevenlabs
+model: eleven_turbo_v2
+voice: {id: rachel, clone_consent: true}
+cache: {enabled: true, ttl_days: 30}
+fallback: {provider: openai, model: tts-1}
+```

@@ -67,6 +67,8 @@
 | `templates/sql-optimization-report.md` | Markdown skeleton for the optimization report (per-query before/after). |
 | `templates/sql-optimization-report.json` | JSON skeleton matching the output contract. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,22 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree picks between adding an index, rewriting the query, or escalating to caching / materialized view based on plan + workload characteristics.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/sql-optimization-report.json`
+
+```json
+{
+  "report_id": "sql-opt-2026-05-23",
+  "queries": [],
+  "index_changes": {
+    "added": [],
+    "dropped": []
+  },
+  "explain_analyze_present": true,
+  "net_p95_improvement_pct": 0
+}
+```

@@ -63,6 +63,8 @@
 | `templates/ritual-calendar.yaml` | Cadence + slot + ritual-id matrix. |
 | `templates/ritual-artefact.md` | Per-session log skeleton (date, host, attendees, artefact link, retention update). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,38 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` first checks builder count + organiser availability. If <5 builders → skip and do 1:1. If 90-day retention drops below 30% → block calendar continuation and run a ritual-design review. Otherwise → emit the calendar.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ritual-calendar.yaml`
+
+```yaml
+version: "1.0.0"
+organiser: "organiser:<person>"
+rituals:
+  - id: office-hours
+    cadence: weekly
+    slot_utc: "Wed 17:00"
+    format: q-and-a
+    exit_criteria: "every question gets at least one answer or a follow-up assigned"
+    host_rotation_every: 4
+    artefact_type: q-and-a-log
+  - id: eval-sharing
+    cadence: biweekly
+    slot_utc: "Fri 16:00"
+    format: show-and-tell
+    exit_criteria: "≥1 eval row added to shared eval registry"
+    host_rotation_every: 6
+    artefact_type: eval-row
+  - id: prompt-swap
+    cadence: monthly
+    slot_utc: "first Tue 18:00"
+    format: prompt-diff-review
+    exit_criteria: "≥1 prompt diff committed to shared prompt repo"
+    host_rotation_every: 6
+    artefact_type: prompt-diff
+retention_target_90d_pct: 40
+retention_alarm_threshold_pct: 30
+```

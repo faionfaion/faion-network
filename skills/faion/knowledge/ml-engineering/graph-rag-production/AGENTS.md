@@ -65,6 +65,8 @@
 | `templates/graphrag-production.yaml` | Service config matching schema |
 | `templates/router.py` | Ingress query router scaffold |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,52 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from the question "Is the GraphRAG service handling live production traffic with SLO + cost constraints?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/graphrag-production.yaml`
+
+```yaml
+# graphrag-production.yaml — production deployment config.
+service_name: graphrag-portfolio
+router_model: claude-haiku-4.5
+cache_backend: valkey
+max_cost_usd_per_query:
+  global: 0.50
+  local: 0.05
+  community: 0.10
+delta_stream: kafka://graphrag-delta
+slo_p95_seconds: 5.0
+alert_webhook: https://alerts.example.com/graphrag
+```
+
+### `templates/router.py`
+
+```python
+"""router.py — classifies incoming GraphRAG queries.
+
+GLOBAL: corpus-wide synthesis (uses community summaries).
+LOCAL: entity-anchored multi-hop (uses graph neighborhood).
+COMMUNITY: thematic question (single community summary).
+NONE: pure vector lookup — bypass graph entirely.
+"""
+from __future__ import annotations
+
+from typing import Literal
+
+QueryType = Literal["GLOBAL", "LOCAL", "COMMUNITY", "NONE"]
+
+
+def classify(question: str, llm) -> QueryType:
+    prompt = (
+        "Classify the question intent for GraphRAG dispatch. "
+        "Reply with exactly one of GLOBAL, LOCAL, COMMUNITY, NONE."
+        f"\nQUESTION: {question}"
+    )
+    resp = llm.complete(prompt).strip().upper()
+    if resp in ("GLOBAL", "LOCAL", "COMMUNITY", "NONE"):
+        return resp  # type: ignore[return-value]
+    return "NONE"
+```

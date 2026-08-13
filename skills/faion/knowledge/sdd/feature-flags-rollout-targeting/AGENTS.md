@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/rollout.py` | Deterministic per-user bucketing with rollout_percent + targeting attrs |
 | `templates/ramp.sh` | Ramp helper: bump rollout_percent in steps, wait for guardrails between |
-| `templates/_smoke-test.py` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,42 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is this flag a gradual/targeted rollout AND is there a stable user id?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rollout.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Deterministic per-user bucketing with rollout_percent + targeting attrs","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#deterministic-per-user","token_budget_impact":"~150 tokens when loaded"}}
+import hashlib
+
+
+def in_rollout(flag_name: str, user_id: str, rollout_percent: int) -> bool:
+    raw = f"{flag_name}:{user_id}".encode()
+    bucket = int(hashlib.sha256(raw).hexdigest(), 16) % 100
+    return bucket < rollout_percent
+
+
+def targeted(targeting: dict, attrs: dict) -> bool:
+    for key, allowed in targeting.items():
+        if attrs.get(key) not in allowed:
+            return False
+    return True
+```
+
+### `templates/ramp.sh`
+
+```bash
+# faion_header_json: {"__faion_header__":{"purpose":"Ramp helper: bump rollout_percent in steps, wait for guardrails between","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#deterministic-per-user","token_budget_impact":"~150 tokens when loaded"}}
+set -euo pipefail
+FLAG="$1"; shift
+STEPS=("$@")
+for pct in "${STEPS[@]}"; do
+  echo "Ramping $FLAG to $pct%"
+  # caller wires this to their flag-service / config-edit method
+  curl -fsS -X PATCH "https://flags.internal/flags/$FLAG" -d "{\"rollout_percent\":$pct}"
+  sleep 600
+done
+```

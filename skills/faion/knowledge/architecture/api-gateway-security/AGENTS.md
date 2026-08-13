@@ -64,6 +64,8 @@
 |------|---------|
 | `templates/security.yaml` | Gateway security config: TLS, auth, authz, headers, WAF. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,50 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/security.yaml`
+
+```yaml
+artefact_id: api-gateway-security-<client>-2026-05-23
+owner: <Full Name> <email>
+version: 1.0.0
+last_reviewed: 2026-05-23
+
+tls:
+  min_version: "1.2"
+  cipher_suites:
+    - TLS_AES_128_GCM_SHA256
+    - TLS_AES_256_GCM_SHA384
+  hsts_max_age: 31536000
+
+authentication:
+  jwt:
+    issuer: https://identity.example.com
+    audience: api.example.com
+    jwks_url: https://identity.example.com/.well-known/jwks.json
+    algorithms: [RS256]
+    leeway_seconds: 30
+
+authorization:
+  default: deny
+  rules:
+    - route: /api/v1/checkout
+      methods: [POST]
+      require_scopes: [checkout:write]
+
+headers:
+  strict_transport_security: max-age=31536000; includeSubDomains
+  x_content_type_options: nosniff
+  x_frame_options: DENY
+  referrer_policy: strict-origin-when-cross-origin
+  content_security_policy: "default-src 'self'"
+
+waf:
+  provider: cloudflare
+  rule_set: owasp-core-3.3
+  paranoia_level: 1
+```

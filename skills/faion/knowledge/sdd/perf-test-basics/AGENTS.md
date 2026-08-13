@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/baselines.json` | Per-endpoint p95/p99 + RPS baselines |
 | `templates/smoke-test.k6.js` | k6 smoke test asserting p95 threshold |
-| `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,51 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Does the service have latency SLOs AND known hot paths AND ≥10 RPS?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/baselines.json`
+
+```json
+{
+  "baselines": [
+    {
+      "endpoint": "/api/v1/checkout",
+      "p95_ms": 250,
+      "p99_ms": 450,
+      "rps": 50
+    },
+    {
+      "endpoint": "/api/v1/search",
+      "p95_ms": 120,
+      "p99_ms": 220,
+      "rps": 200
+    }
+  ]
+}
+```
+
+### `templates/smoke-test.k6.js`
+
+```javascript
+// faion_header_json: {"__faion_header__":{"purpose":"k6 smoke test asserting p95 threshold","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#slo-driven-baselines","token_budget_impact":"~150 tokens when loaded"}}
+import http from 'k6/http';
+import { check, sleep } from 'k6';
+
+export const options = {
+  vus: 10,
+  duration: '60s',
+  thresholds: {
+    http_req_duration: ['p(95)<300'],
+    http_req_failed: ['rate<0.01'],
+  },
+};
+
+export default function () {
+  const res = http.get(`${__ENV.BASE_URL}/api/v1/checkout`);
+  check(res, { 'status 200': (r) => r.status === 200 });
+  sleep(1);
+}
+```

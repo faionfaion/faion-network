@@ -59,7 +59,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/daily-standup-ai-prebrief-template.json` | JSON schema for the pre-brief |
 | `templates/daily-standup-ai-prebrief-template.md` | Markdown pre-brief skeleton with all sections |
 | `templates/_smoke-test.md` | Minimum-viable filled pre-brief |
 

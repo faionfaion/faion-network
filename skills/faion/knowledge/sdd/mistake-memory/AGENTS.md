@@ -63,6 +63,8 @@
 | `templates/mistake-memory.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,100 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/mistake-memory.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/mistake-memory.json",
+  "title": "Mistake Memory Output Contract",
+  "type": "object",
+  "required": [
+    "mistake_id",
+    "severity",
+    "what_happened",
+    "five_whys",
+    "prevention",
+    "ci_rule_created",
+    "occurrence_count",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "mistake_id": {
+      "type": "string",
+      "description": "stable id (MM-001..)"
+    },
+    "severity": {
+      "type": "string",
+      "description": "low | medium | high | critical"
+    },
+    "what_happened": {
+      "type": "string",
+      "description": "\u2264500 chars"
+    },
+    "five_whys": {
+      "type": "array",
+      "description": "\u22653 levels",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "prevention": {
+      "type": "string",
+      "description": "concrete action"
+    },
+    "ci_rule_created": {
+      "type": "boolean",
+      "description": "true on second occurrence"
+    },
+    "occurrence_count": {
+      "type": "integer",
+      "description": "\u22651"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named author"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "mistake_id": "sample-mistake_id",
+  "severity": "sample-severity",
+  "what_happened": "sample-what_happened",
+  "five_whys": [
+    {
+      "k": "v"
+    }
+  ],
+  "prevention": "sample-prevention",
+  "ci_rule_created": true,
+  "occurrence_count": 3,
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

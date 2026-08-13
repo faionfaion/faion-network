@@ -63,6 +63,8 @@
 | `templates/continuous-discovery.json` | JSON Schema for the output contract (machine-validatable). |
 | `templates/continuous-discovery.md` | Markdown skeleton with the required fields. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,76 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/continuous-discovery.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/continuous-discovery.json",
+  "title": "Continuous Discovery Output Contract",
+  "type": "object",
+  "required": [
+    "outcome",
+    "touchpoints",
+    "opportunity_tree",
+    "assumption_tests",
+    "decision_log",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "outcome": {
+      "type": "string",
+      "description": "named outcome / KPI"
+    },
+    "touchpoints": {
+      "type": "array",
+      "description": "\u22651/week, each with date, customer_id, summary",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "opportunity_tree": {
+      "type": "object",
+      "description": "outcome \u2192 opportunities \u2192 solutions"
+    },
+    "assumption_tests": {
+      "type": "array",
+      "description": "\u22651 per opportunity, each falsifiable",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "decision_log": {
+      "type": "array",
+      "description": "\u22651/week, each with rationale + cited touchpoint ids",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "owner": {
+      "type": "string",
+      "description": "named owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```

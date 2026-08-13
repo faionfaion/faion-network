@@ -68,6 +68,8 @@
 | `templates/monitored-client.py` | Minimal Claude wrapper logging `response.model`, usage, elapsed, x-request-id. |
 | `templates/_smoke-test.py` | Minimal viable invocation against stub. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,118 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters which best-practice fix applies: root question — "Is this a production Claude pipeline (multi-worker OR cost-sensitive OR latency-bounded)?". Branches name observables (multi-worker without shared bucket, cache prefix too short, fallback logging off, Opus in inner loop, offline workload) and point at a specific core rule from `01-core-rules.xml` or at a `skip-this-methodology` directive.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/cached-system-prompt.py`
+
+```python
+"""Cached system prompt structure: stable prefix cached, dynamic tail not cached."""
+from __future__ import annotations
+
+import anthropic
+
+client = anthropic.Anthropic()
+
+MODEL_ID = "claude-sonnet-4-20250514"
+
+
+def call_with_cached_system(
+    static_content: str,
+    dynamic_instructions: str,
+    user_task: str,
+    max_tokens: int = 4096,
+):
+    """Call Claude with a two-part system prompt: cached static + uncached dynamic.
+
+    `static_content` MUST be byte-identical on every call (rule r4); place dynamic values
+    in `dynamic_instructions` or `user_task`, never in `static_content`.
+    """
+    system = [
+        {"type": "text", "text": static_content, "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": dynamic_instructions},
+    ]
+    return client.messages.create(
+        model=MODEL_ID,
+        max_tokens=max_tokens,
+        system=system,
+        messages=[{"role": "user", "content": user_task}],
+    )
+```
+
+### `templates/monitored-client.py`
+
+```python
+"""Minimal Claude client with model + usage + latency + cache + request-id logging."""
+from __future__ import annotations
+
+import logging
+import time
+
+import anthropic
+
+log = logging.getLogger(__name__)
+client = anthropic.Anthropic()
+
+MODELS = {
+    "router": "claude-3-5-haiku-20241022",
+    "generator": "claude-sonnet-4-20250514",
+    "reasoner": "claude-opus-4-5-20251101",
+}
+
+
+def call(role: str, system, messages: list, max_tokens: int = 2048):
+    """Call Claude with logging of model, tokens, latency, and cache metrics."""
+    model = MODELS[role]
+    t0 = time.monotonic()
+    r = client.messages.with_raw_response.create(  # captures headers for x-request-id.
+        model=model,
+        max_tokens=max_tokens,
+        system=system,
+        messages=messages,
+    )
+    msg = r.parse()
+    elapsed = time.monotonic() - t0
+    u = msg.usage
+    total = u.input_tokens + u.output_tokens
+    cache_hit = getattr(u, "cache_read_input_tokens", 0)
+    request_id = r.headers.get("x-request-id", "")
+    log.info(
+        "role=%s requested=%s response=%s tokens=%d cache_read=%d elapsed=%.2fs request_id=%s",
+        role, model, msg.model, total, cache_hit, elapsed, request_id,
+    )
+    if msg.stop_reason == "max_tokens":  # rule r3.
+        raise ValueError(f"Response truncated for role={role}. Retry with higher max_tokens.")
+    return msg
+```
+
+### `templates/_smoke-test.py`
+
+```python
+"""Smoke test — minimum viable filled-in version of the policy pack."""
+from __future__ import annotations
+
+
+def fake_output() -> dict:
+    return {
+        "model_tier_table": {
+            "routing": "claude-3-5-haiku-20241022",
+            "generation": "claude-sonnet-4-20250514",
+            "reasoning": "claude-opus-4-5-20251101",
+        },
+        "fallback_logging": True,
+        "shared_rate_bucket": True,
+        "cache_layout": {"stable_prefix_first": True, "cached_prefix_tokens": 4200},
+        "retry_after_parsing": True,
+        "batch_api_enabled": True,
+        "forbidden_seen": [],
+    }
+
+
+if __name__ == "__main__":
+    import json
+
+    print(json.dumps(fake_output(), indent=2))
+```

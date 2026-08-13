@@ -62,8 +62,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/eval-spec.md` | Markdown spec template (eval_set_id, version, rows, judge, ci_gate) |
-| `templates/judge-rubric.py` | Pydantic structured-judge rubric model |
-| `templates/ci-eval.yml` | GitHub Actions workflow gating PRs on the eval |
 
 ## Scripts
 

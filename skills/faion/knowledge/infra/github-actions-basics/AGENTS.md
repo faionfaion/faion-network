@@ -62,8 +62,9 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
 | `templates/config-instance.json` | JSON instance of a filled config artefact |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -80,3 +81,54 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/config-instance.json`
+
+```json
+{
+  "workflow_file": ".github/workflows/ci.yml",
+  "triggers": {
+    "push": {
+      "branches": [
+        "main"
+      ]
+    },
+    "pull_request": {
+      "branches": [
+        "main"
+      ],
+      "paths": [
+        "src/**",
+        "tests/**"
+      ]
+    }
+  },
+  "permissions": {
+    "contents": "read",
+    "checks": "write"
+  },
+  "jobs": [
+    {
+      "name": "test",
+      "steps": [
+        "checkout@<sha>",
+        "setup-node@<sha>",
+        "cache@<sha>",
+        "npm ci",
+        "npm test"
+      ]
+    }
+  ],
+  "artifact": {
+    "name": "test-report",
+    "path": "coverage/",
+    "retention_days": 14
+  },
+  "owner": "ci-lead@team.io",
+  "last_reviewed": "2026-05-23"
+}
+```

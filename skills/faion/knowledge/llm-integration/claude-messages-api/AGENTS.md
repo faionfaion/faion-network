@@ -59,9 +59,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/agent-loop.py` | Multi-turn agent loop with explicit stop_reason branching + max-turns guard. |
 | `templates/vision.py` | `analyze_image()` helper: base64 encoding, image-first ordering, PDF page check. |
 | `templates/_smoke-test.py` | Minimal viable invocation against stub messages. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -80,3 +81,89 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` gates whether claude-messages-api applies. Root question — "Is the call site using `messages.create` / `messages.stream` directly, with mixed modalities, multi-turn, or streaming?". Branches name concrete observables and conclude with a core-rule reference from `01-core-rules.xml` or a `skip-this-methodology` directive when this methodology isn't the right fix.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/vision.py`
+
+```python
+"""
+Vision helpers for Claude Messages API — analyze local images and URLs.
+
+Usage:
+    answer = analyze_screenshot("screenshot.png", "What error is shown?")
+    answer = analyze_image_url("https://example.com/chart.png", "Describe this chart")
+"""
+import base64
+from pathlib import Path
+import anthropic
+
+client = anthropic.Anthropic()
+MODEL = "claude-sonnet-4-20250514"
+
+MIME_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+}
+
+
+def analyze_screenshot(path: str, question: str, max_tokens: int = 1024) -> str:
+    """Analyze a local image file using base64 encoding. Image placed before text."""
+    p = Path(path)
+    media_type = MIME_TYPES.get(p.suffix.lower(), "image/jpeg")
+    with open(path, "rb") as f:
+        data = base64.standard_b64encode(f.read()).decode()
+
+    resp = client.messages.create(
+        model=MODEL,
+        max_tokens=max_tokens,
+        messages=[{"role": "user", "content": [
+            {"type": "image", "source": {"type": "base64", "media_type": media_type, "data": data}},
+            {"type": "text", "text": question},
+        ]}],
+    )
+    return resp.content[0].text
+
+
+def analyze_image_url(url: str, question: str, max_tokens: int = 1024) -> str:
+    """Analyze an image from a URL. URL must be publicly accessible at inference time."""
+    resp = client.messages.create(
+        model=MODEL,
+        max_tokens=max_tokens,
+        messages=[{"role": "user", "content": [
+            {"type": "image", "source": {"type": "url", "url": url}},
+            {"type": "text", "text": question},
+        ]}],
+    )
+    return resp.content[0].text
+```
+
+### `templates/_smoke-test.py`
+
+```python
+"""Smoke test — minimum viable filled-in version for claude-messages-api."""
+from __future__ import annotations
+
+
+def fake_output() -> dict:
+    return {
+    "stop_reason_centralised": true,
+    "max_tokens_explicit": true,
+    "multimodal_image_first": true,
+    "pdf_preflight_check": true,
+    "metadata_user_id": true,
+    "streaming_delta_aware": true,
+    "model_id": "claude-sonnet-4-20250514",
+    "forbidden_seen": []
+}
+
+
+if __name__ == "__main__":
+    import json as _j
+    print(_j.dumps(fake_output(), indent=2))
+```

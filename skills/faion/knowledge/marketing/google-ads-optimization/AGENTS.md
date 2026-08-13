@@ -70,6 +70,8 @@
 | `templates/change-log.csv` | Change-log CSV header. |
 | `templates/optimization-plan.json` | Schema-conformant sample artefact used by validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,44 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/change-log.csv`
+
+```csv
+timestamp,change,rationale,owner,expected_impact
+2026-05-23T10:00Z,negative_added: 'free crack',$30 wasted last 7d,ops,-$30 CPA
+```
+
+### `templates/optimization-plan.json`
+
+```json
+{
+  "bidding_strategy": "target_cpa",
+  "weekly_actions": [
+    {
+      "lever": "negative_sweep",
+      "trigger": "search_term_cost_gt_5",
+      "owner": "ops"
+    }
+  ],
+  "monthly_actions": [
+    {
+      "lever": "budget_rebalance_quartile",
+      "trigger": "roas_quartile_delta_gt_20pct",
+      "owner": "ops"
+    }
+  ],
+  "change_log": [
+    {
+      "timestamp": "2026-05-23T10:00Z",
+      "change": "negative_added: 'free crack'",
+      "rationale": "$30 wasted last 7d",
+      "owner": "ops"
+    }
+  ]
+}
+```

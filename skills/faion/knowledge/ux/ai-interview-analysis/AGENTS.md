@@ -64,6 +64,8 @@
 | `templates/prompt-synthesise-themes.txt` | Agent prompt for cross-interview synthesis. |
 | `templates/_smoke-test.json` | Filled 30-second attention threshold theme example. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,93 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the report; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/themes-report.json`
+
+```json
+{
+  "themes": [
+    {
+      "id": "t1",
+      "label": "30-second attention threshold",
+      "quotes": [
+        "I quit if it takes more than 30 s.",
+        "If the app doesn't load on the bus I close it."
+      ],
+      "occurrence_count": 7,
+      "confidence": "High"
+    }
+  ],
+  "interview_count": 12,
+  "transcription_provider": "FILL_ME",
+  "human_spot_check_pct": 15
+}
+```
+
+### `templates/prompt-code-interview.txt`
+
+```text
+Prompt template — Agent prompt for per-interview coding.
+
+Fill the slots below per task.
+
+[CONTEXT]
+...
+
+[TASK]
+...
+
+[OUTPUT_FORMAT]
+...
+
+[CONSTRAINTS]
+- Follow content/01-core-rules.xml.
+- Output MUST validate against content/02-output-contract.xml.
+```
+
+### `templates/prompt-synthesise-themes.txt`
+
+```text
+Prompt template — Agent prompt for cross-interview synthesis.
+
+Fill the slots below per task.
+
+[CONTEXT]
+...
+
+[TASK]
+...
+
+[OUTPUT_FORMAT]
+...
+
+[CONSTRAINTS]
+- Follow content/01-core-rules.xml.
+- Output MUST validate against content/02-output-contract.xml.
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "themes": [
+    {
+      "id": "t1",
+      "label": "30-second attention threshold",
+      "quotes": [
+        "I quit if it takes more than 30 s.",
+        "If the app doesn't load on the bus I close it."
+      ],
+      "occurrence_count": 7,
+      "confidence": "High"
+    }
+  ],
+  "interview_count": 12,
+  "transcription_provider": "FILL_ME",
+  "human_spot_check_pct": 15
+}
+```

@@ -72,6 +72,8 @@
 | `templates/new-component.sh` | Bash scaffolder: new library component (story + spec + changeset stub). |
 | `templates/_smoke-test.json` | Minimum viable UI-library spec for validator smoke-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,145 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs - consumer count, storybook coverage, a11y gate, release process - onto a rule from `content/01-core-rules.xml`. Use it before adopting a library: it catches missing-states and ad-hoc tagging upstream.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/Button.stories.tsx`
+
+```tsx
+import type { Meta, StoryObj } from '@storybook/react';
+import { Button } from '../Button';
+
+const meta: Meta<typeof Button> = {
+  title: 'primitives/Button',
+  component: Button,
+  parameters: { a11y: { config: { rules: [{ id: 'color-contrast', enabled: true }] } } },
+};
+export default meta;
+
+type Story = StoryObj<typeof Button>;
+
+export const Default: Story = { args: { children: 'Save' } };
+export const Hover: Story = { ...Default, parameters: { pseudo: { hover: true } } };
+export const Focus: Story = { ...Default, parameters: { pseudo: { focusVisible: true } } };
+export const Disabled: Story = { args: { children: 'Save', disabled: true } };
+export const Loading: Story = { args: { children: 'Saving…', loading: true } };
+export const Empty: Story = { args: { children: '' } };
+export const Error: Story = { args: { children: 'Retry', variant: 'destructive' } };
+```
+
+### `templates/new-component.sh`
+
+```bash
+#!/usr/bin/env bash
+# Usage: ./new-component.sh <layer> <ComponentName>
+# Example: ./new-component.sh primitives Toast
+# Creates component folder with tsx, module.css, stories, and updates barrel.
+set -euo pipefail
+
+LAYER=${1:?First arg: layer (primitives|composite|patterns|layout)}
+NAME=${2:?Second arg: ComponentName (PascalCase)}
+DIR="src/components/$LAYER/$NAME"
+
+mkdir -p "$DIR"
+
+cat > "$DIR/$NAME.tsx" <<EOF
+import { forwardRef } from 'react';
+import { clsx } from 'clsx';
+import styles from './$NAME.module.css';
+
+export interface ${NAME}Props extends React.HTMLAttributes<HTMLDivElement> {}
+
+export const $NAME = forwardRef<HTMLDivElement, ${NAME}Props>(
+  ({ className, ...props }, ref) => (
+    <div ref={ref} className={clsx(styles.root, className)} {...props} />
+  )
+);
+$NAME.displayName = '$NAME';
+EOF
+
+cat > "$DIR/$NAME.module.css" <<EOF
+.root {
+  display: block;
+}
+EOF
+
+cat > "$DIR/$NAME.stories.tsx" <<EOF
+import type { Meta, StoryObj } from '@storybook/react';
+import { $NAME } from './$NAME';
+
+const meta: Meta<typeof $NAME> = {
+  component: $NAME,
+  title: '$LAYER/$NAME',
+};
+export default meta;
+
+export const Default: StoryObj<typeof $NAME> = { args: {} };
+EOF
+
+cat > "$DIR/$NAME.test.tsx" <<EOF
+import { render } from '@testing-library/react';
+import { axe, toHaveNoViolations } from 'jest-axe';
+import { $NAME } from './$NAME';
+
+expect.extend(toHaveNoViolations);
+
+describe('$NAME', () => {
+  it('has no axe violations', async () => {
+    const { container } = render(<$NAME />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});
+EOF
+
+cat > "$DIR/index.ts" <<EOF
+export { $NAME } from './$NAME';
+export type { ${NAME}Props } from './$NAME';
+EOF
+
+# Update layer barrel
+BARREL="src/components/$LAYER/index.ts"
+echo "export * from './$NAME';" >> "$BARREL"
+
+echo "Created $DIR"
+echo "Updated $BARREL"
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "layers": [
+    "tokens",
+    "primitives",
+    "patterns",
+    "templates"
+  ],
+  "storybook": {
+    "enabled": true,
+    "states_required": [
+      "default",
+      "hover",
+      "focus",
+      "disabled",
+      "loading",
+      "empty",
+      "error"
+    ]
+  },
+  "a11y": {
+    "tool": "axe-core",
+    "gate": "block_merge"
+  },
+  "visual_regression": {
+    "tool": "chromatic",
+    "gate": "block_merge"
+  },
+  "release_process": {
+    "semver": true,
+    "changelog": "CHANGELOG.md"
+  }
+}
+```

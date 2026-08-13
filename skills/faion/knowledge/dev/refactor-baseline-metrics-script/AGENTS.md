@@ -66,6 +66,8 @@
 | `templates/targets.json` | JSON template scaffolding the artefact contract. |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,57 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is the refactor non-trivial and worth capturing pre/post metrics?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/baseline.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Python scaffold realising the artefact in code.","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/01-core-rules.xml#stdlib-only","token_budget_impact":"~150 tokens when loaded"}}
+"""Refactor Baseline Metrics Script scaffold. See AGENTS.md for context and content/02-output-contract.xml for the contract."""
+from __future__ import annotations
+
+# Minimal scaffold for the refactor-baseline-metrics-script methodology.
+# Replace this stub with real implementation; keep the header intact.
+
+def main() -> int:
+    """Entrypoint; returns exit code."""
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())
+```
+
+### `templates/targets.json`
+
+```json
+{
+  "baseline_id": "refactor-f-bulk-role-edit-base",
+  "branch": "main@abc123",
+  "loc": 1820,
+  "cyclomatic_avg": 6.4,
+  "hotspot_commits_90d": 47,
+  "test_runtime_sec": 312.5,
+  "coverage_pct": 0.78,
+  "hotspot_window_days": 90
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "baseline_id": "refactor-f-bulk-role-edit-base",
+  "branch": "main@abc123",
+  "loc": 1820,
+  "cyclomatic_avg": 6.4,
+  "hotspot_commits_90d": 47,
+  "test_runtime_sec": 312.5,
+  "coverage_pct": 0.78,
+  "hotspot_window_days": 90
+}
+```

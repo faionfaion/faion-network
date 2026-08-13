@@ -72,6 +72,8 @@
 | `templates/license-allowlist.yaml` | Operator-accepted SPDX license allowlist. |
 | `templates/_smoke-test.json` | Minimum viable library risk report for validator smoke-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,74 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs - signal coverage, data freshness, license class, aggregate band - onto a rule from `content/01-core-rules.xml`. Use it before any adoption: it catches stars-only-eval and stale-CVE-data upstream.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/library-risk-report.json`
+
+```json
+{
+  "library": "REPLACE",
+  "ecosystem": "npm",
+  "signals": {
+    "license": 0,
+    "maintainer_count": 0,
+    "last_release_age": 0,
+    "cve_history_12mo": 0,
+    "stars_to_downloads": 0,
+    "transitive_depth": 0,
+    "vendor_lock_in": 0
+  },
+  "aggregate_score": 0,
+  "verdict": "green",
+  "remediation": "adopt",
+  "decay_date": "REPLACE",
+  "data_freshness": "fresh"
+}
+```
+
+### `templates/license-allowlist.yaml`
+
+```yaml
+version: 1
+allowed:
+  - MIT
+  - Apache-2.0
+  - BSD-2-Clause
+  - BSD-3-Clause
+  - ISC
+  - 0BSD
+denied:
+  - SSPL-1.0
+  - BUSL-1.1
+  - 'LicenseRef-Proprietary'
+flagged:
+  - GPL-2.0
+  - GPL-3.0
+  - AGPL-3.0
+  - LGPL-3.0
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "library": "react",
+  "ecosystem": "npm",
+  "signals": {
+    "license": 0,
+    "maintainer_count": 0,
+    "last_release_age": 0,
+    "cve_history_12mo": 0,
+    "stars_to_downloads": 0,
+    "transitive_depth": 1,
+    "vendor_lock_in": 0
+  },
+  "aggregate_score": 1,
+  "verdict": "green",
+  "remediation": "adopt",
+  "decay_date": "2026-08-23"
+}
+```

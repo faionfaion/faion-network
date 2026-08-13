@@ -69,6 +69,8 @@
 | `templates/pytest.ini.toml` | pytest configuration (asyncio, coverage). |
 | `templates/conftest.py` | Shared fixtures (event loop, DB session). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,106 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters: Python 3.11+, mypy strict acceptable, Poetry acceptable; routes Django/FastAPI/general work into the right sibling content.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pyproject.toml`
+
+```toml
+# Minimal Poetry pyproject.toml — adjust name, description, and deps.
+[tool.poetry]
+name = "project-name"
+version = "0.1.0"
+description = ""
+authors = []
+packages = [{include = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+# Add: django = "^5.0" or fastapi = "^0.115"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+pytest-cov = "^5.0"
+ruff = "^0.4"
+mypy = "^1.10"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "C4", "UP", "T20"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+```
+
+### `templates/pytest.ini.toml`
+
+```toml
+# Paste under [tool] in pyproject.toml.
+# Adjust DJANGO_SETTINGS_MODULE if using Django.
+
+[tool.pytest.ini_options]
+# DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+testpaths = ["tests"]
+markers = [
+    "slow: marks tests as slow (deselect with -m 'not slow')",
+    "integration: marks tests as integration tests",
+]
+```
+
+### `templates/conftest.py`
+
+```python
+"""
+Standard pytest conftest.py with common fixtures.
+Adjust imports for your project structure.
+"""
+import pytest
+from unittest.mock import MagicMock
+
+
+@pytest.fixture
+def mock_db():
+    """Mock database session for unit tests that don't need a real DB."""
+    return MagicMock()
+
+
+@pytest.fixture
+def sample_user_data() -> dict:
+    return {"email": "test@example.com", "name": "Test User"}
+
+
+# Django / DRF fixtures — uncomment if using Django
+# @pytest.fixture
+# def api_client():
+#     from rest_framework.test import APIClient
+#     return APIClient()
+#
+# @pytest.fixture
+# def user(db):
+#     from apps.users.models import User
+#     return User.objects.create(email="user@example.com", name="Test User")
+#
+# @pytest.fixture
+# def authenticated_client(api_client, user):
+#     api_client.force_authenticate(user=user)
+#     return api_client
+```

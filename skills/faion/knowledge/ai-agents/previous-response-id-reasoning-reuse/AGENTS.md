@@ -59,8 +59,9 @@
 
 | File | Purpose |
 |---|---|
-| `templates/agent-loop.py` | Responses API loop using previous_response_id. |
 | `templates/_smoke-test.yaml` | Minimum spec. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -76,3 +77,20 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on api_flavor (chat → fallback; responses → continue), then on multi_turn (yes → previous_response_id; no → single-call). Each leaf cites a rule id.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+api_flavor: responses
+turn_count_distribution: [1, 3, 5, 10]
+retention_ttl_hours: 24
+
+drivers:
+  api_flavor: responses
+  multi_turn: true
+  reasoning_model_used: true
+```

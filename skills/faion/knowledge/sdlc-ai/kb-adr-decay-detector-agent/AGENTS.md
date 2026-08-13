@@ -63,6 +63,8 @@
 | `templates/decay-report.json` | Decay report skeleton |
 | `templates/ci-cron.yml` | GitHub Actions weekly cron |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,36 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/decay-report.json`
+
+```json
+{
+  "adr_root": "docs/adr",
+  "scanned_count": 0,
+  "findings": [],
+  "review_queue_url": "https://linear.app/team/architecture/issues"
+}
+```
+
+### `templates/ci-cron.yml`
+
+```yaml
+name: adr-decay-detector
+on:
+  schedule:
+    - cron: "0 6 * * MON"
+  workflow_dispatch:
+jobs:
+  detect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python scripts/detect-decay.py --root docs/adr --out decay-report.json
+      - run: python scripts/validate-kb-adr-decay-detector-agent.py --file decay-report.json
+      - run: python scripts/open-review-tickets.py --file decay-report.json
+```

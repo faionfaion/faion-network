@@ -67,6 +67,8 @@
 | `templates/partial-stream-parse.py` | Incremental JSON parsing for streaming endpoints |
 | `templates/metrics-dashboard.md` | Suggested per-schema metric panels |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,97 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-service-abstraction`, `r2-metrics-required`, `r3-bounded-retry`, `r4-additive-only`, `r5-stream-incremental-parse` from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/structured-output-service.py`
+
+```python
+"""Skeleton for the `structured-output-patterns` template `structured-output-service.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "structured-output-patterns"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/agent-task-schema.py`
+
+```python
+"""Skeleton for the `structured-output-patterns` template `agent-task-schema.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "structured-output-patterns"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/partial-stream-parse.py`
+
+```python
+"""Skeleton for the `structured-output-patterns` template `partial-stream-parse.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "structured-output-patterns"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```

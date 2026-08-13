@@ -71,6 +71,8 @@
 | `templates/invoice-lines.csv` | Invoice line-items export |
 | `templates/labels-taxonomy.yaml` | Project/task closed label list |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,54 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes by source-of-truth count, capture-at-boundary state, label completeness, write-off mix, and Friday-cadence observance onto a rule from `content/01-core-rules.xml`. Walk it before every Friday reconciliation.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/time-report.json`
+
+```json
+{
+  "week_iso": "2026-W21",
+  "billable_hours_by_project": [],
+  "write_offs": [],
+  "untagged_remaining": 0,
+  "billable_pct_actual": 0,
+  "top_tasks": [],
+  "gaps_detected": [],
+  "invoice_drafts": [],
+  "data_warning": false
+}
+```
+
+### `templates/invoice-lines.csv`
+
+```csv
+date,project,task,hours,rate,amount
+2026-05-19,client-a,dev,4.00,145,580.00
+2026-05-20,client-a,review,2.00,145,290.00
+2026-05-21,client-b,dev,3.00,145,435.00
+```
+
+### `templates/labels-taxonomy.yaml`
+
+```yaml
+projects:
+  - client-a
+  - client-b
+  - internal
+task_labels:
+  - dev
+  - review
+  - meeting
+  - support
+  - planning
+  - admin
+write_off_reasons:
+  - SALES
+  - ADMIN
+  - LEARNING
+  - UNBILLABLE-REWORK
+  - BREAK
+```

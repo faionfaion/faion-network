@@ -61,6 +61,8 @@
 | `templates/team-charter-working-agreement.json` | JSON schema for the charter output contract. |
 | `templates/team-charter-working-agreement.md` | Markdown skeleton with the required fields. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -75,3 +77,101 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` first checks single-instance scope and a named human owner. If the team is batching multiple unrelated norm decisions → split first. If owner is "team" or empty → block until a person is named. Otherwise → emit the charter using the rule set.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/team-charter-working-agreement.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "decision",
+    "rationale",
+    "inputs_used",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "owner": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+$"
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 10
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 30
+    },
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "source"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "sections": {
+      "type": "object",
+      "required": [
+        "mission",
+        "decision_rights",
+        "working_hours",
+        "ai_tool_policy",
+        "code_review_sla",
+        "on_call_rotation"
+      ],
+      "properties": {
+        "mission": {
+          "type": "string"
+        },
+        "decision_rights": {
+          "type": "string"
+        },
+        "working_hours": {
+          "type": "string"
+        },
+        "ai_tool_policy": {
+          "type": "string"
+        },
+        "code_review_sla": {
+          "type": "string"
+        },
+        "on_call_rotation": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```

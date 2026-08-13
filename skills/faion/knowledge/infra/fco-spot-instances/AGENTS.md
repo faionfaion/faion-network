@@ -60,8 +60,9 @@
 | File | Purpose |
 |------|---------|
 | `templates/ec2-fleet.json` | EC2 Fleet launch template with spot + on-demand mix + diversification |
-| `templates/interruption-handler.sh` | Interruption handler skeleton draining via SIGTERM in 90s |
 | `templates/backup-config.example.json` | Filled config artefact |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -79,3 +80,33 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ec2-fleet.json`
+
+```json
+{
+  "checkpoint_interval_seconds": 1,
+  "interruption_handler": true,
+  "instance_diversification_count": 3,
+  "az_count": 2,
+  "max_price_cap": "on-demand",
+  "on_demand_floor_pct": 10
+}
+```
+
+### `templates/backup-config.example.json`
+
+```json
+{
+  "checkpoint_interval_seconds": 1,
+  "interruption_handler": true,
+  "instance_diversification_count": 3,
+  "az_count": 2,
+  "max_price_cap": "on-demand",
+  "on_demand_floor_pct": 10
+}
+```

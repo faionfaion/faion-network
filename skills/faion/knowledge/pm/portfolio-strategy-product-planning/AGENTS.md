@@ -67,6 +67,8 @@
 |------|---------|
 | `templates/portfolio-allocate.sh` | Compute allocation across H1/H2/H3 horizons |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - parent skill: `skills/faion/knowledge/pro/product/product-planning/`
@@ -76,3 +78,17 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, owner present, prior-cycle output available, cycle window fit) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology this cycle or defer.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/portfolio-allocate.sh`
+
+```bash
+set -euo pipefail
+CSV="${1:?path to bets.csv}"
+awk -F, 'NR>1 {sum[$2]+=$3; total+=$3} END {
+  for (h in sum) printf "%s: %.1f%%\n", h, sum[h]*100/total
+}' "$CSV"
+```

@@ -62,6 +62,8 @@
 | `templates/test_no_circular_deps.py` | Modularity fitness function reference test |
 | `templates/test_p95_under_500ms.py` | Latency fitness function reference test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,38 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/test_no_circular_deps.py`
+
+```python
+import subprocess
+import json
+
+
+def test_no_circular_deps() -> None:
+    """ADR 0007 layered arch: no circular import cycles."""
+    out = subprocess.check_output(["tach", "check", "--output", "json"]).decode()
+    data = json.loads(out)
+    cycles = [v for v in data.get("violations", []) if v.get("kind") == "cycle"]
+    assert not cycles, f"Found {len(cycles)} cycles: {cycles[:3]}"
+```
+
+### `templates/test_p95_under_500ms.py`
+
+```python
+import json
+import subprocess
+
+
+def test_checkout_p95_under_500ms() -> None:
+    """ADR 0012: checkout endpoint p95 must remain under 500ms at 100 RPS."""
+    out = subprocess.check_output(["k6", "run", "--summary-export=/tmp/k6.json", "loadtests/checkout.yaml"]).decode()
+    with open("/tmp/k6.json") as f:
+        data = json.load(f)
+    p95 = data["metrics"]["http_req_duration"]["values"]["p(95)"]
+    assert p95 < 500, f"p95 {p95}ms exceeds 500ms"
+```

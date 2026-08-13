@@ -67,6 +67,8 @@
 | `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
 | `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,69 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/artefact-instance.json`
+
+```json
+{
+  "tree_id": "kpi-acme-2026q2",
+  "owner": "cpo@acme.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "north_star": {
+    "name": "weekly_active_subscribers",
+    "formula": "count(distinct user_id where active_in_7d=true and sub_active=true)",
+    "cadence": "weekly",
+    "evidence": "BI table fct_subscribers"
+  },
+  "nodes": [
+    {
+      "id": "n-1",
+      "name": "activation_rate",
+      "owner": "growth-lead",
+      "formula": "activated / signed_up",
+      "cadence": "weekly",
+      "parent": "north_star",
+      "evidence": "BI view dim_activation"
+    },
+    {
+      "id": "n-2",
+      "name": "weekly_engagement",
+      "owner": "product-lead",
+      "formula": "engaged_in_7d / active",
+      "cadence": "weekly",
+      "parent": "north_star",
+      "evidence": "BI view fct_engagement"
+    },
+    {
+      "id": "n-3",
+      "name": "monthly_retention",
+      "owner": "cs-lead",
+      "formula": "retained_m1 / cohort_size",
+      "cadence": "monthly",
+      "parent": "north_star",
+      "evidence": "BI view fct_retention"
+    }
+  ],
+  "edges": [
+    {
+      "from": "n-1",
+      "to": "north_star"
+    },
+    {
+      "from": "n-2",
+      "to": "north_star"
+    },
+    {
+      "from": "n-3",
+      "to": "north_star"
+    }
+  ],
+  "review_cadence": "weekly review every Friday 30 min",
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}
+```

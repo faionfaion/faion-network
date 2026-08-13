@@ -68,6 +68,8 @@
 | `templates/feature-flags-inventory.md` | Inventory entry template under .aidocs/feature-flags.md |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,45 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/dark-launch-ramp.yaml`
+
+```yaml
+flag: billing.use_stripe_v2
+ramp:
+  - pct: 0.5
+    hold_for: 24h
+    metric: match_rate
+    pass_threshold: 99.95
+  - pct: 5
+    hold_for: 2h
+  - pct: 25
+    hold_for: 1h
+  - pct: 100
+rollback_threshold:
+  match_rate_lt: 99.5
+  error_rate_gt: 0.5
+```
+
+### `templates/artefact.json`
+
+```json
+{
+  "branch_lifetime_hours": 6.5,
+  "flag_name": "billing.use_stripe_v2",
+  "cleanup_ticket_id": "OPS-148",
+  "dark_launch_steps": [
+    0.5,
+    5,
+    25,
+    100
+  ],
+  "ci_p95_minutes": 7.3,
+  "auto_revert_configured": true,
+  "linear_history": true
+}
+```

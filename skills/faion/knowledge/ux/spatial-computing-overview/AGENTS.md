@@ -68,6 +68,8 @@
 | `templates/decision-record.md` | Decision-record skeleton with platform-scoring table + rationale + risks |
 | `templates/platform-comparison-matrix.csv` | 2026 platform snapshot CSV for scoring |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,19 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree branches on use-case category (productivity / entertainment / training / industrial) → audience scale (consumer / prosumer / enterprise) → content type (3D models / cinematic / dialogue / interactive) and emits a primary + fallback platform pair with required SDK and tooling. Each leaf references a rule from `01-core-rules.xml` so the decision-record carries cited justifications.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/platform-comparison-matrix.csv`
+
+```csv
+platform,install_base_2026_estimate,sdk,store,headline_use_cases,primary_input,evidence_source
+visionos,~1M-2M units,SwiftUI + RealityKit + ARKit,App Store (15-30%),productivity + cinematic,gaze+pinch,IDC 2025 Q4 + Apple HIG 2026
+quest,>20M units,Unity + Unreal + Horizon OS SDK,Horizon Store (20-30%),active gaming + social,controllers + hand tracking,Meta Q4 2025 earnings
+psvr2,~5M units,Unity + Unreal,PS Store,active gaming,controllers,Sony 2025 financials
+hololens,enterprise-only,Unity + MRTK,enterprise distribution,industrial overlay + medical,gaze + hand,Microsoft 2025 announcements
+android-xr,launching 2025,Jetpack XR + Unity,Play Store,multi-purpose,gaze + hand,Google I/O 2025
+webxr,broad browser support,three.js + babylon.js,no store,cross-platform reach + experiments,varies by device,caniuse 2026-Q1
+```

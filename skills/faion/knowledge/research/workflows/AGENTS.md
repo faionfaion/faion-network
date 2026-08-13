@@ -68,7 +68,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/workflow-plan.md` | Workflow plan skeleton (mode + steps + artefacts + checkpoints) |
-| `templates/check-names.sh` | Bash helper to validate workflow-mode names against the canonical set |
 
 ## Scripts
 

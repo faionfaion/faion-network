@@ -61,6 +61,8 @@
 | `templates/playwright.config.ts` | Playwright config with projects and base URL. |
 | `templates/test_aaa.py` | Python AAA test skeleton. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,47 @@
 ## Decision tree
 
 The tree at content/06-decision-tree.xml routes between unit / integration / E2E / visual lanes per language and per test character. Walk it before adding any new test.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/vitest.config.ts`
+
+```typescript
+ */
+
+export {};
+```
+
+### `templates/playwright.config.ts`
+
+```typescript
+ */
+
+export {};
+```
+
+### `templates/test_aaa.py`
+
+```python
+"""
+
+import pytest
+
+
+def parse_int(s: str) -> int | None:
+    try:
+        return int(s)
+    except ValueError:
+        return None
+
+
+def test_parse_int_returns_value_when_digits_only():
+    # Arrange
+    s = "42"
+    # Act
+    result = parse_int(s)
+    # Assert
+    assert result == 42
+```

@@ -64,6 +64,8 @@
 | `templates/decision-record.schema.json` | JSON Schema for the artefact. |
 | `templates/decision-record.md` | Markdown writeup skeleton. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,184 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` runs four axis checks: if 0 axes failing → no change; if quality alone → prompt-improve; if cost + latency → routing/distillation; if all four → fine-tune.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/decision-record.schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ft-vs-prompt-decision-tree",
+  "title": "Fine-tune vs prompt decision tree artefact",
+  "type": "object",
+  "required": [
+    "workload",
+    "owner",
+    "created_at",
+    "axes",
+    "alternatives_tried",
+    "recommendation",
+    "revisit_triggers"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "workload": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string",
+      "not": {
+        "enum": [
+          "team",
+          "everyone",
+          "TBD"
+        ]
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "axes": {
+      "type": "object",
+      "required": [
+        "quality",
+        "cost",
+        "latency",
+        "maintenance"
+      ],
+      "properties": {
+        "quality": {
+          "type": "object",
+          "required": [
+            "score",
+            "note"
+          ],
+          "properties": {
+            "score": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5
+            },
+            "note": {
+              "type": "string",
+              "minLength": 5
+            }
+          }
+        },
+        "cost": {
+          "type": "object",
+          "required": [
+            "score",
+            "note"
+          ],
+          "properties": {
+            "score": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5
+            },
+            "note": {
+              "type": "string",
+              "minLength": 5
+            }
+          }
+        },
+        "latency": {
+          "type": "object",
+          "required": [
+            "score",
+            "note"
+          ],
+          "properties": {
+            "score": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5
+            },
+            "note": {
+              "type": "string",
+              "minLength": 5
+            }
+          }
+        },
+        "maintenance": {
+          "type": "object",
+          "required": [
+            "score",
+            "note"
+          ],
+          "properties": {
+            "score": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 5
+            },
+            "note": {
+              "type": "string",
+              "minLength": 5
+            }
+          }
+        }
+      }
+    },
+    "alternatives_tried": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "required": [
+          "alt",
+          "lift",
+          "status"
+        ],
+        "properties": {
+          "alt": {
+            "enum": [
+              "prompt-improve",
+              "rag",
+              "routing",
+              "distillation"
+            ]
+          },
+          "lift": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "status": {
+            "enum": [
+              "tried",
+              "untried",
+              "skipped"
+            ]
+          }
+        }
+      }
+    },
+    "recommendation": {
+      "enum": [
+        "no-change",
+        "prompt-improve",
+        "rag",
+        "routing",
+        "distillation",
+        "fine-tune",
+        "hybrid"
+      ]
+    },
+    "revisit_triggers": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "string",
+        "minLength": 10
+      }
+    }
+  }
+}
+```

@@ -68,6 +68,8 @@
 | `templates/.semgrep/no-hardcoded-secrets.yaml` | Custom Semgrep rule: hardcoded passwords + API keys |
 | `templates/_smoke-test.json` | Minimum SAST CI config artefact used by validate-security-sast.py --self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,110 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it when wiring SAST into a new repo or auditing an existing PR-gate.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/semgrep.yml`
+
+```yaml
+name: semgrep
+on:
+  pull_request: {}
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  semgrep:
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep:1.65.0
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Semgrep
+        run: semgrep ci --sarif --output semgrep.sarif --severity ERROR --severity WARNING
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with: { sarif_file: semgrep.sarif }
+```
+
+### `templates/codeql.yml`
+
+```yaml
+name: codeql
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"
+
+permissions:
+  security-events: write
+  actions: read
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        language: [javascript, python]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: +security-extended,security-and-quality
+      - uses: github/codeql-action/autobuild@v3
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+```
+
+### `templates/.semgrep/no-hardcoded-secrets.yaml`
+
+```yaml
+rules:
+  - id: hardcoded-password
+    patterns:
+      - pattern-either:
+          - pattern: password = "..."
+          - pattern: PASSWORD = "..."
+          - pattern: passwd = "..."
+    message: "Hardcoded password — move to a secret manager."
+    languages: [python, javascript, typescript]
+    severity: ERROR
+  - id: hardcoded-api-key
+    pattern-regex: '(?i)(api[_-]?key|apikey)\s*[=:]\s*["\'][a-zA-Z0-9]{20,}["\']'
+    message: "Possible hardcoded API key — move to a secret manager."
+    languages: [generic]
+    severity: WARNING
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "tool": "semgrep",
+  "tool_version": "1.65.0",
+  "severity_block": [
+    "ERROR"
+  ],
+  "severity_inform": [
+    "WARNING",
+    "INFO"
+  ],
+  "baseline_strategy": "ignore-existing",
+  "sarif_uploaded": true,
+  "pr_gate": true
+}
+```

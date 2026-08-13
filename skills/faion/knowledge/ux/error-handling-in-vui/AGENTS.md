@@ -65,6 +65,8 @@
 |------|---------|
 | `templates/reprompt-lint.py` | Python lint: verify ladder prompts are distinct + rung 2 has examples + rung 3 escalates |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,36 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes from observable inputs to a rule-grounded conclusion, every leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/reprompt-lint.py`
+
+```python
+"""reprompt-lint.py — verify VUI re-prompt ladder discipline."""
+from __future__ import annotations
+import json
+import re
+import sys
+from pathlib import Path
+
+def lint(ladder: list[str], require_examples_at: int | None) -> list[str]:
+    errs: list[str] = []
+    if len(set(ladder)) < len(ladder):
+        errs.append("duplicate rung prompt — verbatim repeat is forbidden")
+    if require_examples_at is not None and len(ladder) > require_examples_at:
+        # rung 2 should mention "say" or examples
+        if not re.search(r"\bsay\b|`[^`]+`", ladder[require_examples_at], re.I):
+            errs.append("rung 2 missing example phrases")
+    return errs
+
+if __name__ == "__main__":
+    spec = json.loads(Path(sys.argv[1]).read_text())
+    errs = lint(spec.get("misrecognition_ladder", []), require_examples_at=1)
+    errs += lint(spec.get("no_input_ladder", []), require_examples_at=None)
+    for e in errs:
+        sys.stderr.write(f"VIOLATION: {e}\n")
+    sys.exit(0 if not errs else 1)
+```

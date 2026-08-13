@@ -38,6 +38,8 @@
 |------|---------|
 | `templates/user-flows.md.tmpl` | Fillable Markdown template with one-flow stub. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[readiness-checklist]] — item 6 (Playwright pos+neg) requires user-flows.md exists.
@@ -47,3 +49,34 @@
 ## Decision tree
 
 User-facing flow present → produce user-flows.md. Backend-only → skip and rely on API tests.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/user-flows.md.tmpl`
+
+```markdown
+# user-flows: <feature name>
+
+## Flow F-01: <one-line flow title>
+
+- Actor: <who>
+- Preconditions: <what state>
+- Happy path:
+  1. <action> → <expected result>
+  2. <action> → <expected result>
+  3. <action> → <expected result>
+- Negative paths:
+  - <negative case 1>:
+    - Trigger: <what causes the error>
+    - Expected UX: <what the user sees>
+  - <negative case 2 — optional>:
+    - Trigger:
+    - Expected UX:
+- Playwright spec: `<path/to/spec.ts>`
+
+## Flow F-02: <next flow>
+
+(Repeat the shape above per flow. Every flow needs at least one positive AND one negative case.)
+```

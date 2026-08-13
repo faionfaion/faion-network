@@ -63,6 +63,8 @@
 | `templates/spec-writing.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/spec-writing.md` | Markdown skeleton for human-readable artefact rendering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,49 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/spec-writing.json`
+
+```json
+{
+  "artefact_id": "spec-writing-example",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "problem": "problem value",
+  "users": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "goals": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "non_goals": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "requirements": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "acceptance_criteria": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "open_questions": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "owner": "@solo-founder"
+}
+```

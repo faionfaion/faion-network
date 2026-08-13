@@ -65,6 +65,8 @@
 | `templates/okr-setting.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,86 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/okr-setting.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/okr-setting.json",
+  "title": "OKR Setting Output Contract",
+  "type": "object",
+  "required": [
+    "quarter",
+    "quarter_dates",
+    "objectives",
+    "biweekly_checkin",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "quarter": {
+      "type": "string",
+      "description": "yyyy-Qn"
+    },
+    "quarter_dates": {
+      "type": "object",
+      "description": "ISO start/end"
+    },
+    "objectives": {
+      "type": "array",
+      "description": "\u22643 objects each with title + owner + KRs[]",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "biweekly_checkin": {
+      "type": "object",
+      "description": "day_of_week + time + recurrence"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named owner (overall)"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "quarter": "sample-quarter",
+  "quarter_dates": {
+    "k": "v"
+  },
+  "objectives": [
+    {
+      "k": "v"
+    }
+  ],
+  "biweekly_checkin": {
+    "k": "v"
+  },
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

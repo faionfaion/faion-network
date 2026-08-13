@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/connection_manager.py` | FastAPI ConnectionManager with channel subscriptions and graceful disconnect |
 | `templates/ws_client.ts` | TypeScript WebSocketClient: reconnect with exponential jitter, offline queue, heartbeat |
-| `templates/_smoke-test.py` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,75 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Does the workload require sub-second server push AND client→server traffic?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/connection_manager.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"FastAPI ConnectionManager with channel subscriptions and graceful disconnect","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#versioned-envelope","token_budget_impact":"~150 tokens when loaded"}}
+from fastapi import WebSocket
+
+
+class ConnectionManager:
+    def __init__(self):
+        self.active: dict[str, list[WebSocket]] = {}
+
+    async def connect(self, channel: str, ws: WebSocket) -> None:
+        await ws.accept()
+        self.active.setdefault(channel, []).append(ws)
+
+    async def disconnect(self, channel: str, ws: WebSocket) -> None:
+        self.active.get(channel, []).remove(ws)
+
+    async def broadcast(self, channel: str, message: dict) -> None:
+        for ws in list(self.active.get(channel, [])):
+            try:
+                await ws.send_json(message)
+            except Exception:
+                self.active[channel].remove(ws)
+```
+
+### `templates/ws_client.ts`
+
+```typescript
+// faion_header_json: {"__faion_header__":{"purpose":"TypeScript WebSocketClient: reconnect with exponential jitter, offline queue, heartbeat","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#versioned-envelope","token_budget_impact":"~150 tokens when loaded"}}
+type Msg = { v: number; type: string; channel: string; seq: number; ts: number; payload: unknown };
+
+export class WSClient {
+  private ws?: WebSocket;
+  private attempts = 0;
+  private queue: Msg[] = [];
+  private readonly maxQueue = 100;
+  private readonly url: string;
+  private heartbeat?: ReturnType<typeof setInterval>;
+
+  constructor(url: string) { this.url = url; this.connect(); }
+
+  private connect() {
+    this.ws = new WebSocket(this.url);
+    this.ws.onopen = () => { this.attempts = 0; this.flush(); this.startHeartbeat(); };
+    this.ws.onclose = () => { this.stopHeartbeat(); this.scheduleReconnect(); };
+    this.ws.onmessage = (e) => this.handle(JSON.parse(e.data));
+  }
+
+  private scheduleReconnect() {
+    if (this.attempts > 8) return;
+    const cap = 30_000, base = 1000;
+    const delay = Math.random() * Math.min(cap, base * Math.pow(2, this.attempts));
+    this.attempts += 1;
+    setTimeout(() => this.connect(), delay);
+  }
+
+  private startHeartbeat() { this.heartbeat = setInterval(() => this.send({ type: 'ping' } as Msg), 25_000); }
+  private stopHeartbeat() { if (this.heartbeat) clearInterval(this.heartbeat); }
+  private flush() { while (this.queue.length && this.ws?.readyState === 1) this.ws.send(JSON.stringify(this.queue.shift())); }
+  private handle(_m: Msg) { /* delegate to listeners */ }
+  send(m: Msg) {
+    if (this.queue.length >= this.maxQueue) this.queue.shift();
+    this.queue.push(m); this.flush();
+  }
+}
+```

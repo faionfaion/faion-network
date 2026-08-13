@@ -66,6 +66,8 @@
 |------|---------|
 | `templates/a11y_quick.ts` | TypeScript contrast calculator + token-pair checker |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,26 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes from observable inputs to a rule-grounded conclusion, every leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/a11y_quick.ts`
+
+```typescript
+export function relativeLuminance(hex: string): number {
+  const c = hex.replace('#', '');
+  const rgb = [parseInt(c.slice(0,2),16), parseInt(c.slice(2,4),16), parseInt(c.slice(4,6),16)].map(v => v/255);
+  const lin = rgb.map(v => v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4));
+  return 0.2126*lin[0] + 0.7152*lin[1] + 0.0722*lin[2];
+}
+export function contrast(fg: string, bg: string): number {
+  const [l1, l2] = [relativeLuminance(fg), relativeLuminance(bg)].sort((a,b)=>b-a);
+  return (l1+0.05)/(l2+0.05);
+}
+export function pass(fg: string, bg: string, kind: 'body'|'large'|'non-text'): boolean {
+  const r = contrast(fg, bg);
+  return kind === 'body' ? r >= 4.5 : r >= 3;
+}
+```

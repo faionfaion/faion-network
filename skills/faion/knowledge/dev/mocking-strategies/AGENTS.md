@@ -63,6 +63,8 @@
 | `templates/over-mock-lint.py` | Lint script flagging tests with >5 lines of mock setup. |
 | `templates/prompt-choose-double.txt` | Prompt for sub-agent picking a double type. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,115 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters by: contract requires the call, state suffices, real impl too expensive — and routes to the right double.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/fake-repository.py`
+
+```python
+"""
+Fake in-memory repository implementing a UserRepository ABC.
+Use in unit tests instead of a database.
+Reset state between tests via fake_repo.clear() or a fresh fixture.
+"""
+from abc import ABC, abstractmethod
+from typing import Dict, Optional
+from uuid import uuid4
+
+
+class UserRepository(ABC):
+    @abstractmethod
+    def save(self, user: "User") -> "User": ...
+
+    @abstractmethod
+    def find_by_id(self, user_id: str) -> Optional["User"]: ...
+
+    @abstractmethod
+    def find_by_email(self, email: str) -> Optional["User"]: ...
+
+
+class FakeUserRepository(UserRepository):
+    def __init__(self) -> None:
+        self.users: Dict[str, "User"] = {}
+        self.email_index: Dict[str, str] = {}
+
+    def save(self, user: "User") -> "User":
+        if not getattr(user, "id", None):
+            user.id = str(uuid4())
+        self.users[user.id] = user
+        self.email_index[user.email] = user.id
+        return user
+
+    def find_by_id(self, user_id: str) -> Optional["User"]:
+        return self.users.get(user_id)
+
+    def find_by_email(self, email: str) -> Optional["User"]:
+        uid = self.email_index.get(email)
+        return self.users.get(uid) if uid else None
+
+    def clear(self) -> None:
+        self.users.clear()
+        self.email_index.clear()
+```
+
+### `templates/over-mock-lint.py`
+
+```python
+"""
+Over-mock detector: flags test functions with too many assert_called* calls.
+Input:  tests/ directory (recursive scan of test_*.py files)
+Output: stdout listing offenders; exits 1 if any found
+Usage:  python over-mock-lint.py [threshold]
+"""
+import ast
+import pathlib
+import sys
+
+THRESHOLD = int(sys.argv[1]) if len(sys.argv) > 1 else 4
+issues = 0
+
+for path in pathlib.Path("tests").rglob("test_*.py"):
+    tree = ast.parse(path.read_text())
+    for node in ast.walk(tree):
+        if isinstance(node, ast.FunctionDef):
+            asserts = sum(
+                1
+                for child in ast.walk(node)
+                if isinstance(child, ast.Attribute)
+                and child.attr.startswith("assert_called")
+            )
+            if asserts > THRESHOLD:
+                print(
+                    f"{path}:{node.lineno} {node.name} "
+                    f"has {asserts} call assertions (threshold {THRESHOLD})"
+                )
+                issues += 1
+
+sys.exit(1 if issues else 0)
+```
+
+### `templates/prompt-choose-double.txt`
+
+```text
+Goal: write tests for <module>.<function>.
+
+Step 1: List every external collaborator of <function> (databases, HTTP clients, email services,
+clocks, random sources). Classify each as:
+  pure        — no side effects, no external state
+  stub        — needs to return canned data
+  fake        — needs a working in-memory implementation
+  mock        — the call itself is part of the contract (must be verified)
+  integration — should hit the real service (do NOT mock)
+
+Step 2: For each non-pure collaborator, propose the smallest double:
+  prefer fake > stub > mock.
+
+Step 3: Emit a pytest test file using the chosen doubles.
+  - Use pytest-mock `mocker` fixture, NOT raw @patch decorators.
+  - Do NOT mock the function under test.
+  - Do NOT mock dataclasses or Pydantic models.
+  - Do NOT verify internal helper calls — only contract-level interactions.
+  - Each test asserts on observable behavior (return value, raised exception, side effect).
+```

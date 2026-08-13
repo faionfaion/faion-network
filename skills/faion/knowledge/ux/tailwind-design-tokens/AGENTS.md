@@ -68,6 +68,8 @@
 | `templates/tokens.css` | CSS custom-property layer (light + dark). |
 | `templates/sd.config.js` | Style Dictionary build config. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,209 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, Tailwind major version known, opacity modifiers required) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tailwind.config.js`
+
+```javascript
+//
+// tailwind.config.js — design token integration example
+// All values reference CSS custom properties defined in tokens.css
+// No hardcoded hex, px, or raw values in this file
+
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: ['./src/**/*.{js,ts,jsx,tsx,html}'],
+
+  // Safelist dynamic token classes assembled via string concatenation
+  safelist: [],
+
+  theme: {
+    colors: {
+      // Semantic tokens — action
+      primary: {
+        DEFAULT: 'rgb(var(--color-primary-rgb) / <alpha-value>)',
+        hover:   'rgb(var(--color-primary-hover-rgb) / <alpha-value>)',
+      },
+      // Semantic tokens — feedback
+      error:   'rgb(var(--color-error-rgb) / <alpha-value>)',
+      success: 'rgb(var(--color-success-rgb) / <alpha-value>)',
+      warning: 'rgb(var(--color-warning-rgb) / <alpha-value>)',
+      // Semantic tokens — surface
+      surface: {
+        DEFAULT: 'var(--color-surface)',
+        raised:  'var(--color-surface-raised)',
+      },
+      // Semantic tokens — text
+      text: {
+        DEFAULT:   'var(--color-text)',
+        secondary: 'var(--color-text-secondary)',
+        disabled:  'var(--color-text-disabled)',
+      },
+    },
+
+    spacing: {
+      xs: 'var(--spacing-xs)',   // 4px
+      sm: 'var(--spacing-sm)',   // 8px
+      md: 'var(--spacing-md)',   // 16px
+      lg: 'var(--spacing-lg)',   // 24px
+      xl: 'var(--spacing-xl)',   // 32px
+      '2xl': 'var(--spacing-2xl)', // 48px
+    },
+
+    fontFamily: {
+      sans: ['var(--font-family-sans)', 'system-ui', 'sans-serif'],
+      mono: ['var(--font-family-mono)', 'monospace'],
+    },
+
+    fontSize: {
+      sm:   ['var(--font-size-sm)',   { lineHeight: 'var(--line-height-sm)' }],
+      base: ['var(--font-size-base)', { lineHeight: 'var(--line-height-base)' }],
+      lg:   ['var(--font-size-lg)',   { lineHeight: 'var(--line-height-lg)' }],
+      xl:   ['var(--font-size-xl)',   { lineHeight: 'var(--line-height-xl)' }],
+    },
+
+    borderRadius: {
+      sm: 'var(--radius-sm)',
+      md: 'var(--radius-md)',
+      lg: 'var(--radius-lg)',
+      full: '9999px',
+    },
+  },
+
+  plugins: [],
+};
+```
+
+### `templates/tokens.css`
+
+```css
+ */
+
+/* tokens.css — design token CSS custom properties
+   Imported in global stylesheet (e.g., globals.css or main.css)
+   This file is the single source of actual values.
+   tailwind.config.js references var(--token-name), never raw values. */
+
+:root {
+  /* === Colors (RGB channels for opacity modifier support) === */
+  --color-primary-rgb:       26 115 232;
+  --color-primary-hover-rgb: 21  94 193;
+  --color-error-rgb:        197  34  31;
+  --color-success-rgb:       52 168  83;
+  --color-warning-rgb:      251 188   4;
+
+  /* Colors (non-opacity-modified) */
+  --color-surface:        #ffffff;
+  --color-surface-raised: #f8f9fa;
+  --color-text:           #202124;
+  --color-text-secondary: #5f6368;
+  --color-text-disabled:  #9aa0a6;
+
+  /* === Spacing === */
+  --spacing-xs:  4px;
+  --spacing-sm:  8px;
+  --spacing-md:  16px;
+  --spacing-lg:  24px;
+  --spacing-xl:  32px;
+  --spacing-2xl: 48px;
+
+  /* === Typography === */
+  --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-family-mono: 'JetBrains Mono', 'Fira Code', monospace;
+
+  --font-size-sm:   0.875rem; /* 14px */
+  --font-size-base: 1rem;     /* 16px */
+  --font-size-lg:   1.125rem; /* 18px */
+  --font-size-xl:   1.25rem;  /* 20px */
+
+  --line-height-sm:   1.5;
+  --line-height-base: 1.5;
+  --line-height-lg:   1.4;
+  --line-height-xl:   1.3;
+
+  /* === Border Radius === */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 16px;
+}
+
+/* Dark mode token overrides */
+[data-theme="dark"],
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-surface:        #202124;
+    --color-surface-raised: #303134;
+    --color-text:           #e8eaed;
+    --color-text-secondary: #9aa0a6;
+    --color-text-disabled:  #5f6368;
+  }
+}
+```
+
+### `templates/sd.config.js`
+
+```javascript
+//
+// sd.config.js — Style Dictionary: W3C DTCG token JSON → Tailwind config + CSS variables
+// Run: node sd.config.js
+// Input:  tokens/**/*.json (W3C DTCG format)
+// Output: src/styles/tokens.css + src/tw-tokens.js
+
+const StyleDictionary = require('style-dictionary');
+
+StyleDictionary.registerTransform({
+  name: 'css/var-name',
+  type: 'name',
+  transformer: (token) =>
+    `--${token.path.join('-').toLowerCase().replace(/\s+/g, '-')}`,
+});
+
+StyleDictionary.registerFormat({
+  name: 'tailwind/tokens',
+  formatter: ({ dictionary }) => {
+    const colors  = {};
+    const spacing = {};
+
+    dictionary.allTokens.forEach((token) => {
+      const varRef = `var(--${token.name})`;
+      if (token.path[0] === 'color') {
+        // Nested structure: color.primary.default → colors.primary.DEFAULT
+        let obj = colors;
+        token.path.slice(1, -1).forEach((seg) => {
+          obj[seg] = obj[seg] || {};
+          obj = obj[seg];
+        });
+        const last = token.path[token.path.length - 1];
+        obj[last === 'default' ? 'DEFAULT' : last] = varRef;
+      } else if (token.path[0] === 'spacing') {
+        const key = token.path.slice(1).join('-');
+        spacing[key] = varRef;
+      }
+    });
+
+    return `// Auto-generated by sd.config.js — do not edit manually
+module.exports = ${JSON.stringify({ colors, spacing }, null, 2)};
+`;
+  },
+});
+
+module.exports = {
+  source: ['tokens/**/*.json'],
+  platforms: {
+    css: {
+      transforms: ['attribute/cti', 'css/var-name', 'color/hsl'],
+      buildPath: 'src/styles/',
+      files: [{ destination: 'tokens.css', format: 'css/variables' }],
+    },
+    tailwind: {
+      transforms: ['attribute/cti', 'css/var-name'],
+      buildPath: 'src/',
+      files: [{ destination: 'tw-tokens.js', format: 'tailwind/tokens' }],
+    },
+  },
+};
+```

@@ -70,6 +70,8 @@
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum viable filled `ChangeOrder` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,52 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps master-SOW presence, threshold size, jurisdiction enforceability, and signature capture to send / escalate / pause. Every leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+owner:
+  role: ""
+  person: ""
+last_reviewed: ""
+version: ""
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "co_id": "CO-002",
+  "master_sow": {
+    "name": "Acme Web Portal SOW",
+    "date": "2026-04-12",
+    "identifier": "acme-2026-q2-001"
+  },
+  "header": {
+    "owner": {
+      "role": "freelancer",
+      "person": "alex"
+    },
+    "last_reviewed": "2026-05-10",
+    "version": "1.0"
+  },
+  "scope_delta": "Add CSV export endpoint + UI button on /clients page.",
+  "price_delta": "+$1,200 flat (fixed)",
+  "schedule_delta": "New end date 2026-05-29 (+5 business days)",
+  "payment_terms_delta": "Net-14, same as SOW",
+  "acceptance": {
+    "reply_yes_captured": true,
+    "captured_at": "2026-05-10T14:00:00Z",
+    "channel": "email"
+  },
+  "artefact": {
+    "immutable_link": "drive://co/CO-002.pdf",
+    "invoice_line_ref": "INV-2026-05-12-L3"
+  },
+  "verbal_authorization_hours": 0
+}
+```

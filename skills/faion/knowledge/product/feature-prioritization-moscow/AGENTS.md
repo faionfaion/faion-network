@@ -62,6 +62,8 @@
 | `templates/feature-prioritization-moscow.json` | JSON Schema for the output contract (machine-validatable). |
 | `templates/feature-prioritization-moscow.md` | Markdown skeleton with the required fields. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,64 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/feature-prioritization-moscow.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/feature-prioritization-moscow.json",
+  "title": "Feature Prioritization MoSCoW Output Contract",
+  "type": "object",
+  "required": [
+    "cycle_id",
+    "capacity",
+    "buckets",
+    "tiebreaker_rule",
+    "must_cap_pct",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "cycle_id": {
+      "type": "string",
+      "description": "sprint / release id"
+    },
+    "capacity": {
+      "type": "number",
+      "description": "story points or hours"
+    },
+    "buckets": {
+      "type": "object",
+      "description": "must / should / could / wont arrays"
+    },
+    "tiebreaker_rule": {
+      "type": "string",
+      "description": "named rule"
+    },
+    "must_cap_pct": {
+      "type": "number",
+      "description": "0-60"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```

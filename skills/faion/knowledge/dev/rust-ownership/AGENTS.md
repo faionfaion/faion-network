@@ -66,6 +66,8 @@
 |------|---------|
 | `templates/ownership-audit-comment.tmpl.rs` | 3-line comment template documenting the audit answers above each pub fn |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,20 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: does the function need to keep the value after returning? → yes → consume (move); no → reference. Then: needs to modify? → `&mut T`; otherwise → `&T`. Then: shared across threads? → `Arc<T>` (or `Arc<Mutex<T>>` for shared mutable). All leaves reference rules from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ownership-audit-comment.tmpl.rs`
+
+```rust
+// Ownership audit:
+//   keeps_value:           false   // does this fn store / return the value?
+//   modifies_value:        false   // does it write through the param?
+//   shares_across_threads: false   // does any path spawn with the value?
+// → param_kind: shared-ref (&T)
+pub fn example(input: &str) -> usize {
+    input.len()
+}
+```

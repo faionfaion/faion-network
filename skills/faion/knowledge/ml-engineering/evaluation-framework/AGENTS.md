@@ -57,13 +57,6 @@
 | `rubric_author` | sonnet | Anchor 1-5 scoring. |
 | `harness_impl` | sonnet | Python class wiring. |
 
-## Templates
-
-| File | Purpose |
-|------|---------|
-| `templates/model-evaluator.py` | ModelEvaluator class skeleton |
-| `templates/llm-judge.py` | LLMJudge class with rubric loader |
-
 ## Scripts
 
 | File | Purpose | When to call |

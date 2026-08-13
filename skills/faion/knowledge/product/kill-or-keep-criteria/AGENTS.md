@@ -62,6 +62,8 @@
 | `templates/kill-or-keep-criteria.json` | JSON Schema for the output contract (machine-validatable). |
 | `templates/kill-or-keep-criteria.md` | Markdown skeleton with the required fields. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,74 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/kill-or-keep-criteria.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/kill-or-keep-criteria.json",
+  "title": "Kill Or Keep Criteria Output Contract",
+  "type": "object",
+  "required": [
+    "project_name",
+    "mrr_snapshot",
+    "traffic_snapshot",
+    "joy_score",
+    "opportunity_cost_candidate",
+    "evidence_links",
+    "verdict",
+    "next_action",
+    "template_version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "project_name": {
+      "type": "string",
+      "description": "named side-project"
+    },
+    "mrr_snapshot": {
+      "type": "number",
+      "description": "current MRR in USD"
+    },
+    "traffic_snapshot": {
+      "type": "number",
+      "description": "current monthly visits"
+    },
+    "joy_score": {
+      "type": "integer",
+      "description": "1-10 last-7-days self-rating"
+    },
+    "opportunity_cost_candidate": {
+      "type": "string",
+      "description": "named alternative bet"
+    },
+    "evidence_links": {
+      "type": "object",
+      "description": "URL/ticket per floor"
+    },
+    "verdict": {
+      "type": "string",
+      "description": "kill | keep (binary)"
+    },
+    "next_action": {
+      "type": "string",
+      "description": "concrete action attached to verdict"
+    },
+    "template_version": {
+      "type": "string",
+      "description": "kill-criteria-template version pinned"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```

@@ -66,7 +66,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/api-first-development.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/api-first-development.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Related

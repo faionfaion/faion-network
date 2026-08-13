@@ -65,6 +65,8 @@
 | `templates/billing-rollout-coordination-checklist.md` | Markdown skeleton with the required fields for the Billing Rollout Coordination Checklist artefact |
 | `templates/billing-rollout-coordination-checklist.example.json` | Worked filled-in example of a valid Billing Rollout Coordination Checklist artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,152 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, owner named yes/no, decision materiality) to a concrete action, with each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology, route to a sibling methodology, or skip entirely.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/billing-rollout-coordination-checklist.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/pm/billing-rollout-coordination-checklist.json",
+  "title": "Billing Rollout Coordination Checklist",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "decision",
+    "rationale",
+    "inputs_used",
+    "version",
+    "last_reviewed",
+    "items"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "enum": [
+          "team",
+          "we",
+          "us",
+          "engineering"
+        ]
+      }
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 40
+    },
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "source"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "text",
+          "done",
+          "owner"
+        ],
+        "properties": {
+          "text": {
+            "type": "string"
+          },
+          "done": {
+            "type": "boolean"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "due_by": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### `templates/billing-rollout-coordination-checklist.example.json`
+
+```json
+{
+  "artefact_id": "billing-rollout-coordination-checklist-2026-05-23-acme",
+  "owner": "ruslan@faion.net",
+  "decision": "Proceed with the agreed plan as captured in the linked inputs.",
+  "rationale": "Decision rests on the latest engagement notes (notes-2026-05-22) and the prior baseline (baseline-2026-05-15); both inputs corroborate the same direction without contradicting constraints.",
+  "inputs_used": [
+    {
+      "name": "notes-2026-05-22",
+      "source": "wiki://pm/notes/2026-05-22.md"
+    },
+    {
+      "name": "baseline-2026-05-15",
+      "source": "repo://artefacts/baseline-2026-05-15.json"
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "items": [
+    {
+      "text": "Comms draft reviewed by client lead",
+      "done": true,
+      "owner": "ruslan@faion.net",
+      "due_by": "2026-05-22"
+    },
+    {
+      "text": "Billing provider toggle staged",
+      "done": false,
+      "owner": "ops-lead@faion.net",
+      "due_by": "2026-05-30"
+    },
+    {
+      "text": "Finance reconciliation script tested",
+      "done": false,
+      "owner": "finance@faion.net",
+      "due_by": "2026-05-29"
+    }
+  ]
+}
+```

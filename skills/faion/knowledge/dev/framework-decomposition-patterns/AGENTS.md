@@ -70,6 +70,8 @@
 | `templates/find-fat-files.sh` | Bash helper to surface fat files by LoC + change-freq. |
 | `templates/find-fat-components.mjs` | JS helper to surface fat React components by LoC + jsx-depth. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,138 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree first determines the framework (django / rails / laravel / react / generic). It then routes the fat-file type (view / controller / model / component / route) to the recommended extraction pattern. Then verifies test coverage exists OR characterization-test plan attached. Leaves emit `propose-extraction`, `block-no-coverage`, or `block-pattern-not-applicable`. Each leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/framework-decomposition-patterns.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/framework-decomposition-patterns.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "file_path",
+    "framework",
+    "file_type",
+    "current_loc",
+    "proposed_pattern",
+    "target_loc",
+    "coverage_or_plan",
+    "verdict",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^fdp-[a-z0-9-]{6,}$"
+    },
+    "file_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "framework": {
+      "enum": [
+        "django",
+        "rails",
+        "laravel",
+        "react",
+        "nextjs",
+        "generic"
+      ]
+    },
+    "file_type": {
+      "enum": [
+        "view",
+        "controller",
+        "model",
+        "component",
+        "route",
+        "service",
+        "form"
+      ]
+    },
+    "current_loc": {
+      "type": "integer",
+      "minimum": 100
+    },
+    "proposed_pattern": {
+      "enum": [
+        "service-layer",
+        "selector",
+        "dto",
+        "query-object",
+        "action",
+        "custom-hook",
+        "extract-helper",
+        "split-by-domain"
+      ]
+    },
+    "target_loc": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 200
+    },
+    "coverage_or_plan": {
+      "type": "string",
+      "minLength": 5
+    },
+    "ai_context_savings_tokens": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "verdict": {
+      "enum": [
+        "propose-extraction",
+        "block-no-coverage",
+        "block-pattern-not-applicable",
+        "skip-already-small"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```
+
+### `templates/find-fat-files.sh`
+
+```bash
+# find-fat-files.sh — top-20 longest Python app files (excludes tests/migrations)
+# Usage: ./find-fat-files.sh [repo-path]
+cd "${1:-.}"
+git ls-files '*.py' | grep -Ev 'tests?/|migrations?/' \
+  | xargs wc -l 2>/dev/null | sort -rn | head -20
+```
+
+### `templates/find-fat-components.mjs`
+
+```javascript
+// find-fat-components.mjs — list React components over 150 LOC for hook extraction
+// Usage: node find-fat-components.mjs [src-dir]
+// Output: LOC and file path, sorted descending
+
+import { readFileSync } from 'node:fs';
+import { globSync } from 'glob';
+
+const srcDir = process.argv[2] || 'src';
+const threshold = 150;
+
+const results = [];
+for (const f of globSync(`${srcDir}/**/*.{tsx,jsx}`)) {
+  const loc = readFileSync(f, 'utf8').split('\n').length;
+  if (loc > threshold) results.push({ loc, file: f });
+}
+results.sort((a, b) => b.loc - a.loc);
+for (const { loc, file } of results) console.log(loc, file);
+```

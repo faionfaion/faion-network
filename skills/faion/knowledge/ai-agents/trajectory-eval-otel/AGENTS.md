@@ -70,6 +70,8 @@
 | `templates/eval-rubric.py` | Pydantic model for the 3-axis rubric + LLM-as-judge structured output |
 | `templates/ci-eval-gate.yml` | GitHub Actions workflow gating PRs on the eval report |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,109 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree branches on which axis regressed &gt; 25% (outcome / trajectory / resources). For trajectory, it asks whether loops are present (same tool + args ≥3 times). For resources, it checks whether the cache hit ratio dropped (prompt-prefix change) or stayed flat (tool-verbosity growth). Each leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/python-instrument-anthropic.py`
+
+```python
+from opentelemetry import trace
+from opentelemetry.semconv._incubating.attributes import gen_ai_attributes as gai
+from anthropic import Anthropic
+
+tracer = trace.get_tracer("agent")
+client = Anthropic()
+
+def call_claude(messages, tools, model="claude-sonnet-..."):
+    with tracer.start_as_current_span("agent.llm_call") as span:
+        span.set_attribute(gai.GEN_AI_SYSTEM, "anthropic")
+        span.set_attribute(gai.GEN_AI_REQUEST_MODEL, model)
+
+        resp = client.messages.create(
+            model=model, messages=messages, tools=tools, max_tokens=2048
+        )
+
+        span.set_attribute(gai.GEN_AI_USAGE_INPUT_TOKENS, resp.usage.input_tokens)
+        span.set_attribute(gai.GEN_AI_USAGE_OUTPUT_TOKENS, resp.usage.output_tokens)
+        span.set_attribute("gen_ai.usage.cache_read_tokens", resp.usage.cache_read_input_tokens or 0)
+        span.set_attribute(gai.GEN_AI_RESPONSE_FINISH_REASONS, [resp.stop_reason])
+        return resp
+```
+
+### `templates/python-instrument-tool.py`
+
+```python
+def run_tool(name: str, args: dict):
+    with tracer.start_as_current_span(f"agent.tool.{name}") as span:
+        span.set_attribute("agent.tool.name", name)
+        span.set_attribute("agent.tool.args_hash", hash_args(args))
+        try:
+            result = TOOL_REGISTRY[name](**args)
+            span.set_attribute("agent.tool.outcome", "success")
+            return result
+        except Exception as e:
+            span.set_attribute("agent.tool.outcome", "error")
+            span.record_exception(e)
+            raise
+```
+
+### `templates/langfuse-decorator.py`
+
+```python
+from langfuse.decorators import observe
+
+@observe()
+def agent_step(input):
+    # inputs/outputs auto-captured to Langfuse
+    return llm_call(input)
+```
+
+### `templates/subagent-span-nesting.py`
+
+```python
+def parent_agent(goal):
+    with tracer.start_as_current_span("agent.run", attributes={"agent.goal": goal}):
+        # subagent span will be a child automatically
+        result = run_subagent("investigate")
+        ...
+
+def run_subagent(task):
+    with tracer.start_as_current_span("agent.subagent", attributes={"agent.task": task}):
+        ...
+```
+
+### `templates/eval-rubric.py`
+
+```python
+from pydantic import BaseModel
+
+class EvalRubric(BaseModel):
+    outcome_score_0_to_1: float    # task-success
+    trajectory_score_0_to_1: float # path optimality
+    resource_score_0_to_1: float   # 1 - normalized_cost
+
+def score_run(trace) -> EvalRubric:
+    outcome = score_outcome_with_judge(trace.final_answer, trace.goal)
+    trajectory = 1 - min(1, (trace.steps - optimal_steps) / 10)
+    resource = 1 - min(1, trace.total_cost / max_acceptable_cost)
+    return EvalRubric(
+        outcome_score_0_to_1=outcome,
+        trajectory_score_0_to_1=trajectory,
+        resource_score_0_to_1=resource,
+    )
+```
+
+### `templates/ci-eval-gate.yml`
+
+```yaml
+name: agent-eval
+on: [pull_request]
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    steps:
+      - run: python -m agent.eval.run --suite golden_50 --otlp-endpoint=$LANGFUSE_OTLP
+      - run: python -m agent.eval.gate --min-outcome=0.95 --max-cost-regression=0.10
+```

@@ -60,8 +60,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/postmortem.md.tmpl` | Postmortem skeleton with all six fields. |
-| `templates/layer-attribution.md.tmpl` | Six-layer decision rubric. |
 | `templates/_smoke-test.md` | Filled example for a tool-schema regression. |
 
 ## Scripts

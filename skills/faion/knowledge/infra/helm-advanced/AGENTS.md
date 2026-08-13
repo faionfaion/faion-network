@@ -65,6 +65,8 @@
 | `templates/config.json` | Config skeleton matching the output schema. |
 | `templates/_smoke-test.json` | Minimum viable filled artefact. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,81 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/config.json`
+
+```json
+{
+  "chart_name": "acme-app",
+  "chart_version": "2.1.0",
+  "chart_type": "application",
+  "patterns": {
+    "hooks": [
+      {
+        "name": "db-migrate",
+        "kind": "pre-upgrade",
+        "hook_weight": -5
+      },
+      {
+        "name": "smoke-test",
+        "kind": "test",
+        "hook_weight": 0
+      }
+    ],
+    "checksum_annotations": true,
+    "required_values": [
+      "image.tag",
+      "ingress.host"
+    ],
+    "resource_policy_keep": [
+      "PersistentVolumeClaim"
+    ]
+  },
+  "owner": {
+    "name": "Olha Petrenko",
+    "role": "platform lead"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "chart_name": "acme-app",
+  "chart_version": "2.1.0",
+  "chart_type": "application",
+  "patterns": {
+    "hooks": [
+      {
+        "name": "db-migrate",
+        "kind": "pre-upgrade",
+        "hook_weight": -5
+      },
+      {
+        "name": "smoke-test",
+        "kind": "test",
+        "hook_weight": 0
+      }
+    ],
+    "checksum_annotations": true,
+    "required_values": [
+      "image.tag",
+      "ingress.host"
+    ],
+    "resource_policy_keep": [
+      "PersistentVolumeClaim"
+    ]
+  },
+  "owner": {
+    "name": "Olha Petrenko",
+    "role": "platform lead"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+```

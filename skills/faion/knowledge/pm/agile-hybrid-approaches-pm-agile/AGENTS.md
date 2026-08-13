@@ -69,6 +69,8 @@
 | `templates/kanban-board.md` | Kanban board template with WIP limits and explicit policies. |
 | `templates/pick_approach.py` | YAML decision script that reads factor scores and recommends Predictive / Agile / Hybrid. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - parent skill: `pro/pm/` (see neighbouring methodologies).
@@ -82,3 +84,147 @@ See `content/06-decision-tree.xml`. The tree maps observable signals (input
 preconditions, source-of-truth access, named-consumer presence) onto a concrete
 verdict — apply the methodology, downgrade to draft, or skip — with each leaf
 referencing a rule id from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/agile-hybrid-approaches.json",
+  "type": "object",
+  "required": [
+    "adr_id",
+    "project_id",
+    "factor_scores",
+    "recommendation",
+    "decision_owner"
+  ],
+  "properties": {
+    "adr_id": {
+      "type": "string"
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "factor_scores": {
+      "type": "object",
+      "required": [
+        "requirements_clarity",
+        "stakeholder_availability",
+        "risk_tolerance",
+        "team_experience",
+        "contract_type"
+      ],
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "score",
+          "evidence"
+        ],
+        "properties": {
+          "score": {
+            "enum": [
+              "P",
+              "H",
+              "A"
+            ]
+          },
+          "evidence": {
+            "type": "array",
+            "minItems": 1
+          }
+        }
+      }
+    },
+    "recommendation": {
+      "type": "object",
+      "required": [
+        "approach",
+        "rationale"
+      ],
+      "properties": {
+        "approach": {
+          "enum": [
+            "Predictive",
+            "Agile",
+            "Hybrid"
+          ]
+        }
+      }
+    },
+    "decision_owner": {
+      "type": "string"
+    },
+    "phases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "approach",
+          "definition_of_done"
+        ]
+      }
+    }
+  }
+}
+```
+
+### `templates/pick_approach.py`
+
+```python
+"""
+
+
+"""Pick Predictive/Agile/Hybrid from a YAML decision file.
+
+Usage:
+    python pick_approach.py answers.yaml
+
+answers.yaml format:
+    requirements_clarity: P   # P | H | A
+    stakeholder_availability: A
+    risk_tolerance: H
+    team_experience: A
+    contract_type: H
+
+Output: YAML with recommendation and per-factor scores.
+"""
+import sys
+
+import yaml
+
+FACTORS = [
+    "requirements_clarity",
+    "stakeholder_availability",
+    "risk_tolerance",
+    "team_experience",
+    "contract_type",
+]
+
+ans = yaml.safe_load(open(sys.argv[1]))
+score = {"P": 0, "A": 0, "H": 0}
+
+for k in FACTORS:
+    v = ans.get(k, "H")
+    if v in score:
+        score[v] += 1
+
+if score["P"] >= 4:
+    rec = "Predictive"
+elif score["A"] >= 4:
+    rec = "Agile"
+else:
+    rec = "Hybrid"
+
+print(
+    yaml.safe_dump(
+        {"recommendation": rec, "scores": score},
+        default_flow_style=False,
+    )
+)
+```

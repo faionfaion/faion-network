@@ -62,6 +62,8 @@
 | `templates/chroma_store.py` | ChromaStore wrapper with metric pinning, string IDs, idempotent upsert. |
 | `templates/chroma-schema.json` | JSON Schema for ChromaStore search/upsert payloads. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -75,3 +77,157 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` routes by corpus size, tenancy, and concurrency to Chroma, Qdrant, Weaviate, or pgvector. Use it before instantiating a client so the scale-up path is explicit.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/chroma_store.py`
+
+```python
+"""
+ChromaStore — minimal Chroma wrapper implementing upsert, search, delete.
+
+Converts Chroma distances to similarity scores (1 - distance) for cosine space.
+
+Usage:
+    store = ChromaStore("documents", persist_dir="./chroma_db")
+    store.upsert([{"id": "1", "embedding": [...], "content": "...", "metadata": {...}}])
+    results = store.search(query_embedding, top_k=5)
+    store.delete(["1", "2"])
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
+import chromadb
+
+
+@dataclass
+class SearchResult:
+    id: str
+    score: float      # similarity (1 - distance for cosine)
+    content: str
+    metadata: Dict[str, Any]
+
+
+class ChromaStore:
+    def __init__(
+        self,
+        collection_name: str,
+        persist_dir: Optional[str] = "./chroma_db",
+        distance: str = "cosine",  # cosine | l2 | ip
+    ) -> None:
+        if persist_dir:
+            self._client = chromadb.PersistentClient(path=persist_dir)
+        else:
+            self._client = chromadb.Client()
+        self._collection = self._client.get_or_create_collection(
+            name=collection_name,
+            metadata={"hnsw:space": distance},
+        )
+        self._distance = distance
+
+    def upsert(self, documents: List[Dict[str, Any]]) -> None:
+        """documents: list of {id, embedding, content, metadata}."""
+        self._collection.upsert(
+            ids=[str(d["id"]) for d in documents],
+            embeddings=[d["embedding"] for d in documents],
+            documents=[d.get("content", "") for d in documents],
+            metadatas=[d.get("metadata", {}) for d in documents],
+        )
+
+    def search(
+        self,
+        query_embedding: List[float],
+        top_k: int = 5,
+        where: Optional[Dict] = None,
+    ) -> List[SearchResult]:
+        kwargs: Dict[str, Any] = {
+            "query_embeddings": [query_embedding],
+            "n_results": top_k,
+            "include": ["documents", "metadatas", "distances"],
+        }
+        if where:
+            kwargs["where"] = where
+        r = self._collection.query(**kwargs)
+        results = []
+        for i in range(len(r["ids"][0])):
+            dist = r["distances"][0][i]
+            score = 1.0 - dist if self._distance == "cosine" else -dist
+            results.append(SearchResult(
+                id=r["ids"][0][i],
+                score=score,
+                content=r["documents"][0][i],
+                metadata=r["metadatas"][0][i],
+            ))
+        return results
+
+    def delete(self, ids: List[str]) -> None:
+        self._collection.delete(ids=[str(i) for i in ids])
+```
+
+### `templates/chroma-schema.json`
+
+```json
+{
+  "_header": {
+    "purpose": "JSON Schema for ChromaStore search response",
+    "consumes": "ChromaStore.search() output",
+    "produces": "pass/fail validation",
+    "depends-on": "content/02-output-contract.xml",
+    "token-budget-impact": "small"
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://db-chroma/search.schema.json",
+  "type": "object",
+  "required": [
+    "collection",
+    "metric",
+    "top_k",
+    "hits"
+  ],
+  "properties": {
+    "collection": {
+      "type": "string",
+      "minLength": 1
+    },
+    "metric": {
+      "type": "string",
+      "enum": [
+        "cosine",
+        "l2",
+        "ip"
+      ]
+    },
+    "top_k": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "hits": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "score",
+          "payload"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "score": {
+            "type": "number"
+          },
+          "payload": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  }
+}
+```

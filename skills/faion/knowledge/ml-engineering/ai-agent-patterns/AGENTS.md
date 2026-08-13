@@ -69,6 +69,8 @@
 | `templates/tool-definition.json` | Tool definition reused across patterns |
 | `templates/patterns-decision-record.md` | Decision record skeleton |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,83 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-two-axes`, `r2-default-react`, `r3-plan-execute-when-long`, `r4-reflection-when-self-correct`, `r5-multi-agent-when-roles` from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/plan-execute-skeleton.py`
+
+```python
+"""Skeleton for the `ai-agent-patterns` template `plan-execute-skeleton.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "ai-agent-patterns"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/react-system-prompt.txt`
+
+```text
+# React System Prompt
+# Prompt skeleton for ai-agent-patterns.
+
+SYSTEM: You are applying methodology `ai-agent-patterns`. Honour every rule in content/01-core-rules.xml.
+USER: <task input>
+ASSISTANT (expected shape): <see content/02-output-contract.xml>
+```
+
+### `templates/reflection-critic-prompt.txt`
+
+```text
+# Reflection Critic Prompt
+# Prompt skeleton for ai-agent-patterns.
+
+SYSTEM: You are applying methodology `ai-agent-patterns`. Honour every rule in content/01-core-rules.xml.
+USER: <task input>
+ASSISTANT (expected shape): <see content/02-output-contract.xml>
+```
+
+### `templates/tool-definition.json`
+
+```json
+{
+  "_header": "purpose: Tool definition reused across patterns | consumes: Inputs declared in AGENTS.md Prerequisites. | produces: Filled artefact for ai-agent-patterns matching content/02-output-contract.xml. | depends-on: content/01-core-rules.xml, scripts/validate-ai-agent-patterns.py | token-budget-impact: small",
+  "purpose": "Tool definition reused across patterns",
+  "consumes": "Inputs declared in AGENTS.md Prerequisites.",
+  "produces": "Filled artefact for ai-agent-patterns matching content/02-output-contract.xml.",
+  "depends-on": [
+    "content/01-core-rules.xml",
+    "scripts/validate-ai-agent-patterns.py"
+  ],
+  "token-budget-impact": "small",
+  "_": "real fields below (this is a template; fill or remove the metadata header)",
+  "name": "<tool_name>",
+  "description": "<short description>",
+  "input_schema": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  }
+}
+```

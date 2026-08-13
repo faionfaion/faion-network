@@ -67,6 +67,8 @@
 | `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
 | `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,64 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/artefact-instance.json`
+
+```json
+{
+  "report_id": "okr-calib-2026w21",
+  "owner": "cpo@acme.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "okrs": [
+    {
+      "id": "o1",
+      "objective": "Grow weekly engaged minutes 2x",
+      "krs": [
+        {
+          "id": "kr1",
+          "name": "+50% activation",
+          "target": 0.4,
+          "current": 0.32,
+          "owner": "growth@acme.io",
+          "evidence": "BI view dim_activation snapshot 2026-05-22"
+        }
+      ]
+    }
+  ],
+  "nsm_target": {
+    "metric": "weekly_engaged_minutes",
+    "target": 100000,
+    "current": 71000,
+    "evidence": "BI view fct_engagement 2026-05-22"
+  },
+  "confidence_per_kr": [
+    {
+      "kr_id": "kr1",
+      "confidence": 0.55,
+      "method": "linear projection on 6w history"
+    }
+  ],
+  "risks": [
+    {
+      "id": "r1",
+      "kr_id": "kr1",
+      "risk": "onboarding regression after redesign",
+      "evidence": "support ticket count +18% week-over-week"
+    }
+  ],
+  "interventions": [
+    {
+      "trigger": "confidence < 0.4",
+      "action": "run onboarding-regression-audit",
+      "owner": "growth@acme.io",
+      "due_cycle": "next week"
+    }
+  ],
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}
+```

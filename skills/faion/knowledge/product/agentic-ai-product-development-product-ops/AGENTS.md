@@ -64,6 +64,8 @@
 | `templates/ops-readiness.yaml` | Ops-readiness pack schema (goal + actions + runbook + dashboard + regression). |
 | `templates/escalation-runbook.md` | Escalation runbook skeleton (role + channel + SLA + triggers). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[ai-native-product-development]] — sibling ops methodology for non-autonomous AI-native products.
@@ -72,3 +74,39 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` checks five preconditions: goal predicate set, every action has a daily budget, runbook is pre-launch, dashboard is wired with agentic metrics, regression hook is set. Any failure → block launch. All green → route traffic.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ops-readiness.yaml`
+
+```yaml
+version: "1.0.0"
+agent: "<agent-slug>"
+owner: "ai-ops:<person>"
+goal_state:
+  predicate: "ticket.status == 'resolved' AND csat >= 4"
+  evidence_source: "tickets_table + csat_survey"
+autonomous_actions:
+  - action: issue-refund
+    trigger: "amount <= 50"
+    daily_budget: 100
+  - action: send-followup-email
+    trigger: "no-reply > 48h"
+    daily_budget: 500
+escalation_runbook:
+  human_role: support-lead
+  channel: "#support-on-call"
+  sla_minutes: 30
+  triggers: ["confidence < 0.7", "refund > 100", "regression-status=red"]
+  written_before_launch: true
+dashboard:
+  goal_achievement_rate: "panel://ai-ops/agent.goal_rate"
+  autonomy_ratio: "panel://ai-ops/agent.autonomy"
+  cost_per_task: "panel://ai-ops/agent.cost"
+  escalation_rate: "panel://ai-ops/agent.escalation"
+behavioural_regression:
+  test_set_path: "tests/behavioural/v1.jsonl"
+  trigger_on_model_bump: true
+```

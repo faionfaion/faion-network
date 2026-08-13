@@ -61,6 +61,8 @@
 | `templates/concurrent-fetch.py` | Bounded fan-out: TaskGroup + Semaphore + asyncio.timeout over httpx.AsyncClient. |
 | `templates/asgi-handler.py` | FastAPI-style handler showing TaskGroup composition inside a request. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,63 @@
 ## Decision tree
 
 The tree at content/06-decision-tree.xml triages: CPU vs I/O, all-or-nothing vs partial-success fan-out, capped vs uncapped concurrency. Walk it before introducing asyncio into a module that wasn't already async.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/concurrent-fetch.py`
+
+```python
+"""
+
+import asyncio
+
+import httpx
+
+
+async def fetch_one(
+    client: httpx.AsyncClient, url: str, sem: asyncio.Semaphore
+) -> dict:
+    async with sem:
+        async with asyncio.timeout(10):
+            response = await client.get(url)
+            response.raise_for_status()
+            return response.json()
+
+
+async def fetch_all(urls: list[str], concurrency: int = 10) -> list[dict]:
+    sem = asyncio.Semaphore(concurrency)
+    async with httpx.AsyncClient() as client:
+        async with asyncio.TaskGroup() as tg:
+            tasks = [tg.create_task(fetch_one(client, url, sem)) for url in urls]
+    return [task.result() for task in tasks]
+```
+
+### `templates/asgi-handler.py`
+
+```python
+"""
+
+import asyncio
+
+from fastapi import FastAPI
+
+app = FastAPI()
+
+
+async def get_profile(user_id: int) -> dict:
+    return {"id": user_id, "name": "demo"}
+
+
+async def get_orders(user_id: int) -> list[dict]:
+    return []
+
+
+@app.get("/users/{user_id}/dashboard")
+async def dashboard(user_id: int) -> dict:
+    async with asyncio.TaskGroup() as tg:
+        profile_task = tg.create_task(get_profile(user_id))
+        orders_task = tg.create_task(get_orders(user_id))
+    return {"profile": profile_task.result(), "orders": orders_task.result()}
+```

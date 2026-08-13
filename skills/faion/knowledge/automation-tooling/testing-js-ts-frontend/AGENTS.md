@@ -68,6 +68,8 @@
 | `templates/vitest-setup.ts` | Vitest setup file adding jest-axe matcher |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,70 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/Component.test.tsx`
+
+```tsx
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { axe } from 'jest-axe';
+import { Component } from './Component';
+
+describe('Component', () => {
+  it('reports selection on click', async () => {
+    const user = userEvent.setup();
+    const onSelect = vi.fn();
+    render(<Component id="o1" label="Order #1" onSelect={onSelect} />);
+
+    const btn = screen.getByRole('option', { name: /order #1/i });
+    await user.click(btn);
+
+    expect(onSelect).toHaveBeenCalledWith('o1');
+  });
+
+  it('has no a11y violations', async () => {
+    const { container } = render(<Component id="o1" label="Order #1" onSelect={() => {}} />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});
+```
+
+### `templates/vitest-config.ts`
+
+```typescript
+import { defineConfig } from 'vitest/config';
+
+export default defineConfig({
+  test: {
+    globals: false,
+    environment: 'jsdom',
+    setupFiles: ['./vitest.setup.ts'],
+  },
+});
+```
+
+### `templates/vitest-setup.ts`
+
+```typescript
+import 'jest-axe/extend-expect';
+```
+
+### `templates/artefact.json`
+
+```json
+{
+  "component_file": "src/OrderRow.tsx",
+  "runner": "vitest",
+  "query_strategy_ok": true,
+  "explicit_imports_or_globals": true,
+  "mock_api_matches_runner": true,
+  "uses_user_event": true,
+  "axe_assertion": true,
+  "snapshot_lines": 0
+}
+```

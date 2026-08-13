@@ -71,6 +71,8 @@
 | `templates/incident-report.md` | Markdown skeleton for the postmortem |
 | `templates/incident-report.json` | JSON example matching the output contract |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,47 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps the observed signals (complaint rate, bounce rate, DKIM/DMARC status, segment isolation result) to the containment action and pins the rule from `01-core-rules.xml`. Use it before throttling — over-throttle damages re-engagement, under-throttle damages sender reputation.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/incident-report.json`
+
+```json
+{
+  "incident_id": "inc-2026-05-23-welcome-segb",
+  "detected_at": "2026-05-23T09:42:00Z",
+  "owner": "@alex-email",
+  "metrics": {
+    "complaint_rate_pct": 0.18,
+    "bounce_rate_pct": 2.4,
+    "unsub_rate_pct": 1.6,
+    "segment": "welcome_seq_segment_b"
+  },
+  "diagnostics": [
+    {
+      "check": "dkim",
+      "result": "pass",
+      "source": "https://mxtoolbox.com/SuperTool?action=dkim%3a"
+    },
+    {
+      "check": "esp_reputation",
+      "result": "82 (was 91)",
+      "source": "https://app.sendgrid.com/reputation"
+    },
+    {
+      "check": "complaint_sample",
+      "result": "5/6 complaints from gmail.com; subject contains all-caps tokens",
+      "source": "esp://complaints?from=2026-05-23"
+    }
+  ],
+  "containment": {
+    "action": "pause-segment",
+    "auto_resume_at": "2026-05-24T09:00:00Z",
+    "warmup_curve": "10/30/100 over 3 sends"
+  },
+  "postmortem": "Spam complaint rate hit 0.18% on welcome_seq_segment_b after subject-line A/B variant rolled out at 08:30. DKIM healthy; ESP reputation dropped 9pp. Containment: pause segment, schedule warm-up recovery; replace subject variant; add subject-line lint rule blocking all-caps tokens.",
+  "version": "1.0.0"
+}
+```

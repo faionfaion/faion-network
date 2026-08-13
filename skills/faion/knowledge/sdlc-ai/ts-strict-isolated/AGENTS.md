@@ -64,6 +64,8 @@
 | `templates/tsconfig.base.json` | Root tsconfig with strict + noUnchecked + exactOptional flags. |
 | `templates/tsconfig.lib.json` | Library tsconfig extending base, with isolatedDeclarations + composite + references. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,67 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tsconfig.base.json`
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2023",
+    "lib": [
+      "ES2023"
+    ],
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": false,
+    "verbatimModuleSyntax": true,
+    "resolveJsonModule": true,
+    "useDefineForClassFields": true
+  }
+}
+```
+
+### `templates/tsconfig.lib.json`
+
+```json
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "isolatedDeclarations": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "dist",
+    "rootDir": "src",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": [
+    "src"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "**/*.test.ts"
+  ],
+  "references": [
+    {
+      "path": "../shared"
+    }
+  ]
+}
+```

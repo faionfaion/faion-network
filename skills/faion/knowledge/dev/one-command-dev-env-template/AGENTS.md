@@ -61,6 +61,8 @@
 | `templates/one-command-dev-env-template.json` | JSON schema for the output contract (machine-validatable). |
 | `templates/one-command-dev-env-template.md` | Markdown skeleton with the required fields. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -75,3 +77,87 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? owner nameable? store writable?) and routes the decision into either "run-it" (produce the record) or "skip-it" (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/one-command-dev-env-template.json`
+
+```json
+{
+  "_purpose": "JSON Schema for the One Command Dev Env Template decision-record output.",
+  "_consumes": "nothing \u2014 schema only.",
+  "_produces": "schema document.",
+  "_depends-on": "content/02-output-contract.xml.",
+  "_token-budget-impact": "~180 tokens.",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.network/schema/one-command-dev-env-template.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "decision",
+    "rationale",
+    "inputs_used",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 4
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 60
+    },
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "source"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "active",
+        "deprecated"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "notes": {
+      "type": "string"
+    }
+  }
+}
+```

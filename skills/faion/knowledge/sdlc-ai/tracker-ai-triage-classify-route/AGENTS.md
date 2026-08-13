@@ -63,6 +63,8 @@
 |------|---------|
 | `templates/triage-pipeline.yaml` | YAML config for the six-step triage pipeline (classify/severity/dedupe/label/route/assign). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,75 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/triage-pipeline.yaml`
+
+```yaml
+# AI triage pipeline — six fixed steps, blocker gate, single transparency comment.
+# Drop into the tracker automation runner (Linear webhooks, Jira automation, GH Actions).
+
+input:
+  source: tracker.issue.created
+  fields: [title, body, reporter, project]
+
+pipeline:
+  - id: classify
+    model: bert-base-issue-classifier-v3
+    out: type
+    enum: [bug, story, epic, task, spike]
+
+  - id: severity
+    model: severity-scorer-v2
+    out: severity
+    enum: [blocker, critical, major, minor]
+    sla_minutes:
+      blocker: 30
+      critical: 240
+      major: 2880          # 2 days
+      minor: 10080         # 7 days
+
+  - id: dedupe
+    method: cosine_similarity
+    over: title + body
+    window: 1000
+    threshold: 0.92
+    on_match:
+      - close_as_duplicate
+      - link_both_ways
+      - STOP                # short-circuits the rest
+
+  - id: label
+    schemes:
+      - /area/*
+      - /component/*
+      - /lang/*
+
+  - id: route
+    source: CODEOWNERS
+    fallback_team: triage-default
+
+  - id: assign
+    policy: least_loaded
+    measure: open_issues_in_progress
+
+gates:
+  on_severity_blocker:
+    require: human_confirm
+    via: ["/agent confirm-blocker", "oncall_slash_command"]
+    blocks: [severity.arm_sla, assign]
+    timeout: 10m
+    on_timeout: keep_unconfirmed_no_paging
+
+emit:
+  one_comment:
+    template: triage-table         # see content/02-transparency-comment.xml
+    listen_for_reactions: [":x:"]
+    on_reaction:
+      revert_disputed_field: true
+      requeue_step: true
+      edit_in_place: true
+```

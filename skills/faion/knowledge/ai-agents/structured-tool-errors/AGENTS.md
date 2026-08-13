@@ -64,6 +64,8 @@
 | `templates/recovery_hints.txt` | Closed enum of recovery hints with a one-line semantic for each value. |
 | `templates/runner_policy.yaml` | YAML map from `recoveryHint` to runner action with retry budgets and timeouts. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,142 @@
 ## Decision tree
 
 The tree at `content/06-decision-tree.xml` picks the `recoveryHint` value from the failure category: rate-limit / transient 5xx → `RETRY_LATER`; 4xx with bad arguments → `CHECK_INPUT`; auth missing/expired → `NEEDS_AUTH`; unrecoverable / 5xx with no retry budget → `REPORT_TO_USER`; resource missing but a peer tool exists → `TRY_ALTERNATIVE`. Use it whenever the question is "which hint do I emit for THIS failure".
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/error_envelope.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "purpose: tool error envelope schema enforcing closed recoveryHint enum\nconsumes: per-tool failure category + upstream status\nproduces: JSON body the agent runner can dispatch on without parsing prose\ndepends-on: agent runner with hint->action map (templates/runner_policy.yaml)\ntoken-budget-impact: ~250 tokens to render in agent context",
+  "title": "ToolError",
+  "type": "object",
+  "required": [
+    "error"
+  ],
+  "properties": {
+    "error": {
+      "type": "object",
+      "required": [
+        "code",
+        "message",
+        "recoveryHint",
+        "traceId"
+      ],
+      "properties": {
+        "code": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]+$",
+          "description": "Semantic UPPER_SNAKE code, e.g. UPSTREAM_RATE_LIMITED."
+        },
+        "message": {
+          "type": "string",
+          "maxLength": 240,
+          "description": "One human sentence. No stack trace."
+        },
+        "recoveryHint": {
+          "type": "string",
+          "enum": [
+            "RETRY_LATER",
+            "CHECK_INPUT",
+            "TRY_ALTERNATIVE",
+            "REPORT_TO_USER",
+            "NEEDS_AUTH"
+          ]
+        },
+        "retry_after_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3600
+        },
+        "traceId": {
+          "type": "string",
+          "minLength": 8
+        },
+        "details": {
+          "type": "object",
+          "description": "Sanitised key-value details. Never raw stack frames."
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
+```
+
+### `templates/recovery_hints.txt`
+
+```text
+recoveryHint enum — closed vocabulary
+=====================================
+
+RETRY_LATER       Transient upstream issue. Runner sleeps `retry_after_seconds`
+                  (clamped 1-300) and retries up to per-tool retry budget.
+
+CHECK_INPUT       Argument-level problem (validation failure, missing ID,
+                  malformed query). Runner returns envelope to the model so
+                  it can reconsider — NO automatic retry.
+
+TRY_ALTERNATIVE   This tool cannot serve the request (wrong scope, missing
+                  permission, feature not enabled). Runner returns envelope
+                  to the model and prompts it to pick a different tool.
+
+REPORT_TO_USER    Irrecoverable for the agent (data inconsistency, business
+                  rule violation, hard limit). Runner HALTS the loop and
+                  surfaces the envelope to the user.
+
+NEEDS_AUTH        Credentials missing, expired, or insufficient. Runner
+                  HALTS the loop and triggers the user-facing auth flow.
+
+Picking the hint
+================
+- 401/403          → NEEDS_AUTH
+- 400 / schema bad → CHECK_INPUT
+- 404 / wrong tool → TRY_ALTERNATIVE
+- 429 / 503        → RETRY_LATER (with retry_after_seconds)
+- 409 / conflict   → REPORT_TO_USER (data state needs human decision)
+- unknown 500      → RETRY_LATER on first try, REPORT_TO_USER after budget
+```
+
+### `templates/runner_policy.yaml`
+
+```yaml
+policy_version: "1.1.0"
+default_retry_budget_per_tool: 3
+retry_after_seconds_clamp:
+  min: 1
+  max: 300
+
+dispatch:
+  RETRY_LATER:
+    action: wait_and_retry
+    use_retry_after_seconds: true
+    fallback_seconds: 10
+    counts_against_retry_budget: true
+  CHECK_INPUT:
+    action: return_to_model
+    counts_against_retry_budget: false
+  TRY_ALTERNATIVE:
+    action: return_to_model
+    suggest_different_tool: true
+    counts_against_retry_budget: false
+  REPORT_TO_USER:
+    action: halt_loop
+    surface_envelope_to_user: true
+  NEEDS_AUTH:
+    action: halt_loop
+    trigger_auth_flow: true
+
+# Per-tool overrides (example)
+overrides:
+  github_api:
+    default_retry_budget_per_tool: 5
+  payment_gateway:
+    dispatch:
+      RETRY_LATER:
+        action: halt_loop   # never auto-retry payment side-effects
+        surface_envelope_to_user: true
+```

@@ -60,6 +60,8 @@
 | `templates/router-chain.py` | Router chain using RunnableBranch with explicit fallback default |
 | `templates/_smoke-test.json` | Minimum valid chain config envelope |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -75,3 +77,60 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question is whether the pipeline branches by input. Branches route to Sequential, Router, MapReduce, or Fallback chain patterns.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/router-chain.py`
+
+```python
+"""Router chain template — sequential conditions + default fallback."""
+from __future__ import annotations
+
+from langchain_anthropic import ChatAnthropic
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnableBranch
+
+model = ChatAnthropic(model="claude-sonnet-4-7")
+parser = StrOutputParser()
+
+math_chain = ChatPromptTemplate.from_template("Solve this math problem: {input}") | model | parser
+code_chain = ChatPromptTemplate.from_template("Write code for: {input}") | model | parser
+general_chain = ChatPromptTemplate.from_template("Answer: {input}") | model | parser
+
+
+def route(info: dict) -> str:
+    topic = (info.get("topic") or "").lower()
+    if "math" in topic:
+        return "math"
+    if "code" in topic:
+        return "code"
+    return "general"
+
+
+branch = RunnableBranch(
+    (lambda x: route(x) == "math", math_chain),
+    (lambda x: route(x) == "code", code_chain),
+    general_chain,  # default — required so unmatched inputs don't crash
+).with_retry(stop_after_attempt=3, wait_exponential_jitter=True)
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "smallest valid chain config envelope for the validator",
+  "_consumes": "nothing",
+  "_produces": "example chain config matching content/02-output-contract.xml",
+  "_depends_on": "content/01-core-rules.xml",
+  "_token_budget_impact": "~40 tokens",
+  "pattern": "fallback",
+  "module_level": true,
+  "exceptions_to_handle": [
+    "openai.RateLimitError",
+    "openai.APITimeoutError"
+  ]
+}
+```

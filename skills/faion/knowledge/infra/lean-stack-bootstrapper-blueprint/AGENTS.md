@@ -58,9 +58,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/stack-diagram.md.tmpl` | 1-page architecture diagram with vendor / role / cost / ceiling table. |
-| `templates/upgrade-triggers.md.tmpl` | Trigger table: metric, threshold, action. |
-| `templates/cost-ceiling.md.tmpl` | Per-vendor ceiling + alert configuration recipe. |
 | `templates/_smoke-test.md` | Filled example for a B2B SaaS founder. |
 
 ## Scripts

@@ -71,6 +71,8 @@
 | `templates/bisect.sh` | Wrapper running git bisect with the failing spec as oracle. |
 | `templates/_smoke-test.json` | Minimum viable bug-spec record for validator smoke-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,39 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs - repro reproducibility, regression-shape, test-cost ratio - onto a rule from `content/01-core-rules.xml`. Use it before fixing: it catches no-regression-test and guess-instead-of-bisect upstream.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/bisect.sh`
+
+```bash
+set -euo pipefail
+
+GOOD=${1:-}
+BAD=${2:-HEAD}
+TEST=${3:-tests/test_<area>.py}
+
+if [ -z "$GOOD" ]; then
+  echo "usage: $0 <good-sha> <bad-sha=HEAD> <test-path>" >&2
+  exit 2
+fi
+
+git bisect start "$BAD" "$GOOD"
+git bisect run pytest "$TEST" -q
+git bisect log
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "bug_id": "BUG-1",
+  "symptom": "X returns wrong shape",
+  "expected": "X returns right shape",
+  "repro_loc": 10,
+  "fix_commit": "deadbeef",
+  "regression_test_path": "tests/test_x.py::test_y"
+}
+```

@@ -62,6 +62,8 @@
 | `templates/fs-tools.json` | OpenAI/Anthropic tool definitions for the four FS primitives |
 | `templates/_smoke-test.json` | Minimum valid offloaded-envelope for self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,115 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The root question per tool call is whether the result exceeds the ~2K token threshold. The root question per turn is whether utilisation passed 85%. The tree routes to inline-return, offload-with-snippet, or LLM-based compaction depending on what is still available.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/fs-tools.json`
+
+```json
+{
+  "items": [
+    {
+      "_header": {
+        "_purpose": "OpenAI/Anthropic tool definitions for the four FS primitives",
+        "_consumes": "agent tool-binding step",
+        "_produces": "registered tool surface (write_file/read_file/ls/grep)",
+        "_depends_on": "content/01-core-rules.xml (r2-four-tools)",
+        "_token_budget_impact": "~400 tokens when injected into the model"
+      }
+    },
+    {
+      "name": "write_file",
+      "description": "Write content to the agent's working-memory filesystem. Creates parent directories. Returns the path on success. Use this for any tool result over ~2000 tokens that you want to keep but not pin in context.",
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "path",
+          "content"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Relative path under search/, docs/, plan/, or scratch/."
+          },
+          "content": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "name": "read_file",
+      "description": "Read a file previously written. Use offset+limit to stream large files. Default limit is 2000 tokens; ask for more only when you need it.",
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "path"
+        ],
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "offset": {
+            "type": "integer",
+            "default": 0
+          },
+          "limit": {
+            "type": "integer",
+            "default": 2000
+          }
+        }
+      }
+    },
+    {
+      "name": "ls",
+      "description": "List files under a working-memory directory. Returns names + sizes only. Use to navigate the FS without reading content.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "default": "."
+          }
+        }
+      }
+    },
+    {
+      "name": "grep",
+      "description": "Search for a regex pattern across working-memory files. Returns matching path:line:snippet entries. Use this BEFORE read_file when scanning for specific content.",
+      "input_schema": {
+        "type": "object",
+        "required": [
+          "pattern"
+        ],
+        "properties": {
+          "pattern": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string",
+            "default": "."
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "smallest valid offloaded-envelope for the validator",
+  "_consumes": "nothing",
+  "_produces": "example envelope matching content/02-output-contract.xml",
+  "_depends_on": "content/01-core-rules.xml",
+  "_token_budget_impact": "~60 tokens",
+  "kind": "offloaded",
+  "path": "search/refund-policy.json",
+  "head": "Refund policy v3.2 \u2014 30-day window, exceptions for digital goods..."
+}
+```

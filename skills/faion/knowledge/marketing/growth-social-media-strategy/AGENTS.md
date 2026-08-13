@@ -63,6 +63,8 @@
 | `templates/growth-social-media-strategy.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,99 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/growth-social-media-strategy.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/growth-social-media-strategy.json",
+  "title": "Growth Social Media Strategy Output Contract",
+  "type": "object",
+  "required": [
+    "operator",
+    "primary_platforms",
+    "atomization_loop",
+    "weekly_time_budget_hours",
+    "engagement_quota",
+    "kpi_set",
+    "review_cadence_weeks",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "operator": {
+      "type": "string",
+      "description": "named owner of the strategy"
+    },
+    "primary_platforms": {
+      "type": "array",
+      "description": "\u22642 platforms with fit-score + audience size",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "atomization_loop": {
+      "type": "object",
+      "description": "{seed_type, weekly_cuts, channel_mapping}"
+    },
+    "weekly_time_budget_hours": {
+      "type": "integer",
+      "description": "\u226410 for solo"
+    },
+    "engagement_quota": {
+      "type": "object",
+      "description": "per-platform replies/day"
+    },
+    "kpi_set": {
+      "type": "object",
+      "description": "{audience_growth, qualified_engagement, pipeline_added}"
+    },
+    "review_cadence_weeks": {
+      "type": "integer",
+      "description": "default 12"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "operator": "sample-operator",
+  "primary_platforms": [
+    {
+      "key": "value"
+    }
+  ],
+  "atomization_loop": {
+    "key": "value"
+  },
+  "weekly_time_budget_hours": 1,
+  "engagement_quota": {
+    "key": "value"
+  },
+  "kpi_set": {
+    "key": "value"
+  },
+  "review_cadence_weeks": 1,
+  "version": "sample-version",
+  "last_reviewed": "2026-05-23"
+}
+```

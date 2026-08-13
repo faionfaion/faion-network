@@ -62,6 +62,8 @@
 |------|---------|
 | `templates/categories.yaml` | Filled taxonomy ready for team adoption |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,30 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from the question "Has the team already aligned on a research tool stack?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/categories.yaml`
+
+```yaml
+# categories.yaml — AI research tool categories taxonomy.
+categories:
+  - id: live-web-search
+    label: Live web search
+    corpus_bias: recency + popularity
+    budget_band_usd_month: {min: 0, max: 20}
+  - id: citation-graph
+    label: Citation graph
+    corpus_bias: peer-reviewed academic
+    budget_band_usd_month: {min: 10, max: 50}
+  - id: document-qa
+    label: Document Q&A
+    corpus_bias: user-uploaded only
+    budget_band_usd_month: {min: 0, max: 30}
+  - id: synthesis-over-uploaded
+    label: Synthesis over uploaded
+    corpus_bias: user-curated sources
+    budget_band_usd_month: {min: 0, max: 40}
+```

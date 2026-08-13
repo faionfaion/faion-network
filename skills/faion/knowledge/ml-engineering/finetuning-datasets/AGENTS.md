@@ -66,6 +66,8 @@
 | `templates/dataset-clean.yaml` | Clean + dedupe config skeleton |
 | `templates/hyperparam-grid.yaml` | Baseline LoRA grid |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,33 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root: Is the dataset already deduped and split? Branches route to a rule id from `content/01-core-rules.xml` (dedupe-minhash, test-split-frozen, format-single-target, ...) so every leaf is traceable to a testable statement.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/dataset-clean.yaml`
+
+```yaml
+# finetuning-datasets — config skeleton
+version: 1.0.0
+slug: finetuning-datasets
+fields:
+  - name: example-field
+    type: string
+    required: true
+defaults: {}
+```
+
+### `templates/hyperparam-grid.yaml`
+
+```yaml
+# finetuning-datasets — config skeleton
+version: 1.0.0
+slug: finetuning-datasets
+fields:
+  - name: example-field
+    type: string
+    required: true
+defaults: {}
+```

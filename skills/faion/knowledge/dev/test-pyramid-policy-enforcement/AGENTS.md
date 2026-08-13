@@ -60,7 +60,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/test-pyramid-policy-enforcement.json` | JSON skeleton matching the output contract. |
 | `templates/test-pyramid-policy-enforcement.md` | Markdown skeleton with required fields. |
 
 ## Scripts

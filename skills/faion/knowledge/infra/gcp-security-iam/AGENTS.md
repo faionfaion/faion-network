@@ -66,6 +66,8 @@
 | `templates/config.json` | Config skeleton matching the output schema. |
 | `templates/_smoke-test.json` | Minimum viable filled artefact. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,101 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/config.json`
+
+```json
+{
+  "project_id": "acme-prod-12",
+  "owner": {
+    "name": "Olena Boyko",
+    "role": "head of security"
+  },
+  "service_accounts": [
+    {
+      "email": "deploy@acme-prod-12.iam.gserviceaccount.com",
+      "purpose": "CI deploys via WIF",
+      "roles": [
+        "roles/run.developer",
+        "roles/iam.serviceAccountUser"
+      ]
+    }
+  ],
+  "vpcsc_perimeter": {
+    "name": "prod-perimeter",
+    "restricted_services": [
+      "storage.googleapis.com",
+      "bigquery.googleapis.com"
+    ]
+  },
+  "cmek_keys": [
+    {
+      "name": "projects/acme-kms/locations/eu/keyRings/prod/cryptoKeys/sql",
+      "rotation_period_days": 90
+    }
+  ],
+  "audit_sink": {
+    "destination": "bigquery.googleapis.com/projects/acme-logs/datasets/audit",
+    "retention_days": 400
+  },
+  "wif_pools": [
+    {
+      "pool_id": "github-pool",
+      "provider": "github-provider",
+      "issuer_uri": "https://token.actions.githubusercontent.com"
+    }
+  ],
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "project_id": "acme-prod-12",
+  "owner": {
+    "name": "Olena Boyko",
+    "role": "head of security"
+  },
+  "service_accounts": [
+    {
+      "email": "deploy@acme-prod-12.iam.gserviceaccount.com",
+      "purpose": "CI deploys via WIF",
+      "roles": [
+        "roles/run.developer",
+        "roles/iam.serviceAccountUser"
+      ]
+    }
+  ],
+  "vpcsc_perimeter": {
+    "name": "prod-perimeter",
+    "restricted_services": [
+      "storage.googleapis.com",
+      "bigquery.googleapis.com"
+    ]
+  },
+  "cmek_keys": [
+    {
+      "name": "projects/acme-kms/locations/eu/keyRings/prod/cryptoKeys/sql",
+      "rotation_period_days": 90
+    }
+  ],
+  "audit_sink": {
+    "destination": "bigquery.googleapis.com/projects/acme-logs/datasets/audit",
+    "retention_days": 400
+  },
+  "wif_pools": [
+    {
+      "pool_id": "github-pool",
+      "provider": "github-provider",
+      "issuer_uri": "https://token.actions.githubusercontent.com"
+    }
+  ],
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+```

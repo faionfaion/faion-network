@@ -72,6 +72,8 @@
 | `templates/spectral-ruleset.yaml` | Spectral lint ruleset enforcing REST design rules on OpenAPI. |
 | `templates/_smoke-test.json` | Minimum viable rest-design artefact for validator smoke-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,133 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs - URL shape, status truthfulness, pagination depth, error shape - onto a rule from `content/01-core-rules.xml`. Use it before merging endpoints: it catches verbs-in-URL, 200-on-error, and offset-pagination-at-scale upstream.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/resource-skeleton.yaml`
+
+```yaml
+version: 1
+resources:
+  users:
+    base_url: /v1/users
+    list:
+      method: GET
+      query: [status, cursor, limit]
+      status: [200, 401, 403]
+    create:
+      method: POST
+      body: UserCreate
+      status: [201, 400, 401, 409, 422]
+    get:
+      method: GET
+      path: /{id}
+      status: [200, 401, 403, 404]
+    update:
+      method: PATCH
+      path: /{id}
+      body: UserUpdate
+      status: [200, 400, 401, 403, 404, 409, 422]
+    delete:
+      method: DELETE
+      path: /{id}
+      status: [204, 401, 403, 404, 409]
+error_format: problem_json
+version_strategy: path
+pagination: cursor
+```
+
+### `templates/problem.json`
+
+```json
+{
+  "type": "https://api.example.com/errors/validation",
+  "title": "Validation failed",
+  "status": 422,
+  "detail": "email is required",
+  "instance": "/v1/users",
+  "fields": {
+    "email": "required"
+  }
+}
+```
+
+### `templates/spectral-ruleset.yaml`
+
+```yaml
+# Spectral ruleset for REST API design conventions
+# Usage: spectral lint openapi.yaml --ruleset .spectral.yaml
+# Install: npm i -g @stoplight/spectral-cli
+
+extends: ["spectral:oas"]
+
+rules:
+  paths-kebab-case:
+    description: Path segments must be lowercase kebab-case
+    given: "$.paths.*~"
+    then:
+      function: pattern
+      functionOptions:
+        match: "^/[a-z0-9/{}_-]+$"
+
+  no-verbs-in-paths:
+    description: No verb prefixes in path segments
+    given: "$.paths.*~"
+    then:
+      function: pattern
+      functionOptions:
+        notMatch: "(get|post|create|update|delete|fetch|list|do)[A-Z]"
+
+  plural-collection-names:
+    description: Collection paths must end in a plural noun
+    given: "$.paths.*~"
+    then:
+      function: pattern
+      functionOptions:
+        match: ".*s(/\\{[^}]+\\}.*)?$"
+
+  status-code-201-on-post:
+    description: POST operations must declare 201 response
+    given: "$.paths..post.responses"
+    then:
+      field: "201"
+      function: truthy
+
+  status-code-204-on-delete:
+    description: DELETE operations must declare 204 response
+    given: "$.paths..delete.responses"
+    then:
+      field: "204"
+      function: truthy
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "resources": [
+    {
+      "name": "users",
+      "url": "/v1/users"
+    }
+  ],
+  "version_strategy": "path",
+  "error_format": "problem_json",
+  "pagination": "cursor",
+  "status_codes": [
+    200,
+    201,
+    204,
+    400,
+    401,
+    403,
+    404,
+    409,
+    422,
+    429,
+    500
+  ]
+}
+```

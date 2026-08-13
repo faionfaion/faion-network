@@ -62,6 +62,8 @@
 | `templates/multi-product-portfolio-management.json` | JSON Schema for the output contract (machine-validatable). |
 | `templates/multi-product-portfolio-management.md` | Markdown skeleton with the required fields. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,63 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/multi-product-portfolio-management.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/multi-product-portfolio-management.json",
+  "title": "Multi Product Portfolio Management Output Contract",
+  "type": "object",
+  "required": [
+    "operator",
+    "products",
+    "cross_product_kill_rule",
+    "quarterly_review_at",
+    "total_weekly_time_cap",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "operator": {
+      "type": "string",
+      "description": "named portfolio owner"
+    },
+    "products": {
+      "type": "array",
+      "description": "\u22653 product objects (name, mode, mrr, traffic, time_budget_hours, capital_allocation_usd)",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "cross_product_kill_rule": {
+      "type": "string",
+      "description": "explicit rule string"
+    },
+    "quarterly_review_at": {
+      "type": "string",
+      "description": "ISO datetime"
+    },
+    "total_weekly_time_cap": {
+      "type": "number",
+      "description": "hours \u226440"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```

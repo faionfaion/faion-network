@@ -69,6 +69,8 @@
 | `templates/invoke.sh` | Bash wrapper applying wall-clock timeout |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,77 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/worker.mjs`
+
+```javascript
+#!/usr/bin/env node
+// Usage: timeout 60 node worker.mjs <url> > /tmp/agent-run/result.json
+import puppeteer from 'puppeteer';
+import fs from 'node:fs';
+
+const URL = process.argv[2];
+if (!URL) { console.error('URL required'); process.exit(2); }
+
+const browser = await puppeteer.launch({
+  headless: 'new',
+  args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+});
+try {
+  const page = await browser.newPage();
+  page.setDefaultTimeout(20000);
+  await page.goto(URL, { waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('[data-testid="root"]');
+
+  const data = await page.evaluate(() => {
+    const root = document.querySelector('[data-testid="root"]');
+    return { text: root?.textContent?.trim() ?? null };
+  });
+
+  const artifactPath = process.env.ARTIFACT_PATH ?? '/tmp/agent-run/result.json';
+  fs.mkdirSync('/tmp/agent-run', { recursive: true });
+  fs.writeFileSync(artifactPath, JSON.stringify(scrub(data), null, 2));
+  console.log(artifactPath);
+} finally {
+  await browser.close();
+}
+
+function scrub(obj) {
+  const s = JSON.stringify(obj);
+  return JSON.parse(s
+    .replace(/Bearer [A-Za-z0-9._\-]+/g, 'Bearer [REDACTED]')
+    .replace(/eyJ[A-Za-z0-9._\-]+/g, '[JWT_REDACTED]')
+    .replace(/\b\d{16}\b/g, '[CARD_REDACTED]'));
+}
+```
+
+### `templates/invoke.sh`
+
+```bash
+#!/bin/sh
+# Run worker with a hard wall-clock timeout
+ARTIFACT_PATH=/tmp/agent-run/result.json
+timeout 60 node worker.mjs "$1" || {
+  echo "worker failed (exit $?)" >&2
+  exit 1
+}
+echo "$ARTIFACT_PATH"
+```
+
+### `templates/artefact.json`
+
+```json
+{
+  "invocation_mode": "bash_worker",
+  "uses_attribute_selectors": true,
+  "has_secret_scrub": true,
+  "has_hard_timeout": true,
+  "writes_artifact_to_disk": true,
+  "human_loop_on_auth": true,
+  "artifact_path": "/tmp/agent-run/result.json"
+}
+```

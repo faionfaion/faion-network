@@ -67,6 +67,8 @@
 | `templates/upstream.conf` | Nginx upstream block skeleton |
 | `templates/backend.cfg` | HAProxy backend block skeleton |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,81 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (capacity homogeneity, request-cost variance, autoscaling, NAT presence) to a concrete algorithm, each leaf referencing a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/algorithm-decision.json`
+
+```json
+{
+  "algorithm": "weighted-least-connections",
+  "fleet_capacity": "heterogeneous",
+  "request_cost": "variable",
+  "autoscaling": true,
+  "nat_behind_lb": false,
+  "measured": {
+    "p50_ms": 80,
+    "p99_ms": 240
+  },
+  "weights": [
+    100,
+    100,
+    50
+  ],
+  "rationale": "p99/p50 = 3x indicates variable request cost; ASG scales backends; fleet has two large + one small node. leastconn adapts to variance; weights restore proportional capacity."
+}
+```
+
+### `templates/upstream.conf`
+
+```conf
+upstream app_backend {
+    # Algorithm directive: omit for round-robin; least_conn for least-connections.
+    # least_conn;
+    # ip_hash;     # only on stable, NAT-free fleet — see lb-session-persistence
+    # hash $cookie_SRVID consistent;  # cookie-based persistence (Nginx Plus)
+
+    server 10.0.1.1:8080 weight=100 max_fails=3 fail_timeout=30s;
+    server 10.0.1.2:8080 weight=100 max_fails=3 fail_timeout=30s;
+    server 10.0.1.3:8080 weight=50  max_fails=3 fail_timeout=30s;
+
+    keepalive 32;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name app.example.com;
+
+    location / {
+        proxy_pass http://app_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+### `templates/backend.cfg`
+
+```ini
+backend app_servers
+    # balance roundrobin               # uniform workloads only
+    balance leastconn                  # default for variable-cost
+    # balance source                   # NEVER with autoscaling or NAT
+
+    option httpchk GET /health
+    http-check expect status 200
+    default-server inter 10s fall 3 rise 2
+
+    # weights proportional to per-server capacity
+    server large1 10.0.1.1:8080 check weight 100
+    server large2 10.0.1.2:8080 check weight 100
+    server small1 10.0.1.3:8080 check weight 50
+
+    # cookie-based stickiness (replace ip-hash on autoscaling/NAT)
+    cookie SRVID insert indirect nocache
+```

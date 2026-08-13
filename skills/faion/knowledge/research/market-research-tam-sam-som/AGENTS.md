@@ -71,7 +71,6 @@
 |------|---------|
 | `templates/market-sizing-report.md` | Full TAM/SAM/SOM report skeleton with triangulation |
 | `templates/quick-market-check.md` | Lightweight check (TAM + SOM only) for early ideation |
-| `templates/tam-triangulate.sh` | Bash helper to compute SOM and reconciliation delta |
 
 ## Scripts
 

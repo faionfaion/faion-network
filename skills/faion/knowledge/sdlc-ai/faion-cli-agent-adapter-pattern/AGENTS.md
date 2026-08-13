@@ -59,14 +59,6 @@
 | `synthesize-decision` | sonnet | Per-instance judgment against the rubric. |
 | `review-for-compliance` | opus | Cross-input synthesis when stakes are high. |
 
-## Templates
-
-| File | Purpose |
-|------|---------|
-| `templates/anthropic-adapter.py` | Claude Agent SDK adapter showing tool definition + handler + caching. |
-| `templates/langchain-adapter.py` | LangChain Tool adapter (sync + async) with citation emission. |
-| `templates/openai-adapter.py` | OpenAI Assistants function adapter with version pinning. |
-
 ## Scripts
 
 | File | Purpose | When to call |

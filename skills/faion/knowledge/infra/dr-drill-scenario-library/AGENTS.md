@@ -67,6 +67,8 @@
 | `templates/skeleton.json` | Skeleton template |
 | `templates/skeleton.md` | Skeleton template |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,45 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/skeleton.json`
+
+```json
+{
+  "library_version": "1.0.0",
+  "scenarios": [
+    {
+      "id": "sc-01-region-loss",
+      "name": "Primary region offline",
+      "declaration_criteria": "AWS region status page red >15min",
+      "runbook_path": "runbooks/dr/sc-01.md",
+      "restore_validation": "smoke test + data-integrity hash check",
+      "success_criteria": "RTO <60min RPO <5min",
+      "last_run_date": "2026-02-15",
+      "owner": "platform-team"
+    },
+    {
+      "id": "sc-02-db-corruption",
+      "name": "DB logical corruption",
+      "declaration_criteria": "row checksum mismatch >0.1%",
+      "runbook_path": "runbooks/dr/sc-02.md",
+      "restore_validation": "point-in-time restore + integrity check",
+      "success_criteria": "data restored to T-1h",
+      "last_run_date": "2025-11-10",
+      "owner": "data-team"
+    }
+  ],
+  "rotation_calendar": [
+    {
+      "quarter": "2026-Q3",
+      "scenario_id": "sc-04-identity-provider-out"
+    }
+  ],
+  "post_mortem_template_path": "templates/postmortem.md",
+  "min_scenarios": 6
+}
+```

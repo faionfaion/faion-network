@@ -68,6 +68,8 @@
 | `templates/health-handlers.py` | Flask handlers for /health, /health/live, /health/ready with timeouts |
 | `templates/probe-config.yaml` | Kubernetes livenessProbe + readinessProbe + startupProbe block |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,125 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (runtime, dependencies, K8s vs raw LB, latency budget) to a concrete probe shape, each leaf referencing a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/health-handlers.py`
+
+```python
+from __future__ import annotations
+
+import os
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FTimeout
+
+from flask import Flask, jsonify
+
+import psycopg2
+import redis
+
+app = Flask(__name__)
+
+DATABASE_URL = os.environ["DATABASE_URL"]
+REDIS_URL = os.environ["REDIS_URL"]
+
+_executor = ThreadPoolExecutor(max_workers=4)
+
+
+def _check_postgres(timeout_sec: float = 3.0) -> bool:
+    try:
+        conn = psycopg2.connect(DATABASE_URL, connect_timeout=int(timeout_sec))
+        with conn.cursor() as cur:
+            cur.execute("SELECT 1")
+            cur.fetchone()
+        conn.close()
+        return True
+    except Exception:
+        return False
+
+
+def _check_redis(timeout_sec: float = 2.0) -> bool:
+    try:
+        r = redis.Redis.from_url(REDIS_URL, socket_timeout=timeout_sec)
+        return bool(r.ping())
+    except Exception:
+        return False
+
+
+def _run_with_timeout(fn, timeout_sec):
+    fut = _executor.submit(fn, timeout_sec)
+    try:
+        return bool(fut.result(timeout=timeout_sec + 0.5))
+    except FTimeout:
+        return False
+
+
+@app.route("/health")
+def health():
+    """Basic health — process is running. LB wires here only if no readiness available."""
+    return jsonify({"status": "healthy"}), 200
+
+
+@app.route("/health/live")
+def liveness():
+    """Liveness — kubelet restarts pod on failure. Keep this cheap and unconditional."""
+    return jsonify({"status": "alive"}), 200
+
+
+@app.route("/health/ready")
+def readiness():
+    """Readiness — LB removes pod from pool on failure. Probes every critical dependency."""
+    checks = {
+        "postgres": _run_with_timeout(_check_postgres, 3.0),
+        "redis":    _run_with_timeout(_check_redis,    2.0),
+    }
+    healthy = all(checks.values())
+    status = 200 if healthy else 503
+    return jsonify({"status": "ready" if healthy else "not ready", "checks": checks}), status
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=8080)
+```
+
+### `templates/probe-config.yaml`
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+spec:
+  template:
+    spec:
+      containers:
+        - name: web
+          image: registry.example.com/web:1.2.3
+          ports:
+            - containerPort: 8080
+          startupProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 30          # tolerate up to ~5 min cold-boot / migrations
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 8080
+            initialDelaySeconds: 0        # startupProbe gates this
+            periodSeconds: 10
+            timeoutSeconds: 2
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 8080
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            timeoutSeconds: 5             # > sum of bounded dep timeouts (3 s + 2 s)
+            successThreshold: 2
+            failureThreshold: 3
+```

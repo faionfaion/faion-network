@@ -69,6 +69,8 @@
 | `templates/scenario-pairs.json` | Scenario-pair payload. |
 | `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,23 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (scenarios, SLOs, diagram, stakeholders)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/scenario-pairs.json`
+
+```json
+{
+  "pairs": [
+    {
+      "id": "tp-perf-vs-cost",
+      "scenario_a_id": "qa-perf-001",
+      "scenario_b_id": "qa-cost-002",
+      "conflict": "Lower p95 requires more compute; cost budget caps compute.",
+      "resolution_rule": "Accept p95 increase up to 220ms when monthly cost rises > 15%."
+    }
+  ]
+}
+```

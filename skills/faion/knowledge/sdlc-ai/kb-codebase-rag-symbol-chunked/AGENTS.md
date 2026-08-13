@@ -68,6 +68,8 @@
 | `templates/chunker-config.yaml` | Tree-sitter / LSP chunker configuration. |
 | `templates/retrieval-eval-set.jsonl` | Sample eval set (query → expected chunk ids). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,20 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (precondition flag, repo metric, capability flag) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on a rule that triggers the procedure or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/chunker-config.yaml`
+
+```yaml
+example_key: example_value
+```
+
+### `templates/retrieval-eval-set.jsonl`
+
+```json
+{"__faion_header__": {"purpose": "minimum-viable scaffold for the methodology's produces type", "consumes": "inputs listed in AGENTS.md Prerequisites table", "produces": "config", "depends_on": "content/02-output-contract.xml (schema)", "token_budget_impact": "low \u2014 ~100-400 tokens when loaded as context"}}
+{"event": "example", "ts": "2026-05-22T00:00:00Z", "decision": "flag-only"}
+```

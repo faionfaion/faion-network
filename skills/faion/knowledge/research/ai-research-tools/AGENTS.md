@@ -64,6 +64,8 @@
 | `templates/research-decision.md` | Human-readable decision record |
 | `templates/decision.json` | Machine-readable decision matching schema |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,26 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from the question "Is there a sharp research question with a defined evidence_type?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/decision.json`
+
+```json
+{
+  "research_question": "What is TAM for AI research tools 2026?",
+  "evidence_type": "market_data",
+  "tool_choice": "perplexity",
+  "tool_alternatives_considered": [
+    "consensus"
+  ],
+  "citations": [
+    {
+      "url": "https://example.com/report",
+      "claim": "TAM = $X by 2026"
+    }
+  ]
+}
+```

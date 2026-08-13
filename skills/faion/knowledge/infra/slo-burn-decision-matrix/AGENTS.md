@@ -67,6 +67,8 @@
 | `templates/skeleton.json` | Skeleton template |
 | `templates/skeleton.md` | Skeleton template |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,48 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/skeleton.json`
+
+```json
+{
+  "matrix_version": "1.0.0",
+  "portfolio_id": "acme-platform",
+  "rows": [
+    {
+      "burn_category": "fast",
+      "service_class": "user-facing-critical",
+      "action": "halt-canary",
+      "owner": "release-manager",
+      "revert_criteria": "burn_rate<1 for 6h"
+    },
+    {
+      "burn_category": "medium",
+      "service_class": "user-facing-critical",
+      "action": "freeze-ship",
+      "owner": "release-manager",
+      "revert_criteria": "budget>=20% remaining"
+    },
+    {
+      "burn_category": "slow",
+      "service_class": "user-facing-critical",
+      "action": "focus-shift",
+      "owner": "service-owner",
+      "revert_criteria": "next_release"
+    },
+    {
+      "burn_category": "fast",
+      "service_class": "internal",
+      "action": "accept",
+      "owner": "service-owner",
+      "revert_criteria": "auto"
+    }
+  ],
+  "audit_destination": "https://siem.acme/ingest/slo-matrix",
+  "default_cell": "escalate"
+}
+```

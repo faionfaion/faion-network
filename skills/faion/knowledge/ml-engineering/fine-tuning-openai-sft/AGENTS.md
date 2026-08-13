@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/openai-sft-job.py` | Job-launch + polling script. |
-| `templates/sft-config.yaml` | Hyperparams: base, epochs, lr_multiplier, batch. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -79,3 +80,15 @@
 ## Decision tree
 
 Decision tree at `content/06-decision-tree.xml` picks base model + epoch policy + lr_multiplier from (data volume, task type, budget).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/openai-sft-job.py`
+
+```python
+"""
+
+# Stub — see methodology AGENTS.md ## Templates table.
+```

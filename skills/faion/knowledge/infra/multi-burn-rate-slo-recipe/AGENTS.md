@@ -54,15 +54,6 @@
 | `threshold_tuning` | opus | Tune for false-positive trade-off. |
 | `runbook_wiring` | sonnet | Link alert → runbook. |
 
-## Templates
-
-| File | Purpose |
-|------|---------|
-| `templates/prometheus-rules.yaml` | Multi-window burn rate alert rules. |
-| `templates/datadog-monitor.json` | Datadog SLO monitor JSON. |
-| `templates/alert-routing.yaml` | Routing rules to on-call rotations. |
-| `templates/_smoke-test.yaml` | Minimum-viable filled-in example (smoke test). |
-
 ## Scripts
 
 | File | Purpose | When to call |

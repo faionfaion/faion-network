@@ -71,6 +71,8 @@
 | `templates/affiliate-invite.md` | Affiliate recruitment email template |
 | `templates/_smoke-test.json` | Minimum viable listing config for validator self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,75 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps product type (file/license/saas), MoR acceptance, cover quality, and affiliate intent to a rule from `01-core-rules.xml`, telling the agent whether to publish, block on a missing field, or skip Gumroad for a better-fit channel. Walk it on every fresh listing; do not cache outcomes across products.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/gumroad-listing.yaml`
+
+```yaml
+listing:
+  product_id: REPLACE-slug
+  cover_url: https://gumroad.com/REPLACE/cover.png
+  cover_width_px: 1600
+  cover_height_px: 900
+  subtitle: "REPLACE — value prop in ≤280 chars"
+  price:
+    mode: fixed   # fixed | pwyw | tiers
+    amount_usd: 19
+  product_type: file   # file | license | link
+  refund_policy: 14_day  # no_refunds | 7_day | 14_day | 30_day
+  tags:
+    - REPLACE-tag1
+    - REPLACE-tag2
+  uses_mor: true
+  license_api_enabled: false
+
+affiliate:
+  enabled: true
+  commission_pct: 40
+  payout_cadence: monthly
+
+review:
+  reviewed_at: 2026-05-23
+  conversion_rate: 0.0
+  refund_rate: 0.0
+  rank_30d_revenue: 1
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "listing": {
+    "product_id": "smoke-pack",
+    "cover_url": "https://gumroad.com/u/cover.png",
+    "cover_width_px": 1600,
+    "cover_height_px": 900,
+    "subtitle": "Smoke-test product \u2014 minimum viable listing for validator.",
+    "price": {
+      "mode": "fixed",
+      "amount_usd": 19
+    },
+    "product_type": "file",
+    "refund_policy": "14_day",
+    "tags": [
+      "smoke"
+    ],
+    "uses_mor": true,
+    "license_api_enabled": false
+  },
+  "affiliate": {
+    "enabled": true,
+    "commission_pct": 40,
+    "payout_cadence": "monthly"
+  },
+  "review": {
+    "reviewed_at": "2026-05-23",
+    "conversion_rate": 0.04,
+    "refund_rate": 0.01,
+    "rank_30d_revenue": 1
+  }
+}
+```

@@ -71,6 +71,8 @@
 | `templates/dora-quick.sh` | Bash script: compute last-30-day DORA from git + deploy log |
 | `templates/_smoke-test.json` | Minimum-viable filled `ValueStreamReport` for validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,172 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (telemetry coverage, sample-size per work type, customer-boundary anchor) to a concrete action — instrument-first, measure-only, declare-constraint, or run-experiment — each leaf references a rule in `01-core-rules.xml` so claims are grounded in checkable invariants.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/flow-item.yaml`
+
+```yaml
+item_id: "PROJ-1234"
+work_type: "feature"        # feature | defect | risk | debt
+outcome: "shipped"          # shipped | cancelled | in-progress
+
+stages:
+  - name: "spec"
+    enter_ts: "2025-04-01T09:00:00Z"
+    exit_ts: "2025-04-03T17:00:00Z"
+    blocked_h: 8              # hours where work was waiting (queue time)
+
+  - name: "design"
+    enter_ts: "2025-04-04T09:00:00Z"
+    exit_ts: "2025-04-07T17:00:00Z"
+    blocked_h: 0
+
+  - name: "development"
+    enter_ts: "2025-04-08T09:00:00Z"
+    exit_ts: "2025-04-14T17:00:00Z"
+    blocked_h: 4
+
+  - name: "review"
+    enter_ts: "2025-04-15T09:00:00Z"
+    exit_ts: "2025-04-16T17:00:00Z"
+    blocked_h: 0
+
+  - name: "deploy"
+    enter_ts: "2025-04-17T10:00:00Z"
+    exit_ts: "2025-04-17T10:30:00Z"
+    blocked_h: 0
+
+# Computed fields (filled by the flow-instrumenter or analytics layer)
+lead_time_h: 408             # exit_ts(last stage) - enter_ts(first stage) in hours
+process_time_h: 60           # sum of (exit_ts - enter_ts - blocked_h) per stage
+efficiency_pct: 14.7         # process_time_h / lead_time_h * 100
+
+# Source IDs for cross-tool tracing (required for instrumentation)
+source_ids:
+  jira: "PROJ-1234"
+  github_pr: 567
+  deploy_sha: "abc123def456"
+```
+
+### `templates/dora-quick.sh`
+
+```bash
+#
+# Usage: ./dora-quick.sh [days=30]
+set -euo pipefail
+
+DAYS="${1:-30}"
+SINCE="${DAYS} days ago"
+
+# Deployment Frequency
+DEPLOYS=$(awk -v cutoff="$(date -u -d "$SINCE" +%s 2>/dev/null || date -u -v-"${DAYS}"d +%s)" '
+  { cmd="date -u -d \""$0"\" +%s 2>/dev/null || date -u -j -f \"%Y-%m-%dT%H:%M:%SZ\" \""$0"\" +%s"
+    cmd | getline t; close(cmd)
+    if (t > cutoff) c++ }
+  END { print c+0 }' deploy.log 2>/dev/null || echo "0")
+
+echo "Deployment Frequency: $(echo "scale=2; $DEPLOYS / $DAYS" | bc) /day (last ${DAYS}d)"
+
+# Change Lead Time (commit ts → deploy ts, mean over matched commits)
+LEAD_SECS=$(git log --since="$SINCE" --pretty=format:"%H %at" 2>/dev/null | \
+  while read -r sha ts; do
+    dep_ts=$(grep -m1 "$sha" deploy.log 2>/dev/null | \
+             xargs -I{} date -u -d "{}" +%s 2>/dev/null || true)
+    [ -n "$dep_ts" ] && echo "$((dep_ts - ts))"
+  done | awk '{s+=$1; n++} END{ if(n) printf "%.0f\n", s/n }')
+
+if [ -n "$LEAD_SECS" ] && [ "$LEAD_SECS" -gt 0 ]; then
+  LEAD_H=$(echo "scale=1; $LEAD_SECS / 3600" | bc)
+  echo "Change Lead Time (h, mean): ${LEAD_H}h"
+else
+  echo "Change Lead Time: n/a (no matched commits in deploy.log)"
+fi
+
+echo ""
+echo "Note: CFR and MTTR require PagerDuty / incident log integration."
+echo "Note: tag bot commits and report human/bot split before publishing DF."
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "stream_id": "smoke",
+  "window": {
+    "start": "2026-02-22",
+    "end": "2026-05-23",
+    "days": 90
+  },
+  "customer_anchor": {
+    "start_event": "support_ticket_opened",
+    "end_event": "feature_visible_in_prod"
+  },
+  "flow_metrics_by_type": {
+    "feature": {
+      "lead_time_days": 28,
+      "cycle_time_days": 4,
+      "throughput_per_week": 6,
+      "wip": 12,
+      "complete_and_accurate_pct": 0.82,
+      "sample_size": 62
+    },
+    "defect": {
+      "lead_time_days": 9,
+      "cycle_time_days": 2,
+      "throughput_per_week": 14,
+      "wip": 6,
+      "complete_and_accurate_pct": 0.91,
+      "sample_size": 110
+    },
+    "risk": {
+      "lead_time_days": 18,
+      "cycle_time_days": 3,
+      "throughput_per_week": 2,
+      "wip": 4,
+      "complete_and_accurate_pct": 0.95,
+      "sample_size": 55
+    },
+    "debt": {
+      "lead_time_days": 22,
+      "cycle_time_days": 5,
+      "throughput_per_week": 3,
+      "wip": 8,
+      "complete_and_accurate_pct": 0.85,
+      "sample_size": 58
+    }
+  },
+  "dora": {
+    "deployment_frequency": {
+      "human_prs": 220,
+      "bot_prs": 90
+    },
+    "change_lead_time_minutes": 95,
+    "change_failure_rate": 0.07,
+    "mttr_minutes": 38,
+    "trend_window_quarters": 3,
+    "tier_label": "high",
+    "tier_label_delta_vs_prior": "+1 vs prior quarter"
+  },
+  "constraint": {
+    "stage": "design-review",
+    "evidence": "design-review WIP*cycle dominates; feature LT 28 vs cycle 4 implies queue upstream",
+    "samples_per_type": {
+      "feature": 62,
+      "defect": 110,
+      "risk": 55,
+      "debt": 58
+    }
+  },
+  "experiments": [
+    {
+      "name": "WIP cap on design-review = 3",
+      "expected_lift": "feature LT -25%",
+      "cost": "1 designer day/wk",
+      "rank": 1
+    }
+  ]
+}
+```

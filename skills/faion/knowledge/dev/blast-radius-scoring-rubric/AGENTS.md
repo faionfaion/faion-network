@@ -67,6 +67,8 @@
 | `templates/blast-radius-scoring-rubric.json` | JSON Schema for the rubric output artefact. |
 | `templates/pr-template-blast-field.md` | Markdown snippet for the PR template's blast self-score block. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,122 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree first checks whether an override category is touched (auth / payments / secrets / migrations / deletes / money / PII / cron) — if yes, force total ≥ 11 → deep-read. Otherwise it routes by raw total: 3-5 light-skim, 6-10 standard, 11-15 deep-read. A separate leaf blocks merge when verdict is deep-read AND rollback_plan is missing for irreversible (R=5) changes. Each leaf references a rule id in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/blast-radius-scoring-rubric.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/blast-radius-scoring-rubric.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "pr_ref",
+    "axes",
+    "total",
+    "verdict",
+    "override_fired",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^brsr-[a-z0-9-]{6,}$"
+    },
+    "pr_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "axes": {
+      "type": "object",
+      "required": [
+        "services",
+        "users",
+        "reversibility"
+      ],
+      "properties": {
+        "services": {
+          "type": "integer",
+          "enum": [
+            1,
+            3,
+            5
+          ]
+        },
+        "users": {
+          "type": "integer",
+          "enum": [
+            1,
+            3,
+            5
+          ]
+        },
+        "reversibility": {
+          "type": "integer",
+          "enum": [
+            1,
+            3,
+            5
+          ]
+        }
+      }
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 3,
+      "maximum": 15
+    },
+    "override_fired": {
+      "type": "boolean"
+    },
+    "override_category": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        null,
+        "auth",
+        "payments",
+        "rbac",
+        "secrets",
+        "migrations",
+        "deletions",
+        "money",
+        "pii",
+        "cron"
+      ]
+    },
+    "verdict": {
+      "enum": [
+        "light-skim",
+        "standard",
+        "deep-read",
+        "block-missing-rollback"
+      ]
+    },
+    "rollback_plan": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "scored_by": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

@@ -61,7 +61,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/agency-decline-templates.json` | JSON skeleton matching the output contract. |
 | `templates/agency-decline-templates.md` | Markdown skeleton with required fields. |
 
 ## Scripts

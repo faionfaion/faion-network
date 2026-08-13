@@ -63,8 +63,9 @@
 | File | Purpose |
 |------|---------|
 | `templates/openai-eval-runner.py` | Eval runner: takes ft + base IDs, runs on held-out, returns scores. |
-| `templates/judge-prompt.txt` | LLM-as-judge prompt template (criterion + rubric). |
 | `templates/eval-report.md` | Eval report skeleton with metrics + gate decision. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,15 @@
 ## Decision tree
 
 Decision tree at `content/06-decision-tree.xml` decides per-metric pass/fail and the overall gate decision (deploy / hold / iterate).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/openai-eval-runner.py`
+
+```python
+"""
+
+# Stub — see methodology AGENTS.md ## Templates table.
+```

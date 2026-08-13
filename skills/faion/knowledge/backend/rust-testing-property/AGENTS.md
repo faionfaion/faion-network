@@ -64,6 +64,8 @@
 |------|---------|
 | `templates/proptest_block.rs` | Rust proptest! skeleton with persisted-regression config + approx for floats. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,33 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree decides when proptest is the right tool (pure + invariant) vs unit tests with mocks vs integration with testcontainers.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/proptest_block.rs`
+
+```rust
+use proptest::prelude::*;
+use proptest::test_runner::{Config, FileFailurePersistence};
+
+proptest! {
+    #![proptest_config(Config {
+        failure_persistence: Some(Box::new(FileFailurePersistence::WithSource("regression"))),
+        cases: 256,
+        .. Config::default()
+    })]
+
+    #[test]
+    fn roundtrip(s in "\\PC*") {
+        let bytes = my_codec::encode(&s);
+        let back = my_codec::decode(&bytes).expect("decode should succeed for any input");
+        prop_assert_eq!(back, s);
+    }
+}
+
+// For float invariants:
+//   use approx::assert_relative_eq;
+//   assert_relative_eq!(actual, expected, epsilon = 1e-9);
+```

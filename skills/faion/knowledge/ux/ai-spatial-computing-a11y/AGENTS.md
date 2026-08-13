@@ -64,6 +64,8 @@
 | `templates/prompt-xaur-gap-analysis.txt` | Prompt asking agent for clause-by-clause XAUR gap analysis with confidence labels. |
 | `templates/_smoke-test.md` | Filled minimum-viable spec for a single gaze→voice→controller surface. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[ai-assisted-accessibility]]
@@ -72,3 +74,28 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the spec; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-xaur-gap-analysis.txt`
+
+```text
+Prompt template — Prompt asking agent for clause-by-clause XAUR gap analysis with confidence labels.
+
+Fill the slots below per task.
+
+[CONTEXT]
+...
+
+[TASK]
+...
+
+[OUTPUT_FORMAT]
+...
+
+[CONSTRAINTS]
+- Follow content/01-core-rules.xml.
+- Output MUST validate against content/02-output-contract.xml.
+```

@@ -65,6 +65,8 @@
 | `templates/survey-config.json` | Skeleton survey-config artefact |
 | `templates/item-bank.csv` | Reusable item bank with neutral wording |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,56 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches by research goal type to instrument + scale + channel; small-n branch routes to qualitative methods; post-hoc analyses are forced into exploratory flag. Each leaf cites a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/survey-config.json`
+
+```json
+{
+  "research_question": "Did feature X improve adoption?",
+  "instrument": [
+    "csat"
+  ],
+  "items": [
+    {
+      "id": "q1",
+      "text": "How would you rate feature X?",
+      "scale": "likert-1-5",
+      "labels": [
+        "1=very dissatisfied",
+        "2=dissatisfied",
+        "3=neither",
+        "4=satisfied",
+        "5=very satisfied"
+      ]
+    }
+  ],
+  "sampling": {
+    "target_n": 200,
+    "channels": [
+      "in-app"
+    ],
+    "fielding_window_days": 14,
+    "response_rate_target_pct": 30
+  },
+  "analysis_plan": {
+    "cross_tabs": [
+      "plan_tier"
+    ],
+    "significance_test": "t-test"
+  }
+}
+```
+
+### `templates/item-bank.csv`
+
+```csv
+id,text,scale
+q-nps,How likely are you to recommend this product to a colleague?,nps-0-10
+q-csat,How satisfied are you with feature X?,likert-1-5
+q-sus-1,I think that I would like to use this system frequently,likert-1-5
+q-seq,How easy was completing this task?,likert-1-7
+```

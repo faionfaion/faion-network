@@ -69,6 +69,8 @@
 | `templates/eslint-react-hooks.config.js` | ESLint config block enabling `react-hooks/exhaustive-deps` as error |
 | `templates/use-fetch.example.tsx` | Reference custom hook with cleanup + abort signal |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,55 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree branches on: does state need to live across renders? → yes → `useState`; no → derive. Then: is value passed to memo'd child or used as hook dep? → yes → `useMemo`/`useCallback`; no → leave unmemoized. Then: does the side-effect subscribe to anything? → yes → return cleanup. All leaves reference rules from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/eslint-react-hooks.config.js`
+
+```javascript
+import reactHooks from 'eslint-plugin-react-hooks';
+
+export default {
+  plugins: {
+    'react-hooks': reactHooks,
+  },
+  rules: {
+    // Both MUST be "error", never "warn".
+    'react-hooks/rules-of-hooks': 'error',
+    'react-hooks/exhaustive-deps': 'error',
+  },
+};
+```
+
+### `templates/use-fetch.example.tsx`
+
+```tsx
+import {useEffect, useState} from 'react';
+
+export function useFetch<T>(url: string, init?: RequestInit) {
+  const [data, setData] = useState<T | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    fetch(url, {...init, signal: controller.signal})
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json() as Promise<T>;
+      })
+      .then(j => setData(j))
+      .catch(e => {
+        if (e.name !== 'AbortError') setError(e);
+      })
+      .finally(() => setLoading(false));
+
+    return () => controller.abort();
+  }, [url, init]);
+
+  return {data, error, loading};
+}
+```

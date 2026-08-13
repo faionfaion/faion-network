@@ -66,6 +66,8 @@
 | `templates/test_query_count.py` | pytest skeleton using assertNumQueries to lock counts |
 | `templates/audit-report.md` | output skeleton matching `02-output-contract` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,52 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes from "does the queryset cross relationships?" through "ForeignKey / OneToOne vs M2M / reverse FK" to one of: add select_related, add prefetch_related (optionally with Prefetch), bulk_create, F() expression, add composite index, or skip-this-methodology (single-object detail view). Used to keep optimisation focused and avoid the "select_related on every queryset" antipattern.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/selector.py`
+
+```python
+from django.db.models import Prefetch, QuerySet
+
+
+def get_<entity>_list(*, user=None) -> QuerySet:
+    """Return optimised queryset for the <entity> list endpoint.
+
+    Owns select_related / prefetch_related so callers stay thin.
+    """
+    qs = <Model>.objects.all()
+    if user is not None:
+        qs = qs.filter(owner=user)
+    return (
+        qs
+        .select_related("<fk_field>")  # one JOIN per single-valued relation accessed in loop
+        .prefetch_related(
+            Prefetch(
+                "<related_set>",
+                queryset=<RelatedModel>.objects.select_related("<inner_fk>"),
+            ),
+        )
+        .order_by("-created_at")
+    )
+```
+
+### `templates/test_query_count.py`
+
+```python
+import pytest
+
+
+@pytest.mark.django_db
+def test_<endpoint>_query_count(client, django_assert_num_queries, <factory_fixture>):
+    """Lock the exact query count to prevent N+1 regression."""
+    for _ in range(20):
+        <factory_fixture>()
+
+    with django_assert_num_queries(3):  # adjust to selector's measured count
+        response = client.get("/api/<endpoint>/")
+
+    assert response.status_code == 200
+```

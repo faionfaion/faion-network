@@ -66,7 +66,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/security-testing.json` | JSON skeleton matching the output contract. |
 | `templates/security-testing.md` | Markdown skeleton with required fields. |
 
 ## Related

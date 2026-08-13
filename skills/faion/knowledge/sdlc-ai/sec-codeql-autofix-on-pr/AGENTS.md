@@ -68,6 +68,8 @@
 | `templates/codeql-workflow.yml` | CodeQL Code Scanning workflow with matrix. |
 | `templates/branch-protection.json` | Branch-protection settings making codeql-analyze a required check. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,76 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from observable signals (host == GitHub? GHAS or OSS? executable surface?) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether to enable the CodeQL gate — the tree terminates either on the active rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/codeql-workflow.yml`
+
+```yaml
+# Pin codeql-action by major and review release notes for any compromised tags before bumping.
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '17 3 * * 1'  # weekly baseline scan
+
+permissions:
+  contents: read
+  security-events: write
+  actions: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [javascript-typescript, python]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Init CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          queries: security-and-quality
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
+      - name: Analyze
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:${{ matrix.language }}'
+```
+
+### `templates/branch-protection.json`
+
+```json
+{
+  "_usage": "gh api -X PUT repos/$OWNER/$REPO/branches/main/protection -H 'Accept: application/vnd.github+json' --input templates/branch-protection.json",
+  "required_status_checks": {
+    "strict": true,
+    "contexts": [
+      "CodeQL / Analyze (javascript-typescript)",
+      "CodeQL / Analyze (python)"
+    ]
+  },
+  "enforce_admins": true,
+  "required_pull_request_reviews": {
+    "dismiss_stale_reviews": true,
+    "require_code_owner_reviews": true,
+    "required_approving_review_count": 1
+  },
+  "restrictions": null,
+  "allow_force_pushes": false,
+  "allow_deletions": false,
+  "required_linear_history": true,
+  "required_conversation_resolution": true
+}
+```

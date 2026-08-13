@@ -63,6 +63,8 @@
 | `templates/check-migrations.sh` | Pre-commit guard: makemigrations --check --dry-run. |
 | `templates/constants.py` | TextChoices skeleton for status / role / kind enums. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,78 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` keys off the observable inputs documented in Prerequisites and routes to either "run the methodology" (preconditions hold) or "skip and route elsewhere" (preconditions fail). Use it before invoking the methodology, not after.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/base-model.py`
+
+```python
+# core/models.py — Abstract BaseModel with UUID and timestamps
+import uuid
+from django.db import models
+
+
+class BaseModel(models.Model):
+    """Abstract base providing integer PK, UUID external identifier, and timestamps.
+
+    - id: integer PK for internal DB joins (never expose to clients)
+    - uid: UUID for external API identifiers (stable, client-safe)
+    - created_at / updated_at: auto-managed timestamps
+    """
+
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+```
+
+### `templates/check-migrations.sh`
+
+```bash
+# scripts/check-migrations.sh — refuse commit if models changed without a staged migration.
+# Wire as pre-commit hook or in CI.
+set -euo pipefail
+
+changed=$(git diff --cached --name-only -- "apps/*/models/*.py" "apps/*/models.py" "core/models.py" 2>/dev/null || true)
+
+[[ -z "$changed" ]] && exit 0
+
+out=$(python manage.py makemigrations --dry-run --check 2>&1) || {
+  echo "FAIL — models changed but migration not staged:"
+  echo "$out"
+  exit 1
+}
+
+echo "OK — migration is up to date"
+```
+
+### `templates/constants.py`
+
+```python
+# apps/users/constants.py — TextChoices enums and module-level constants
+from django.db import models
+
+
+class UserType(models.TextChoices):
+    REGULAR = "regular", "Regular"
+    PREMIUM = "premium", "Premium"
+    ADMIN = "admin", "Administrator"
+
+
+class OrderStatus(models.TextChoices):
+    PENDING = "pending", "Pending"
+    PROCESSING = "processing", "Processing"
+    SHIPPED = "shipped", "Shipped"
+    DELIVERED = "delivered", "Delivered"
+    CANCELLED = "cancelled", "Cancelled"
+
+
+# Pagination and limits
+DEFAULT_PAGE_SIZE = 20
+MAX_PAGE_SIZE = 100
+MAX_ITEMS_PER_USER = 100
+```

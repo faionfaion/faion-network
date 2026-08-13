@@ -59,10 +59,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/control-map.yaml` | Per-control mapping to repo artifacts. |
 | `templates/evidence-bundle.md` | Audit-ready evidence bundle template. |
 | `templates/gap-analysis.md` | Per-quarter gap-analysis report. |
-| `templates/_smoke-test.yaml` | Minimum-viable filled-in example (smoke test). |
 
 ## Scripts
 

@@ -58,6 +58,8 @@
 | `templates/pyproject.toml` | Complete pyproject for 3.13: [project], [tool.uv], [tool.ruff], [tool.mypy], [tool.pytest.ini_options]. |
 | `templates/.python-version` | Single Python version pin file. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -73,3 +75,38 @@
 ## Decision tree
 
 The tree at content/06-decision-tree.xml decides Python version (3.12 / 3.13 / 3.13t / 3.14), package manager (uv only), and PEP-695 vs legacy generics. Walk it whenever a new repo is created or a version bump is considered.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pyproject.toml`
+
+```toml
+[project]
+name = "demo"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = []
+
+[tool.poetry]
+package-mode = false
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+ruff = "^0.7"
+mypy = "^1.11"
+
+[tool.poetry]
+virtualenvs = { in-project = true }
+
+[build-system]
+requires = ["poetry-core>=2.0"]
+build-backend = "poetry.core.masonry.api"
+```
+
+### `templates/.python-version`
+
+```text
+3.13
+```

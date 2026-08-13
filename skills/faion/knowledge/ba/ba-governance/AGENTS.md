@@ -69,6 +69,8 @@
 | `templates/governance.md` | Full governance skeleton — decision-authority + change-control + comms-plan + owners |
 | `templates/scaffold-governance.sh` | Bash scaffold that writes `governance.md` into `.aidocs/in-progress/<project>/` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,134 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/decision-instance.json`
+
+```json
+{
+  "project_id": "proj-2026-checkout",
+  "decision_rights": [
+    {
+      "decision_type": "new requirement",
+      "authority": "BA Lead",
+      "escalation": "PM",
+      "artefact": "Jira REQ"
+    },
+    {
+      "decision_type": "scope change",
+      "authority": "Steering Chair",
+      "escalation": "Sponsor",
+      "artefact": "Jira CR"
+    },
+    {
+      "decision_type": "priority change",
+      "authority": "Product Owner",
+      "escalation": "PM",
+      "artefact": "Backlog"
+    },
+    {
+      "decision_type": "baseline update",
+      "authority": "BA Lead + PO",
+      "escalation": "PM",
+      "artefact": "Confluence page"
+    }
+  ],
+  "change_control": {
+    "steps": [
+      "submit_cr",
+      "impact_assess",
+      "authority_review",
+      "decide",
+      "baseline_update"
+    ],
+    "decision_sla_days": 5
+  },
+  "comms_plan": [
+    {
+      "audience": "Sponsor",
+      "info": "status + risks",
+      "format": "summary",
+      "frequency": "weekly",
+      "channel": "email",
+      "feedback": "standing review slot"
+    },
+    {
+      "audience": "Dev team",
+      "info": "detailed reqs",
+      "format": "full doc",
+      "frequency": "per sprint",
+      "channel": "Jira",
+      "feedback": "refinement questions log"
+    },
+    {
+      "audience": "Ops",
+      "info": "release plan",
+      "format": "checklist",
+      "frequency": "pre-release",
+      "channel": "Slack",
+      "feedback": "ack + blockers thread"
+    }
+  ],
+  "owner": "jane@team.io",
+  "last_reviewed": "2026-05-23"
+}
+```
+
+### `templates/scaffold-governance.sh`
+
+```bash
+#
+# scaffold-governance.sh — generate governance.md skeleton under .aidocs/in-progress/.
+# Usage: ./scaffold-governance.sh <project-slug> [output-path]
+# Example: ./scaffold-governance.sh my-project
+#          ./scaffold-governance.sh my-project .aidocs/in-progress/my-project/governance.md
+set -euo pipefail
+
+PROJECT="${1:?project slug required}"
+OUT="${2:-.aidocs/in-progress/$PROJECT/governance.md}"
+mkdir -p "$(dirname "$OUT")"
+
+cat >"$OUT" <<EOF
+# Governance — $PROJECT
+
+_Last reviewed: $(date -I) — re-validate every 30 days._
+
+## Decision Authority
+
+| Decision Type | Authority (named person) | Escalation | Artifact |
+|---------------|--------------------------|------------|----------|
+| New requirement | BA Lead | PM | Jira REQ |
+| Scope change | Steering | Sponsor | Jira CR |
+| Priority change | PO | PM | Backlog |
+
+## Change Control
+
+1. Submit CR (Jira "CR" type)
+2. Impact assessment (T-shirt: S/M/L/XL) — mandatory for all CRs
+3. Review by authority from matrix above
+4. Approve / Reject (with reason) / Defer (owner + date)
+5. Update baseline; link CR → REQ
+
+## Communication
+
+| Audience | Info | Format | Frequency | Channel | Feedback |
+|----------|------|--------|-----------|---------|---------|
+| Sponsor | Status, risks | Summary | Weekly | Email | Review slot |
+| Dev | Reqs detail | Full doc | Per sprint | Jira | Refinement log |
+| Ops | Release plan | Checklist | Pre-release | Slack | Ack + blockers |
+
+## Owners
+
+- Artifact owner: <FILL: named individual + email>
+- Decision-log owner: <FILL: named individual + email>
+- Re-validation cadence: 30 days
+- Stakeholder contacts: 1Password vault (NOT in this file)
+EOF
+
+echo "Wrote $OUT"
+echo "REMINDER: replace <FILL: ...> placeholders with named individuals before sign-off."
+```

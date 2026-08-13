@@ -68,6 +68,8 @@
 | `templates/FeatureController.cs` | REST controller skeleton with CancellationToken on every action. |
 | `templates/BackgroundProcessor.cs` | BackgroundService skeleton that resolves scoped deps via `IServiceScopeFactory`. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,147 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (service vs CLI, request shape, dependency lifetimes, async-vs-sync IO) to a concrete rule from `01-core-rules.xml`. Use it when in doubt about whether the methodology applies and which layering rule wins.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/Program.cs`
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+using System.Threading.Channels;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<AppDbContext>(opt =>
+    opt.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IUserService, UserService>();
+
+builder.Services.AddAutoMapper(typeof(Program).Assembly);
+
+builder.Services.AddSingleton(_ => Channel.CreateBounded<int>(
+    new BoundedChannelOptions(1024) { FullMode = BoundedChannelFullMode.Wait }));
+builder.Services.AddSingleton<IOrderQueue, OrderQueue>();
+builder.Services.AddHostedService<BackgroundOrderProcessor>();
+
+builder.Services.AddProblemDetails();
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+
+var app = builder.Build();
+
+app.UseExceptionHandler();
+app.UseStatusCodePages();
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
+
+app.Run();
+
+public partial class Program { }
+```
+
+### `templates/FeatureController.cs`
+
+```csharp
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace MyApp.Features.Users;
+
+[ApiController]
+[Route("api/v1/[controller]")]
+[Authorize]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+    private readonly ILogger<UsersController> _logger;
+
+    public UsersController(IUserService userService, ILogger<UsersController> logger)
+    {
+        _userService = userService;
+        _logger = logger;
+    }
+
+    [HttpGet]
+    [ProducesResponseType(typeof(PagedResult<UserDto>), StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<UserDto>>> GetUsers(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        var result = await _userService.GetAllAsync(page, pageSize, ct);
+        return Ok(result);
+    }
+
+    [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<UserDto>> GetUser(int id, CancellationToken ct = default)
+    {
+        var user = await _userService.GetByIdAsync(id, ct);
+        return user is null ? NotFound() : Ok(user);
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
+    public async Task<ActionResult<UserDto>> CreateUser(
+        CreateUserDto dto, CancellationToken ct = default)
+    {
+        var user = await _userService.CreateAsync(dto, ct);
+        return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
+    }
+}
+```
+
+### `templates/BackgroundProcessor.cs`
+
+```csharp
+using System.Threading.Channels;
+
+namespace MyApp.Features.Orders;
+
+public class BackgroundOrderProcessor : BackgroundService
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<BackgroundOrderProcessor> _logger;
+    private readonly Channel<int> _orderChannel;
+
+    public BackgroundOrderProcessor(
+        IServiceScopeFactory scopeFactory,
+        ILogger<BackgroundOrderProcessor> logger,
+        Channel<int> orderChannel)
+    {
+        _scopeFactory = scopeFactory;
+        _logger = logger;
+        _orderChannel = orderChannel;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        _logger.LogInformation("Order processor started");
+
+        await foreach (var orderId in _orderChannel.Reader.ReadAllAsync(stoppingToken))
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var svc = scope.ServiceProvider.GetRequiredService<IOrderService>();
+                await svc.ProcessAsync(orderId, stoppingToken);
+                _logger.LogInformation("Order {OrderId} processed", orderId);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing order {OrderId}", orderId);
+            }
+        }
+    }
+}
+```

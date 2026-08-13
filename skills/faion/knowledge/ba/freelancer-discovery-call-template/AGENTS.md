@@ -70,6 +70,8 @@
 | `templates/scorecard.md` | 5-axis go/no-go scorecard |
 | `templates/proposal-seed.md` | 1-page proposal seed skeleton |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,68 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on section coverage, listen ratio, and scorecard total. Any gate failure halts or routes to a no-go / repair conclusion.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/freelancer-discovery-call.json",
+  "type": "object",
+  "required": [
+    "prospect",
+    "sections",
+    "scorecard",
+    "proposal_seed"
+  ],
+  "properties": {
+    "prospect": {
+      "type": "object",
+      "required": [
+        "name",
+        "company",
+        "role"
+      ]
+    },
+    "sections": {
+      "type": "object",
+      "required": [
+        "context",
+        "pain",
+        "success_criteria",
+        "budget_signals",
+        "decision_process"
+      ]
+    },
+    "scorecard": {
+      "type": "object",
+      "required": [
+        "fit",
+        "urgency",
+        "budget",
+        "decision_power",
+        "vibes",
+        "total"
+      ]
+    },
+    "proposal_seed": {
+      "type": "object",
+      "required": [
+        "problem",
+        "approach",
+        "scope",
+        "price",
+        "timeline"
+      ]
+    },
+    "operator_word_share": {
+      "type": "number",
+      "maximum": 0.3
+    }
+  }
+}
+```

@@ -68,6 +68,8 @@
 | `templates/_smoke-test.md` | Minimum viable filled-in multi-project audit. |
 | `templates/port-registry.txt` | Plain-text source of truth for port allocations per project. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,20 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, status of prerequisites) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/port-registry.txt`
+
+```text
+# /srv/port-registry.txt — source of truth for VPS port allocation
+# Each project owns a 100-range; sub-allocate inside the range freely.
+
+# range       project           services
+8000-8099     faion-net-api     api(8000)
+8100-8199     faion-net-dev     api(8001)
+8200-8299     n8n               docker(8200)
+8300-8399     scanmecard        api(8300), worker(8301)
+```

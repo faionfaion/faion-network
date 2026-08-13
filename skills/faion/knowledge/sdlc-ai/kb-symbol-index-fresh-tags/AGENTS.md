@@ -64,8 +64,9 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ctags-config.ctags` | ctags config example. |
 | `templates/pre-commit-symbol-index.yaml` | Pre-commit hook entry. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,27 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (precondition flag, repo metric, capability flag) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on a rule that triggers the procedure or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pre-commit-symbol-index.yaml`
+
+```yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+  - repo: https://github.com/biomejs/pre-commit
+    rev: v0.4.0
+    hooks:
+      - id: biome-check
+  - repo: https://github.com/zricethezav/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+```

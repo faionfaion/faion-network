@@ -65,6 +65,8 @@
 | `templates/choreography-vs-orchestration-decision.json` | JSON skeleton matching the output contract. |
 | `templates/choreography-vs-orchestration-decision.md` | Markdown skeleton with both options + trade-offs. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,26 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree gates on workflow size and natural ownership distribution; orchestration is the default unless ownership is already distributed.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/choreography-vs-orchestration-decision.json`
+
+```json
+{
+  "artefact_id": "co-checkout-2026-05-23",
+  "owner": "@ruslan",
+  "decision": "orchestration via temporal workflow 'checkout-saga'",
+  "rationale": "checkout-saga has 7 steps with compensations; choreography would spread debug ownership across 5 teams; SLO for retry recovery is 5 min; both inputs cited",
+  "inputs_used": [
+    "docs/checkout-workflow.md",
+    "docs/service-map.md"
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "pattern": "orchestration",
+  "workflow": "checkout-saga"
+}
+```

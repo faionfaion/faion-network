@@ -67,6 +67,8 @@
 | `templates/pnpm-workspace.yaml` | Sample pnpm-workspace.yaml with catalog + named catalogs. |
 | `templates/package-json-fragment.json` | Per-package package.json fragment referencing `catalog:` and `workspace:*`. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,62 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from observable signals (workspace package count, pnpm version, shared dep count) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether to introduce catalogs — the tree terminates either on the active rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pnpm-workspace.yaml`
+
+```yaml
+packages:
+  - 'packages/*'
+  - 'apps/*'
+
+catalog:
+  # framework
+  react: ^19.0.0
+  react-dom: ^19.0.0
+  # types
+  typescript: ^5.7.0
+  '@types/node': ^22.10.0
+  # test
+  vitest: ^3.0.0
+  '@playwright/test': ^1.50.0
+  # lint / format
+  '@biomejs/biome': ^2.0.0
+  # build
+  tsx: ^4.20.0
+
+catalogs:
+  next:
+    react: 19.1.0-canary
+    react-dom: 19.1.0-canary
+```
+
+### `templates/package-json-fragment.json`
+
+```json
+{
+  "name": "@org/web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "test": "vitest run",
+    "lint": "biome check ."
+  },
+  "dependencies": {
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "@org/core": "workspace:*",
+    "@org/ui": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "@biomejs/biome": "catalog:",
+    "@types/node": "catalog:"
+  }
+}
+```

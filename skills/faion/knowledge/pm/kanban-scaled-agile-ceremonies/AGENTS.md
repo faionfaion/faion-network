@@ -67,6 +67,8 @@
 | `templates/kanban-metrics.md` | Markdown skeleton for lead-time / cycle-time / throughput / WIP report. |
 | `templates/cycle-stats.py` | Reference script computing cycle stats from issue events. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,146 @@ See `content/06-decision-tree.xml`. The tree maps observable signals (input
 preconditions, source-of-truth access, named-consumer presence) onto a concrete
 verdict — apply the methodology, downgrade to draft, or skip — with each leaf
 referencing a rule id from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/kanban-scaled-agile-ceremonies.json",
+  "type": "object",
+  "required": [
+    "program_id",
+    "ceremony_set",
+    "stages",
+    "cadence",
+    "flow_metrics"
+  ],
+  "properties": {
+    "program_id": {
+      "type": "string"
+    },
+    "ceremony_set": {
+      "enum": [
+        "kanban-lightweight",
+        "kanban-cadenced",
+        "safe-essential",
+        "safe-full"
+      ]
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "wip_limit"
+        ]
+      }
+    },
+    "cadence": {
+      "type": "object",
+      "required": [
+        "replenishment",
+        "flow_review"
+      ],
+      "properties": {
+        "replenishment": {
+          "type": "string"
+        },
+        "flow_review": {
+          "type": "string"
+        },
+        "pi_planning": {
+          "type": "string"
+        }
+      }
+    },
+    "flow_metrics": {
+      "type": "object",
+      "required": [
+        "lead_time_p50",
+        "cycle_time_p50",
+        "throughput",
+        "wip"
+      ]
+    }
+  }
+}
+```
+
+### `templates/cycle-stats.py`
+
+```python
+"""
+
+
+"""cycle-stats.py — compute throughput and cycle-time stats from JSONL of issues.
+
+Input JSONL: one JSON object per line with fields:
+    state: str          — "Done", "In Progress", etc.
+    resolved_at: str    — ISO 8601 timestamp when state became "Done"
+    started_at: str     — ISO 8601 timestamp when state became "In Progress" (optional)
+
+Computes throughput over the last 28 days and cycle-time percentiles.
+
+Usage:
+    cat issues.jsonl | python3 cycle-stats.py
+    python3 cycle-stats.py < issues.jsonl
+"""
+from __future__ import annotations
+
+import json
+import statistics
+import sys
+from datetime import datetime, timedelta, timezone
+
+
+def main() -> int:
+    issues = [json.loads(line) for line in sys.stdin if line.strip()]
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=28)
+
+    done = [
+        i for i in issues
+        if i.get("state") == "Done"
+        and datetime.fromisoformat(i["resolved_at"]).replace(tzinfo=timezone.utc) > cutoff
+    ]
+
+    cycle_days = [
+        (
+            datetime.fromisoformat(i["resolved_at"]).replace(tzinfo=timezone.utc)
+            - datetime.fromisoformat(i["started_at"]).replace(tzinfo=timezone.utc)
+        ).total_seconds() / 86400
+        for i in done
+        if i.get("started_at")
+    ]
+
+    weekly = len(done) / 4
+    print(f"throughput_28d={len(done)}  weekly_avg={weekly:.1f}")
+
+    if cycle_days:
+        p50 = statistics.median(cycle_days)
+        sorted_days = sorted(cycle_days)
+        p85_idx = int(len(sorted_days) * 0.85)
+        p85 = sorted_days[min(p85_idx, len(sorted_days) - 1)]
+        print(
+            f"cycle_p50={p50:.1f}d  "
+            f"cycle_p85={p85:.1f}d  "
+            f"cycle_max={max(cycle_days):.1f}d  "
+            f"n={len(cycle_days)}"
+        )
+    else:
+        print("No cycle-time data (missing started_at fields).")
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+```

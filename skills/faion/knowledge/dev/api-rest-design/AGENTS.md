@@ -66,6 +66,8 @@
 | `templates/output-schema.json` | JSON Schema (draft-07) for the api-rest-design artefact |
 | `templates/_smoke-test.json` | Minimum viable filled-in api-rest-design artefact for validator round-trip |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,135 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on the schema's required cross-field checks; every leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/api-rest-design.json",
+  "type": "object",
+  "required": [
+    "spec_id",
+    "resources",
+    "status_codes_used"
+  ],
+  "properties": {
+    "spec_id": {
+      "type": "string",
+      "pattern": "^REST-[A-Z0-9-]{2,40}$"
+    },
+    "resources": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "methods"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "pattern": "^/[a-z0-9-]+(/\\{[a-z0-9_]+\\})?(/[a-z0-9-]+)*$"
+          },
+          "methods": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "GET",
+                "POST",
+                "PUT",
+                "PATCH",
+                "DELETE"
+              ]
+            }
+          },
+          "idempotent": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "hateoas_links": {
+            "type": "boolean"
+          },
+          "idempotency_key": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "status_codes_used": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "spec_id": "REST-ORDERS-V1",
+  "resources": [
+    {
+      "path": "/orders",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "idempotent": [
+        "GET"
+      ],
+      "hateoas_links": true,
+      "idempotency_key": true
+    },
+    {
+      "path": "/orders/{id}",
+      "methods": [
+        "GET",
+        "PUT",
+        "DELETE"
+      ],
+      "idempotent": [
+        "GET",
+        "PUT",
+        "DELETE"
+      ],
+      "hateoas_links": true
+    },
+    {
+      "path": "/orders/{id}/items",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "idempotent": [
+        "GET"
+      ],
+      "idempotency_key": true
+    }
+  ],
+  "status_codes_used": [
+    200,
+    201,
+    204,
+    400,
+    401,
+    404,
+    409,
+    422,
+    429,
+    500
+  ]
+}
+```

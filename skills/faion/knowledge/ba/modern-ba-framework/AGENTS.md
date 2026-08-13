@@ -71,6 +71,8 @@
 | `templates/ba-approach.json` | JSON record of perspective + KA + deliverables. |
 | `templates/_smoke-test.json` | Minimum filled-in approach record. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,83 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The mandatory tree maps observable signals (engagement type, perspective set, scope, audit needs, baseline presence) to a single rule from `01-core-rules.xml`; every leaf references either a numbered core rule or the `skip-this-methodology` conclusion that routes the agent to a different methodology when this one does not apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ba-approach-init.sh`
+
+```bash
+set -euo pipefail
+
+echo "[modern-ba-framework] skeleton helper — replace with real logic."
+
+# Example: list candidate frameworks for the current KA.
+KA="${1:-KA-1}"
+echo "KA: $KA"
+```
+
+### `templates/ba-approach.json`
+
+```json
+{
+  "example": {
+    "approach_id": "BAA-0011",
+    "perspective_set": [
+      "agile",
+      "ai_ml",
+      "platform"
+    ],
+    "ka_adaptations": {
+      "KA-5": [
+        "dataset acceptance criteria",
+        "model eval gate"
+      ],
+      "KA-3": [
+        "platform contract versioning"
+      ]
+    },
+    "deliverables": [
+      {
+        "ka": "KA-5",
+        "name": "Model eval plan",
+        "owner": "ML lead",
+        "perspective": "ai_ml"
+      }
+    ]
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "example": {
+    "approach_id": "BAA-0011",
+    "perspective_set": [
+      "agile",
+      "ai_ml",
+      "platform"
+    ],
+    "ka_adaptations": {
+      "KA-5": [
+        "dataset acceptance criteria",
+        "model eval gate"
+      ],
+      "KA-3": [
+        "platform contract versioning"
+      ]
+    },
+    "deliverables": [
+      {
+        "ka": "KA-5",
+        "name": "Model eval plan",
+        "owner": "ML lead",
+        "perspective": "ai_ml"
+      }
+    ]
+  }
+}
+```

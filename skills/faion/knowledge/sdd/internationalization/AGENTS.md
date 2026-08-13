@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/locale_en.json` | Base English locale file: ICU MessageFormat keys |
 | `templates/key_drift_check.py` | CI check: every key in en.json exists in all locales |
-| `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,45 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Will the product ship to ≥2 locales OR include RTL within 2 quarters?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/locale_en.json`
+
+```json
+{
+  "checkout.title": "Checkout",
+  "checkout.items_count": "{count, plural, one {# item} other {# items}}",
+  "checkout.total": "Total: {amount, number, ::currency/USD}"
+}
+```
+
+### `templates/key_drift_check.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"CI check: every key in en.json exists in all locales","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#icu-messageformat","token_budget_impact":"~150 tokens when loaded"}}
+import json
+import sys
+from pathlib import Path
+
+
+def main() -> int:
+    en = json.loads(Path("locales/en.json").read_text())
+    keys = set(en.keys())
+    bad = False
+    for path in Path("locales").glob("*.json"):
+        if path.name == "en.json":
+            continue
+        other = json.loads(path.read_text())
+        missing = keys - set(other.keys())
+        if missing:
+            sys.stdout.write(f"{path.name} missing: {sorted(missing)}\n")
+            bad = True
+    return 1 if bad else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+```

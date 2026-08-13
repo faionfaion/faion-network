@@ -71,6 +71,8 @@
 | `templates/reply-triage.csv` | Reply outcome log for the bank |
 | `templates/_smoke-test.json` | Minimum viable IH post bundle for validator self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,45 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps numeric-signal availability, ask quality, body length, and slot timing to a rule from `01-core-rules.xml`, telling the agent whether to publish, block on a missing element, or skip the week. Walk it on every fresh post; do not cache outcomes across posts.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/reply-triage.csv`
+
+```csv
+post_url,replies_total,qualified_replies,new_follows,bucket_relative_to_median
+https://www.indiehackers.com/post/REPLACE,0,0,0,average
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "title": "Week 14 \u2014 first $1k MRR, here is what flipped it",
+  "tldr": "TL;DR: hit $1k MRR week 14 after switching to one-niche LinkedIn DMs. Two questions for IH on what to test next.",
+  "body": "Background: 14 weeks solo on a small SaaS for Shopify owners. Spent weeks 1-10 on generic outreach: 200 DMs/week, 0.5 percent reply, zero sales. Week 11 I picked one niche and rewrote the opener around their actual pain. MRR moved because trial-to-paid finally caught up; DMs sent dropped because I spend more time per DM now. The lesson I keep relearning: smaller niche, higher reply rate. The open question is whether to double down on Shopify or pick a second niche in parallel for the next six weeks. The numbers below cover the last seven days only, so they are not a victory lap; they are a checkpoint. If you have stepped through a similar inflection, I want to know what you tried next \u2014 and what you wish you had done instead.",
+  "numbers": [
+    {
+      "label": "MRR",
+      "value": "$1040",
+      "window_days": 7
+    },
+    {
+      "label": "Trial-to-paid",
+      "value": "21%",
+      "window_days": 7
+    },
+    {
+      "label": "DMs sent",
+      "value": "47",
+      "window_days": 7
+    }
+  ],
+  "ask": "If you hit $1k MRR via cold outreach, what was the opener message that worked \u2014 verbatim if possible?",
+  "scheduled_at": "2026-05-26T13:00:00Z",
+  "weekday_et": "tue",
+  "hour_et": 9
+}
+```

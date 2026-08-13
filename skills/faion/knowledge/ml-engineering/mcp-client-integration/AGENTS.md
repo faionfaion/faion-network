@@ -63,7 +63,8 @@
 |------|---------|
 | `templates/claude-desktop-config.json` | Claude Desktop / VS Code mcp servers config. |
 | `templates/mcp-client-python.py` | Python MCP client + tool-bridge skeleton. |
-| `templates/mcp-client-typescript.ts` | TS MCP client + tool-bridge skeleton. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -80,3 +81,21 @@
 ## Decision tree
 
 Decision tree at `content/06-decision-tree.xml` picks host type (Claude Desktop / VS Code / custom Claude SDK) and bridge mode (static at startup / dynamic).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/claude-desktop-config.json`
+
+```json
+{}
+```
+
+### `templates/mcp-client-python.py`
+
+```python
+"""
+
+# Stub — see methodology AGENTS.md ## Templates table.
+```

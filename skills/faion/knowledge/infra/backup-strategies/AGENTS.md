@@ -68,6 +68,8 @@
 | `templates/verify-backup.sh` | Restore-verification script — restores latest snapshot to /tmp + asserts |
 | `templates/_smoke-test.json` | Minimum spec used by validate-backup-strategies.py --self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,74 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it when designing or auditing backups for any prod stateful workload.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/restic-backup.sh`
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+export RESTIC_REPOSITORY="${RESTIC_REPOSITORY:?missing}"
+export RESTIC_PASSWORD="${RESTIC_PASSWORD:?missing}"
+
+TARGETS=("/var/lib/postgresql" "/etc")
+
+restic snapshots >/dev/null 2>&1 || restic init
+restic backup --tag prod "${TARGETS[@]}"
+restic forget --keep-daily 7 --keep-weekly 4 --keep-monthly 12 --prune
+restic check
+```
+
+### `templates/verify-backup.sh`
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+export RESTIC_REPOSITORY="${RESTIC_REPOSITORY:?missing}"
+export RESTIC_PASSWORD="${RESTIC_PASSWORD:?missing}"
+TMP=$(mktemp -d)
+trap "rm -rf $TMP" EXIT
+
+restic restore latest --target "$TMP"
+[[ -d "$TMP/var/lib/postgresql" ]] || { echo "FAIL: pg dir missing"; exit 1; }
+echo OK
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "workload": "checkout-db",
+  "rpo_hours": 1,
+  "rto_hours": 4,
+  "retention_days": 90,
+  "copies": [
+    {
+      "media": "local-nas",
+      "offsite": false,
+      "immutable": false
+    },
+    {
+      "media": "s3-standard-ia",
+      "offsite": true,
+      "immutable": false
+    },
+    {
+      "media": "s3-object-lock-compliance",
+      "offsite": true,
+      "immutable": true,
+      "lock_mode": "COMPLIANCE"
+    }
+  ],
+  "restore_verification": {
+    "cadence": "nightly",
+    "method": "pg_restore-to-isolated-db",
+    "last_pass": "2026-05-22"
+  }
+}
+```

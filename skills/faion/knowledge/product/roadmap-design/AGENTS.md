@@ -60,7 +60,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/roadmap-design.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/roadmap-design.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

@@ -68,6 +68,8 @@
 | `templates/jest.coverage.config.js` | JS/TS: V8 provider, per-dir thresholds, lcov reporter |
 | `templates/diff-cov-report.sh` | Runs pytest + diff-cover, emits per-file uncovered-lines prompt fragments |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[code-review-process]] — the gate this methodology produces runs inside the review process.
@@ -76,3 +78,109 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree first branches on detected stack (Python / JS-TS / Go / Rust / mixed) → picks the canonical coverage tool → asks whether the repo is green-field or legacy. Green-field gets a single global threshold; legacy gets diff-cover only (so historical gaps do not block PRs). All leaves reference rules from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/coverage.pyproject.toml`
+
+```toml
+# Coverage configuration for pyproject.toml
+# Copy the [tool.coverage.*] sections into your project's pyproject.toml
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__init__.py",
+    "*/migrations/*",
+    "*/conftest.py",
+    "*/manage.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "@abstractmethod",
+    "\\.\\.\\.",
+]
+fail_under = 80
+show_missing = true
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+# pytest integration — add to [tool.pytest.ini_options]
+# addopts = "--cov=src --cov-branch --cov-report=term-missing --cov-report=html --cov-fail-under=80"
+```
+
+### `templates/jest.coverage.config.js`
+
+```javascript
+// jest.config.js — coverage configuration
+// Adjust collectCoverageFrom paths for your project structure.
+/** @type {import('jest').Config} */
+module.exports = {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  collectCoverage: true,
+  coverageProvider: 'v8', // Native V8 — more accurate for ESM and async
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.d.ts',
+    '!src/**/index.ts',      // barrel re-exports — no logic to test
+    '!src/**/*.test.{ts,tsx}',
+    '!src/**/*.spec.{ts,tsx}',
+  ],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80,
+    },
+    // Raise thresholds for critical paths:
+    // './src/auth/': { branches: 90, functions: 90, lines: 90, statements: 90 },
+    // './src/billing/': { branches: 90, functions: 90, lines: 90, statements: 90 },
+  },
+};
+```
+
+### `templates/diff-cov-report.sh`
+
+```bash
+#!/usr/bin/env bash
+# diff-cov-report.sh — enforce diff-coverage and emit uncovered lines for agent.
+# Usage: diff-cov-report.sh [base-branch] [target-percent]
+# Example: diff-cov-report.sh origin/main 90
+set -euo pipefail
+
+BASE="${1:-origin/main}"
+TARGET="${2:-90}"
+
+# Run full test suite with branch coverage
+pytest --cov=src --cov-branch --cov-report=xml -q
+
+# Run diff-cover: fails if diff-coverage < TARGET
+diff-cover coverage.xml \
+  --compare-branch="$BASE" \
+  --fail-under="$TARGET" \
+  --markdown-report diff-cov.md \
+  --json-report   diff-cov.json
+
+echo ""
+echo "## Agent-ready: uncovered changed lines per file"
+jq -r '
+  .src_stats | to_entries[]
+  | select(.value.uncovered_lines | length > 0)
+  | "FILE: \(.key)\nUNCOVERED_LINES: \(.value.uncovered_lines | join(","))\n"
+' diff-cov.json
+```

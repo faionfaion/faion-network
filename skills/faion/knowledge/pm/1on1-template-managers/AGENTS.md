@@ -61,6 +61,8 @@
 | `templates/skeleton.md` | 1:1 Markdown skeleton: header (date, attendee, last_reviewed) + agenda + carry-forward + growth + actions + next-review. |
 | `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,16 @@
 ## Decision tree
 
 The mandatory decision tree at `content/06-decision-tree.xml` Decides whether to adopt the template (≥3 reports + cadence + notes space), block (no notes space), or skip (≤2 reports). Run before the first 1:1 of the new cycle.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+version: 0.1.0           # bump on every refresh; semver
+owner: <role>:<person>   # named person, never a team
+last_reviewed: YYYY-MM-DD
+evidence_root: <link>    # URL or file path that anchors body claims
+```

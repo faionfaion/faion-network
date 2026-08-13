@@ -60,10 +60,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/deploy-event.yml` | CDEvents-style deploy event schema |
-| `templates/prometheus-rules.yml` | Prometheus recording + alerting rules for DORA metrics |
 | `templates/schema.sql` | SQL schema for deploys + incidents join |
 | `templates/backup-config.example.json` | Filled report artefact |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Related
 
@@ -75,3 +75,33 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/schema.sql`
+
+```sql
+CREATE TABLE IF NOT EXISTS deploys (
+    id BIGINT PRIMARY KEY,
+    service TEXT NOT NULL,
+    env TEXT NOT NULL,
+    commit_sha TEXT NOT NULL,
+    deployed_at TIMESTAMPTZ NOT NULL
+);
+```
+
+### `templates/backup-config.example.json`
+
+```json
+{
+  "deployment_frequency_per_week": 1.0,
+  "lead_time_hours_p50": 1.0,
+  "change_failure_rate_pct": 1.0,
+  "mttr_hours_p50": 1.0,
+  "reliability_slo_attainment_pct": 1.0,
+  "event_schema": "cdevents",
+  "window_days": 7
+}
+```

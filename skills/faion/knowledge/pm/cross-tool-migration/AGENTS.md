@@ -70,6 +70,8 @@
 | `templates/field-map.yaml` | Source → target field map with type coercions and defaults. |
 | `templates/cutover-runbook.md` | Hour-by-hour runbook with rollback decision points. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,34 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observables (work_item_count, field_parity_pct, identity_merge_complexity) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/field-map.yaml`
+
+```yaml
+source: REPLACE-source-tool
+target: REPLACE-target-tool
+
+fields:
+  - source: summary
+    target: title
+    coerce: string
+  - source: description
+    target: description
+    coerce: markdown_from_adf
+  - source: priority
+    target: priority
+    coerce: enum_map
+    mapping:
+      Highest: urgent
+      High: high
+      Medium: medium
+      Low: low
+      Lowest: low
+
+unmapped:
+  policy: fail-loud   # never silent-drop
+```

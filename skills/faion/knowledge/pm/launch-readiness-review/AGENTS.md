@@ -66,11 +66,7 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/launch-readiness.json` | JSON skeleton for the LaunchReadiness report. |
-| `templates/gate-criteria.yaml` | Hard criteria per gate (latency p95, runbook URLs, ToS sign-off, etc.). |
 | `templates/comms-tree.md` | Customer + internal comms tree template. |
-| `templates/run-readiness.py` | Pulls gate status from owners; assembles snapshot. |
-| `templates/runbook-presence-check.py` | Verifies runbook URLs return 200 OK. |
 
 ## Scripts
 

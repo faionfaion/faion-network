@@ -65,6 +65,8 @@
 | `templates/incident-template.md` | Postmortem template that references a mode id. |
 | `templates/_smoke-test.json` | Minimum valid 12-mode taxonomy. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,306 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` decides whether to formalise: single team or no owner → skip; multi-team + central owner → run procedure; mid-state (multi-team no owner) → escalate to leadership before adopting.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/taxonomy.schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ai-failure-mode-taxonomy",
+  "_purpose": "Schema for the closed 12-mode taxonomy.",
+  "_consumes": "operator-authored taxonomy.json",
+  "_produces": "validation verdict",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "validator only",
+  "type": "object",
+  "required": [
+    "version",
+    "owner",
+    "modes"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "modes": {
+      "type": "array",
+      "minItems": 12,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "definition",
+          "detector",
+          "severity",
+          "linked_methodology"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^fm\\.[a-z0-9-]+(\\.[a-z0-9-]+)+$"
+          },
+          "name": {
+            "type": "string"
+          },
+          "definition": {
+            "type": "string",
+            "minLength": 20
+          },
+          "detector": {
+            "type": "string",
+            "minLength": 10
+          },
+          "severity": {
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "critical"
+            ]
+          },
+          "linked_methodology": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### `templates/taxonomy-skeleton.json`
+
+```json
+{
+  "_purpose": "12-mode seed taxonomy; teams should adapt detectors + linked_methodology to their stack but keep ids + names stable.",
+  "_consumes": "incident clustering output",
+  "_produces": "taxonomy.json that passes the validator",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "docs-only",
+  "version": "1.0.0",
+  "owner": "ml-platform",
+  "modes": [
+    {
+      "id": "fm.hallucination.fabricated-api",
+      "name": "Fabricated API",
+      "definition": "Model emits a library or endpoint that does not exist.",
+      "detector": "import-check against allow-list of installed packages.",
+      "severity": "high",
+      "linked_methodology": "jailbreak-eval-suite-bootstrap"
+    },
+    {
+      "id": "fm.hallucination.fabricated-fact",
+      "name": "Fabricated fact",
+      "definition": "Model emits a factual claim with no source.",
+      "detector": "fact-claim regex without citation marker.",
+      "severity": "medium",
+      "linked_methodology": "judge-calibration-protocol"
+    },
+    {
+      "id": "fm.refusal.over-refusal",
+      "name": "Over-refusal",
+      "definition": "Model refuses a benign request.",
+      "detector": "refusal-rate spike on benign holdout.",
+      "severity": "medium",
+      "linked_methodology": "judge-calibration-protocol"
+    },
+    {
+      "id": "fm.refusal.bypass",
+      "name": "Refusal bypass",
+      "definition": "Model complies with a request that should be refused.",
+      "detector": "jailbreak eval suite case pass.",
+      "severity": "critical",
+      "linked_methodology": "jailbreak-eval-suite-bootstrap"
+    },
+    {
+      "id": "fm.security.indirect-prompt-injection",
+      "name": "IPI",
+      "definition": "Instructions in retrieved content hijack a tool call.",
+      "detector": "canary token in outbound tool payload.",
+      "severity": "critical",
+      "linked_methodology": "indirect-prompt-injection-defense"
+    },
+    {
+      "id": "fm.security.exfiltration",
+      "name": "Exfiltration",
+      "definition": "Sensitive data leaves via outbound tool.",
+      "detector": "canary or DLP regex on outbound payload.",
+      "severity": "critical",
+      "linked_methodology": "indirect-prompt-injection-defense"
+    },
+    {
+      "id": "fm.output.schema-drop",
+      "name": "Schema drop",
+      "definition": "Required field missing in structured output.",
+      "detector": "JSON Schema validation fail.",
+      "severity": "high",
+      "linked_methodology": "guardrails-implementation"
+    },
+    {
+      "id": "fm.output.format-drift",
+      "name": "Format drift",
+      "definition": "Output type drifts (string where number expected).",
+      "detector": "type check on parsed output.",
+      "severity": "medium",
+      "linked_methodology": "guardrails-implementation"
+    },
+    {
+      "id": "fm.latency.spike",
+      "name": "Latency spike",
+      "definition": "Per-call p95 latency breaches site SLO.",
+      "detector": "SLO alert.",
+      "severity": "medium",
+      "linked_methodology": "latency-vs-quality-decision-grid"
+    },
+    {
+      "id": "fm.cost.blowup",
+      "name": "Cost blowup",
+      "definition": "Per-call cost increases >25% week-over-week.",
+      "detector": "FinOps dashboard threshold.",
+      "severity": "high",
+      "linked_methodology": "ai-cost-attribution-schema"
+    },
+    {
+      "id": "fm.tool.misuse",
+      "name": "Tool misuse",
+      "definition": "Model invokes wrong tool or wrong arguments.",
+      "detector": "tool-call trace divergence from intent label.",
+      "severity": "high",
+      "linked_methodology": "function-calling-patterns"
+    },
+    {
+      "id": "fm.context.bleed",
+      "name": "Context bleed",
+      "definition": "Prior conversation leaks into a new session.",
+      "detector": "PII / prior-id appearance in new-session output.",
+      "severity": "high",
+      "linked_methodology": "guardrails-implementation"
+    }
+  ]
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "12-mode seed taxonomy; teams should adapt detectors + linked_methodology to their stack but keep ids + names stable.",
+  "_consumes": "incident clustering output",
+  "_produces": "taxonomy.json that passes the validator",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "docs-only",
+  "version": "1.0.0",
+  "owner": "ml-platform",
+  "modes": [
+    {
+      "id": "fm.hallucination.fabricated-api",
+      "name": "Fabricated API",
+      "definition": "Model emits a library or endpoint that does not exist.",
+      "detector": "import-check against allow-list of installed packages.",
+      "severity": "high",
+      "linked_methodology": "jailbreak-eval-suite-bootstrap"
+    },
+    {
+      "id": "fm.hallucination.fabricated-fact",
+      "name": "Fabricated fact",
+      "definition": "Model emits a factual claim with no source.",
+      "detector": "fact-claim regex without citation marker.",
+      "severity": "medium",
+      "linked_methodology": "judge-calibration-protocol"
+    },
+    {
+      "id": "fm.refusal.over-refusal",
+      "name": "Over-refusal",
+      "definition": "Model refuses a benign request.",
+      "detector": "refusal-rate spike on benign holdout.",
+      "severity": "medium",
+      "linked_methodology": "judge-calibration-protocol"
+    },
+    {
+      "id": "fm.refusal.bypass",
+      "name": "Refusal bypass",
+      "definition": "Model complies with a request that should be refused.",
+      "detector": "jailbreak eval suite case pass.",
+      "severity": "critical",
+      "linked_methodology": "jailbreak-eval-suite-bootstrap"
+    },
+    {
+      "id": "fm.security.indirect-prompt-injection",
+      "name": "IPI",
+      "definition": "Instructions in retrieved content hijack a tool call.",
+      "detector": "canary token in outbound tool payload.",
+      "severity": "critical",
+      "linked_methodology": "indirect-prompt-injection-defense"
+    },
+    {
+      "id": "fm.security.exfiltration",
+      "name": "Exfiltration",
+      "definition": "Sensitive data leaves via outbound tool.",
+      "detector": "canary or DLP regex on outbound payload.",
+      "severity": "critical",
+      "linked_methodology": "indirect-prompt-injection-defense"
+    },
+    {
+      "id": "fm.output.schema-drop",
+      "name": "Schema drop",
+      "definition": "Required field missing in structured output.",
+      "detector": "JSON Schema validation fail.",
+      "severity": "high",
+      "linked_methodology": "guardrails-implementation"
+    },
+    {
+      "id": "fm.output.format-drift",
+      "name": "Format drift",
+      "definition": "Output type drifts (string where number expected).",
+      "detector": "type check on parsed output.",
+      "severity": "medium",
+      "linked_methodology": "guardrails-implementation"
+    },
+    {
+      "id": "fm.latency.spike",
+      "name": "Latency spike",
+      "definition": "Per-call p95 latency breaches site SLO.",
+      "detector": "SLO alert.",
+      "severity": "medium",
+      "linked_methodology": "latency-vs-quality-decision-grid"
+    },
+    {
+      "id": "fm.cost.blowup",
+      "name": "Cost blowup",
+      "definition": "Per-call cost increases >25% week-over-week.",
+      "detector": "FinOps dashboard threshold.",
+      "severity": "high",
+      "linked_methodology": "ai-cost-attribution-schema"
+    },
+    {
+      "id": "fm.tool.misuse",
+      "name": "Tool misuse",
+      "definition": "Model invokes wrong tool or wrong arguments.",
+      "detector": "tool-call trace divergence from intent label.",
+      "severity": "high",
+      "linked_methodology": "function-calling-patterns"
+    },
+    {
+      "id": "fm.context.bleed",
+      "name": "Context bleed",
+      "definition": "Prior conversation leaks into a new session.",
+      "detector": "PII / prior-id appearance in new-session output.",
+      "severity": "high",
+      "linked_methodology": "guardrails-implementation"
+    }
+  ]
+}
+```

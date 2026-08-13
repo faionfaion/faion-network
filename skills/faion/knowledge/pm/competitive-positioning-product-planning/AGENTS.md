@@ -68,6 +68,8 @@
 | `templates/positioning-canvas.md` | April Dunford 6-step positioning canvas |
 | `templates/positioning-lint.sh` | Lint positioning statement for missing elements |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - parent skill: `skills/faion/knowledge/pro/product/product-planning/`
@@ -77,3 +79,21 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, owner present, prior-cycle output available, cycle window fit) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology this cycle or defer.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/positioning-lint.sh`
+
+```bash
+set -euo pipefail
+F="${1:?path}"
+v=0
+grep -qi '## 1. Competitive Alternatives' "$F" || { echo "VIOLATION: missing alternatives section"; v=1; }
+grep -qi 'do nothing\|spreadsheet' "$F" || { echo "VIOLATION: missing 'do nothing'/'spreadsheet' alternative"; v=1; }
+grep -qi 'Quantified Value' "$F" || { echo "VIOLATION: missing quantified value translation"; v=1; }
+grep -qi 'Trigger event' "$F" || { echo "VIOLATION: missing trigger event in best-fit"; v=1; }
+grep -qi 'Positioning Statement' "$F" || { echo "VIOLATION: missing positioning statement"; v=1; }
+exit "$v"
+```

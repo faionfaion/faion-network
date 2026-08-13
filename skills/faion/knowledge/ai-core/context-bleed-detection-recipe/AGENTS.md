@@ -63,6 +63,8 @@
 | `templates/context-bleed-detection-recipe.json` | JSON schema for the incident record output |
 | `templates/context-bleed-detection-recipe.md` | Markdown skeleton for the incident record |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,113 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Three-question tree: (1) preconditions present? - no = skip; yes (2) canary appeared in foreign session? - yes = cross-tenant bleed; no (3) embedding-distance between turn N and N-1 across sessions exceeds threshold? - yes = prior-turn carry-over; no = clean. Terminal branches reference rules in `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/context-bleed-detection-recipe.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.network/schema/context-bleed-detection-recipe.json",
+  "type": "object",
+  "required": [
+    "incident_id",
+    "owner",
+    "bleed_type",
+    "probe_signal",
+    "session_hashes",
+    "threshold",
+    "kill_switch",
+    "version",
+    "detected_at"
+  ],
+  "properties": {
+    "incident_id": {
+      "type": "string",
+      "pattern": "^cbi-[a-z0-9-]+$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!team$|we$|us$|engineering$)"
+    },
+    "bleed_type": {
+      "type": "string",
+      "enum": [
+        "cross-tenant",
+        "prior-turn",
+        "system-drift",
+        "clean"
+      ]
+    },
+    "probe_signal": {
+      "type": "object",
+      "required": [
+        "canary_hit",
+        "embedding_distance",
+        "snapshot_diff"
+      ],
+      "properties": {
+        "canary_hit": {
+          "type": "boolean"
+        },
+        "embedding_distance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 2
+        },
+        "snapshot_diff": {
+          "type": "string"
+        }
+      }
+    },
+    "session_hashes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{16}$"
+      },
+      "minItems": 1
+    },
+    "threshold": {
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0
+    },
+    "kill_switch": {
+      "type": "object",
+      "required": [
+        "scope"
+      ],
+      "properties": {
+        "scope": {
+          "type": "string",
+          "enum": [
+            "worker-pool",
+            "prompt-cache-key",
+            "session-range",
+            "fleet"
+          ]
+        },
+        "target": {
+          "type": "string"
+        },
+        "human_approval": {
+          "type": "boolean"
+        }
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "detected_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
+```

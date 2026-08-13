@@ -67,6 +67,8 @@
 | `templates/_smoke-test.yaml` | Minimum-viable spec |
 | `templates/threat-model.md` | Threat model markdown skeleton |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,66 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes by compliance regime (GDPR / HIPAA / SOC2 / none) to a required hardening level.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/security-config.schema.yaml`
+
+```yaml
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+required: [auth, tls, network, encryption_at_rest, audit, pii]
+properties:
+  auth:
+    type: object
+    required: [enabled, method]
+    properties:
+      enabled: {type: boolean}
+      method: {type: string, enum: [api-key, oidc, mtls]}
+  tls:
+    type: object
+    required: [enabled, min_version]
+    properties:
+      enabled: {type: boolean}
+      min_version: {type: string, enum: ["1.2", "1.3"]}
+  network:
+    type: object
+    required: [binding, public_internet_exposed]
+    properties:
+      binding: {type: string}
+      public_internet_exposed: {type: boolean}
+  encryption_at_rest:
+    type: object
+    required: [enabled]
+    properties:
+      enabled: {type: boolean}
+  audit:
+    type: object
+    required: [enabled, sink]
+    properties:
+      enabled: {type: boolean}
+      sink: {type: string}
+  pii:
+    type: object
+    required: [detection, redaction, retention_days, erasure_sla_hours]
+    properties:
+      retention_days: {type: integer, minimum: 1}
+      erasure_sla_hours: {type: integer, minimum: 1, maximum: 720}
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+auth: {enabled: true, method: api-key}
+tls: {enabled: true, min_version: "1.3"}
+network: {binding: 10.20.30.40:6333, public_internet_exposed: false}
+encryption_at_rest: {enabled: true}
+audit: {enabled: true, sink: "s3://prod-audit/qdrant/"}
+pii:
+  detection: presidio
+  redaction: pseudonymise
+  retention_days: 365
+  erasure_sla_hours: 168
+```

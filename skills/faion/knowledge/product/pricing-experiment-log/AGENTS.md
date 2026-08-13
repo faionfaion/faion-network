@@ -62,6 +62,8 @@
 | `templates/pricing-experiment-log.json` | JSON Schema for the output contract (machine-validatable). |
 | `templates/pricing-experiment-log.md` | Markdown skeleton with the required fields. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,83 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pricing-experiment-log.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/pricing-experiment-log.json",
+  "title": "Pricing Experiment Log Output Contract",
+  "type": "object",
+  "required": [
+    "experiment_id",
+    "hypothesis",
+    "toggle",
+    "baseline",
+    "measurement_window",
+    "observed",
+    "decision",
+    "evidence_links",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "experiment_id": {
+      "type": "string",
+      "description": "unique id"
+    },
+    "hypothesis": {
+      "type": "string",
+      "description": "falsifiable claim with numeric expectation"
+    },
+    "toggle": {
+      "type": "object",
+      "description": "before/after pricing config"
+    },
+    "baseline": {
+      "type": "object",
+      "description": "mrr + conversion% at toggle_at"
+    },
+    "measurement_window": {
+      "type": "object",
+      "description": "ISO start/end locked pre-toggle"
+    },
+    "observed": {
+      "type": "object",
+      "description": "post-window mrr + conversion%"
+    },
+    "decision": {
+      "type": "string",
+      "description": "keep | revert | iterate"
+    },
+    "evidence_links": {
+      "type": "array",
+      "description": "Stripe + dashboard URLs",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "owner": {
+      "type": "string",
+      "description": "named owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```

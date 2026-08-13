@@ -66,6 +66,8 @@
 |------|---------|
 | `templates/feed-schema.json` | JSON Schema draft-07 for both endpoints with citation + pagination. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,32 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability, regulatory regime) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/feed-schema.json`
+
+```json
+{
+  "artefact_id": "methodology-as-json-feed-<client>-<YYYY-MM-DD>",
+  "owner": "<Full Name> <email>",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "inputs_used": [
+    {
+      "name": "<input name>",
+      "source": "<path or URL>"
+    }
+  ],
+  "stub_example": {
+    "actor": "<github-handle>",
+    "diff_hash": "<sha>",
+    "controls": [
+      "CC1.1"
+    ],
+    "approval_link": "<PR review URL>"
+  }
+}
+```

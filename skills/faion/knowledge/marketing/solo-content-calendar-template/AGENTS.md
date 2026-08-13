@@ -61,6 +61,8 @@
 | `templates/solo-content-calendar-template.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -75,3 +77,82 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/solo-content-calendar-template.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/solo-content-calendar-template.json",
+  "title": "Solo Content Calendar Template Output Contract",
+  "type": "object",
+  "required": [
+    "operator",
+    "rows",
+    "primary_channel",
+    "quarterly_review_date",
+    "friday_gate_enabled",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "operator": {
+      "type": "string",
+      "description": "named accountable owner"
+    },
+    "rows": {
+      "type": "array",
+      "description": "exactly 12 rows with week_iso + pain_ref + asset_type + channel + status",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "primary_channel": {
+      "type": "string",
+      "description": "seo|newsletter|x|linkedin|build-in-public"
+    },
+    "quarterly_review_date": {
+      "type": "string",
+      "description": "ISO date for retirement audit",
+      "format": "date"
+    },
+    "friday_gate_enabled": {
+      "type": "boolean",
+      "description": "must be true"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "operator": "sample-operator",
+  "rows": [
+    {
+      "key": "value"
+    }
+  ],
+  "primary_channel": "value",
+  "quarterly_review_date": "2026-05-23",
+  "friday_gate_enabled": true,
+  "version": "sample-version",
+  "last_reviewed": "2026-05-23"
+}
+```

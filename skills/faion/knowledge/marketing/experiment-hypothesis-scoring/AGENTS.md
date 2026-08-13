@@ -69,6 +69,8 @@
 | `templates/scored-hypothesis.json` | JSON example of one scored hypothesis |
 | `templates/rubric.yaml` | Frozen rubric with behavioural anchors per band |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,84 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes from discrepancy-between-raters + threshold signals to the next action (re-score / kill / promote / freeze) and pins the rule from `01-core-rules.xml`. Use it during the calibration step — bypassing it produces drift between cycles.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/scored-hypothesis.json`
+
+```json
+{
+  "hypothesis_id": "hyp-pricing-social-proof-above-fold",
+  "hypothesis": "Moving social proof above the fold on /pricing increases pricing-to-signup conversion.",
+  "rubric_version": "1.0.0",
+  "cycle_id": "2026-Q2",
+  "scores": {
+    "impact": {
+      "band": 4,
+      "evidence": "Pricing is #1 conversion source per dashboard /pa-12"
+    },
+    "confidence": {
+      "band": 4,
+      "evidence": "Comparable site A/B #421 lifted 8%; user-test #12 quote"
+    },
+    "ease": {
+      "band": 3,
+      "evidence": "Ticket FE-201: 1d FE + 2h QA"
+    },
+    "projected_lift_pct": 8.0
+  },
+  "raters": [
+    "@alex",
+    "@beth"
+  ],
+  "discrepancy_resolved": true,
+  "queued": true
+}
+```
+
+### `templates/rubric.yaml`
+
+```yaml
+version: "1.0.0"
+cycle_id: "2026-Q2"
+frozen_at: "2026-04-01"
+thresholds:
+  min_projected_lift_pct: 5
+  min_confidence_band: 3
+axes:
+  impact:
+    - band: 1
+      anchor: "Affects <1% of sessions OR a non-conversion surface"
+    - band: 2
+      anchor: "Affects 1-5% of sessions OR a secondary conversion step"
+    - band: 3
+      anchor: "Affects 5-15% of sessions on a primary conversion surface"
+    - band: 4
+      anchor: "Affects 15-40% on a primary conversion surface (e.g. landing or pricing)"
+    - band: 5
+      anchor: "Affects >40% on the #1 revenue-driving surface"
+  confidence:
+    - band: 1
+      anchor: "Pure guess; no data, no comparable test"
+    - band: 2
+      anchor: "Industry blog or vendor case study only"
+    - band: 3
+      anchor: "Internal qualitative evidence (heatmap, user test)"
+    - band: 4
+      anchor: "Internal A/B test on adjacent surface OR strong qualitative + quantitative"
+    - band: 5
+      anchor: "Internal A/B test on same surface OR prior cycle replication"
+  ease:
+    - band: 1
+      anchor: "Cross-team change; >2 weeks eng + design"
+    - band: 2
+      anchor: "1-2 weeks; multiple teams"
+    - band: 3
+      anchor: "3-5 days FE / BE; QA known"
+    - band: 4
+      anchor: "1-2 days; single owner"
+    - band: 5
+      anchor: "Hours; copy or config flip"
+```

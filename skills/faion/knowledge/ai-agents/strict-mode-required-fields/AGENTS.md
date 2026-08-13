@@ -63,6 +63,8 @@
 | `templates/strict_pydantic.py` | Reference Pydantic 2 model with `ConfigDict(extra="forbid")`, nullable fields, and an `assert_strict_schema()` helper that walks the emitted schema. |
 | `templates/strict.schema.json` | Equivalent hand-rolled JSON Schema that passes the OpenAI strict-mode compiler. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,149 @@
 ## Decision tree
 
 The tree at `content/06-decision-tree.xml` picks the encoding from the field's logical role: hard-required scalar → keep as `T`; sometimes-absent scalar → `T | None = None` (nullable, still required); arbitrary metadata bag → split into typed sub-object + separate audit field; field that can never be present (deprecation) → remove from schema entirely. Use it whenever the question is "how do I express optional under strict mode without violating the FSM-grammar invariant".
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/strict_pydantic.py`
+
+```python
+"""Pydantic template for OpenAI/Azure strict-mode structured outputs.
+
+Key rules wired in:
+  - `model_config = ConfigDict(extra="forbid")` -> additionalProperties: false
+  - Every property is in `required` (Pydantic emits this automatically when
+    every field is declared, including `T | None` ones with a default).
+  - Optionality is encoded as `T | None`, not as a missing field.
+
+Smoke check before shipping:
+
+    from json import dumps
+    print(dumps(Invoice.model_json_schema(), indent=2))
+"""
+from __future__ import annotations
+
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class LineItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    sku: str
+    quantity: int
+    unit_price_usd: str = Field(
+        pattern=r"^\d+\.\d{2}$",
+        description="USD price as decimal string e.g. '19.99'.",
+    )
+
+
+class Invoice(BaseModel):
+    """Strict-mode-compatible invoice extraction shape."""
+
+    model_config = ConfigDict(extra="forbid")
+    invoice_id: str
+    issue_date: str = Field(
+        description="ISO-8601 YYYY-MM-DD. If only month/year shown, use day=01.",
+    )
+    currency: Literal["USD", "EUR", "GBP"]
+    items: list[LineItem]
+    notes: str | None = Field(default=None, description="Free-form note or null.")
+
+
+def assert_strict_schema(model: type[BaseModel]) -> None:
+    """Walk the emitted schema and assert it satisfies strict-mode rules."""
+    schema = model.model_json_schema()
+
+    def _check(node: dict) -> None:
+        if node.get("type") == "object" and "properties" in node:
+            assert node.get("additionalProperties") is False, (
+                f"missing additionalProperties:false in {node.get('title')}"
+            )
+            props = set(node["properties"].keys())
+            req = set(node.get("required", []))
+            assert props == req, (
+                f"required != properties in {node.get('title')}: "
+                f"missing={props - req}"
+            )
+        for value in node.values():
+            if isinstance(value, dict):
+                _check(value)
+
+    _check(schema)
+    for defn in schema.get("$defs", {}).values():
+        _check(defn)
+```
+
+### `templates/strict.schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "purpose: hand-rolled JSON Schema that passes the OpenAI strict-mode compiler\nconsumes: nothing (this IS the schema artifact)\nproduces: strict-mode-submittable response_format JSON\ndepends-on: openai >= 1.50, Azure 2024-08+ parse API, Anthropic tool-use 2026-03+\ntoken-budget-impact: ~250 tokens to render verbatim in agent context",
+  "title": "Invoice",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "invoice_id",
+    "issue_date",
+    "currency",
+    "items",
+    "notes"
+  ],
+  "properties": {
+    "invoice_id": {
+      "type": "string"
+    },
+    "issue_date": {
+      "type": "string",
+      "description": "ISO-8601 YYYY-MM-DD."
+    },
+    "currency": {
+      "type": "string",
+      "enum": [
+        "USD",
+        "EUR",
+        "GBP"
+      ]
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/LineItem"
+      }
+    },
+    "notes": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Free-form note or null."
+    }
+  },
+  "$defs": {
+    "LineItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sku",
+        "quantity",
+        "unit_price_usd"
+      ],
+      "properties": {
+        "sku": {
+          "type": "string"
+        },
+        "quantity": {
+          "type": "integer"
+        },
+        "unit_price_usd": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d{2}$"
+        }
+      }
+    }
+  }
+}
+```

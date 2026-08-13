@@ -73,6 +73,8 @@
 | `templates/wbs-validate.py` | Helper used by Step 6 to validate weight + 8-80 against wbs.yaml |
 | `templates/_smoke-test.yaml` | Minimum-viable filled `WBS` for validator self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,3 +90,130 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree decides when to: (a) split a leaf for 8-80, (b) merge a too-small leaf, (c) reject a verb-named node, (d) add a missing overhead branch, or (e) refuse to renumber. Every leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/wbs-validate.py`
+
+```python
+"""Validate wbs.yaml: 100% rule (weight_pct children sum) + 8-80h leaf rule.
+
+Input YAML structure:
+  items:
+    - id: "1"
+      name: "Project Management"
+      weight_pct: 15
+      children:
+        - id: "1.1"
+          name: "Planning Documentation"
+          effort_hours: 20
+"""
+import sys
+import yaml
+
+REQUIRED_PACKAGES = {
+    "project management", "qa", "quality", "deployment",
+    "documentation", "training", "transition",
+}
+ERR = []
+
+
+def walk(node):
+    children = node.get("children", [])
+    if children:
+        weights = [c.get("weight_pct", 0) for c in children]
+        total = sum(weights)
+        if abs(total - 100) > 0.5:
+            ERR.append(
+                f"{node['id']} '{node['name']}': children sum to {total}%, expected 100"
+            )
+        for child in children:
+            walk(child)
+    else:
+        hours = node.get("effort_hours")
+        if hours is None:
+            ERR.append(f"{node['id']} '{node['name']}': leaf missing effort_hours")
+        elif not (8 <= hours <= 80):
+            ERR.append(
+                f"{node['id']} '{node['name']}': effort {hours}h violates 8-80 rule"
+            )
+
+
+def check_overhead(nodes):
+    all_names = set()
+
+    def collect(n):
+        all_names.add(n["name"].lower())
+        for c in n.get("children", []):
+            collect(c)
+
+    for n in nodes:
+        collect(n)
+
+    for pkg in REQUIRED_PACKAGES:
+        if not any(pkg in name for name in all_names):
+            ERR.append(f"WBS: missing required overhead package '{pkg}'")
+
+
+def main(path):
+    doc = yaml.safe_load(open(path))
+    items = doc.get("items", doc) if isinstance(doc, dict) else doc
+    for top in items:
+        walk(top)
+    check_overhead(items)
+    if ERR:
+        print("\n".join(f"[FAIL] {e}" for e in ERR))
+        sys.exit(1)
+    print("WBS valid")
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: wbs-validate.py <wbs.yaml>")
+        sys.exit(2)
+    main(sys.argv[1])
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+items:
+  - id: "1"
+    name: "Project Management"
+    level: 1
+    kind: "deliverable"
+    weight_pct: 12
+  - id: "2"
+    name: "Authentication Module"
+    level: 1
+    kind: "deliverable"
+    weight_pct: 22
+  - id: "3"
+    name: "Quality Assurance"
+    level: 1
+    kind: "deliverable"
+    weight_pct: 18
+  - id: "4"
+    name: "Deployment"
+    level: 1
+    kind: "deliverable"
+    weight_pct: 14
+  - id: "5"
+    name: "Documentation"
+    level: 1
+    kind: "deliverable"
+    weight_pct: 12
+  - id: "6"
+    name: "Training"
+    level: 1
+    kind: "deliverable"
+    weight_pct: 11
+  - id: "7"
+    name: "Transition"
+    level: 1
+    kind: "deliverable"
+    weight_pct: 11
+```

@@ -63,6 +63,8 @@
 |------|---------|
 | `templates/mlp-pipeline.py` | Sequential 5-mode pipeline coordinator with human-checkpoint pause. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,35 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` first asks whether this is a new-product scope or MVP→MLP upgrade. New-product branch checks ≥3 comparables → run scope-analyzer. MLP branch checks VCS clean + PM available → run sequential pipeline. B2B vs B2C decides dimension weights (B2B: trust+ease > delight+personality).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/mlp-pipeline.py`
+
+```python
+"""Sequential five-mode MLP pipeline coordinator.
+
+Runs faion-mlp-agent across all 5 modes in order.
+Returns per-mode results; human review required between propose and update.
+"""
+
+
+def run_mlp_pipeline(project_path: str, product_type: str) -> list[dict]:
+    """Run all 5 MLP modes sequentially; return results per mode.
+
+    IMPORTANT: pause after mode:propose for human feature selection
+    before allowing mode:update to proceed.
+    """
+    modes = ["analyze", "find-gaps", "propose", "update", "plan"]
+    results = []
+    for mode in modes:
+        prompt = f"mode: {mode}\nproject_path: {project_path}"
+        if mode == "propose":
+            prompt += f"\nproduct_type: {product_type}"
+        # Invoke faion-mlp-agent with prompt, store result.
+        # Pass prior result as context for the next mode.
+        results.append({"mode": mode, "prompt": prompt, "status": "pending"})
+    return results
+```

@@ -64,6 +64,8 @@
 | `templates/registration.cs` | Hosted-service registration snippet for Program.cs |
 | `templates/_smoke-test.cs` | Filled-in minimal queue consumer for a Users.Created topic |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,119 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/queue-consumer.cs`
+
+```csharp
+// BackgroundService + bounded Channel<T> producer/consumer skeleton.
+// Replace TItem, TService, and TQueue with your domain types.
+
+using System.Threading.Channels;
+
+public interface ITQueue
+{
+    ValueTask EnqueueAsync(TItem item, CancellationToken ct = default);
+}
+
+public class TQueue : ITQueue
+{
+    private readonly Channel<TItem> _channel;
+    public TQueue(Channel<TItem> channel) => _channel = channel;
+
+    public async ValueTask EnqueueAsync(TItem item, CancellationToken ct = default)
+        => await _channel.Writer.WriteAsync(item, ct);
+}
+
+public class TProcessor : BackgroundService
+{
+    private readonly IServiceProvider _sp;
+    private readonly ILogger<TProcessor> _logger;
+    private readonly Channel<TItem> _channel;
+
+    public TProcessor(IServiceProvider sp, ILogger<TProcessor> logger, Channel<TItem> channel)
+    {
+        _sp = sp;
+        _logger = logger;
+        _channel = channel;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        await foreach (var item in _channel.Reader.ReadAllAsync(stoppingToken))
+        {
+            try
+            {
+                using var scope = _sp.CreateScope();
+                var svc = scope.ServiceProvider.GetRequiredService<TService>();
+                await svc.ProcessAsync(item, stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to process item {Item}", item);
+            }
+        }
+    }
+}
+```
+
+### `templates/registration.cs`
+
+```csharp
+// Program.cs — registration for Channel<T>, queue abstraction, and hosted services.
+// Adjust TItem, TQueue, and TProcessor to your domain types.
+
+using System.Threading.Channels;
+
+// Bounded channel — capacity 1024, block producer when full
+builder.Services.AddSingleton(_ => Channel.CreateBounded<TItem>(
+    new BoundedChannelOptions(1024) { FullMode = BoundedChannelFullMode.Wait }));
+
+// Queue abstraction (singleton — shares the channel)
+builder.Services.AddSingleton<ITQueue, TQueue>();
+
+// Hosted services
+builder.Services.AddHostedService<TProcessor>();
+builder.Services.AddHostedService<CleanupService>(); // periodic if needed
+```
+
+### `templates/_smoke-test.cs`
+
+```csharp
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace Faion.Sample;
+
+public sealed class SampleBackgroundService(ILogger<SampleBackgroundService> log) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                // 1. dequeue work unit (idempotency-keyed)
+                // 2. process with retry policy
+                // 3. ack
+                await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                log.LogError(ex, "work unit failed");
+            }
+        }
+    }
+}
+```

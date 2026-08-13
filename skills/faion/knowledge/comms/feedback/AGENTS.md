@@ -69,6 +69,8 @@
 | `templates/positive-feedback.txt` | SBI positive recognition skeleton |
 | `templates/asking-for-feedback.txt` | Prompt to invite feedback using LEARN-ready framing |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,87 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes by direction (giving / receiving) and, for giving, by the sign of the impact to decide SBI vs SBII and the honesty cross-check.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/constructive-feedback.txt`
+
+```text
+# Constructive Feedback Template (SBI)
+
+"[Name], do you have 5 minutes? I have some feedback.
+
+In [SITUATION / specific context],
+when you [BEHAVIOR / observable action],
+the impact was [NEGATIVE EFFECT / concrete consequence].
+
+Going forward, could you [ALTERNATIVE BEHAVIOR]?
+What do you think?"
+
+---
+
+# Example
+
+"Jordan, do you have 5 minutes? I have some feedback.
+
+In the code review yesterday,
+when you approved the PR without comments,
+the impact was that a bug made it to staging and QA had to work overtime.
+
+Going forward, could you leave at least one comment noting what you checked?
+What do you think?"
+```
+
+### `templates/positive-feedback.txt`
+
+```text
+# Positive Feedback Template (EEC)
+
+"Hey [Name], quick positive feedback:
+
+In [SITUATION / specific context],
+when you [BEHAVIOR / observable action],
+[POSITIVE EFFECT / concrete impact on team, project, or person].
+
+Keep it up — [why this matters or what to repeat]."
+
+---
+
+# Example
+
+"Hey Alex, quick positive feedback:
+
+In yesterday's client demo,
+when you opened with the customer problem story,
+the client immediately understood why this matters and asked for a proposal.
+
+Keep it up — that hook framing is exactly what we need in every demo."
+```
+
+### `templates/asking-for-feedback.txt`
+
+```text
+# Asking for Feedback Template
+
+"I'm working on improving [SPECIFIC AREA].
+
+Could you give me feedback on [SPECIFIC THING — one behavior or output]?
+
+Specifically:
+- What's working well that I should keep doing?
+- What's one thing I could do differently?"
+
+---
+
+# Example
+
+"I'm working on improving how I communicate technical decisions to non-technical stakeholders.
+
+Could you give me feedback on my last architecture proposal presentation?
+
+Specifically:
+- What's working well that I should keep doing?
+- What's one thing I could do differently to make it clearer?"
+```

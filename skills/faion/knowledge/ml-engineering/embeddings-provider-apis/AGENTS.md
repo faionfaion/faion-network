@@ -69,6 +69,8 @@
 | `templates/cohere-adapter.py` | Cohere provider adapter |
 | `templates/local-adapter.py` | sentence-transformers local adapter |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,157 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-unified-client`, `r2-input-type-explicit`, `r3-batched-calls`, `r4-dim-truncation-supported`, `r5-fallback-chain` from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/embeddings-client.py`
+
+```python
+"""Skeleton for the `embeddings-provider-apis` template `embeddings-client.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "embeddings-provider-apis"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/openai-adapter.py`
+
+```python
+"""Skeleton for the `embeddings-provider-apis` template `openai-adapter.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "embeddings-provider-apis"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/voyage-adapter.py`
+
+```python
+"""Skeleton for the `embeddings-provider-apis` template `voyage-adapter.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "embeddings-provider-apis"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/cohere-adapter.py`
+
+```python
+"""Skeleton for the `embeddings-provider-apis` template `cohere-adapter.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "embeddings-provider-apis"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/local-adapter.py`
+
+```python
+"""Skeleton for the `embeddings-provider-apis` template `local-adapter.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "embeddings-provider-apis"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```

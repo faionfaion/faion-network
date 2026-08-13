@@ -67,6 +67,8 @@
 | `templates/scaffold_focus_areas.sh` | Shell helper that scaffolds an empty ADR markdown for the 5 focus areas. |
 | `templates/adr-skeleton.md` | Markdown skeleton ADR listing the 5 focus areas with practice tables. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - parent skill: `pro/pm/` (see neighbouring methodologies).
@@ -80,3 +82,112 @@ See `content/06-decision-tree.xml`. The tree maps observable signals (input
 preconditions, source-of-truth access, named-consumer presence) onto a concrete
 verdict — apply the methodology, downgrade to draft, or skip — with each leaf
 referencing a rule id from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/pm-framework-focus-areas.json",
+  "type": "object",
+  "required": [
+    "adr_id",
+    "project_id",
+    "focus_areas",
+    "decision_owner",
+    "review_due"
+  ],
+  "properties": {
+    "adr_id": {
+      "type": "string"
+    },
+    "project_id": {
+      "type": "string"
+    },
+    "focus_areas": {
+      "type": "object",
+      "required": [
+        "initiating",
+        "planning",
+        "executing",
+        "monitoring_and_controlling",
+        "closing"
+      ],
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "practices"
+        ],
+        "properties": {
+          "practices": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "evidence"
+              ]
+            }
+          }
+        }
+      }
+    },
+    "decision_owner": {
+      "type": "string"
+    },
+    "review_due": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```
+
+### `templates/scaffold_focus_areas.sh`
+
+```bash
+# scaffold_focus_areas.sh — Create a docs/ tree with one folder and default
+# artifacts per PMBOK 8 focus area.
+#
+# Usage: ./scaffold_focus_areas.sh [root-dir]
+# Default root-dir: docs
+#
+# Output: folder tree under <root-dir>/ with placeholder files.
+set -euo pipefail
+
+ROOT="${1:-docs}"
+mkdir -p "$ROOT"
+
+for fa in initiating planning executing monitoring-controlling closing; do
+    d="$ROOT/$fa"
+    mkdir -p "$d"
+    case "$fa" in
+        initiating)
+            files=(charter.md vision.md stakeholder-register.md)
+            ;;
+        planning)
+            files=(spec.md design.md risk-register.md plan.md)
+            ;;
+        executing)
+            files=(decisions.md status-reports/.gitkeep)
+            ;;
+        monitoring-controlling)
+            files=(metrics.md change-log.md burn-up.md)
+            ;;
+        closing)
+            files=(lessons-learned.md acceptance.md final-report.md)
+            ;;
+    esac
+    for f in "${files[@]}"; do
+        mkdir -p "$(dirname "$d/$f")"
+        touch "$d/$f"
+    done
+done
+
+echo "Scaffolded focus areas under $ROOT/"
+```

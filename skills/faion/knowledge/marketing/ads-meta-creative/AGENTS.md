@@ -68,6 +68,8 @@
 | `templates/variant-matrix.csv` | Variant matrix CSV header for production hand-off. |
 | `templates/creative-brief.json` | Schema-conformant sample artefact used by validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,48 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/variant-matrix.csv`
+
+```csv
+variant_id,format,hook_variant,visual_concept,duration_sec,refresh_due
+v1,9:16,still planning by hand?,UGC selfie,8,2026-05-30
+```
+
+### `templates/creative-brief.json`
+
+```json
+{
+  "funnel_stage": "mofu",
+  "hook": "Still planning sprints by hand?",
+  "value_prop": "Ship 10x faster with SDD",
+  "cta": "Get the playbook",
+  "variants": [
+    {
+      "id": "v1",
+      "format": "9:16",
+      "hook_variant": "still planning by hand?"
+    },
+    {
+      "id": "v2",
+      "format": "4:5",
+      "hook_variant": "your roadmap is a graveyard"
+    },
+    {
+      "id": "v3",
+      "format": "1:1",
+      "hook_variant": "shipped 3x faster with SDD"
+    }
+  ],
+  "formats": [
+    "1:1",
+    "4:5",
+    "9:16"
+  ],
+  "refresh_cadence_days": 7
+}
+```

@@ -60,6 +60,8 @@
 | `templates/judge-prompt-relevance.txt` | Answer/context relevance judge prompt. |
 | `templates/ragas-runner.py` | RAGAS wrapper that exports JSONL. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -75,3 +77,53 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` selects between full-Triad, sampled-Triad, or skip based on context and judge availability. Each leaf references a rule id from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/judge-prompt-faithfulness.txt`
+
+```text
+You are evaluating whether the ANSWER is fully supported by the CONTEXT.
+Return ONLY a float between 0 and 1 (no other text).
+
+CONTEXT:
+{context}
+
+ANSWER:
+{answer}
+
+Score:
+```
+
+### `templates/judge-prompt-relevance.txt`
+
+```text
+Return JSON only: {"answer_relevance": <0-1>, "context_relevance": <0-1>}
+
+QUERY: {query}
+CONTEXT: {context}
+ANSWER: {answer}
+```
+
+### `templates/ragas-runner.py`
+
+```python
+from typing import List, Dict
+import json
+
+def run(records: List[Dict], judge_model: str, out_path: str) -> None:
+    from ragas import evaluate
+    from ragas.metrics import faithfulness, answer_relevancy, context_precision
+    ds = evaluate(records, metrics=[faithfulness, answer_relevancy, context_precision])
+    with open(out_path, 'w', encoding='utf-8') as f:
+        for row, rec in zip(ds.to_pandas().itertuples(), records):
+            f.write(json.dumps({
+                'query_id': rec['query_id'],
+                'judge_model': judge_model,
+                'faithfulness': float(row.faithfulness),
+                'answer_relevance': float(row.answer_relevancy),
+                'context_relevance': float(row.context_precision),
+            }) + '\n')
+```

@@ -71,6 +71,8 @@
 | `templates/fork-pin-playbook.md` | Step-by-step fork procedure |
 | `templates/upstream-pr-template.md` | PR description template |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -91,3 +93,58 @@ See `content/06-decision-tree.xml`. The tree starts from the 5-axis score and ro
 ## Procedure
 
 See `content/04-procedure.xml`. The procedure operationalises the tree: score → compute → override → write decision record → schedule sunset (for FORK-PIN). The procedure is the link between this AGENTS envelope and the FixDecision artefact produced.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/fix-decision.json`
+
+```json
+{
+  "decision_id": "00000000-0000-0000-0000-000000000000",
+  "library": {
+    "name": "<library-name>",
+    "ecosystem": "npm",
+    "current_version": "0.0.0",
+    "bug_summary": "<one-line description>",
+    "repro_link": "https://example.com/repro"
+  },
+  "axes": [
+    {
+      "name": "urgency",
+      "score": 0,
+      "evidence": "<concrete signal>"
+    },
+    {
+      "name": "blast",
+      "score": 0,
+      "evidence": "<concrete signal>"
+    },
+    {
+      "name": "patch_size",
+      "score": 0,
+      "evidence": "<LOC + files>"
+    },
+    {
+      "name": "upstream_responsiveness",
+      "score": 0,
+      "evidence": "<median merge time>"
+    },
+    {
+      "name": "strategic_dependency",
+      "score": 0,
+      "evidence": "<core forever? next-quarter swap?>"
+    }
+  ],
+  "total_score": 0,
+  "action": "workaround",
+  "action_playbook_url": "",
+  "strategic_override_applied": false,
+  "ban_list_blocked": false,
+  "sunset_criterion": "",
+  "rollback_plan": "<how do we revert if this turns out wrong>",
+  "decided_by": "engineer@faion.net",
+  "decided_at": "2026-05-23T00:00:00Z"
+}
+```

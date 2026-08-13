@@ -67,6 +67,8 @@
 | `templates/chain-hardening-patch.py` | Working `with_fallbacks` + `with_retry` patch. |
 | `templates/_smoke-test.yaml` | Minimum viable profile. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,81 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Root question: provider count. ≥2 providers → wire `with_fallbacks`. Single → wire `with_retry` with exponential backoff. Then branches on uptime target (>99.5% → demand cross-region fallback + batched warm-pool) and on dep policy (locked → pin exact + hash; floating → at minimum upper-bound minor versions).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/reliability-profile.yaml`
+
+```yaml
+target_uptime: 0.999       # 0..1
+latency_budget_ms: 1500
+providers:                 # ordered: first is primary
+  - anthropic
+  - openai
+dep_policy: locked         # locked | floating
+notes: |
+  Tier-1 prod chain; lockfile committed; fallback to OpenAI on 5xx.
+```
+
+### `templates/chain-hardening-patch.py`
+
+```python
+"""Apply with_fallbacks + with_retry + configurable_fields to a chain.
+
+Smoke:
+    python chain-hardening-patch.py --self-test
+"""
+from __future__ import annotations
+
+
+def harden(primary, backup, prompt, parser):
+    """Compose a hardened chain.
+
+    Returns a Runnable safe for production.
+    """
+    from langchain_core.runnables import ConfigurableField
+
+    model = primary.configurable_fields(
+        model=ConfigurableField(id="model"),
+        temperature=ConfigurableField(id="temperature"),
+    ).with_fallbacks([backup])
+
+    chain = (prompt | model | parser).with_retry(
+        stop_after_attempt=3,
+        wait_exponential_jitter=True,
+        retry_if_exception_type=(Exception,),
+    )
+    return chain
+
+
+def _self_test() -> int:
+    class FakeRunnable:
+        def configurable_fields(self, **kw): return self
+        def with_fallbacks(self, lst): return self
+        def __or__(self, other): return self
+        def with_retry(self, **kw): return self
+
+    out = harden(FakeRunnable(), FakeRunnable(), FakeRunnable(), FakeRunnable())
+    return 0 if out is not None else 1
+
+
+if __name__ == "__main__":
+    import sys
+    if "--self-test" in sys.argv:
+        raise SystemExit(_self_test())
+    if "--help" in sys.argv:
+        print(__doc__)
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+target_uptime: 0.999
+latency_budget_ms: 1500
+providers:
+  - anthropic
+  - openai
+dep_policy: locked
+```

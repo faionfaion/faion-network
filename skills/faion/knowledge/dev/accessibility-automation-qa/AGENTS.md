@@ -67,6 +67,8 @@
 | `templates/spec.json` | JSON skeleton for the spec artefact |
 | `templates/spec.md` | Markdown skeleton for the spec artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,55 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/spec.json`
+
+```json
+{
+  "steps": [
+    {
+      "id": "S1",
+      "input": "signup flow",
+      "owner": "bob",
+      "exit_criterion": "axe-core blocking=0",
+      "output_location": "tests/a11y/signup.spec.ts"
+    },
+    {
+      "id": "S2",
+      "input": "checkout flow",
+      "owner": "bob",
+      "exit_criterion": "axe-core blocking=0",
+      "output_location": "tests/a11y/checkout.spec.ts"
+    },
+    {
+      "id": "S3",
+      "input": "search flow",
+      "owner": "bob",
+      "exit_criterion": "axe-core blocking=0",
+      "output_location": "tests/a11y/search.spec.ts"
+    },
+    {
+      "id": "S4",
+      "input": "dashboard",
+      "owner": "bob",
+      "exit_criterion": "Lighthouse a11y \u226595",
+      "output_location": "tests/a11y/dashboard.spec.ts"
+    }
+  ],
+  "decision_branches": [
+    {
+      "id": "DB1",
+      "signal": "axe-core rule color-contrast severity=critical",
+      "if_true": "block PR",
+      "if_false": "ticket"
+    }
+  ],
+  "owner_of_playbook": "bob@co",
+  "deviation_log_reference": "docs/a11y/deviations.md",
+  "wcag_floor": "2.1-AA"
+}
+```

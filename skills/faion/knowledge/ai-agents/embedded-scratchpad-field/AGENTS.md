@@ -60,6 +60,8 @@
 | `templates/reasoning-before-verdict.py` | Pydantic schema with reasoning field before confidence and decision |
 | `templates/_smoke-test.json` | Minimum valid verdict object for the validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -75,3 +77,60 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The root question asks whether the task is multi-step and benefits from CoT. Branches then pick the scratchpad variant by task shape (decision → `reasoning`, multi-step → `plan_steps`, classification → `evidence`, math → `tab_cot`, free-form → `scratchpad`). Each leaf maps to a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/reasoning-before-verdict.py`
+
+```python
+"""Reasoning-before-verdict template.
+
+Schema field order = autoregressive generation order. The reasoning field
+appears first so the model writes its working notes before committing to
+confidence and decision. Strict mode + this schema reliably lifts accuracy
+on multi-criteria decision tasks vs an answer-only schema.
+"""
+
+from __future__ import annotations
+
+from typing import Literal
+
+from pydantic import BaseModel, ConfigDict, Field
+
+
+class Verdict(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    reasoning: str = Field(
+        description=(
+            "Step-by-step analysis of the input against each criterion. "
+            "Cap at 200 words. Cover: which criteria are met, which are "
+            "borderline, which are missed."
+        ),
+        min_length=4,
+        max_length=2000,
+    )
+    confidence: Literal["low", "medium", "high"] = Field(
+        description="Confidence in the decision below; medium if any criterion is borderline."
+    )
+    decision: Literal["approve", "reject"] = Field(
+        description="Final call. Must follow from reasoning above."
+    )
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "smallest valid verdict object for the validator",
+  "_consumes": "nothing",
+  "_produces": "example Verdict matching the schema",
+  "_depends_on": "content/01-core-rules.xml, content/02-output-contract.xml",
+  "_token_budget_impact": "~80 tokens",
+  "reasoning": "Three of four criteria are clearly met; the fourth is borderline but precedent supports approval.",
+  "confidence": "medium",
+  "decision": "approve"
+}
+```

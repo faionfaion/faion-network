@@ -72,6 +72,8 @@
 | `templates/alert-event.json` | Alert event schema skeleton |
 | `templates/_smoke-test.json` | Minimum viable filled `MoralePulse` for validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,95 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (team size, responses received, response rate, axis medians, prior-alert state) to `suppress`, `report-only`, `alert`, or `pause-survey`. Every leaf references a rule from `01-core-rules.xml` so the action is always grounded in a checkable invariant.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/morale-pulse.json`
+
+```json
+{
+  "team_id": "",
+  "sprint_id": "",
+  "week_iso": "",
+  "responses_received": 0,
+  "team_size": 0,
+  "response_rate": 0,
+  "anonymity_threshold_met": false,
+  "scores": {
+    "enps": {
+      "value": 0,
+      "promoter_pct": 0,
+      "passive_pct": 0,
+      "detractor_pct": 0
+    },
+    "workload": {
+      "mean": 0,
+      "median": 0
+    },
+    "autonomy": {
+      "mean": 0,
+      "median": 0
+    },
+    "clarity": {
+      "mean": 0,
+      "median": 0
+    }
+  },
+  "alerts_triggered": []
+}
+```
+
+### `templates/alert-event.json`
+
+```json
+{
+  "alert_id": "",
+  "trigger": "enps_drop",
+  "evidence": {
+    "prior": 0,
+    "current": 0,
+    "delta": 0,
+    "threshold": -20
+  },
+  "action_required": "one_on_ones_within_48h",
+  "due_by": "",
+  "responsible_pm": ""
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "team_id": "smoke",
+  "sprint_id": "S14",
+  "week_iso": "2026-W21",
+  "responses_received": 5,
+  "team_size": 6,
+  "response_rate": 0.83,
+  "anonymity_threshold_met": true,
+  "scores": {
+    "enps": {
+      "value": -10,
+      "promoter_pct": 30,
+      "passive_pct": 30,
+      "detractor_pct": 40
+    },
+    "workload": {
+      "mean": 6.5,
+      "median": 7
+    },
+    "autonomy": {
+      "mean": 7.0,
+      "median": 7
+    },
+    "clarity": {
+      "mean": 7.5,
+      "median": 8
+    }
+  },
+  "alerts_triggered": []
+}
+```

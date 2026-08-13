@@ -69,6 +69,8 @@
 | `templates/case-study.txt` | Pyramid case-study skeleton with outcome-first headline |
 | `templates/presentation-outline.txt` | SCQA / Pixar presentation outline skeleton |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,115 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes by message type (decision / change / case-study) and the presence of a causal chain to a framework, each leaf referencing a rule from 01-core-rules.xml.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/executive-summary.txt`
+
+```text
+# Executive Summary Template (Pyramid Structure)
+
+## Recommendation
+[One sentence: what you recommend doing]
+
+## Context
+[2-3 sentences: situation (what is true today) and complication (what changed or threatens)]
+
+## Key Points
+1. [Argument 1 + supporting evidence with number]
+2. [Argument 2 + supporting evidence with number]
+3. [Argument 3 + supporting evidence with number]
+
+## Next Steps
+[Specific actions needed, who does what, by when]
+
+---
+
+# Example
+
+## Recommendation
+We should migrate our infrastructure to cloud hosting by Q3.
+
+## Context
+Our on-premise setup handles current load adequately. However, projected growth of 40% over 12 months will exceed capacity, and our current setup requires 3 weeks of engineering time per year for maintenance.
+
+## Key Points
+1. Cost: Cloud TCO is 40% lower at projected scale (based on AWS pricing calculator with our usage profile)
+2. Scalability: Current servers reach 80% CPU during peak; cloud auto-scaling handles 10x spikes automatically
+3. Speed: Deployment time drops from 3 hours to 15 minutes with managed CI/CD
+
+## Next Steps
+- Ruslan reviews cloud provider options by May 15
+- Engineering estimates migration effort by May 22
+- Decision meeting scheduled for May 29
+```
+
+### `templates/case-study.txt`
+
+```text
+# Case Study Template (Pixar Causal Structure)
+
+## Challenge
+[What problem did the customer/team face? Include the scale: how long, how costly, how frequent]
+
+## Solution
+[What approach was taken? 2-3 sentences, no technical depth required]
+
+## Results
+- [Metric 1: X% improvement in Y — before vs after]
+- [Metric 2: $X saved or earned]
+- [Metric 3: Time or effort reduction]
+
+## Quote
+"[Customer or team member testimonial]" — [Name, Title]
+
+---
+
+# Example
+
+## Challenge
+Our content team spent 10 hours per week manually compiling analytics reports from 5 different tools, leaving no time for actual analysis or strategy.
+
+## Solution
+We built an automated dashboard that pulls from all sources into a single view, with weekly email digests for stakeholders.
+
+## Results
+- Reporting time: 10 hours/week → 1 hour/week (90% reduction)
+- Analysis output: 0 strategic recommendations per month → 4 per month
+- Stakeholder satisfaction: NPS from 20 to 65
+
+## Quote
+"I finally have time to think about what the data means instead of just collecting it." — Maria, Head of Content
+```
+
+### `templates/presentation-outline.txt`
+
+```text
+# Presentation Outline Template (4 Sections)
+
+## 1. HOOK (1 slide)
+[Surprising fact, bold contradiction, or specific story — not an agenda]
+
+## 2. PROBLEM (2-3 slides)
+Situation: [What is true today — shared context]
+Complication: [What changed or what is at risk]
+Impact: [Concrete consequence if not addressed — with number]
+
+## 3. SOLUTION (3-5 slides)
+Approach: [High-level how without deep technical detail]
+How it works: [Just enough mechanism to build credibility]
+Proof: [Case study, benchmark, or pilot result]
+
+## 4. CALL TO ACTION (1 slide)
+Ask: [Specific decision — budget / approval / next meeting]
+Timeline: [When a decision is needed and why]
+
+---
+
+# Notes
+- One key point per slide — if you have more, split
+- Slides support what you say; never read from slides
+- End with the ask visible on screen during discussion
+```

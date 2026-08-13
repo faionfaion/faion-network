@@ -63,6 +63,8 @@
 | `templates/async-standup-methodology.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/async-standup-methodology.md` | Markdown skeleton for human-readable artefact rendering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,30 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/async-standup-methodology.json`
+
+```json
+{
+  "artefact_id": "async-standup-2026-q2",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "channel": "#daily-standup",
+  "post_window_local": "by 11:00 local",
+  "participants": [
+    "@ruslan",
+    "@contractor-1",
+    "@contractor-2"
+  ],
+  "blocker_policy": {
+    "escalation_owner": "@ruslan",
+    "eta_hours": 24
+  },
+  "weekly_rollup_day": "Friday",
+  "owner": "@ruslan"
+}
+```

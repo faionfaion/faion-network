@@ -72,6 +72,8 @@
 | `templates/circuit-breaker.py` | Circuit breaker (CLOSED → OPEN → HALF_OPEN → CLOSED) for inter-service calls. |
 | `templates/message-bus.py` | Async message bus for inter-service events (publish + subscribe). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,104 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree gates microservices on team count, scaling asymmetry, and ops maturity; otherwise modular monolith is the better default.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/service-main.py`
+
+```python
+"""
+from fastapi import FastAPI
+from .infra.circuit_breaker import CircuitBreaker
+from .infra.db import owned_db_session
+
+app = FastAPI(title="orders-service")
+
+_payment_breaker = CircuitBreaker(failure_threshold=5, reset_after_sec=30)
+
+
+@app.get("/orders/{order_id}")
+async def get_order(order_id: str):
+    async with owned_db_session() as db:
+        # only this service writes to this DB
+        return await db.fetch_one("SELECT id, status FROM orders WHERE id = $1", order_id)
+
+
+@app.post("/orders/{order_id}/charge")
+async def charge(order_id: str):
+    return await _payment_breaker.call(_charge_payment, order_id)
+
+
+async def _charge_payment(order_id: str):
+    # HTTP call to payments service; never import payments code directly
+    ...
+```
+
+### `templates/circuit-breaker.py`
+
+```python
+"""
+from datetime import datetime, timedelta
+from enum import Enum
+from typing import Awaitable, Callable, TypeVar
+
+T = TypeVar("T")
+
+
+class State(str, Enum):
+    CLOSED = "closed"
+    OPEN = "open"
+    HALF_OPEN = "half_open"
+
+
+class CircuitBreaker:
+    def __init__(self, failure_threshold: int = 5, reset_after_sec: int = 30) -> None:
+        self.state = State.CLOSED
+        self.failures = 0
+        self.opened_at: datetime | None = None
+        self.failure_threshold = failure_threshold
+        self.reset_after = timedelta(seconds=reset_after_sec)
+
+    async def call(self, fn: Callable[..., Awaitable[T]], *args, **kw) -> T:
+        if self.state == State.OPEN:
+            if self.opened_at and datetime.utcnow() - self.opened_at >= self.reset_after:
+                self.state = State.HALF_OPEN
+            else:
+                raise RuntimeError("circuit open")
+        try:
+            result = await fn(*args, **kw)
+        except Exception:
+            self.failures += 1
+            if self.failures >= self.failure_threshold:
+                self.state = State.OPEN
+                self.opened_at = datetime.utcnow()
+            raise
+        else:
+            self.failures = 0
+            self.state = State.CLOSED
+            return result
+```
+
+### `templates/message-bus.py`
+
+```python
+"""
+from typing import Awaitable, Callable, Dict, List
+
+
+Handler = Callable[[dict], Awaitable[None]]
+
+
+class MessageBus:
+    def __init__(self) -> None:
+        self._subs: Dict[str, List[Handler]] = {}
+
+    def subscribe(self, topic: str, handler: Handler) -> None:
+        self._subs.setdefault(topic, []).append(handler)
+
+    async def publish(self, topic: str, payload: dict) -> None:
+        for h in self._subs.get(topic, []):
+            await h(payload)
+```

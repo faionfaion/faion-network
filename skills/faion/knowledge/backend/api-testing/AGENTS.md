@@ -72,6 +72,8 @@
 | `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-api-testing.py --self-test` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,3 +90,42 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes (layer mix, external consumer presence, spec maturity) to full-pyramid / minimal-unit-plus-spec-conformance / contract-only. Every leaf cites a rule from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, picks any variant, and ties the chosen leaf to the rule the orchestrator must enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "artefact_id": "api-testing-2026-05-23",
+  "owner": "ruslan@faion.net",
+  "last_touched": "2026-05-23T12:00:00Z",
+  "template_version": "1.1.0",
+  "status": "ready_for_review",
+  "evidence": [
+    {
+      "source": "https://example.com/source-1",
+      "citation": "verbatim quote from source"
+    }
+  ],
+  "api_id": "draft",
+  "pyramid": {
+    "key": "value"
+  },
+  "frameworks": [
+    "draft-item"
+  ],
+  "negative_coverage": {
+    "key": "value"
+  },
+  "contract_tests": {
+    "key": "value"
+  },
+  "spec_conformance_tool": "draft",
+  "ci_jobs": [
+    "draft-item"
+  ]
+}
+```

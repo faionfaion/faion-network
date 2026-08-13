@@ -70,6 +70,8 @@
 | `templates/rsa-template.md` | RSA headline + description template (3 variants). |
 | `templates/search-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,38 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/search-spec.json`
+
+```json
+{
+  "ad_groups": [
+    {
+      "name": "brand-search",
+      "intent": "branded",
+      "keyword_count": 12,
+      "rsa_count": 3
+    }
+  ],
+  "match_type_mix": {
+    "broad_with_smart_bidding": true,
+    "phrase": true,
+    "exact": true
+  },
+  "extensions": {
+    "sitelinks_count": 4,
+    "callouts_count": 4,
+    "structured_snippets": [
+      "features"
+    ]
+  },
+  "qs_gate": {
+    "min_qs": 7,
+    "remediation_days": 7
+  }
+}
+```

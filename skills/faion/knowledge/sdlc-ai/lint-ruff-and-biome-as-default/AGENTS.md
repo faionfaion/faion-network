@@ -67,6 +67,8 @@
 | `templates/pyproject.toml.fragment` | ruff section. |
 | `templates/biome.json` | Biome config. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,42 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (precondition flag, repo metric, capability flag) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on a rule that triggers the procedure or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pyproject.toml.fragment`
+
+```toml
+[tool.ruff]
+line-length = 100
+target-version = 'py311'
+[tool.ruff.lint]
+select = ['E', 'W', 'F', 'I', 'B', 'UP', 'SIM', 'C4', 'T20']
+ignore = []
+[tool.ruff.format]
+quote-style = 'double'
+```
+
+### `templates/biome.json`
+
+```json
+{
+  "$schema": "https://biomejs.dev/schemas/1.9.0/schema.json",
+  "organizeImports": {
+    "enabled": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true
+    }
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2
+  }
+}
+```

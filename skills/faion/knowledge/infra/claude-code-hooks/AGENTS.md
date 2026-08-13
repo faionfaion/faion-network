@@ -56,11 +56,9 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/settings.json.snippet` | Hooks block snippet for settings.json. |
-| `templates/pre-tool-use.sh` | Sample PreToolUse hook (e.g. secrets gate). |
-| `templates/post-tool-use.sh` | Sample PostToolUse hook (e.g. linter). |
-| `templates/subagent-stop.sh` | Sample SubagentStop hook (e.g. notify). |
 | `templates/_smoke-test.sh` | Minimum-viable filled-in example (smoke test). |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -76,3 +74,14 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters whether claude-code-hooks applies: root question — "Is the automation needed for every X event AND a simpler memory preference cannot suffice?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip-this-methodology` conclusion when it does not.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.sh`
+
+```bash
+echo 'smoke test ok'
+exit 0
+```

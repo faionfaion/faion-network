@@ -61,6 +61,8 @@
 | `templates/swipe-file-tweet-hooks.json` | JSON Schema for the output contract (machine-validatable). |
 | `templates/swipe-file-tweet-hooks.md` | Markdown skeleton with the required fields. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -75,3 +77,67 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/swipe-file-tweet-hooks.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/swipe-file-tweet-hooks.json",
+  "title": "Swipe File Tweet Hooks Output Contract",
+  "type": "object",
+  "required": [
+    "operator",
+    "entries",
+    "hook_shapes",
+    "attribution_policy",
+    "storage_path",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "operator": {
+      "type": "string",
+      "description": "named curator"
+    },
+    "entries": {
+      "type": "array",
+      "description": "\u226520 hooks with shape + source + author + baseline",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "hook_shapes": {
+      "type": "array",
+      "description": "\u22655 shape labels",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "attribution_policy": {
+      "type": "string",
+      "description": "always-cite OR adapt-credit-on-similarity"
+    },
+    "storage_path": {
+      "type": "string",
+      "description": "file path / repo URL"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```

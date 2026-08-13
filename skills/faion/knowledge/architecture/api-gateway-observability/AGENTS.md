@@ -64,6 +64,8 @@
 |------|---------|
 | `templates/observability.yaml` | Gateway observability config with metrics, logs, and tracing endpoints. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,44 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/observability.yaml`
+
+```yaml
+artefact_id: api-gateway-observability-<client>-2026-05-23
+owner: <Full Name> <email>
+version: 1.0.0
+last_reviewed: 2026-05-23
+
+gateway:
+  product: kong
+  version: 3.6
+
+metrics:
+  prometheus:
+    enabled: true
+    listen: 0.0.0.0:9090
+    histogram_buckets_seconds: [0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5, 5, 10]
+
+logging:
+  format: json
+  fields:
+    - timestamp
+    - correlation_id
+    - consumer_id
+    - method
+    - path
+    - status
+    - upstream_latency_ms
+    - gateway_latency_ms
+
+tracing:
+  otlp:
+    endpoint: http://tempo:4317
+    propagator: tracecontext
+    sample_ratio: 0.1
+```

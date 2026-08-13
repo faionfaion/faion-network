@@ -62,6 +62,8 @@
 | `templates/social-proof-harvest.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,114 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/social-proof-harvest.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/social-proof-harvest.json",
+  "title": "Social Proof Harvest Output Contract",
+  "type": "object",
+  "required": [
+    "quote_id",
+    "source_url",
+    "author_handle",
+    "author_display_name",
+    "verbatim_quote",
+    "captured_at",
+    "channel",
+    "consent",
+    "status",
+    "publish_surfaces",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "quote_id": {
+      "type": "string",
+      "description": "stable record id"
+    },
+    "source_url": {
+      "type": "string",
+      "description": "URL of original public mention"
+    },
+    "author_handle": {
+      "type": "string",
+      "description": "platform handle"
+    },
+    "author_display_name": {
+      "type": "string",
+      "description": "name shown on the wall"
+    },
+    "verbatim_quote": {
+      "type": "string",
+      "description": "exact text \u2014 no paraphrase"
+    },
+    "captured_at": {
+      "type": "string",
+      "description": "ISO timestamp",
+      "format": "date-time"
+    },
+    "channel": {
+      "type": "string",
+      "description": "twitter|linkedin|reddit|hn|discord|product-hunt|other"
+    },
+    "consent": {
+      "type": "object",
+      "description": "{requested_at, granted_at, granted_via}"
+    },
+    "status": {
+      "type": "string",
+      "description": "captured|requested|approved|published|expired"
+    },
+    "publish_surfaces": {
+      "type": "array",
+      "description": "wall|landing-hero|sales-deck|email-signature",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "quote_id": "sample-quote_id",
+  "source_url": "sample-source_url",
+  "author_handle": "sample-author_handle",
+  "author_display_name": "sample-author_display_name",
+  "verbatim_quote": "sample-verbatim_quote",
+  "captured_at": "2026-05-23T12:00:00Z",
+  "channel": "value",
+  "consent": {
+    "key": "value"
+  },
+  "status": "value",
+  "publish_surfaces": [
+    {
+      "key": "value"
+    }
+  ],
+  "version": "sample-version",
+  "last_reviewed": "2026-05-23"
+}
+```

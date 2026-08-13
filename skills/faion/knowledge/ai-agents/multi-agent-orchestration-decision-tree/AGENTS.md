@@ -61,6 +61,8 @@
 | `templates/orchestration-decision.json` | JSON schema for the output. |
 | `templates/orchestration-decision.md` | Markdown skeleton with required fields. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,115 @@
 ## Decision tree
 
 The tree at `content/06-decision-tree.xml` triages: is single-agent + tools the baseline? → measure quality lift at the proposed multi-agent topology → adopt only if lift_pp ≥ 2 AND cost_multiplier within budget. Walk it before refactoring a working single-agent into a multi-agent debate club.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/orchestration-decision.json`
+
+```json
+{
+  "_purpose": "JSON Schema for the Multi-Agent Orchestration decision record.",
+  "_consumes": "decision-record.json from subagent",
+  "_produces": "validation report for validate-multi-agent-orchestration-decision-tree.py",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "0 \u2014 schema-only",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/multi-agent-orchestration-decision",
+  "type": "object",
+  "required": [
+    "subtasks",
+    "topology_pick",
+    "handoff_protocol",
+    "judge_actor_used",
+    "rollback_trigger",
+    "owner"
+  ],
+  "properties": {
+    "subtasks": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "topology_pick": {
+      "enum": [
+        "single",
+        "hierarchical",
+        "collaborative",
+        "conversational"
+      ]
+    },
+    "handoff_protocol": {
+      "type": "object",
+      "required": [
+        "task_id",
+        "scoped_context",
+        "success_criteria",
+        "escalation"
+      ],
+      "properties": {
+        "task_id": {
+          "type": "string"
+        },
+        "scoped_context": {
+          "type": "string"
+        },
+        "success_criteria": {
+          "type": "string"
+        },
+        "escalation": {
+          "type": "string"
+        }
+      }
+    },
+    "judge_actor_used": {
+      "type": "object",
+      "required": [
+        "used",
+        "quality_lift_pp",
+        "cost_multiplier"
+      ],
+      "properties": {
+        "used": {
+          "type": "boolean"
+        },
+        "quality_lift_pp": {
+          "type": "number"
+        },
+        "cost_multiplier": {
+          "type": "number"
+        }
+      }
+    },
+    "rollback_trigger": {
+      "type": "object",
+      "required": [
+        "latency_threshold_ms",
+        "cost_threshold_multiplier",
+        "quality_threshold_pp"
+      ],
+      "properties": {
+        "latency_threshold_ms": {
+          "type": "integer"
+        },
+        "cost_threshold_multiplier": {
+          "type": "number"
+        },
+        "quality_threshold_pp": {
+          "type": "number"
+        }
+      }
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 2,
+      "not": {
+        "pattern": "(?i)^(team|we|us|engineering|the (team|squad|group))$"
+      }
+    }
+  }
+}
+```

@@ -68,6 +68,8 @@
 | `templates/google-analytics.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,49 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (artefact shape, freshness, scope) to either a `run-the-methodology` conclusion or a `skip-this-methodology` conclusion, with every leaf referencing a rule id from `01-core-rules.xml`. Use it when the operator is unsure whether this methodology applies to the current task.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/google-analytics.config.yaml`
+
+```yaml
+slug: google-analytics
+owner: ""
+settings:
+  property_id: ""
+  stream: ""
+  consent_mode: "v2"
+deviation_log_reference: ""
+```
+
+### `templates/google-analytics.example.json`
+
+```json
+{
+  "slug": "google-analytics",
+  "owner": "growth ops",
+  "settings": {
+    "property_id": "G-XXXXXXX",
+    "stream": "web",
+    "consent_mode": "v2"
+  },
+  "deviation_log_reference": "ops/deviation-log.md#L120"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "slug": "google-analytics",
+  "owner": "growth ops",
+  "settings": {
+    "property_id": "G-XXXXXXX",
+    "stream": "web",
+    "consent_mode": "v2"
+  },
+  "deviation_log_reference": "ops/deviation-log.md#L120"
+}
+```

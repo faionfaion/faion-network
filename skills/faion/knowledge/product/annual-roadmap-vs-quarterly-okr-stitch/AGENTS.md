@@ -67,6 +67,8 @@
 | `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
 | `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,58 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/artefact-instance.json`
+
+```json
+{
+  "stitch_id": "stitch-acme-2026",
+  "owner": "cpo@acme.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "annual_bets": [
+    {
+      "id": "b-1",
+      "name": "Win mid-market",
+      "metric": "5 mid-market logos",
+      "owner": "head-sales@acme.io"
+    }
+  ],
+  "quarterly_okrs": [
+    {
+      "id": "o-1",
+      "quarter": "Q2-2026",
+      "objective": "Land 2 mid-market logos",
+      "krs": [
+        {
+          "id": "kr-1",
+          "name": "2 signed contracts",
+          "target": 2,
+          "current": 1,
+          "owner": "ae@acme.io"
+        }
+      ]
+    }
+  ],
+  "traceability_matrix": [
+    {
+      "bet_id": "b-1",
+      "okr_id": "o-1",
+      "evidence": "OKR doc Q2-2026"
+    }
+  ],
+  "off_pace_flags": [
+    {
+      "bet_id": "b-1",
+      "status": "on-pace",
+      "evidence": "BI dashboard 2026-05-22"
+    }
+  ],
+  "review_cadence": "monthly stitch review",
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}
+```

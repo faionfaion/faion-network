@@ -65,6 +65,8 @@
 | `templates/useFeature.hook.ts` | Custom hook skeleton |
 | `templates/feature-folder.tree.txt` | Feature-folder layout reference |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,58 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches on what dominates the component: logic-heavy → extract hook. I/O-heavy → extract service. State-heavy → extract reducer + context. Multi-feature → split into feature folders.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/useFeature.hook.ts`
+
+```typescript
+import { useCallback, useEffect, useState } from 'react'
+
+export interface UseFeatureOptions {
+  initial?: unknown
+  serviceFetch?: (id: string) => Promise<unknown>
+}
+
+export function useFeature(id: string, opts: UseFeatureOptions = {}) {
+  const [data, setData] = useState(opts.initial ?? null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<Error | null>(null)
+
+  const reload = useCallback(async () => {
+    if (!opts.serviceFetch) return
+    setLoading(true); setError(null)
+    try { setData(await opts.serviceFetch(id)) }
+    catch (e) { setError(e as Error) }
+    finally { setLoading(false) }
+  }, [id, opts])
+
+  useEffect(() => { reload() }, [reload])
+  return { data, loading, error, reload }
+}
+```
+
+### `templates/feature-folder.tree.txt`
+
+```text
+src/
+├── features/
+│   ├── billing/
+│   │   ├── BillingPage.tsx         # ≤80 lines JSX
+│   │   ├── useInvoiceFilter.ts     # hook
+│   │   ├── useInvoiceList.ts       # hook
+│   │   ├── invoiceApi.ts           # service (I/O)
+│   │   ├── invoice.types.ts        # types
+│   │   ├── __tests__/
+│   │   │   └── BillingPage.test.tsx
+│   │   └── index.ts                # public re-exports
+│   └── auth/
+│       └── ...
+├── shared/                          # cross-feature reusables
+│   ├── ui/
+│   └── utils/
+├── app/                             # router, providers, layout
+└── main.tsx
+```

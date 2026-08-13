@@ -73,6 +73,8 @@
 | `templates/investment-plan.md` | Quarterly investment plan: what each quadrant gets, with rationale and owner. |
 | `templates/_smoke-test.json` | Minimum viable risk-matrix artefact for validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,3 +90,126 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs — area count, MVP status, compliance regime, capacity-to-allocate — onto a rule id from `content/01-core-rules.xml`. Walk it before the quarterly refresh: it catches flat-ratings and stale-matrix conditions upstream.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/risk-matrix.yaml`
+
+```yaml
+matrix:
+  refreshed_at: 2026-05-23
+  areas:
+    - name: billing-subscription-lifecycle
+      impact: 5
+      impact_rationale: revenue loss within hours; dispute support cost spikes
+      likelihood: 4
+      likelihood_data:
+        incidents_6m: 2
+        commits_6m: 120
+        novelty_30d: 30
+        complexity_score: 18.2
+      adjustment_pm1: 0
+      adjustment_reason: ""
+      quadrant: HH
+    - name: search-and-filtering
+      impact: 3
+      impact_rationale: degraded search slows users but no money loss
+      likelihood: 4
+      likelihood_data:
+        incidents_6m: 5
+        commits_6m: 80
+      adjustment_pm1: 0
+      adjustment_reason: ""
+      quadrant: LH
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "matrix": {
+    "refreshed_at": "2026-05-23",
+    "areas": [
+      {
+        "name": "billing-subscription-lifecycle",
+        "impact": 5,
+        "impact_rationale": "revenue loss within hours; dispute support cost spikes",
+        "likelihood": 4,
+        "likelihood_data": {
+          "incidents_6m": 2,
+          "commits_6m": 120,
+          "novelty_30d": 30,
+          "complexity_score": 18.2
+        },
+        "adjustment_pm1": 0,
+        "adjustment_reason": "",
+        "quadrant": "HH"
+      },
+      {
+        "name": "search-and-filtering",
+        "impact": 3,
+        "impact_rationale": "degraded search slows users but no money loss",
+        "likelihood": 4,
+        "likelihood_data": {
+          "incidents_6m": 5,
+          "commits_6m": 80
+        },
+        "adjustment_pm1": 0,
+        "adjustment_reason": "",
+        "quadrant": "LH"
+      },
+      {
+        "name": "tenant-isolation",
+        "impact": 5,
+        "impact_rationale": "data residency breach is a regulatory fine",
+        "likelihood": 1,
+        "likelihood_data": {
+          "incidents_6m": 0,
+          "commits_6m": 5
+        },
+        "adjustment_pm1": 0,
+        "adjustment_reason": "",
+        "quadrant": "HL"
+      },
+      {
+        "name": "admin-audit-log",
+        "impact": 1,
+        "impact_rationale": "internal convenience; never customer-visible",
+        "likelihood": 1,
+        "likelihood_data": {
+          "incidents_6m": 0,
+          "commits_6m": 2
+        },
+        "adjustment_pm1": 0,
+        "adjustment_reason": "",
+        "quadrant": "LL"
+      },
+      {
+        "name": "auth-login-and-signup",
+        "impact": 5,
+        "impact_rationale": "lock-out blocks every customer",
+        "likelihood": 3,
+        "likelihood_data": {
+          "incidents_6m": 1,
+          "commits_6m": 40
+        },
+        "adjustment_pm1": 0,
+        "adjustment_reason": "",
+        "quadrant": "HH"
+      }
+    ]
+  },
+  "investment_plan": {
+    "HH": "mandatory unit + integration + e2e + monthly exploratory + alerting; owned by Ruslan",
+    "HL": "mandatory unit + integration + targeted exploratory + alerting; owned by Anna",
+    "LH": "automation only; owned by Bohdan",
+    "LL": "monitor-only; no test investment until impact or likelihood changes",
+    "capacity_check": {
+      "required_hours": 32,
+      "team_capacity_hours": 40
+    }
+  }
+}
+```

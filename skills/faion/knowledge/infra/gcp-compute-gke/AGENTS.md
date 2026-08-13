@@ -67,6 +67,8 @@
 | `templates/gcp-compute-gke.yaml` | Skeleton for the config artefact this methodology produces. |
 | `templates/_smoke-test.yaml` | Minimum viable filled-in example. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,31 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree branches on observable workload / configuration signals and routes to a specific rule id from `01-core-rules.xml`. Use it whenever the input shape is ambiguous between two adjacent methodologies in this sub-skill (e.g. gcp-compute-gke vs an adjacent sibling).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/gcp-compute-gke.yaml`
+
+```yaml
+name: example-name
+mode: example-mode
+region: example-region
+node_pools: []  # array
+workload_identity: false  # boolean
+private_nodes: false  # boolean
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+# minimum viable filled-in example of gcp-compute-gke.yaml
+name: example-name
+mode: example-mode
+region: example-region
+node_pools:
+  - example-node_pools-1
+workload_identity: true
+private_nodes: true
+```

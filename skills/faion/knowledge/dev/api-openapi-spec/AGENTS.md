@@ -69,6 +69,8 @@
 | `templates/output-schema.json` | JSON Schema (draft-07) for the api-openapi-spec artefact |
 | `templates/_smoke-test.json` | Minimum viable filled-in api-openapi-spec artefact for validator round-trip |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,343 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on the schema's required cross-field checks; every leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/openapi-user-api.yaml`
+
+```yaml
+openapi: 3.1.0
+info:
+  title: User Management API
+  version: 1.0.0
+  description: API for managing users
+  contact:
+    name: API Support
+    email: api@example.com
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production
+  - url: https://staging-api.example.com/v1
+    description: Staging
+
+paths:
+  /users:
+    get:
+      summary: List all users
+      operationId: listUsers
+      tags: [Users]
+      parameters:
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/PageOffset'
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: Create a new user
+      operationId: createUser
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /users/{userId}:
+    get:
+      summary: Get user by ID
+      operationId: getUser
+      tags: [Users]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    User:
+      type: object
+      required: [id, email, name, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "Jane Doe"
+        status:
+          type: string
+          enum: [active, inactive]
+          default: active
+
+    CreateUserRequest:
+      type: object
+      required: [email, name]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          example: "Jane Doe"
+
+    UserList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    PaginationMeta:
+      type: object
+      properties:
+        total: { type: integer, example: 100 }
+        limit: { type: integer, example: 20 }
+        offset: { type: integer, example: 0 }
+
+    Error:
+      type: object
+      required: [error, code]
+      properties:
+        error: { type: string }
+        code: { type: string }
+
+  parameters:
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    PageLimit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+    PageOffset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Users
+    description: User management operations
+```
+
+### `templates/spectral.yaml`
+
+```yaml
+extends: ["spectral:oas"]
+rules:
+  operation-operationId: error
+  operation-description: warn
+  operation-tag-defined: error
+  no-$ref-siblings: error
+  oas3-server-trailing-slash: warn
+  contact-properties: warn
+  info-contact: warn
+```
+
+### `templates/validate-openapi.sh`
+
+```bash
+# validate-openapi.sh — pre-commit gate for OpenAPI specs.
+# Usage: bash validate-openapi.sh [openapi.yaml]
+set -euo pipefail
+SPEC="${1:-openapi.yaml}"
+
+[[ -f "$SPEC" ]] || { echo "no spec at $SPEC"; exit 1; }
+
+# 1. Spectral structural + governance
+npx --yes @stoplight/spectral-cli lint "$SPEC" --ruleset .spectral.yaml \
+  || { echo "spectral failed"; exit 1; }
+
+# 2. Redocly lint
+npx --yes @redocly/cli lint "$SPEC" \
+  || { echo "redocly failed"; exit 1; }
+
+# 3. Example validation
+npx --yes openapi-examples-validator "$SPEC" \
+  || { echo "examples mismatch"; exit 1; }
+
+# 4. Breaking change detection vs main
+if git rev-parse origin/main >/dev/null 2>&1; then
+  if git show origin/main:"$SPEC" > /tmp/main-spec.yaml 2>/dev/null; then
+    oasdiff breaking /tmp/main-spec.yaml "$SPEC" --fail-on ERR || true
+  fi
+fi
+
+echo "OpenAPI validation OK"
+```
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/api-openapi-spec.json",
+  "type": "object",
+  "required": [
+    "spec_id",
+    "openapi_version",
+    "info_x_versioning",
+    "spectral_errors",
+    "duplicate_schemas",
+    "verdict"
+  ],
+  "properties": {
+    "spec_id": {
+      "type": "string",
+      "pattern": "^OAS-[A-Z0-9-]{2,40}$"
+    },
+    "openapi_version": {
+      "type": "string",
+      "enum": [
+        "3.0",
+        "3.0.1",
+        "3.0.2",
+        "3.0.3",
+        "3.1.0"
+      ]
+    },
+    "info_x_versioning": {
+      "type": "object",
+      "required": [
+        "scheme",
+        "deprecation_window_days"
+      ]
+    },
+    "spectral_errors": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "spectral_warnings": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "duplicate_schemas": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "security_aligned_with_auth_id": {
+      "type": "string"
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "spec_id": "OAS-PUBLIC-API-V1",
+  "openapi_version": "3.1.0",
+  "info_x_versioning": {
+    "scheme": "url-path",
+    "deprecation_window_days": 180,
+    "breaking_change_policy": "major-bump-required"
+  },
+  "spectral_errors": 0,
+  "spectral_warnings": 3,
+  "duplicate_schemas": 0,
+  "security_aligned_with_auth_id": "AUTH-PARTNER-API",
+  "verdict": "pass"
+}
+```

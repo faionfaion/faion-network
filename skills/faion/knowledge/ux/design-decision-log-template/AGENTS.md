@@ -64,7 +64,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/design-decision-log-template.json` | JSON skeleton conforming to the output-contract schema. |
 | `templates/design-decision-log-template.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

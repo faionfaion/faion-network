@@ -63,6 +63,8 @@
 | `templates/prompt-synthetic-reaction.txt` | Agent prompt for synthetic user reactions. |
 | `templates/_smoke-test.json` | Filled 5-concept ideation report. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,108 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the report; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/synthetic-report.json`
+
+```json
+{
+  "concepts": [
+    {
+      "id": "c1",
+      "summary": "Onboarding cuts to 3 steps"
+    },
+    {
+      "id": "c2",
+      "summary": "Onboarding adds biometric"
+    },
+    {
+      "id": "c3",
+      "summary": "Onboarding offers SSO-only"
+    },
+    {
+      "id": "c4",
+      "summary": "Onboarding offers passkey-only"
+    },
+    {
+      "id": "c5",
+      "summary": "Onboarding deferred to first-action"
+    }
+  ],
+  "synthetic_reactions": [
+    {
+      "concept_id": "c1",
+      "reaction": "Welcome \u2014 fewer steps reads as professional.",
+      "surprise_flag": false
+    }
+  ],
+  "decision_grade": false,
+  "validation_plan_url": "FILL_ME",
+  "validation_window_days": 21,
+  "high_stakes_disallowed": true
+}
+```
+
+### `templates/prompt-synthetic-reaction.txt`
+
+```text
+Prompt template — Agent prompt for synthetic user reactions.
+
+Fill the slots below per task.
+
+[CONTEXT]
+...
+
+[TASK]
+...
+
+[OUTPUT_FORMAT]
+...
+
+[CONSTRAINTS]
+- Follow content/01-core-rules.xml.
+- Output MUST validate against content/02-output-contract.xml.
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "concepts": [
+    {
+      "id": "c1",
+      "summary": "Onboarding cuts to 3 steps"
+    },
+    {
+      "id": "c2",
+      "summary": "Onboarding adds biometric"
+    },
+    {
+      "id": "c3",
+      "summary": "Onboarding offers SSO-only"
+    },
+    {
+      "id": "c4",
+      "summary": "Onboarding offers passkey-only"
+    },
+    {
+      "id": "c5",
+      "summary": "Onboarding deferred to first-action"
+    }
+  ],
+  "synthetic_reactions": [
+    {
+      "concept_id": "c1",
+      "reaction": "Welcome \u2014 fewer steps reads as professional.",
+      "surprise_flag": false
+    }
+  ],
+  "decision_grade": false,
+  "validation_plan_url": "FILL_ME",
+  "validation_window_days": 21,
+  "high_stakes_disallowed": true
+}
+```

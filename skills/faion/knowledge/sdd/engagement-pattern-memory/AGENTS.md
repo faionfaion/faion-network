@@ -62,6 +62,8 @@
 | `templates/engagement-pattern-memory.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,128 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/engagement-pattern-memory.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/engagement-pattern-memory.json",
+  "title": "Engagement Pattern Memory Output Contract",
+  "type": "object",
+  "required": [
+    "engagement_id",
+    "memory_file_path",
+    "repo_conventions",
+    "reviewer_preferences",
+    "deploy_quirks",
+    "recurring_traps",
+    "glossary",
+    "resolved_questions",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "engagement_id": {
+      "type": "string",
+      "description": "client / repo identifier"
+    },
+    "memory_file_path": {
+      "type": "string",
+      "description": "path to memory.md"
+    },
+    "repo_conventions": {
+      "type": "object",
+      "description": "linting / naming / commit format"
+    },
+    "reviewer_preferences": {
+      "type": "object",
+      "description": "per-named-reviewer preferences"
+    },
+    "deploy_quirks": {
+      "type": "array",
+      "description": "non-obvious deploy gotchas",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "recurring_traps": {
+      "type": "array",
+      "description": "\u22651 trap with detector + fix",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "glossary": {
+      "type": "object",
+      "description": "client-specific terms"
+    },
+    "resolved_questions": {
+      "type": "array",
+      "description": "questions + resolution dates",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "owner": {
+      "type": "string",
+      "description": "named contractor"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "engagement_id": "sample-engagement_id",
+  "memory_file_path": "sample-memory_file_path",
+  "repo_conventions": {
+    "k": "v"
+  },
+  "reviewer_preferences": {
+    "k": "v"
+  },
+  "deploy_quirks": [
+    {
+      "k": "v"
+    }
+  ],
+  "recurring_traps": [
+    {
+      "k": "v"
+    }
+  ],
+  "glossary": {
+    "k": "v"
+  },
+  "resolved_questions": [
+    {
+      "k": "v"
+    }
+  ],
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

@@ -64,6 +64,8 @@
 | `templates/twitter-x-monetization-thread-to-product.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,103 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/twitter-x-monetization-thread-to-product.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/twitter-x-monetization-thread-to-product.json",
+  "title": "Twitter X Monetization Thread To Product Output Contract",
+  "type": "object",
+  "required": [
+    "operator",
+    "audience_signal",
+    "thread",
+    "email_gate_offer",
+    "welcome_sequence",
+    "paid_product",
+    "kpi_set",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "operator": {
+      "type": "string",
+      "description": "named funnel owner"
+    },
+    "audience_signal": {
+      "type": "object",
+      "description": "{evidence_urls, avg_impressions, validated_topic}"
+    },
+    "thread": {
+      "type": "object",
+      "description": "7-tweet shape with email-gate CTA in tweet 7"
+    },
+    "email_gate_offer": {
+      "type": "object",
+      "description": "{type, url, value_one_liner}"
+    },
+    "welcome_sequence": {
+      "type": "array",
+      "description": "\u22655 emails with day-offset",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "paid_product": {
+      "type": "object",
+      "description": "{url, sku, price}"
+    },
+    "kpi_set": {
+      "type": "object",
+      "description": "{thread_impressions, email_signups, paid_conversions, ltv}"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "operator": "sample-operator",
+  "audience_signal": {
+    "key": "value"
+  },
+  "thread": {
+    "key": "value"
+  },
+  "email_gate_offer": {
+    "key": "value"
+  },
+  "welcome_sequence": [
+    {
+      "key": "value"
+    }
+  ],
+  "paid_product": {
+    "key": "value"
+  },
+  "kpi_set": {
+    "key": "value"
+  },
+  "version": "sample-version",
+  "last_reviewed": "2026-05-23"
+}
+```

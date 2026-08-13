@@ -66,6 +66,8 @@
 | `templates/qdrant-hybrid.py` | Qdrant prefetch + FusionQuery example. |
 | `templates/_smoke-test.py` | Minimum runnable test using the agnostic service. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,123 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` picks the integration path: root question — "Does the target store have native server-side hybrid?". Branches lead to native-hybrid (Weaviate/Qdrant), client-fusion (Elasticsearch/custom), or sparse-dense (Pinecone with BM25Encoder). Each leaf references a rule from 01-core-rules.xml.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/hybrid_search_service.py.tmpl`
+
+```python
+import asyncio
+from typing import List, Dict, Protocol
+
+
+class LegClient(Protocol):
+    async def search(self, query: str, k: int) -> List[Dict]:
+        ...
+
+
+class HybridSearchService:
+    def __init__(self, dense: LegClient, sparse: LegClient, k_final: int = 10, rrf_k: int = 60):
+        self.dense = dense
+        self.sparse = sparse
+        self.k_final = k_final
+        self.rrf_k = rrf_k
+
+    async def search(self, query: str) -> Dict:
+        k_leg = self.k_final * 3
+        dense_task = asyncio.create_task(self.dense.search(query, k_leg))
+        sparse_task = asyncio.create_task(self.sparse.search(query, k_leg))
+        dense_res, sparse_res = await asyncio.gather(dense_task, sparse_task)
+        ranks = self._collect_ranks(dense_res, sparse_res)
+        fused = self._rrf(ranks)
+        results = sorted(fused.values(), key=lambda r: -r["score"])[: self.k_final]
+        return {"query": query, "backend": "custom", "fusion": "rrf", "results": results}
+
+    def _collect_ranks(self, dense, sparse):
+        ranks = {}
+        for i, d in enumerate(dense, start=1):
+            ranks.setdefault(d["id"], {"id": d["id"], "dense_rank": None, "sparse_rank": None})
+            ranks[d["id"]]["dense_rank"] = i
+        for i, s in enumerate(sparse, start=1):
+            ranks.setdefault(s["id"], {"id": s["id"], "dense_rank": None, "sparse_rank": None})
+            ranks[s["id"]]["sparse_rank"] = i
+        return ranks
+
+    def _rrf(self, ranks):
+        for r in ranks.values():
+            score = 0.0
+            if r["dense_rank"] is not None:
+                score += 1.0 / (self.rrf_k + r["dense_rank"])
+            if r["sparse_rank"] is not None:
+                score += 1.0 / (self.rrf_k + r["sparse_rank"])
+            r["score"] = score
+        return ranks
+```
+
+### `templates/weaviate-hybrid.py`
+
+```python
+import weaviate
+
+client = weaviate.connect_to_local()
+docs = client.collections.get("Docs")
+results = docs.query.hybrid(
+    query="JWT refresh token rotation",
+    alpha=0.5,
+    limit=10,
+).objects
+for r in results:
+    print(r.uuid, r.metadata.score)
+```
+
+### `templates/qdrant-hybrid.py`
+
+```python
+from qdrant_client import QdrantClient, models
+
+client = QdrantClient("localhost", port=6333)
+
+dense_query = [0.1] * 1536  # from embedding model
+sparse_query = models.SparseVector(indices=[5, 42, 99], values=[0.7, 0.4, 0.3])
+
+response = client.query_points(
+    collection_name="docs",
+    prefetch=[
+        models.Prefetch(query=dense_query, using="dense", limit=30),
+        models.Prefetch(query=sparse_query, using="sparse", limit=30),
+    ],
+    query=models.FusionQuery(fusion=models.Fusion.RRF),
+    limit=10,
+)
+for p in response.points:
+    print(p.id, p.score)
+```
+
+### `templates/_smoke-test.py`
+
+```python
+import asyncio
+from hybrid_search_service import HybridSearchService  # rename .tmpl -> .py to run
+
+
+class Fake:
+    def __init__(self, prefix):
+        self.prefix = prefix
+
+    async def search(self, q, k):
+        return [{"id": f"{self.prefix}-{i}", "score": 1.0 - 0.1 * i} for i in range(k)]
+
+
+async def main():
+    svc = HybridSearchService(dense=Fake("d"), sparse=Fake("s"), k_final=5)
+    out = await svc.search("test query")
+    assert len(out["results"]) == 5
+    assert out["fusion"] == "rrf"
+    print(out)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
+```

@@ -62,6 +62,8 @@
 | `templates/figma-diff.config.json` | Figma-to-code diff config: file_key + glob + drift threshold. |
 | `templates/_smoke-test.yaml` | Filled minimum-viable config example. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,65 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the config; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ds-automation.config.yaml`
+
+```yaml
+# ds-automation.config.yaml — AI-Enhanced Design Systems (UX/UI)
+# Fill per task; validator: scripts/validate-ai-enhanced-design-systems.py
+
+ds_root: packages/ds
+figma_file_key: AbCdEf1234567890
+token_map: packages/ds/tokens.json
+doc_generator: {"source": "packages/ds/src", "story_root": "packages/ds/stories", "figma_metadata": "true", "output": "packages/ds/docs"}
+token_scanner: {"block_on_violation": true}
+figma_code_diff: {"block_on_drift": true}
+variant_generator: {"visreg_provider": "chromatic"}
+human_review_required: true
+```
+
+### `templates/figma-diff.config.json`
+
+```json
+{
+  "ds_root": "FILL_ME",
+  "figma_file_key": "FILL_ME",
+  "token_map": "FILL_ME",
+  "doc_generator": {
+    "source": "packages/ds/src",
+    "story_root": "packages/ds/stories",
+    "figma_metadata": "true",
+    "output": "packages/ds/docs"
+  },
+  "token_scanner": {
+    "block_on_violation": true
+  },
+  "figma_code_diff": {
+    "block_on_drift": true
+  },
+  "variant_generator": {
+    "visreg_provider": "chromatic"
+  },
+  "human_review_required": true
+}
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+# _smoke-test.yaml — AI-Enhanced Design Systems (UX/UI)
+# Fill per task; validator: scripts/validate-ai-enhanced-design-systems.py
+
+ds_root: packages/ds
+figma_file_key: AbCdEf1234567890
+token_map: packages/ds/tokens.json
+doc_generator: {"source": "packages/ds/src", "story_root": "packages/ds/stories", "figma_metadata": "true", "output": "packages/ds/docs"}
+token_scanner: {"block_on_violation": true}
+figma_code_diff: {"block_on_drift": true}
+variant_generator: {"visreg_provider": "chromatic"}
+human_review_required: true
+```

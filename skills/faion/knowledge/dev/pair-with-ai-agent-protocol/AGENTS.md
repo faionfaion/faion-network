@@ -65,6 +65,8 @@
 | `templates/halt_log.json` | JSON template scaffolding the artefact contract. |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,57 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is the agent making non-trivial code or system changes (commits, migrations, deploys)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/halt_log.json`
+
+```json
+{
+  "session_id": "2026-05-23-claude-001",
+  "intent": "Add idempotency key to /payments/refund endpoint.",
+  "acceptance_tests": [
+    "tests/payments/test_refund.py::test_idempotent_refund"
+  ],
+  "models_used": [
+    "opus",
+    "sonnet"
+  ],
+  "halt_events": [
+    {
+      "at": "before_migration",
+      "reason": "alembic upgrade head",
+      "decision": "ratified"
+    }
+  ],
+  "transcript_link": "logs/agent/2026-05-23-claude-001.md",
+  "commit_sha": "abc123de"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "session_id": "2026-05-23-claude-001",
+  "intent": "Add idempotency key to /payments/refund endpoint.",
+  "acceptance_tests": [
+    "tests/payments/test_refund.py::test_idempotent_refund"
+  ],
+  "models_used": [
+    "opus",
+    "sonnet"
+  ],
+  "halt_events": [
+    {
+      "at": "before_migration",
+      "reason": "alembic upgrade head",
+      "decision": "ratified"
+    }
+  ],
+  "transcript_link": "logs/agent/2026-05-23-claude-001.md",
+  "commit_sha": "abc123de"
+}
+```

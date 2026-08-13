@@ -60,6 +60,8 @@
 | `templates/pydantic-schema.py` | Pydantic v2 BaseModel with model_config and validators. |
 | `templates/typed-service.py` | Service function fully typed with PEP 695 generics. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,53 @@
 ## Decision tree
 
 The tree at content/06-decision-tree.xml routes between Pydantic, dataclass, NamedTuple, and PEP 695 generics based on whether the data crosses an IO boundary, needs validation, or is purely internal. Walk it whenever a new data shape appears.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pydantic-schema.py`
+
+```python
+"""
+
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
+
+class UserIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+    name: str = Field(min_length=1, max_length=100)
+
+
+class UserOut(BaseModel):
+    id: int
+    email: EmailStr
+    name: str
+```
+
+### `templates/typed-service.py`
+
+```python
+"""
+
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True, slots=True)
+class Item:
+    id: int
+    name: str
+
+
+def find_by_id[T](items: list[T], pred) -> T | None:
+    for item in items:
+        if pred(item):
+            return item
+    return None
+
+
+def first_with_name(items: list[Item], name: str) -> Item | None:
+    return find_by_id(items, lambda i: i.name == name)
+```

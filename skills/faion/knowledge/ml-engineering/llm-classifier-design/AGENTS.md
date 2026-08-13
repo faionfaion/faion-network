@@ -61,9 +61,10 @@
 | File | Purpose |
 |---|---|
 | `templates/classifier-config.schema.json` | JSON Schema for classifier-config.json. |
-| `templates/classifier-runner.py` | Reference batched runner with prompt-cache + forced tool call. |
 | `templates/system-prefix.md` | Cacheable system prefix template. |
 | `templates/_smoke-test.json` | Minimum valid classifier-config. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,102 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` checks fit: small batches → skip; open-ended output → skip; fixed-shape at scale → run-the-checklist.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/classifier-config.schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/llm-classifier-config",
+  "title": "llm-classifier-config",
+  "_purpose": "Schema for a llm-classifier-config JSON; ensures forced tool, byte-stable prefix, batch caps.",
+  "_consumes": "classifier-config.json from caller",
+  "_produces": "validation report for validate-llm-classifier-design.py",
+  "_depends_on": "content/01-core-rules.xml r2-r6",
+  "_token_budget_impact": "0 \u2014 schema-only file",
+  "type": "object",
+  "required": [
+    "model",
+    "tool_name",
+    "tool_choice",
+    "system_prompt",
+    "batch_size",
+    "max_turns"
+  ],
+  "properties": {
+    "model": {
+      "type": "string"
+    },
+    "tool_name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tool_choice": {
+      "type": "object",
+      "required": [
+        "type",
+        "name"
+      ],
+      "properties": {
+        "type": {
+          "const": "tool"
+        },
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "system_prompt": {
+      "type": "string",
+      "minLength": 10
+    },
+    "setting_sources": {
+      "type": "array",
+      "maxItems": 0
+    },
+    "allowed_tools": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1
+    },
+    "batch_size": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 15
+    },
+    "max_turns": {
+      "type": "integer",
+      "minimum": 2
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "Minimum valid llm-classifier-config \u2014 used by validate-llm-classifier-design.py --self-test.",
+  "_consumes": "none",
+  "_produces": "passes validator",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "0",
+  "model": "claude-sonnet-4-6",
+  "tool_name": "verdicts",
+  "tool_choice": {
+    "type": "tool",
+    "name": "verdicts"
+  },
+  "system_prompt": "You are an auditor. Reply only via the verdicts tool.",
+  "setting_sources": [],
+  "allowed_tools": [
+    "mcp__audit__verdicts"
+  ],
+  "batch_size": 10,
+  "max_turns": 2
+}
+```

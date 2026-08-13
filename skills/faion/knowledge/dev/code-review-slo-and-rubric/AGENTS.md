@@ -66,6 +66,8 @@
 | `templates/code-review-slo.md` | Markdown skeleton naming SLO + rubric + AI-pre-review pattern. |
 | `templates/code-review-slo.schema.json` | JSON skeleton matching the output contract. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,34 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree gates AI pre-review on tool availability and ramps SLO on baseline data, not on aspirational targets.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/code-review-slo.schema.json`
+
+```json
+{
+  "artefact_id": "crs-2026-05-23",
+  "owner": "@ruslan",
+  "first_response_business_hours": 24,
+  "merge_business_hours": 48,
+  "reviewer_open_pr_cap": 5,
+  "rotation_algorithm": "round-robin",
+  "blockers": [
+    "correctness regression",
+    "security defect",
+    "public-API breaking without versioning",
+    "missing test for new behaviour"
+  ],
+  "nits": [
+    "naming preference",
+    "formatting",
+    "unrelated refactor request"
+  ],
+  "ai_pre_review_tool": "claude",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+```

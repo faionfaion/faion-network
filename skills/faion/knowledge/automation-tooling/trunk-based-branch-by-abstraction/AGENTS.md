@@ -68,6 +68,8 @@
 | `templates/abstraction.py` | Python Protocol skeleton for BbA |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,48 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/abstraction.py`
+
+```python
+from typing import Protocol
+from decimal import Decimal
+
+
+class PaymentProcessor(Protocol):
+    def process(self, amount: Decimal) -> dict: ...
+
+
+class LegacyProcessor:
+    def process(self, amount: Decimal) -> dict:
+        return self.old_gateway.charge(amount)
+
+
+class StripeV2Processor:
+    def process(self, amount: Decimal) -> dict:
+        return self.stripe.create_charge(amount)
+
+
+def get_processor(flags) -> PaymentProcessor:
+    if flags.is_enabled('billing.use_stripe_v2'):
+        return StripeV2Processor()
+    return LegacyProcessor()
+```
+
+### `templates/artefact.json`
+
+```json
+{
+  "plan_id": "billing-stripe-v2",
+  "flag_name": "billing.use_stripe_v2",
+  "cleanup_ticket_id": "OPS-148",
+  "steps_in_order": true,
+  "current_step": 4,
+  "dark_launch_planned": true,
+  "one_step_per_pr": true
+}
+```

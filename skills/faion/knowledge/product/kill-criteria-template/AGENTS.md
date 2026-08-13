@@ -64,6 +64,8 @@
 | `templates/kill-criteria-template.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,97 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/kill-criteria-template.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/kill-criteria-template.json",
+  "title": "Kill Criteria Template Output Contract",
+  "type": "object",
+  "required": [
+    "bet_name",
+    "launch_date",
+    "primary_metric",
+    "primary_metric_threshold",
+    "baseline_snapshot",
+    "review_dates",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "bet_name": {
+      "type": "string",
+      "description": "named bet / product"
+    },
+    "launch_date": {
+      "type": "string",
+      "description": "ISO date of launch event",
+      "format": "date"
+    },
+    "primary_metric": {
+      "type": "string",
+      "description": "single metric (MRR | MAU | signups | joy_score)"
+    },
+    "primary_metric_threshold": {
+      "type": "number",
+      "description": "numeric floor \u2014 below this triggers kill"
+    },
+    "baseline_snapshot": {
+      "type": "object",
+      "description": "current value of primary metric at write time"
+    },
+    "review_dates": {
+      "type": "array",
+      "description": "calendared review dates (\u22651)",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "owner": {
+      "type": "string",
+      "description": "named human owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "bet_name": "sample-bet_name",
+  "launch_date": "2026-05-23",
+  "primary_metric": "sample-primary_metric",
+  "primary_metric_threshold": 1,
+  "baseline_snapshot": {
+    "k": "v"
+  },
+  "review_dates": [
+    {
+      "k": "v"
+    }
+  ],
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

@@ -68,6 +68,8 @@
 | `templates/skeleton.json` | Skeleton template |
 | `templates/skeleton.md` | Skeleton template |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,57 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/skeleton.json`
+
+```json
+{
+  "business_entity": "Acme LLC (Delaware)",
+  "review_period": "2026-Q2",
+  "jurisdictions": [
+    {
+      "code": "US-CA",
+      "customer_count": 120,
+      "revenue": 80000,
+      "applicable_laws": [
+        "CCPA",
+        "CPRA"
+      ],
+      "lawful_basis_per_activity": {
+        "marketing": "consent"
+      }
+    }
+  ],
+  "contract_templates": {
+    "b2b_enterprise": "templates/dpa-scc.md",
+    "b2b_small": "templates/dpa.md",
+    "b2c": "templates/consumer-terms.md"
+  },
+  "tax_status": [
+    {
+      "jurisdiction": "US-CA",
+      "threshold": 500000,
+      "current_volume": 80000,
+      "registered": false,
+      "action": "monitor"
+    }
+  ],
+  "ai_act_features": [
+    {
+      "feature": "AI summarisation",
+      "risk_level": "limited",
+      "conformity_assessment": false,
+      "registration": false
+    }
+  ],
+  "counsel_signoff": {
+    "name": "Doe Privacy Counsel",
+    "date": "2026-05-15",
+    "scope": "EU + UK + US-CA"
+  }
+}
+```

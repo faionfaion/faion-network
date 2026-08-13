@@ -74,6 +74,8 @@
 | `templates/debrief.md` | Post-session debrief: findings, follow-ups, debt, time spent. |
 | `templates/_smoke-test.json` | Minimum viable charter+log+debrief artefact for the validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,3 +91,80 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs — feature surface, build status, exploration capacity, explorer bias — onto a rule id from `content/01-core-rules.xml`. Walk it before scheduling: it catches broken-build sessions and solo-biased exploration upstream.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "charter": {
+    "session_id": "ES-014",
+    "date": "2026-05-23",
+    "explorer": "Ruslan",
+    "mission": "Explore the new email-onboarding flow to discover failure modes in internationalisation, timezone handling, and email rendering.",
+    "target": "/onboarding/email/*",
+    "time_box_minutes": 75,
+    "focus_areas": [
+      "i18n input",
+      "timezone display",
+      "email provider rendering"
+    ],
+    "heuristics": [
+      "input variety",
+      "SFDPOT"
+    ]
+  },
+  "observation_log": [
+    {
+      "timestamp": "14:23",
+      "kind": "idea",
+      "text": "try unicode emoji in name field"
+    },
+    {
+      "timestamp": "14:24",
+      "kind": "observation",
+      "text": "ZWJ emoji accepted but rendered as raw bytes in welcome email"
+    },
+    {
+      "timestamp": "14:26",
+      "kind": "bug",
+      "text": "filed BUG-2118: ZWJ emoji not rendered"
+    },
+    {
+      "timestamp": "14:27",
+      "kind": "question",
+      "text": "does this affect support tickets too?"
+    },
+    {
+      "timestamp": "14:30",
+      "kind": "idea",
+      "text": "API path bypasses UI sanitiser"
+    }
+  ],
+  "debrief": {
+    "key_findings": [
+      "i18n bugs cluster in email-rendering layer, not input layer",
+      "API sanitiser is weaker than UI sanitiser",
+      "Timezone display is correct but datetime format inconsistent"
+    ],
+    "bugs_filed": [
+      {
+        "id": "BUG-2118",
+        "severity": "medium",
+        "brief": "ZWJ emoji not rendered"
+      }
+    ],
+    "follow_up_questions": [
+      "does support-ticket rendering share the email pipeline?"
+    ],
+    "debt_items": [
+      "add API sanitiser regression test"
+    ],
+    "actual_time_minutes": 72,
+    "published_at": "2026-05-23T16:00:00Z"
+  }
+}
+```

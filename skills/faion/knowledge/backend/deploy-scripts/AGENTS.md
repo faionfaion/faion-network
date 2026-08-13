@@ -69,6 +69,8 @@
 | `templates/_smoke-test.md` | Minimum viable filled-in deploy audit. |
 | `templates/deploy.sh` | Deploy script template with atomic switch + smoke check + rollback path. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,42 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, status of prerequisites) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/deploy.sh`
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+PROJECT=${1:?usage: deploy.sh <project>}
+SRC=~/workspace/projects/$PROJECT
+RT=/srv/$PROJECT
+TS=$(date -u +%Y%m%dT%H%M%SZ)
+
+echo "[1/5] lint+tests in $SRC"
+(cd "$SRC" && ruff check . && pytest -x)
+
+echo "[2/5] rsync to release dir"
+mkdir -p "$RT/releases/$TS"
+rsync -a --delete --exclude .venv --exclude __pycache__ "$SRC/" "$RT/releases/$TS/"
+
+echo "[3/5] install editable"
+(cd "$RT/releases/$TS" && python3 -m venv .venv && .venv/bin/pip install -e .)
+
+echo "[4/5] switch symlinks"
+ln -sfn "$RT/releases/$TS" "$RT/current.new"
+mv -T "$RT/current.new" "$RT/current"
+systemctl --user reload "$PROJECT"
+
+echo "[5/5] smoke check"
+for i in $(seq 1 10); do
+  curl -fsS http://127.0.0.1:8000/health && break
+  sleep 1
+done
+
+echo OK
+```

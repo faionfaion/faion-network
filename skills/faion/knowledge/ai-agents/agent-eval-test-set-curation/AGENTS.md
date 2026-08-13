@@ -55,12 +55,6 @@
 | Author tag taxonomy | opus | Domain reasoning. |
 | Tag trajectories | sonnet | Pattern matching. |
 
-## Templates
-
-| File | Purpose |
-|------|---------|
-| `templates/tag-taxonomy.md.tmpl` | Capability + persona + difficulty taxonomy. |
-
 ## Scripts
 
 | File | Purpose | When to call |

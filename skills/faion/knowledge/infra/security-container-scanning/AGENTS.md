@@ -68,6 +68,8 @@
 | `templates/.trivyignore` | Trivy ignore policy with mandatory expiry dates |
 | `templates/_smoke-test.json` | Minimum scan-config artefact used by validate-security-container-scanning.py --self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,125 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it when scoping the supply-chain security gate for a new repo.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/github-actions-trivy.yml`
+
+```yaml
+name: container-scan-and-sign
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write   # required for keyless cosign
+  security-events: write
+
+jobs:
+  scan-and-sign:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - name: Login GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          push: false
+          load: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+      - name: Trivy scan (fail on CRITICAL/HIGH)
+        uses: aquasecurity/trivy-action@0.20.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          format: sarif
+          output: trivy.sarif
+          severity: CRITICAL,HIGH
+          exit-code: '1'
+          ignore-unfixed: true
+      - uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with: { sarif_file: trivy.sarif }
+      - name: SBOM (CycloneDX)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ghcr.io/${{ github.repository }}:${{ github.sha }}
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+      - name: Push image
+        uses: docker/build-push-action@v5
+        id: push
+        with:
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.sha }}
+      - name: Cosign install
+        uses: sigstore/cosign-installer@v3
+      - name: Cosign keyless sign
+        env:
+          COSIGN_EXPERIMENTAL: "1"
+        run: cosign sign --yes ghcr.io/${{ github.repository }}@${{ steps.push.outputs.digest }}
+```
+
+### `templates/trivy.yaml`
+
+```yaml
+severity:
+  - CRITICAL
+  - HIGH
+exit-code: 1
+ignore-unfixed: true
+ignorefile: .trivyignore
+cache-dir: .trivy-cache
+db:
+  skip-update: false
+vulnerability:
+  type:
+    - os
+    - library
+```
+
+### `templates/.trivyignore`
+
+```text
+# Each entry MUST have a reason + an expiry date (exp:YYYY-MM-DD).
+# Permanent ignores require security-team approval.
+
+# Example: upstream not yet shipped
+CVE-2024-11111 exp:2026-09-01
+# Example: false positive in unused codepath (reachability-confirmed)
+CVE-2024-22222 exp:2026-12-31
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "scanner": "trivy",
+  "scanner_version": "0.50.0",
+  "severity_block": [
+    "CRITICAL",
+    "HIGH"
+  ],
+  "ignore_unfixed": true,
+  "sbom_format": "cyclonedx",
+  "signing": {
+    "tool": "cosign",
+    "mode": "keyless-oidc",
+    "key_in_repo": false
+  },
+  "scan_before_push": true
+}
+```

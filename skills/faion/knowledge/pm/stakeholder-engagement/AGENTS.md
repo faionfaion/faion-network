@@ -70,6 +70,8 @@
 | `templates/register.yaml` | Stakeholder register schema: id, power, interest, attitude, quadrant, cadence, last_engaged |
 | `templates/engagement-plan.md` | Engagement plan with quadrant strategies and per-stakeholder cadence |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,21 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/register.yaml`
+
+```yaml
+# Stakeholder register schema: id, power, interest, attitude, quadrant, cadence, last_engaged
+
+__faion_header__:
+  methodology: stakeholder-engagement
+  version: 1.1.0
+  template: register.yaml
+
+# Fill the entries below per artefact instance.
+entries: []
+```

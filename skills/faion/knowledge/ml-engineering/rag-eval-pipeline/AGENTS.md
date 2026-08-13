@@ -59,6 +59,8 @@
 | `templates/eval-runner.py` | End-to-end eval runner that consumes test JSONL and emits report JSON. |
 | `templates/report-skeleton.json` | Empty report shape matching schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -75,3 +77,63 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` picks between full-set, sampled, or skip based on the use case (PR gate / weekly / realtime). Each leaf references a rule id from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/eval-runner.py`
+
+```python
+import json
+from statistics import mean
+
+
+def run(test_set, pipeline, judge, snapshot):
+    rows = []
+    for q in test_set:
+        out = pipeline(q['query'])
+        retr = _retrieval_metrics(out['retrieved_ids'], q.get('ground_truth_chunk_ids', []))
+        gen = judge.score(q['query'], out['answer'], out['context'])
+        rows.append({'query_id': q.get('query_id'), **retr, **gen})
+    retr_agg = {k: mean(r[k] for r in rows) for k in ('precision_at_5', 'recall_at_5', 'mrr')}
+    retr_agg['hit_rate'] = mean(1.0 if r['mrr'] > 0 else 0.0 for r in rows)
+    gen_agg = {k: mean(r[k] for r in rows) for k in ('faithfulness', 'answer_relevance', 'context_relevance')}
+    return {'snapshot': snapshot, 'n_questions': len(rows), 'retrieval': retr_agg, 'generation': gen_agg, 'per_query': rows}
+
+
+def _retrieval_metrics(retrieved_ids, ground_truth_ids):
+    gt = set(ground_truth_ids)
+    hits = [i for i, x in enumerate(retrieved_ids[:5], 1) if x in gt]
+    return {
+        'precision_at_5': len(hits) / 5,
+        'recall_at_5': len(hits) / max(len(gt), 1),
+        'mrr': 1.0 / hits[0] if hits else 0.0,
+    }
+```
+
+### `templates/report-skeleton.json`
+
+```json
+{
+  "snapshot": {
+    "pipeline_version": "",
+    "judge_model": "",
+    "embedding_model": "",
+    "test_set_hash": ""
+  },
+  "n_questions": 0,
+  "retrieval": {
+    "precision_at_5": 0,
+    "recall_at_5": 0,
+    "mrr": 0,
+    "hit_rate": 0
+  },
+  "generation": {
+    "faithfulness": 0,
+    "answer_relevance": 0,
+    "context_relevance": 0
+  },
+  "per_query": []
+}
+```

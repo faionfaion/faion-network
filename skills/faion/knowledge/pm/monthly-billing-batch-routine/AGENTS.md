@@ -67,6 +67,8 @@
 | `templates/invoice-row.md` | Per-customer invoice line skeleton with evidence + reason. |
 | `templates/payout-row.md` | Per-contractor payout line skeleton with evidence + rate-card link. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,85 @@ See `content/06-decision-tree.xml`. The tree maps observable signals (input
 preconditions, source-of-truth access, named-consumer presence) onto a concrete
 verdict — apply the methodology, downgrade to draft, or skip — with each leaf
 referencing a rule id from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/monthly-billing-batch-routine.json",
+  "type": "object",
+  "required": [
+    "batch_id",
+    "month",
+    "customer_invoices",
+    "contractor_payouts",
+    "margin",
+    "prior_month_delta",
+    "status"
+  ],
+  "properties": {
+    "batch_id": {
+      "type": "string",
+      "pattern": "^mbbr-\\d{4}-\\d{2}$"
+    },
+    "month": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}$"
+    },
+    "customer_invoices": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "customer_id",
+          "amount",
+          "currency",
+          "evidence"
+        ]
+      }
+    },
+    "contractor_payouts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "contractor_id",
+          "amount",
+          "currency",
+          "evidence"
+        ]
+      }
+    },
+    "margin": {
+      "type": "object",
+      "required": [
+        "computed",
+        "invoices_total",
+        "payouts_total"
+      ]
+    },
+    "prior_month_delta": {
+      "type": "object",
+      "required": [
+        "outstanding_invoices",
+        "unpaid_payouts"
+      ]
+    },
+    "status": {
+      "enum": [
+        "draft",
+        "ready_for_review",
+        "approved_to_send",
+        "sent",
+        "archived"
+      ]
+    }
+  }
+}
+```

@@ -63,6 +63,8 @@
 | `templates/drift-report.json` | JSON template matching the output contract. |
 | `templates/_smoke-test.json` | Filled minimum-viable drift report. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,31 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the report; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/drift-report.json`
+
+```json
+{
+  "scan_date": "FILL_ME",
+  "repos_scanned": 14,
+  "adoption_pct": 92.4,
+  "drift_count": 1,
+  "signoff_threshold_met": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "scan_date": "FILL_ME",
+  "repos_scanned": 14,
+  "adoption_pct": 92.4,
+  "drift_count": 1,
+  "signoff_threshold_met": true
+}
+```

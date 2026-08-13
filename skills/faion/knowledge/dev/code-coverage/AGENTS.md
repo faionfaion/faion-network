@@ -63,6 +63,8 @@
 | `templates/diff-cover-ci.sh` | CI step: produce coverage.xml then run diff-cover --fail-under=90. |
 | `templates/jest.coverage.js` | Jest/Vitest branch-coverage config for JS/TS suites. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,96 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` keys off the observable inputs documented in Prerequisites and routes to either "run the methodology" (preconditions hold) or "skip and route elsewhere" (preconditions fail). Use it before invoking the methodology, not after.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/coverage.toml`
+
+```toml
+# Paste under [tool] in pyproject.toml
+# Adjust source = ["src"] to match your package directory.
+
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__init__.py",
+    "*/migrations/*",
+    "*/conftest.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+    "@abstractmethod",
+]
+fail_under = 80
+show_missing = true
+
+[tool.coverage.html]
+directory = "htmlcov"
+```
+
+### `templates/diff-cover-ci.sh`
+
+```bash
+# scripts/diff-cover-ci.sh
+# Run pytest with branch coverage, then gate new-code coverage via diff-cover.
+# Usage: bash scripts/diff-cover-ci.sh [base-branch]
+# Exits non-zero if new-code coverage is below 90%.
+set -euo pipefail
+
+BASE_BRANCH="${1:-origin/main}"
+
+echo "==> Running pytest with coverage..."
+pytest --cov=src --cov-branch --cov-report=xml --cov-report=term-missing
+
+echo "==> Running diff-cover against ${BASE_BRANCH}..."
+diff-cover coverage.xml \
+  --compare-branch="${BASE_BRANCH}" \
+  --fail-under=90 \
+  --html-report diff-coverage.html
+
+echo "==> diff-coverage report: diff-coverage.html"
+```
+
+### `templates/jest.coverage.js`
+
+```javascript
+// jest.config.js — coverage thresholds with global + per-directory gates.
+// Adjust collectCoverageFrom globs to match your project structure.
+module.exports = {
+  preset: 'ts-jest',
+  testEnvironment: 'node',
+  collectCoverage: true,
+  collectCoverageFrom: [
+    'src/**/*.{ts,tsx}',
+    '!src/**/*.d.ts',
+    '!src/**/index.ts',
+    '!src/**/*.test.{ts,tsx}',
+  ],
+  coverageDirectory: 'coverage',
+  coverageReporters: ['text', 'lcov', 'html'],
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80,
+    },
+    // Raise threshold for business-critical directories
+    './src/services/': {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+    },
+  },
+};
+```

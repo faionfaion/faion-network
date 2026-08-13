@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/support-tool-pm-triage-spec.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/support-tool-pm-triage-spec.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

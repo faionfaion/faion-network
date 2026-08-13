@@ -58,6 +58,8 @@
 |------|---------|
 | `templates/test_with_mocks.py` | Test skeleton: mocker.patch + autospec + AsyncMock + spy examples. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -73,3 +75,37 @@
 ## Decision tree
 
 The tree at content/06-decision-tree.xml routes between mock, AsyncMock, spy, and 'do not mock'. Walk it before patching anything.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/test_with_mocks.py`
+
+```python
+"""
+
+from unittest.mock import AsyncMock
+
+
+def test_mocker_patches_use_site(mocker):
+    mock_send = mocker.patch(
+        "apps.orders.services.send_mail", autospec=True
+    )
+    from apps.orders.services import confirm_order
+
+    confirm_order(order_id=1)
+    mock_send.assert_called_once()
+
+
+async def test_async_callable_uses_asyncmock(mocker):
+    mock_fetch = mocker.patch(
+        "apps.users.services.fetch_profile",
+        new=AsyncMock(return_value={"id": 1}),
+    )
+    from apps.users.services import load_user
+
+    result = await load_user(1)
+    assert result == {"id": 1}
+    mock_fetch.assert_awaited_once_with(1)
+```

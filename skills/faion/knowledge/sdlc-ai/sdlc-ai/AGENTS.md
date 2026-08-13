@@ -61,7 +61,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/routing-decision.md` | Markdown decision record naming task signal + chosen candidates + rationale |
-| `templates/sdlc-ai-route.schema.json` | JSON Schema for the routing decision artefact |
 
 ## Scripts
 

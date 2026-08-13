@@ -62,7 +62,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/dod-multi-role.md` | Markdown checklist with per-role rows + evidence column |
-| `templates/dod.schema.json` | JSON Schema validating DoD shape |
 
 ## Scripts
 

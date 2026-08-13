@@ -67,6 +67,8 @@
 | `templates/output-schema.json` | JSON Schema for the decision record. |
 | `templates/decision-record.example.json` | Filled minimal valid example. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,186 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. First tree: pattern selection on three axes (needs-tools, step-count, branching). Second tree: framework selection given chosen pattern + team experience + dependency budget.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ai-agent-patterns/record.json",
+  "title": "AI Agent Patterns Decision Record",
+  "description": "purpose=schema; consumes=task-brief+tool-inventory+experience-matrix; produces=pattern+framework-decision; depends-on=01-core-rules.xml; token-budget-impact=low",
+  "type": "object",
+  "required": [
+    "task_id",
+    "classification",
+    "chosen_pattern",
+    "chosen_framework",
+    "framework_pin",
+    "caps",
+    "tools",
+    "rationale",
+    "rejected",
+    "owner",
+    "version",
+    "produced_at"
+  ],
+  "properties": {
+    "task_id": {
+      "type": "string"
+    },
+    "classification": {
+      "type": "object",
+      "required": [
+        "needs_tools",
+        "step_count",
+        "branching"
+      ],
+      "properties": {
+        "needs_tools": {
+          "type": "boolean"
+        },
+        "step_count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "branching": {
+          "type": "boolean"
+        }
+      }
+    },
+    "chosen_pattern": {
+      "type": "string",
+      "enum": [
+        "cot",
+        "react",
+        "plan-and-execute",
+        "tool-use"
+      ]
+    },
+    "chosen_framework": {
+      "type": "string",
+      "enum": [
+        "raw-sdk",
+        "langgraph",
+        "autogen",
+        "crewai",
+        "openai-agents-sdk",
+        "claude-code"
+      ]
+    },
+    "framework_pin": {
+      "type": "string",
+      "pattern": "==\\d+\\.\\d+(\\.\\d+)?"
+    },
+    "caps": {
+      "type": "object",
+      "required": [
+        "max_steps",
+        "loop_detect"
+      ],
+      "properties": {
+        "max_steps": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "loop_detect": {
+          "type": "boolean"
+        }
+      }
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "description"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 30
+          },
+          "schema_ref": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 40
+    },
+    "rejected": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "pattern",
+          "framework",
+          "reason"
+        ]
+      }
+    },
+    "owner": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
+```
+
+### `templates/decision-record.example.json`
+
+```json
+{
+  "task_id": "T-research-001",
+  "classification": {
+    "needs_tools": true,
+    "step_count": 4,
+    "branching": false
+  },
+  "chosen_pattern": "react",
+  "chosen_framework": "raw-sdk",
+  "framework_pin": "anthropic==0.39.0",
+  "caps": {
+    "max_steps": 15,
+    "loop_detect": true
+  },
+  "tools": [
+    {
+      "name": "web_search",
+      "description": "Full-text web search via SearXNG, returns top 10 results",
+      "schema_ref": "schemas/web_search.json"
+    }
+  ],
+  "rationale": "Task needs tools (research) but step count is small (4) and no branching \u2014 ReAct on raw SDK is the smallest fit.",
+  "rejected": [
+    {
+      "pattern": "plan-and-execute",
+      "framework": "langgraph",
+      "reason": "step count too small to justify graph"
+    }
+  ],
+  "owner": "alex@faion.net",
+  "version": "1.0.0",
+  "produced_at": "2026-05-22T16:00:00Z"
+}
+```

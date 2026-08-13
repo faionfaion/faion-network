@@ -61,6 +61,8 @@
 | `templates/skeleton.json` | JSON Schema for the dual-ledger weekly artefact: ledger-A (PV-S, EV-S, SPI-S) + ledger-B (PV-C, EV-C, AC-C, CPI-C) + thresholds + change-requests. |
 | `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,39 @@
 ## Decision tree
 
 The mandatory decision tree at `content/06-decision-tree.xml` Decides whether to run dual-ledger EVM (fixed-bid + ≥6 weeks + 1-5% WBS + weekly cost grain), block until WBS is fixed, or skip for T&M / small engagements. Run before week-1 baselining.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/skeleton.json`
+
+```json
+{
+  "purpose": "JSON Schema for the dual-ledger weekly artefact: ledger-A (PV-S, EV-S, SPI-S) + ledger-B (PV-C, EV-C, AC-C, CPI-C) + thresholds + change-requests.",
+  "consumes": "methodology inputs listed in AGENTS.md `## Prerequisites`",
+  "produces": "a filled artefact matching the JSON Schema in content/02-output-contract.xml",
+  "depends-on": "templates/header.yaml for frontmatter contract; AGENTS.md for body sections",
+  "token-budget-impact": "~500-900 tokens to fill end-to-end; ~200 to validate",
+  "header": {
+    "version": "0.1.0",
+    "owner": "<role>:<person>",
+    "last_reviewed": "YYYY-MM-DD"
+  },
+  "body": {},
+  "evidence": [],
+  "decisions": {
+    "next_actions": [],
+    "next_review": "YYYY-MM-DD"
+  }
+}
+```
+
+### `templates/header.yaml`
+
+```yaml
+version: 0.1.0           # bump on every refresh; semver
+owner: <role>:<person>   # named person, never a team
+last_reviewed: YYYY-MM-DD
+evidence_root: <link>    # URL or file path that anchors body claims
+```

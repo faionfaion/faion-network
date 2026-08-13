@@ -64,6 +64,8 @@
 | `templates/scorecard.md` | Human-readable scorecard with five-axis table |
 | `templates/scorecard.json` | Machine-readable scorecard matching schema |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,56 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from the question "Are there ≥2 realistic vendors AND contract value ≥ $1k/yr?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/scorecard.json`
+
+```json
+{
+  "category": "vector-db",
+  "vendors": [
+    "qdrant-cloud",
+    "pinecone",
+    "weaviate-cloud"
+  ],
+  "weights": {
+    "quality": 0.25,
+    "cost": 0.2,
+    "lock_in": 0.2,
+    "security": 0.2,
+    "sla": 0.15
+  },
+  "scores": {
+    "qdrant-cloud": {
+      "quality": 0.9,
+      "cost": 0.8,
+      "lock_in": 0.9,
+      "security": 0.85,
+      "sla": 0.8
+    },
+    "pinecone": {
+      "quality": 0.92,
+      "cost": 0.6,
+      "lock_in": 0.5,
+      "security": 0.9,
+      "sla": 0.9
+    },
+    "weaviate-cloud": {
+      "quality": 0.85,
+      "cost": 0.7,
+      "lock_in": 0.8,
+      "security": 0.8,
+      "sla": 0.8
+    }
+  },
+  "winner": "qdrant-cloud",
+  "exit_cost_eng_days": {
+    "qdrant-cloud": 5,
+    "pinecone": 25,
+    "weaviate-cloud": 12
+  }
+}
+```

@@ -69,6 +69,8 @@
 | `templates/swap-create.sh` | Idempotent swapfile creator + fstab entry. |
 | `templates/memory-alert.sh` | Pressure-stall-information based alert script. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,151 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/swap-memory-management.json`
+
+```json
+{
+  "artefact_id": "memory-<host>",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "ram_gb": 8,
+  "swap_gb": 16,
+  "swappiness": 10,
+  "units": [
+    {
+      "unit": "<svc>.service",
+      "MemoryHigh": "<size>",
+      "MemoryMax": "<size>"
+    }
+  ],
+  "alert_path": "tg-send admin",
+  "owner": "<@handle>"
+}
+```
+
+### `templates/99-memory.conf`
+
+```conf
+# /etc/sysctl.d/99-memory.conf
+# Memory management for servers with 16GB+ RAM running AI/web workloads
+# Apply: sudo sysctl --system
+
+# Low swappiness: prefer RAM, only swap under real pressure
+# Never set to 0 — that disables the swap safety net
+vm.swappiness = 10
+
+# Dirty page writeback: avoid I/O spikes
+vm.dirty_ratio = 15
+vm.dirty_background_ratio = 5
+
+# Cache pressure: keep inode/dentry caches longer
+vm.vfs_cache_pressure = 50
+
+# Max memory map areas: required by JVM, Elasticsearch, some ML libs
+vm.max_map_count = 1048576
+
+# Overcommit: heuristic (safe default; do NOT set to 1 on production)
+vm.overcommit_memory = 0
+```
+
+### `templates/swap-create.sh`
+
+```bash
+# swap-create.sh — Idempotent swap file creation and fstab persistence
+# Usage: sudo bash swap-create.sh [size]
+#   size: e.g. 4G (default), 8G, 2G
+set -euo pipefail
+
+SIZE="${1:-4G}"
+SWAPFILE="/swapfile"
+
+# Already configured?
+if swapon --show | grep -q "$SWAPFILE"; then
+    echo "[OK] Swap already active: $(swapon --show | grep "$SWAPFILE")"
+    exit 0
+fi
+
+if [[ -f "$SWAPFILE" ]]; then
+    echo "[INFO] $SWAPFILE exists but is not active; re-enabling..."
+    chmod 600 "$SWAPFILE"
+    mkswap "$SWAPFILE"
+    swapon "$SWAPFILE"
+else
+    echo "[CREATE] Allocating $SIZE swap at $SWAPFILE..."
+    fallocate -l "$SIZE" "$SWAPFILE"
+    chmod 600 "$SWAPFILE"
+    mkswap "$SWAPFILE"
+    swapon "$SWAPFILE"
+fi
+
+# fstab persistence (idempotent)
+if ! grep -q "$SWAPFILE" /etc/fstab; then
+    echo "$SWAPFILE none swap sw 0 0" >> /etc/fstab
+    echo "[OK] Added $SWAPFILE to /etc/fstab"
+fi
+
+# Verify fstab syntax (broken entry can prevent boot)
+findmnt --verify && echo "[OK] fstab syntax valid" || { echo "[ERROR] fstab invalid — fix before reboot!"; exit 1; }
+
+echo "[DONE] Swap:"
+swapon --show
+free -h | grep Swap
+```
+
+### `templates/memory-alert.sh`
+
+```bash
+# memory-alert.sh — Alert when RAM or swap exceeds threshold
+# Usage: bash memory-alert.sh [ram_threshold] [swap_threshold]
+#   Defaults: RAM 90%, Swap 50%
+# Suitable for cron: */5 * * * * bash ~/workspace/scripts/memory-alert.sh
+set -euo pipefail
+
+RAM_THRESHOLD="${1:-90}"
+SWAP_THRESHOLD="${2:-50}"
+
+ram_pct=$(free | awk '/^Mem:/{printf "%.0f", $3/$2 * 100}')
+swap_total=$(free | awk '/^Swap:/{print $2}')
+if [[ "$swap_total" -gt 0 ]]; then
+    swap_pct=$(free | awk '/^Swap:/{printf "%.0f", $3/$2 * 100}')
+else
+    swap_pct=0
+fi
+
+alert=false
+
+if [[ "$ram_pct" -gt "$RAM_THRESHOLD" ]]; then
+    echo "ALERT: RAM usage at ${ram_pct}% (threshold: ${RAM_THRESHOLD}%)"
+    alert=true
+fi
+
+if [[ "$swap_pct" -gt "$SWAP_THRESHOLD" ]]; then
+    echo "ALERT: Swap usage at ${swap_pct}% (threshold: ${SWAP_THRESHOLD}%)"
+    alert=true
+fi
+
+if [[ "$alert" == "true" ]]; then
+    echo ""
+    echo "Top memory consumers:"
+    ps aux --sort=-%mem --no-headers | head -8 | awk '{printf "  %-20s %5s%% %s\n", $1, $4, $11}'
+
+    echo ""
+    echo "Swap usage by process:"
+    for f in /proc/[0-9]*/status; do
+        awk '/VmSwap|Name/{printf $2 " " $3}END{print ""}' "$f" 2>/dev/null
+    done | sort -k2 -rn | head -5
+
+    # Optionally notify via Telegram (requires tg-send in PATH)
+    if command -v tg-send &>/dev/null; then
+        tg-send "Memory alert on $(hostname): RAM=${ram_pct}%, Swap=${swap_pct}%"
+    fi
+    exit 1
+fi
+
+echo "OK: RAM=${ram_pct}%, Swap=${swap_pct}%"
+```

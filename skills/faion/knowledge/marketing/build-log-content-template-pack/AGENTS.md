@@ -61,7 +61,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/build-log-content-template-pack.json` | JSON skeleton matching the output contract. |
 | `templates/build-log-content-template-pack.md` | Markdown skeleton with required fields. |
 
 ## Scripts

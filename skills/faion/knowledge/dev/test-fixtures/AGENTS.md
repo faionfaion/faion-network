@@ -63,6 +63,8 @@
 | `templates/conftest-db.py` | SQLAlchemy session fixture with savepoint rollback per test. |
 | `templates/fixture-pollution-check.sh` | Runs pytest with random ordering seeds to detect order-dependent failures. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[testing]] — parent multi-language testing playbook.
@@ -72,3 +74,87 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` decides between three outcomes: inline literal (one-off, ≤2 fields), factory function (≥3 reuse sites, no resource cleanup needed), or full fixture (resource acquisition + cleanup). Use it the moment you spot a third copy of the same setup block — before reaching for `scope="session"`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/conftest-db.py`
+
+```python
+"""
+conftest-db.py — SQLAlchemy database fixtures with savepoint rollback.
+Each test gets a clean state without DROP/CREATE overhead.
+Copy to tests/conftest.py and adapt to your ORM setup.
+"""
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from myapp.models import Base
+
+
+@pytest.fixture(scope="session")
+def engine():
+    """Create database engine once for the test session."""
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    yield engine
+    Base.metadata.drop_all(engine)
+    engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def session_factory(engine):
+    """Session factory shared across all tests."""
+    return sessionmaker(bind=engine)
+
+
+@pytest.fixture
+def db_session(session_factory):
+    """
+    Transactional test session: each test gets a savepoint.
+    Rolls back to savepoint after test — no data leaks between tests.
+    """
+    session = session_factory()
+    session.begin_nested()  # Create savepoint
+
+    yield session
+
+    session.rollback()  # Roll back to savepoint
+    session.close()
+```
+
+### `templates/fixture-pollution-check.sh`
+
+```bash
+#!/usr/bin/env bash
+# fixture-pollution-check.sh — detect order-dependent test failures.
+# Runs pytest multiple times with random ordering seeds.
+# Usage: fixture-pollution-check.sh [PYTEST_ARGS...]
+# Example: fixture-pollution-check.sh tests/
+set -euo pipefail
+RUNS="${RUNS:-3}"
+SEEDS=()
+FAILED=false
+
+for i in $(seq 1 "$RUNS"); do
+  S=$RANDOM
+  SEEDS+=("$S")
+  echo "=== run $i seed=$S ==="
+  if pytest -p randomly --randomly-seed="$S" -q "$@" >".pytest-pollution-$i.log" 2>&1; then
+    echo "  OK"
+  else
+    echo "  FAIL"
+    FAILED=true
+    grep -E "FAILED|ERROR" ".pytest-pollution-$i.log" | head -20
+  fi
+done
+
+if $FAILED; then
+  echo ""
+  echo "Order-dependent failures detected. Seeds: ${SEEDS[*]}"
+  echo "Reproduce: pytest -p randomly --randomly-seed=<seed>"
+  exit 1
+fi
+echo "OK — no order dependency in $RUNS runs"
+```

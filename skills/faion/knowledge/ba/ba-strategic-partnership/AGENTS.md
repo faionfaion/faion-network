@@ -66,6 +66,8 @@
 | `templates/ba-strategic-partnership.json` | Skeleton artefact with required fields |
 | `templates/_smoke-test.json` | Minimum viable filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,52 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes on artefact-state signal to the active rule.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ba-strategic-partnership.json`
+
+```json
+{
+  "ba_name": "REPLACE",
+  "period": "REPLACE",
+  "sponsor_name": "REPLACE",
+  "version_tag": "REPLACE",
+  "okrs_coowned": [],
+  "business_cases_authored": [],
+  "sponsor_syncs": []
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "ba_name": "Maria Lopes",
+  "period": "2026Q2",
+  "sponsor_name": "Pedro Silva",
+  "version_tag": "v1.0.0",
+  "okrs_coowned": [
+    {
+      "id": "okr-rev-1",
+      "objective": "Reduce AP cycle time 40%",
+      "ba_role": "co-owner: process redesign + AC"
+    }
+  ],
+  "business_cases_authored": [
+    {
+      "id": "bc-01",
+      "title": "Invoice automation",
+      "primary_author": "Maria Lopes"
+    }
+  ],
+  "sponsor_syncs": [
+    {
+      "date": "2026-04-15",
+      "minutes_path": "syncs/2026-04-15.md"
+    }
+  ]
+}
+```

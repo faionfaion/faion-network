@@ -69,6 +69,8 @@
 | `templates/stance-review-schema.json` | JSON Schema draft-07 for the ba-stance-reviewer agent output (axes, auto_block, kill_criterion). |
 | `templates/ba-frame.sh` | Helper that frames a stakeholder ask into 3 questions + strawman outcome JSON. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[ba-planning]]
@@ -77,3 +79,130 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/stance-review-schema.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StanceReview",
+  "description": "Output schema for ba-stance-reviewer agent. auto_block=true if any axis < 2 OR kill_criterion.score < 1.",
+  "type": "object",
+  "required": [
+    "artifact_id",
+    "stance_overall",
+    "axes",
+    "auto_block"
+  ],
+  "properties": {
+    "artifact_id": {
+      "type": "string"
+    },
+    "stance_overall": {
+      "type": "string",
+      "enum": [
+        "order_taker",
+        "mixed",
+        "strategic_partner"
+      ]
+    },
+    "axes": {
+      "type": "object",
+      "required": [
+        "problem_clarity",
+        "outcome_orientation",
+        "evidence_grounding",
+        "enterprise_scope",
+        "partner_voice",
+        "kill_criterion"
+      ],
+      "properties": {
+        "problem_clarity": {
+          "$ref": "#/definitions/axis"
+        },
+        "outcome_orientation": {
+          "$ref": "#/definitions/axis"
+        },
+        "evidence_grounding": {
+          "$ref": "#/definitions/axis"
+        },
+        "enterprise_scope": {
+          "$ref": "#/definitions/axis"
+        },
+        "partner_voice": {
+          "$ref": "#/definitions/axis"
+        },
+        "kill_criterion": {
+          "$ref": "#/definitions/axis"
+        }
+      }
+    },
+    "linked_okr_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "auto_block": {
+      "type": "boolean"
+    },
+    "block_reason": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "definitions": {
+    "axis": {
+      "type": "object",
+      "required": [
+        "score",
+        "evidence_quote",
+        "rewrite"
+      ],
+      "properties": {
+        "score": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "evidence_quote": {
+          "type": "string",
+          "description": "Verbatim quote from artifact"
+        },
+        "rewrite": {
+          "type": "string",
+          "description": "Strategic-partner rewrite tied to OKR"
+        }
+      }
+    }
+  }
+}
+```
+
+### `templates/ba-frame.sh`
+
+```bash
+# Usage: ba-frame "add a CSV export to the dashboard"
+# Requires: llm CLI (pip install llm llm-anthropic) and MODEL env var or default.
+set -euo pipefail
+: "${MODEL:=claude-opus-4-7}"
+ASK="${*:?usage: ba-frame <one-line stakeholder ask>}"
+llm -m "$MODEL" --no-stream <<EOF
+You are a strategic BA. The stakeholder said: "$ASK".
+Refuse to design a solution. Output strict JSON:
+{
+  "problem_hypothesis": "...",
+  "framing_questions": ["q1","q2","q3"],
+  "strawman_outcome": {"kpi":"...","delta":"...","horizon_months":0}
+}
+Rules: no solution proposals, no feature descriptions,
+  each framing question must be open-ended,
+  KPI must reference a real metric category (revenue, cost, NPS, time, error rate).
+EOF
+```

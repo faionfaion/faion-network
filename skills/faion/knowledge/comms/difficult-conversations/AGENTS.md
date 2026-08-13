@@ -70,6 +70,8 @@
 | `templates/prompt-state-script.txt` | Prompt to generate a STATE opening from fact + story |
 | `templates/prompt-desc-script.txt` | Prompt to generate a DESC written boundary message |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,41 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes by channel (live → STATE, async → DESC) and prep time availability. Without prep time the methodology refuses to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-state-script.txt`
+
+```text
+Help me prepare for a difficult conversation using the Crucial Conversations framework.
+Situation: <describe what happened with specific observable facts>
+What I want: for me: <goal>; for them: <goal>; for the relationship: <goal>
+Facts (not stories): <list specific observable behaviors with dates or frequencies>
+My contribution: <how did I create or enable this situation>
+Their likely perspective: <what might they be thinking or feeling>
+
+Output:
+1. Preparation checklist assessment — what is clear, what is missing
+2. STATE-structured opening script — 3-5 sentences maximum, must end with a genuine question
+3. 2-3 AMPP questions to use when they respond
+4. One potential safety risk and how to restore safety if it occurs
+Human review required before use: verify every factual claim; calibrate tone to the actual relationship.
+```
+
+### `templates/prompt-desc-script.txt`
+
+```text
+Write a DESC script for the following boundary situation.
+Situation: <describe the specific recurring behavior and its impact>
+Target outcome: <what specific change I need>
+Positive consequence if resolved: <what improves for both parties>
+Negative consequence if unresolved: <what I will actually do — must be realistic and proportionate>
+
+Output: 4 clearly labeled paragraphs (D / E / S / C). Keep under 100 words total.
+D must contain a specific observable behavior, not an evaluation.
+E must contain a genuine emotion word, not "I feel that..."
+S must be a specific positive request, not a demand or a negative.
+C negative consequence must be proportionate and something you are genuinely willing to do.
+```

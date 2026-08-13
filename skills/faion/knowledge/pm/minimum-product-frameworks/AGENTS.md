@@ -66,8 +66,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/framework-choice.md` | Decision-record skeleton with signals + scorecard + triggers. |
-| `templates/pick-framework.sh` | Shell wrapper that runs the matrix-score over the signals YAML. |
-| `templates/scorecard.yaml` | 9-framework scorecard skeleton. |
 
 ## Scripts
 

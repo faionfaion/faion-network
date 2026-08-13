@@ -62,7 +62,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/uat-script-pattern.json` | JSON skeleton matching the output contract. |
 | `templates/uat-script-pattern.md` | Markdown skeleton with required fields. |
 
 ## Scripts

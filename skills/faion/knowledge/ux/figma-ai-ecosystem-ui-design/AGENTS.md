@@ -60,6 +60,8 @@
 | `templates/surface-catalogue.md` | Reference list of Figma surfaces + agent-supported flag. |
 | `templates/_smoke-test.json` | Filled hybrid-workflow decision record. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[ai-plugin-ecosystem]]
@@ -68,3 +70,31 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the decision-record; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/decision-record.json`
+
+```json
+{
+  "workflow_id": "FILL_ME",
+  "surface": "FILL_ME",
+  "actor": "FILL_ME",
+  "rationale": "FILL_ME",
+  "revisit_date": "FILL_ME"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "workflow_id": "FILL_ME",
+  "surface": "FILL_ME",
+  "actor": "FILL_ME",
+  "rationale": "FILL_ME",
+  "revisit_date": "FILL_ME"
+}
+```

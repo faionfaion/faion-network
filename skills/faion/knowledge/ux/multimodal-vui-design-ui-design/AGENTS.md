@@ -60,8 +60,9 @@
 | File | Purpose |
 |---|---|
 | `templates/feature-spec.json` | JSON skeleton with feature_id + pattern + fallback + timeout + error + statesync + locales. |
-| `templates/statesync-test.template.ts` | Smoke test template for voice→screen state verification. |
 | `templates/_smoke-test.json` | Filled play-recipe-cards spec. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Related
 
@@ -71,3 +72,51 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the spec; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/feature-spec.json`
+
+```json
+{
+  "feature_id": "FILL_ME",
+  "pattern": "FILL_ME",
+  "fallback_tiers": [
+    "voice",
+    "touch",
+    "keyboard"
+  ],
+  "timeout_ms": 8000,
+  "error_state_ui": "FILL_ME",
+  "statesync_test_path": "FILL_ME",
+  "locales": [
+    "en-US",
+    "es-MX",
+    "uk-UA"
+  ]
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "feature_id": "FILL_ME",
+  "pattern": "FILL_ME",
+  "fallback_tiers": [
+    "voice",
+    "touch",
+    "keyboard"
+  ],
+  "timeout_ms": 8000,
+  "error_state_ui": "FILL_ME",
+  "statesync_test_path": "FILL_ME",
+  "locales": [
+    "en-US",
+    "es-MX",
+    "uk-UA"
+  ]
+}
+```

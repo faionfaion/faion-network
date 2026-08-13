@@ -57,6 +57,8 @@
 |------|---------|
 | `templates/test_parametrize.py` | Skeleton: simple parametrize, stacked decorators (cartesian), pytest.param with id+marks, indirect=True. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -71,3 +73,33 @@
 ## Decision tree
 
 The tree at content/06-decision-tree.xml decides parametrize vs separate tests, cartesian stack vs single, and pytest.param vs raw tuple. Walk it any time you write the second test with the same body.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/test_parametrize.py`
+
+```python
+"""
+
+import pytest
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        pytest.param("hello", True, id="non-empty"),
+        pytest.param("", False, id="empty"),
+        pytest.param("   ", False, id="whitespace"),
+    ],
+)
+def test_is_meaningful_string(value, expected):
+    assert bool(value.strip()) is expected
+
+
+@pytest.mark.parametrize("a", [1, 2, 3])
+@pytest.mark.parametrize("b", [10, 20])
+def test_cartesian_product(a, b):
+    assert a + b > 0
+```

@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/spec-example-ecommerce-cart.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/spec-example-ecommerce-cart.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

@@ -68,6 +68,8 @@
 | `templates/rollback-spec.example.json` | Filled minimal valid example. |
 | `templates/rollback-spec.md` | Markdown skeleton with required sections. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,138 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Asks: (1) is the rollback bundle atomically defined? (2) is customer state cleanly partitioned from agent code? (3) does an eval gate exist? Leaves point to "ship spec", "split — define bundle first", or "escalate — closed-source dependency blocks atomic rollback".
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/agent-rollback-button-design/spec.json",
+  "title": "Agent Rollback Button Spec",
+  "description": "purpose=schema; consumes=bundle+immutable+eval; produces=rollback-button-spec; depends-on=01-core-rules.xml; token-budget-impact=low",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "spec_id",
+    "environment",
+    "bundle_fields",
+    "immutable_fields",
+    "eval_gate",
+    "button_label",
+    "audit_log_path",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "spec_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "environment": {
+      "type": "string",
+      "enum": [
+        "prod",
+        "staging",
+        "shadow"
+      ]
+    },
+    "bundle_fields": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "immutable_fields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "eval_gate": {
+      "type": "object",
+      "required": [
+        "golden_set_version",
+        "min_pass_rate"
+      ],
+      "properties": {
+        "golden_set_version": {
+          "type": "string"
+        },
+        "min_pass_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "ci_width": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "button_label": {
+      "type": "string",
+      "maxLength": 40
+    },
+    "audit_log_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```
+
+### `templates/rollback-spec.example.json`
+
+```json
+{
+  "spec_id": "rollback-customer-support-agent",
+  "environment": "prod",
+  "bundle_fields": [
+    "prompt_sha",
+    "schema_version",
+    "tool_registry_sha",
+    "model",
+    "eval_set_version",
+    "retrieval_index_version"
+  ],
+  "immutable_fields": [
+    "conversations.messages",
+    "conversations.metadata",
+    "accounts.*",
+    "audit_log.*",
+    "feedback.scores"
+  ],
+  "eval_gate": {
+    "golden_set_version": "support-golden-v3-frozen-2026-05-15",
+    "min_pass_rate": 0.78,
+    "ci_width": 0.04
+  },
+  "button_label": "Rollback to previous stable",
+  "audit_log_path": "s3://faion-ops/audit/rollbacks/",
+  "owner": "alex@faion.net",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```

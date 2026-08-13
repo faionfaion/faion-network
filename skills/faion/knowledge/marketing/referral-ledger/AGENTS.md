@@ -67,6 +67,8 @@
 |------|---------|
 | `templates/referral-ledger.csv` | CSV ledger schema: append-only columns covering referrer, referred, evidence link, cycle, payout, status. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,13 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/referral-ledger.csv`
+
+```csv
+artefact_id,owner,version,last_reviewed,input_name,input_source,section_heading,section_body,decision
+```

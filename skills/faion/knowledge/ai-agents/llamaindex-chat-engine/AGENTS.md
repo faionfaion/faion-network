@@ -65,6 +65,8 @@
 | `templates/chat.py` | Working chat-engine wiring. |
 | `templates/_smoke-test.yaml` | Minimum. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,50 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on tool_use (true → react; false → condense_plus_context default), then on follow_up_complexity (high → condense_plus_context; trivial → context). Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/chat-profile.yaml`
+
+```yaml
+follow_up_complexity: TODO          # fill with concrete value per the driver definition
+tool_use: TODO          # fill with concrete value per the driver definition
+latency_target_ms: TODO          # fill with concrete value per the driver definition
+```
+
+### `templates/chat.py`
+
+```python
+"""Reference artefact for llamaindex-chat-engine. Self-test only verifies the scaffold compiles."""
+from __future__ import annotations
+
+
+def build(decision: dict):
+    """Build the runtime object from a validated decision-record."""
+    if not isinstance(decision, dict):
+        raise TypeError("decision must be dict from validated decision-record")
+    return decision  # placeholder: real implementations wire here
+
+
+def _self_test() -> int:
+    out = build({"slug": "llamaindex-chat-engine", "version": "2.0.0"})
+    return 0 if out["slug"] == "llamaindex-chat-engine" else 1
+
+
+if __name__ == "__main__":
+    import sys
+    if "--self-test" in sys.argv:
+        raise SystemExit(_self_test())
+    if "--help" in sys.argv:
+        print(__doc__)
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+follow_up_complexity: low
+tool_use: low
+latency_target_ms: low
+```

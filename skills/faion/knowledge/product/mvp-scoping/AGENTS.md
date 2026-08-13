@@ -65,6 +65,8 @@
 | `templates/mvp-scoping.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,106 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/mvp-scoping.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/mvp-scoping.json",
+  "title": "MVP Scoping Output Contract",
+  "type": "object",
+  "required": [
+    "product_name",
+    "aha_moment",
+    "must_have_journey",
+    "build_window",
+    "cut_list",
+    "readiness_checklist",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "product_name": {
+      "type": "string",
+      "description": "named product"
+    },
+    "aha_moment": {
+      "type": "string",
+      "description": "single moment statement"
+    },
+    "must_have_journey": {
+      "type": "array",
+      "description": "ordered step list",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "build_window": {
+      "type": "object",
+      "description": "ISO start/end \u22644 weeks"
+    },
+    "cut_list": {
+      "type": "array",
+      "description": "\u22653 items each with rationale",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "readiness_checklist": {
+      "type": "object",
+      "description": "instrumentation + billing + support + docs booleans"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "product_name": "sample-product_name",
+  "aha_moment": "sample-aha_moment",
+  "must_have_journey": [
+    {
+      "k": "v"
+    }
+  ],
+  "build_window": {
+    "k": "v"
+  },
+  "cut_list": [
+    {
+      "k": "v"
+    }
+  ],
+  "readiness_checklist": {
+    "k": "v"
+  },
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

@@ -68,6 +68,8 @@
 | `templates/verify-protection.sh` | Verify required-status list matches CI job names |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,120 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pre-commit-config.yaml`
+
+```yaml
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.0
+    hooks:
+      - id: ruff
+      - id: ruff-format
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.0
+    hooks:
+      - id: gitleaks
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+```
+
+### `templates/ci.yml`
+
+```yaml
+name: CI
+on: [push, pull_request]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install ruff
+      - run: ruff check .
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install mypy
+      - run: mypy src
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install -r requirements.txt pytest-xdist
+      - run: pytest -n auto --shard-id=${{ matrix.shard }} --num-shards=4
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "build artifact"
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: gitleaks/gitleaks-action@v2
+```
+
+### `templates/verify-protection.sh`
+
+```bash
+#!/bin/sh
+# Inputs: REPO (owner/name), BRANCH
+set -e
+REPO=${REPO:-faionfaion/faion-network}
+BRANCH=${BRANCH:-main}
+
+REQUIRED=$(gh api "repos/$REPO/branches/$BRANCH/protection" \
+  --jq '.required_status_checks.contexts | sort | join(",")')
+
+JOBS=$(grep -oE '^\s{2}[a-zA-Z0-9_-]+:$' .github/workflows/ci.yml \
+  | tr -d ' :' | sort | paste -sd,)
+
+if [ "$REQUIRED" != "$JOBS" ]; then
+  echo "MISMATCH: required-status=$REQUIRED but jobs=$JOBS" >&2
+  exit 1
+fi
+echo "OK"
+```
+
+### `templates/artefact.json`
+
+```json
+{
+  "pre_commit_lt_1s": true,
+  "ci_lt_10min": true,
+  "branch_protection_complete": true,
+  "required_status_jobs": [
+    "lint",
+    "typecheck",
+    "test",
+    "build",
+    "gitleaks"
+  ],
+  "auto_revert_configured": true,
+  "secret_scan_present": true,
+  "linear_history_required": true,
+  "min_reviewers": 1
+}
+```

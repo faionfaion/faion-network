@@ -68,6 +68,8 @@
 | `templates/harness-manifest.example.json` | Filled minimal valid example. |
 | `templates/replay-stub.py.tmpl` | Python skeleton showing the stub pattern. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,180 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree asks: (1) is the failure already captured in a trace? (2) is every nondeterministic dependency stubbable? (3) does the replayed run reproduce the failure bit-for-bit? Leaves point to "adopt harness", "split — capture more state first", or "escalate — non-stubbable infra dependency".
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/agent-replay-harness-cookbook/manifest.json",
+  "title": "Agent Replay Harness Manifest",
+  "description": "purpose=schema; consumes=trace+stubs; produces=harness-manifest; depends-on=01-core-rules.xml; token-budget-impact=low",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "harness_id",
+    "trace_path",
+    "coverage_ratio",
+    "stubs",
+    "reproduces",
+    "owner",
+    "version",
+    "produced_at"
+  ],
+  "properties": {
+    "harness_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trace_path": {
+      "type": "string"
+    },
+    "coverage_ratio": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "stubs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "type",
+          "class"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "llm",
+              "tool",
+              "clock",
+              "random"
+            ]
+          },
+          "class": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "frozen_clock": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "random_seed": {
+      "type": "integer"
+    },
+    "reproduces": {
+      "type": "boolean"
+    },
+    "first_failing_event": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "deviation_log_reference": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}
+```
+
+### `templates/harness-manifest.example.json`
+
+```json
+{
+  "harness_id": "h-research-2026-05-22",
+  "trace_path": "traces/r-2026-05-22-001.jsonl",
+  "coverage_ratio": 0.97,
+  "stubs": [
+    {
+      "type": "llm",
+      "class": "ReplayLLM",
+      "path": "harness/replay_llm.py"
+    },
+    {
+      "type": "tool",
+      "name": "web_search",
+      "class": "ReplayWebSearch",
+      "path": "harness/replay_tools.py"
+    }
+  ],
+  "frozen_clock": "2026-05-21T14:00:00Z",
+  "random_seed": 42,
+  "reproduces": true,
+  "first_failing_event": 3,
+  "deviation_log_reference": "deviations/2026-05-22-truncation.md",
+  "owner": "ruslan@faion.net",
+  "version": "1.0.0",
+  "produced_at": "2026-05-22T11:00:00Z"
+}
+```
+
+### `templates/replay-stub.py.tmpl`
+
+```python
+import hashlib
+import json
+from pathlib import Path
+
+
+class ReplayMissError(RuntimeError):
+    """Raised when a replay lookup misses (prompt drift, tool drift)."""
+
+
+class ReplayTool:
+    """Generic replay stub: subclass per tool, override args_hash if needed."""
+
+    def __init__(self, trace_path: Path, tool_name: str):
+        self.tool_name = tool_name
+        self.events = [
+            json.loads(line)
+            for line in trace_path.read_text().splitlines()
+            if line.strip()
+            and json.loads(line).get("class") == "stubbable_tool"
+            and json.loads(line).get("tool") == tool_name
+        ]
+        self.idx = 0
+
+    def args_hash(self, args: dict) -> str:
+        canonical = json.dumps(args, sort_keys=True)
+        return hashlib.sha1(canonical.encode()).hexdigest()
+
+    def execute(self, **args):
+        if self.idx >= len(self.events):
+            raise ReplayMissError(f"{self.tool_name}: trace exhausted at idx {self.idx}")
+        expected = self.events[self.idx]
+        actual_hash = self.args_hash(args)
+        if expected["args_hash"][:8] != actual_hash[:8]:
+            raise ReplayMissError(
+                f"{self.tool_name}@{self.idx}: args drift "
+                f"recorded={expected['args_hash'][:8]} actual={actual_hash[:8]}"
+            )
+        self.idx += 1
+        return expected["returns"]
+```

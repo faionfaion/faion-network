@@ -69,6 +69,8 @@
 | `templates/context-window-curation-for-coding-agents.json` | JSON Schema for the bundle artefact. |
 | `templates/glossary-snippet.md` | 200-token project-glossary template. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,119 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree first checks scope clarity (one feature / bug / refactor — not "improve everything"). It then verifies AGENTS.md is in the bundle, target file is included, ≤2 callers picked, glossary present, total ≤ budget. Leaves emit `commit-bundle`, `block-no-scope`, `block-over-budget`, or `block-no-agents-md`. Each leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/context-window-curation-for-coding-agents.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/context-window-curation-for-coding-agents.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "task_id",
+    "task_description",
+    "files",
+    "agents_md_included",
+    "glossary",
+    "exclusions",
+    "total_tokens",
+    "budget_tokens",
+    "verdict",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^ctx-[a-z0-9-]{6,}$"
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "task_description": {
+      "type": "string",
+      "minLength": 10
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "path",
+          "role",
+          "tokens"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "role": {
+            "enum": [
+              "target",
+              "caller",
+              "type",
+              "agents-md",
+              "glossary",
+              "test-fixture",
+              "config"
+            ]
+          },
+          "tokens": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 50000
+          }
+        }
+      }
+    },
+    "agents_md_included": {
+      "type": "boolean"
+    },
+    "glossary": {
+      "type": "string",
+      "minLength": 50
+    },
+    "exclusions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 3
+      }
+    },
+    "total_tokens": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 50000
+    },
+    "budget_tokens": {
+      "type": "integer",
+      "minimum": 1000,
+      "maximum": 50000
+    },
+    "verdict": {
+      "enum": [
+        "commit-bundle",
+        "block-no-scope",
+        "block-over-budget",
+        "block-no-agents-md"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

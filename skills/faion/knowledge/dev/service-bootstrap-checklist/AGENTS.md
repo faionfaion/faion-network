@@ -69,6 +69,8 @@
 | `templates/dashboards.json` | JSON template scaffolding the artefact contract. |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,70 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is this a new production-bound service that will take traffic within 30 days?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/bootstrap_checklist.json`
+
+```json
+{
+  "service_id": "svc-refunds",
+  "checklist": [
+    {
+      "id": "repo",
+      "name": "Repo created with CODEOWNERS",
+      "owner": "alice",
+      "done": true,
+      "evidence_link": "https://github.com/org/svc-refunds",
+      "waiver_reason": null
+    }
+  ],
+  "traffic_gate_open": true,
+  "platform_lead_approver": null,
+  "last_reviewed": "2026-05-23"
+}
+```
+
+### `templates/dashboards.json`
+
+```json
+{
+  "service_id": "svc-refunds",
+  "checklist": [
+    {
+      "id": "repo",
+      "name": "Repo created with CODEOWNERS",
+      "owner": "alice",
+      "done": true,
+      "evidence_link": "https://github.com/org/svc-refunds",
+      "waiver_reason": null
+    }
+  ],
+  "traffic_gate_open": true,
+  "platform_lead_approver": null,
+  "last_reviewed": "2026-05-23"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "service_id": "svc-refunds",
+  "checklist": [
+    {
+      "id": "repo",
+      "name": "Repo created with CODEOWNERS",
+      "owner": "alice",
+      "done": true,
+      "evidence_link": "https://github.com/org/svc-refunds",
+      "waiver_reason": null
+    }
+  ],
+  "traffic_gate_open": true,
+  "platform_lead_approver": null,
+  "last_reviewed": "2026-05-23"
+}
+```

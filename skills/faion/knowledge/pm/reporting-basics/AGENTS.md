@@ -66,7 +66,8 @@
 |------|---------|
 | `templates/output-schema.json` | JSON Schema (draft 2020-12) for the weekly/monthly report artefact. |
 | `templates/report.md` | Markdown skeleton for the report with KPI table + narrative + escalation flags. |
-| `templates/kpi-thresholds.yaml` | YAML template for KPI definitions + thresholds + sources. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -87,3 +88,73 @@ See `content/06-decision-tree.xml`. The tree maps observable signals (input
 preconditions, source-of-truth access, named-consumer presence) onto a concrete
 verdict — apply the methodology, downgrade to draft, or skip — with each leaf
 referencing a rule id from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/reporting-basics.json",
+  "type": "object",
+  "required": [
+    "report_id",
+    "cadence",
+    "kpis",
+    "narrative",
+    "escalation_flags",
+    "distribution_list"
+  ],
+  "properties": {
+    "report_id": {
+      "type": "string"
+    },
+    "cadence": {
+      "enum": [
+        "weekly",
+        "biweekly",
+        "monthly"
+      ]
+    },
+    "kpis": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "value",
+          "threshold",
+          "source"
+        ]
+      }
+    },
+    "narrative": {
+      "type": "string",
+      "minLength": 80,
+      "maxLength": 600
+    },
+    "escalation_flags": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kpi",
+          "owner",
+          "proposed_action"
+        ]
+      }
+    },
+    "distribution_list": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
+```

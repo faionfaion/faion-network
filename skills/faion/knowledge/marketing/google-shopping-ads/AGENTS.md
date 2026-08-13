@@ -69,6 +69,8 @@
 | `templates/feed-health-checklist.md` | Feed health audit checklist. |
 | `templates/shopping-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,39 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/shopping-spec.json`
+
+```json
+{
+  "feed_health_pct": 92,
+  "priority_tiers": [
+    "high",
+    "medium",
+    "clearance"
+  ],
+  "product_groups": [
+    {
+      "name": "high-margin",
+      "partition_by": "margin>30%"
+    },
+    {
+      "name": "clearance",
+      "partition_by": "tag=clearance"
+    }
+  ],
+  "negative_keywords": [
+    "free",
+    "used"
+  ],
+  "roas_targets": {
+    "high": 4.5,
+    "medium": 2.8,
+    "clearance": 1.6
+  }
+}
+```

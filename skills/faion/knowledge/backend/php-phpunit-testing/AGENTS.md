@@ -67,6 +67,8 @@
 | `templates/UnitServiceTest.php` | Plain Pest unit test skeleton (no Laravel boot). |
 | `templates/phpunit.xml` | phpunit.xml configuration with coverage + bootstrapping. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,152 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (layer under test, persistence dependency, third-party calls) to a rule from `01-core-rules.xml`. Use it before authoring a test class.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/FeatureTest.php`
+
+```php
+// Feature test skeleton — HTTP-driven, uses RefreshDatabase
+// Replace: User, UserControllerTest, /api/v1/users endpoints
+
+namespace Tests\Feature;
+
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
+
+class UserControllerTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private User $admin;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->admin = User::factory()->create(['role' => 'admin']);
+    }
+
+    public function test_authenticated_user_can_list_users(): void
+    {
+        User::factory()->count(3)->create();
+
+        $response = $this->actingAs($this->admin)->getJson('/api/v1/users');
+
+        $response->assertOk()
+            ->assertJsonCount(4, 'data') // 3 + admin
+            ->assertJsonPath('meta.current_page', 1);
+    }
+
+    public function test_can_create_user_with_valid_data(): void
+    {
+        $response = $this->actingAs($this->admin)->postJson('/api/v1/users', [
+            'name'     => 'John Doe',
+            'email'    => 'john@example.com',
+            'password' => 'password123',
+        ]);
+
+        $response->assertCreated()
+            ->assertJsonPath('data.name', 'John Doe')
+            ->assertJsonPath('data.email', 'john@example.com');
+
+        $this->assertDatabaseHas('users', ['email' => 'john@example.com']);
+    }
+
+    public function test_create_returns_422_with_invalid_email(): void
+    {
+        $response = $this->actingAs($this->admin)->postJson('/api/v1/users', [
+            'name'     => 'John',
+            'email'    => 'not-an-email',
+            'password' => 'password123',
+        ]);
+
+        $response->assertUnprocessable()
+            ->assertJsonValidationErrors(['email']);
+    }
+
+    public function test_can_soft_delete_user(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($this->admin)->deleteJson("/api/v1/users/{$user->id}")
+            ->assertNoContent();
+
+        $this->assertSoftDeleted('users', ['id' => $user->id]);
+    }
+}
+```
+
+### `templates/UnitServiceTest.php`
+
+```php
+// Unit test skeleton — single class, no RefreshDatabase, Mockery for dependencies
+// Replace: UserService, UserRepository, UserCreated event
+
+namespace Tests\Unit\Services;
+
+use App\Events\UserCreated;
+use App\Repositories\UserRepository;
+use App\Services\UserService;
+use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Hash;
+use Mockery;
+use Tests\TestCase;
+
+class UserServiceTest extends TestCase
+{
+    // NOTE: do NOT use RefreshDatabase here — it is a unit test
+
+    private UserService    $service;
+    private UserRepository $repository;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->repository = Mockery::mock(UserRepository::class);
+        $this->service    = new UserService($this->repository);
+    }
+
+    public function test_create_dispatches_user_created_event(): void
+    {
+        Event::fake(); // BEFORE the action
+
+        $this->repository->shouldReceive('create')->once()->andReturn(
+            \App\Models\User::factory()->make()
+        );
+
+        $this->service->create([
+            'name'     => 'Alice',
+            'email'    => 'alice@example.com',
+            'password' => 'password',
+        ]);
+
+        Event::assertDispatched(UserCreated::class);
+    }
+
+    public function test_create_hashes_password(): void
+    {
+        $this->repository->shouldReceive('create')
+            ->once()
+            ->andReturnUsing(fn (array $data) => \App\Models\User::factory()->make($data));
+
+        $user = $this->service->create([
+            'name'     => 'Alice',
+            'email'    => 'alice@example.com',
+            'password' => 'plaintext',
+        ]);
+
+        $this->assertNotEquals('plaintext', $user->password);
+        $this->assertTrue(Hash::check('plaintext', $user->password));
+    }
+
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
+    }
+}
+```

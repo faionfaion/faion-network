@@ -65,6 +65,8 @@
 | `templates/alt-text-prompt.txt` | VLM prompt template for alt text generation |
 | `templates/chart-insight-prompt.txt` | VLM prompt template for chart key-insight extraction |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,39 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root: Is the image decorative (per CMS flag or dimensions+alpha rule)? Branches route to a rule id from `content/01-core-rules.xml` (decorative-empty, chart-insight, embedded-text-verbatim, ...) so every leaf is traceable to a testable statement.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/alt-text-prompt.txt`
+
+```text
+# VLM prompt template for alt text generation
+
+## Context
+{Insert situational context for vision-accessibility: audience, channel, constraints.}
+
+## Body
+{Insert main body. Keep it scoped to one purpose.}
+
+## Constraints
+- {Constraint 1 from 01-core-rules.xml}
+- {Constraint 2}
+```
+
+### `templates/chart-insight-prompt.txt`
+
+```text
+# VLM prompt template for chart key-insight extraction
+
+## Context
+{Insert situational context for vision-accessibility: audience, channel, constraints.}
+
+## Body
+{Insert main body. Keep it scoped to one purpose.}
+
+## Constraints
+- {Constraint 1 from 01-core-rules.xml}
+- {Constraint 2}
+```

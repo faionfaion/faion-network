@@ -68,6 +68,8 @@
 | `templates/OrderService.java` | Service with @Transactional placement + entity↔DTO mapping |
 | `templates/OrderRepository.java` | Spring Data JPA interface with @EntityGraph |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,98 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/OrderController.java`
+
+```java
+package com.example.order.web;
+
+import jakarta.validation.Valid;
+import java.net.URI;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import com.example.order.dto.OrderRequest;
+import com.example.order.dto.OrderResponse;
+import com.example.order.service.OrderService;
+
+@RestController
+@RequestMapping("/orders")
+public class OrderController {
+
+    private final OrderService service;
+
+    public OrderController(OrderService service) {
+        this.service = service;
+    }
+
+    @PostMapping
+    public ResponseEntity<OrderResponse> create(@Valid @RequestBody OrderRequest req) {
+        OrderResponse out = service.create(req);
+        return ResponseEntity.created(URI.create("/orders/" + out.id())).body(out);
+    }
+
+    @GetMapping("/{id}")
+    public OrderResponse get(@PathVariable String id) {
+        return service.get(id);
+    }
+}
+```
+
+### `templates/OrderService.java`
+
+```java
+package com.example.order.service;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.example.order.domain.Order;
+import com.example.order.domain.OrderRepository;
+import com.example.order.dto.OrderRequest;
+import com.example.order.dto.OrderResponse;
+
+@Service
+public class OrderService {
+
+    private final OrderRepository repo;
+
+    public OrderService(OrderRepository repo) {
+        this.repo = repo;
+    }
+
+    @Transactional
+    public OrderResponse create(OrderRequest req) {
+        Order order = new Order(req.customer(), req.items());
+        repo.save(order);
+        return OrderResponse.from(order);
+    }
+
+    @Transactional(readOnly = true)
+    public OrderResponse get(String id) {
+        return repo.findWithItemsById(id)
+                   .map(OrderResponse::from)
+                   .orElseThrow(() -> new OrderNotFoundException(id));
+    }
+}
+```
+
+### `templates/OrderRepository.java`
+
+```java
+package com.example.order.domain;
+
+import java.util.Optional;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface OrderRepository extends JpaRepository<Order, String> {
+
+    @EntityGraph(attributePaths = {"items"})
+    Optional<Order> findWithItemsById(String id);
+}
+```

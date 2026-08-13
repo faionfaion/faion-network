@@ -68,6 +68,8 @@
 | `templates/output-schema.json` | JSON Schema (draft-07) for the prompt-scaffold artefact |
 | `templates/_smoke-test.json` | Minimum viable filled-in prompt-scaffold |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,108 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on (a) task type, (b) existing spec / tests, and (c) pattern-specific stop conditions. Every leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-pair-coding-prompt-patterns.json",
+  "type": "object",
+  "required": [
+    "scaffold_id",
+    "pattern",
+    "task_summary",
+    "stop_conditions",
+    "acceptance_checklist",
+    "unit"
+  ],
+  "properties": {
+    "scaffold_id": {
+      "type": "string",
+      "pattern": "^PS-[A-Z0-9-]{2,40}$"
+    },
+    "pattern": {
+      "type": "string",
+      "enum": [
+        "spec-first",
+        "test-first",
+        "repo-grep",
+        "diff-review",
+        "refactor-isolate",
+        "plan-then-execute",
+        "branch-canary"
+      ]
+    },
+    "task_summary": {
+      "type": "string",
+      "minLength": 8
+    },
+    "stop_conditions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string"
+      }
+    },
+    "acceptance_checklist": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "string"
+      }
+    },
+    "unit": {
+      "type": "string",
+      "enum": [
+        "feature",
+        "refactor",
+        "fix",
+        "spike",
+        "docs",
+        "test"
+      ]
+    },
+    "repo_grep_targets": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "prompt_body": {
+      "type": "string"
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "scaffold_id": "PS-PRICING-ENDPOINT",
+  "pattern": "spec-first",
+  "task_summary": "Add POST /pricing endpoint that returns total price for a cart payload",
+  "stop_conditions": [
+    "Stop when tests pass",
+    "Stop if diff exceeds 200 LOC",
+    "Stop if any new import is not present in the repo"
+  ],
+  "acceptance_checklist": [
+    "Spec written in docs/pricing.md before code",
+    "Endpoint has at least 3 table-driven tests",
+    "OpenAPI schema updated",
+    "No imports outside requirements.txt"
+  ],
+  "unit": "feature",
+  "repo_grep_targets": [
+    "app/api/",
+    "tests/api/"
+  ],
+  "prompt_body": "Read docs/pricing.md, then implement POST /pricing in app/api/pricing.py..."
+}
+```

@@ -68,6 +68,8 @@
 | `templates/prompt-audit.txt` | Prompt audit template |
 | `templates/vault-policy.hcl` | Vault policy template |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,280 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/eso-secret-store.yaml`
+
+```yaml
+# External Secrets Operator: SecretStore + ExternalSecret patterns
+# Supports AWS SSM, GCP Secret Manager, HashiCorp Vault, Azure Key Vault
+
+---
+# AWS SSM Parameter Store via IRSA
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: aws-ssm
+  namespace: production
+spec:
+  provider:
+    aws:
+      service: ParameterStore
+      region: us-east-1
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: external-secrets-sa  # has IRSA annotation
+---
+# GCP Secret Manager via Workload Identity
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: gcp-secretmanager
+  namespace: production
+spec:
+  provider:
+    gcpsm:
+      projectID: my-gcp-project
+      auth:
+        workloadIdentity:
+          clusterLocation: us-central1
+          clusterName: my-cluster
+          clusterProjectID: my-gcp-project
+          serviceAccountRef:
+            name: external-secrets-sa
+---
+# HashiCorp Vault via Kubernetes auth
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: vault
+  namespace: production
+spec:
+  provider:
+    vault:
+      server: https://vault.internal.example.com
+      path: secret
+      version: v2
+      auth:
+        kubernetes:
+          mountPath: kubernetes
+          role: production-app
+          serviceAccountRef:
+            name: vault-auth-sa
+---
+# ExternalSecret: pull multiple keys from SSM into one K8s Secret
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: app-secrets
+  namespace: production
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-ssm
+    kind: SecretStore
+  target:
+    name: app-secrets           # K8s Secret name to create
+    creationPolicy: Owner       # ESO owns lifecycle; delete ExternalSecret → delete Secret
+    template:
+      engineVersion: v2
+      data:
+        DATABASE_URL: "{{ .db_password | b64dec }}"  # transform if needed
+  data:
+    - secretKey: db-password        # key in K8s Secret
+      remoteRef:
+        key: /production/app/db-password
+    - secretKey: api-key
+      remoteRef:
+        key: /production/app/api-key
+  dataFrom:
+    - extract:
+        key: /production/app/config  # pulls all sub-keys as flat map
+---
+# ClusterSecretStore for cross-namespace access (use sparingly)
+apiVersion: external-secrets.io/v1beta1
+kind: ClusterSecretStore
+metadata:
+  name: vault-cluster
+spec:
+  provider:
+    vault:
+      server: https://vault.internal.example.com
+      path: secret
+      version: v2
+      auth:
+        kubernetes:
+          mountPath: kubernetes
+          role: cluster-reader
+          serviceAccountRef:
+            name: eso-cluster-sa
+            namespace: external-secrets
+```
+
+### `templates/prompt-audit.txt`
+
+```text
+You are a secrets management security auditor. Audit the system described below and identify all violations, risks, and remediation steps.
+
+Context:
+- System description: {{SYSTEM_DESCRIPTION}}
+- Current secret storage: {{SECRET_STORAGE_METHOD}}
+- CI/CD platform: {{CICD_PLATFORM}}
+- Kubernetes in use: {{YES_NO}}
+- Cloud provider: {{CLOUD_PROVIDER}}
+
+Audit checklist — for each item mark: PASS / FAIL / N/A and explain why.
+
+SECTION 1: Secret Discovery
+1. Are there any hardcoded credentials in source code? (scan .env files committed, tokens in YAML, connection strings in code)
+2. Are secrets stored in CI/CD platform variables (non-OIDC)? Which ones could be replaced with OIDC/WIF?
+3. Are there long-lived service account keys (AWS access keys, GCP SA JSON keys, Azure client secrets)?
+4. Are secrets shared across environments (same credential in dev and production)?
+5. Are secrets stored in Kubernetes etcd without encryption at rest?
+
+SECTION 2: Access Control
+6. Does every secret follow least-privilege (application reads only its own secrets)?
+7. Are there wildcard policies (e.g., "read all secrets")?
+8. Is there a defined secret owner for each secret? Who rotates it?
+9. Are break-glass/admin credentials stored separately and access-logged?
+10. Are there orphaned secrets with no known owner/application?
+
+SECTION 3: Rotation
+11. Are all static credentials rotated at least every 90 days?
+12. Are database credentials dynamic (Vault database secrets engine, RDS IAM auth)?
+13. Is there automated rotation for API keys to third-party services?
+14. After any team member offboarding, are shared credentials rotated immediately?
+
+SECTION 4: Transport & Storage
+15. Are secrets transmitted only over TLS 1.2+?
+16. Are secrets logged anywhere (application logs, CI/CD output, monitoring systems)?
+17. Are secrets encrypted at rest (KMS-managed, not application-level only)?
+18. Are backups of secret stores also encrypted and access-controlled?
+
+SECTION 5: Kubernetes-specific (skip if N/A)
+19. Is External Secrets Operator or Secrets Store CSI Driver in use (not manual kubectl create secret)?
+20. Are Kubernetes Secrets base64-decoded values ever logged or exposed in env vars printouts?
+21. Is etcd encryption at rest configured?
+22. Are Pods running with `envFrom: secretRef` (exposes all keys) vs specific `env.valueFrom.secretKeyRef`?
+
+SECTION 6: CI/CD-specific
+23. Is OIDC/WIF used for cloud provider auth (no static keys in CI)?
+24. Are secret values masked in CI logs?
+25. Are pull request pipelines prevented from accessing production secrets?
+26. Is there a secret scanning step in the pipeline (detect-secrets, trufflehog, gitleaks)?
+
+For each FAIL, provide:
+- Risk level: Critical / High / Medium / Low
+- Remediation: Specific action with the recommended tool/service
+- Priority: immediate / next sprint / next quarter
+
+Final summary: overall secret hygiene score (A/B/C/D/F) with top 5 critical actions.
+```
+
+### `templates/vault-policy.hcl`
+
+```hcl
+# HashiCorp Vault policy templates
+# Apply with: vault policy write <name> <file.hcl>
+
+# ---
+# Application policy: read-only access to own path
+# ---
+# vault policy write app-production production-app.hcl
+path "secret/data/production/{{identity.entity.aliases.auth_kubernetes_XXX.metadata.service_account_namespace}}/{{identity.entity.aliases.auth_kubernetes_XXX.metadata.service_account_name}}/*" {
+  capabilities = ["read"]
+}
+
+# Simpler static path for a named application
+path "secret/data/production/myapp/*" {
+  capabilities = ["read"]
+}
+
+# Allow listing (needed for UI and some apps to enumerate paths)
+path "secret/metadata/production/myapp/*" {
+  capabilities = ["list", "read"]
+}
+
+# ---
+# CI/CD policy: write secrets during deploy, read during run
+# ---
+# vault policy write cicd-deploy cicd-deploy.hcl
+path "secret/data/production/*" {
+  capabilities = ["create", "update"]
+  # Restrict to specific fields if needed:
+  # allowed_parameters = {
+  #   "data" = []
+  # }
+}
+
+path "secret/data/staging/*" {
+  capabilities = ["create", "update", "read", "delete"]
+}
+
+# Allow CI to rotate its own token
+path "auth/token/renew-self" {
+  capabilities = ["update"]
+}
+
+path "auth/token/lookup-self" {
+  capabilities = ["read"]
+}
+
+# ---
+# Admin policy: full control over KV engine (break-glass only)
+# ---
+# vault policy write kv-admin kv-admin.hcl
+path "secret/*" {
+  capabilities = ["create", "read", "update", "delete", "list", "patch"]
+}
+
+# Allow managing policies themselves
+path "sys/policies/acl/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+# ---
+# Dynamic database credentials policy
+# ---
+path "database/creds/production-readonly" {
+  capabilities = ["read"]
+}
+
+path "database/creds/production-readwrite" {
+  capabilities = ["read"]
+}
+
+# Allow lease renewal (so apps can extend dynamic creds)
+path "sys/leases/renew" {
+  capabilities = ["update"]
+}
+
+# ---
+# PKI: request TLS certificates
+# ---
+path "pki/issue/internal-services" {
+  capabilities = ["create", "update"]
+  allowed_parameters = {
+    "common_name" = ["*.internal.example.com", "*.svc.cluster.local"]
+    "ttl"         = ["24h", "72h"]
+  }
+}
+
+path "pki/cert/ca" {
+  capabilities = ["read"]
+}
+
+# ---
+# Kubernetes auth role (configure, not a policy file, but shown for reference)
+# ---
+# vault write auth/kubernetes/role/production-app \
+#   bound_service_account_names=myapp \
+#   bound_service_account_namespaces=production \
+#   policies=app-production \
+#   ttl=1h \
+#   max_ttl=4h
+```

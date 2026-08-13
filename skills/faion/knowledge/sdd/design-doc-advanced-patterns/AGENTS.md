@@ -70,6 +70,8 @@
 | `templates/design-doc-advanced-patterns.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/design-doc-advanced-patterns.md` | Markdown skeleton for human-readable artefact rendering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,38 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/design-doc-advanced-patterns.json`
+
+```json
+{
+  "artefact_id": "design-doc-advanced-patterns-example",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "base_doc_path": "base_doc_path value",
+  "triggers_fired": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "blocks_included": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "capacity_sources": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "mttr_minutes": {
+    "key": "value"
+  },
+  "rollback_budget_minutes": 1,
+  "owner": "@solo-founder"
+}
+```

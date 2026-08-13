@@ -72,6 +72,8 @@
 | `templates/rotation-runbook.md` | Webhook-secret rotation runbook with rollback plan. |
 | `templates/_smoke-test.json` | Filled-in minimum viable hardening report for validator smoke-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,23 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree checks preconditions, then timestamp tolerance, then rotation cadence, then edge controls, then audit destination. Every leaf maps to a rule id from `content/01-core-rules.xml`, with skip-this-methodology as the default for pre-prod work.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "timestamp_tolerance_sec": 300,
+  "rotation_cadence_days": 90,
+  "raw_body_verified": true,
+  "edge_rate_limit_rpm": 200,
+  "audit_log_destination": "logs://webhook-audit",
+  "owner": "ruslan@faion.net",
+  "ip_allowlist": [
+    "3.18.12.63/32"
+  ]
+}
+```

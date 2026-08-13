@@ -67,6 +67,8 @@
 | `templates/gcp-cloud-run-serverless.yaml` | Skeleton for the config artefact this methodology produces. |
 | `templates/_smoke-test.yaml` | Minimum viable filled-in example. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,32 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree branches on observable workload / configuration signals and routes to a specific rule id from `01-core-rules.xml`. Use it whenever the input shape is ambiguous between two adjacent methodologies in this sub-skill (e.g. gcp-cloud-run-serverless vs an adjacent sibling).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/gcp-cloud-run-serverless.yaml`
+
+```yaml
+name: example-name
+image: example-image
+min_instances: 0  # int|number|string
+max_instances: 0  # int|number|string
+concurrency: 0  # int|number|string
+cpu: example-cpu
+memory: 0  # int|number|string
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+# minimum viable filled-in example of gcp-cloud-run-serverless.yaml
+name: example-name
+image: example-image
+min_instances: 1
+max_instances: 1
+concurrency: 1
+cpu: example-cpu
+memory: 1
+```

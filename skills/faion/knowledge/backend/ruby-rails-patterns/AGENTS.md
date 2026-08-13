@@ -67,6 +67,8 @@
 |------|---------|
 | `templates/bullet-rspec.rb` | RSpec configuration enabling Bullet in test runs. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,39 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (service shape, authorization layer, CI gate presence) to a rule from `01-core-rules.xml`. Use it before extracting a service or wiring authorization.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/bullet-rspec.rb`
+
+```ruby
+# RSpec configuration enabling Bullet N+1 detection in test mode.
+# Add to spec/rails_helper.rb (inside RSpec.configure block).
+#
+# Bullet must be in Gemfile:
+#   group :development, :test do
+#     gem 'bullet'
+#   end
+
+# In config/environments/test.rb:
+#   config.after_initialize do
+#     Bullet.enable        = true
+#     Bullet.bullet_logger = true
+#     Bullet.raise         = true  # fail tests on N+1
+#   end
+
+RSpec.configure do |config|
+  if Bullet.enable?
+    config.before(:each) do
+      Bullet.start_request
+    end
+
+    config.after(:each) do
+      Bullet.perform_out_of_channel_notifications if Bullet.notification?
+      Bullet.end_request
+    end
+  end
+end
+```

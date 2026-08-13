@@ -67,7 +67,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/squad-okr.md` | Per-squad OKR doc with O + 3-5 KRs + dependencies + check-in cadence. |
-| `templates/dependency-graph.yaml` | Cascade graph YAML with {producer, consumer, deliverable, by_date} edges. |
 | `templates/checkin.md` | Weekly check-in template with confidence + blocker. |
 
 ## Scripts

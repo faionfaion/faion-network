@@ -58,6 +58,8 @@
 | `templates/tsconfig-strict.json` | TypeScript 5 strict tsconfig with all recommended flags. |
 | `templates/bp2026-drift.sh` | Drift scanner: compares pinned stack versions in repo vs the 2026 baseline; prints a delta. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -73,3 +75,68 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` decides for each candidate rule whether to extract it into `constitution.md` (project-specific contract), cite it inline (keep this file as a reference), or deprecate it (aged out of current stack).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tsconfig-strict.json`
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noImplicitOverride": true,
+    "target": "ES2023",
+    "lib": [
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "allowImportingTsExtensions": true,
+    "resolvePackageJsonExports": true,
+    "resolvePackageJsonImports": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  }
+}
+```
+
+### `templates/bp2026-drift.sh`
+
+```bash
+set -euo pipefail
+root="${1:-.}"
+fail=0
+note() { echo "- $*"; fail=1; }
+if [ -f "$root/tsconfig.json" ]; then
+  for k in '"strict": true' '"noUncheckedIndexedAccess": true' '"verbatimModuleSyntax": true'; do
+    grep -q "$k" "$root/tsconfig.json" || note "tsconfig missing: $k"
+  done
+fi
+if [ -f "$root/package.json" ]; then
+  node -e '
+    const p=require(process.argv[1]);
+    const dep={...(p.dependencies||{}),...(p.devDependencies||{})};
+    const want={typescript:"^5",react:"^19",next:"^15"};
+    for (const [k,v] of Object.entries(want)) {
+      if (k in dep && !new RegExp(v).test(dep[k]))
+        console.log("- "+k+" pinned at "+dep[k]+", want "+v);
+    }
+  ' "$root/package.json"
+fi
+if [ -f "$root/pyproject.toml" ]; then
+  grep -E 'python = "\\^?3\\.(12|13)' "$root/pyproject.toml" >/dev/null || note "Python <3.12"
+  grep -q "ruff" "$root/pyproject.toml" || note "ruff not configured"
+fi
+exit $fail
+```

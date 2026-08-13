@@ -66,6 +66,8 @@
 |------|---------|
 | `templates/resilience.yaml` | Gateway resilience config: rate limits, breakers, retries, timeouts. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,49 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named owner, input reachability) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/resilience.yaml`
+
+```yaml
+artefact_id: api-gateway-resilience-<client>-2026-05-23
+owner: <Full Name> <email>
+version: 1.0.0
+last_reviewed: 2026-05-23
+
+rate_limits:
+  - scope: consumer
+    requests_per_minute: 600
+    burst: 60
+  - scope: route
+    route: /api/v1/checkout
+    requests_per_minute: 1000
+    burst: 100
+
+circuit_breakers:
+  - upstream: payment-service
+    failure_threshold_pct: 50
+    minimum_requests: 20
+    open_for_seconds: 30
+    half_open_probes: 3
+
+retries:
+  - method: GET
+    max_attempts: 3
+    base_backoff_ms: 100
+    max_backoff_ms: 1000
+  - method: POST
+    max_attempts: 2
+    base_backoff_ms: 200
+    max_backoff_ms: 1000
+    require_idempotency_key: true
+
+timeouts:
+  default_ms: 5000
+  per_upstream:
+    payment-service: 8000
+    search-service: 2000
+```

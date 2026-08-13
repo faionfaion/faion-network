@@ -61,14 +61,6 @@
 | `compose-change-set` | sonnet | Wire create-change-set + describe + execute |
 | `rollback-path-draft` | sonnet | Per-mutation rollback sequence |
 
-## Templates
-
-| File | Purpose |
-|------|---------|
-| `templates/ecs-service-update.sh` | ECS service rolling update skeleton |
-| `templates/cfn-changeset.sh` | CloudFormation change-set + execute skeleton |
-| `templates/iam-role.sh` | IAM role + policy attach skeleton |
-
 ## Scripts
 
 | File | Purpose | When to call |

@@ -70,6 +70,8 @@
 | `templates/pm-learning-velocity.py` | Compute decision-velocity per category; emits JSON. |
 | `templates/quarterly-audit-memo.md` | Quarterly belief-audit memo template. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,60 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals to apply / skip / route-elsewhere, with each leaf referencing a rule id from `01-core-rules.xml`. Consult the tree before applying the methodology when signals are ambiguous.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pm-learning-velocity.py`
+
+```python
+"""
+
+"""
+pm_learning_velocity.py — score a PM's learning velocity from their decision log.
+Inputs:
+  decisions.yaml  (list of {id, ts, bet_id, decision, prediction, check_back_date, outcome, quarter, reversed_within_days})
+Usage: python pm_learning_velocity.py decisions.yaml [--quarter 2026Q2]
+"""
+import sys, yaml, datetime, argparse, statistics
+
+ap = argparse.ArgumentParser()
+ap.add_argument("path")
+ap.add_argument("--quarter", default=None)
+args = ap.parse_args()
+
+decisions = yaml.safe_load(open(args.path)) or []
+if args.quarter:
+    decisions = [d for d in decisions if d.get("quarter") == args.quarter]
+if not decisions:
+    sys.exit("no decisions in scope")
+
+n = len(decisions)
+reversed30 = sum(
+    1 for d in decisions
+    if d.get("reversed_within_days") and d["reversed_within_days"] <= 30
+)
+graded = [d for d in decisions if d.get("outcome") in ("hit", "miss")]
+hit_rate = sum(1 for d in graded if d["outcome"] == "hit") / len(graded) if graded else None
+kills = sum(1 for d in decisions if d["decision"] == "kill")
+reframes = sum(1 for d in decisions if d["decision"] == "reframe")
+mean_time_to_check = statistics.mean(
+    [
+        (
+            datetime.date.fromisoformat(d["check_back_date"])
+            - datetime.date.fromisoformat(d["ts"][:10])
+        ).days
+        for d in decisions if d.get("check_back_date")
+    ]
+) if decisions else 0
+
+print(f"Decisions logged       : {n}")
+print(f"Kill / reframe ratio   : {(kills + reframes) / n:.0%}  (target >=30%)")
+print(f"Reversed within 30 days: {reversed30 / n:.0%}      (target <=15%)")
+print(f"Mean time to check-back: {mean_time_to_check:.0f} days  (target <=21)")
+if hit_rate is not None:
+    print(f"Prediction hit rate    : {hit_rate:.0%}  (target 0.55-0.75 — outside = miscalibrated)")
+else:
+    print("Prediction hit rate    : insufficient graded sample")
+```

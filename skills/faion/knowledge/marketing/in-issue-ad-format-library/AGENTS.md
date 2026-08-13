@@ -71,6 +71,8 @@
 | `templates/rotation-plan.csv` | 8-issue rotation plan ready to fill |
 | `templates/_smoke-test.json` | Minimum viable library + plan + benchmarks for validator self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,106 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps subscriber count, baseline availability, target product, and cadence violations to a rule from `01-core-rules.xml`, telling the agent whether to publish the rotation plan, block on a missing constraint, or skip the library. Walk it on every fresh rotation plan; do not cache outcomes across plans.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ad-format-library.yaml`
+
+```yaml
+library:
+  top_banner:
+    max_per_issue: 1
+    placement: above_the_fold_tile
+    typical_chars: 80-160
+  soft_ps:
+    max_per_4_issues: 3
+    placement: footer_two_sentences
+    typical_chars: 80-220
+  mid_issue_case:
+    max_per_2_issues: 1
+    placement: tied_to_issue_topic_one_paragraph
+    typical_chars: 250-500
+  dedicated_send:
+    max_per_6_issues: 1
+    placement: full_issue_promo
+    typical_chars: 600-1200
+```
+
+### `templates/rotation-plan.csv`
+
+```csv
+issue_n,format,cta_destination
+1,top_banner,product_paywall
+2,soft_ps,lead_magnet
+3,mid_issue_case,product_paywall
+4,none,none
+5,soft_ps,waitlist
+6,dedicated_send,product_paywall
+7,soft_ps,lead_magnet
+8,mid_issue_case,feature_announcement
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "library": {
+    "top_banner": {
+      "max_per_issue": 1
+    },
+    "soft_ps": {
+      "max_per_4_issues": 3
+    },
+    "mid_issue_case": {
+      "max_per_2_issues": 1
+    },
+    "dedicated_send": {
+      "max_per_6_issues": 1
+    }
+  },
+  "baseline": {
+    "ctr_pct": 3.2,
+    "cvr_pct": 0.6,
+    "computed_at": "2026-05-01"
+  },
+  "rotation_plan": [
+    {
+      "issue_n": 1,
+      "format": "top_banner",
+      "cta_destination": "product_paywall"
+    },
+    {
+      "issue_n": 2,
+      "format": "soft_ps",
+      "cta_destination": "lead_magnet"
+    },
+    {
+      "issue_n": 3,
+      "format": "mid_issue_case",
+      "cta_destination": "product_paywall"
+    },
+    {
+      "issue_n": 4,
+      "format": "none",
+      "cta_destination": "none"
+    },
+    {
+      "issue_n": 5,
+      "format": "soft_ps",
+      "cta_destination": "waitlist"
+    },
+    {
+      "issue_n": 6,
+      "format": "dedicated_send",
+      "cta_destination": "product_paywall"
+    }
+  ],
+  "review": {
+    "reviewed_at": "2026-05-23",
+    "promoted_format": "mid_issue_case",
+    "demoted_format": "top_banner"
+  }
+}
+```

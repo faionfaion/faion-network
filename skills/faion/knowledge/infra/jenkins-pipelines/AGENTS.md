@@ -63,6 +63,8 @@
 | `templates/Jenkinsfile` | Working scaffold (Chart.yaml / Jenkinsfile / nginx.conf depending on slug) |
 | `templates/_smoke-test.yaml` | Minimum viable filled-in version of the template used by `--self-test` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,61 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts at `Are all preconditions satisfied?`; the negative branch terminates with `skip-this-methodology` and the positive branch routes via `scope_explicit` to either `declarative-default` (apply end-to-end) or a guarded entry. Use it whenever the input source or scope is ambiguous.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/Jenkinsfile`
+
+```text
+@Library('shared-lib@v1.2.3') _
+pipeline {
+  agent {
+    kubernetes { yaml libraryResource('agents/standard.yaml') }
+  }
+  options {
+    timeout(time: 30, unit: 'MINUTES')
+    timestamps()
+    buildDiscarder(logRotator(numToKeepStr: '50'))
+    disableConcurrentBuilds()
+  }
+  stages {
+    stage('Build') { steps { sh 'make build' } }
+    stage('Test') {
+      parallel {
+        stage('unit') { steps { sh 'make test-unit' } }
+        stage('integration') { steps { sh 'make test-int' } }
+        stage('scan') { steps { sh 'make scan' } }
+      }
+    }
+    stage('Deploy') {
+      when { branch 'main' }
+      input { message 'Promote to prod?'; ok 'Deploy'; submitter 'release-managers' }
+      steps { sh 'make deploy ENV=prod' }
+    }
+  }
+  post {
+    always { cleanWs() }
+    failure { slackSend channel: '#deploy', message: "FAIL: ${env.JOB_NAME} #${env.BUILD_NUMBER}" }
+  }
+}
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+# Minimum viable filled-in code scaffold; consumed by --self-test.
+{
+  "slug": "jenkins-pipelines",
+  "language": "yaml",
+  "entrypoint": "Chart.yaml",
+  "files": [
+    "Chart.yaml",
+    "values.yaml",
+    "templates/deployment.yaml"
+  ],
+  "build_command": "helm lint .",
+  "test_command": "helm template . | kubeconform -"
+}
+```

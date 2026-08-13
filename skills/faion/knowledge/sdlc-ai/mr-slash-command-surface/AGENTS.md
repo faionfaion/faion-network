@@ -67,6 +67,8 @@
 | `templates/qodo-merge.yml` | Qodo Merge workflow with auto_describe + auto_review on, auto_improve off. |
 | `templates/pr-description-block.md` | PR body skeleton with AUTO-DESCRIBE-START/END markers. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,46 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from observable signals (repo size, bot install presence, team review style) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether to enable a given auto-trigger — the tree terminates either on the active rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/qodo-merge.yml`
+
+```yaml
+# .github/workflows/qodo-merge.yml
+# Qodo Merge / PR-Agent with the standard slash-command surface.
+# Reference: https://docs.qodo.ai/qodo-documentation/qodo-merge/pr-agent/usage-guide/automations_and_usage
+
+name: qodo-merge
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review, synchronize]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  pr_agent:
+    if: ${{ github.event.sender.type != 'Bot' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: qodo-ai/pr-agent@main
+        env:
+          OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+          # Auto-trigger policy: describe + review always-on; improve opt-in.
+          GITHUB_ACTION_CONFIG.AUTO_DESCRIBE: "true"
+          GITHUB_ACTION_CONFIG.AUTO_REVIEW: "true"
+          GITHUB_ACTION_CONFIG.AUTO_IMPROVE: "false"
+
+          # Idempotent describe — only update the AUTO-DESCRIBE block.
+          PR_DESCRIPTION.KEEP_ORIGINAL_USER_TITLE: "true"
+          PR_DESCRIPTION.PUBLISH_DESCRIPTION_AS_COMMENT: "false"
+```

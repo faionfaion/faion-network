@@ -68,6 +68,8 @@
 | `templates/NarrowRepository.java` | Narrow read/write repository interfaces |
 | `templates/Service.java` | Transactional service with JOIN FETCH + DTO projection |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,169 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (read vs write, association depth, list vs single) to a rule from `01-core-rules.xml`. Use it whenever adding an entity, a repository method, or a slow query.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/Entity.java`
+
+```java
+package faion.domain.orders;
+
+import jakarta.persistence.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+@Entity
+@Table(name = "orders")
+public class Order {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Column(nullable = false, length = 200)
+    private String customerName;
+
+    @Column(nullable = false, precision = 18, scale = 2)
+    private BigDecimal total = BigDecimal.ZERO;
+
+    /**
+     * Items are wholly owned by Order. Cascade PERSIST + orphanRemoval so the
+     * aggregate boundary matches persistence. Fetch LAZY by default; loaded
+     * eagerly only via JOIN FETCH where required.
+     */
+    @OneToMany(mappedBy = "order", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+    private List<OrderItem> items = new ArrayList<>();
+
+    @Version
+    private Long version;
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    private Instant createdAt;
+
+    @UpdateTimestamp
+    private Instant updatedAt;
+
+    protected Order() { }
+
+    public Order(String customerName) {
+        this.customerName = customerName;
+    }
+
+    public UUID getId() { return id; }
+    public String getCustomerName() { return customerName; }
+    public BigDecimal getTotal() { return total; }
+    public List<OrderItem> getItems() { return List.copyOf(items); }
+    public Long getVersion() { return version; }
+}
+```
+
+### `templates/NarrowRepository.java`
+
+```java
+package faion.infra.orders;
+
+import faion.domain.orders.Order;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.NoRepositoryBean;
+import org.springframework.data.repository.query.Param;
+
+import java.util.Optional;
+import java.util.UUID;
+
+@NoRepositoryBean
+public interface OrderRepository {
+
+    Optional<Order> findById(UUID id);
+
+    @Query("SELECT o FROM Order o JOIN FETCH o.items WHERE o.id = :id")
+    Optional<Order> findByIdWithItems(@Param("id") UUID id);
+
+    Page<OrderSummaryDto> findAllSummaries(Pageable pageable);
+
+    Order save(Order order);
+
+    void delete(Order order);
+}
+
+interface OrderRepositoryJpa extends OrderRepository, JpaRepository<Order, UUID> {
+
+    @Override
+    @EntityGraph(attributePaths = {"items"})
+    Optional<Order> findByIdWithItems(@Param("id") UUID id);
+
+    @Override
+    @Query("SELECT new faion.infra.orders.OrderSummaryDto(o.id, o.customerName, o.total) FROM Order o")
+    Page<OrderSummaryDto> findAllSummaries(Pageable pageable);
+}
+
+record OrderSummaryDto(UUID id, String customerName, java.math.BigDecimal total) {}
+```
+
+### `templates/Service.java`
+
+```java
+package faion.app.orders;
+
+import faion.domain.orders.Order;
+import faion.infra.orders.OrderRepository;
+import faion.infra.orders.OrderSummaryDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
+
+@Service
+@Transactional(readOnly = true)
+public class OrderService {
+
+    private final OrderRepository repository;
+
+    public OrderService(OrderRepository repository) {
+        this.repository = repository;
+    }
+
+    public OrderResponse getById(UUID id) {
+        Order order = repository.findByIdWithItems(id)
+            .orElseThrow(() -> new OrderNotFoundException(id));
+        return OrderResponse.from(order);
+    }
+
+    public Page<OrderSummaryDto> list(Pageable pageable) {
+        return repository.findAllSummaries(pageable);
+    }
+
+    @Transactional
+    public OrderResponse create(CreateOrderRequest req) {
+        Order order = new Order(req.customerName());
+        repository.save(order);
+        return OrderResponse.from(order);
+    }
+}
+
+record CreateOrderRequest(String customerName) {}
+record OrderResponse(UUID id, String customerName, java.math.BigDecimal total) {
+    static OrderResponse from(Order o) {
+        return new OrderResponse(o.getId(), o.getCustomerName(), o.getTotal());
+    }
+}
+
+class OrderNotFoundException extends RuntimeException {
+    OrderNotFoundException(UUID id) { super("order not found: " + id); }
+}
+```

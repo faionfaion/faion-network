@@ -63,7 +63,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/impact-comment.md` | Markdown comment skeleton with module list + coverage + hot-spot + AI flag |
-| `templates/impact.schema.json` | JSON Schema for the impact artefact |
 
 ## Scripts
 

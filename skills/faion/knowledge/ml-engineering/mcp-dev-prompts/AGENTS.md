@@ -56,15 +56,6 @@
 | `review-prompt-quality` | sonnet | Spot ambiguity / leaking context / over-prompt. |
 | `audit-prompt-library` | opus | Periodic library audit; surface drift + duplication. |
 
-## Templates
-
-| File | Purpose |
-|------|---------|
-| `templates/prompt-server-create.txt` | Prompt: generate an MCP server skeleton from a spec. |
-| `templates/prompt-debug-connection.txt` | Prompt: diagnose MCP connection failure from logs. |
-| `templates/prompt-security-audit.txt` | Prompt: security review of an MCP server. |
-| `templates/prompt-test-gen.txt` | Prompt: generate pytest cases for an MCP server. |
-
 ## Scripts
 
 | File | Purpose | When to call |

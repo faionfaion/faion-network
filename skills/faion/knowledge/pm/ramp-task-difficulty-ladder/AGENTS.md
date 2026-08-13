@@ -64,6 +64,8 @@
 | `templates/skeleton.md` | Canonical section list with `not_applicable: <reason>` markers per section. |
 | `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root, trigger. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,18 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` first asks whether the team has named-owner + evidence + ≥3 hires/year. If yes → fill the ladder spec; if no → skip the methodology and write a one-off onboarding doc instead. Run the tree the moment the product-dev team lead starts a hiring sprint — before they pull tickets from the backlog by hand.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+version: "1.0.0"               # semver
+owner: "tech-lead:<person>"    # person + role; team-level ownership is forbidden
+last_reviewed: "2026-05-22"    # ISO date; staleness window = 6 months
+trigger: "hire-signed"         # named, observable event (e.g. hire-signed, start-date-T-7)
+evidence_root: "onboarding/"   # path under repo holding linked ramp cycles
+review_cadence: "quarterly"    # one of: monthly, quarterly
+```

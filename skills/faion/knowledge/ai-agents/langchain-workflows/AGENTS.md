@@ -66,6 +66,8 @@
 | `templates/graph.py` | Working StateGraph wiring. |
 | `templates/_smoke-test.yaml` | Minimum profile. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,54 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on hitl_points (≥1 → interrupt_before required), then on parallel_branches (>0 → Send/fan-out), then on persistence_target (in-mem dev, sqlite/postgres prod). Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/workflow-profile.yaml`
+
+```yaml
+steps: TODO          # fill with concrete value per the driver definition
+branches: TODO          # fill with concrete value per the driver definition
+hitl_points: TODO          # fill with concrete value per the driver definition
+parallel_branches: TODO          # fill with concrete value per the driver definition
+persistence_target: TODO          # fill with concrete value per the driver definition
+```
+
+### `templates/graph.py`
+
+```python
+"""Reference artefact for langchain-workflows. Self-test only verifies the scaffold compiles."""
+from __future__ import annotations
+
+
+def build(decision: dict):
+    """Build the runtime object from a validated decision-record."""
+    if not isinstance(decision, dict):
+        raise TypeError("decision must be dict from validated decision-record")
+    return decision  # placeholder: real implementations wire here
+
+
+def _self_test() -> int:
+    out = build({"slug": "langchain-workflows", "version": "2.0.0"})
+    return 0 if out["slug"] == "langchain-workflows" else 1
+
+
+if __name__ == "__main__":
+    import sys
+    if "--self-test" in sys.argv:
+        raise SystemExit(_self_test())
+    if "--help" in sys.argv:
+        print(__doc__)
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+steps: low
+branches: low
+hitl_points: low
+parallel_branches: low
+persistence_target: low
+```

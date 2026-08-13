@@ -72,6 +72,8 @@
 | `templates/review-checklist.md` | Reviewer rejection criteria |
 | `templates/pipeline-run.json` | Empty pipeline-run record |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,3 +91,50 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps the current pipeline stage + observed agent output to a rule from `01-core-rules.xml` that either accepts or rejects the artefact. Use it whenever reviewing an AI-generated ES PR.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pipeline-run.json`
+
+```json
+{
+  "aggregate": "Order",
+  "stages": [
+    {
+      "name": "aggregate-design",
+      "model": "sonnet",
+      "accepted": false,
+      "artefact_path": ""
+    },
+    {
+      "name": "event-class-codegen",
+      "model": "sonnet",
+      "accepted": false,
+      "artefact_path": ""
+    },
+    {
+      "name": "projection-codegen",
+      "model": "sonnet",
+      "accepted": false,
+      "artefact_path": ""
+    },
+    {
+      "name": "tests-codegen",
+      "model": "haiku",
+      "accepted": false,
+      "artefact_path": ""
+    },
+    {
+      "name": "antipattern-review",
+      "model": "sonnet",
+      "accepted": false
+    }
+  ],
+  "review_outcome": {
+    "all_rules_passed": false,
+    "rejected_rule_ids": []
+  }
+}
+```

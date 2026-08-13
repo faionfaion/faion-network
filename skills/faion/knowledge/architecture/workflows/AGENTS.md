@@ -71,6 +71,8 @@
 | `templates/workflow-instance.md` | Markdown skeleton with steps + role table + review gates |
 | `templates/_smoke-test.json` | Minimum viable filled-in workflow-instance for validator round-trip |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,107 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on (a) trigger category — maps trigger to one of seven workflows, (b) review depth — adds review gates for type-1 decisions, and (c) completion — requires every step's artefact present on disk before close. Every leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/architecture-workflows.json",
+  "type": "object",
+  "required": [
+    "instance_id",
+    "workflow_type",
+    "trigger",
+    "abort_condition",
+    "steps"
+  ],
+  "properties": {
+    "instance_id": {
+      "type": "string",
+      "pattern": "^WF-[0-9]{3,5}$"
+    },
+    "workflow_type": {
+      "type": "string",
+      "enum": [
+        "system-design",
+        "architecture-review",
+        "adr",
+        "tech-eval",
+        "atam-cbam",
+        "strangler-migration",
+        "design-doc-review"
+      ]
+    },
+    "trigger": {
+      "type": "string",
+      "minLength": 8
+    },
+    "abort_condition": {
+      "type": "string",
+      "minLength": 8
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "n",
+          "name",
+          "role",
+          "artefact_path",
+          "artefact_format",
+          "review_gate"
+        ]
+      }
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "instance_id": "WF-0042",
+  "workflow_type": "atam-cbam",
+  "trigger": "Monolith vs microservices for Phase 3 scale-up",
+  "abort_condition": "Stakeholder map cannot be assembled within 2 working days",
+  "steps": [
+    {
+      "n": 1,
+      "name": "scope-utility-tree",
+      "role": "clarifier",
+      "artefact_path": "atam/utility-tree.md",
+      "artefact_format": "md",
+      "review_gate": false,
+      "decision_type": "none"
+    },
+    {
+      "n": 2,
+      "name": "score-options",
+      "role": "designer",
+      "artefact_path": "atam/scorecard.json",
+      "artefact_format": "json",
+      "review_gate": true,
+      "reviewer": "lead-architect",
+      "decision_type": "type-1"
+    },
+    {
+      "n": 3,
+      "name": "write-adr",
+      "role": "documenter",
+      "artefact_path": "adr/ADR-0031.md",
+      "artefact_format": "md",
+      "review_gate": true,
+      "reviewer": "ceo",
+      "decision_type": "type-1"
+    }
+  ]
+}
+```

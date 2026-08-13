@@ -60,7 +60,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/product-analytics.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/product-analytics.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

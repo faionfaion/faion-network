@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/sunset-failed-product-playbook.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/sunset-failed-product-playbook.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

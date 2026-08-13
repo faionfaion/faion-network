@@ -68,6 +68,8 @@
 | `templates/step-function.tf` | Step Functions state machine for multi-step orchestration |
 | `templates/_smoke-test.json` | Minimum config artefact used by validate-devops-aws-serverless-api.py --self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,100 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it when scoping a new serverless API or auditing an existing one.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/main.tf`
+
+```hcl
+module "lambda" {
+  source        = "terraform-aws-modules/lambda/aws"
+  version       = "~> 7.0"
+  function_name = "${var.project}-handler"
+  handler       = "app.handler"
+  runtime       = "python3.12"
+  architectures = ["arm64"]
+  tracing_mode  = "Active"
+  publish       = true
+  environment_variables = { TABLE = aws_dynamodb_table.main.name }
+}
+
+module "api_gateway" {
+  source        = "terraform-aws-modules/apigateway-v2/aws"
+  version       = "~> 5.0"
+  name          = "${var.project}-http"
+  protocol_type = "HTTP"
+  cors_configuration = {
+    allow_origins = ["https://app.example.com"]
+    allow_methods = ["GET", "POST", "OPTIONS"]
+    allow_headers = ["content-type", "authorization"]
+  }
+  domain_name = var.domain
+  default_route_settings = {
+    throttling_burst_limit = 5000
+    throttling_rate_limit  = 1000
+  }
+}
+
+resource "aws_dynamodb_table" "main" {
+  name         = "${var.project}-main"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "pk"
+  range_key    = "sk"
+  attribute { name = "pk" type = "S" }
+  attribute { name = "sk" type = "S" }
+  point_in_time_recovery { enabled = true }
+}
+
+resource "aws_sqs_queue" "dlq" {
+  name = "${var.project}-dlq"
+}
+```
+
+### `templates/step-function.tf`
+
+```hcl
+resource "aws_sfn_state_machine" "main" {
+  name     = "${var.project}-orchestrator"
+  role_arn = aws_iam_role.sfn.arn
+  definition = jsonencode({
+    Comment = "Order processing"
+    StartAt = "Validate"
+    States = {
+      Validate = { Type = "Task", Resource = module.lambda.lambda_function_arn, Next = "Process", Retry = [{ ErrorEquals = ["States.ALL"], MaxAttempts = 3 }] }
+      Process  = { Type = "Task", Resource = module.lambda.lambda_function_arn, End = true }
+    }
+  })
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "project": "checkout-api",
+  "lambda": {
+    "architecture": "arm64",
+    "runtime": "python3.12",
+    "tracing_mode": "Active",
+    "timeout_s": 30
+  },
+  "api_gateway": {
+    "protocol_type": "HTTP",
+    "cors_origins": [
+      "https://app.example.com"
+    ],
+    "throttling_burst": 5000,
+    "throttling_rate": 1000,
+    "custom_domain": "api.example.com"
+  },
+  "dynamodb": {
+    "billing_mode": "PAY_PER_REQUEST",
+    "pitr": true
+  },
+  "dlq": true,
+  "step_functions": false
+}
+```

@@ -67,6 +67,8 @@
 | `templates/posttool-hook.json` | Settings.json fragment that runs pytest after Write/Edit on test_*.py. |
 | `templates/_smoke-test.yaml` | Minimum behavior list (one happy path). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[testing-pytest]]
@@ -76,3 +78,158 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on `behavior_known` (no → spike-first, then tests; yes → continue), then on `visual_feedback_drives` (yes → screenshot-driven, defer TDD; no → continue), then on `performance_dominant` (yes → benchmark-driven; no → strict RED-GREEN). Each leaf cites a rule id.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tdd-cycle.sh`
+
+```bash
+# tdd-cycle.sh — guided TDD cycle for a single behavior
+#
+# Usage:
+#   ./tdd-cycle.sh "test_command" "impl_file"
+#
+# Example:
+#   ./tdd-cycle.sh "pytest tests/test_cart.py::test_discount -x" "src/cart.py"
+#
+# The script walks you through RED → GREEN → REFACTOR with confirmation prompts.
+
+set -euo pipefail
+
+TEST_CMD="${1:-pytest -x --tb=short}"
+IMPL_FILE="${2:-}"
+RED="\033[0;31m"
+GREEN="\033[0;32m"
+YELLOW="\033[1;33m"
+RESET="\033[0m"
+
+confirm() {
+    local msg="$1"
+    echo -e "${YELLOW}${msg}${RESET}"
+    read -rp "Press Enter when ready... " _
+}
+
+echo "=============================="
+echo "  TDD Cycle"
+echo "=============================="
+echo ""
+
+# ---- RED ----
+echo -e "${RED}[RED] Write a failing test for ONE behavior.${RESET}"
+echo "     Test file should NOT pass yet — implementation does not exist."
+echo ""
+confirm "When done writing the test, press Enter to run it."
+
+echo ""
+echo "Running: $TEST_CMD"
+echo ""
+if $TEST_CMD 2>&1; then
+    echo ""
+    echo -e "${RED}WARNING: Test PASSED without implementation.${RESET}"
+    echo "This means the test is testing nothing, or the behavior already exists."
+    echo "Review your test before proceeding."
+    exit 1
+else
+    echo ""
+    echo -e "${GREEN}Good — test is FAILING as expected (RED).${RESET}"
+fi
+
+echo ""
+
+# ---- GREEN ----
+echo -e "${GREEN}[GREEN] Write minimal implementation to make the test pass.${RESET}"
+if [[ -n "$IMPL_FILE" ]]; then
+    echo "     Edit: $IMPL_FILE"
+fi
+echo "     Do NOT add features beyond what the failing test requires."
+echo ""
+confirm "When done writing implementation, press Enter to run tests."
+
+echo ""
+echo "Running: $TEST_CMD"
+echo ""
+if $TEST_CMD 2>&1; then
+    echo ""
+    echo -e "${GREEN}All tests PASS (GREEN).${RESET}"
+else
+    echo ""
+    echo -e "${RED}Tests still FAILING.${RESET}"
+    echo "Fix the implementation until all tests pass, then re-run this script."
+    exit 1
+fi
+
+echo ""
+
+# ---- REFACTOR ----
+echo -e "${YELLOW}[REFACTOR] Improve code quality without changing behavior.${RESET}"
+echo "     - Extract functions, rename variables, remove duplication"
+echo "     - Do NOT add new behavior here — start a new RED cycle for that"
+echo ""
+confirm "When done refactoring (or if no refactor needed), press Enter to verify."
+
+echo ""
+echo "Running: $TEST_CMD"
+echo ""
+if $TEST_CMD 2>&1; then
+    echo ""
+    echo -e "${GREEN}All tests PASS after refactor.${RESET}"
+    echo ""
+    echo "=============================="
+    echo -e "${GREEN}TDD cycle complete.${RESET}"
+    echo "Commit test + implementation together, then start next RED cycle."
+    echo "=============================="
+else
+    echo ""
+    echo -e "${RED}Tests broke during refactor.${RESET}"
+    echo "Revert refactor changes until tests pass again."
+    exit 1
+fi
+```
+
+### `templates/posttool-hook.json`
+
+```json
+{
+  "_header": {
+    "purpose": "Claude Code PostToolUse hook auto-running pytest on test file writes",
+    "consumes": "Write/Edit tool events targeting test_*.py paths",
+    "produces": "pytest -x --tb=short output appended to the conversation",
+    "depends-on": "pytest installed; tests/ dir resolvable",
+    "token-budget-impact": "hook adds ~200 tokens per write of a test file"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'p=$(jq -r \".tool_input.file_path // empty\" <<<\"$CLAUDE_TOOL_INPUT\"); case \"$p\" in *test_*.py) pytest \"$p\" -x --tb=short 2>&1 | tail -40 ;; esac'"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+behaviors:
+  - behavior: register-issues-token
+    signature: "register(email: str) -> str"
+    happy_path: "returns 32-hex-char token"
+    edge_cases: []
+
+drivers:
+  behavior_known: true
+  visual_feedback_drives: false
+  performance_dominant: false
+
+test_command: "pytest tests -x --tb=short"
+claude_md_path: CLAUDE.md
+settings_json_path: .claude/settings.json
+```

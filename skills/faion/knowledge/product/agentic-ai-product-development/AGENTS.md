@@ -65,6 +65,8 @@
 | `templates/prompt-spec-reviewer.txt` | Prompt template for spec reviewer (gap list with severity). |
 | `templates/sprint-metrics.py` | Computes autonomy_ratio / goal_achievement_rate / failure_rate from sprint task counts. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,71 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` first asks: is this autonomous OR copilot? If copilot → route to `ai-native-product-development`. If autonomous, check whether goal state is machine-verifiable AND escalation can be defined. If either fails → block. Otherwise → emit the spec using the rule set.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-spec-writer.txt`
+
+```text
+You are a product manager writing a spec for an agentic AI feature.
+
+Feature: {feature_name}
+Product goal: {goal}
+Target persona: {persona}
+
+Produce the following sections:
+1. Goal state (machine-verifiable: how do we know the agent succeeded?)
+2. Autonomous actions (what can the agent do without user approval?)
+3. Human-in-the-loop checkpoints (which actions require approval, and why?)
+4. Escalation triggers (what conditions pause the agent and alert a human?)
+5. Success metrics (goal achievement rate, autonomy ratio, cost-per-task targets)
+6. Failure modes and recovery plan
+```
+
+### `templates/prompt-spec-reviewer.txt`
+
+```text
+Review this agentic product spec for production readiness:
+{spec_text}
+
+Flag: ambiguous goal states, missing escalation triggers, undefined failure recovery,
+underspecified human-in-the-loop model, autonomous actions without triggering conditions.
+
+Return a structured list of gaps with severity (blocking / warning) and suggested fix for each.
+```
+
+### `templates/sprint-metrics.py`
+
+```python
+"""Sprint-level agentic product metrics tracker.
+
+Input: task counts per sprint period.
+Output: autonomy_ratio, goal_achievement_rate, failure_rate.
+"""
+from dataclasses import dataclass
+
+
+@dataclass
+class SprintAgentMetrics:
+    period: str
+    total_tasks: int
+    autonomous: int   # completed without human intervention
+    escalated: int    # required human review but reached goal
+    failed: int       # did not reach goal state
+
+
+def sprint_summary(m: SprintAgentMetrics) -> dict:
+    if m.total_tasks == 0:
+        return {}
+    return {
+        "period": m.period,
+        "autonomy_ratio": round(m.autonomous / m.total_tasks, 3),
+        "goal_achievement_rate": round(
+            (m.autonomous + m.escalated) / m.total_tasks, 3
+        ),
+        "failure_rate": round(m.failed / m.total_tasks, 3),
+        "escalation_rate": round(m.escalated / m.total_tasks, 3),
+    }
+```

@@ -66,7 +66,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/product-launch.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/product-launch.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

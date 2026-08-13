@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/design-review-facilitation-script.json` | JSON skeleton conforming to the output-contract schema. |
 | `templates/design-review-facilitation-script.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

@@ -63,6 +63,8 @@
 | `templates/living-documentation.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,104 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/living-documentation.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/living-documentation.json",
+  "title": "Living Documentation Output Contract",
+  "type": "object",
+  "required": [
+    "docs_root",
+    "docs_framework",
+    "auto_generated_sections",
+    "hand_authored_sections",
+    "ci_checks",
+    "changelog_source",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "docs_root": {
+      "type": "string",
+      "description": "absolute path to docs/"
+    },
+    "docs_framework": {
+      "type": "string",
+      "description": "Hugo | Docusaurus | MkDocs | other"
+    },
+    "auto_generated_sections": {
+      "type": "array",
+      "description": "list of {file, generator, source}",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "hand_authored_sections": {
+      "type": "array",
+      "description": "list of {file, owner}",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "ci_checks": {
+      "type": "object",
+      "description": "link-validation + spec-diff + build-success flags"
+    },
+    "changelog_source": {
+      "type": "string",
+      "description": "commits | manual (only commits allowed)"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "docs_root": "sample-docs_root",
+  "docs_framework": "sample-docs_framework",
+  "auto_generated_sections": [
+    {
+      "k": "v"
+    }
+  ],
+  "hand_authored_sections": [
+    {
+      "k": "v"
+    }
+  ],
+  "ci_checks": {
+    "k": "v"
+  },
+  "changelog_source": "sample-changelog_source",
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

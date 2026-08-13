@@ -68,6 +68,8 @@
 | `templates/ost-schema.json` | Opportunity Solution Tree schema |
 | `templates/spec-opp-link.yml` | Link spec → opportunity in OST |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - parent skill: `skills/faion/knowledge/pro/product/product-planning/`
@@ -77,3 +79,74 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, owner present, prior-cycle output available, cycle window fit) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology this cycle or defer.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ost-schema.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "outcome",
+    "opportunities"
+  ],
+  "properties": {
+    "outcome": {
+      "type": "string"
+    },
+    "opportunities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "evidence_interview_ids"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "evidence_interview_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "solutions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "id",
+                "label",
+                "risky_assumptions"
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### `templates/spec-opp-link.yml`
+
+```yaml
+spec_id: ""
+opportunity_id: ""
+risky_assumptions:
+  - assumption: ""
+    test: ""
+    test_result: ""
+```

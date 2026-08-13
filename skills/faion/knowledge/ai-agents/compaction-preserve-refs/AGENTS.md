@@ -62,6 +62,8 @@
 | `templates/compacted-state.yaml` | Reference compacted-state file with all required keys |
 | `templates/_smoke-test.yaml` | Minimum viable filled-in compacted state for self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,82 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The root question asks whether the agent's context window is approaching the compaction threshold AND whether the next session will resume work from the compacted output; both must be true before the methodology applies. Subsequent branches pick the compaction strategy (full schema vs. delta-only) based on how much of the prior state already lives on the agent's filesystem.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/compaction-prompt.txt`
+
+```text
+You are a context-compaction step. Your only job is to compress the
+conversation so far into a fixed-schema YAML document. You are NOT
+summarizing for a reader; you are producing structured state for the
+agent to resume from later.
+
+OUTPUT FORMAT — produce ONLY this YAML, no surrounding prose:
+
+goal: <one sentence describing the user's overall objective>
+files_touched:
+  - <path:line or path:line-range>      # verbatim, no paraphrasing
+decisions:
+  - <decision one-liner with rationale tag, e.g. "RS256 over HS256 (ADR-007)">
+errors_open:
+  - <error message verbatim, including the assertion or stack head>
+refs:
+  - {kind: <pr|issue|log|adr|url>, id: <verbatim id or path>}
+next_action: <one imperative sentence; what to do FIRST on resume>
+
+KEEP RULES:
+- Preserve verbatim: file paths, function names, error messages, URLs,
+  IDs, explicit decisions.
+- If a list has no entries, write an empty list (`files_touched: []`),
+  never the word "none".
+
+DROP RULES:
+- Do NOT include intermediate reasoning, plans, or "let me think".
+- Do NOT include verbatim tool output bodies — they live on disk; refer
+  to them via {kind: log, id: <path>} in refs.
+- Do NOT add keys other than the six listed above.
+
+If you produce free-text outside the YAML, the orchestrator will reject
+your output and re-run compaction. Output only the document.
+```
+
+### `templates/compacted-state.yaml`
+
+```yaml
+goal: refactor auth module to use refresh-token rotation
+
+files_touched:
+  - src/auth/login.py:42
+  - src/auth/jwt.py:88-110
+
+decisions:
+  - chose RS256 over HS256 (ADR-007)
+  - rotation interval = 15 min (decision in #1842 review)
+
+errors_open:
+  - "test_login_invalid_pw — AssertionError: expected 401 got 200"
+
+refs:
+  - {kind: pr, id: "1842"}
+  - {kind: adr, id: "ADR-007"}
+  - {kind: log, id: ".agent/results/pytest_4882.log"}
+
+next_action: implement refresh-token rotation in src/auth/jwt.py:88-110
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+goal: smoke test the compaction validator
+files_touched:
+  - scripts/validate-compaction-preserve-refs.py:1
+decisions:
+  - emit minimum viable state with every required key populated
+errors_open: []
+refs:
+  - {kind: log, id: ".agent/results/smoke.log"}
+next_action: run validator with --self-test
+```

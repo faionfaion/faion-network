@@ -68,6 +68,8 @@
 | `templates/issue-template-feature.md` | Feature request issue template (user need, acceptance criteria). |
 | `templates/scoped-labels.py` | Reference script listing the canonical scoped-label scheme. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - parent skill: `pro/pm/` (see neighbouring methodologies).
@@ -81,3 +83,117 @@ See `content/06-decision-tree.xml`. The tree maps observable signals (input
 preconditions, source-of-truth access, named-consumer presence) onto a concrete
 verdict — apply the methodology, downgrade to draft, or skip — with each leaf
 referencing a rule id from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/gitlab-boards.json",
+  "type": "object",
+  "required": [
+    "project_id",
+    "labels",
+    "boards"
+  ],
+  "properties": {
+    "project_id": {
+      "type": "string"
+    },
+    "labels": {
+      "type": "object",
+      "required": [
+        "workflow",
+        "priority",
+        "type"
+      ],
+      "properties": {
+        "workflow": {
+          "type": "array",
+          "minItems": 3
+        },
+        "priority": {
+          "type": "array",
+          "minItems": 3
+        },
+        "type": {
+          "type": "array",
+          "minItems": 2
+        }
+      }
+    },
+    "boards": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "columns"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "columns": {
+            "type": "array",
+            "minItems": 3,
+            "items": {
+              "type": "object",
+              "required": [
+                "label",
+                "wip_limit"
+              ]
+            }
+          },
+          "policy_url": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "issue_templates": {
+      "type": "array",
+      "minItems": 2
+    }
+  }
+}
+```
+
+### `templates/scoped-labels.py`
+
+```python
+"""
+
+
+"""scoped-labels.py — reference template for GitLab scoped label definitions.
+
+Copy this file and adjust LABELS for your project's workflow.
+Run via: GITLAB_URL=... GITLAB_TOKEN=... python3 scoped-labels.py <project_id>
+"""
+from __future__ import annotations
+
+LABELS = [
+    # Workflow — mutually exclusive via "::" scoping
+    ("workflow::backlog",     "#6699cc"),
+    ("workflow::ready",       "#3399cc"),
+    ("workflow::in-progress", "#ddaa00"),
+    ("workflow::review",      "#aa66cc"),
+    ("workflow::testing",     "#cc6600"),
+    ("workflow::done",        "#33aa55"),
+    # Priority — mutually exclusive
+    ("priority::critical",    "#cc0000"),
+    ("priority::high",        "#ee5500"),
+    ("priority::medium",      "#cc9900"),
+    ("priority::low",         "#888888"),
+    # Type — mutually exclusive
+    ("type::feature",         "#33aa66"),
+    ("type::bug",             "#cc3333"),
+    ("type::tech-debt",       "#996699"),
+    ("type::docs",            "#5577aa"),
+]
+```

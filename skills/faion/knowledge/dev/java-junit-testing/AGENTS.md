@@ -68,6 +68,8 @@
 | `templates/RepositoryTests.java` | @DataJpaTest skeleton |
 | `templates/IntegrationTests.java` | @SpringBootTest + Testcontainers skeleton |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,192 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps target (controller/service/repository/integration) to a rule from `01-core-rules.xml`. Use it whenever picking the right Spring Boot test annotation set.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ControllerTests.java`
+
+```java
+package faion.web;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import faion.app.orders.OrderService;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.web.servlet.MockMvc;
+
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@WebMvcTest(OrdersController.class)
+class OrdersControllerTest {
+
+    @Autowired private MockMvc mvc;
+    @Autowired private ObjectMapper mapper;
+    @MockBean private OrderService service;
+
+    @Test
+    void getById_existingOrder_returns200() throws Exception {
+        when(service.getById(eq(java.util.UUID.fromString("00000000-0000-0000-0000-000000000001"))))
+            .thenReturn(new OrderResponse("00000000-0000-0000-0000-000000000001", "Alice", "10.00"));
+
+        mvc.perform(get("/api/orders/00000000-0000-0000-0000-000000000001"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.customerName").value("Alice"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"not-a-uuid", "00000000-0000-0000-0000-0000000000XX"})
+    void getById_invalidUuid_returns400(String id) throws Exception {
+        mvc.perform(get("/api/orders/" + id))
+            .andExpect(status().isBadRequest());
+    }
+
+    record OrderResponse(String id, String customerName, String total) {}
+}
+```
+
+### `templates/ServiceTests.java`
+
+```java
+package faion.app.orders;
+
+import faion.infra.orders.OrderRepository;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.Optional;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class OrderServiceTest {
+
+    @Mock private OrderRepository repository;
+    @InjectMocks private OrderService service;
+
+    @Test
+    void getById_existingOrder_returnsResponse() {
+        UUID id = UUID.randomUUID();
+        when(repository.findByIdWithItems(id)).thenReturn(Optional.of(new faion.domain.orders.Order("Alice")));
+
+        OrderResponse response = service.getById(id);
+
+        assertThat(response.customerName()).isEqualTo("Alice");
+        verify(repository).findByIdWithItems(argThat(arg -> arg.equals(id)));
+    }
+
+    @Test
+    void getById_missing_throws() {
+        UUID id = UUID.randomUUID();
+        when(repository.findByIdWithItems(id)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getById(id))
+            .isInstanceOf(OrderNotFoundException.class);
+    }
+}
+```
+
+### `templates/RepositoryTests.java`
+
+```java
+package faion.infra.orders;
+
+import faion.domain.orders.Order;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Testcontainers
+class OrderRepositoryTest {
+
+    @Container
+    @ServiceConnection
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
+
+    @Autowired
+    private OrderRepository repository;
+
+    @Test
+    void save_and_findById_returnsAggregateWithItems() {
+        Order saved = repository.save(new Order("Alice"));
+
+        var found = repository.findByIdWithItems(saved.getId());
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getCustomerName()).isEqualTo("Alice");
+    }
+}
+```
+
+### `templates/IntegrationTests.java`
+
+```java
+package faion.app;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Testcontainers
+class OrdersIntegrationTest {
+
+    @Container
+    @ServiceConnection
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
+
+    @Autowired
+    private TestRestTemplate rest;
+
+    @Test
+    void createAndGetOrder_endToEnd() {
+        ResponseEntity<String> created = rest.postForEntity(
+            "/api/orders",
+            new CreateOrderRequest("Alice"),
+            String.class
+        );
+        assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        ResponseEntity<String> got = rest.getForEntity(created.getHeaders().getLocation(), String.class);
+        assertThat(got.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(got.getBody()).contains("Alice");
+    }
+
+    record CreateOrderRequest(String customerName) {}
+}
+```

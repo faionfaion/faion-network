@@ -71,6 +71,8 @@
 | `templates/requirement-capture.md` | Requirements capture skeleton (Interview output) |
 | `templates/validation-email.md` | Validation write-back email skeleton |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,31 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes by goal type to one of the 5 modes, each leaf referencing the rule that governs that mode.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-interview-guide.txt`
+
+```text
+Generate a stakeholder interview guide using Mode 1 (Interview Protocol).
+Stakeholder: <Name, Role>
+Project context: <1-2 sentences>
+Known interests/concerns: <bullet list>
+Questions needed: 8-12 total
+Sequence: Context → Problem → Impact → Goal → Constraints → Priority
+For each question: note the question type (open / probing / clarifying / hypothetical / summary).
+Output: numbered list of questions with type labels. No preamble.
+```
+
+### `templates/prompt-socratic-chain.txt`
+
+```text
+A stakeholder said: "<vague requirement>"
+Generate a Socratic question chain (6-8 questions) to uncover the real need.
+Cover in this order: definition, assumption, evidence, boundary, metric, implication.
+Each question must be a single sentence.
+Output: numbered list, one question per line. No preamble or explanation.
+Do NOT use these questions verbatim in a live conversation — adapt them to the flow.
+```

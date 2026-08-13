@@ -67,6 +67,8 @@
 | `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
 | `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,59 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/artefact-instance.json`
+
+```json
+{
+  "spec_id": "ai-spec-summarize-2026q2",
+  "owner": "pm@acme.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "brief": {
+    "customer": "support agent",
+    "outcome": "ticket summary < 60s",
+    "risk": "wrong summary loses customer trust",
+    "evidence": "research memo 2026-05"
+  },
+  "eval_rubric": {
+    "name": "summary-quality-v1",
+    "function": "rubric_v1.score(out, ref)",
+    "evidence": "research repo eval/summary"
+  },
+  "thresholds": {
+    "primary": {
+      "metric": "human_rated_correctness",
+      "value": 0.85
+    }
+  },
+  "risk_register": [
+    {
+      "id": "r-1",
+      "risk": "hallucinated names",
+      "mitigation": "redact-then-summarize pipeline",
+      "owner": "safety@acme.io",
+      "evidence": "redact spec 2026-05"
+    }
+  ],
+  "rollout_plan": {
+    "steps": [
+      "internal-only 1 week",
+      "5% canary 1 week",
+      "ramp to 100%"
+    ],
+    "owner": "eng@acme.io",
+    "tested_on": "2026-05-22"
+  },
+  "kill_switch": {
+    "flag": "feature_summarize_v1",
+    "owner": "eng@acme.io",
+    "evidence": "feature-flag service config"
+  },
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}
+```

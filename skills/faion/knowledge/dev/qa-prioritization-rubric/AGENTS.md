@@ -62,6 +62,8 @@
 | `templates/triage_form.md` | Markdown skeleton for the artefact. |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,73 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Are bugs being triaged with consistent severities across triagers?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rubric.json`
+
+```json
+{
+  "rubric_version": "1.0.0",
+  "tiers": [
+    {
+      "tier": "S0",
+      "blast_radius": "all_users_data_loss_or_security",
+      "frequency_floor": 0.0,
+      "workaround_effect": "no_downgrade",
+      "sla_first_response_h": 1,
+      "sla_resolution_h": 24
+    },
+    {
+      "tier": "S1",
+      "blast_radius": "majority_users_blocked",
+      "frequency_floor": 0.0,
+      "workaround_effect": "downgrade_one_tier_if_documented",
+      "sla_first_response_h": 24,
+      "sla_resolution_h": 72
+    }
+  ],
+  "triage_decisions": [
+    {
+      "bug_id": "PAY-482",
+      "tier": "S1",
+      "anchor_rule_id": "blast-radius-defined"
+    }
+  ]
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "rubric_version": "1.0.0",
+  "tiers": [
+    {
+      "tier": "S0",
+      "blast_radius": "all_users_data_loss_or_security",
+      "frequency_floor": 0.0,
+      "workaround_effect": "no_downgrade",
+      "sla_first_response_h": 1,
+      "sla_resolution_h": 24
+    },
+    {
+      "tier": "S1",
+      "blast_radius": "majority_users_blocked",
+      "frequency_floor": 0.0,
+      "workaround_effect": "downgrade_one_tier_if_documented",
+      "sla_first_response_h": 24,
+      "sla_resolution_h": 72
+    }
+  ],
+  "triage_decisions": [
+    {
+      "bug_id": "PAY-482",
+      "tier": "S1",
+      "anchor_rule_id": "blast-radius-defined"
+    }
+  ]
+}
+```

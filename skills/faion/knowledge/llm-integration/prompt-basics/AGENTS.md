@@ -63,6 +63,8 @@
 | `templates/prompt-template.py` | PromptTemplate dataclass with system + user_template + few-shot examples and render() helper. |
 | `templates/build-system.py` | build_system() builder composing role + constraints + output_format. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,80 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` picks (a) zero-shot vs few-shot by task ambiguity (≥2 valid outputs per input → few-shot), (b) inline vs CoT by reasoning depth (≥3 steps → CoT), and (c) injection-safe rendering when any field comes from user input. Use it before authoring any new template.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-template.py`
+
+```python
+"""
+from dataclasses import dataclass, field
+from typing import List, Dict
+
+
+@dataclass
+class PromptTemplate:
+    system: str
+    user_template: str
+    examples: List[Dict[str, str]] = field(default_factory=list)
+    version: str = "v1"
+
+    def render(self, **kwargs) -> List[Dict[str, str]]:
+        """Render the template into a messages array ready for any OpenAI-compatible API."""
+        msgs: List[Dict[str, str]] = [{"role": "system", "content": self.system}]
+        for ex in self.examples:
+            msgs.append({"role": "user", "content": ex["input"]})
+            msgs.append({"role": "assistant", "content": ex["output"]})
+        msgs.append({"role": "user", "content": self.user_template.format(**kwargs)})
+        return msgs
+
+
+# Example: zero-shot extraction
+EXTRACT_JSON = PromptTemplate(
+    system="Extract the requested fields. Return only valid JSON, no prose.",
+    user_template='Text: {text}\n\nReturn: {{"sentiment": str, "topics": [str]}}',
+    version="extract-v1",
+)
+```
+
+### `templates/build-system.py`
+
+```python
+"""
+
+
+def build_system(
+    role: str,
+    constraints: list[str] | None = None,
+    output_format: str = "",
+) -> str:
+    """Build a structured system prompt. Keep under 2K tokens."""
+    parts = [f"You are {role}."]
+    if constraints:
+        parts.append("Constraints:\n" + "\n".join(f"- {c}" for c in constraints))
+    if output_format:
+        parts.append(f"Output format:\n{output_format}")
+    return "\n\n".join(parts)
+
+
+# Example system prompts
+ASSISTANT = build_system(
+    role="a helpful, harmless, and honest AI assistant",
+    constraints=[
+        "Be concise and direct",
+        "Acknowledge uncertainty",
+        "Never make up information",
+    ],
+)
+
+CODE_EXPERT = build_system(
+    role="an expert software developer",
+    constraints=[
+        "Include type hints in Python code",
+        "Add docstrings to functions",
+        "Handle errors appropriately",
+    ],
+)
+```

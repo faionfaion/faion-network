@@ -70,8 +70,9 @@
 | `templates/feature-skeleton.tsx` | Feature folder skeleton: components/, hooks/, lib/, index.ts barrel. |
 | `templates/store.ts` | Feature-scoped Zustand store skeleton. |
 | `templates/button.tsx` | Button UI primitive with cva variants and forwardRef. |
-| `templates/plopfile.cjs` | Plop generator config: scaffold a feature folder from CLI. |
 | `templates/_smoke-test.json` | Minimum viable architecture artefact for validator smoke-test. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -88,3 +89,116 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs - framework, state shape, primitive leakage, memo pressure - onto a rule from `content/01-core-rules.xml`. Use it before refactoring: it catches context-as-bus and business-in-primitive upstream.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/feature-skeleton.tsx`
+
+```tsx
+// src/features/checkout/components/CheckoutForm.tsx
+'use client';
+import { Button } from '@/components/ui/button';
+import { useCheckoutStore } from '../store';
+
+export function CheckoutForm() {
+  const { total, submit } = useCheckoutStore((s) => ({ total: s.total, submit: s.submit }));
+  return (
+    <form onSubmit={submit}>
+      <Button type='submit'>Pay {total}</Button>
+    </form>
+  );
+}
+```
+
+### `templates/store.ts`
+
+```typescript
+import { create } from 'zustand';
+
+interface CheckoutState {
+  total: number;
+  submit: () => Promise<void>;
+}
+
+export const useCheckoutStore = create<CheckoutState>((set) => ({
+  total: 0,
+  submit: async () => { /* implement API call */ },
+}));
+```
+
+### `templates/button.tsx`
+
+```tsx
+// button.tsx — Button UI primitive with cva variants, forwardRef (React 18)
+// Drop into src/components/ui/Button/Button.tsx
+import { forwardRef, type ComponentPropsWithoutRef } from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { cn } from '@/lib/utils';
+
+const buttonVariants = cva(
+  'inline-flex items-center justify-center rounded-md font-medium transition-colors ' +
+  'focus-visible:outline-none focus-visible:ring-2 ' +
+  'disabled:pointer-events-none disabled:opacity-50',
+  {
+    variants: {
+      variant: {
+        default:     'bg-primary text-primary-foreground hover:bg-primary/90',
+        secondary:   'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        outline:     'border border-input bg-background hover:bg-accent',
+        ghost:       'hover:bg-accent hover:text-accent-foreground',
+        destructive: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
+      },
+      size: {
+        sm:   'h-8 px-3 text-sm',
+        md:   'h-10 px-4',
+        lg:   'h-12 px-6 text-lg',
+        icon: 'h-10 w-10',
+      },
+    },
+    defaultVariants: { variant: 'default', size: 'md' },
+  }
+);
+
+export interface ButtonProps
+  extends ComponentPropsWithoutRef<'button'>,
+    VariantProps<typeof buttonVariants> {
+  isLoading?: boolean;
+}
+
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  ({ className, variant, size, isLoading, children, disabled, ...props }, ref) => (
+    <button
+      ref={ref}
+      className={cn(buttonVariants({ variant, size }), className)}
+      disabled={disabled || isLoading}
+      {...props}
+    >
+      {isLoading ? <span className="mr-2 h-4 w-4 animate-spin">...</span> : null}
+      {children}
+    </button>
+  )
+);
+
+Button.displayName = 'Button';
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "routing": "next_app_router",
+  "folder_layout": {
+    "features": "src/features/",
+    "primitives": "src/components/ui/"
+  },
+  "primitive_layer": "shadcn-vendored",
+  "state_strategy": {
+    "global": "context (theme, auth)",
+    "feature": "zustand"
+  },
+  "memoisation_policy": "profiler_only",
+  "client_marker_required": true
+}
+```

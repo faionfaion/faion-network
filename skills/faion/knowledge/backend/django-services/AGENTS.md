@@ -65,7 +65,8 @@
 | `templates/service.py` | Python scaffold realising the artefact in code. |
 | `templates/selector.py` | Python scaffold realising the artefact in code. |
 | `templates/exceptions.py` | Python scaffold realising the artefact in code. |
-| `templates/_smoke-test.py` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -83,3 +84,67 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Does the change perform writes across ≥2 models or trigger side effects?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/service.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Python scaffold realising the artefact in code.","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/01-core-rules.xml#entity-action-naming","token_budget_impact":"~150 tokens when loaded"}}
+"""Django Services Layer scaffold. See AGENTS.md for context and content/02-output-contract.xml for the contract."""
+from __future__ import annotations
+
+# Minimal scaffold for the django-services methodology.
+# Replace this stub with real implementation; keep the header intact.
+
+def main() -> int:
+    """Entrypoint; returns exit code."""
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())
+```
+
+### `templates/selector.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Python scaffold realising the artefact in code.","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/01-core-rules.xml#entity-action-naming","token_budget_impact":"~150 tokens when loaded"}}
+"""Django Services Layer scaffold. See AGENTS.md for context and content/02-output-contract.xml for the contract."""
+from __future__ import annotations
+
+# Minimal scaffold for the django-services methodology.
+# Replace this stub with real implementation; keep the header intact.
+
+def main() -> int:
+    """Entrypoint; returns exit code."""
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())
+```
+
+### `templates/exceptions.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Python scaffold realising the artefact in code.","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/01-core-rules.xml#entity-action-naming","token_budget_impact":"~150 tokens when loaded"}}
+"""Django Services Layer scaffold. See AGENTS.md for context and content/02-output-contract.xml for the contract."""
+from __future__ import annotations
+
+# Minimal scaffold for the django-services methodology.
+# Replace this stub with real implementation; keep the header intact.
+
+def main() -> int:
+    """Entrypoint; returns exit code."""
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())
+```

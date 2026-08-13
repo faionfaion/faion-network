@@ -70,6 +70,8 @@
 | `templates/rust-error.rs` | Rust error type via thiserror + async fn |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,118 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/go-layout.txt`
+
+```text
+project/
+|-- cmd/
+|   \-- server/
+|       \-- main.go
+|-- internal/
+|   |-- handlers/
+|   |-- services/
+|   \-- models/
+|-- pkg/
+|-- go.mod
+\-- go.sum
+```
+
+### `templates/go-service.go`
+
+```go
+package handlers
+
+import (
+    "context"
+    "fmt"
+)
+
+// Consumer-side interface (declared where it is used)
+type OrderRepo interface {
+    Find(ctx context.Context, id string) (*Order, error)
+    Save(ctx context.Context, o *Order) error
+}
+
+type OrderHandler struct {
+    repo OrderRepo
+}
+
+func NewOrderHandler(repo OrderRepo) *OrderHandler {
+    return &OrderHandler{repo: repo}
+}
+
+func (h *OrderHandler) Charge(ctx context.Context, id string) error {
+    o, err := h.repo.Find(ctx, id)
+    if err != nil {
+        return fmt.Errorf("charge order %s: %w", id, err)
+    }
+    o.Status = "charged"
+    if err := h.repo.Save(ctx, o); err != nil {
+        return fmt.Errorf("save order %s: %w", id, err)
+    }
+    return nil
+}
+```
+
+### `templates/spring-service.java`
+
+```java
+package com.example.orders;
+
+import org.springframework.stereotype.Service;
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class OrderService {
+    private final OrderRepository orderRepository;
+
+    public Order create(CreateOrderDto dto) {
+        Order order = Order.builder()
+            .customerId(dto.getCustomerId())
+            .amount(dto.getAmount())
+            .build();
+        return orderRepository.save(order);
+    }
+}
+```
+
+### `templates/rust-error.rs`
+
+```rust
+use thiserror::Error;
+
+#[derive(Error, Debug)]
+pub enum OrderError {
+    #[error("order not found: {0}")]
+    NotFound(String),
+    #[error("database error")]
+    Db(#[from] sqlx::Error),
+}
+
+pub async fn charge_order(pool: &sqlx::PgPool, id: &str) -> Result<Order, OrderError> {
+    let row = sqlx::query_as::<_, Order>("SELECT * FROM orders WHERE id = $1")
+        .bind(id)
+        .fetch_optional(pool)
+        .await?;
+    row.ok_or_else(|| OrderError::NotFound(id.to_string()))
+}
+```
+
+### `templates/artefact.json`
+
+```json
+{
+  "language": "go",
+  "layout_ok": true,
+  "error_model_ok": true,
+  "di_shape_ok": true,
+  "async_ok": true,
+  "notes": "cmd/internal/pkg layout; %w error wrapping; consumer-side OrderRepo."
+}
+```

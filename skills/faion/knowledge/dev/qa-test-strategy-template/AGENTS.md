@@ -67,6 +67,8 @@
 | `templates/risks_table.csv` | CSV template for tabular artefacts. |
 | `templates/_smoke-test.md` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,15 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is the feature large enough (≥2 weeks dev) that we need a documented test strategy?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/risks_table.csv`
+
+```csv
+# faion_header_json: {"__faion_header__":{"purpose":"CSV template for tabular artefacts.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#risk-first","token_budget_impact":"~150 tokens when loaded"}}
+id,name,owner,severity,evidence_link
+sample-1,Sample row,alice,S2,https://example.invalid/evidence
+```

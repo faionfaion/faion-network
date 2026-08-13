@@ -61,12 +61,6 @@
 | `handler_authoring` | sonnet | Mechanical: decode + call service + encode. |
 | `repo_authoring` | sonnet | SQL/ORM CRUD + domain-type mapping. |
 
-## Templates
-
-| File | Purpose |
-|------|---------|
-| `templates/handler.go` | HTTP handler: decode request, call service, encode response |
-
 ## Scripts
 
 | File | Purpose | When to call |

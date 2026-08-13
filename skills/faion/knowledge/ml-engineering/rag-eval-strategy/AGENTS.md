@@ -57,6 +57,8 @@
 |------|---------|
 | `templates/eval-strategy.md.tmpl` | Strategy doc skeleton. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -72,3 +74,35 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` decides strategy scope based on production target and team size. Each leaf references a rule id from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/eval-strategy.md.tmpl`
+
+```markdown
+# RAG Evaluation Strategy
+
+Owner: <name>
+Revisit: YYYY-MM-DD
+
+## Gates
+- MRR_min: 0.70
+- Faithfulness_min: 0.90
+- Latency p95 max: 2000 ms
+- Cost per query max: $0.02
+
+## Tiers
+- per-PR: 20 questions, MRR only, blocking
+- per-release: 200 questions, full Triad, blocking
+- weekly: 10% sample, faithfulness only, notify
+
+## Sampling
+- Fraction: 0.10
+- Seed: 42
+
+## Rollback
+- Faithfulness drop >= 0.05 abs → rollback
+- MRR drop >= 0.05 abs → rollback
+```

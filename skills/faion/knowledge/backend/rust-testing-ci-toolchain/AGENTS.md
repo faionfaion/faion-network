@@ -65,6 +65,8 @@
 | `templates/nextest.toml` | Pinned `.config/nextest.toml` with ci profile, retries, slow-timeout. |
 | `templates/ci-workflow.yml` | GitHub Actions workflow: nextest + llvm-cov + miri jobs. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,58 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree maps observable signals (workspace size, unsafe presence, CI runtime budget, coverage policy) to a concrete tool-set choice; each leaf cites one rule from 01-core-rules.xml.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/nextest.toml`
+
+```toml
+[profile.default]
+fail-fast = false
+retries = 0
+slow-timeout = { period = "30s", terminate-after = 1 }
+
+[profile.ci]
+fail-fast = false
+retries = 1
+slow-timeout = { period = "60s", terminate-after = 1 }
+final-status-level = "fail"
+```
+
+### `templates/ci-workflow.yml`
+
+```yaml
+name: Test
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: nextest@0.9.78,cargo-llvm-cov@0.6.11
+      - run: cargo nextest run --workspace --profile ci
+      - run: cargo llvm-cov --workspace --lcov --output-path lcov.info
+      - uses: codecov/codecov-action@v4
+        with:
+          files: lcov.info
+
+  miri:
+    runs-on: ubuntu-latest
+    if: contains(github.event.pull_request.labels.*.name, 'has-unsafe')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: miri
+      - run: cargo +nightly miri test
+```

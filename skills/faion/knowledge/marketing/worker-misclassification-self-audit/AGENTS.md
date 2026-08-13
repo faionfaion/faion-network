@@ -62,6 +62,8 @@
 | `templates/worker-misclassification-self-audit.md` | Markdown skeleton (5-line header) for the artefact body. |
 | `templates/worker-misclassification-self-audit.json` | JSON Schema (draft-07) for the output contract — see `content/02-output-contract.xml`. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,58 @@
 
 See `content/06-decision-tree.xml`. The tree maps observable preconditions (Applies-If / Skip-If) to either `run-the-checklist` or `skip-this-methodology` from `01-core-rules.xml`. Use it whenever the operating trigger fires and you need to decide between applying this methodology now, deferring, or routing elsewhere.
 
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/worker-misclassification-self-audit.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/worker-misclassification-self-audit.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "decision",
+    "rationale",
+    "inputs_used",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 3
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 3
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 30
+    },
+    "inputs_used": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

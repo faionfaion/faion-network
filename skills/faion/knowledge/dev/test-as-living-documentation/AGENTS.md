@@ -67,6 +67,8 @@
 | `templates/test-as-living-documentation.md` | Markdown skeleton for the Test as Living Documentation artefact. |
 | `templates/_smoke-test.json` | Minimum viable test-as-living-documentation record for validator smoke-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,23 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree filters on AC-corpus existence, stakeholder-reader presence, and BDD-framework availability; routes runs without any of those signals to skip-this-methodology so the artefact only lands where consumers exist.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "artefact_id": "tld-2026-q2",
+  "owner": "olena@faion.net",
+  "ac_corpus_link": "https://linear.app/faion/team/eng",
+  "framework": "pytest-bdd",
+  "docs_url": "https://docs.faion.net/bdd/",
+  "ac_coverage_pct": 84.0,
+  "stakeholder_review_date": "2026-05-20",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23"
+}
+```

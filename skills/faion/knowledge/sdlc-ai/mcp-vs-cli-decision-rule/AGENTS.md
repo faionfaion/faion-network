@@ -42,6 +42,8 @@
 | `templates/source-routing-record.yaml` | Fill-in record for an agent with a mixed source set; ships valid against the contract. |
 | `templates/source-routing-record-cli-only.yaml` | The common outcome — every source routes to a CLI and no server is connected at all. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - `mcp-resource-vs-tool-vs-prompt` — once MCP is the chosen route, what shape the thing should take.
@@ -52,3 +54,121 @@
 ## Dated facts
 
 Assessed 2026-08-04. The 17.6k-55k token range is the measured tool-definition footprint of representative MCP server sets as gathered in the 2026 landscape review this methodology was written from, not a vendor-published figure — re-measure against your own connected set before quoting it. Protocol revision 2026-07-28 is stateless and deprecates Sampling, Roots and Logging under a twelve-month clock. The MCP registry has been in preview since 2025-09-08 and remains so at the time of writing.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/source-routing-record.yaml`
+
+```yaml
+#
+# If every source routes to a CLI, use source-routing-record-cli-only.yaml instead.
+# Validate:  validate-mcp-vs-cli-decision-rule.py source-routing-record.yaml
+
+agent: "the repo coding agent, running with shell access"
+
+# --- The standing charge (r1, r4). Cap first, then fit the set to it. ---
+server_cap: 2
+definition_footprint_tokens: 21400
+standing_cost_per_session: "USD 0.09 per session at our current turn count"
+deferred_tool_loading: true
+deferred_fallback: >
+  On a miss the agent re-runs tool discovery once and, if still absent, reports the
+  gap in its final message instead of declining silently. Misses are logged.
+
+sources:
+  - name: "GitHub"
+    capability: "read issues and PRs, push branches"
+    cli_available: true
+    cli_binary: "gh"
+    route: cli          # authenticated, already installed, zero standing cost
+
+  - name: "production Postgres"
+    capability: "ad-hoc read queries during investigation"
+    cli_available: true
+    cli_binary: "psql"
+    route: cli
+
+  - name: "the design tool"
+    capability: "read a file's component tree and export assets"
+    cli_available: false
+    route: mcp
+    mcp_justification: oauth-brokered   # stateful-session|oauth-brokered|push-subscription|no-cli-exists
+    first_party: true
+    credential_scope: "read-only on two named project files; no org-wide scope"
+    spec_revision: "2026-07-28"
+
+  - name: "the ticketing system"
+    capability: "watch for status changes and react"
+    cli_available: true
+    cli_binary: "tkt"
+    route: mcp
+    cli_insufficient_reason: >
+      The command answers questions; it cannot receive a push. The requirement is a
+      subscription that wakes the agent, which no one-shot invocation expresses.
+    mcp_justification: push-subscription
+    first_party: true
+    credential_scope: "one project, issue read plus comment write; no admin"
+    spec_revision: "2026-03-26"
+    migration_deadline: "2027-07-28"   # earlier revision; twelve-month clock recorded
+
+  - name: "an internal analytics warehouse"
+    capability: "aggregate queries for weekly summaries"
+    cli_available: false
+    route: neither
+    reason: >
+      Only a community-published server exists and it would hold a warehouse
+      credential. Waiting for a first-party path; the weekly summary stays manual.
+```
+
+### `templates/source-routing-record-cli-only.yaml`
+
+```yaml
+#
+# The cheapest outcome and a common one: no standing charge, no widened trust
+# boundary, no protocol revision to track. Do not add mcp_justification or
+# credential_scope keys below - server_cap 0 forbids an MCP route (r4).
+# Validate:  validate-mcp-vs-cli-decision-rule.py source-routing-record-cli-only.yaml
+
+agent: "solo developer's coding agent, shell access enabled"
+
+server_cap: 0
+definition_footprint_tokens: 0
+standing_cost_per_session: "USD 0.00 - no server connected"
+deferred_tool_loading: false
+
+sources:
+  - name: "GitHub"
+    capability: "issues, PRs, releases"
+    cli_available: true
+    cli_binary: "gh"
+    route: cli
+
+  - name: "the app database"
+    capability: "read queries while debugging"
+    cli_available: true
+    cli_binary: "psql"
+    route: cli
+
+  - name: "cloud infrastructure"
+    capability: "inspect and restart services"
+    cli_available: true
+    cli_binary: "hcloud"
+    route: cli
+
+  - name: "the password vault"
+    capability: "fetch a credential for a deploy"
+    cli_available: true
+    cli_binary: "op"
+    route: cli
+
+  - name: "the analytics dashboard"
+    capability: "weekly traffic numbers"
+    cli_available: false
+    route: neither
+    reason: >
+      No first-party command-line path and no first-party server. Connecting a
+      third-party one would put a stranger inside the credential path for a number
+      that is read once a week by a human anyway.
+```

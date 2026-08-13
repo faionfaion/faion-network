@@ -73,6 +73,8 @@
 | `templates/taxonomy-seed.yaml` | Starter tag taxonomy grouped by class (segment / pain / JTBD / behavior) |
 | `templates/access-matrix.md` | Role-to-permission mapping |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,3 +90,28 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals onto a rule id from `content/01-core-rules.xml`, so the agent can decide in one read whether to run the methodology, halt, or route elsewhere. Use it whenever the inputs feel ambiguous.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/taxonomy-seed.yaml`
+
+```yaml
+version: 1
+classes:
+  segment:
+    - solo_creator
+    - indie_hacker
+    - enterprise_marketer
+  pain:
+    - onboarding_friction
+    - pricing_confusion
+    - missing_api
+  jtbd:
+    - publish_newsletter
+    - manage_subscribers
+  behavior:
+    - abandons_at_step_3
+    - reads_release_notes
+```

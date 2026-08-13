@@ -65,6 +65,8 @@
 |------|---------|
 | `templates/outbox.sql` | Transactional outbox table DDL |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,25 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/outbox.sql`
+
+```sql
+-- transactional outbox table
+CREATE TABLE IF NOT EXISTS outbox_messages (
+    id BIGSERIAL PRIMARY KEY,
+    aggregate_type TEXT NOT NULL,
+    aggregate_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    payload JSONB NOT NULL,
+    idempotency_key TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    published_at TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS outbox_unpublished ON outbox_messages (created_at) WHERE published_at IS NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS outbox_idempotency_key ON outbox_messages (idempotency_key);
+```

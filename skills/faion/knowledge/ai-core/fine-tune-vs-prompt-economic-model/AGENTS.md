@@ -58,14 +58,6 @@
 | Compute 4 scenarios | sonnet | Arithmetic + scenario logic. |
 | Write narrative | opus | Synthesis for human reader. |
 
-## Templates
-
-| File | Purpose |
-|------|---------|
-| `templates/economic-model.schema.json` | JSON Schema for the model. |
-| `templates/economic-model.example.json` | Worked filled model. |
-| `templates/economic-model.py` | Python compute kernel (deterministic). |
-
 ## Related
 
 - parent skill: `geek/ai/`

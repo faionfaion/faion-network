@@ -67,6 +67,8 @@
 | `templates/GlobalExceptionHandler.java` | @RestControllerAdvice translating business exceptions to ProblemDetail |
 | `templates/application-prod.yml` | Profile-specific configuration overlay (prod) |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,91 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/MailProperties.java`
+
+```java
+package com.example.config;
+
+import jakarta.validation.constraints.*;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.validation.annotation.Validated;
+
+@Validated
+@ConfigurationProperties(prefix = "app.mail")
+public record MailProperties(
+        @NotBlank String host,
+        @Min(1) @Max(65535) int port,
+        @NotBlank String user,
+        String password,
+        @NotBlank @Email String from,
+        @Min(0) int maxRetries,
+        @Min(100) int timeoutMs,
+        boolean tlsEnabled
+) {}
+```
+
+### `templates/GlobalExceptionHandler.java`
+
+```java
+package com.example.web;
+
+import java.net.URI;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ProblemDetail;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
+
+@RestControllerAdvice
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    @ExceptionHandler(OrderNotFoundException.class)
+    public ProblemDetail handleOrderNotFound(OrderNotFoundException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        pd.setType(URI.create("https://errors.example.com/order-not-found"));
+        pd.setProperty("orderId", ex.getOrderId());
+        return pd;
+    }
+
+    @ExceptionHandler(MailRejectedException.class)
+    public ProblemDetail handleMailRejected(MailRejectedException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_GATEWAY, "mail vendor rejected the message");
+        pd.setType(URI.create("https://errors.example.com/mail-rejected"));
+        return pd;
+    }
+}
+```
+
+### `templates/application-prod.yml`
+
+```yaml
+spring:
+  profiles:
+    active: prod
+
+app:
+  mail:
+    host: smtp.prod.example.com
+    port: 587
+    user: ${MAIL_USER}
+    password: ${MAIL_PASSWORD}
+    from: noreply@example.com
+    max-retries: 3
+    timeout-ms: 5000
+    tls-enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  endpoint:
+    health:
+      probes:
+        enabled: true
+```

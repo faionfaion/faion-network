@@ -71,6 +71,8 @@
 | `templates/create_index_concurrently.sql` | Index creation snippet using CONCURRENTLY + REINDEX guidance. |
 | `templates/_smoke-test.json` | Minimum viable sql-optimisation report for validator smoke-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,42 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs - EXPLAIN captured, stats skew, index shape - onto a rule from `content/01-core-rules.xml`. Use it before any optimisation: it catches explain-skipped and stats-skew-ignored upstream.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/create_index_concurrently.sql`
+
+```sql
+-- Idempotent index creation; non-blocking; safe for production
+CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_orders_tenant_created_id
+  ON orders (tenant_id, created_at DESC, id);
+
+-- Confirm planner uses it:
+EXPLAIN (ANALYZE, BUFFERS)
+  SELECT id, created_at FROM orders
+   WHERE tenant_id = 'X'
+   ORDER BY created_at DESC, id DESC
+   LIMIT 50;
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "query_id": "q1",
+  "baseline_plan": {
+    "plan_text": "Seq Scan",
+    "actual_rows": 100,
+    "buffers": "0"
+  },
+  "applied_change": "index_added",
+  "after_plan": {
+    "plan_text": "Index Scan",
+    "actual_rows": 10
+  },
+  "wall_clock_delta_ms": -200,
+  "sample_size": 50
+}
+```

@@ -62,8 +62,9 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
 | `templates/config-instance.json` | JSON instance of a filled config artefact |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -80,3 +81,40 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/config-instance.json`
+
+```json
+{
+  "strategy": "sops",
+  "key_custody": {
+    "backend": "aws-kms",
+    "key_ref": "arn:aws:kms:eu-central-1:111:key/abcd"
+  },
+  "rotation_policy": {
+    "api_tokens": "90d",
+    "db_passwords": "180d",
+    "tls_certs": "365d"
+  },
+  "rbac": {
+    "service_accounts": [
+      "payments-sa scoped to secrets:get in ns payments"
+    ],
+    "least_privilege_verified": true
+  },
+  "agent_policy": {
+    "allowed_operations": [
+      "read_decrypted_in_memory",
+      "no_logging",
+      "no_echo"
+    ],
+    "guardrails_ref": "guardrails/agent-secret-policy.yaml"
+  },
+  "owner": "security@team.io",
+  "last_reviewed": "2026-05-23"
+}
+```

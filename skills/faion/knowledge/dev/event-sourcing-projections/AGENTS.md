@@ -68,6 +68,8 @@
 | `templates/checkpoint.sql` | Checkpoint table DDL |
 | `templates/rebuild.py` | Truncate + replay script |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,112 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (view shape, throughput, consistency need) to a rule from `01-core-rules.xml`. Use it when adding a new read model or refactoring an existing projection.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/Projection.py`
+
+```python
+from __future__ import annotations
+
+from typing import Protocol
+
+
+class ReadStore(Protocol):
+    def upsert(self, table: str, key: dict, payload: dict) -> None: ...
+    def delete(self, table: str, key: dict) -> None: ...
+    def get_checkpoint(self, name: str) -> int: ...
+    def set_checkpoint(self, name: str, position: int) -> None: ...
+
+
+class OrdersListProjection:
+    NAME = "orders_list"
+    TABLE = "orders_list"
+
+    def __init__(self, store: ReadStore) -> None:
+        self._store = store
+
+    def handle(self, event, position: int) -> None:
+        method = getattr(self, f"_on_{type(event).__name__}", None)
+        if method is not None:
+            method(event)
+        self._store.set_checkpoint(self.NAME, position)
+
+    def _on_OrderPlaced(self, ev) -> None:
+        self._store.upsert(
+            self.TABLE,
+            key={"order_id": ev.order_id},
+            payload={
+                "order_id": ev.order_id,
+                "customer_id": ev.customer_id,
+                "status": "placed",
+                "total": 0,
+            },
+        )
+
+    def _on_ItemAdded(self, ev) -> None:
+        self._store.upsert(
+            self.TABLE,
+            key={"order_id": ev.order_id},
+            payload={"increment_total": ev.price * ev.quantity},
+        )
+
+    def _on_OrderCancelled(self, ev) -> None:
+        self._store.delete(self.TABLE, key={"order_id": ev.order_id})
+```
+
+### `templates/checkpoint.sql`
+
+```sql
+CREATE TABLE IF NOT EXISTS projection_checkpoint (
+    name             TEXT PRIMARY KEY,
+    stream_position  BIGINT NOT NULL,
+    updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+### `templates/rebuild.py`
+
+```python
+from __future__ import annotations
+
+import argparse
+import sys
+from typing import Iterable, Protocol
+
+
+class EventSource(Protocol):
+    def read_all_events(self) -> Iterable: ...
+
+
+class ReadStore(Protocol):
+    def truncate(self, table: str) -> None: ...
+    def delete_checkpoint(self, name: str) -> None: ...
+
+
+def rebuild(projection, source: EventSource, store: ReadStore) -> int:
+    store.truncate(projection.TABLE)
+    store.delete_checkpoint(projection.NAME)
+    count = 0
+    for position, event in enumerate(source.read_all_events(), start=1):
+        projection.handle(event, position=position)
+        count += 1
+    return count
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description="rebuild a projection from offset 0")
+    ap.add_argument("--dry-run", action="store_true")
+    args = ap.parse_args()
+    if args.dry_run:
+        sys.stdout.write("dry-run OK\n")
+        return 0
+    sys.stdout.write("instantiate projection + source + store, then call rebuild()\n")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+```

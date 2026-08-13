@@ -64,7 +64,8 @@
 | `templates/k6-load.js` | k6 load test with thresholds + stages |
 | `templates/locustfile.py` | Locust user class with weighted tasks + threshold check |
 | `templates/ci-perf-gate.yml` | GitHub Actions step: run k6 with thresholds and fail PR on regression |
-| `templates/_smoke-test.js` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,69 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Are baselines defined AND is staging available AND is BASE_URL not prod?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/k6-load.js`
+
+```javascript
+// faion_header_json: {"__faion_header__":{"purpose":"k6 load test with thresholds + stages","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/01-core-rules.xml#tool-by-team-language","token_budget_impact":"~150 tokens when loaded"}}
+import http from 'k6/http';
+import { check } from 'k6';
+
+export const options = {
+  stages: [
+    { duration: '30s', target: 20 },
+    { duration: '60s', target: 50 },
+    { duration: '30s', target: 0 },
+  ],
+  thresholds: {
+    http_req_duration: ['p(95)<300', 'p(99)<500'],
+    http_req_failed: ['rate<0.01'],
+  },
+};
+
+export default function () {
+  const res = http.get(`${__ENV.BASE_URL}/api/v1/checkout`);
+  check(res, { 'status 200': (r) => r.status === 200 });
+}
+```
+
+### `templates/locustfile.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Locust user class with weighted tasks + threshold check","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/01-core-rules.xml#tool-by-team-language","token_budget_impact":"~150 tokens when loaded"}}
+from locust import HttpUser, between, task
+
+
+class WebsiteUser(HttpUser):
+    wait_time = between(0.5, 2.0)
+
+    @task(3)
+    def checkout(self):
+        self.client.get("/api/v1/checkout")
+
+    @task(1)
+    def search(self):
+        self.client.get("/api/v1/search?q=hello")
+```
+
+### `templates/ci-perf-gate.yml`
+
+```yaml
+# faion_header_json: {"__faion_header__":{"purpose":"GitHub Actions step: run k6 with thresholds and fail PR on regression","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/01-core-rules.xml#tool-by-team-language","token_budget_impact":"~150 tokens when loaded"}}
+name: perf-gate
+on:
+  pull_request:
+jobs:
+  perf:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/setup-k6-action@v1
+      - run: k6 run --quiet ./perf/k6-load.js
+        env:
+          BASE_URL: https://staging.example.com
+```

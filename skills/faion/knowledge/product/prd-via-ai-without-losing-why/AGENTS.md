@@ -67,6 +67,8 @@
 | `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
 | `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,55 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/artefact-instance.json`
+
+```json
+{
+  "prd_id": "prd-onboarding-2026q2",
+  "owner": "pm@acme.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "why": {
+    "customer_evidence": [
+      {
+        "interview_id": "i-1",
+        "quote": "I gave up after the second step"
+      }
+    ],
+    "quant_signal": "drop-off at step-2 = 41%",
+    "evidence": "BI view fct_onboarding 2026-05"
+  },
+  "outcome": {
+    "metric": "step-2 completion",
+    "target": "+15pp",
+    "window": "8 weeks",
+    "evidence": "Q2 OKR doc"
+  },
+  "anti_goals": [
+    "no full onboarding rewrite",
+    "no new pricing tiers",
+    "no SSO additions"
+  ],
+  "scope": [
+    "replace step-2 with progressive disclosure",
+    "add inline help microcopy",
+    "instrument funnel events"
+  ],
+  "citation_chain": [
+    {
+      "section": "why",
+      "source_id": "i-1"
+    },
+    {
+      "section": "outcome",
+      "source_id": "okr-q2"
+    }
+  ],
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}
+```

@@ -64,6 +64,8 @@
 | `templates/company-prompt-library-pattern.json` | JSON schema for the spec output contract |
 | `templates/company-prompt-library-pattern.md` | Markdown skeleton with the required fields |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,130 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Two-question tree: (1) preconditions present? (inventory + owner + ≥3 devs) → no = skip; yes (2) library size < 20 prompts? → emit single-file library spec; ≥20 → emit per-role-pack namespace spec. Both terminal branches reference rules in `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/company-prompt-library-pattern.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.network/schema/company-prompt-library-pattern.json",
+  "type": "object",
+  "required": [
+    "spec_id",
+    "owner",
+    "namespace_map",
+    "override_layers",
+    "eval_gate",
+    "role_packs",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "spec_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!team$|we$|us$|engineering$)"
+    },
+    "namespace_map": {
+      "type": "object",
+      "patternProperties": {
+        "^prompts/(role|task)/[a-z0-9-]+/$": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false,
+      "minProperties": 1
+    },
+    "override_layers": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "faion-defaults",
+          "role-pack",
+          "company-override",
+          "repo-override"
+        ]
+      },
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true
+    },
+    "eval_gate": {
+      "type": "object",
+      "required": [
+        "scorers",
+        "threshold",
+        "block_on_fail"
+      ],
+      "properties": {
+        "scorers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "block_on_fail": {
+          "type": "boolean",
+          "const": true
+        }
+      }
+    },
+    "role_packs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "owner",
+          "count"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string",
+            "minLength": 1
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "active",
+        "deprecated"
+      ]
+    }
+  }
+}
+```

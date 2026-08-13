@@ -59,6 +59,8 @@
 | `templates/headless-guards.sh` | Reusable guarded invocation wrapper for Claude Code, Codex, Aider, opencode |
 | `templates/_smoke-test.sh` | Minimum invocation for self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -73,3 +75,66 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The root question is whether the invocation runs in an interactive TTY. If not, the tree enforces all four guards and maps them to the correct flag per CLI (Claude Code uses `-p`, Codex uses `codex exec`, etc.).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/headless-guards.sh`
+
+```bash
+# headless-guards.sh — apply the four guards for Claude Code, Codex, Aider, opencode.
+#
+# Usage:
+#   ./headless-guards.sh <claude|codex|aider|opencode> "<task>" [allowlist]
+#
+# Each branch sets: print/headless flag, allowlist (where supported),
+# max-turns (or wall-clock timeout when no native cap), and closes stdin.
+
+set -euo pipefail
+
+TOOL="${1:?tool name required}"
+TASK="${2:?task required}"
+ALLOWED="${3:-Read,Edit,Bash(pytest:*)}"
+MAX_TURNS="${MAX_TURNS:-20}"
+WALL="${WALL:-600}"
+
+case "$TOOL" in
+  claude)
+    timeout "$WALL" claude -p "$TASK" \
+      --output-format stream-json --verbose \
+      --allowedTools "$ALLOWED" \
+      --max-turns "$MAX_TURNS" \
+      < /dev/null
+    ;;
+  codex)
+    timeout "$WALL" codex exec --sandbox workspace-write "$TASK" \
+      < /dev/null
+    ;;
+  aider)
+    timeout "$WALL" aider --yes --no-auto-test \
+      --max-chat-history-tokens 8000 \
+      --message "$TASK" \
+      < /dev/null
+    ;;
+  opencode)
+    timeout "$WALL" opencode --headless --max-turns "$MAX_TURNS" "$TASK" \
+      < /dev/null
+    ;;
+  *)
+    echo "unknown tool: $TOOL" >&2
+    exit 2
+    ;;
+esac
+```
+
+### `templates/_smoke-test.sh`
+
+```bash
+set -euo pipefail
+TASK="smoke task"
+claude -p "$TASK" \
+  --allowedTools "Read,Edit,Bash(pytest:*)" \
+  --max-turns 20 \
+  < /dev/null
+```

@@ -64,6 +64,8 @@
 |------|---------|
 | `templates/test-plan.json` | Skeleton test plan |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,33 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches by product stage and audience; enforces 4-layer + ≥5-user + locked seeds. Each leaf cites a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/test-plan.json`
+
+```json
+{
+  "layers": [
+    "unit",
+    "integration",
+    "user",
+    "stress"
+  ],
+  "subgroup_buckets": [
+    "accent",
+    "age",
+    "gender"
+  ],
+  "stress_conditions": [
+    "kitchen-noise",
+    "multi-speaker",
+    "accented-speech"
+  ],
+  "user_test_n": 8,
+  "completion_metric": "completion_at_attempt_N",
+  "seeds_locked": true
+}
+```

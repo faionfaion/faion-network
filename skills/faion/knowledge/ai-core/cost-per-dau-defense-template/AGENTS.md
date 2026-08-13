@@ -63,6 +63,8 @@
 | `templates/cost-per-dau-defense-template.json` | JSON schema for the defense report contract |
 | `templates/cost-per-dau-defense-template.md` | 1-page Markdown skeleton with required fields |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,129 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Three-question tree: preconditions present? cost-per-DAU under target? under 3x target? Routes to defend / cut-scope / sunset. Branches reference rules in `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/cost-per-dau-defense-template.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.network/schema/cost-per-dau-defense-template.json",
+  "type": "object",
+  "required": [
+    "report_id",
+    "feature",
+    "owner",
+    "cost_per_dau_usd",
+    "dau",
+    "drivers",
+    "peer_benchmark",
+    "plan_90_day",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "report_id": {
+      "type": "string",
+      "pattern": "^cpd-[a-z0-9-]+$"
+    },
+    "feature": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!team$|we$|us$|engineering$)"
+    },
+    "cost_per_dau_usd": {
+      "type": "number",
+      "minimum": 0
+    },
+    "dau": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "drivers": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "pct"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          }
+        }
+      }
+    },
+    "peer_benchmark": {
+      "type": "object",
+      "required": [
+        "name",
+        "citation"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "value_usd": {
+          "type": "number"
+        },
+        "citation": {
+          "type": "string"
+        },
+        "accessed_at": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    },
+    "plan_90_day": {
+      "type": "object",
+      "required": [
+        "target_cost_per_dau_usd",
+        "interventions",
+        "owner"
+      ],
+      "properties": {
+        "target_cost_per_dau_usd": {
+          "type": "number",
+          "minimum": 0
+        },
+        "interventions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

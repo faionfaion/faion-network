@@ -69,6 +69,8 @@
 | `templates/EntityConfiguration.cs` | Fluent mapping skeleton |
 | `templates/Repository.cs` | Repository with PagedResult + AsNoTracking |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,153 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (workload — read-heavy vs write-heavy, Include shape) to a rule from `01-core-rules.xml`, either approving the EF Core pattern or routing to Dapper / raw SQL. Use it whenever adding a new entity, a new query, or refactoring a slow page.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/Entity.cs`
+
+```csharp
+using System.Collections.Generic;
+
+namespace Faion.Domain.Orders;
+
+public sealed class Order
+{
+    private readonly List<OrderItem> _items = new();
+
+    public int Id { get; private set; }
+    public string CustomerName { get; private set; } = "";
+    public decimal Total { get; private set; }
+    public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
+
+    private Order() { }
+
+    public Order(string customerName)
+    {
+        if (string.IsNullOrWhiteSpace(customerName))
+            throw new ArgumentException("customer name required", nameof(customerName));
+        CustomerName = customerName;
+    }
+
+    public void AddItem(OrderItem item)
+    {
+        _items.Add(item);
+        Total += item.Price * item.Quantity;
+    }
+}
+
+public sealed class OrderItem
+{
+    public int Id { get; private set; }
+    public string Sku { get; private set; } = "";
+    public decimal Price { get; private set; }
+    public int Quantity { get; private set; }
+    private OrderItem() { }
+    public OrderItem(string sku, decimal price, int quantity)
+    {
+        Sku = sku; Price = price; Quantity = quantity;
+    }
+}
+```
+
+### `templates/EntityConfiguration.cs`
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Faion.Infrastructure.Orders;
+
+public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
+{
+    public void Configure(EntityTypeBuilder<Order> builder)
+    {
+        builder.ToTable("orders");
+        builder.HasKey(o => o.Id);
+        builder.Property(o => o.CustomerName).IsRequired().HasMaxLength(200);
+        builder.Property(o => o.Total).HasPrecision(18, 2).HasDefaultValueSql("0");
+        builder.HasIndex(o => o.CustomerName);
+        builder.HasMany(o => o.Items)
+            .WithOne()
+            .HasForeignKey("OrderId")
+            .OnDelete(DeleteBehavior.Cascade);
+    }
+}
+
+public sealed class OrderItemConfiguration : IEntityTypeConfiguration<OrderItem>
+{
+    public void Configure(EntityTypeBuilder<OrderItem> builder)
+    {
+        builder.ToTable("order_items");
+        builder.HasKey(i => i.Id);
+        builder.Property(i => i.Sku).IsRequired().HasMaxLength(64);
+        builder.Property(i => i.Price).HasPrecision(18, 2);
+        builder.HasIndex(i => i.Sku);
+    }
+}
+```
+
+### `templates/Repository.cs`
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+
+namespace Faion.Infrastructure.Orders;
+
+public sealed record OrderDto(int Id, string CustomerName, decimal Total);
+public sealed record PagedResult<T>(IReadOnlyList<T> Items, int TotalCount, int Page, int PageSize);
+
+public interface IOrderRepository
+{
+    Task<PagedResult<OrderDto>> ListAsync(int page, int pageSize, CancellationToken ct);
+    Task<Order?> GetAsync(int id, CancellationToken ct);
+    Task AddAsync(Order order, CancellationToken ct);
+    Task SaveChangesAsync(CancellationToken ct);
+}
+
+public sealed class OrderRepository : IOrderRepository
+{
+    private readonly AppDbContext _db;
+
+    public OrderRepository(AppDbContext db) => _db = db;
+
+    public async Task<PagedResult<OrderDto>> ListAsync(int page, int pageSize, CancellationToken ct)
+    {
+        var query = _db.Orders
+            .AsNoTracking()
+            .Include(o => o.Items)
+            .AsSplitQuery();
+
+        var total = await query.CountAsync(ct);
+        var items = await query
+            .OrderBy(o => o.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .Select(o => new OrderDto(o.Id, o.CustomerName, o.Total))
+            .ToListAsync(ct);
+
+        return new PagedResult<OrderDto>(items, total, page, pageSize);
+    }
+
+    public Task<Order?> GetAsync(int id, CancellationToken ct) =>
+        _db.Orders.Include(o => o.Items).FirstOrDefaultAsync(o => o.Id == id, ct);
+
+    public async Task AddAsync(Order order, CancellationToken ct)
+    {
+        await _db.Orders.AddAsync(order, ct);
+    }
+
+    public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct).ContinueWith(_ => { }, ct);
+}
+
+public sealed class AppDbContext : DbContext
+{
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public AppDbContext(DbContextOptions<AppDbContext> opt) : base(opt) { }
+    protected override void OnModelCreating(ModelBuilder modelBuilder) =>
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+}
+```

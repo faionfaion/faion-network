@@ -70,6 +70,8 @@
 | `templates/rag-bench-spec.json` | JSON skeleton matching 02-output-contract. |
 | `templates/rag-bench-spec.md` | Narrative review draft. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,51 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree picks retriever set based on corpus type (free-form prose, structured docs, code) and metric set based on task (retrieval vs generation). Walk it before drafting the spec.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rag-bench-spec.json`
+
+```json
+{
+  "artefact_id": "rag-bench-<task>-<period>",
+  "owner": "<handle>@faion.net",
+  "corpus": {
+    "path": "warehouse://<table>",
+    "sha": "<sha>",
+    "doc_count": 50000
+  },
+  "query_set": {
+    "path": "git://<repo>/eval/queries.jsonl",
+    "gold_labels": true,
+    "size": 800
+  },
+  "runners": [
+    {
+      "name": "bm25",
+      "version": "rank_bm25-0.2.2",
+      "config_hash": "<hash>"
+    },
+    {
+      "name": "dense",
+      "version": "<model-name>",
+      "config_hash": "<hash>"
+    },
+    {
+      "name": "hybrid",
+      "version": "<v>",
+      "config_hash": "<hash>"
+    }
+  ],
+  "metrics": [
+    "Recall@10",
+    "MRR",
+    "faithfulness"
+  ],
+  "leaderboard_path": "git://<repo>/leaderboards/<file>.json",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```

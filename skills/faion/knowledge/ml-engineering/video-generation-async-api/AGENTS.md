@@ -68,6 +68,8 @@
 | `templates/video-job.schema.yaml` | Schema |
 | `templates/_smoke-test.yaml` | Minimum-viable VideoJob fixture |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,96 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes job lifecycle status → action: in-progress / succeeded / failed-transient / failed-permanent / timeout → fallback.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/video-async-client.py`
+
+```python
+"""Generic async video generation client with idempotency + backoff + fallback."""
+from __future__ import annotations
+
+import hashlib
+import json
+import random
+import time
+from dataclasses import dataclass
+
+
+def idem_key(prompt: str, params: dict, provider: str) -> str:
+    blob = json.dumps({"prompt": prompt, "params": params, "provider": provider}, sort_keys=True)
+    return hashlib.sha256(blob.encode()).hexdigest()
+
+
+@dataclass
+class VideoJob:
+    job_id: str
+    provider: str
+    status: str
+    idempotency_key: str
+    artefact_url: str | None = None
+    cost_usd: float = 0.0
+    elapsed_s: float = 0.0
+
+
+def poll_with_backoff(check_fn, total_wait_cap: int = 600) -> tuple[str, float]:
+    backoff = [1, 2, 4, 8, 16, 30]
+    started = time.monotonic()
+    i = 0
+    while True:
+        elapsed = time.monotonic() - started
+        if elapsed >= total_wait_cap:
+            return ("timeout", elapsed)
+        status = check_fn()
+        if status in ("succeeded", "failed-permanent", "failed-transient"):
+            return (status, elapsed)
+        sleep = min(backoff[min(i, len(backoff) - 1)], 30) + random.uniform(0, 0.5)
+        time.sleep(sleep)
+        i += 1
+
+
+def submit_with_fallback(submit_fn, primary: str, fallback: str, prompt: str, params: dict, **kw):
+    key = idem_key(prompt, params, primary)
+    try:
+        return submit_fn(provider=primary, idempotency_key=key, prompt=prompt, params=params, **kw)
+    except Exception:  # noqa: BLE001
+        return submit_fn(provider=fallback, idempotency_key=key, prompt=prompt, params=params, **kw)
+```
+
+### `templates/video-job.schema.yaml`
+
+```yaml
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+required: [provider, idempotency_key, poll_backoff_seconds, total_wait_cap_seconds, artefact_storage, fallback]
+properties:
+  provider: {type: string, enum: [runway, luma, veo, sora, kling]}
+  idempotency_key: {type: string, minLength: 16}
+  poll_backoff_seconds:
+    type: array
+    minItems: 3
+    items: {type: number, minimum: 1}
+  total_wait_cap_seconds: {type: integer, minimum: 60, maximum: 900}
+  artefact_storage:
+    type: object
+    required: [bucket, key_prefix]
+  fallback:
+    type: object
+    required: [provider, trigger]
+    properties:
+      provider: {type: string}
+      trigger: {type: string}
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+provider: runway
+idempotency_key: "8f2a000000000000"
+poll_backoff_seconds: [1, 2, 4, 8, 16, 30]
+total_wait_cap_seconds: 600
+artefact_storage: {bucket: prod-media, key_prefix: video/2026/}
+fallback: {provider: luma, trigger: timeout-or-permanent-fail}
+```

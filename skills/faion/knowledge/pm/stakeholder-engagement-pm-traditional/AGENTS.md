@@ -65,6 +65,8 @@
 |------|---------|
 | `templates/engagement-register.yaml` | YAML register with quadrant + cadence + evidence. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,24 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals from the stakeholder-engagement input (precondition checks, scale thresholds, evidence presence) to a concrete action, with each leaf referencing a rule id from `01-core-rules.xml`. Consult it whenever the methodology could branch based on context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/engagement-register.yaml`
+
+```yaml
+stakeholders:
+  - id: S-001
+    name: Iryna Petrenko
+    role: VP Engineering
+    power: high
+    interest: high
+    quadrant: manage_closely
+    desired_engagement: leading
+    current_engagement: supportive
+    cadence: weekly
+    last_engagement: 2026-05-18
+    evidence: minutes-20260518.md
+```

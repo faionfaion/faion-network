@@ -65,6 +65,8 @@
 |------|---------|
 | `templates/problem-details.schema.yaml` | JSON Schema 2020-12 for the ProblemDetails body — drop-in for jsonschema/ajv/schemathesis. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,45 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters protocol (JSON-over-HTTP only), framework support for one handler, and whether the team accepts `application/problem+json`. If any branch fails, defer to gRPC/GraphQL-specific conventions or skip the envelope.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/problem-details.schema.yaml`
+
+```yaml
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://api.example.com/schemas/problem-details"
+type: object
+required: [type, title, status]
+properties:
+  type:
+    type: string
+    format: uri
+  title:
+    type: string
+  status:
+    type: integer
+    minimum: 100
+    maximum: 599
+  detail:
+    type: string
+  instance:
+    type: string
+  traceId:
+    type: string
+  errors:
+    type: array
+    items:
+      type: object
+      required: [field, code, message]
+      properties:
+        field:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+additionalProperties: true
+```

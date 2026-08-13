@@ -66,6 +66,8 @@
 | `templates/rollout-report.md` | ABx rollout-gate report template. |
 | `templates/_smoke-test.json` | 3-site smoke grid. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,136 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` decides if the grid is worth authoring: skip when 1 site or no eval; mandate when multi-route; route to baseline-first when latency or quality is unmeasured.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/grid.schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/latency-vs-quality-decision-grid",
+  "_purpose": "JSON Schema for the per-site decision grid.",
+  "_consumes": "operator-authored grid.json",
+  "_produces": "validation verdict",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "validator only",
+  "type": "object",
+  "required": [
+    "app",
+    "sites",
+    "rollback_minutes_max"
+  ],
+  "properties": {
+    "app": {
+      "type": "string"
+    },
+    "rollback_minutes_max": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 5
+    },
+    "sites": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "latency_p50_ms",
+          "latency_p95_ms",
+          "quality_floor",
+          "model",
+          "tactic",
+          "cost_per_call_usd",
+          "owner",
+          "last_reviewed"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "latency_p50_ms": {
+            "type": "integer"
+          },
+          "latency_p95_ms": {
+            "type": "integer"
+          },
+          "quality_floor": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "model": {
+            "type": "string"
+          },
+          "tactic": {
+            "type": "string"
+          },
+          "cost_per_call_usd": {
+            "type": "number",
+            "minimum": 0
+          },
+          "owner": {
+            "type": "string"
+          },
+          "last_reviewed": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "3-site smoke grid that passes the validator.",
+  "_consumes": "validate-latency-vs-quality-decision-grid.py",
+  "_produces": "ok verdict",
+  "_depends_on": "templates/grid.schema.json",
+  "_token_budget_impact": "docs-only",
+  "app": "smoke",
+  "rollback_minutes_max": 5,
+  "sites": [
+    {
+      "id": "autocomplete",
+      "latency_p50_ms": 200,
+      "latency_p95_ms": 400,
+      "quality_floor": 0.75,
+      "model": "haiku",
+      "tactic": "prompt-cache",
+      "cost_per_call_usd": 0.0005,
+      "owner": "fe-team",
+      "last_reviewed": "2026-05-22"
+    },
+    {
+      "id": "chat",
+      "latency_p50_ms": 1500,
+      "latency_p95_ms": 3000,
+      "quality_floor": 0.88,
+      "model": "sonnet",
+      "tactic": "stream",
+      "cost_per_call_usd": 0.012,
+      "owner": "chat-team",
+      "last_reviewed": "2026-05-22"
+    },
+    {
+      "id": "audit",
+      "latency_p50_ms": 12000,
+      "latency_p95_ms": 30000,
+      "quality_floor": 0.95,
+      "model": "opus",
+      "tactic": "structured-output",
+      "cost_per_call_usd": 0.18,
+      "owner": "ops-team",
+      "last_reviewed": "2026-05-22"
+    }
+  ]
+}
+```

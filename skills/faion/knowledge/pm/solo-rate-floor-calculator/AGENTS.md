@@ -71,6 +71,8 @@
 | `templates/rate-floor.json` | Output schema skeleton |
 | `templates/load-spreadsheet.csv` | Editable input grid |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,58 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes by operator state (W-2 vs full-time solo), tax jurisdiction, engagement type, and input completeness onto a rule from `content/01-core-rules.xml`. Walk it before quoting a prospect; the cap and margin branches block-or-approve in seconds.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rate-floor.json`
+
+```json
+{
+  "floor_usd_per_hour": 0,
+  "sensitivity": [
+    {
+      "band": "low",
+      "billable_pct": 0.45,
+      "floor_usd_per_hour": 0
+    },
+    {
+      "band": "baseline",
+      "billable_pct": 0.55,
+      "floor_usd_per_hour": 0
+    },
+    {
+      "band": "high",
+      "billable_pct": 0.65,
+      "floor_usd_per_hour": 0
+    }
+  ],
+  "project_minimum_usd": 0,
+  "breakdown": {
+    "target_income_loaded": 0,
+    "tax_load_pct": 0,
+    "working_weeks": 46,
+    "billable_pct": 0.55,
+    "benefit_cost_usd": 0,
+    "tooling_cost_usd": 0,
+    "profit_margin_pct": 0.2
+  },
+  "defense_narrative": "Loaded rate accounting for downtime, taxes, tooling, and a 20% reinvestment margin standard for senior independent practice.",
+  "inputs_warning": [],
+  "computed_at": "YYYY-MM-DD"
+}
+```
+
+### `templates/load-spreadsheet.csv`
+
+```csv
+field,value,unit,notes
+target_income,120000,USD/yr,gross target
+profit_margin,0.20,fraction,>= 0.15
+tax_load,0.34,fraction,jurisdictional all-in (incl. SE / VAT)
+benefit_cost,8000,USD/yr,health + retirement
+tooling_cost,3000,USD/yr,subscriptions
+working_weeks,46,weeks,<= 46
+billable_pct,0.55,fraction,<= 0.55 unless 6mo history cited
+```

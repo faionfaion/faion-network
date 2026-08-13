@@ -69,6 +69,8 @@
 | `templates/trufflehog-action.yml` | GitHub Actions workflow with --results=verified. |
 | `templates/gitleaks.toml` | gitleaks config with org-specific allowlist. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,76 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from observable signals (CI egress available? pre-commit installed?) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure how many layers to ship — the tree terminates either on the active rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/precommit-secrets.yaml`
+
+```yaml
+# Pin every hook by tag and review release notes before bumps.
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.21.0
+    hooks:
+      - id: gitleaks
+        name: gitleaks (staged-only secret scan)
+        args: ['protect', '--staged', '--redact', '--config', '.gitleaks.toml']
+```
+
+### `templates/trufflehog-action.yml`
+
+```yaml
+name: Secrets Verify
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  trufflehog:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: TruffleHog (verified only)
+        uses: trufflesecurity/trufflehog@main
+        with:
+          base: ${{ github.event.pull_request.base.sha }}
+          head: ${{ github.event.pull_request.head.sha }}
+          extra_args: --results=verified --fail
+```
+
+### `templates/gitleaks.toml`
+
+```toml
+# Keep allowlist tight; broad regexes mask real findings.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test fixtures and documentation samples"
+paths = [
+  '''(?i)(^|/)tests?(/|$)''',
+  '''(?i)(^|/)fixtures(/|$)''',
+  '''(?i)(^|/)docs(/|$)''',
+  '''(?i)\.example$''',
+]
+regexes = [
+  # Known-invalidated demo tokens used in API docs
+  '''sk-(test|demo)-[A-Za-z0-9]{20,}''',
+  '''AKIAIOSFODNN7EXAMPLE''',
+]
+
+[[rules]]
+id = "ai-provider-tokens"
+description = "OpenAI, Anthropic, Google AI keys"
+regex = '''(?i)\b(sk-(ant|proj|svcacct|test)-[A-Za-z0-9_-]{20,}|AIza[0-9A-Za-z_-]{30,})\b'''
+tags = ["key", "ai"]
+```

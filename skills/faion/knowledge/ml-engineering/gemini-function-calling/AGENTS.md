@@ -64,6 +64,8 @@
 | `templates/function-declaration-example.py` | Function with docstring + type hints producing a tool. |
 | `templates/_smoke-test.json` | Minimum valid gemini-fc config. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,97 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` routes: non-Gemini → skip; Gemini + ≤20 tools + manual mode acceptable → run-the-checklist.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/gemini-fc-client.py`
+
+```python
+"""
+from __future__ import annotations
+
+import json
+from typing import Callable
+
+try:
+    from google import genai
+    from google.genai import types
+except ImportError:
+    genai = None
+    types = None
+
+MAX_TURNS = 15
+
+
+def run_manual_fc(client, model: str, system: str, user: str, tools: list[Callable], validators: dict[str, Callable]) -> str:
+    """Manual-mode loop: caller dispatches the LLM-requested tool."""
+    if types is None:
+        raise SystemExit("google-genai required")
+    chat = client.chats.create(model=model, config=types.GenerateContentConfig(system_instruction=system, tools=tools))
+    msg = user
+    for _ in range(MAX_TURNS):
+        resp = chat.send_message(msg)
+        if not resp.function_calls:
+            return resp.text
+        msg = []
+        for fc in resp.function_calls:
+            validator = validators.get(fc.name)
+            args = dict(fc.args)
+            if validator and not validator(args):
+                msg.append(types.Part.from_function_response(name=fc.name, response={"error": "validation_failed"}))
+                continue
+            fn = next((t for t in tools if t.__name__ == fc.name), None)
+            if not fn:
+                msg.append(types.Part.from_function_response(name=fc.name, response={"error": "unknown_function"}))
+                continue
+            result = fn(**args)
+            msg.append(types.Part.from_function_response(name=fc.name, response={"result": result}))
+    return "max_turns_reached"
+```
+
+### `templates/function-declaration-example.py`
+
+```python
+"""
+from __future__ import annotations
+
+
+def get_current_weather(location: str, unit: str = "celsius") -> dict:
+    """Get current weather for a location.
+
+    Args:
+        location: City name with optional country (e.g. "Kyiv, UA").
+        unit: Temperature unit; "celsius" or "fahrenheit". Defaults to celsius.
+
+    Returns:
+        Dict with keys: temperature (number), conditions (string), humidity (number).
+    """
+    # Real implementation calls a weather API; placeholder for illustration.
+    return {"temperature": 18.5, "conditions": "Cloudy", "humidity": 70}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "Minimum valid gemini-fc-config.",
+  "_consumes": "validate-gemini-function-calling.py",
+  "_produces": "ok verdict",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "docs-only",
+  "mode": "manual",
+  "tools": [
+    {
+      "name": "search_kb",
+      "description": "Search the knowledge base; returns top five matches by relevance."
+    },
+    {
+      "name": "get_user",
+      "description": "Fetch a user profile object by stable user_id from the auth service."
+    }
+  ],
+  "search_grounding": false
+}
+```

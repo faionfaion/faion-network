@@ -64,6 +64,8 @@
 | `templates/eval-report.md` | Markdown skeleton for the versioned eval report. |
 | `templates/kill-criteria.yaml` | YAML schema for pre-registered thresholds. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,23 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` first checks whether kill-criteria are pre-registered AND the eval set is frozen AND a cost ceiling is set. If any are missing → block. Otherwise → run the eval and emit the report.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/kill-criteria.yaml`
+
+```yaml
+version: "1.0.0"
+committed_at: "2026-04-10"
+owner: "ai-pm:<person>"
+feature: "<feature-slug>"
+thresholds:
+  pass: ">= 0.80"
+  freeze: ">= 0.70 AND < 0.80"
+  fail: "< 0.70"
+metric: "pass-rate (LLM-as-judge)"
+set_version: "golden-v3-frozen-2026-05-15"
+cost_ceiling_per_run_usd: 80
+```

@@ -68,6 +68,8 @@
 | `templates/rice-template.md` | RICE scoring matrix. |
 | `templates/prio_method_and_wsjf.py` | Stdlib calculator for RICE + WSJF + MoSCoW. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[requirements-documentation]]
@@ -76,3 +78,33 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prio_method_and_wsjf.py`
+
+```python
+#!/usr/bin/env python3
+"""prio_method_and_wsjf.py — compute RICE / WSJF scores."""
+from __future__ import annotations
+import json, sys
+
+def rice(reach, impact, confidence, effort):
+    return (reach * impact * confidence) / max(effort, 0.1)
+
+def wsjf(value, time_crit, risk_red, job_size):
+    return (value + time_crit + risk_red) / max(job_size, 0.1)
+
+if __name__ == '__main__':
+    data = json.loads(sys.stdin.read())
+    method = data.get('method', 'RICE')
+    items = data['items']
+    if method == 'RICE':
+        for i in items: i['score'] = rice(i['reach'], i['impact'], i['confidence']/100.0, i['effort'])
+    else:
+        for i in items: i['score'] = wsjf(i['value'], i['time_crit'], i['risk_red'], i['job_size'])
+    items.sort(key=lambda x: x['score'], reverse=True)
+    print(json.dumps(items, indent=2))
+```

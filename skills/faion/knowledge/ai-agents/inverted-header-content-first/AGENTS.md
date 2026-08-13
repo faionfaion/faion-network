@@ -58,6 +58,8 @@
 | `templates/blog_post_schema.py` | Pydantic BlogPost schema with body-first ordering |
 | `templates/_smoke-test.json` | Minimum valid BlogPost output for self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -73,3 +75,73 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The root question is whether the call produces both body and metadata. Branches route to: body-first (one call), two-call (when streaming UI needs title first), or title-from-prompt (when user supplies title).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/blog_post_schema.py`
+
+```python
+"""Body-before-metadata schema for one-call article generation.
+
+Field order is generation order in autoregressive SO. Body is declared
+first so title/slug/tags can summarize the body that already exists.
+"""
+
+from typing import Literal
+from pydantic import BaseModel, Field
+
+
+class BlogPost(BaseModel):
+    model_config = {"extra": "forbid"}  # additionalProperties: false
+
+    # 1. Long-form content first — becomes the CoT trace for everything below.
+    body: str = Field(
+        description=(
+            "600-800 word article in markdown. Use H2 headers, short "
+            "paragraphs, at least one code or example block."
+        )
+    )
+
+    # 2. Title summarizes the body that already exists in context.
+    title: str = Field(
+        description="6-10 word title that captures the body's main claim."
+    )
+
+    # 3. Slug derives from title (which derives from body).
+    slug: str = Field(
+        description="kebab-case URL slug, lowercase, ASCII only.",
+        pattern=r"^[a-z0-9]+(-[a-z0-9]+)*$",
+    )
+
+    # 4. Tags drawn from body topics.
+    tags: list[str] = Field(
+        description="3-5 lowercase one-word tags from body topics.",
+        min_length=3,
+        max_length=5,
+    )
+
+    # 5. Sentiment / tone metadata — last, because it summarizes the whole.
+    tone: Literal["technical", "narrative", "tutorial", "opinion"]
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "smallest valid BlogPost for the validator",
+  "_consumes": "nothing",
+  "_produces": "example BlogPost matching content/02-output-contract.xml",
+  "_depends_on": "content/01-core-rules.xml",
+  "_token_budget_impact": "~80 tokens",
+  "body": "This is a smoke-fixture body with at least two hundred characters of placeholder content so the schema's minLength constraint is satisfied; in real usage this would be 600-800 words of markdown content.",
+  "title": "Smoke Fixture Title for Validator",
+  "slug": "smoke-fixture-title-for-validator",
+  "tags": [
+    "smoke",
+    "fixture",
+    "validator"
+  ]
+}
+```

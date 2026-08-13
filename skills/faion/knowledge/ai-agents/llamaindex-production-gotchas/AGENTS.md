@@ -66,6 +66,8 @@
 | `templates/patches.py` | Working async + concurrency + error patches. |
 | `templates/_smoke-test.yaml` | Minimum. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,50 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on async (true → require aquery + non-blocking patches), then on components_used (subq → wrap; fusion → cap; react → try/except), then on cost cap. Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/deployment-profile.yaml`
+
+```yaml
+async: TODO          # fill with concrete value per the driver definition
+components_used: TODO          # fill with concrete value per the driver definition
+cost_cap_per_turn_usd: TODO          # fill with concrete value per the driver definition
+```
+
+### `templates/patches.py`
+
+```python
+"""Reference artefact for llamaindex-production-gotchas. Self-test only verifies the scaffold compiles."""
+from __future__ import annotations
+
+
+def build(decision: dict):
+    """Build the runtime object from a validated decision-record."""
+    if not isinstance(decision, dict):
+        raise TypeError("decision must be dict from validated decision-record")
+    return decision  # placeholder: real implementations wire here
+
+
+def _self_test() -> int:
+    out = build({"slug": "llamaindex-production-gotchas", "version": "2.0.0"})
+    return 0 if out["slug"] == "llamaindex-production-gotchas" else 1
+
+
+if __name__ == "__main__":
+    import sys
+    if "--self-test" in sys.argv:
+        raise SystemExit(_self_test())
+    if "--help" in sys.argv:
+        print(__doc__)
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+async: low
+components_used: low
+cost_cap_per_turn_usd: low
+```

@@ -68,6 +68,8 @@
 | `templates/task-idempotent.py` | Celery task template with idempotency, retry, time limits |
 | `templates/celery-worker.service` | systemd unit for worker |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,100 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps async need, runner choice, and reliability requirements to a rule from `01-core-rules.xml`, telling the agent whether to apply the Celery conventions or skip in favour of a different runner or sync handling. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/task-idempotent.py`
+
+```python
+# task-idempotent.py — Canonical idempotent Celery task pattern
+# Input:  user_id (int, primitive)
+# Output: bool — True if action was performed, False if already done
+
+import requests
+from celery import shared_task
+
+
+@shared_task(
+    name="emails.send_welcome",
+    bind=True,
+    max_retries=5,
+    autoretry_for=(requests.RequestException,),
+    retry_backoff=True,
+    retry_backoff_max=600,
+    retry_jitter=True,
+    soft_time_limit=300,   # fires SoftTimeLimitExceeded
+    time_limit=360,        # hard SIGKILL
+    acks_late=True,
+    task_reject_on_worker_lost=True,
+)
+def send_welcome(self, user_id: int) -> bool:
+    """
+    Send welcome email to user.
+
+    Idempotent: checks welcome_email_sent before acting.
+    Uses DB-level atomic UPDATE WHERE not_done to prevent race conditions.
+    """
+    from apps.users.models import User
+
+    user = User.objects.only("id", "email", "welcome_email_sent").get(pk=user_id)
+
+    if user.welcome_email_sent:
+        return False  # already sent, safe to return
+
+    # Perform the side effect
+    _send_welcome_email(user.email)
+
+    # Atomic guard: only mark done if it was False (handles concurrent retries)
+    updated = User.objects.filter(pk=user_id, welcome_email_sent=False).update(
+        welcome_email_sent=True
+    )
+    return bool(updated)
+
+
+def _send_welcome_email(email: str) -> None:
+    """Send the actual email. Raises requests.RequestException on failure."""
+    response = requests.post(
+        "https://api.email-provider.com/send",
+        json={"to": email, "template": "welcome"},
+        timeout=30,
+    )
+    response.raise_for_status()
+```
+
+### `templates/celery-worker.service`
+
+```ini
+# /etc/systemd/system/celery-emails.service
+# Systemd unit for a single-queue Celery worker.
+# Adjust: User, WorkingDirectory, ExecStart queue name, concurrency.
+
+[Unit]
+Description=Celery worker (emails queue)
+After=network.target redis.service
+
+[Service]
+Type=simple
+User=app
+Group=app
+EnvironmentFile=/etc/app/celery.env
+WorkingDirectory=/srv/app
+ExecStart=/srv/app/.venv/bin/celery -A config worker \
+  -Q emails \
+  -n emails@%%h \
+  --concurrency=4 \
+  --max-tasks-per-child=200 \
+  --soft-time-limit=300 \
+  --time-limit=360 \
+  --without-gossip \
+  --without-mingle
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```

@@ -66,6 +66,8 @@
 | `templates/ai-assisted-requirements-elicitation.json` | Skeleton artefact with required fields |
 | `templates/_smoke-test.json` | Minimum viable filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,39 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes on artefact-state signal to the active rule.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ai-assisted-requirements-elicitation.json`
+
+```json
+{
+  "elicitation_id": "REPLACE",
+  "version_tag": "REPLACE",
+  "ba_reviewer": "REPLACE",
+  "stories": []
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "elicitation_id": "kyc-2026",
+  "version_tag": "v1.0.0",
+  "ba_reviewer": "Ana Rodrigues",
+  "stories": [
+    {
+      "story_id": "STORY-101",
+      "title": "ID verification step",
+      "source_refs": [
+        "interview-ana#08:14",
+        "compliance-doc.md#L40"
+      ],
+      "ac_count": 5
+    }
+  ]
+}
+```

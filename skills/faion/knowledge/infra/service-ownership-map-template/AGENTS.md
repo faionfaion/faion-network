@@ -58,7 +58,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/ownership-map.md` | Markdown table per service. |
-| `templates/backstage-catalog.yaml` | Backstage catalog-info.yaml shape. |
 | `templates/orphan-resolution.md` | Decision template for unowned services. |
 | `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
 

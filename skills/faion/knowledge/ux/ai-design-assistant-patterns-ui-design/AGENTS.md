@@ -62,6 +62,8 @@
 | `templates/score-table.json` | Scoring rubric for sidebar / modal / inline / review. |
 | `templates/_smoke-test.md` | Filled review-mode decision record example. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[ai-enhanced-design-systems]]
@@ -70,3 +72,25 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the decision-record; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/score-table.json`
+
+```json
+{
+  "pattern": "FILL_ME",
+  "tool": "FILL_ME",
+  "rationale": "FILL_ME",
+  "trigger_source": "FILL_ME",
+  "telemetry_events": [
+    "accept",
+    "reject",
+    "ignore",
+    "rubric_score"
+  ],
+  "fallback_behavior": "FILL_ME"
+}
+```

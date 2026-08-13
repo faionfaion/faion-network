@@ -66,8 +66,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/pivot-decision-record.md` | DR skeleton with type + triggers + sunk-cost + runway. |
-| `templates/pivot-trigger-check.sh` | Check quantitative triggers against metrics. |
-| `templates/runway-gate.yaml` | Runway-feasibility-gate input template. |
 
 ## Scripts
 

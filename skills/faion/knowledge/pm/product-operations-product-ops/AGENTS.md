@@ -68,6 +68,8 @@
 | `templates/ops-rollup.sh` | Weekly metric rollup script |
 | `templates/ops-schema.sql` | Operational metrics warehouse schema |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - parent skill: `skills/faion/knowledge/pro/product/product-operations/`
@@ -77,3 +79,49 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, owner present, prior-cycle output available, cycle window fit) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology this cycle or defer.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ops-rollup.sh`
+
+```bash
+set -euo pipefail
+WEEK="${1:-$(date +%G-W%V)}"
+OUT=".aidocs/process/weekly-rollup-${WEEK}.md"
+mkdir -p "$(dirname "$OUT")"
+cat > "$OUT" <<EOF
+# Weekly Rollup ${WEEK}
+- north-star metric: {{value}}
+- weekly delta: {{delta}}
+- top-3 wins: {{wins}}
+- top-3 risks: {{risks}}
+- asks: {{asks}}
+EOF
+echo "wrote: $OUT"
+```
+
+### `templates/ops-schema.sql`
+
+```sql
+CREATE TABLE IF NOT EXISTS north_star_daily (
+  day DATE PRIMARY KEY,
+  value NUMERIC NOT NULL,
+  notes TEXT
+);
+
+CREATE TABLE IF NOT EXISTS funnel_events (
+  ts TIMESTAMP NOT NULL,
+  user_id TEXT NOT NULL,
+  step TEXT NOT NULL,
+  meta JSONB
+);
+
+CREATE TABLE IF NOT EXISTS retention_cohorts (
+  cohort_week TEXT NOT NULL,
+  week_offset INT NOT NULL,
+  retained INT NOT NULL,
+  PRIMARY KEY (cohort_week, week_offset)
+);
+```

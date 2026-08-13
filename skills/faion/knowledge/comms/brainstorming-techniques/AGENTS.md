@@ -70,6 +70,8 @@
 | `templates/prompt-cluster.txt` | Prompt to dedup + cluster a raw idea list into 3-7 themes |
 | `templates/session-plan.md` | Markdown session plan skeleton with Osborn's 4 rules pre-printed |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,29 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts with problem shape (generate vs risk-surface), then routes by group profile (dominance risk, written comfort) to one of the four techniques.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-generate.txt`
+
+```text
+Generate exactly <N> distinct ideas for: <PROBLEM_STATEMENT>.
+Constraints: <CONSTRAINTS if any — e.g., "must be implementable by a 2-person team">
+Rules: no criticism, quantity over quality, wild ideas welcome.
+Format: numbered list only. No explanations. No duplicates.
+Do NOT evaluate or rank during this pass.
+```
+
+### `templates/prompt-cluster.txt`
+
+```text
+Cluster these ideas into 5-7 themes.
+Ideas: <paste numbered list>
+For each theme:
+- Theme name (2-4 words)
+- Member idea numbers
+- One-line rationale for the grouping
+Human review required before scoring: verify clusters do not silently merge two distinct viable ideas.
+```

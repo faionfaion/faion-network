@@ -66,6 +66,8 @@
 | `templates/outcome-based-roadmaps-advanced.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,114 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/outcome-based-roadmaps-advanced.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/outcome-based-roadmaps-advanced.json",
+  "title": "Outcome Based Roadmaps Advanced Output Contract",
+  "type": "object",
+  "required": [
+    "horizon",
+    "swim_lanes",
+    "outcomes_by_quarter",
+    "dependency_edges",
+    "confidence_decay_applied",
+    "quarter_reviews",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "horizon": {
+      "type": "object",
+      "description": "ISO start/end across \u22652 quarters"
+    },
+    "swim_lanes": {
+      "type": "array",
+      "description": "per-product lanes \u22652",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "outcomes_by_quarter": {
+      "type": "object",
+      "description": "quarter \u2192 outcomes[]"
+    },
+    "dependency_edges": {
+      "type": "array",
+      "description": "from/to/type/rationale objects",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "confidence_decay_applied": {
+      "type": "boolean",
+      "description": "true means decay applied unless cited"
+    },
+    "quarter_reviews": {
+      "type": "array",
+      "description": "per closed quarter review entry",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "owner": {
+      "type": "string",
+      "description": "named owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "horizon": {
+    "k": "v"
+  },
+  "swim_lanes": [
+    {
+      "k": "v"
+    }
+  ],
+  "outcomes_by_quarter": {
+    "k": "v"
+  },
+  "dependency_edges": [
+    {
+      "k": "v"
+    }
+  ],
+  "confidence_decay_applied": true,
+  "quarter_reviews": [
+    {
+      "k": "v"
+    }
+  ],
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

@@ -66,6 +66,8 @@
 | `templates/feature-folder-skeleton.cs` | Feature folder skeleton with controller/service/repo/dto |
 | `templates/_smoke-test.cs` | Minimum viable feature: Users CRUD with auth + ProblemDetails |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,98 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/dotnet-gate.sh`
+
+```bash
+# dotnet-gate.sh — fail PR if async hygiene or coverage slips.
+# Usage: dotnet-gate.sh path/to/sln.sln [coverage_threshold]
+set -euo pipefail
+SLN="${1:?usage: dotnet-gate.sh SOLUTION [THRESHOLD]}"
+THRESH="${2:-70}"
+dotnet build "$SLN" -warnaserror -p:TreatWarningsAsErrors=true
+dotnet test "$SLN" --collect:"XPlat Code Coverage" --results-directory /tmp/cov
+COV_FILE=$(find /tmp/cov -name 'coverage.cobertura.xml' | head -1)
+[ -n "$COV_FILE" ] || { echo "no coverage file"; exit 1; }
+python3 - "$COV_FILE" "$THRESH" <<'PY'
+import sys, xml.etree.ElementTree as ET
+tree = ET.parse(sys.argv[1]); root = tree.getroot()
+rate = float(root.attrib.get("line-rate", 0)) * 100
+thr = float(sys.argv[2])
+print(f"line coverage: {rate:.1f}% (threshold {thr}%)")
+sys.exit(0 if rate >= thr else 1)
+PY
+echo "Gate passed"
+```
+
+### `templates/feature-folder-skeleton.cs`
+
+```csharp
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace Faion.Sample;
+
+public sealed class SampleBackgroundService(ILogger<SampleBackgroundService> log) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                // 1. dequeue work unit (idempotency-keyed)
+                // 2. process with retry policy
+                // 3. ack
+                await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                log.LogError(ex, "work unit failed");
+            }
+        }
+    }
+}
+```
+
+### `templates/_smoke-test.cs`
+
+```csharp
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace Faion.Sample;
+
+public sealed class SampleBackgroundService(ILogger<SampleBackgroundService> log) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        while (!stoppingToken.IsCancellationRequested)
+        {
+            try
+            {
+                // 1. dequeue work unit (idempotency-keyed)
+                // 2. process with retry policy
+                // 3. ack
+                await Task.Delay(TimeSpan.FromSeconds(1), stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                log.LogError(ex, "work unit failed");
+            }
+        }
+    }
+}
+```

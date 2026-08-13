@@ -62,6 +62,8 @@
 | `templates/sunset-customer-comms-template.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,91 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/sunset-customer-comms-template.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/sunset-customer-comms-template.json",
+  "title": "Sunset Customer Comms Template Output Contract",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "cause_sentence",
+    "timeline",
+    "migration_path",
+    "communication_channels",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "description": "kebab-case slug"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named human"
+    },
+    "cause_sentence": {
+      "type": "string",
+      "description": "one honest line"
+    },
+    "timeline": {
+      "type": "object",
+      "description": "{announce_date, migration_window_days, v1_off_date}"
+    },
+    "migration_path": {
+      "type": "object",
+      "description": "{primary: v2|competitor|refund, terms}"
+    },
+    "communication_channels": {
+      "type": "array",
+      "description": "email + in-app + status-page",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "artefact_id": "sample-artefact_id",
+  "owner": "sample-owner",
+  "cause_sentence": "sample-cause_sentence",
+  "timeline": {
+    "key": "value"
+  },
+  "migration_path": {
+    "key": "value"
+  },
+  "communication_channels": [
+    {
+      "key": "value"
+    }
+  ],
+  "version": "sample-version",
+  "last_reviewed": "2026-05-23"
+}
+```

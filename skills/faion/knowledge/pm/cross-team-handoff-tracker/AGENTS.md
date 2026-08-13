@@ -67,6 +67,8 @@
 | `templates/cross-team-handoff-tracker.md` | Markdown skeleton with the required fields for the Cross Team Handoff Tracker artefact |
 | `templates/cross-team-handoff-tracker.example.json` | Worked filled-in example of a valid Cross Team Handoff Tracker artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,110 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input completeness, owner named yes/no, decision materiality) to a concrete action, with each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology, route to a sibling methodology, or skip entirely.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/cross-team-handoff-tracker.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/pm/cross-team-handoff-tracker.json",
+  "title": "Cross Team Handoff Tracker",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "decision",
+    "rationale",
+    "inputs_used",
+    "version",
+    "last_reviewed",
+    "spec_body"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "enum": [
+          "team",
+          "we",
+          "us",
+          "engineering"
+        ]
+      }
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 40
+    },
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "source"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "spec_body": {
+      "type": "string",
+      "minLength": 40
+    }
+  }
+}
+```
+
+### `templates/cross-team-handoff-tracker.example.json`
+
+```json
+{
+  "artefact_id": "cross-team-handoff-tracker-2026-05-23-acme",
+  "owner": "ruslan@faion.net",
+  "decision": "Proceed with the agreed plan as captured in the linked inputs.",
+  "rationale": "Decision rests on the latest engagement notes (notes-2026-05-22) and the prior baseline (baseline-2026-05-15); both inputs corroborate the same direction without contradicting constraints.",
+  "inputs_used": [
+    {
+      "name": "notes-2026-05-22",
+      "source": "wiki://pm/notes/2026-05-22.md"
+    },
+    {
+      "name": "baseline-2026-05-15",
+      "source": "repo://artefacts/baseline-2026-05-15.json"
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "spec_body": "1. Scope: in / out of scope for this engagement. 2. Owner: ruslan@faion.net. 3. Cadence: weekly. 4. Acceptance: signed by client lead."
+}
+```

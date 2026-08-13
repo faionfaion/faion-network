@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/experiment_definition.json` | Pre-registration template: hypothesis + variants + metric + MDE + target sample size |
 | `templates/bucketing.py` | Deterministic hash-based bucketing for stable variant assignment |
-| `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,54 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is there a clear primary metric AND enough traffic to reach 80% power on the expected effect?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/experiment_definition.json`
+
+```json
+{
+  "experiment_id": "checkout-button-color-2026q2",
+  "hypothesis": "Green CTA increases checkout conversion vs blue.",
+  "variants": [
+    {
+      "id": "control",
+      "weight": 0.5
+    },
+    {
+      "id": "treatment",
+      "weight": 0.5
+    }
+  ],
+  "primary_metric": {
+    "name": "checkout_conversion",
+    "numerator": "checkouts_completed",
+    "denominator": "checkouts_started"
+  },
+  "baseline_rate": 0.082,
+  "minimum_detectable_effect": 0.005,
+  "power": 0.8,
+  "alpha": 0.05,
+  "target_sample_size": 21000
+}
+```
+
+### `templates/bucketing.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Deterministic hash-based bucketing for stable variant assignment","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#preregister-before-data","token_budget_impact":"~150 tokens when loaded"}}
+import hashlib
+
+
+def assign(experiment_id: str, user_id: str, variants: list[tuple[str, float]]) -> str:
+    raw = f"{experiment_id}:{user_id}".encode()
+    bucket = int(hashlib.sha256(raw).hexdigest(), 16) % 10000
+    cum = 0
+    for variant_id, weight in variants:
+        cum += int(weight * 10000)
+        if bucket < cum:
+            return variant_id
+    return variants[-1][0]
+```

@@ -71,6 +71,8 @@
 | `templates/sunset-email.md` | Sunset/remove email template |
 | `templates/_smoke-test.json` | Minimum viable scorecard for validator self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,49 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps customer count, ICP persona availability, signal coverage, and authority-to-act to a rule from `01-core-rules.xml`, telling the agent whether to apply the scorecard, block on missing inputs, or skip the methodology entirely. Walk it on every fresh invocation; do not cache outcomes.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/scorecard.csv`
+
+```csv
+customer_id,pain_match,budget_fit,urgency,product_fit,accessibility,total,band,evidence_pain,evidence_budget,evidence_urgency,evidence_fit,evidence_access,remove_action_due
+cus_REPLACE,0,0,0,0,0,0,nurture,REPLACE,REPLACE,REPLACE,REPLACE,REPLACE,
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "version": "1.1.0",
+  "scored_at": "2026-05-23",
+  "rows": [
+    {
+      "customer_id": "cus_smoke_1",
+      "pain_match": 22,
+      "budget_fit": 18,
+      "urgency": 12,
+      "product_fit": 23,
+      "accessibility": 13,
+      "total": 88,
+      "band": "keep",
+      "evidence": {
+        "pain_match": "ticket #1 cites exact problem the product solves",
+        "budget_fit": "Pro plan since week 1",
+        "urgency": "deadline in onboarding survey",
+        "product_fit": "uses 7 of 8 core features",
+        "accessibility": "responds within 24h"
+      }
+    }
+  ],
+  "histogram": {
+    "keep": 1,
+    "nurture": 0,
+    "remove": 0,
+    "median": 88
+  },
+  "remove_list": []
+}
+```

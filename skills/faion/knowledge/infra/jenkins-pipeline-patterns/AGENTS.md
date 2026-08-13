@@ -69,6 +69,8 @@
 | `templates/Jenkinsfile.declarative` | Declarative pipeline with parallel stages + options + post handlers |
 | `templates/shared-library-var.groovy` | `vars/buildApp.groovy` skeleton enforcing CPS-safe patterns |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,155 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (pipeline count, library presence, parallelism need, agent type) to a concrete pattern variant, each leaf referencing a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/Jenkinsfile.declarative`
+
+```text
+@Library('platform@v1.4.2') _
+
+pipeline {
+    agent {
+        kubernetes {
+            yaml '''
+apiVersion: v1
+kind: Pod
+spec:
+  serviceAccountName: jenkins-agent
+  containers:
+  - name: node
+    image: node:20-alpine
+    command: [cat]
+    tty: true
+    resources:
+      requests: { cpu: "500m", memory: "512Mi" }
+      limits:   { cpu: "1",    memory: "1Gi"   }
+  - name: helm
+    image: alpine/helm:3.14
+    command: [cat]
+    tty: true
+    resources:
+      requests: { cpu: "100m", memory: "128Mi" }
+      limits:   { cpu: "500m", memory: "512Mi" }
+'''
+        }
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '50', artifactNumToKeepStr: '10'))
+        disableConcurrentBuilds()
+        timestamps()
+        ansiColor('xterm')
+    }
+
+    stages {
+        stage('Install') {
+            steps {
+                container('node') {
+                    sh 'npm ci --cache .npm --prefer-offline'
+                }
+            }
+        }
+
+        stage('Validate') {
+            parallel {
+                stage('Lint') {
+                    steps {
+                        dir("branch-lint") {
+                            container('node') {
+                                sh 'npm run lint'
+                            }
+                        }
+                    }
+                }
+                stage('Type Check') {
+                    steps {
+                        dir("branch-typecheck") {
+                            container('node') {
+                                sh 'npm run typecheck'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                container('node') {
+                    sh 'npm test -- --coverage'
+                }
+            }
+            post {
+                always { junit testResults: 'junit.xml', allowEmptyResults: true }
+            }
+        }
+
+        stage('Deploy Prod') {
+            when { branch 'main' }
+            options { lock(resource: 'prod-deploy') }
+            input { message 'Deploy to production?'; ok 'Deploy' }
+            steps {
+                container('helm') {
+                    withCredentials([file(credentialsId: 'kubeconfig-prod', variable: 'KUBECONFIG')]) {
+                        deployToK8s release: 'myapp', chart: './charts/myapp'
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always { cleanWs() }
+        failure {
+            notifySlack channel: '#ci-alerts', color: 'danger'
+        }
+    }
+}
+```
+
+### `templates/shared-library-var.groovy`
+
+```groovy
+import java.util.regex.Pattern
+
+def call(Map config = [:]) {
+    String language = config.get('language')
+    String buildCommand = config.get('buildCommand')
+    Integer timeoutMin = config.get('timeoutMin', 15)
+
+    if (!language || !buildCommand) {
+        error("buildApp requires language + buildCommand")
+    }
+
+    // Pipeline scope — only primitives and Serializable types
+    try {
+        timeout(time: timeoutMin, unit: 'MINUTES') {
+            sh buildCommand
+        }
+    } catch (Exception e) {
+        currentBuild.result = 'FAILURE'
+        notifyFailure(language: language, error: e.message)
+        throw e
+    }
+}
+
+// Pattern is NOT Serializable — must run inside @NonCPS so it never crosses a CPS checkpoint.
+@NonCPS
+boolean matchesPolicy(String text, String regex) {
+    Pattern p = Pattern.compile(regex)
+    return p.matcher(text).find()
+}
+
+def notifyFailure(Map cfg) {
+    // Delegate to another vars/ function so the message lives in one place across the org.
+    notifySlack(
+        channel: '#ci-alerts',
+        message: "buildApp[${cfg.language}] failed: ${cfg.error}"
+    )
+}
+```

@@ -73,6 +73,8 @@
 | `templates/dashboard.json` | Grafana / Datadog dashboard config for the trend. |
 | `templates/_smoke-test.json` | Minimum viable artefact for validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,3 +90,99 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs — coverage-instrumentation status, baseline coverage, per-PR test runs, language coverage support — onto a rule id from `content/01-core-rules.xml`. Walk it before adopting the gate so a broken instrumentation does not become the team's blocker.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/coverage-diff.yml`
+
+```yaml
+default_threshold: 80
+overrides:
+  - paths: ["billing/**", "checkout/**"]
+    threshold: 90
+    reason: money-touching code needs a higher coverage floor
+  - paths: ["auth/**", "security/**"]
+    threshold: 90
+    reason: security-critical paths must be tested on every change
+  - paths: ["scripts/**", "tools/**"]
+    threshold: 0
+    reason: ops scripts intentionally exempt from the merge gate
+  - paths: ["migrations/**", "**/__init__.py"]
+    threshold: 0
+    reason: generated or near-empty files have no meaningful coverage
+report_full_repo_trend: true
+```
+
+### `templates/dashboard.json`
+
+```json
+{
+  "title": "Diff coverage trend",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Median diff coverage (7d)",
+      "metric": "median_diff_coverage_7d"
+    },
+    {
+      "type": "stat",
+      "title": "Median diff coverage (30d)",
+      "metric": "median_diff_coverage_30d"
+    },
+    {
+      "type": "table",
+      "title": "Low coverage files",
+      "metric": "low_coverage_files"
+    },
+    {
+      "type": "stat",
+      "title": "Exclusion list size",
+      "metric": "exclusion_list_size"
+    }
+  ],
+  "review_cadence": "monthly testing meeting"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "policy": {
+    "default_threshold": 80,
+    "overrides": [
+      {
+        "paths": [
+          "billing/**"
+        ],
+        "threshold": 90,
+        "reason": "money-touching code needs higher floor"
+      }
+    ],
+    "report_full_repo_trend": true
+  },
+  "pr_comment": {
+    "headline_metric": "diff_coverage_percent",
+    "per_file": [
+      {
+        "path": "src/signup.py",
+        "percent": 92,
+        "gate_pass": true
+      }
+    ],
+    "full_repo_trend_line": "trend: 78.4% (-0.1pp)",
+    "merge_gate_verdict": "pass"
+  },
+  "dashboard": {
+    "timestamp": "2026-05-23T10:00:00Z",
+    "median_diff_coverage_7d": 84.2,
+    "median_diff_coverage_30d": 82.7,
+    "low_coverage_files": [
+      "src/legacy/forms.py"
+    ],
+    "exclusion_list_size": 4
+  }
+}
+```

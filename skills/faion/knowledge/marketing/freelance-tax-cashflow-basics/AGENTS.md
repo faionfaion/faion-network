@@ -66,6 +66,8 @@
 | `templates/tax-checklist.json` | JSON example of the freelance tax/cashflow checklist |
 | `templates/checklist.md` | Print-friendly Markdown quarterly checklist |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,34 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes observable signals to one of the rules in `01-core-rules.xml`. Use it before producing the output — picking the wrong branch is the most common failure.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tax-checklist.json`
+
+```json
+{
+  "checklist_id": "ftc-2026q2",
+  "checks": {
+    "estimated_tax": {
+      "quarter": "2026-Q2",
+      "paid": true,
+      "amount_usd": 4200
+    },
+    "vat_reverse_charge": {
+      "b2b_eu_invoices_count": 3,
+      "all_carry_notation": true
+    },
+    "entity_threshold": {
+      "annual_revenue_usd": 62000,
+      "entity": "llc"
+    },
+    "separate_account": true,
+    "runway_months": 7.5
+  },
+  "computed_at": "2026-05-23",
+  "owner": "@ruslan"
+}
+```

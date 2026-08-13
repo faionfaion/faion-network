@@ -63,7 +63,8 @@
 |------|---------|
 | `templates/cd.yml` | GitHub Actions CD pipeline: build → unit → integration → staging → e2e → production (manual) |
 | `templates/rollback_runbook.md` | Rollback runbook: criteria, commands, comms |
-| `templates/_smoke-test.yml` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -80,3 +81,57 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Are cd-basics prereqs in place AND is the workload long-running?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/cd.yml`
+
+```yaml
+# faion_header_json: {"__faion_header__":{"purpose":"GitHub Actions CD pipeline: build \u2192 unit \u2192 integration \u2192 staging \u2192 e2e \u2192 production (manual)","consumes":"see content/02-output-contract.xml","produces":"config","depends_on":"content/01-core-rules.xml#discrete-stages","token_budget_impact":"~150 tokens when loaded"}}
+name: cd
+on:
+  push:
+    branches: [main]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/build.sh
+  unit:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/unit.sh
+  integration:
+    needs: unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/integration.sh
+  staging:
+    needs: integration
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/deploy.sh staging
+  e2e:
+    needs: staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/e2e.sh staging
+  production:
+    needs: e2e
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/deploy.sh production --strategy canary --steps 5,25,50,100
+      - run: ./scripts/dora-emit.sh
+```

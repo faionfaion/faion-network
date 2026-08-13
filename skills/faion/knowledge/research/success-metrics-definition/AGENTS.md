@@ -64,6 +64,8 @@
 | `templates/success-metrics-definition.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,102 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/success-metrics-definition.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/success-metrics-definition.json",
+  "title": "Success Metrics Definition Output Contract",
+  "type": "object",
+  "required": [
+    "north_star",
+    "aarrr_kpis",
+    "baselines",
+    "targets",
+    "vanity_excluded",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "north_star": {
+      "type": "object",
+      "description": "metric + business outcome link + owner"
+    },
+    "aarrr_kpis": {
+      "type": "array",
+      "description": "\u22645 KPIs partitioned across acquisition/activation/retention/referral/revenue",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "baselines": {
+      "type": "object",
+      "description": "current value per KPI"
+    },
+    "targets": {
+      "type": "object",
+      "description": "target value + window per KPI"
+    },
+    "vanity_excluded": {
+      "type": "array",
+      "description": "vanity metrics explicitly excluded",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "owner": {
+      "type": "string",
+      "description": "named owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "north_star": {
+    "k": "v"
+  },
+  "aarrr_kpis": [
+    {
+      "k": "v"
+    }
+  ],
+  "baselines": {
+    "k": "v"
+  },
+  "targets": {
+    "k": "v"
+  },
+  "vanity_excluded": [
+    {
+      "k": "v"
+    }
+  ],
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

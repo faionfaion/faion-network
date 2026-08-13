@@ -71,6 +71,8 @@
 | `templates/pre-commit-secrets.sh` | Local pre-commit hook scanning staged files for secret patterns. |
 | `templates/validate_env.py` | Runtime check that required env vars are present + non-placeholder. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,278 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/secrets-management.json`
+
+```json
+{
+  "artefact_id": "<plan-slug>",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "secrets": [
+    {
+      "name": "<NAME>",
+      "class": "db|api_key|jwt",
+      "vault": "1Password/<vault>"
+    }
+  ],
+  "consumers": [
+    {
+      "unit": "<svc>.service",
+      "env_file": "/etc/<svc>.env"
+    }
+  ],
+  "rotation_cadence_days": 90,
+  "owner": "<@handle>",
+  "leak_response_plan": "<one-paragraph runbook>"
+}
+```
+
+### `templates/env.tpl`
+
+```text
+# .env.tpl — 1Password inject template
+# Usage: op inject -i .env.tpl -o .env && chmod 600 .env
+#
+# Requires: op CLI + OP_SERVICE_ACCOUNT_TOKEN in environment
+# Safe to commit: contains vault references, not actual secrets
+
+# Database
+DATABASE_URL={{ op://ServerVault/Database/url }}
+
+# Redis (not a secret, literal value is fine)
+REDIS_URL=redis://localhost:6379/0
+
+# Message Broker
+RABBITMQ_URL={{ op://ServerVault/RabbitMQ/url }}
+
+# AI Keys
+ANTHROPIC_API_KEY={{ op://ServerVault/Anthropic/api-key }}
+
+# Authentication
+JWT_SECRET={{ op://ServerVault/JWT/secret }}
+JWT_ALGORITHM=HS256
+JWT_EXPIRATION_MINUTES=1440
+
+# Telegram
+TELEGRAM_BOT_TOKEN={{ op://ServerVault/TelegramBot/token }}
+TELEGRAM_CHAT_ID={{ op://ServerVault/TelegramBot/chat-id }}
+
+# Application (non-secret literal values)
+LOG_LEVEL=INFO
+DEBUG=false
+ENVIRONMENT=production
+```
+
+### `templates/env.example`
+
+```text
+# .env.example — Copy to .env and fill in real values
+# Usage: cp .env.example .env && chmod 600 .env
+#
+# Rules: no export prefix, no $VAR expansion, no spaces around =
+
+# ============================================================
+# Database
+# ============================================================
+DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+
+# ============================================================
+# Redis / Cache
+# ============================================================
+REDIS_URL=redis://localhost:6379/0
+
+# ============================================================
+# Message Broker
+# ============================================================
+RABBITMQ_URL=amqp://user:password@localhost:5672/vhost
+
+# ============================================================
+# AI / LLM API Keys
+# ============================================================
+ANTHROPIC_API_KEY=sk-ant-api03-xxxxxxxxxxxx
+# OPENAI_API_KEY=sk-xxxxxxxxxxxx
+
+# ============================================================
+# Authentication
+# ============================================================
+# Generate: openssl rand -base64 64
+JWT_SECRET=replace-with-openssl-rand-base64-64-output
+JWT_ALGORITHM=HS256
+JWT_EXPIRATION_MINUTES=1440
+
+# ============================================================
+# Telegram
+# ============================================================
+TELEGRAM_BOT_TOKEN=123456:ABC-xxxxxxxxxxxx
+TELEGRAM_CHAT_ID=123456789
+
+# ============================================================
+# Application
+# ============================================================
+LOG_LEVEL=INFO
+DEBUG=false
+ENVIRONMENT=production
+```
+
+### `templates/gitignore-secrets`
+
+```text
+# Secrets .gitignore block
+# Add to root .gitignore of any project handling credentials
+
+# Environment files
+.env
+.env.local
+.env.production
+.env.staging
+.env.*.local
+*.env
+
+# Keep example and template files
+!.env.example
+!.env.tpl
+
+# Cryptographic keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+id_rsa
+id_ed25519
+id_ecdsa
+id_dsa
+
+# 1Password CLI session
+.op/
+
+# Common credential file names
+credentials.json
+service-account.json
+*.credentials
+token.json
+```
+
+### `templates/pre-commit-secrets.sh`
+
+```bash
+# .git/hooks/pre-commit — Block commits containing secret patterns
+#
+# Install: cp pre-commit-secrets.sh .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+#
+# Scans staged file contents for API key patterns and private keys.
+# Skips .env.example and .env.tpl (intentionally contain placeholder syntax).
+
+PATTERNS=(
+    'sk-ant-api[0-9a-zA-Z-]+'     # Anthropic API keys
+    'sk-[a-zA-Z0-9]{20,}'         # OpenAI-style API keys
+    'PRIVATE KEY'                   # PEM private keys
+)
+
+STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM 2>/dev/null)
+FOUND=0
+
+for FILE in $STAGED_FILES; do
+    # Skip example and template files — they're supposed to reference key names
+    [[ "$FILE" == *.example ]] && continue
+    [[ "$FILE" == *.tpl ]] && continue
+    [[ "$FILE" == *.md ]] && continue
+
+    for PATTERN in "${PATTERNS[@]}"; do
+        if git show ":$FILE" 2>/dev/null | grep -qEi "$PATTERN"; then
+            echo "BLOCKED: Potential secret in $FILE (pattern: $PATTERN)"
+            FOUND=1
+        fi
+    done
+done
+
+if [ "$FOUND" -eq 1 ]; then
+    echo ""
+    echo "Commit blocked. Remove secrets from staged files."
+    echo "Secrets belong in .env files (not committed), not in source code."
+    exit 1
+fi
+
+exit 0
+```
+
+### `templates/validate_env.py`
+
+```python
+"""Environment variable validation for service startup.
+
+Call validate_env() at the top of your application's entry point.
+The service fails fast with a clear message rather than crashing later
+with a cryptic AttributeError on a missing config value.
+
+Usage:
+    from validate_env import validate_env
+    env = validate_env()
+    # env['DATABASE_URL'] is guaranteed to be set
+"""
+
+import os
+import sys
+from typing import Optional
+
+
+def validate_env(
+    required: Optional[list[str]] = None,
+    optional: Optional[dict[str, str]] = None,
+) -> dict[str, str]:
+    """Validate required environment variables and apply defaults for optional ones.
+
+    Args:
+        required: Variable names that must be set and non-empty. Exits if any missing.
+        optional: Variable names with default values applied if not set.
+
+    Returns:
+        Dict of all validated environment variables.
+    """
+    if required is None:
+        required = REQUIRED
+    if optional is None:
+        optional = OPTIONAL
+
+    env: dict[str, str] = {}
+    missing: list[str] = []
+
+    for var in required:
+        value = os.getenv(var)
+        if not value:
+            missing.append(var)
+        else:
+            env[var] = value
+
+    if missing:
+        print(f"FATAL: Missing required environment variables: {', '.join(missing)}")
+        print("Set them in .env (EnvironmentFile) or export before starting the service.")
+        sys.exit(1)
+
+    for var, default in optional.items():
+        env[var] = os.getenv(var, default)
+
+    return env
+
+
+# Customize per-service:
+REQUIRED = [
+    "DATABASE_URL",
+    "REDIS_URL",
+    "ANTHROPIC_API_KEY",
+    "RABBITMQ_URL",
+    "JWT_SECRET",
+]
+
+OPTIONAL = {
+    "LOG_LEVEL": "INFO",
+    "DEBUG": "false",
+    "ENVIRONMENT": "production",
+}
+```

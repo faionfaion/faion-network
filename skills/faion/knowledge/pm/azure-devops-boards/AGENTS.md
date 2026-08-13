@@ -69,6 +69,8 @@
 | `templates/ado-boards-config.yaml` | YAML skeleton for process + area/iteration + board columns + swimlanes. |
 | `templates/wiql-saved-queries.yaml` | Example saved WIQL queries the team should ship from day 1. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,74 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps three observables (ecosystem ∈ Microsoft/GitHub/Atlassian, regulatory profile, team size) to apply / pick alternative / skip. Each leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ado-boards-config.yaml`
+
+```yaml
+organization: REPLACE-org-slug
+project: REPLACE-project-name
+process_template: Agile   # Basic | Agile | Scrum | CMMI
+area_tree:
+  root: REPLACE-platform-root
+  children:
+    - REPLACE-team-a
+    - REPLACE-team-b
+iteration_tree:
+  cadence: biweekly   # weekly | biweekly | monthly
+  iterations:
+    - REPLACE-2026-Q2-S1
+    - REPLACE-2026-Q2-S2
+board:
+  columns:
+    - name: New
+      state_mapping: [New]
+      wip_limit: null
+    - name: Active
+      state_mapping: [Active]
+      wip_limit: 5
+    - name: Resolved
+      state_mapping: [Resolved]
+      wip_limit: 3
+    - name: Closed
+      state_mapping: [Closed]
+      wip_limit: null
+  swimlanes:
+    - Expedite
+    - Default
+    - Tech Debt
+pat_scope_manifest:
+  work_items_read_write: true
+  full_access_forbidden: true
+ab_linking_required: true
+```
+
+### `templates/wiql-saved-queries.yaml`
+
+```yaml
+queries:
+  - name: My Active Work
+    wiql: |
+      SELECT [System.Id], [System.Title], [System.State]
+      FROM WorkItems
+      WHERE [System.AssignedTo] = @Me
+        AND [System.State] IN ('Active', 'Resolved')
+  - name: Over-WIP Active Cards
+    wiql: |
+      SELECT [System.Id], [System.Title], [System.AssignedTo]
+      FROM WorkItems
+      WHERE [System.State] = 'Active'
+        AND [System.AreaPath] UNDER 'REPLACE-area-root'
+  - name: Blocked Items (Tag-based)
+    wiql: |
+      SELECT [System.Id], [System.Title]
+      FROM WorkItems
+      WHERE [System.Tags] CONTAINS 'Blocked'
+        AND [System.State] != 'Closed'
+  - name: Missing AB-Link in Last 30d Commits
+    description: |
+      Use az repos pr list --status all | jq to find PRs without AB#<id> ref.
+```

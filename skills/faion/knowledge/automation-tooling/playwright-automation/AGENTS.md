@@ -72,6 +72,8 @@
 | `templates/orders.spec.ts` | Example spec using role locators, auto-wait, and storageState |
 | `templates/artefact.json` | Sample artefact metadata consumed by validate-playwright-automation.py |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,93 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/playwright.config.ts`
+
+```typescript
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests',
+  globalSetup: require.resolve('./tests/global-setup.ts'),
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 4 : undefined,
+  reporter: 'line',
+  use: {
+    baseURL: process.env.BASE_URL ?? 'http://localhost:3000',
+    storageState: 'auth.json',
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+  },
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox',  use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit',   use: { ...devices['Desktop Safari'] } },
+  ],
+});
+```
+
+### `templates/global-setup.ts`
+
+```typescript
+import { chromium, FullConfig } from '@playwright/test';
+
+export default async function globalSetup(_config: FullConfig) {
+  const browser = await chromium.launch();
+  const ctx = await browser.newContext();
+  const page = await ctx.newPage();
+  await page.goto(`${process.env.BASE_URL}/login`);
+  await page.getByLabel('Email').fill(process.env.PW_USER!);
+  await page.getByLabel('Password').fill(process.env.PW_PASS!);
+  await page.getByRole('button', { name: /sign in/i }).click();
+  await page.waitForURL('**/dashboard');
+  await ctx.storageState({ path: 'auth.json' });
+  await browser.close();
+}
+```
+
+### `templates/orders.spec.ts`
+
+```typescript
+import { test, expect } from '@playwright/test';
+
+test.describe('Orders', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/orders');
+  });
+
+  test('loads order table for authenticated user', async ({ page }) => {
+    const table = page.getByRole('table', { name: /orders/i });
+    await expect(table).toBeVisible();
+    const rows = await table.getByRole('row').count();
+    expect(rows).toBeGreaterThan(1);
+  });
+
+  test('filter by status narrows results', async ({ page }) => {
+    await page.getByLabel('Status').selectOption('shipped');
+    await expect(page.getByRole('cell', { name: /pending/i })).toHaveCount(0);
+  });
+});
+```
+
+### `templates/artefact.json`
+
+```json
+{
+  "filename": "tests/orders.spec.ts",
+  "language": "typescript",
+  "uses_role_locators": true,
+  "has_wait_for_timeout": false,
+  "trace_mode": "on-first-retry",
+  "screenshot_mode": "only-on-failure",
+  "auth_via_storage_state": true,
+  "cross_browser": true
+}
+```

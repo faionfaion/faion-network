@@ -62,6 +62,8 @@
 | `templates/solo-x-analytics-review.json` | JSON Schema for the output contract (machine-validatable). |
 | `templates/solo-x-analytics-review.md` | Markdown skeleton with the required fields. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,88 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/solo-x-analytics-review.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/solo-x-analytics-review.json",
+  "title": "Solo X Analytics Review Output Contract",
+  "type": "object",
+  "required": [
+    "operator",
+    "week_iso",
+    "metrics",
+    "trailing_4w_median",
+    "outliers",
+    "top_post",
+    "bottom_post",
+    "qualified_follower_pct",
+    "next_week_experiment",
+    "time_spent_min",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "operator": {
+      "type": "string",
+      "description": "named X account owner"
+    },
+    "week_iso": {
+      "type": "string",
+      "description": "ISO week tag"
+    },
+    "metrics": {
+      "type": "object",
+      "description": "{impressions, profile_visits, net_followers, replies_from_strangers, link_clicks}"
+    },
+    "trailing_4w_median": {
+      "type": "object",
+      "description": "median per metric"
+    },
+    "outliers": {
+      "type": "array",
+      "description": "posts where impressions \u22653x median",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "top_post": {
+      "type": "object",
+      "description": "{url, hook, variable_observed}"
+    },
+    "bottom_post": {
+      "type": "object",
+      "description": "{url, hook}"
+    },
+    "qualified_follower_pct": {
+      "type": "number",
+      "description": "0..1"
+    },
+    "next_week_experiment": {
+      "type": "object",
+      "description": "{hypothesis, variable, success_metric}"
+    },
+    "time_spent_min": {
+      "type": "integer",
+      "description": "\u226420"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```

@@ -59,6 +59,8 @@
 | `templates/pyproject.toml.fragment` | Complete pytest config: ini_options, coverage, markers. |
 | `templates/tests-structure.txt` | Reference tree showing tests/ mirroring src/. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,38 @@
 ## Decision tree
 
 The tree at content/06-decision-tree.xml triages new vs migration vs extension and picks the plugin set + coverage strategy. Walk it before editing pyproject's [tool.pytest.ini_options].
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pyproject.toml.fragment`
+
+```toml
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "T20", "S", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --cov --cov-fail-under=80 -n auto"
+testpaths = ["tests"]
+markers = ["integration: requires external services"]
+```
+
+### `templates/tests-structure.txt`
+
+```text
+src/
+  pkg/
+    module.py
+tests/
+  pkg/
+    test_module.py
+```

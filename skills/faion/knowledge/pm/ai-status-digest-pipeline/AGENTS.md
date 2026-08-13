@@ -60,9 +60,7 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-status-digest-pipeline.json` | JSON schema for the digest output |
 | `templates/ai-status-digest-pipeline.md` | Markdown digest skeleton with RYG sections |
-| `templates/_smoke-test.json` | Minimum-viable filled digest |
 
 ## Scripts
 

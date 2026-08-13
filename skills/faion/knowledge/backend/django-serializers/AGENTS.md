@@ -63,7 +63,8 @@
 |------|---------|
 | `templates/serializer_input.py` | Input serializer skeleton (Create + Update) |
 | `templates/serializer_output.py` | Output serializer skeleton (Detail + List) |
-| `templates/view_with_serializers.py` | view skeleton chaining Input → service → Output |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -80,3 +81,71 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes from "is the data crossing the HTTP boundary?" through "is this input or output?" to one of: write a `Serializer` Input pair, write a `Serializer` Output pair, or skip-this-methodology (internal helper, no API). The "must use Serializer, not ModelSerializer" branch keeps PII exposure low; the "validate() format only" branch enforces the service-layer split.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/serializer_input.py`
+
+```python
+from rest_framework import serializers
+
+
+class <Entity>CreateRequest(serializers.Serializer):
+    """Input contract for creating a <Entity>."""
+
+    name = serializers.CharField(required=True, allow_blank=False, max_length=120)
+    email = serializers.EmailField(required=True)
+    is_active = serializers.BooleanField(required=False, default=True)
+    # secret-like inputs MUST be write_only so accidental nesting cannot leak them
+    password = serializers.CharField(required=True, min_length=12, write_only=True)
+
+    def validate_name(self, value: str) -> str:
+        # SHAPE-ONLY validation. No DB, no service calls.
+        if value.strip() != value:
+            raise serializers.ValidationError("must not contain leading/trailing whitespace")
+        return value
+
+
+class <Entity>UpdateRequest(serializers.Serializer):
+    """Input contract for partial updates (PATCH)."""
+
+    name = serializers.CharField(required=False, allow_blank=False, max_length=120)
+    email = serializers.EmailField(required=False)
+    is_active = serializers.BooleanField(required=False)
+```
+
+### `templates/serializer_output.py`
+
+```python
+from rest_framework import serializers
+
+
+class <Entity>Response(serializers.Serializer):
+    """Output contract for a single <Entity>. Lists exposed fields explicitly."""
+
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    email = serializers.EmailField(read_only=True)
+    is_active = serializers.BooleanField(read_only=True)
+    created_at = serializers.DateTimeField(read_only=True)
+    # DO NOT add password / token / secret / is_staff / mfa_secret
+
+
+class <Entity>ListItem(serializers.Serializer):
+    """Compact representation for list endpoints — fewer fields than detail."""
+
+    id = serializers.IntegerField(read_only=True)
+    name = serializers.CharField(read_only=True)
+    is_active = serializers.BooleanField(read_only=True)
+
+
+class <Entity>ListResponse(serializers.Serializer):
+    """List wrapper with pagination metadata."""
+
+    count = serializers.IntegerField(read_only=True)
+    next = serializers.URLField(read_only=True, allow_null=True)
+    previous = serializers.URLField(read_only=True, allow_null=True)
+    results = <Entity>ListItem(many=True, read_only=True)
+```

@@ -73,6 +73,8 @@
 | `templates/spectral.yaml` | Spectral ruleset enforcing required arrays, named examples, security on operations. |
 | `templates/_smoke-test.json` | Minimum viable artefact for validator smoke-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,3 +90,339 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs - source authority (hand vs generated), lint status, breaking-diff presence - onto a rule from `content/01-core-rules.xml`. Use it before touching the spec: it decides apply-vs-skip, picks the source-of-truth path, and routes BREAK diffs to human review.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/openapi-skeleton.yaml`
+
+```yaml
+openapi: 3.1.0
+info:
+  title: Example API
+  version: 1.0.0
+servers:
+  - url: https://api.example.com/v1
+security:
+  - bearerAuth: []
+paths:
+  /users/{id}:
+    get:
+      operationId: get-user
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+              examples:
+                UserActive:
+                  $ref: '#/components/examples/UserActive'
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  schemas:
+    User:
+      type: object
+      required: [id, email, name]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string, format: email }
+        name: { type: string, minLength: 1, maxLength: 100 }
+  parameters:
+    UserId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/problem+json:
+          schema:
+            type: object
+            required: [type, title, status]
+  examples:
+    UserActive:
+      summary: Active user
+      value: { id: '550e8400-e29b-41d4-a716-446655440000', email: 'a@b.co', name: 'Ada' }
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+```
+
+### `templates/openapi-base.yaml`
+
+```yaml
+openapi: 3.1.0
+info:
+  title: Service API
+  version: 1.0.0
+  description: Replace with service description.
+
+servers:
+  - url: https://api.example.com/v1
+    description: Production
+  - url: https://staging-api.example.com/v1
+    description: Staging
+
+security:
+  - bearerAuth: []
+
+paths:
+  /users:
+    get:
+      summary: List users
+      operationId: list-users
+      tags: [Users]
+      parameters:
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/PageOffset'
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      summary: Create user
+      operationId: create-user
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /users/{userId}:
+    get:
+      summary: Get user
+      operationId: get-user
+      tags: [Users]
+      parameters:
+        - $ref: '#/components/parameters/UserId'
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    User:
+      type: object
+      required: [id, email, name, status]
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        status:
+          type: string
+          enum: [active, inactive]
+          default: active
+
+    CreateUserRequest:
+      type: object
+      required: [email, name]
+      properties:
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+
+    UserList:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+        meta:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    PaginationMeta:
+      type: object
+      required: [total, limit, offset]
+      properties:
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+
+  parameters:
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+    PageLimit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+
+    PageOffset:
+      name: offset
+      in: query
+      schema:
+        type: integer
+        minimum: 0
+        default: 0
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Authentication required
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+tags:
+  - name: Users
+    description: User management
+```
+
+### `templates/openapi-ci.yml`
+
+```yaml
+name: openapi
+
+on: [pull_request]
+
+jobs:
+  lint-and-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install tools
+        run: npm i -g @redocly/cli @stoplight/spectral-cli
+
+      - name: Redocly lint
+        run: redocly lint openapi.yaml
+
+      - name: Spectral lint
+        run: spectral lint openapi.yaml --fail-severity=warn
+
+      - name: Breaking-change diff
+        run: |
+          git show origin/main:openapi.yaml > /tmp/base.yaml
+          docker run --rm \
+            -v "$PWD:/specs" \
+            -v /tmp:/tmp \
+            tufin/oasdiff breaking /tmp/base.yaml /specs/openapi.yaml --fail-on ERR
+```
+
+### `templates/spectral.yaml`
+
+```yaml
+extends: ['spectral:oas']
+rules:
+  operation-operationId: error
+  operation-description: warn
+  oas3-schema-required: error
+  no-additionalProperties-true-on-response: error
+  named-examples-required: error
+  operation-security-defined: error
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "openapi_version": "3.1.0",
+  "canonical_path": "openapi.yaml",
+  "lint_config": {
+    "redocly": ".redocly.yaml",
+    "spectral": ".spectral.yaml"
+  },
+  "breaking_change_gate": {
+    "enabled": true,
+    "tool": "oasdiff"
+  },
+  "operation_id_coverage": {
+    "covered": 1,
+    "total": 1
+  }
+}
+```

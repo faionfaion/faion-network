@@ -64,6 +64,8 @@
 | `templates/dev-setup.schema.yaml` | Schema |
 | `templates/_smoke-test.yaml` | Minimum-viable dev-setup record |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,88 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes by chosen DB to the matching docker-run / pip-install one-liner.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/docker-compose.qdrant.yml`
+
+```yaml
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.10.0   # pinned per r1
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./qdrant_storage:/qdrant/storage   # persistent per r2
+    environment:
+      QDRANT__LOG_LEVEL: INFO
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:6333/healthz || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+```
+
+### `templates/verify-dev.py`
+
+```python
+"""Smoke test for dev vector DB setup."""
+from __future__ import annotations
+
+import sys
+import uuid
+
+from qdrant_client import QdrantClient
+from qdrant_client.models import Distance, VectorParams, PointStruct
+
+
+def smoke(host: str = "localhost", port: int = 6333) -> int:
+    client = QdrantClient(host=host, port=port)
+    coll = f"smoke_{uuid.uuid4().hex[:8]}"
+    client.create_collection(collection_name=coll,
+                             vectors_config=VectorParams(size=4, distance=Distance.COSINE))
+    client.upsert(
+        collection_name=coll,
+        points=[PointStruct(id=i, vector=[float(i), 0.0, 0.0, 0.0]) for i in range(10)],
+    )
+    hits = client.search(collection_name=coll, query_vector=[1.0, 0.0, 0.0, 0.0], limit=5)
+    client.delete_collection(coll)
+    if not hits:
+        sys.stderr.write("FAIL: search returned no results\n")
+        return 1
+    sys.stdout.write(f"OK: smoke returned {len(hits)} hits\n")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(smoke())
+```
+
+### `templates/dev-setup.schema.yaml`
+
+```yaml
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+required: [db_kind, image_tag, data_volume, client_version, smoke_passed, gitignore_entries]
+properties:
+  db_kind: {type: string, enum: [qdrant, weaviate, milvus, pgvector, chroma]}
+  image_tag: {type: string, minLength: 5}
+  data_volume: {type: string, minLength: 1}
+  client_version: {type: string, minLength: 3}
+  smoke_passed: {type: boolean}
+  gitignore_entries: {type: array, items: {type: string}}
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+db_kind: qdrant
+image_tag: "qdrant/qdrant:v1.10.0"
+data_volume: "./qdrant_storage"
+client_version: "qdrant-client==1.10.0"
+smoke_passed: true
+gitignore_entries: ["qdrant_storage/"]
+```

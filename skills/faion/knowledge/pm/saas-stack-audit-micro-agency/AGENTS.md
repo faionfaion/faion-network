@@ -70,6 +70,8 @@
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum viable filled `SaaSAuditReport` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,111 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observed signals (last_login_days, tied_to_revenue, duplicate_tool, monthly_cost) to one of 5 buckets. Every leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+owner:
+  role: ""
+  person: ""
+last_reviewed: ""
+version: ""
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "audit_id": "smoke",
+  "quarter": "2026-Q2",
+  "header": {
+    "owner": {
+      "role": "founder",
+      "person": "founder-handle"
+    },
+    "last_reviewed": "2026-05-10",
+    "version": "1.0"
+  },
+  "inventory": [
+    {
+      "tool_id": "linear",
+      "vendor": "Linear",
+      "monthly_cost_usd": 60,
+      "last_login_days": 1,
+      "tied_to_revenue": true,
+      "duplicate_of": null,
+      "bucket": "keep",
+      "evidence": [
+        "primary issue tracker"
+      ]
+    },
+    {
+      "tool_id": "harvest",
+      "vendor": "Harvest",
+      "monthly_cost_usd": 24,
+      "last_login_days": 3,
+      "tied_to_revenue": true,
+      "duplicate_of": null,
+      "bucket": "keep",
+      "evidence": [
+        "time tracker"
+      ]
+    },
+    {
+      "tool_id": "notion",
+      "vendor": "Notion",
+      "monthly_cost_usd": 40,
+      "last_login_days": 1,
+      "tied_to_revenue": true,
+      "duplicate_of": null,
+      "bucket": "keep",
+      "evidence": [
+        "wiki"
+      ]
+    },
+    {
+      "tool_id": "loom-pro",
+      "vendor": "Loom",
+      "monthly_cost_usd": 16,
+      "last_login_days": 130,
+      "tied_to_revenue": false,
+      "duplicate_of": null,
+      "bucket": "suspend",
+      "evidence": [
+        "last login 130d"
+      ]
+    },
+    {
+      "tool_id": "jira",
+      "vendor": "Atlassian",
+      "monthly_cost_usd": 35,
+      "last_login_days": 64,
+      "tied_to_revenue": false,
+      "duplicate_of": "linear",
+      "bucket": "cancel",
+      "evidence": [
+        "duplicate of linear"
+      ]
+    }
+  ],
+  "kill_list": {
+    "items": [
+      "jira",
+      "loom-pro"
+    ],
+    "signed_by": "founder-handle",
+    "signed_at": "2026-05-10"
+  },
+  "spend_before": 175,
+  "spend_forecast_after": 124,
+  "review_log": [
+    {
+      "reviewed_at": "2026-05-10"
+    }
+  ]
+}
+```

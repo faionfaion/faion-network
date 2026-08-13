@@ -68,6 +68,8 @@
 | `templates/raci-grid.md` | Markdown skeleton for the workstream-by-RACI grid with pre/day/post phases. |
 | `templates/rehearsal-walkthrough.md` | Rehearsal script that walks each row T-14 -> T+14. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,93 @@ See `content/06-decision-tree.xml`. The tree maps observable signals (input
 preconditions, source-of-truth access, named-consumer presence) onto a concrete
 verdict — apply the methodology, downgrade to draft, or skip — with each leaf
 referencing a rule id from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/launch-raci-template.json",
+  "type": "object",
+  "required": [
+    "raci_id",
+    "launch_id",
+    "lead",
+    "workstreams",
+    "rehearsal_status"
+  ],
+  "properties": {
+    "raci_id": {
+      "type": "string"
+    },
+    "launch_id": {
+      "type": "string"
+    },
+    "lead": {
+      "type": "object",
+      "required": [
+        "name",
+        "contact"
+      ]
+    },
+    "workstreams": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "phase",
+          "R",
+          "A"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "phase": {
+            "enum": [
+              "pre-launch",
+              "launch-day",
+              "post-launch"
+            ]
+          },
+          "R": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "A": {
+            "type": "string"
+          },
+          "C": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "I": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "rehearsal_status": {
+      "enum": [
+        "scheduled",
+        "completed",
+        "skipped-with-reason"
+      ]
+    }
+  }
+}
+```

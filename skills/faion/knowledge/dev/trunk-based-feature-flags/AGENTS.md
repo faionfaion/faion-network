@@ -70,6 +70,8 @@
 | `templates/trunk-based-feature-flags.json` | JSON Schema for the flag-spec artefact. |
 | `templates/flag-spec.md` | Markdown skeleton the author fills before merge. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,100 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree first checks the flag's declared type (release / experiment / ops / permission) — each type requires a different field set. It then verifies ramp plan presence, cleanup-ticket link, and kill-switch arming. Leaves emit `approve`, `block-missing-cleanup-ticket`, `block-missing-ramp-plan`, or `block-zombie-flag-quota-exceeded`. Each leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/trunk-based-feature-flags.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/trunk-based-feature-flags.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "flag_id",
+    "owner_email",
+    "type",
+    "ramp_plan",
+    "kill_switch_tested",
+    "cleanup_ticket_id",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^ff-[a-z0-9-]{6,}$"
+    },
+    "flag_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_.]{3,63}$"
+    },
+    "owner_email": {
+      "type": "string",
+      "format": "email"
+    },
+    "type": {
+      "enum": [
+        "release",
+        "experiment",
+        "ops",
+        "permission"
+      ]
+    },
+    "ramp_plan": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "pct",
+          "gate"
+        ],
+        "properties": {
+          "pct": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "gate": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "kill_switch_tested": {
+      "type": "boolean"
+    },
+    "kill_switch_test_run_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "cleanup_ticket_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "cleanup_sla_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "dark_launch": {
+      "type": "boolean"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

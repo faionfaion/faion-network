@@ -64,6 +64,8 @@
 | `templates/migration-plan.md` | Six-phase migration plan template with gate criteria per phase |
 | `templates/load_resume.py` | ETL load + resume script with checkpointing |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,51 @@
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, baseline presence, threshold pass/fail) to a concrete action; each leaf references a rule from `01-core-rules.xml`. Use it when in doubt about whether or how to apply this methodology to the case at hand.
 
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/load_resume.py`
+
+```python
+#!/usr/bin/env python3
+"""Load JSONL of target-shaped issues; resumes from .checkpoint on rerun.
+
+Usage:
+    cat transformed.jsonl | TARGET_API_URL=https://... TARGET_TOKEN=tok_... python load_resume.py
+
+Input:  JSONL on stdin; each record must have a `_source_id` field.
+Output: prints OK <source_id> -> <target_id> per successful record.
+        Writes completed source IDs to .load_checkpoint.
+        Exits non-zero on unrecoverable error.
+"""
+import json
+import os
+import sys
+import time
+
+import requests
+
+CHECKPOINT = ".load_checkpoint"
+done = set(open(CHECKPOINT).read().split()) if os.path.exists(CHECKPOINT) else set()
+URL = os.environ["TARGET_API_URL"]
+TOK = os.environ["TARGET_TOKEN"]
+
+with open(CHECKPOINT, "a") as ck:
+    for line in sys.stdin:
+        rec = json.loads(line)
+        sid = rec["_source_id"]
+        if sid in done:
+            continue
+        for attempt in range(5):
+            r = requests.post(URL, json=rec, headers={"Authorization": TOK})
+            if r.status_code < 300:
+                break
+            if r.status_code == 429:
+                time.sleep(2**attempt)
+                continue
+            sys.exit(f"FAIL {sid}: {r.status_code} {r.text[:200]}")
+        ck.write(sid + "\n")
+        ck.flush()
+        print(f"OK {sid} -> {r.json()['id']}")
+```

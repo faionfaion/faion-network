@@ -63,8 +63,9 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
 | `templates/config-instance.json` | JSON instance of a filled config artefact |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,37 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/config-instance.json`
+
+```json
+{
+  "candidate_id": "sonnet-4.7@2026-05-15",
+  "baseline_id": "sonnet-4.6@2026-04-01",
+  "window": {
+    "start": "2026-05-20T00:00:00Z",
+    "end": "2026-05-22T00:00:00Z",
+    "n_requests": 2100,
+    "coverage": [
+      "weekday",
+      "weekend"
+    ]
+  },
+  "judge": {
+    "model": "opus-4.6",
+    "prompt_version": "judge-v3.1",
+    "calibration_date": "2026-05-10"
+  },
+  "metrics": {
+    "quality_delta": 0.04,
+    "latency_delta_pct": 8.0,
+    "cost_delta_pct": -3.0
+  },
+  "gate_result": "pass",
+  "promotion_decision": "promote"
+}
+```

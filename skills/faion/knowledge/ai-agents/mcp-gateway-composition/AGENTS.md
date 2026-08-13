@@ -65,6 +65,8 @@
 | `templates/gateway-spec.md` | Output. |
 | `templates/_smoke-test.yaml` | Minimum. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,25 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on agent_clients_count (1 → virtual-server; many roles → per-client visibility), then on servers_count (>10 → federation), then on shared_concerns (auth → centralise; rate-limit → enforce at gateway). Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/server-inventory.yaml`
+
+```yaml
+servers_count: TODO          # fill with concrete value per the driver definition
+tools_total: TODO          # fill with concrete value per the driver definition
+agent_clients_count: TODO          # fill with concrete value per the driver definition
+shared_concerns: TODO          # fill with concrete value per the driver definition
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+servers_count: low
+tools_total: low
+agent_clients_count: low
+shared_concerns: low
+```

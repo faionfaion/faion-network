@@ -59,7 +59,8 @@
 |---|---|
 | `templates/cot-prompt.md` | Zero-shot CoT prompt skeleton with structured tags. |
 | `templates/parser.py` | Regex parser extracting answer from `<answer>...</answer>`. |
-| `templates/_smoke-test.txt` | Example CoT output for the parser test. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -76,3 +77,31 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` decides whether CoT helps: single-step tasks → skip; reasoning model → skip (already internal); ≥2 steps + non-reasoning model + cost budget OK → run-the-checklist.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/parser.py`
+
+```python
+"""
+from __future__ import annotations
+
+import re
+
+REASONING_RE = re.compile(r"<reasoning>(.*?)</reasoning>", re.DOTALL)
+ANSWER_RE = re.compile(r"<answer>(.*?)</answer>", re.DOTALL)
+
+
+def parse_cot(text: str) -> dict[str, str]:
+    r = REASONING_RE.search(text)
+    a = ANSWER_RE.search(text)
+    if not r or not a:
+        raise ValueError("missing <reasoning> or <answer> block")
+    reasoning = r.group(1).strip()
+    answer = a.group(1).strip()
+    if not reasoning or not answer:
+        raise ValueError("empty reasoning or answer block")
+    return {"reasoning": reasoning, "answer": answer}
+```

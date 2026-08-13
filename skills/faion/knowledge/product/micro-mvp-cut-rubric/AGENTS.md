@@ -61,6 +61,8 @@
 | `templates/micro-mvp-cut-rubric.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/micro-mvp-cut-rubric.md` | Markdown skeleton for human-readable artefact rendering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -75,3 +77,30 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/micro-mvp-cut-rubric.json`
+
+```json
+{
+  "artefact_id": "micro-mvp-cut-rubric-example",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "riskiest_assumption": "riskiest_assumption value",
+  "scope_items": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "cut_decisions": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "final_scope_days": 1.0,
+  "owner": "@solo-founder"
+}
+```

@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/mcp-spec.md` | Spec skeleton: primitives + transport + auth + versions. |
 | `templates/mcp-server-python.py` | Python MCP server skeleton via official SDK. |
-| `templates/mcp-server-typescript.ts` | TS MCP server skeleton. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,15 @@
 ## Decision tree
 
 Decision tree at `content/06-decision-tree.xml` picks transport (stdio for local desktop hosts, HTTP+SSE for remote / multi-tenant) and primitive types per feature.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/mcp-server-python.py`
+
+```python
+"""
+
+# Stub — see methodology AGENTS.md ## Templates table.
+```

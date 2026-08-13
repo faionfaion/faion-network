@@ -56,15 +56,6 @@
 | Tune latency | opus | System-design trade-off. |
 | Author recovery runbook | sonnet | Composition. |
 
-## Templates
-
-| File | Purpose |
-|------|---------|
-| `templates/kill-switch-spec.md.tmpl` | Spec skeleton with all 3 scopes + latency + recovery. |
-| `templates/kill-test.sh.tmpl` | Day-0 + per-release test recipe. |
-| `templates/recovery-runbook.md.tmpl` | Who/what/when/how recovery doc. |
-| `templates/_smoke-test.sh` | Local smoke test of toggle propagation. |
-
 ## Scripts
 
 | File | Purpose | When to call |

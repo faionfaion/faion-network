@@ -66,6 +66,8 @@
 | `templates/ba-to-qa-handoff-template.json` | Skeleton artefact with required fields |
 | `templates/_smoke-test.json` | Minimum viable filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,40 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes on artefact-state signals to the active rule. Use when in doubt whether the artefact is ready for downstream consumption.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ba-to-qa-handoff-template.json`
+
+```json
+{
+  "handoff_id": "REPLACE",
+  "version": "v1.0.0",
+  "story_id": "STORY-XXX",
+  "acceptance_criteria_count": 0,
+  "fixtures": [],
+  "edge_cases": [],
+  "qa_owner": "Full Name",
+  "ba_signoff_ts": "2026-05-23T00:00:00Z"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "handoff_id": "h-1",
+  "story_id": "STORY-101",
+  "acceptance_criteria_count": 5,
+  "fixtures": [
+    "fix/happy.json"
+  ],
+  "edge_cases": [
+    "empty cart"
+  ],
+  "qa_owner": "In\u00eas Costa",
+  "ba_signoff_ts": "2026-05-23T14:00:00Z"
+}
+```

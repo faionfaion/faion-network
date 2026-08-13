@@ -62,6 +62,8 @@
 | `templates/feature-prioritization-rice.json` | JSON Schema for the output contract (machine-validatable). |
 | `templates/feature-prioritization-rice.md` | Markdown skeleton with the required fields. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,77 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/feature-prioritization-rice.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/feature-prioritization-rice.json",
+  "title": "Feature Prioritization RICE Output Contract",
+  "type": "object",
+  "required": [
+    "scoring_round_id",
+    "reach_unit",
+    "effort_unit",
+    "impact_anchors",
+    "rows",
+    "cut_line",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "scoring_round_id": {
+      "type": "string",
+      "description": "round id (e.g. 2026-Q2)"
+    },
+    "reach_unit": {
+      "type": "string",
+      "description": "named unit"
+    },
+    "effort_unit": {
+      "type": "string",
+      "description": "named unit"
+    },
+    "impact_anchors": {
+      "type": "array",
+      "description": "3 cited examples",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "rows": {
+      "type": "array",
+      "description": "feature objects with reach, impact, confidence, effort, source, rice_score",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "cut_line": {
+      "type": "number",
+      "description": "score threshold"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```

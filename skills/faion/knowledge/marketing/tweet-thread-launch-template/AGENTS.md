@@ -63,6 +63,8 @@
 | `templates/tweet-thread-launch-template.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,104 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tweet-thread-launch-template.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/tweet-thread-launch-template.json",
+  "title": "Tweet Thread Launch Template Output Contract",
+  "type": "object",
+  "required": [
+    "launch_id",
+    "operator",
+    "tweets",
+    "demo_gif_url",
+    "hook_variants_tested",
+    "social_proof_quote",
+    "scheduled_for",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "launch_id": {
+      "type": "string",
+      "description": "kebab-case slug"
+    },
+    "operator": {
+      "type": "string",
+      "description": "named launcher"
+    },
+    "tweets": {
+      "type": "array",
+      "description": "exactly 7 tweets with id + text + media",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "demo_gif_url": {
+      "type": "string",
+      "description": "<30s gif/mp4 URL"
+    },
+    "hook_variants_tested": {
+      "type": "array",
+      "description": "\u22653 variants with pre-launch impressions",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "social_proof_quote": {
+      "type": "object",
+      "description": "{quote, handle, consent_logged_at}"
+    },
+    "scheduled_for": {
+      "type": "string",
+      "description": "ISO timestamp",
+      "format": "date-time"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "launch_id": "sample-launch_id",
+  "operator": "sample-operator",
+  "tweets": [
+    {
+      "key": "value"
+    }
+  ],
+  "demo_gif_url": "sample-demo_gif_url",
+  "hook_variants_tested": [
+    {
+      "key": "value"
+    }
+  ],
+  "social_proof_quote": {
+    "key": "value"
+  },
+  "scheduled_for": "2026-05-23T12:00:00Z",
+  "version": "sample-version",
+  "last_reviewed": "2026-05-23"
+}
+```

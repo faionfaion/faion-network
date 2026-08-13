@@ -64,6 +64,8 @@
 | `templates/agent-identity.yaml` | Per-vendor Linear user setup (display name, avatar, scope). |
 | `templates/checkpoint-comment.md` | Checkpoint comment template (elapsed time + current step). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,50 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/agent-identity.yaml`
+
+```yaml
+# Linear agent identity declaration.
+# One YAML per agent. Loaded by the runtime to mint OAuth tokens and
+# enforce scope before the MCP client connects.
+
+agent:
+  name: claude-engineer-bot
+  email: agents+claude-engineer@example.com
+  linear_user_id: usr_REPLACE_ME
+  display_name: "Claude Engineer (bot)"
+
+oauth_scopes:
+  - read
+  - write:issue.comment
+  - write:issue.status
+  - write:issue.label
+
+prohibited_scopes:
+  - admin
+  - delete:issue
+  - delete:project
+  - write:user
+
+projects:
+  # role MUST be `member` or below; `admin` is rejected at issuance
+  - id: backend
+    role: member
+  - id: frontend
+    role: member
+
+guardrails:
+  max_open_prs_per_assignee: 3
+  max_comments_per_issue: 20
+  webhook_required: IssueAssigned
+  reject_actions_without_assignment: true
+
+audit:
+  sink: s3://audit/linear-agents/
+  fields: [agent_id, issue_id, project_id, action, scope, ts]
+```

@@ -65,7 +65,8 @@
 | `templates/samconfig.toml` | SAM CLI configuration with multi-stage parameter overrides. |
 | `templates/template.yaml` | SAM template skeleton parameterised by Environment. |
 | `templates/deploy.yaml` | GitHub Actions deploy pipeline with drift detection. |
-| `templates/_smoke-test.toml` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -82,3 +83,99 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Are all four prerequisites populated (inventory, account, environments, tool standard)?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/samconfig.toml`
+
+```toml
+# faion_header_json: {"__faion_header__":{"purpose":"SAM CLI configuration with multi-stage parameter overrides.","consumes":"see content/02-output-contract.xml","produces":"config","depends_on":"content/01-core-rules.xml#r1-pick-tool-with-care","token_budget_impact":"~150 tokens when loaded"}}
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "my-service"
+region = "eu-west-1"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Environment=dev"
+confirm_changeset = false
+resolve_s3 = true
+
+[prod.deploy.parameters]
+stack_name = "my-service-prod"
+region = "eu-west-1"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Environment=prod"
+confirm_changeset = true
+```
+
+### `templates/template.yaml`
+
+```yaml
+# faion_header_json: {"__faion_header__":{"purpose":"SAM template skeleton parameterised by Environment.","consumes":"see content/02-output-contract.xml","produces":"config","depends_on":"content/01-core-rules.xml#r1-pick-tool-with-care","token_budget_impact":"~150 tokens when loaded"}}
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: my-service ${Environment}
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, staging, prod]
+Globals:
+  Function:
+    Runtime: python3.12
+    Timeout: 10
+    MemorySize: 512
+    Tracing: Active
+    Environment:
+      Variables:
+        ENVIRONMENT: !Ref Environment
+        LOG_LEVEL: !If [IsProd, INFO, DEBUG]
+Conditions:
+  IsProd: !Equals [!Ref Environment, prod]
+Resources:
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src/api/
+      Handler: app.lambda_handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /items
+            Method: GET
+```
+
+### `templates/deploy.yaml`
+
+```yaml
+# faion_header_json: {"__faion_header__":{"purpose":"GitHub Actions deploy pipeline with drift detection.","consumes":"see content/02-output-contract.xml","produces":"config","depends_on":"content/01-core-rules.xml#r1-pick-tool-with-care","token_budget_impact":"~150 tokens when loaded"}}
+name: deploy
+on:
+  push:
+    branches: [main]
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/setup-sam@v2
+      - run: sam validate
+      - run: sam build
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::111111111111:role/deploy
+          aws-region: eu-west-1
+      - uses: aws-actions/setup-sam@v2
+      - run: sam deploy --no-confirm-changeset --config-env prod
+  drift-detect:
+    runs-on: ubuntu-latest
+    steps:
+      - run: aws cloudformation detect-stack-drift --stack-name my-service-prod
+```

@@ -71,6 +71,8 @@
 | `templates/semantic.json` | Semantic-tier aliases referencing primitives |
 | `templates/build-tokens.mjs` | Style Dictionary build pipeline |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,264 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps platform count, theming need, and design-source authority to a rule from `01-core-rules.xml`, telling the agent whether to invoke the full token pipeline or skip when overhead exceeds value. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/primitive.json`
+
+```json
+{
+  "color": {
+    "blue": {
+      "500": {
+        "value": "#3b82f6"
+      },
+      "600": {
+        "value": "#2563eb"
+      },
+      "700": {
+        "value": "#1d4ed8"
+      }
+    },
+    "gray": {
+      "50": {
+        "value": "#f9fafb"
+      },
+      "100": {
+        "value": "#f3f4f6"
+      },
+      "200": {
+        "value": "#e5e7eb"
+      },
+      "300": {
+        "value": "#d1d5db"
+      },
+      "400": {
+        "value": "#9ca3af"
+      },
+      "500": {
+        "value": "#6b7280"
+      },
+      "600": {
+        "value": "#4b5563"
+      },
+      "700": {
+        "value": "#374151"
+      },
+      "800": {
+        "value": "#1f2937"
+      },
+      "900": {
+        "value": "#111827"
+      }
+    },
+    "red": {
+      "600": {
+        "value": "#dc2626"
+      }
+    },
+    "green": {
+      "600": {
+        "value": "#16a34a"
+      }
+    },
+    "white": {
+      "value": "#ffffff"
+    }
+  },
+  "spacing": {
+    "1": {
+      "value": "0.25rem"
+    },
+    "2": {
+      "value": "0.5rem"
+    },
+    "4": {
+      "value": "1rem"
+    },
+    "6": {
+      "value": "1.5rem"
+    },
+    "8": {
+      "value": "2rem"
+    },
+    "12": {
+      "value": "3rem"
+    },
+    "16": {
+      "value": "4rem"
+    }
+  },
+  "fontSize": {
+    "sm": {
+      "value": "0.875rem"
+    },
+    "base": {
+      "value": "1rem"
+    },
+    "lg": {
+      "value": "1.125rem"
+    },
+    "xl": {
+      "value": "1.25rem"
+    },
+    "2xl": {
+      "value": "1.5rem"
+    }
+  },
+  "borderRadius": {
+    "sm": {
+      "value": "0.125rem"
+    },
+    "md": {
+      "value": "0.375rem"
+    },
+    "lg": {
+      "value": "0.5rem"
+    },
+    "full": {
+      "value": "9999px"
+    }
+  },
+  "shadow": {
+    "sm": {
+      "value": "0 1px 2px 0 rgb(0 0 0 / 0.05)"
+    },
+    "md": {
+      "value": "0 4px 6px -1px rgb(0 0 0 / 0.1)"
+    },
+    "lg": {
+      "value": "0 10px 15px -3px rgb(0 0 0 / 0.1)"
+    }
+  }
+}
+```
+
+### `templates/semantic.json`
+
+```json
+{
+  "color": {
+    "action": {
+      "primary": {
+        "value": "{color.blue.600}"
+      },
+      "primaryHover": {
+        "value": "{color.blue.700}"
+      },
+      "secondary": {
+        "value": "{color.gray.100}"
+      },
+      "secondaryHover": {
+        "value": "{color.gray.200}"
+      }
+    },
+    "text": {
+      "primary": {
+        "value": "{color.gray.900}"
+      },
+      "secondary": {
+        "value": "{color.gray.600}"
+      },
+      "tertiary": {
+        "value": "{color.gray.500}"
+      },
+      "inverse": {
+        "value": "{color.white}"
+      },
+      "disabled": {
+        "value": "{color.gray.400}"
+      }
+    },
+    "bg": {
+      "primary": {
+        "value": "{color.white}"
+      },
+      "secondary": {
+        "value": "{color.gray.50}"
+      },
+      "inverse": {
+        "value": "{color.gray.900}"
+      }
+    },
+    "border": {
+      "default": {
+        "value": "{color.gray.200}"
+      },
+      "hover": {
+        "value": "{color.gray.300}"
+      },
+      "focus": {
+        "value": "{color.blue.500}"
+      }
+    },
+    "status": {
+      "success": {
+        "value": "{color.green.600}"
+      },
+      "error": {
+        "value": "{color.red.600}"
+      }
+    }
+  },
+  "_darkThemeOverrides": {
+    "_note": "Copy this block to semantic-dark.json, replacing values with dark primitives.",
+    "color": {
+      "bg": {
+        "primary": {
+          "value": "{color.gray.900}"
+        },
+        "secondary": {
+          "value": "{color.gray.800}"
+        }
+      },
+      "text": {
+        "primary": {
+          "value": "{color.gray.50}"
+        },
+        "secondary": {
+          "value": "{color.gray.300}"
+        }
+      }
+    }
+  }
+}
+```
+
+### `templates/build-tokens.mjs`
+
+```javascript
+// build-tokens.mjs — Style Dictionary pipeline
+// Input:  tokens/primitive.json + tokens/semantic.json
+// Output: dist/css/tokens.css, dist/js/tokens.js, dist/ios/Tokens.swift
+import StyleDictionary from 'style-dictionary';
+
+const sd = new StyleDictionary({
+  source: ['tokens/primitive.json', 'tokens/semantic.json'],
+  platforms: {
+    css: {
+      transformGroup: 'css',
+      buildPath: 'dist/css/',
+      files: [{ destination: 'tokens.css', format: 'css/variables' }],
+    },
+    js: {
+      transformGroup: 'js',
+      buildPath: 'dist/js/',
+      files: [{ destination: 'tokens.js', format: 'javascript/es6' }],
+    },
+    ios: {
+      transformGroup: 'ios-swift',
+      buildPath: 'dist/ios/',
+      files: [{
+        destination: 'Tokens.swift',
+        format: 'ios-swift/class.swift',
+        className: 'Tokens',
+      }],
+    },
+  },
+});
+
+await sd.buildAllPlatforms();
+```

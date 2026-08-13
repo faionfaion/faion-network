@@ -71,6 +71,8 @@
 | `templates/dunning-sequence.md` | 3-email dunning sequence for failed renewals |
 | `templates/_smoke-test.json` | Minimum viable LS store config for validator self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,81 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps product type, MoR acceptance, license needs, EU share, and affiliate intent to a rule from `01-core-rules.xml`, telling the agent whether to publish, block on a missing gate, or skip LS for Stripe-direct. Walk it on every fresh store change; do not cache outcomes across products.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ls-store.yaml`
+
+```yaml
+store:
+  store_id: REPLACE-store-id
+  store_name: REPLACE store name
+  currency: usd       # usd | eur
+  refund_policy: 14_day  # no_refunds | 14_day | 30_day
+  uses_mor: true
+
+variants:
+  - variant_id: v-REPLACE-solo
+    name: Solo
+    amount: 19
+    interval: monthly    # one_time | monthly | yearly
+    license_api_enabled: true
+  - variant_id: v-REPLACE-pro
+    name: Pro
+    amount: 39
+    interval: monthly
+    license_api_enabled: true
+
+dunning:
+  sequence_days: [1, 4, 8]
+
+affiliate:
+  enabled: true
+  commission_pct: 40
+
+review:
+  reviewed_at: 2026-05-23
+  conversion_rate: 0.0
+  refund_rate: 0.0
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "store": {
+    "store_id": "ls-smoke-1",
+    "store_name": "Smoke Store",
+    "currency": "usd",
+    "refund_policy": "14_day",
+    "uses_mor": true
+  },
+  "variants": [
+    {
+      "variant_id": "v-smoke",
+      "name": "Solo",
+      "amount": 19,
+      "interval": "monthly",
+      "license_api_enabled": true
+    }
+  ],
+  "dunning": {
+    "sequence_days": [
+      1,
+      4,
+      8
+    ]
+  },
+  "affiliate": {
+    "enabled": true,
+    "commission_pct": 40
+  },
+  "review": {
+    "reviewed_at": "2026-05-23",
+    "conversion_rate": 0.04,
+    "refund_rate": 0.01
+  }
+}
+```

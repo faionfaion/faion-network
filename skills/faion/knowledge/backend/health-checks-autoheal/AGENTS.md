@@ -69,6 +69,8 @@
 | `templates/_smoke-test.md` | Minimum viable filled-in health audit. |
 | `templates/health-check.sh` | Per-service health-check loop with retry + silent-OK + TG-on-fail. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,32 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, status of prerequisites) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/health-check.sh`
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+SVC=${1:?usage: health-check.sh <service> <url>}
+URL=$2
+MAX_RETRY=3
+
+for i in $(seq 1 $MAX_RETRY); do
+  if curl -fsS --max-time 5 "$URL" >/dev/null; then
+    exit 0  # silent on success
+  fi
+  sleep 3
+done
+
+# escalate
+msg="[$SVC] health-check FAILED at $URL after $MAX_RETRY retries; restarting"
+curl -fsS -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+  -d chat_id="${TG_CHAT}" --data-urlencode text="$msg" || true
+systemctl --user restart "$SVC" || true
+exit 1
+```

@@ -69,6 +69,8 @@
 | `templates/apt-daily-timer-override.conf` | Override apt-daily.timer window. |
 | `templates/apt-daily-upgrade-timer-override.conf` | Override apt-daily-upgrade.timer window. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,104 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/unattended-upgrades.json`
+
+```json
+{
+  "artefact_id": "upgrades-<host>",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "allowed_origins": [
+    "${distro_id}:${distro_codename}-security"
+  ],
+  "auto_reboot": true,
+  "reboot_time": "04:00",
+  "mail_to": "<ops@example.com>",
+  "owner": "<@handle>"
+}
+```
+
+### `templates/50unattended-upgrades.conf`
+
+```conf
+// /etc/apt/apt.conf.d/50unattended-upgrades
+// Production config: security origins, Docker blacklist, auto-reboot at 04:00, cleanup
+
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}";
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}ESMApps:${distro_codename}-apps-security";
+    "${distro_id}ESM:${distro_codename}-infra-security";
+};
+
+Unattended-Upgrade::Package-Blacklist {
+    "docker-ce";
+    "docker-ce-cli";
+    "containerd.io";
+    "docker-buildx-plugin";
+    "docker-compose-plugin";
+    // "postgresql-16";
+    // "nginx";
+};
+
+Unattended-Upgrade::Automatic-Reboot           "true";
+Unattended-Upgrade::Automatic-Reboot-WithUsers "true";
+Unattended-Upgrade::Automatic-Reboot-Time      "04:00";
+
+Unattended-Upgrade::Remove-Unused-Dependencies     "true";
+Unattended-Upgrade::Remove-New-Unused-Dependencies "true";
+Unattended-Upgrade::Remove-Unused-Kernel-Packages  "true";
+Unattended-Upgrade::MinimalSteps                   "true";
+Unattended-Upgrade::AutoFixInterruptedDpkg         "true";
+
+Unattended-Upgrade::SyslogEnable   "true";
+Unattended-Upgrade::SyslogFacility "daemon";
+
+Dpkg::Options {
+    "--force-confdef";
+    "--force-confold";
+};
+```
+
+### `templates/20auto-upgrades.conf`
+
+```conf
+// /etc/apt/apt.conf.d/20auto-upgrades
+// Schedule: daily update check, download, install, weekly autoclean
+
+APT::Periodic::Update-Package-Lists         "1";
+APT::Periodic::Download-Upgradeable-Packages "1";
+APT::Periodic::Unattended-Upgrade           "1";
+APT::Periodic::AutocleanInterval            "7";
+```
+
+### `templates/apt-daily-timer-override.conf`
+
+```conf
+# /etc/systemd/system/apt-daily.timer.d/override.conf
+# Fix apt-daily timer to run at exactly 2 AM (not random 6h window)
+# Apply: sudo systemctl daemon-reload && sudo systemctl restart apt-daily.timer
+
+[Timer]
+OnCalendar=
+OnCalendar=*-*-* 02:00:00
+RandomizedDelaySec=0
+```
+
+### `templates/apt-daily-upgrade-timer-override.conf`
+
+```conf
+# /etc/systemd/system/apt-daily-upgrade.timer.d/override.conf
+# Fix apt-daily-upgrade timer to run at exactly 3 AM (after apt-daily at 2 AM)
+# Apply: sudo systemctl daemon-reload && sudo systemctl restart apt-daily-upgrade.timer
+
+[Timer]
+OnCalendar=
+OnCalendar=*-*-* 03:00:00
+RandomizedDelaySec=0
+```

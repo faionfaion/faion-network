@@ -63,7 +63,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/content-atomization-engine.json` | JSON skeleton matching the output contract. |
 | `templates/content-atomization-engine.md` | Markdown skeleton with required fields. |
 
 ## Scripts

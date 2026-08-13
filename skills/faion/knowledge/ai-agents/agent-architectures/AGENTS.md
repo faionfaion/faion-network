@@ -63,8 +63,9 @@
 | `templates/agent.py.tmpl` | Agent scaffold: FSM + memory + tools + planning + reflection. |
 | `templates/tool-registry.py.tmpl` | Schema-validated tool registry. |
 | `templates/memory.py.tmpl` | Memory class with summarization. |
-| `templates/reflection-prompt.txt.tmpl` | Reflection prompt template. |
 | `templates/_smoke-test.py` | Minimal runnable agent stub. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -82,3 +83,79 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters whether agent-architectures applies: root question — "Is the workload a multi-tool, multi-iteration agent (not a single LLM call)?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/agent.py.tmpl`
+
+```python
+Agent scaffold
+"""
+from __future__ import annotations
+
+
+def main() -> None:
+    """Entry point. Fill per methodology procedure."""
+    # TODO: implement per 04-procedure.xml
+    raise NotImplementedError
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### `templates/tool-registry.py.tmpl`
+
+```python
+Tool registry skeleton
+"""
+from __future__ import annotations
+
+
+def main() -> None:
+    """Entry point. Fill per methodology procedure."""
+    # TODO: implement per 04-procedure.xml
+    raise NotImplementedError
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### `templates/memory.py.tmpl`
+
+```python
+Memory skeleton
+"""
+from __future__ import annotations
+
+
+def main() -> None:
+    """Entry point. Fill per methodology procedure."""
+    # TODO: implement per 04-procedure.xml
+    raise NotImplementedError
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### `templates/_smoke-test.py`
+
+```python
+Smoke test.
+"""
+from __future__ import annotations
+
+
+def main() -> None:
+    """Entry point. Fill per methodology procedure."""
+    # TODO: implement per 04-procedure.xml
+    raise NotImplementedError
+
+
+if __name__ == "__main__":
+    main()
+```

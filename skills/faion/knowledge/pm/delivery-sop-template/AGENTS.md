@@ -70,6 +70,8 @@
 | `templates/step-record.json` | JSON for one SOP step. |
 | `templates/escalation-map.md` | Edge-case branch → named escalation owner map. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,32 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observables (manual_delivery_count, target_operator_seniority, founder_can_articulate_steps) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/step-record.json`
+
+```json
+{
+  "n": 1,
+  "name": "REPLACE",
+  "inputs": [
+    "REPLACE"
+  ],
+  "action": "REPLACE",
+  "decisions": [
+    {
+      "condition": "REPLACE",
+      "branch_a": "REPLACE",
+      "branch_b": "REPLACE"
+    }
+  ],
+  "quality_gates": [
+    "REPLACE"
+  ],
+  "escalation": "REPLACE",
+  "time_budget_min": 30
+}
+```

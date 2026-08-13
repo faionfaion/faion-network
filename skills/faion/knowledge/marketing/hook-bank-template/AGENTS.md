@@ -71,6 +71,8 @@
 | `templates/pattern-allowlist.yaml` | Default ≤15 pattern enum |
 | `templates/_smoke-test.csv` | Minimum viable filled bank for validator self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,37 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps post volume, baseline availability, and pattern count to a rule from `01-core-rules.xml`, telling the agent whether to apply the bank protocol or skip until enough data exists. Walk it on every fresh invocation; do not cache outcomes across distinct engagements.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/hook-bank.csv`
+
+```csv
+hook_text,pattern,platform,post_url,impressions_24h,qualified_replies,bucket,flop_streak
+"REPLACE — first 80 chars of the hook",before-after,x,https://x.com/REPLACE,0,0,average,0
+```
+
+### `templates/pattern-allowlist.yaml`
+
+```yaml
+patterns_active:
+  - before-after
+  - mistake-confession
+  - data-drop
+  - contrarian
+  - question
+  - list-promise
+  - story-tease
+  - number-callout
+```
+
+### `templates/_smoke-test.csv`
+
+```csv
+hook_text,pattern,platform,post_url,impressions_24h,qualified_replies,bucket,flop_streak
+"Shipped a $0 invoice to 312 customers last night. Postmortem.",mistake-confession,x,https://x.com/u/status/1,11400,38,spiked,0
+"Yesterday: 4h debugging Rails. Today: one CLI command.",before-after,x,https://x.com/u/status/2,2840,14,spiked,0
+"Excited to launch v2 today!",generic,x,https://x.com/u/status/3,480,1,flopped,3
+```

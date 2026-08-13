@@ -66,7 +66,6 @@
 |------|---------|
 | `templates/lifecycle-assessment.md` | Lifecycle assessment skeleton. |
 | `templates/stage-strategy-guide.md` | Per-stage investment strategy guide. |
-| `templates/stage-suggest.sh` | Shell wrapper that suggests stage from metrics input. |
 
 ## Scripts
 

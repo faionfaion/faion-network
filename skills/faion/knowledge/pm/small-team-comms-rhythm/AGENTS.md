@@ -70,6 +70,8 @@
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum viable filled `CommsRhythmConfig` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,62 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps team_size + ritual_count + sync_duration to run / repair / graduate. Every leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+owner:
+  role: ""
+  person: ""
+last_reviewed: ""
+version: ""
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "team_id": "smoke",
+  "header": {
+    "owner": {
+      "role": "founder",
+      "person": "founder-handle"
+    },
+    "last_reviewed": "2026-05-10",
+    "version": "1.0"
+  },
+  "team_size": 2,
+  "rituals": [
+    {
+      "ritual_id": "daily_pulse",
+      "name": "Async daily pulse",
+      "mode": "async",
+      "duration_minutes_cap": 5
+    },
+    {
+      "ritual_id": "weekly_sync",
+      "name": "Weekly 30-min sync",
+      "mode": "sync",
+      "duration_minutes_cap": 30
+    },
+    {
+      "ritual_id": "monthly_direction",
+      "name": "Monthly direction check",
+      "mode": "sync",
+      "duration_minutes_cap": 45
+    }
+  ],
+  "cycle_log": [
+    {
+      "cycle_iso": "2026-W20",
+      "ritual_id": "weekly_sync",
+      "founder_only": false,
+      "agenda_published_24h": true
+    }
+  ]
+}
+```

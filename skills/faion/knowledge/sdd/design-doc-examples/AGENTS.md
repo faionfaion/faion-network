@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/design-doc-examples.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/design-doc-examples.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

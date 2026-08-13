@@ -67,6 +67,8 @@
 | `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
 | `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,58 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/artefact-instance.json`
+
+```json
+{
+  "spec_id": "fstx-jane-2026q2",
+  "owner": "jane@indie.io",
+  "last_touched": "2026-05-23T09:00:00Z",
+  "weekly_hours": {
+    "mon": 0,
+    "tue": 3,
+    "wed": 0,
+    "thu": 3,
+    "fri": 0,
+    "sat": 2,
+    "sun": 0,
+    "evidence": "calendar export 2026-04 to 2026-05"
+  },
+  "abort_criteria": [
+    {
+      "name": "no paying customer by day 60",
+      "metric": "paid_signups",
+      "threshold": 1,
+      "evidence": "milestone roadmap"
+    }
+  ],
+  "boundary_rules": [
+    {
+      "rule": "no client work on Tuesday/Thursday/Saturday SaaS blocks",
+      "consequence": "decline + reschedule"
+    }
+  ],
+  "milestones": [
+    {
+      "day": 30,
+      "deliverable": "landing + payment link live"
+    },
+    {
+      "day": 60,
+      "deliverable": "1 paid signup"
+    },
+    {
+      "day": 90,
+      "deliverable": "5 paid signups OR abort"
+    }
+  ],
+  "review_cadence": "weekly Friday 30-min self-review",
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}
+```

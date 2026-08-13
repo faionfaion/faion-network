@@ -64,6 +64,8 @@
 |------|---------|
 | `templates/iot-voice-config.json` | Skeleton config |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,24 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches by device count and config completeness; enforces grouping + undo + partial-failure + noise-test. Each leaf cites a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/iot-voice-config.json`
+
+```json
+{
+  "groups": [],
+  "scenes": [],
+  "routines": [],
+  "partial_failure_feedback": true,
+  "undo_supported": true,
+  "noise_conditions": [
+    "quiet",
+    "kitchen",
+    "tv"
+  ]
+}
+```

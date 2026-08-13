@@ -72,6 +72,8 @@
 | `templates/pre-commit-xp.yaml` | Pre-commit hooks enforcing TDD-friendly gates. |
 | `templates/_smoke-test.json` | Minimum viable XP adoption plan for validator smoke-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,83 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs - CI speed, branch age, customer SLA, release cadence - onto a rule from `content/01-core-rules.xml`. Use it before adopting XP: it catches tdd-without-fast-ci and long-branches upstream.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ci-config-snippet.yaml`
+
+```yaml
+name: ci
+on: [pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12', cache: 'pip' }
+      - run: pip install -r requirements.txt
+      - run: pytest --shard-id=${{ matrix.shard }} --num-shards=4 -q
+```
+
+### `templates/pre-commit-xp.yaml`
+
+```yaml
+# pre-commit-xp.yaml — XP-style pre-commit config
+# Enforces: ruff lint + format, pytest fast suite, no test skips/xfails
+# Usage: place as .pre-commit-config.yaml, run: pre-commit install
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff
+        args: [--fix, --select, "E,F,I,B,UP,T20,SIM"]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: pytest-fast
+        name: pytest fast suite (must pass before commit)
+        entry: pytest -q --maxfail=1 -m "not slow"
+        language: system
+        pass_filenames: false
+        types: [python]
+
+      - id: no-skip-or-xfail
+        name: no test skips or xfails
+        entry: bash -c '! grep -RnE "@pytest\.mark\.(skip|xfail)" tests/'
+        language: system
+        pass_filenames: false
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "adoption_order": [
+    "green_ci",
+    "tdd",
+    "trunk_based",
+    "pairing",
+    "small_releases"
+  ],
+  "practices": {
+    "tdd": true,
+    "pairing": true,
+    "trunk_based": true,
+    "refactoring": true,
+    "small_releases": true
+  },
+  "ci_max_minutes": 8,
+  "release_cadence_days": 7,
+  "customer_access": {
+    "named_person": "Pat",
+    "sla_hours": 24
+  }
+}
+```

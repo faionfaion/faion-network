@@ -64,6 +64,8 @@
 | `templates/service-selection.json` | JSON decision-record artefact (validator target) |
 | `templates/_smoke-test.json` | Minimum decision-record used by validate-devops-aws-service-selection.py --self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,65 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it at project kickoff or migration scoping.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/service-selection.json`
+
+```json
+{
+  "workload": "",
+  "compute": {
+    "choice": "lambda",
+    "architecture": "arm64",
+    "rationale": ""
+  },
+  "database": {
+    "choice": "dynamodb",
+    "rationale": ""
+  },
+  "wa_pillars_evaluated": [
+    "operational_excellence",
+    "security",
+    "reliability",
+    "performance_efficiency",
+    "cost_optimization",
+    "sustainability"
+  ],
+  "gap_list": []
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "workload": "checkout-api",
+  "compute": {
+    "choice": "lambda",
+    "architecture": "arm64",
+    "rationale": "Spiky <15min handler; scale-to-zero saves cost."
+  },
+  "database": {
+    "choice": "dynamodb",
+    "rationale": "Key-value access pattern; on-demand removes capacity planning."
+  },
+  "wa_pillars_evaluated": [
+    "operational_excellence",
+    "security",
+    "reliability",
+    "performance_efficiency",
+    "cost_optimization",
+    "sustainability"
+  ],
+  "gap_list": [
+    {
+      "pillar": "security",
+      "gap": "Cognito MFA not yet enforced",
+      "severity": "MED"
+    }
+  ]
+}
+```

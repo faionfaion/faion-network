@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/impl-plan-100k-rule.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/impl-plan-100k-rule.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

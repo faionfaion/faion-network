@@ -70,6 +70,8 @@
 | `templates/AsyncConfig.java` | @EnableAsync configuration with TaskDecorator + shutdown drain |
 | `templates/NotificationService.java` | @Async service returning CompletableFuture with fan-out pattern |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,105 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/AsyncConfig.java`
+
+```java
+package com.example.async;
+
+import java.util.Map;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ThreadPoolExecutor;
+
+import org.slf4j.MDC;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+
+@Configuration
+@EnableAsync
+public class AsyncConfig {
+
+    @Bean(name = "taskExecutor")
+    public Executor taskExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(4);
+        executor.setMaxPoolSize(8);
+        executor.setQueueCapacity(100);
+        executor.setThreadNamePrefix("Async-");
+        executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(60);
+        executor.setTaskDecorator(task -> {
+            Map<String, String> mdc = MDC.getCopyOfContextMap();
+            SecurityContext sc = SecurityContextHolder.getContext();
+            return () -> {
+                try {
+                    MDC.setContextMap(mdc != null ? mdc : Map.of());
+                    SecurityContextHolder.setContext(sc);
+                    task.run();
+                } finally {
+                    MDC.clear();
+                    SecurityContextHolder.clearContext();
+                }
+            };
+        });
+        executor.initialize();
+        return executor;
+    }
+}
+```
+
+### `templates/NotificationService.java`
+
+```java
+package com.example.service;
+
+import java.util.concurrent.CompletableFuture;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+
+@Service
+public class NotificationService {
+
+    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
+    private final EmailService emailService;
+    private final SmsService smsService;
+
+    public NotificationService(EmailService emailService, SmsService smsService) {
+        this.emailService = emailService;
+        this.smsService = smsService;
+    }
+
+    @Async("taskExecutor")
+    public CompletableFuture<Void> sendOrderConfirmation(Order order) {
+        try {
+            emailService.send(order.userEmail(), "Order Confirmation", "Order #" + order.id() + " confirmed.");
+            return CompletableFuture.completedFuture(null);
+        } catch (Exception e) {
+            log.error("Failed to send order confirmation {}", order.id(), e);
+            return CompletableFuture.failedFuture(e);
+        }
+    }
+
+    @Async("taskExecutor")
+    public CompletableFuture<Void> sendWelcome(User user) {
+        CompletableFuture<Void> email = CompletableFuture.runAsync(() ->
+            emailService.send(user.email(), "Welcome!", "Welcome, " + user.name() + "!"));
+        CompletableFuture<Void> sms = CompletableFuture.runAsync(() ->
+            smsService.send(user.phone(), "Welcome to our service!"));
+        return CompletableFuture.allOf(email, sms)
+            .exceptionally(ex -> { log.error("Welcome notifications failed for {}", user.id(), ex); return null; });
+    }
+}
+```

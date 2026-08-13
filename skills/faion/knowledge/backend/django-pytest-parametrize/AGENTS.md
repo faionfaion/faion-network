@@ -62,6 +62,8 @@
 | `templates/test_validation_matrix.py` | Reference (field, value, error) matrix test. |
 | `templates/test_role_grid.py` | Reference role/permission grid test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,176 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Per redundant test group: ≥ 3 bodies, same shape, only data differs → parametrize. &gt; 20 cases → split by category. Parameters include model instances → replace with IDs + factory lookup inside the test.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/parametrize-spec.json`
+
+```json
+{
+  "_purpose": "Reference parametrize spec output.",
+  "_consumes": "Group of redundant tests + per-case data.",
+  "_produces": "JSON for test-refactor codegen.",
+  "_depends-on": "content/02-output-contract.xml.",
+  "_token-budget-impact": "~180 tokens.",
+  "artefact_id": "billing-parametrize",
+  "owner": "ruslan@faion.net",
+  "parametrizations": [
+    {
+      "test_function": "test_create_invoice_validation",
+      "argnames": "field, value, expected_error",
+      "cases": [
+        {
+          "id": "amount-negative",
+          "args": [
+            "amount",
+            "-5",
+            "must be positive"
+          ]
+        },
+        {
+          "id": "amount-non-numeric",
+          "args": [
+            "amount",
+            "abc",
+            "must be a number"
+          ]
+        },
+        {
+          "id": "due-date-past",
+          "args": [
+            "due_date",
+            "2020-01-01",
+            "must be in the future"
+          ]
+        },
+        {
+          "id": "missing-customer",
+          "args": [
+            "customer_uid",
+            null,
+            "this field is required"
+          ]
+        }
+      ],
+      "ids_descriptive": true,
+      "uses_indirect": false
+    },
+    {
+      "test_function": "test_invoice_detail_by_role",
+      "argnames": "client_fixture, expected_status",
+      "cases": [
+        {
+          "id": "anonymous-401",
+          "args": [
+            "api_client",
+            401
+          ]
+        },
+        {
+          "id": "user-owns-200",
+          "args": [
+            "authenticated_client",
+            200
+          ]
+        },
+        {
+          "id": "user-cross-403",
+          "args": [
+            "other_authenticated_client",
+            403
+          ]
+        },
+        {
+          "id": "admin-200",
+          "args": [
+            "admin_client",
+            200
+          ]
+        }
+      ],
+      "ids_descriptive": true,
+      "uses_indirect": false
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```
+
+### `templates/test_validation_matrix.py`
+
+```python
+"""
+
+from __future__ import annotations
+
+import pytest
+from rest_framework import status
+from rest_framework.test import APIClient
+
+pytestmark = pytest.mark.django_db
+
+
+def _valid_payload(customer_uid: str) -> dict[str, object]:
+    return {
+        "customer_uid": customer_uid,
+        "amount": "10.00",
+        "due_date": "2026-12-31",
+    }
+
+
+@pytest.mark.parametrize(
+    "field, value, expected_error",
+    [
+        pytest.param("amount", "-5",          "must be positive",            id="amount-negative"),
+        pytest.param("amount", "abc",         "must be a number",            id="amount-non-numeric"),
+        pytest.param("due_date", "2020-01-01","must be in the future",       id="due-date-past"),
+        pytest.param("customer_uid", None,    "this field is required",      id="missing-customer"),
+    ],
+)
+def test_create_invoice_validation(
+    authenticated_client: APIClient,
+    customer,
+    field: str,
+    value: object,
+    expected_error: str,
+) -> None:
+    payload = _valid_payload(str(customer.uid))
+    payload[field] = value
+
+    response = authenticated_client.post("/api/v1/invoices/", data=payload, format="json")
+
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert expected_error in str(response.data.get(field, ""))
+```
+
+### `templates/test_role_grid.py`
+
+```python
+"""
+
+from __future__ import annotations
+
+import pytest
+
+pytestmark = pytest.mark.django_db
+
+
+@pytest.mark.parametrize(
+    "client_fixture, expected_status",
+    [
+        pytest.param("api_client",                    401, id="anonymous-401"),
+        pytest.param("authenticated_client",          200, id="user-owns-200"),
+        pytest.param("other_authenticated_client",    403, id="user-cross-403"),
+        pytest.param("admin_client",                  200, id="admin-200"),
+    ],
+)
+def test_invoice_detail_by_role(request, invoice, client_fixture: str, expected_status: int) -> None:
+    # getfixturevalue selects the API client per parametrized row.
+    client = request.getfixturevalue(client_fixture)
+    response = client.get(f"/api/v1/invoices/{invoice.uid}/", format="json")
+    assert response.status_code == expected_status
+```

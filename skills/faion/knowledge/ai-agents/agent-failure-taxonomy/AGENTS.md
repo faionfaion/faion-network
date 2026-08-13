@@ -57,8 +57,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/taxonomy.md.tmpl` | Versioned taxonomy doc skeleton. |
-| `templates/label-definition.md.tmpl` | Single-label definition + remediation lane. |
 | `templates/_smoke-test.md` | Filled example with 6 default labels. |
 
 ## Scripts

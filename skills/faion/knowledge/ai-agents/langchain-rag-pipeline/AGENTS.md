@@ -66,6 +66,8 @@
 | `templates/rag-chain.py` | Working LCEL pipeline. |
 | `templates/_smoke-test.yaml` | Minimum viable profile. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,52 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on query_pattern (factual → low-k; broad → high-k+rerank), then on corpus size (small → in-mem, large → Pinecone/pgvector), then on latency budget. Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/corpus-profile.yaml`
+
+```yaml
+doc_count: TODO          # fill with concrete value per the driver definition
+avg_doc_chars: TODO          # fill with concrete value per the driver definition
+query_pattern: TODO          # fill with concrete value per the driver definition
+latency_budget_ms: TODO          # fill with concrete value per the driver definition
+```
+
+### `templates/rag-chain.py`
+
+```python
+"""Reference artefact for langchain-rag-pipeline. Self-test only verifies the scaffold compiles."""
+from __future__ import annotations
+
+
+def build(decision: dict):
+    """Build the runtime object from a validated decision-record."""
+    if not isinstance(decision, dict):
+        raise TypeError("decision must be dict from validated decision-record")
+    return decision  # placeholder: real implementations wire here
+
+
+def _self_test() -> int:
+    out = build({"slug": "langchain-rag-pipeline", "version": "2.0.0"})
+    return 0 if out["slug"] == "langchain-rag-pipeline" else 1
+
+
+if __name__ == "__main__":
+    import sys
+    if "--self-test" in sys.argv:
+        raise SystemExit(_self_test())
+    if "--help" in sys.argv:
+        print(__doc__)
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+doc_count: low
+avg_doc_chars: low
+query_pattern: low
+latency_budget_ms: low
+```

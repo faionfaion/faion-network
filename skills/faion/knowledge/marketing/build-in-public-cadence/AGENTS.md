@@ -63,7 +63,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/build-in-public-cadence.json` | JSON skeleton matching the output contract. |
 | `templates/build-in-public-cadence.md` | Markdown skeleton with required fields. |
 
 ## Scripts

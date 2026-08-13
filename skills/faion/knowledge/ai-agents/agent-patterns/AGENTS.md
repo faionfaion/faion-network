@@ -68,6 +68,8 @@
 | `templates/decision-record.json` | JSON Schema for `agent-patterns` output decision record. |
 | `templates/decision-record.example.json` | Filled minimal valid example. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,170 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree asks three observables in order: (1) is there a deterministic success signal? (2) are subtasks enumerable up-front? (3) is the action irreversible? Leaves point to ReAct, Plan-and-Execute, Reflexion, or `escalate-to-human`. Used when the operator hasn't pre-specified a pattern; never overrides an explicit operator choice.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/decision-record.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/agent-patterns/decision-record.json",
+  "title": "Agent-Patterns Decision Record",
+  "description": "Output contract for the agent-patterns methodology. purpose=schema; consumes=task-brief+tool-inventory; produces=decision-record; depends-on=01-core-rules.xml; token-budget-impact=low",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "task_id",
+    "chosen_pattern",
+    "caps",
+    "terminal_condition",
+    "rationale",
+    "rejected_patterns",
+    "actor_model",
+    "human_gate_required",
+    "version",
+    "produced_at"
+  ],
+  "properties": {
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "chosen_pattern": {
+      "type": "string",
+      "enum": [
+        "react",
+        "plan-and-execute",
+        "reflexion",
+        "escalate-to-human"
+      ]
+    },
+    "caps": {
+      "type": "object",
+      "properties": {
+        "max_iterations": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "max_steps": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "max_iterations_per_step": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20
+        }
+      },
+      "additionalProperties": false
+    },
+    "terminal_condition": {
+      "type": "string",
+      "minLength": 5
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 40
+    },
+    "rejected_patterns": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "pattern",
+          "reason"
+        ],
+        "properties": {
+          "pattern": {
+            "type": "string",
+            "enum": [
+              "react",
+              "plan-and-execute",
+              "reflexion"
+            ]
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 10
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "actor_model": {
+      "type": "string"
+    },
+    "critic_model": {
+      "type": "string"
+    },
+    "human_gate_required": {
+      "type": "boolean"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "chosen_pattern": {
+            "const": "reflexion"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "critic_model"
+        ]
+      }
+    }
+  ]
+}
+```
+
+### `templates/decision-record.example.json`
+
+```json
+{
+  "task_id": "T-2026-05-22-001",
+  "chosen_pattern": "reflexion",
+  "caps": {
+    "max_attempts": 3,
+    "max_iterations": 8
+  },
+  "terminal_condition": "pytest tests/test_parser.py exits 0",
+  "rationale": "Task is parser-fix with a deterministic success signal (test suite). Subtasks are not enumerable up-front because the model must discover failure modes through iteration. Action is reversible (local code edits in a feature branch).",
+  "rejected_patterns": [
+    {
+      "pattern": "react",
+      "reason": "no built-in retry; would loop once on failed test and stop"
+    },
+    {
+      "pattern": "plan-and-execute",
+      "reason": "subtasks unknown until model sees test output"
+    }
+  ],
+  "actor_model": "claude-sonnet-4",
+  "critic_model": "claude-haiku-4",
+  "human_gate_required": false,
+  "version": "1.0.0",
+  "produced_at": "2026-05-22T10:14:00Z"
+}
+```

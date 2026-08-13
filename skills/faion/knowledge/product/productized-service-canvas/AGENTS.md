@@ -67,6 +67,8 @@
 | `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
 | `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,70 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/artefact-instance.json`
+
+```json
+{
+  "canvas_id": "psc-acme-onboarding-2026q2",
+  "owner": "alex@acme.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "buyer": {
+    "role": "VP Engineering",
+    "company_size": "50-200",
+    "trigger": "post-Series-A scale-up"
+  },
+  "outcome": "production-grade onboarding flow live in 4 weeks with conversion >35%",
+  "price": {
+    "currency": "USD",
+    "amount": 12000,
+    "model": "fixed"
+  },
+  "timeline": {
+    "weeks": 4,
+    "kickoff_to_handover": "2026-06-03 to 2026-07-01"
+  },
+  "scope_in": [
+    "onboarding-flow design",
+    "implementation",
+    "instrumentation",
+    "handover SOP"
+  ],
+  "scope_out": [
+    "pricing redesign",
+    "SSO",
+    "marketing site changes"
+  ],
+  "sop": [
+    {
+      "step": 1,
+      "name": "discovery call"
+    },
+    {
+      "step": 2,
+      "name": "audit + plan"
+    },
+    {
+      "step": 3,
+      "name": "implementation"
+    },
+    {
+      "step": 4,
+      "name": "handover + SOP"
+    }
+  ],
+  "proof": [
+    {
+      "case": "case-bigco-2025",
+      "outcome": "+18pp conversion",
+      "evidence": "drive://cases/bigco"
+    }
+  ],
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}
+```

@@ -63,7 +63,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/solo-bug-triage-rubric.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/solo-bug-triage-rubric.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

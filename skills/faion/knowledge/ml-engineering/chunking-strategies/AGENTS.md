@@ -68,6 +68,8 @@
 | `templates/markdown-chunker.py` | Markdown heading-aware chunker |
 | `templates/code-chunker.py` | AST-based code chunker |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,113 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-eval-driven`, `r2-structure-aware-when-possible`, `r3-overlap-bounded`, `r4-per-type-dispatcher`, `r5-chunk-size-by-model` from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/chunker-dispatcher.py`
+
+```python
+"""Skeleton for the `chunking-strategies` template `chunker-dispatcher.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "chunking-strategies"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/chunking-config.yaml`
+
+```yaml
+slug: chunking-strategies
+version: "1.1.0"
+owner: "role:person"
+approver: "role:person"
+produced_at: "2026-05-22T00:00:00Z"
+scope:
+  title: "<fill>"
+  context_link: "<https://...>"
+review:
+  cadence: quarterly
+  next_review_at: "2026-08-22"
+```
+
+### `templates/markdown-chunker.py`
+
+```python
+"""Skeleton for the `chunking-strategies` template `markdown-chunker.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "chunking-strategies"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/code-chunker.py`
+
+```python
+"""Skeleton for the `chunking-strategies` template `code-chunker.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "chunking-strategies"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```

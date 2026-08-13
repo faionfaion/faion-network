@@ -69,6 +69,8 @@
 | `templates/client-conventions-intake.json` | JSON Schema for the intake-report artefact. |
 | `templates/conventions-interview.md` | 8-dimension interview script. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,134 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree first checks whether an up-to-date CONVENTIONS doc exists (if yes &lt; 90 days, skip). Otherwise: are all 8 dimensions answered? is the contact signed off? are the stated conventions consistent with the observed-in-repo signals? Leaves emit `commit-record`, `block-missing-dimensions`, `block-no-signoff`, or `block-stated-observed-mismatch`. Each leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/client-conventions-intake.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/client-conventions-intake.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "client",
+    "engagement_start",
+    "contact_email",
+    "dimensions",
+    "mismatches",
+    "signoff",
+    "verdict",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^cci-[a-z0-9-]{6,}$"
+    },
+    "client": {
+      "type": "string",
+      "minLength": 1
+    },
+    "engagement_start": {
+      "type": "string",
+      "format": "date"
+    },
+    "contact_email": {
+      "type": "string",
+      "format": "email"
+    },
+    "dimensions": {
+      "type": "object",
+      "required": [
+        "branching",
+        "commit_style",
+        "code_review",
+        "naming",
+        "ci_gates",
+        "security",
+        "documentation",
+        "communication"
+      ],
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "stated",
+          "source"
+        ],
+        "properties": {
+          "stated": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "mismatches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "dimension",
+          "stated",
+          "observed",
+          "resolution"
+        ],
+        "properties": {
+          "dimension": {
+            "type": "string"
+          },
+          "stated": {
+            "type": "string"
+          },
+          "observed": {
+            "type": "string"
+          },
+          "resolution": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "signoff": {
+      "type": "object",
+      "required": [
+        "signed_by",
+        "signed_at"
+      ],
+      "properties": {
+        "signed_by": {
+          "type": "string",
+          "format": "email"
+        },
+        "signed_at": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    },
+    "verdict": {
+      "enum": [
+        "commit-record",
+        "block-missing-dimensions",
+        "block-no-signoff",
+        "block-stated-observed-mismatch"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

@@ -68,6 +68,8 @@
 | `templates/handover-pack.md` | Markdown skeleton for the pack: cover + decisions + open issues + runbooks + contacts + acceptance gate. |
 | `templates/acceptance-request.md` | Email/message template requesting the receiver's written acknowledgement. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,110 @@ See `content/06-decision-tree.xml`. The tree maps observable signals (input
 preconditions, source-of-truth access, named-consumer presence) onto a concrete
 verdict — apply the methodology, downgrade to draft, or skip — with each leaf
 referencing a rule id from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/handover-pack-template-outsource.json",
+  "type": "object",
+  "required": [
+    "pack_id",
+    "engagement_id",
+    "outgoing_specialist",
+    "receiving_owner",
+    "decisions_log",
+    "open_issues",
+    "runbooks",
+    "contacts",
+    "acceptance_gate"
+  ],
+  "properties": {
+    "pack_id": {
+      "type": "string"
+    },
+    "engagement_id": {
+      "type": "string"
+    },
+    "outgoing_specialist": {
+      "type": "object",
+      "required": [
+        "name",
+        "contact"
+      ]
+    },
+    "receiving_owner": {
+      "type": "object",
+      "required": [
+        "name",
+        "contact"
+      ]
+    },
+    "decisions_log": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "title",
+          "decided_on",
+          "source",
+          "rationale"
+        ]
+      }
+    },
+    "open_issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "title",
+          "owner_after_handover",
+          "expected_by"
+        ]
+      }
+    },
+    "runbooks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "last_executed_on"
+        ]
+      }
+    },
+    "contacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "role",
+          "last_contacted"
+        ]
+      }
+    },
+    "acceptance_gate": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "pending",
+            "acknowledged",
+            "rejected"
+          ]
+        }
+      }
+    }
+  }
+}
+```

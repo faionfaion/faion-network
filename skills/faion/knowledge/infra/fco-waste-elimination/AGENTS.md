@@ -63,8 +63,9 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
 | `templates/config-instance.json` | JSON instance of a filled config artefact |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,82 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/config-instance.json`
+
+```json
+{
+  "scope": {
+    "accounts": [
+      "aws:111122223333"
+    ],
+    "regions": [
+      "eu-central-1"
+    ],
+    "environments": [
+      "dev",
+      "staging",
+      "qa"
+    ]
+  },
+  "idle_audit": [
+    {
+      "resource_type": "ebs_volume",
+      "detector": "status==available AND age_days>7",
+      "action": "snapshot-then-delete"
+    },
+    {
+      "resource_type": "elastic_ip",
+      "detector": "association==null",
+      "action": "release"
+    },
+    {
+      "resource_type": "stopped_instance",
+      "detector": "state==stopped AND age_days>30",
+      "action": "terminate-with-approval"
+    }
+  ],
+  "schedules": [
+    {
+      "env": "dev",
+      "begin": "08:00",
+      "end": "20:00",
+      "weekdays": "mon-fri",
+      "timezone": "Europe/Warsaw"
+    },
+    {
+      "env": "staging",
+      "begin": "06:00",
+      "end": "22:00",
+      "weekdays": "mon-fri",
+      "timezone": "Europe/Warsaw"
+    }
+  ],
+  "exceptions_policy": {
+    "tag_key": "waste-exception",
+    "required_fields": [
+      "reason",
+      "owner",
+      "expiry"
+    ],
+    "expiry_days": 90
+  },
+  "automation": {
+    "scanner": "lambda:idle-hunter",
+    "frequency": "weekly",
+    "dry_run_default": true,
+    "notification_channel": "slack:#finops"
+  },
+  "kpi_targets": {
+    "waste_rate_max_pct": 25,
+    "untagged_max_pct": 5,
+    "non_prod_savings_min_pct": 70
+  },
+  "owner": "jane@team.io",
+  "last_reviewed": "2026-05-23"
+}
+```

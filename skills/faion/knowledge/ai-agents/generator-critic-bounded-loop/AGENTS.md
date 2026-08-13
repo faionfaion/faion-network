@@ -61,6 +61,8 @@
 | `templates/loop.py` | Reference loop with hard cap, delta exit, structured critic |
 | `templates/_smoke-test.json` | Minimum valid critic output for self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,108 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The root question asks whether quality lift on iteration 2 exceeds 2% on the eval. The tree then routes to rubric-only critic (cheap), correctness critic (same tier), or split mixed-critic (cheap rubric first, strong correctness only if rubric passes).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/critic_schema.py`
+
+```python
+"""Critic structured-output schema for bounded generator-critic loops.
+
+The critic MUST return all three fields. should_continue is the primary
+signal — score and feedback are diagnostics for the next generator turn.
+"""
+from pydantic import BaseModel, Field
+
+
+class CriticVerdict(BaseModel):
+    score: float = Field(
+        ...,
+        ge=0.0,
+        le=1.0,
+        description="Quality score in [0, 1]. Used for plateau detection across iterations.",
+    )
+    should_continue: bool = Field(
+        ...,
+        description=(
+            "True if another generator iteration is likely to improve the output. "
+            "False when the output meets the rubric or further work yields diminishing returns."
+        ),
+    )
+    feedback: str = Field(
+        ...,
+        max_length=600,
+        description=(
+            "Concise actionable feedback the next generator turn must address. "
+            "Empty when should_continue is False."
+        ),
+    )
+```
+
+### `templates/loop.py`
+
+```python
+"""Reference generator-critic loop with three exit conditions.
+
+Exit priority:
+  1. critic.should_continue is False
+  2. score delta below EPSILON for >=1 iteration after the first
+  3. iteration count reaches MAX_ITERS
+
+Caller supplies generate(prompt, feedback=None) -> str
+and critic(output, prompt) -> CriticVerdict.
+"""
+from typing import Callable
+
+from .critic_schema import CriticVerdict
+
+MAX_ITERS = 3
+EPSILON = 0.02
+
+
+def generator_critic_loop(
+    prompt: str,
+    generate: Callable[..., str],
+    critic: Callable[[str, str], CriticVerdict],
+    max_iters: int = MAX_ITERS,
+    epsilon: float = EPSILON,
+) -> str:
+    """Run the bounded loop. Returns the final output."""
+    output = generate(prompt)
+    prev_score: float | None = None
+
+    for i in range(max_iters):
+        verdict = critic(output, prompt)
+
+        # Exit 1: critic veto.
+        if not verdict.should_continue:
+            return output
+
+        # Exit 2: plateau (only after the first iteration).
+        if prev_score is not None and abs(verdict.score - prev_score) < epsilon:
+            return output
+
+        # Otherwise, regenerate with feedback.
+        output = generate(prompt, feedback=verdict.feedback)
+        prev_score = verdict.score
+
+    # Exit 3: hit the hard cap.
+    return output
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "smallest valid critic output for the validator",
+  "_consumes": "nothing",
+  "_produces": "example CriticVerdict matching content/02-output-contract.xml",
+  "_depends_on": "content/01-core-rules.xml",
+  "_token_budget_impact": "~50 tokens",
+  "score": 0.78,
+  "should_continue": true,
+  "feedback": "Second section missing the concrete example; please add one."
+}
+```

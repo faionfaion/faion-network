@@ -66,6 +66,8 @@
 | `templates/lift-report.md` | A/B lift report template. |
 | `templates/_smoke-test.json` | Minimum valid cot-config. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,134 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` selects the pattern: low baseline-failure → skip; high failure + branching paths → ToT; high failure + sequential subproblems → least-to-most; high failure + math/logic + budget OK → self-consistency.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/cot-config.schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/cot-config",
+  "_purpose": "Schema for the per-call-site advanced-CoT configuration.",
+  "_consumes": "operator-authored cot-config.json",
+  "_produces": "validator verdict",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "validator only",
+  "type": "object",
+  "required": [
+    "pattern",
+    "cost_guard"
+  ],
+  "properties": {
+    "pattern": {
+      "enum": [
+        "few-shot-cot",
+        "self-consistency",
+        "least-to-most",
+        "tree-of-thoughts"
+      ]
+    },
+    "few_shot_examples": {
+      "type": "array"
+    },
+    "self_consistency": {
+      "type": "object",
+      "properties": {
+        "n_samples": {
+          "type": "integer",
+          "minimum": 3,
+          "maximum": 11
+        },
+        "voting_rule": {
+          "enum": [
+            "majority",
+            "median",
+            "llm-judge"
+          ]
+        }
+      }
+    },
+    "tot": {
+      "type": "object",
+      "properties": {
+        "branches_per_node": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "max_depth": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 4
+        },
+        "value_fn": {
+          "type": "string"
+        }
+      }
+    },
+    "cost_guard": {
+      "type": "object",
+      "required": [
+        "max_usd_per_call"
+      ],
+      "properties": {
+        "max_usd_per_call": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    }
+  }
+}
+```
+
+### `templates/self-consistency-runner.py`
+
+```python
+"""
+from __future__ import annotations
+
+import concurrent.futures as cf
+from collections import Counter
+from typing import Callable
+
+
+def vote(answers: list[str], rule: str = "majority") -> str:
+    if rule == "majority":
+        return Counter(answers).most_common(1)[0][0]
+    if rule == "median":
+        nums = sorted(float(a) for a in answers)
+        return str(nums[len(nums) // 2])
+    raise ValueError(f"unsupported voting rule: {rule}")
+
+
+def self_consistency(prompt: str, n: int, llm_call: Callable[[str], str], parse_answer: Callable[[str], str], voting_rule: str = "majority") -> dict:
+    with cf.ThreadPoolExecutor(max_workers=min(n, 8)) as ex:
+        samples = list(ex.map(lambda _: llm_call(prompt), range(n)))
+    answers = [parse_answer(s) for s in samples]
+    final = vote(answers, voting_rule)
+    return {"final_answer": final, "votes": dict(Counter(answers)), "samples": samples}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "Minimum valid cot-config for self-consistency pattern.",
+  "_consumes": "validate-cot-techniques.py",
+  "_produces": "ok verdict",
+  "_depends_on": "templates/cot-config.schema.json",
+  "_token_budget_impact": "docs-only",
+  "pattern": "self-consistency",
+  "self_consistency": {
+    "n_samples": 5,
+    "voting_rule": "majority"
+  },
+  "cost_guard": {
+    "max_usd_per_call": 0.05
+  }
+}
+```

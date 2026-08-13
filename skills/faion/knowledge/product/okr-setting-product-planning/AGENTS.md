@@ -60,7 +60,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/okr-setting.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/okr-setting.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Related

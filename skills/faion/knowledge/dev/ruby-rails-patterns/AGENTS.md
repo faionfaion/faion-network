@@ -67,6 +67,8 @@
 | `templates/service_result.rb` | ServiceResult value object with .success / .failure factories + predicates |
 | `templates/spec-skeleton.rb` | RSpec skeleton for service isolation test (no rails_helper) |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,135 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/place_order_service.rb`
+
+```ruby
+module Orders
+  class PlaceOrderService
+    def initialize(user, gateway: PaymentGateway.instance, inventory: InventoryService.new, mailer: OrderMailer)
+      @user = user
+      @gateway = gateway
+      @inventory = inventory
+      @mailer = mailer
+    end
+
+    def call(params)
+      ActiveRecord::Base.transaction do
+        order = build_order(params)
+        return ServiceResult.failure(error: :invalid_params, details: order.errors) unless order.save
+
+        stock = @inventory.reserve(order.items)
+        return ServiceResult.failure(error: :insufficient_stock) unless stock.success?
+
+        charge = @gateway.charge(amount: order.total_cents, customer: @user)
+        return ServiceResult.failure(error: :payment_declined) unless charge.success?
+
+        order.update!(charge_id: charge.id, status: :paid)
+        @mailer.confirmation(order).deliver_later
+
+        ServiceResult.success(data: order)
+      end
+    rescue ActiveRecord::RecordInvalid => e
+      ServiceResult.failure(error: :validation_error, details: e.record.errors.full_messages)
+    end
+
+    private
+
+    def build_order(params)
+      @user.orders.build(params).tap do |order|
+        order.status = :pending
+        order.placed_at = Time.current
+      end
+    end
+  end
+end
+```
+
+### `templates/service_result.rb`
+
+```ruby
+class ServiceResult
+  attr_reader :data, :error, :details
+
+  def self.success(data: nil)
+    new(success: true, data: data)
+  end
+
+  def self.failure(error:, details: nil)
+    new(success: false, error: error, details: details)
+  end
+
+  def initialize(success:, data: nil, error: nil, details: nil)
+    @success = success
+    @data = data
+    @error = error
+    @details = details
+  end
+
+  def success?
+    @success
+  end
+
+  def failure?
+    !@success
+  end
+end
+```
+
+### `templates/spec-skeleton.rb`
+
+```ruby
+# frozen_string_literal: true
+
+require "spec_helper"
+require_relative "../../app/services/orders/place_order_service"
+require_relative "../../app/services/service_result"
+
+RSpec.describe Orders::PlaceOrderService do
+  let(:user) { instance_double("User", id: 1, orders: orders_relation) }
+  let(:orders_relation) { instance_double("Orders") }
+  let(:gateway) { instance_double("PaymentGateway") }
+  let(:inventory) { instance_double("InventoryService") }
+  let(:mailer) { class_double("OrderMailer") }
+
+  subject(:service) { described_class.new(user, gateway: gateway, inventory: inventory, mailer: mailer) }
+
+  it "returns success when all steps succeed" do
+    # Arrange
+    order = build_stubbed_order
+    allow(orders_relation).to receive(:build).and_return(order)
+    allow(order).to receive(:save).and_return(true)
+    allow(inventory).to receive(:reserve).and_return(double(success?: true))
+    allow(gateway).to receive(:charge).and_return(double(success?: true, id: "ch_1"))
+    allow(order).to receive(:update!)
+    allow(mailer).to receive_message_chain(:confirmation, :deliver_later)
+
+    # Act
+    result = service.call(items: [{ sku: "X", qty: 1 }])
+
+    # Assert
+    expect(result.success?).to be true
+    expect(result.data).to eq(order)
+  end
+
+  it "returns failure when inventory insufficient" do
+    order = build_stubbed_order
+    allow(orders_relation).to receive(:build).and_return(order)
+    allow(order).to receive(:save).and_return(true)
+    allow(inventory).to receive(:reserve).and_return(double(success?: false))
+
+    result = service.call(items: [])
+    expect(result.failure?).to be true
+    expect(result.error).to eq(:insufficient_stock)
+  end
+
+  def build_stubbed_order
+    instance_double("Order", id: 1, items: [], total_cents: 1000)
+  end
+end
+```

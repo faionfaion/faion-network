@@ -69,6 +69,8 @@
 | `templates/apperror.go` | Sentinel error declarations + helper constructors |
 | `templates/golangci.yml` | golangci-lint config with errorlint + wrapcheck |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,132 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps language version, layering depth, and edge-translator presence to a rule from `01-core-rules.xml`, telling the agent whether to enforce the convention or skip when the project already follows an incompatible model. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/apperror.go`
+
+```go
+// pkg/apperror/errors.go — Centralized error taxonomy for a Go service
+// All sentinel errors live here. Repositories wrap low-level errors into these.
+// Handlers map these to HTTP/gRPC codes at the transport edge only.
+
+package apperror
+
+import (
+	"errors"
+	"fmt"
+	"net/http"
+)
+
+// Sentinel errors — checked with errors.Is throughout the codebase.
+var (
+	ErrNotFound     = errors.New("resource not found")
+	ErrUnauthorized = errors.New("unauthorized")
+	ErrForbidden    = errors.New("forbidden")
+	ErrConflict     = errors.New("resource conflict")
+	ErrValidation   = errors.New("validation failed")
+	ErrInternal     = errors.New("internal error")
+)
+
+// AppError carries structured context for HTTP/gRPC edge mapping.
+type AppError struct {
+	Code    string            `json:"code"`
+	Message string            `json:"message"`
+	Status  int               `json:"-"`
+	Details map[string]string `json:"details,omitempty"`
+	Err     error             `json:"-"`
+}
+
+func (e *AppError) Error() string {
+	if e.Err != nil {
+		return fmt.Sprintf("%s: %v", e.Message, e.Err)
+	}
+	return e.Message
+}
+
+func (e *AppError) Unwrap() error { return e.Err }
+
+// Constructor functions — use at repository/service layer for typed context.
+
+func NotFound(resource, id string) *AppError {
+	return &AppError{
+		Code:    "NOT_FOUND",
+		Message: fmt.Sprintf("%s %s not found", resource, id),
+		Status:  http.StatusNotFound,
+		Err:     ErrNotFound,
+	}
+}
+
+func Validation(details map[string]string) *AppError {
+	return &AppError{
+		Code:    "VALIDATION_ERROR",
+		Message: "validation failed",
+		Status:  http.StatusBadRequest,
+		Details: details,
+		Err:     ErrValidation,
+	}
+}
+
+func Unauthorized(message string) *AppError {
+	return &AppError{
+		Code:    "UNAUTHORIZED",
+		Message: message,
+		Status:  http.StatusUnauthorized,
+		Err:     ErrUnauthorized,
+	}
+}
+
+func Internal(err error) *AppError {
+	return &AppError{
+		Code:    "INTERNAL_ERROR",
+		Message: "internal server error",
+		Status:  http.StatusInternalServerError,
+		Err:     err,
+	}
+}
+
+// AsAppError extracts *AppError from an error chain.
+func AsAppError(err error) (*AppError, bool) {
+	var appErr *AppError
+	return appErr, errors.As(err, &appErr)
+}
+```
+
+### `templates/golangci.yml`
+
+```yaml
+# .golangci.yml — Error-focused linter config
+# Run: golangci-lint run ./...
+
+linters:
+  enable:
+    - errcheck       # detects unchecked error returns
+    - errorlint      # detects %v instead of %w, == comparisons on wrapped errors
+    - wrapcheck      # forces wrapping at layer boundaries
+    - nilerr         # return nil after checking non-nil err
+    - staticcheck    # comprehensive static analysis
+    - govet          # standard go vet checks
+
+linters-settings:
+  errorlint:
+    errorf: true      # flag %v used instead of %w
+    asserts: true     # flag type assertions on errors without As
+    comparison: true  # flag == comparison on wrapped errors
+  wrapcheck:
+    ignoreSigs:
+      - .Errorf(
+      - errors.New(
+      - errors.Unwrap(
+      - errors.Join(
+      - .Wrap(
+      - .Wrapf(
+
+issues:
+  exclude-rules:
+    # Tests may use errors.New without wrapping
+    - path: _test\.go
+      linters: [wrapcheck]
+```

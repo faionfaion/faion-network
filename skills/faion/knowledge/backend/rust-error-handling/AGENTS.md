@@ -64,6 +64,8 @@
 |------|---------|
 | `templates/check-errors.sh` | CI script: fail PR if forbidden error patterns appear |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,31 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/check-errors.sh`
+
+```bash
+# CI script: fail PR if forbidden error-handling patterns appear.
+# Usage: bash scripts/check-errors.sh
+set -euo pipefail
+
+cargo clippy --all-targets --all-features -- \
+  -D clippy::unwrap_used \
+  -D clippy::expect_used \
+  -D clippy::panic \
+  -D clippy::todo \
+  -D clippy::unimplemented \
+  -W clippy::missing_errors_doc
+
+# Forbid Box<dyn Error> in public function signatures
+if grep -rn 'pub\s\+fn\b.*Box<dyn\s\+\(std::error::\)\?Error' src/; then
+  echo "ERROR: Box<dyn Error> in public API — use a typed error enum"
+  exit 1
+fi
+
+echo "Error handling checks passed."
+```

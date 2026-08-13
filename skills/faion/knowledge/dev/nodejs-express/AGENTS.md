@@ -66,6 +66,8 @@
 | `templates/error-middleware.ts` | Centralised error handler skeleton |
 | `templates/graceful-shutdown.ts` | SIGINT/SIGTERM shutdown helper |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,93 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches: auth (none / token / session) → middleware. Expected scale (low &lt;1k rps / medium / high) → consider Fastify above 5k rps. Multi-tenant? → context propagation via AsyncLocalStorage.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/express-app.ts`
+
+```typescript
+import express, { type NextFunction, type Request, type Response } from 'express'
+import helmet from 'helmet'
+import cors from 'cors'
+import compression from 'compression'
+import pinoHttp from 'pino-http'
+import rateLimit from 'express-rate-limit'
+
+export function createApp() {
+  const app = express()
+  app.use(helmet())
+  app.use(cors())
+  app.use(compression())
+  app.use(pinoHttp())
+  app.use(rateLimit({ windowMs: 60_000, max: 120 }))
+  app.use(express.json({ limit: '1mb' }))
+
+  app.get('/health', (_req, res) => res.json({ ok: true }))
+
+  // routes go here
+
+  // Central error handler MUST be last:
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    res.status(err?.status ?? 500).json({ error: err?.code ?? 'internal' })
+  })
+
+  return app
+}
+```
+
+### `templates/error-middleware.ts`
+
+```typescript
+import type { ErrorRequestHandler } from 'express'
+
+const STATUS_MAP: Record<string, number> = {
+  ValidationError: 400,
+  AuthError: 401,
+  ForbiddenError: 403,
+  NotFoundError: 404,
+  ConflictError: 409,
+  RateLimitError: 429,
+}
+
+export const errorMiddleware: ErrorRequestHandler = (err, req, res, _next) => {
+  const status = STATUS_MAP[err?.name] ?? err?.status ?? 500
+  const code = err?.code ?? err?.name ?? 'internal'
+  req.log?.error({ err, status, code }, 'request failed')
+  res.status(status).json({ error: code, message: status >= 500 ? 'internal' : err?.message })
+}
+```
+
+### `templates/graceful-shutdown.ts`
+
+```typescript
+import type { Server } from 'node:http'
+
+export function wireGracefulShutdown(server: Server, opts: {
+  dbClose?: () => Promise<void>
+  drainTimeoutMs?: number
+} = {}) {
+  const drainTimeoutMs = opts.drainTimeoutMs ?? 30_000
+  let shuttingDown = false
+
+  async function shutdown(signal: string) {
+    if (shuttingDown) return
+    shuttingDown = true
+    console.log(`[shutdown] ${signal} received; draining`)
+    const t = setTimeout(() => {
+      console.error('[shutdown] drain timeout exceeded; force exit')
+      process.exit(1)
+    }, drainTimeoutMs)
+    server.close(async () => {
+      try { await opts.dbClose?.() } catch (e) { console.error(e) }
+      clearTimeout(t)
+      process.exit(0)
+    })
+  }
+
+  process.on('SIGINT', () => shutdown('SIGINT'))
+  process.on('SIGTERM', () => shutdown('SIGTERM'))
+}
+```

@@ -64,6 +64,8 @@
 | `templates/ai-feature.py` | Build-vs-buy decision dataclass + recommendation logic. |
 | `templates/prompt-layer-map.txt` | Prompt for the layer-map draft. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,63 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` first asks whether AI is the delivery mechanism. If just a bolt-on feature → route to traditional PM. Otherwise check pinned model + risk tier classified + build-vs-buy scored. If any are missing → block. Otherwise → emit the roadmap line.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ai-feature.py`
+
+```python
+"""AIFeature build-vs-buy decision model.
+
+Input: feature attributes (differentiator, data advantage, speed priority).
+Output: build/buy recommendation with 12-month review date.
+"""
+from dataclasses import dataclass, field
+from datetime import date, timedelta
+
+
+@dataclass
+class AIFeature:
+    name: str
+    is_differentiator: bool
+    has_data_advantage: bool
+    speed_priority: bool
+    review_date: date = field(default=None)
+
+    def __post_init__(self):
+        if self.review_date is None:
+            self.review_date = date.today() + timedelta(days=365)
+
+    def decision(self) -> str:
+        if self.is_differentiator and self.has_data_advantage:
+            return "BUILD"
+        if self.is_differentiator and not self.has_data_advantage:
+            return "BUY (now) -> BUILD (when data matures)"
+        if self.speed_priority and not self.is_differentiator:
+            return "BUY"
+        return "BUY"
+```
+
+### `templates/prompt-layer-map.txt`
+
+```text
+You are a product manager creating an AI-native product strategy.
+
+Product description: {product_description}
+Target users: {target_users}
+Current AI integration level: {current_level}  # none / partial / core
+
+For each layer below, identify the top AI integration opportunity, rate it
+(Impact 1-5, Effort 1-5), and recommend Build or Buy:
+
+Layers: Research, Design, Development, Testing, Analytics, Support
+
+Then apply the EU AI Act framework: classify each AI component by risk tier
+(unacceptable / high / limited / minimal) and list the key obligations.
+
+Output format:
+Layer | Opportunity | Impact | Effort | Build/Buy
+EU Component | Risk Tier | Key Obligations
+```

@@ -64,6 +64,8 @@
 | `templates/healer-ci.yml` | CI workflow that emits heals to a diff file and gates next run on human merge. |
 | `templates/healer-policy.json` | Healer policy with match dimensions, blocklist, scope, rollback window. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,84 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/healer-ci.yml`
+
+```yaml
+# Drop-in GitHub Actions snippet for self-healing locator audit gate.
+name: e2e-with-healer
+
+on: pull_request
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm playwright install --with-deps
+      - name: Run E2E with healer
+        run: pnpm playwright test --reporter=list
+        # healer writes healed-selectors.diff and exits 1 on heal
+      - name: Check for unapproved heals
+        if: failure()
+        run: |
+          if [ -s healed-selectors.diff ]; then
+            echo "::error::Healer produced selector changes; review healed-selectors.diff"
+            cat healed-selectors.diff
+            exit 1
+          fi
+
+  healer-apply:
+    needs: e2e
+    if: contains(github.event.head_commit.message, 'healer:approved')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: git apply healed-selectors.diff
+      - run: rm healed-selectors.diff
+      - name: Open follow-up PR
+        run: gh pr create --title "chore(e2e): apply approved healer diff" --body "Automated."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### `templates/healer-policy.json`
+
+```json
+{
+  "$comment": "Self-healing locator policy. Read by the healer before every heal attempt.",
+  "match": {
+    "require_role_equality": true,
+    "require_accessible_name_match": true,
+    "name_match_kind": "regex",
+    "name_match_flags": "i",
+    "case_insensitive_role": true,
+    "allow_class_only_heal": false,
+    "allow_xpath_index_heal": false,
+    "allow_text_only_heal": false
+  },
+  "exclude_paths": [
+    "tests/e2e/payments/**",
+    "tests/e2e/auth/**",
+    "tests/e2e/account-deletion/**",
+    "tests/e2e/admin/role-elevation/**"
+  ],
+  "diff": {
+    "path": "healed-selectors.diff",
+    "exit_after_write": 1,
+    "approval_marker": "healer:approved",
+    "approval_marker_in": "commit-message"
+  },
+  "limits": {
+    "max_heals_per_run": 25,
+    "max_files_touched_per_run": 10
+  }
+}
+```

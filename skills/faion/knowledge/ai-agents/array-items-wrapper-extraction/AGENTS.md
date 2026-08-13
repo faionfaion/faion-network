@@ -62,6 +62,8 @@
 | `templates/output.example.json` | Filled example. |
 | `templates/items_wrapper.py` | Python (Pydantic) skeleton for the envelope. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,128 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Asks: (1) is cardinality variable? (2) is strict-mode required? (3) does a streaming UI need partial items? Leaves point to "wrap", "use streaming top-level", or "fixed-length tuple".
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/array-items-wrapper-extraction/output.json",
+  "title": "Array Items Wrapper Extraction Output",
+  "description": "purpose=schema; consumes=brief+context; produces=artefact; depends-on=01-core-rules.xml; token-budget-impact=low",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "version",
+    "version_stamp",
+    "produced_at",
+    "rationale",
+    "inputs_used"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "version_stamp": {
+      "type": "string"
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fields": {
+      "type": "object"
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 20
+    },
+    "inputs_used": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    }
+  }
+}
+```
+
+### `templates/output.example.json`
+
+```json
+{
+  "artefact_id": "array-items-wrapper-extraction-example-001",
+  "owner": "alex@faion.net",
+  "version": "1.0.0",
+  "version_stamp": "array-items-wrapper-extraction@1.0.0",
+  "produced_at": "2026-05-22T12:00:00Z",
+  "fields": {
+    "placeholder_field": "filled-by-author"
+  },
+  "rationale": "Example output for Array Items Wrapper Extraction; references at least one named input.",
+  "inputs_used": [
+    "docs/brief.md"
+  ]
+}
+```
+
+### `templates/items_wrapper.py`
+
+```python
+"""Batch-extraction schema with the items wrapper.
+
+The wrapper is mandatory under OpenAI/Azure strict mode (which forbids
+top-level arrays) and recommended on every other provider for consistent
+zero/one/many parsing.
+"""
+
+from pydantic import BaseModel, Field
+
+
+class Entity(BaseModel):
+    """One extracted entity. Replace with your domain shape."""
+
+    name: str = Field(description="Surface form of the entity as it appears in the source.")
+    kind: str = Field(description="Entity kind, e.g. 'person', 'org', 'product'.")
+    span_start: int = Field(ge=0, description="Inclusive character offset in the source.")
+    span_end: int = Field(ge=0, description="Exclusive character offset in the source.")
+
+
+class EntityList(BaseModel):
+    """Top-level extraction result.
+
+    items is the actual list; total_found and truncated expose diagnostics
+    the consumer can use without recomputing.
+    """
+
+    model_config = {"extra": "forbid"}
+
+    total_found: int = Field(
+        ge=0,
+        description="Count of entities found. 0 if none. Must equal len(items) unless truncated.",
+    )
+    truncated: bool = Field(
+        description="True if more entities exist beyond the per-call limit and were dropped.",
+    )
+    items: list[Entity] = Field(
+        description="Entities in order of appearance. May be empty.",
+    )
+
+    def is_empty(self) -> bool:
+        return self.total_found == 0
+```

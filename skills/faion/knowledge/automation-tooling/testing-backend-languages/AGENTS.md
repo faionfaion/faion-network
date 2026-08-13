@@ -71,6 +71,8 @@
 | `templates/order_test.rs` | Rust async unit test using tokio::test |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,127 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/OrderService.spec.rb`
+
+```ruby
+require 'rails_helper'
+
+RSpec.describe OrderService, type: :service do
+  let(:customer) { create(:customer) }
+  let!(:order) { create(:order, customer: customer) }
+
+  describe '#charge' do
+    it 'marks the order as charged on success' do
+      result = described_class.new.charge(order)
+      expect(result).to be_success
+      expect(order.reload.status).to eq('charged')
+    end
+  end
+end
+```
+
+### `templates/OrderTest.php`
+
+```php
+<?php
+
+use App\Models\Order;
+use function Pest\Laravel\postJson;
+
+uses(\Illuminate\Foundation\Testing\RefreshDatabase::class);
+
+it('creates an order via the API', function () {
+    postJson('/api/orders', ['amount' => 1000])
+        ->assertCreated()
+        ->assertJsonPath('data.amount', 1000);
+    expect(Order::count())->toBe(1);
+});
+```
+
+### `templates/OrderServiceTest.java`
+
+```java
+package com.example.orders;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class OrderServiceTest {
+    @Mock OrderRepository repo;
+    @InjectMocks OrderService svc;
+
+    @Test
+    void charge_persists_charged_status() {
+        Order o = Order.builder().amount(1000).build();
+        when(repo.save(o)).thenReturn(o);
+        Order result = svc.charge(o);
+        assertThat(result.getStatus()).isEqualTo("charged");
+    }
+}
+```
+
+### `templates/OrderServiceTests.cs`
+
+```csharp
+using Moq;
+using FluentAssertions;
+using Xunit;
+
+public class OrderServiceTests
+{
+    [Fact]
+    public async Task Charge_Marks_Order_As_Charged()
+    {
+        var repo = new Mock<IOrderRepository>();
+        var order = new Order { Amount = 1000 };
+        repo.Setup(r => r.SaveAsync(order)).ReturnsAsync(order);
+        var svc = new OrderService(repo.Object);
+
+        var result = await svc.ChargeAsync(order);
+
+        result.Status.Should().Be("charged");
+    }
+}
+```
+
+### `templates/order_test.rs`
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn charge_marks_order_as_charged() {
+        let pool = test_pool().await;
+        let order = create_order(&pool, 1000).await.unwrap();
+        let result = charge_order(&pool, &order.id).await.unwrap();
+        assert_eq!(result.status, "charged");
+    }
+}
+```
+
+### `templates/artefact.json`
+
+```json
+{
+  "language": "spring",
+  "runner": "junit5",
+  "scope_discipline_ok": true,
+  "mock_shallowness_ok": true,
+  "ci_lt_10min": true,
+  "spring_uses_slices": true
+}
+```

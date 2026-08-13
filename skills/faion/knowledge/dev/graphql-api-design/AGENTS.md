@@ -70,6 +70,8 @@
 | `templates/schema.graphql` | Reference SDL with Payload + userErrors + @auth directives |
 | `templates/dataloader.py` | DataLoader factory for Python servers (Ariadne/Strawberry) |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,133 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps schema complexity, authorization needs, and mutation shape to a rule from `01-core-rules.xml`, telling the agent whether to apply the design rules or skip when the schema is too small for the conventions. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/schema.graphql`
+
+```graphql
+scalar DateTime
+scalar UUID
+scalar Email
+
+interface Node { id: ID! }
+interface Timestamped { createdAt: DateTime!  updatedAt: DateTime! }
+
+enum UserRole { ADMIN  MODERATOR  MEMBER }
+enum OrderStatus { DRAFT  PLACED  PAID  SHIPPED  DELIVERED  CANCELLED }
+
+type User implements Node & Timestamped {
+  id: ID!
+  email: Email!
+  name: String!
+  role: UserRole!
+  isActive: Boolean!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+  orders(first: Int, after: String, status: OrderStatus): OrderConnection!
+}
+
+type Order implements Node & Timestamped {
+  id: ID!
+  status: OrderStatus!
+  items: [OrderItem!]!
+  totalAmount: Float!
+  createdAt: DateTime!
+  updatedAt: DateTime!
+}
+
+type OrderItem {
+  id: ID!
+  quantity: Int!
+  unitPrice: Float!
+  totalPrice: Float!
+}
+
+type OrderConnection {
+  edges: [OrderEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type OrderEdge { node: Order!  cursor: String! }
+
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
+
+input CreateUserInput { email: Email!  name: String!  role: UserRole }
+input UpdateUserInput { email: Email  name: String  role: UserRole }
+
+type CreateUserPayload { user: User  errors: [Error!]! }
+type UpdateUserPayload { user: User  errors: [Error!]! }
+type Error { field: String  message: String!  code: String! }
+
+type Query {
+  user(id: ID!): User
+  users(first: Int, after: String): OrderConnection!
+  me: User
+}
+
+type Mutation {
+  createUser(input: CreateUserInput!): CreateUserPayload!
+  updateUser(id: ID!, input: UpdateUserInput!): UpdateUserPayload!
+  deleteUser(id: ID!): Boolean!
+}
+
+type Subscription {
+  orderStatusChanged(orderId: ID!): Order!
+}
+```
+
+### `templates/dataloader.py`
+
+```python
+"""
+Strawberry DataLoader batch functions.
+Input: list of keys (UUIDs)
+Output: list of entities in same order as keys (None for missing)
+"""
+from strawberry.dataloader import DataLoader
+from typing import List
+from uuid import UUID
+
+
+class OrganizationLoader(DataLoader[UUID, "Organization"]):
+    async def batch_load_fn(self, keys: List[UUID]) -> List["Organization"]:
+        organizations = await self.repository.find_by_ids(keys)
+        org_map = {org.id: org for org in organizations}
+        # CRITICAL: return in same order as keys; None for missing
+        return [org_map.get(key) for key in keys]
+
+
+class UserLoader(DataLoader[UUID, "User"]):
+    async def batch_load_fn(self, keys: List[UUID]) -> List["User"]:
+        users = await self.repository.find_by_ids(keys)
+        user_map = {u.id: u for u in users}
+        return [user_map.get(key) for key in keys]
+
+
+# 1:N grouping: orders keyed by user_id
+class OrdersByUserLoader(DataLoader[UUID, List["Order"]]):
+    async def batch_load_fn(self, user_ids: List[UUID]) -> List[List["Order"]]:
+        orders = await self.repository.find_by_user_ids(user_ids)
+        grouped: dict[UUID, list] = {uid: [] for uid in user_ids}
+        for order in orders:
+            grouped[order.user_id].append(order)
+        return [grouped[uid] for uid in user_ids]
+
+
+# Context factory — call once per request, never at module level
+def create_loaders(repository_factory) -> dict:
+    return {
+        "organization": OrganizationLoader(repository_factory.organization),
+        "user": UserLoader(repository_factory.user),
+        "orders_by_user": OrdersByUserLoader(repository_factory.order),
+    }
+```

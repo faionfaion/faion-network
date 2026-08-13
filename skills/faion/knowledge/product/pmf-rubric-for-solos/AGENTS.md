@@ -66,6 +66,8 @@
 | `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
 | `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,43 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/artefact-instance.json`
+
+```json
+{
+  "rubric_id": "pmf-jane-2026q2",
+  "owner": "jane@indie.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "dimensions": [
+    "very_disappointed_pct",
+    "w12_retention",
+    "organic_pull",
+    "willingness_to_pay",
+    "founder_confidence",
+    "runway_fit"
+  ],
+  "scores": {
+    "very_disappointed_pct": 38,
+    "w12_retention": 0.22,
+    "organic_pull": 0.18,
+    "willingness_to_pay": 0.11,
+    "founder_confidence": 3,
+    "runway_fit": 4,
+    "evidence": "Tally survey 2026-05-22 + BI cohort 2026-05-22"
+  },
+  "verdict": "near-pmf",
+  "thresholds": {
+    "very_disappointed_pct": 40,
+    "w12_retention": 0.25,
+    "organic_pull": 0.2,
+    "willingness_to_pay": 0.1
+  },
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}
+```

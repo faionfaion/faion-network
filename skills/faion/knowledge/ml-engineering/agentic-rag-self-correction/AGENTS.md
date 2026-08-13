@@ -68,6 +68,8 @@
 | `templates/self_correction_loop.py` | SelfCorrectionLoop class. |
 | `templates/self-correction-config.json` | Config skeleton. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,70 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on baseline hallucination rate + verifier availability + latency budget. Walk before wiring.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/self_correction_loop.py`
+
+```python
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Callable
+
+
+@dataclass
+class SelfCorrectionConfig:
+    max_corrections: int = 2
+    generator_model: str = "opus"
+    verifier_model: str = "sonnet"
+    max_ungrounded_claims: int = 2
+    audit_trace: bool = True
+
+
+@dataclass
+class SelfCorrectionLoop:
+    config: SelfCorrectionConfig
+    generate: Callable[[str, list[dict], list[str] | None], str]
+    verify: Callable[[str, list[dict]], dict]  # returns {"ungrounded": int, "feedback": list[str]}
+    audit_log: Callable[[dict], None]
+
+    def __post_init__(self) -> None:
+        # rule r1: distinct verifier
+        if self.config.verifier_model == self.config.generator_model:
+            raise ValueError("verifier_model must differ from generator_model (rule r1)")
+        # rule r2: cap + audit
+        if self.config.max_corrections > 3:
+            raise ValueError("max_corrections cap is 3 (rule r2)")
+        if not self.config.audit_trace:
+            raise ValueError("audit_trace must be true (rule r2)")
+
+    def run(self, query: str, chunks: list[dict]) -> dict[str, Any]:
+        trace: list[dict] = []
+        feedback: list[str] | None = None
+        for i in range(self.config.max_corrections + 1):
+            answer = self.generate(query, chunks, feedback)
+            verdict = self.verify(answer, chunks)
+            trace.append({"iter": i, "answer": answer, "verdict": verdict})
+            if verdict["ungrounded"] <= self.config.max_ungrounded_claims:
+                self.audit_log({"query": query, "trace": trace, "result": "verified"})
+                return {"answer": answer, "needs_human_review": False, "trace": trace}
+            feedback = verdict.get("feedback", [])
+        # cap reached
+        self.audit_log({"query": query, "trace": trace, "result": "escalated"})
+        return {"answer": None, "needs_human_review": True, "trace": trace}
+```
+
+### `templates/self-correction-config.json`
+
+```json
+{
+  "max_corrections": 2,
+  "generator_model": "opus",
+  "verifier_model": "sonnet",
+  "max_ungrounded_claims": 2,
+  "audit_trace": true
+}
+```

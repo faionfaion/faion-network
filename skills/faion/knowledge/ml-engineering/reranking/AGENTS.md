@@ -69,6 +69,8 @@
 | `templates/reranker.schema.yaml` | Schema for reranker.yaml |
 | `templates/_smoke-test.yaml` | Minimum-viable reranker spec |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,111 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes by latency budget + privacy requirement + cost cap to {Cohere Rerank, Voyage Rerank, BGE local, FlashRank batch}.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rerank-pipeline.py`
+
+```python
+"""Two-stage rerank: retrieve top-N first-stage candidates, rerank to top-K."""
+from __future__ import annotations
+
+import os
+from typing import Callable
+
+import cohere
+
+
+class RerankProviderError(RuntimeError):
+    pass
+
+
+def cohere_rerank(query: str, candidates: list[dict], top_k: int, model: str) -> list[dict]:
+    client = cohere.Client(api_key=os.environ["COHERE_API_KEY"])
+    docs = [c["content"] for c in candidates]
+    response = client.rerank(
+        model=model,
+        query=query,
+        documents=docs,
+        top_n=top_k,
+    )
+    return [
+        {**candidates[r.index], "rerank_score": r.relevance_score}
+        for r in response.results
+    ]
+
+
+def bge_local_rerank(query: str, candidates: list[dict], top_k: int, model: str) -> list[dict]:
+    from sentence_transformers import CrossEncoder
+    ce = CrossEncoder(model)
+    pairs = [(query, c["content"]) for c in candidates]
+    scores = ce.predict(pairs)
+    ranked = sorted(
+        ({"score": s, **c} for s, c in zip(scores, candidates)),
+        key=lambda x: -x["score"],
+    )[:top_k]
+    return ranked
+
+
+def rerank_with_fallback(
+    query: str,
+    candidates: list[dict],
+    top_k: int = 5,
+    primary: Callable = cohere_rerank,
+    primary_kwargs: dict | None = None,
+    fallback: Callable = bge_local_rerank,
+    fallback_kwargs: dict | None = None,
+) -> tuple[list[dict], bool]:
+    """Return (top-k reranked, degraded_flag)."""
+    primary_kwargs = primary_kwargs or {"model": "rerank-multilingual-v3.0"}
+    fallback_kwargs = fallback_kwargs or {"model": "BAAI/bge-reranker-base"}
+    try:
+        return primary(query, candidates, top_k, **primary_kwargs), False
+    except Exception:  # noqa: BLE001
+        return fallback(query, candidates, top_k, **fallback_kwargs), True
+```
+
+### `templates/reranker.schema.yaml`
+
+```yaml
+$schema: "http://json-schema.org/draft-07/schema#"
+type: object
+required: [provider, model, top_n_input, top_k_output, latency_budget_ms, fallback, eval_evidence]
+properties:
+  provider: { type: string, enum: [cohere, voyage, jina, bge, flashrank, none] }
+  model: { type: string, minLength: 3 }
+  top_n_input: { type: integer, minimum: 10, maximum: 1000 }
+  top_k_output: { type: integer, minimum: 1, maximum: 20 }
+  latency_budget_ms: { type: integer, minimum: 50, maximum: 2000 }
+  fallback:
+    type: object
+    required: [strategy]
+    properties:
+      strategy: { type: string, enum: [local-bge, return-first-stage-degraded, hard-fail] }
+      model: { type: string }
+  eval_evidence:
+    type: object
+    required: [set_path, sample_size, precision_lift]
+    properties:
+      sample_size: { type: integer, minimum: 50 }
+      precision_lift: { type: number, minimum: 0 }
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+provider: cohere
+model: rerank-multilingual-v3.0
+top_n_input: 20
+top_k_output: 5
+latency_budget_ms: 350
+fallback:
+  strategy: local-bge
+  model: BAAI/bge-reranker-base
+eval_evidence:
+  set_path: evals/rerank-support-kb.jsonl
+  sample_size: 84
+  precision_lift: 0.21
+```

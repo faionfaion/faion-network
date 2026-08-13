@@ -69,6 +69,8 @@
 | `templates/placement-exclusions.csv` | Standard placement exclusion list seed. |
 | `templates/display-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,46 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/placement-exclusions.csv`
+
+```csv
+exclusion_type,value
+category,games
+category,parked_domains
+placement,*example-low-quality.com
+```
+
+### `templates/display-spec.json`
+
+```json
+{
+  "audiences": [
+    "in_market",
+    "affinity",
+    "remarketing"
+  ],
+  "placement_exclusions": {
+    "mobile_apps_excluded": true,
+    "low_quality_list_applied": true
+  },
+  "creative_set": [
+    "responsive_display",
+    "native",
+    "image_300x250",
+    "image_728x90"
+  ],
+  "frequency_cap": {
+    "per_day": 5,
+    "per_week": 15
+  },
+  "kpi": {
+    "cpa_ceiling": 50,
+    "cpm_floor": 4
+  }
+}
+```

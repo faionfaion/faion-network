@@ -65,6 +65,8 @@
 | `templates/audience-to-paid-conversion-loop.json` | LoopRunArtefact JSON skeleton. |
 | `templates/audience-to-paid-conversion-loop.md` | Loop log + decision rationale. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,24 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/audience-to-paid-conversion-loop.json`
+
+```json
+{
+  "artefact_id": "loop-<period>",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "loop_id": "LOOP-<id>",
+  "cohort_size": 0,
+  "window_days": 7,
+  "variant": "<single-variable change>",
+  "conversion_rate": "<%>",
+  "decision": "log-only",
+  "owner": "<@handle>"
+}
+```

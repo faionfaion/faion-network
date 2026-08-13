@@ -67,6 +67,8 @@
 | `templates/useDebounce.ts` | Canonical custom hook with explicit return interface and cleanup. |
 | `templates/useFetch.ts` | useEffect + AbortController + Result type example. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,122 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree walks every state slice through ownership (server / form / global UI / local) and, when local, through shape (single value / multi-field interrelated / boolean flag) — each leaf binds the slice to a concrete hook plus the rule id explaining the choice. Run it once per slice before emitting the spec.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/hooks-spec.json`
+
+```json
+{
+  "_purpose": "Reference hooks-usage spec output for one React feature module.",
+  "_consumes": "Feature brief + state slices + external store inventory.",
+  "_produces": "JSON consumed by a codegen agent or a PR reviewer.",
+  "_depends-on": "content/02-output-contract.xml schema.",
+  "_token-budget-impact": "~150 tokens.",
+  "artefact_id": "search-box-hooks",
+  "owner": "ruslan@faion.net",
+  "feature_name": "search-box",
+  "react_version": "^19.0.0",
+  "state_slices": [
+    {
+      "name": "query",
+      "owner_hook": "useState",
+      "type": "string",
+      "rule_ref": "r4-functional-updater"
+    },
+    {
+      "name": "debouncedQuery",
+      "owner_hook": "useState",
+      "type": "string",
+      "rule_ref": "r2-effect-cleanup"
+    },
+    {
+      "name": "results",
+      "owner_hook": "tanstack-query",
+      "type": "SearchResult[]"
+    }
+  ],
+  "effects": [
+    {
+      "name": "debounce-query",
+      "deps": [
+        "query"
+      ],
+      "cleanup_present": true,
+      "uses_abort_controller": false
+    },
+    {
+      "name": "fetch-search-results",
+      "deps": [
+        "debouncedQuery"
+      ],
+      "cleanup_present": true,
+      "uses_abort_controller": true
+    }
+  ],
+  "memoization": [],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```
+
+### `templates/useDebounce.ts`
+
+```typescript
+import { useEffect, useState } from 'react';
+
+export function useDebounce<T>(value: T, delayMs: number): T {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedValue(value), delayMs);
+    // Mandatory cleanup: cancels the previous timer when value or delayMs changes,
+    // or when the component unmounts. Required by rule r2-effect-cleanup.
+    return () => clearTimeout(timer);
+  }, [value, delayMs]);
+
+  return debouncedValue;
+}
+```
+
+### `templates/useFetch.ts`
+
+```typescript
+import { useEffect, useState } from 'react';
+
+type FetchState<T> =
+  | { state: 'idle' }
+  | { state: 'loading' }
+  | { state: 'ok'; data: T }
+  | { state: 'error'; error: Error };
+
+export function useFetch<T>(url: string): FetchState<T> {
+  const [result, setResult] = useState<FetchState<T>>({ state: 'idle' });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setResult({ state: 'loading' });
+
+    async function run(): Promise<void> {
+      try {
+        const res = await fetch(url, { signal: controller.signal });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as T;
+        setResult({ state: 'ok', data });
+      } catch (err) {
+        if (err instanceof Error && err.name !== 'AbortError') {
+          setResult({ state: 'error', error: err });
+        }
+      }
+    }
+
+    void run();
+    // Cancels the in-flight fetch on unmount or url change. Required by r2 + r3.
+    return () => controller.abort();
+  }, [url]);
+
+  return result;
+}
+```

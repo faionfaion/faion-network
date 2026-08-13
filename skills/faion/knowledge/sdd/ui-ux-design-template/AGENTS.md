@@ -39,6 +39,8 @@
 |------|---------|
 | `templates/ui-ux-design.md.tmpl` | Fillable Markdown template with the six sections and audit-row stubs. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[readiness-checklist]] — item 7 enforces this audit.
@@ -48,3 +50,58 @@
 ## Decision tree
 
 If the feature changes any rendered output → produce ui-ux-design.md. If not → skip and note "no UI impact" in readiness.md item 7.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ui-ux-design.md.tmpl`
+
+```markdown
+# ui-ux-design: <feature name>
+
+## Intent
+
+<One sentence: what is the user trying to accomplish on this surface?>
+
+## Layout
+
+<Coarse element placement. Screenshot, wireframe, or plain prose all OK.>
+
+## States
+
+| State    | Visible affordance | Notes |
+|----------|--------------------|-------|
+| empty    |                    |       |
+| loading  |                    |       |
+| error    |                    |       |
+| success  |                    |       |
+| disabled |                    |       |
+
+## Nielsen audit
+
+| Heuristic                       | Finding | Fix-or-OK |
+|---------------------------------|---------|-----------|
+| N1 visibility of system status  |         |           |
+| N3 user control & freedom       |         |           |
+| N4 consistency & standards      |         |           |
+| N5 error prevention             |         |           |
+| N6 recognition over recall      |         |           |
+
+## Norman audit
+
+| Principle  | Finding | Fix-or-OK |
+|------------|---------|-----------|
+| affordance |         |           |
+| feedback   |         |           |
+
+## Copy & microcopy
+
+| Element          | String |
+|------------------|--------|
+| primary button   |        |
+| secondary button |        |
+| empty-state text |        |
+| error message    |        |
+| success message  |        |
+```

@@ -66,7 +66,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/prototyping.json` | JSON skeleton conforming to the output-contract schema. |
 | `templates/prototyping.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Related

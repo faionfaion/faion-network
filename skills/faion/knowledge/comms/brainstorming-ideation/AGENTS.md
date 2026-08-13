@@ -70,6 +70,8 @@
 | `templates/prompt-reverse.txt` | Persona-conditioned Reverse-brainstorm prompt |
 | `templates/semantic-dedup.py` | Embedding-based dedup utility with cosine threshold |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,65 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on persona-count, raw_count, and cluster band; each gate failure routes to a specific repair rule before continuing to scoring.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-diverge.txt`
+
+```text
+Generate <N> distinct ideas for: <PROBLEM_STATEMENT>.
+Constraints: <CONSTRAINTS — e.g., "must be implementable by a 2-person team in one sprint">
+Perspectives to include: skeptic, optimist, first-time user, engineer (inject at least one idea from each).
+Format: numbered list only. One idea per line. No explanations. No duplicates.
+Do NOT evaluate, rank, or justify any idea in this pass.
+```
+
+### `templates/prompt-reverse.txt`
+
+```text
+PASS 1 — Inversion:
+List <N> specific ways to make <PROBLEM_AREA> as bad as possible.
+Be specific. Format: numbered list only. No explanations.
+
+PASS 2 — Reversal:
+For each item in the inversion list, write the corresponding positive mitigation.
+Format: two-column numbered list: [negative idea] → [reversed solution].
+Run as two separate calls. Do not combine passes.
+```
+
+### `templates/semantic-dedup.py`
+
+```python
+"""
+Semantic deduplication for brainstorming idea lists.
+Removes near-duplicate ideas using sentence-transformers cosine similarity.
+
+Install: pip install sentence-transformers
+Usage:
+  ideas = ["Automate onboarding email", "Send automated onboarding emails", "Build a kanban board"]
+  unique = semantic_dedup(ideas, threshold=0.82)
+"""
+
+from sentence_transformers import SentenceTransformer, util
+
+
+def semantic_dedup(ideas: list[str], threshold: float = 0.82) -> list[str]:
+    model = SentenceTransformer("all-MiniLM-L6-v2")
+    embeddings = model.encode(ideas, convert_to_tensor=True)
+    keep: list[str] = []
+    dropped: set[int] = set()
+
+    for i in range(len(ideas)):
+        if i in dropped:
+            continue
+        keep.append(ideas[i])
+        for j in range(i + 1, len(ideas)):
+            if j not in dropped:
+                sim = float(util.cos_sim(embeddings[i], embeddings[j]))
+                if sim >= threshold:
+                    dropped.add(j)
+
+    return keep
+```

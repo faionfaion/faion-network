@@ -66,6 +66,8 @@
 | `templates/ba-trends-summary.json` | Skeleton artefact with required fields |
 | `templates/_smoke-test.json` | Minimum viable filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,54 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes on artefact-state signal to the active rule.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ba-trends-summary.json`
+
+```json
+{
+  "period": "REPLACE",
+  "version_tag": "REPLACE",
+  "reviewer": "REPLACE",
+  "last_reviewed": "REPLACE",
+  "trends": []
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "period": "2025-2026",
+  "version_tag": "v1.0.0",
+  "reviewer": "Maria Lopes",
+  "last_reviewed": "2026-05-23",
+  "trends": [
+    {
+      "id": "t-ai-decisions",
+      "name": "AI-enabled decision making",
+      "evidence_urls": [
+        "https://hbr.org/example"
+      ],
+      "internal_mapping": [
+        "ai-acceptance-criteria-generator-reviewer",
+        "ai-assisted-requirements-elicitation"
+      ]
+    },
+    {
+      "id": "t-digital-trust",
+      "name": "Digital trust",
+      "evidence_urls": [
+        "https://eu-trust-report-2026.pdf"
+      ],
+      "internal_mapping": [
+        "interface-analysis",
+        "data-analysis"
+      ]
+    }
+  ]
+}
+```

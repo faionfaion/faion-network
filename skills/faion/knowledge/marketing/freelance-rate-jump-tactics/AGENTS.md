@@ -68,6 +68,8 @@
 | `templates/rate-jump-spec.json` | JSON example of rate-jump spec |
 | `templates/client-notice.md` | Markdown template for existing-client rate-change notice |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,53 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes observable signals to one of the rules in `01-core-rules.xml`. Use it before producing the output — picking the wrong branch is the most common failure.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rate-jump-spec.json`
+
+```json
+{
+  "jump_id": "rj-2026q2-saas-onboarding",
+  "niche": "B2B SaaS onboarding rebuild",
+  "current_rate": 100,
+  "target_rate": 150,
+  "market_band": {
+    "median": 140,
+    "p75": 175,
+    "sources": [
+      "upwork-q1-2026",
+      "codementor-rate-card",
+      "peer-survey-2026"
+    ]
+  },
+  "case_studies": [
+    {
+      "customer": "Acme",
+      "outcome": "+22% activation",
+      "url": "https://example/acme"
+    },
+    {
+      "customer": "Beta",
+      "outcome": "-40% time-to-value",
+      "url": "https://example/beta"
+    },
+    {
+      "customer": "Gamma",
+      "outcome": "+15 NPS",
+      "url": "https://example/gamma"
+    }
+  ],
+  "existing_client_notice": {
+    "notice_days": 60,
+    "wip_billing": "old-rate-until-complete"
+  },
+  "rollout_plan": {
+    "new_leads_at": "2026-06-01",
+    "existing_clients_at": "2026-08-01"
+  },
+  "owner": "@ruslan"
+}
+```

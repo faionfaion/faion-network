@@ -58,9 +58,10 @@
 
 | File | Purpose |
 |---|---|
-| `templates/cc_firefly_client.py` | Creative Cloud + Firefly Python client with prompt taxonomy + audit hooks. |
 | `templates/brand-audit-rules.yaml` | Brand audit rules skeleton (logo / forbidden / colour adherence). |
 | `templates/_smoke-test.yaml` | Filled editorial-portrait prompt example. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -76,3 +77,35 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the code; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/brand-audit-rules.yaml`
+
+```yaml
+# brand-audit-rules.yaml — Adobe Firefly Creative Cloud Integration
+# Fill per task; validator: scripts/validate-adobe-firefly-integration.py
+
+designer_id: design-team:viktoria
+prompt: Editorial portrait of older couple in soft daylight, neutral background, brand-token palette.
+prompt_taxonomy: {"subject": "older-couple", "style": "editorial", "lighting": "soft-daylight", "composition": "neutral-bg"}
+brand_audit_passed: true
+library_destination: ccx://library/longlife/2026-05
+provenance: {"prompt_hash": "sha256:abc...", "model_version": "v3.2.1", "designer_id": "design-team:viktoria"}
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+# _smoke-test.yaml — Adobe Firefly Creative Cloud Integration
+# Fill per task; validator: scripts/validate-adobe-firefly-integration.py
+
+designer_id: design-team:viktoria
+prompt: Editorial portrait of older couple in soft daylight, neutral background, brand-token palette.
+prompt_taxonomy: {"subject": "older-couple", "style": "editorial", "lighting": "soft-daylight", "composition": "neutral-bg"}
+brand_audit_passed: true
+library_destination: ccx://library/longlife/2026-05
+provenance: {"prompt_hash": "sha256:abc...", "model_version": "v3.2.1", "designer_id": "design-team:viktoria"}
+```

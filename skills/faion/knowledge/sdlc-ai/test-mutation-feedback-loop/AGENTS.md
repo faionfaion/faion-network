@@ -64,6 +64,8 @@
 | `templates/stryker.conf.json` | Stryker config with diff scope + break/high thresholds. |
 | `templates/mutation-prompt.txt` | Prompt feeding surviving mutants back to the coding agent for iteration 2. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,69 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/stryker.conf.json`
+
+```json
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "packageManager": "pnpm",
+  "testRunner": "vitest",
+  "reporters": [
+    "progress",
+    "json",
+    "html"
+  ],
+  "jsonReporter": {
+    "fileName": "reports/mutation/mutation.json"
+  },
+  "htmlReporter": {
+    "fileName": "reports/mutation/index.html"
+  },
+  "thresholds": {
+    "high": 80,
+    "low": 60,
+    "break": 70
+  },
+  "incremental": true,
+  "incrementalFile": ".stryker-tmp/incremental.json",
+  "concurrency": 4,
+  "timeoutMS": 30000,
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/*.generated.ts"
+  ]
+}
+```
+
+### `templates/mutation-prompt.txt`
+
+```text
+Mutation testing on the diff failed. Below is the JSON list of surviving
+mutants for files YOU just changed. Each row has: file, line, mutator name,
+original source, mutated source.
+
+YOUR TASK
+=========
+1. For each surviving mutant, add or strengthen exactly the assertion(s)
+   that would have detected it. Edit ONLY test files; do NOT modify the
+   source under test.
+2. If you believe a mutant is truly equivalent (semantically identical
+   behaviour to the original), append a row to `mutants.equivalent.md` of
+   the form `<file>:<line> <mutator> — <one-line justification>`.
+3. Re-run the mutation gate. Loop until score >= break threshold or every
+   remaining mutant is justified as equivalent.
+
+CONSTRAINTS
+===========
+- Do NOT delete tests to remove a covered mutant from the report.
+- Do NOT relax thresholds in stryker.conf.json / setup.cfg / pom.xml.
+- Do NOT widen `ignorePatterns` to skip the mutated file.
+
+SURVIVING MUTANTS (json):
+```

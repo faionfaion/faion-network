@@ -64,6 +64,8 @@
 | `templates/hybrid_search_qdrant.py` | Qdrant native FusionQuery example |
 | `templates/_smoke-test.py` | Minimum benchmark runner |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,81 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches on vector DB capability (native vs manual), corpus size, and rerank latency budget.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/hybrid_search_qdrant.py`
+
+```python
+"""
+from __future__ import annotations
+
+from qdrant_client import QdrantClient
+from qdrant_client.models import Fusion, FusionQuery, Prefetch
+
+
+def hybrid_search(
+    client: QdrantClient,
+    collection: str,
+    dense_vec: list[float],
+    sparse_vec: dict[int, float],
+    limit: int = 10,
+) -> list[dict]:
+    """Run native Qdrant RRF hybrid search; one network call, server-side fusion."""
+    result = client.query_points(
+        collection_name=collection,
+        prefetch=[
+            Prefetch(query=dense_vec, using="dense", limit=100),
+            Prefetch(query=sparse_vec, using="sparse", limit=100),
+        ],
+        query=FusionQuery(fusion=Fusion.RRF),
+        limit=limit,
+        with_payload=True,
+    )
+    return [{"id": p.id, "score": p.score, "payload": p.payload} for p in result.points]
+
+
+def get_alpha(query: str) -> float:
+    """Query-adaptive alpha when using linear (non-RRF) fusion."""
+    if '"' in query:
+        return 0.2
+    if any(c.isdigit() for c in query):
+        return 0.3
+    if len(query.split()) <= 3:
+        return 0.5
+    return 0.7
+```
+
+### `templates/_smoke-test.py`
+
+```python
+"""
+from __future__ import annotations
+
+import json
+import time
+from pathlib import Path
+
+
+def main() -> None:
+    queries = [json.loads(l) for l in Path("queries.jsonl").read_text().splitlines() if l.strip()]
+    hits = 0
+    latencies: list[float] = []
+    for q in queries:
+        t0 = time.perf_counter()
+        # results = hybrid_search(client, ...)
+        results: list[dict] = []
+        latencies.append((time.perf_counter() - t0) * 1000)
+        if any(r["id"] in q["relevant_ids"] for r in results[:10]):
+            hits += 1
+    p_at_10 = hits / max(1, len(queries))
+    latencies.sort()
+    p99 = latencies[int(0.99 * (len(latencies) - 1))] if latencies else 0.0
+    print(json.dumps({"precision_at_10": p_at_10, "p99_latency_ms": p99}, indent=2))
+
+
+if __name__ == "__main__":
+    main()
+```

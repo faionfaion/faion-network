@@ -70,6 +70,8 @@
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum viable filled `RetainerDecision` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,56 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps named inputs (realised_margin_pct, utilisation_pct, nps, strategic_fit) to keep / upsell / renegotiate / kill. Every leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+owner:
+  role: ""
+  person: ""
+last_reviewed: ""
+version: ""
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "client_id": "smoke",
+  "quarter": "2026-Q2",
+  "header": {
+    "owner": {
+      "role": "founder",
+      "person": "founder-handle"
+    },
+    "last_reviewed": "2026-05-10",
+    "version": "1.0"
+  },
+  "inputs": {
+    "realised_margin_pct": 28,
+    "utilisation_pct": 80,
+    "nps": 40,
+    "strategic_fit": 4
+  },
+  "thresholds": {
+    "margin_min": 25,
+    "utilisation_max": 90,
+    "nps_min": 30,
+    "strategic_fit_min": 3
+  },
+  "decision": "keep",
+  "evidence": [
+    "transcript://meet/q2-review-smoke",
+    "p_and_l.pdf"
+  ],
+  "review_log": [
+    {
+      "reviewed_at": "2026-05-10"
+    }
+  ]
+}
+```

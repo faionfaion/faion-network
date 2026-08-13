@@ -68,6 +68,8 @@
 | `templates/testing-notes.md` | Session notes template. |
 | `templates/scaffold-prototype.sh` | CLI scaffold for a code prototype repo. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,35 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, hypothesis present, recruitment reachable) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/scaffold-prototype.sh`
+
+```bash
+#
+# scaffold-prototype.sh — create a minimal HTML click-through prototype
+# Usage: bash scaffold-prototype.sh <feature-name> <num-screens>
+# Example: bash scaffold-prototype.sh checkout 5
+FEATURE="${1:?Usage: $0 <feature-name> <num-screens>}"
+NUM="${2:-3}"
+mkdir -p "prototype-${FEATURE}"
+for i in $(seq 1 "$NUM"); do
+  cat > "prototype-${FEATURE}/screen${i}.html" <<HTML
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><title>${FEATURE} — Screen ${i}</title>
+<style>body{font-family:sans-serif;max-width:375px;margin:auto;padding:1rem}</style>
+</head>
+<body>
+<p><strong>Screen ${i}</strong> — replace with design</p>
+$([ "$i" -lt "$NUM" ] && echo "<a href='screen$((i+1)).html'>Next &rarr;</a>")
+$([ "$i" -gt 1 ] && echo "<a href='screen$((i-1)).html'>&larr; Back</a>")
+</body></html>
+HTML
+done
+echo "Prototype scaffolded: prototype-${FEATURE}/ with ${NUM} screens"
+echo "Serve with: npx http-server prototype-${FEATURE}/"
+```

@@ -58,7 +58,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/anti-theater-retro-guardrails.json` | JSON schema for the retro record |
 | `templates/anti-theater-retro-guardrails.md` | Markdown retro skeleton with required sections |
 | `templates/_smoke-test.md` | Minimum-viable filled retro |
 

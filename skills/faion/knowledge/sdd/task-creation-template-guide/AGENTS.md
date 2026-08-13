@@ -67,6 +67,8 @@
 | `templates/task-creation-template-guide.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/task-creation-template-guide.md` | Markdown skeleton for human-readable artefact rendering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,31 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/task-creation-template-guide.json`
+
+```json
+{
+  "artefact_id": "task-creation-template-guide-example",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "task_id": "task_id value",
+  "fill_steps_completed": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "rubric_score": 1,
+  "sections_present": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "component_in_map": true,
+  "owner": "@solo-founder"
+}
+```

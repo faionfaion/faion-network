@@ -65,6 +65,8 @@
 |------|---------|
 | `templates/weekly-review.yaml` | Per-week tripwire checklist skeleton |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,21 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes by which tripwires are red onto a rule from `content/01-core-rules.xml`, telling the founder whether to continue, act on a specific signal, or block new feature work. Walk it every Sunday or Monday in the two-minute slot.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/weekly-review.yaml`
+
+```yaml
+week_iso: 2026-W21
+sleep_7d_mean_minutes: 0
+weekend_days_in_4w_window: 0
+mrr_to_hours_3m_slope: 0
+joy_channel_logged: []
+deferred_health_count_12m: 0
+non_transactional_contacts_w: 0
+verdict: green
+action: continue
+```

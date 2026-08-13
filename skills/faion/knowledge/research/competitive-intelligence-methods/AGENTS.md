@@ -68,6 +68,8 @@
 | `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,46 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from observable input signals (presence of required prerequisites, fit of the triggering activity, availability of citable sources) and routes the caller to one of the rule conclusions in `content/01-core-rules.xml` — either apply the full methodology, apply a reduced variant, or skip and route to a sibling methodology.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "owner": "ruslan@faion.net",
+  "last_touched": "2026-05-23T12:00:00Z",
+  "template_version": "1.1.0",
+  "artefact_id": "competitive-intelligence-methods-2026-05-23",
+  "signal_needed": "draft",
+  "methods_selected": [
+    {
+      "source": "https://example.com/source-1",
+      "citation": "verbatim quote from source"
+    }
+  ],
+  "methods_rejected": [
+    {
+      "source": "https://example.com/source-1",
+      "citation": "verbatim quote from source"
+    }
+  ],
+  "collection_plan": {
+    "key": "value"
+  },
+  "false_signal_guards": [
+    {
+      "source": "https://example.com/source-1",
+      "citation": "verbatim quote from source"
+    }
+  ],
+  "evidence": [
+    {
+      "source": "https://example.com/transcript/1",
+      "citation": "verbatim user quote"
+    }
+  ]
+}
+```

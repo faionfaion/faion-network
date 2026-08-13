@@ -67,6 +67,8 @@
 | `templates/test_order_service.py` | Parametrized pytest test with shallow mocks |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,75 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/conftest.py`
+
+```python
+import pytest
+import factory
+from django.contrib.auth import get_user_model
+from orders.models import Order
+
+
+User = get_user_model()
+
+
+class UserFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = User
+
+    email = factory.Sequence(lambda n: f'user{n}@example.com')
+
+
+class OrderFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Order
+
+    customer = factory.SubFactory(UserFactory)
+    amount = 1000
+    status = 'pending'
+
+
+@pytest.fixture
+def order(db):
+    return OrderFactory()
+```
+
+### `templates/test_order_service.py`
+
+```python
+import pytest
+from unittest.mock import Mock
+from orders.services import create_and_charge
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize('amount,currency,expected_status', [
+    (1000, 'USD', 'charged'),
+    (50,   'USD', 'charged'),
+    (10000, 'EUR', 'charged'),
+], ids=['default', 'small', 'large_eur'])
+def test_create_and_charge_marks_charged(order, amount, currency, expected_status):
+    payment = Mock()
+    payment.charge.return_value = {'ok': True}
+    result = create_and_charge(order.customer, amount, currency, payment=payment)
+    assert result.status == expected_status
+```
+
+### `templates/artefact.json`
+
+```json
+{
+  "uses_pytest_style": true,
+  "uses_factory_boy": true,
+  "uses_parametrize": true,
+  "shallow_mocks_ok": true,
+  "human_in_loop": true,
+  "mutation_tested": true,
+  "test_count": 17
+}
+```

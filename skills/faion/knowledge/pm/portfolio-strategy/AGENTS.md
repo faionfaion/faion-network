@@ -70,6 +70,8 @@
 | `templates/prompt-portfolio-pm.txt` | Prompt template for the portfolio-PM allocation task. |
 | `templates/prompt-product-pm.txt` | Prompt template for the product-PM consultation step. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,86 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals to apply / skip / route-elsewhere, with each leaf referencing a rule id from `01-core-rules.xml`. Consult the tree before applying the methodology when signals are ambiguous.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pm-role-skew.sh`
+
+```bash
+set -euo pipefail
+#!/usr/bin/env bash
+# pm-role-skew.sh — detect single-product vs portfolio PM patterns from allocation CSV.
+# Input CSV columns: pm, product, horizon (H1/H2/H3), eng_cost_usd
+# Usage: ./pm-role-skew.sh pm_allocations.csv
+# Flags: h1-only-risk, h3-zombie-risk, bimodal-no-bridge, single-product, portfolio-PM
+set -euo pipefail
+CSV="${1:?pm_allocations.csv required}"
+python3 - "$CSV" <<'PY'
+import csv, sys, collections
+path = sys.argv[1]
+by_pm = collections.defaultdict(lambda: collections.Counter())
+products = collections.defaultdict(set)
+with open(path) as f:
+    for r in csv.DictReader(f):
+        pm, prod, h = r["pm"], r["product"], r["horizon"].upper()
+        cost = float(r.get("eng_cost_usd") or 0)
+        by_pm[pm][h] += cost
+        products[pm].add(prod)
+print(f"{'PM':<18}{'#prod':>6}{'H1%':>7}{'H2%':>7}{'H3%':>7}  flag")
+for pm, mix in by_pm.items():
+    total = sum(mix.values()) or 1
+    h1, h2, h3 = (round(100*mix[k]/total, 1) for k in ("H1","H2","H3"))
+    flag = []
+    if len(products[pm]) == 1: flag.append("single-product")
+    if len(products[pm]) >= 3: flag.append("portfolio-PM")
+    if h1 >= 95: flag.append("h1-only-risk")
+    if h3 >= 50: flag.append("h3-zombie-risk")
+    if h2 < 5 and h1 > 0 and h3 > 0: flag.append("bimodal-no-bridge")
+    print(f"{pm:<18}{len(products[pm]):>6}{h1:>7}{h2:>7}{h3:>7}  {','.join(flag) or 'ok'}")
+PY
+```
+
+### `templates/prompt-portfolio-pm.txt`
+
+```text
+You are a portfolio PM. Inputs: list of products with {product_id, owner_pm,
+quarterly_plan, eng_cost_usd, current_revenue_usd, lifecycle_stage, owner_count}.
+
+Output JSON:
+{
+  per_product: [{product_id, recommended_horizon_mix:{h1,h2,h3}, rationale}],
+  portfolio_total: {h1,h2,h3},
+  pm_role_findings: [{owner_pm, role_mode, risk}],
+  cuts: ["<product> H3 cut: <reason>", ...],
+  reallocation_memo: "<= 6 bullets, plain English, names cuts and bets>"
+}
+
+Constraints:
+  - Do NOT invent products not in the input.
+  - If two PMs own overlapping scope (>30%), flag as role_conflict in pm_role_findings.
+  - Never recommend >10% H3 for a product whose lifecycle_stage = "pre-PMF".
+  - If owner_count = 1 and product count > 3, flag "headcount insufficient for stated allocation".
+  - cuts: section must appear before reallocation_memo; name specific products and amounts.
+  - Pick a side on any tie — do not split the difference; explain the rationale.
+  - Use time_allocation field for role classification, not product count alone.
+```
+
+### `templates/prompt-product-pm.txt`
+
+```text
+You are a single-product PM defending allocation. Given your product's backlog
+and the portfolio target {h1_target, h2_target, h3_target}, output JSON:
+{
+  agreed_cuts: [{item_id, reason}],
+  contested_cuts: [{item_id, counter_argument, evidence_url}],
+  cross_product_dependencies: [{item_id, depends_on_product, blocking_severity}]
+}
+
+Constraints:
+  - Stay inside your product. Do not propose cuts to other products.
+  - contested_cuts must cite evidence_url (ticket, doc, or research); unverified objections are invalid.
+  - cross_product_dependencies must list the specific product and severity (blocks/enables/nice-to-have).
+  - Do NOT invent items not in the backlog input.
+```

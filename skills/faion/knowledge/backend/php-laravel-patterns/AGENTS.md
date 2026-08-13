@@ -67,6 +67,8 @@
 | `templates/UserController.php` | Thin controller skeleton (validate → service → Resource). |
 | `templates/UserService.php` | Service skeleton with constructor injection + transactional method. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,150 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (project shape, abstraction need, layer concern) to a rule from `01-core-rules.xml`. Use it before scaffolding or refactoring a feature.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/BaseService.php`
+
+```php
+// Abstract base service — extend per resource to share paginate/find/delete
+// Only use when ≥2 resources share the same CRUD shape
+
+namespace App\Services;
+
+use App\Repositories\BaseRepository;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
+
+abstract class BaseService
+{
+    public function __construct(protected readonly BaseRepository $repository) {}
+
+    public function paginate(int $perPage = 20): LengthAwarePaginator
+    {
+        return $this->repository->paginate($perPage);
+    }
+
+    public function findOrFail(int $id): Model
+    {
+        return $this->repository->findOrFail($id);
+    }
+
+    public function delete(int $id): bool
+    {
+        return DB::transaction(fn (): bool => $this->repository->delete($id));
+    }
+}
+```
+
+### `templates/UserController.php`
+
+```php
+// Thin controller skeleton — Route → FormRequest → Service → Resource
+// Replace: User, UserService, StoreUserRequest, UpdateUserRequest, UserResource, UserCollection
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
+use App\Http\Resources\UserCollection;
+use App\Http\Resources\UserResource;
+use App\Services\UserService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Response;
+
+class UserController extends Controller
+{
+    public function __construct(private readonly UserService $userService) {}
+
+    public function index(): UserCollection
+    {
+        $users = $this->userService->paginate(
+            perPage: request()->integer('per_page', 20)
+        );
+        return new UserCollection($users);
+    }
+
+    public function store(StoreUserRequest $request): JsonResponse
+    {
+        $user = $this->userService->create($request->validated());
+        return (new UserResource($user))->response()->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    public function show(int $id): UserResource
+    {
+        return new UserResource($this->userService->findOrFail($id));
+    }
+
+    public function update(UpdateUserRequest $request, int $id): UserResource
+    {
+        return new UserResource($this->userService->update($id, $request->validated()));
+    }
+
+    public function destroy(int $id): JsonResponse
+    {
+        $this->userService->delete($id);
+        return response()->json(null, Response::HTTP_NO_CONTENT);
+    }
+}
+```
+
+### `templates/UserService.php`
+
+```php
+// Service layer skeleton — no request(), no JsonResponse, no Eloquent in controller
+// Replace: User, UserRepository
+
+namespace App\Services;
+
+use App\Events\UserCreated;
+use App\Models\User;
+use App\Repositories\UserRepository;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+
+class UserService
+{
+    public function __construct(private readonly UserRepository $repository) {}
+
+    public function paginate(int $perPage = 20): LengthAwarePaginator
+    {
+        return $this->repository->paginate($perPage);
+    }
+
+    public function findOrFail(int $id): User
+    {
+        return $this->repository->findOrFail($id);
+    }
+
+    public function create(array $data): User
+    {
+        return DB::transaction(function () use ($data): User {
+            $data['password'] = Hash::make($data['password']);
+            $user = $this->repository->create($data);
+            event(new UserCreated($user));
+            return $user;
+        });
+    }
+
+    public function update(int $id, array $data): User
+    {
+        return DB::transaction(function () use ($id, $data): User {
+            if (isset($data['password'])) {
+                $data['password'] = Hash::make($data['password']);
+            }
+            return $this->repository->update($id, $data);
+        });
+    }
+
+    public function delete(int $id): bool
+    {
+        return DB::transaction(fn (): bool => $this->repository->delete($id));
+    }
+}
+```

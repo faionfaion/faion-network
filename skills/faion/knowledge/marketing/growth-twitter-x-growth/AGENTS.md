@@ -63,6 +63,8 @@
 | `templates/growth-twitter-x-growth.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,95 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/growth-twitter-x-growth.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/growth-twitter-x-growth.json",
+  "title": "Growth Twitter X Growth Output Contract",
+  "type": "object",
+  "required": [
+    "operator",
+    "unique_angle",
+    "daily_post_target",
+    "weekly_thread_target",
+    "daily_reply_target",
+    "reply_target_list",
+    "kpi_set",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "operator": {
+      "type": "string",
+      "description": "named X account owner"
+    },
+    "unique_angle": {
+      "type": "string",
+      "description": "one-sentence positioning"
+    },
+    "daily_post_target": {
+      "type": "integer",
+      "description": "3-5"
+    },
+    "weekly_thread_target": {
+      "type": "integer",
+      "description": "1-2"
+    },
+    "daily_reply_target": {
+      "type": "integer",
+      "description": "20-30 to accounts >5x size"
+    },
+    "reply_target_list": {
+      "type": "array",
+      "description": "\u226520 accounts with handle + size_multiple",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "kpi_set": {
+      "type": "object",
+      "description": "{impressions, replies_from_strangers, link_clicks, qualified_follows}"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "operator": "sample-operator",
+  "unique_angle": "sample-unique_angle",
+  "daily_post_target": 1,
+  "weekly_thread_target": 1,
+  "daily_reply_target": 1,
+  "reply_target_list": [
+    {
+      "key": "value"
+    }
+  ],
+  "kpi_set": {
+    "key": "value"
+  },
+  "version": "sample-version",
+  "last_reviewed": "2026-05-23"
+}
+```

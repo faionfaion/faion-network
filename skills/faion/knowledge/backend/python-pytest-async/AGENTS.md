@@ -63,6 +63,8 @@
 | `templates/conftest.py` | Async fixtures: async_client, app_client (FastAPI via ASGITransport), async database fixture. |
 | `templates/test_async.py` | Async test skeleton with AsyncMock + pytest_asyncio.fixture. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,66 @@
 ## Decision tree
 
 The tree at content/06-decision-tree.xml decides auto vs strict mode, AsyncMock vs MagicMock, and ASGITransport vs httpx live URL. Walk it whenever an async test fails silently or hangs.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/conftest.py`
+
+```python
+"""
+
+import pytest
+from pytest_factoryboy import register
+
+
+# Register your factories here:
+# from tests.factories import UserFactory
+# register(UserFactory)
+
+
+@pytest.fixture
+def api_client():
+    """DRF APIClient (override per project)."""
+    from rest_framework.test import APIClient
+
+    return APIClient()
+
+
+@pytest.fixture
+def authed_client(api_client, user):
+    api_client.force_authenticate(user=user)
+    return api_client
+
+
+@pytest.fixture
+def staff_client(api_client, user_factory):
+    staff_user = user_factory(is_staff=True)
+    api_client.force_authenticate(user=staff_user)
+    return api_client
+```
+
+### `templates/test_async.py`
+
+```python
+"""
+
+import pytest
+import pytest_asyncio
+from unittest.mock import AsyncMock
+
+
+@pytest_asyncio.fixture
+async def fake_client():
+    client = AsyncMock()
+    client.get.return_value = {"id": 1, "name": "demo"}
+    yield client
+
+
+@pytest.mark.asyncio
+async def test_async_call_returns_dict(fake_client):
+    result = await fake_client.get("/anywhere")
+    assert result == {"id": 1, "name": "demo"}
+    fake_client.get.assert_awaited_once_with("/anywhere")
+```

@@ -67,6 +67,8 @@
 | `templates/pgbackrest.conf` | pgBackRest stanza config with retention + encryption |
 | `templates/backup-config.example.json` | Filled config artefact conforming to the schema |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,90 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from observable signals (managed-PaaS-or-not, PITR required, RPO target) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/postgres-backup.sh`
+
+```bash
+set -euo pipefail
+
+: "${PGHOST:?required}"
+: "${PGUSER:?required}"
+: "${PGDATABASE:?required}"
+: "${PGPASSWORD:?required (pull from Vault / AWS Secrets Manager)}"
+: "${S3_BUCKET:?required (e.g. s3://backups-prod/postgres/)}"
+
+RETENTION_DAYS="${RETENTION_DAYS:-7}"
+BACKUP_DIR="/var/backups/postgres"
+TS=$(date -u +%Y%m%dT%H%M%SZ)
+DUMP="$BACKUP_DIR/${PGDATABASE}_${TS}.dump"
+
+mkdir -p "$BACKUP_DIR"
+
+# 1. Custom-format dump
+pg_dump -h "$PGHOST" -U "$PGUSER" -Fc "$PGDATABASE" > "$DUMP"
+
+# 2. Verify BEFORE upload (rule: verify-before-upload)
+if ! pg_restore -l "$DUMP" > /dev/null 2>&1; then
+    echo "ERROR: backup file failed pg_restore -l integrity check" >&2
+    exit 1
+fi
+
+# 3. Upload
+aws s3 cp "$DUMP" "$S3_BUCKET/${PGDATABASE}/" --storage-class STANDARD_IA
+
+# 4. Prune local
+find "$BACKUP_DIR" -type f -name "*.dump" -mtime "+${RETENTION_DAYS}" -delete
+
+echo "ok ${PGDATABASE} ${TS}"
+```
+
+### `templates/pgbackrest.conf`
+
+```conf
+[global]
+repo1-type=s3
+repo1-s3-bucket=backups-prod
+repo1-s3-endpoint=s3.amazonaws.com
+repo1-s3-region=eu-central-1
+repo1-path=/pgbackrest
+repo1-retention-full=7
+repo1-retention-diff=14
+repo1-cipher-type=aes-256-cbc
+# repo1-cipher-pass loaded from secrets manager at runtime; never inline
+process-max=4
+log-level-console=info
+log-level-file=detail
+start-fast=y
+
+[main]
+pg1-path=/var/lib/postgresql/16/main
+pg1-port=5432
+pg1-user=postgres
+```
+
+### `templates/backup-config.example.json`
+
+```json
+{
+  "db_name": "billing",
+  "backup_format": "custom",
+  "verify_before_upload": true,
+  "wal_monitoring": {
+    "enabled": true,
+    "alert_on_failed_count_increase": true
+  },
+  "secrets_source": "vault",
+  "remote_storage": {
+    "kind": "s3",
+    "uri": "s3://backups-prod/postgres/billing/"
+  },
+  "retention_local_days": 7,
+  "retention_remote_days": 90,
+  "encryption_at_rest": true,
+  "parallel_workers": 4
+}
+```

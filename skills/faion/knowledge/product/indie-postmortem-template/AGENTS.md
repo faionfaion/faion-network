@@ -59,7 +59,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/indie-postmortem-template.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/indie-postmortem-template.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

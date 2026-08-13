@@ -70,6 +70,8 @@
 | `templates/task.md` | Canonical TASK_NNN.md skeleton with all required sections. |
 | `templates/task-lifecycle.sh` | Validates required sections before moving task between todo / in-progress / done. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,63 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (plan approved, feature dir exists, task scope under one session) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether to emit a full task file or fall back to a lighter note.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/task-lifecycle.sh`
+
+```bash
+#
+# task-lifecycle.sh
+#
+# Move a task file through its lifecycle states.
+# Verifies required section headers before allowing state transition.
+#
+# Usage:
+#   bash task-lifecycle.sh TASK_FILE TARGET_STATE
+#
+# TARGET_STATE: in-progress | done
+#
+# Exit codes:
+#   0 — task moved successfully
+#   1 — validation failed (task not moved)
+
+set -euo pipefail
+
+TASK_FILE="${1:?usage: task-lifecycle.sh TASK_FILE TARGET_STATE}"
+TARGET_STATE="${2:?usage: task-lifecycle.sh TASK_FILE TARGET_STATE}"
+
+if [ ! -f "$TASK_FILE" ]; then
+    echo "ERROR: $TASK_FILE not found" >&2
+    exit 1
+fi
+
+if [ "$TARGET_STATE" != "in-progress" ] && [ "$TARGET_STATE" != "done" ]; then
+    echo "ERROR: TARGET_STATE must be 'in-progress' or 'done'" >&2
+    exit 1
+fi
+
+# Validate required sections for 'done' state
+if [ "$TARGET_STATE" = "done" ]; then
+    if ! grep -q "## Summary" "$TASK_FILE"; then
+        echo "BLOCKED: '## Summary' section missing — fill executor sections before marking done" >&2
+        exit 1
+    fi
+    if ! grep -q "\- \[x\]" "$TASK_FILE"; then
+        echo "BLOCKED: No completed items in Summary — task not done" >&2
+        exit 1
+    fi
+fi
+
+# Determine target directory relative to current task location
+TASK_DIR="$(dirname "$TASK_FILE")"
+FEATURE_DIR="$(dirname "$TASK_DIR")"
+TARGET_DIR="$FEATURE_DIR/$TARGET_STATE"
+
+mkdir -p "$TARGET_DIR"
+mv "$TASK_FILE" "$TARGET_DIR/$(basename "$TASK_FILE")"
+
+echo "Moved $(basename "$TASK_FILE") → $TARGET_STATE/"
+```

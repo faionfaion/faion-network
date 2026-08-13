@@ -67,6 +67,8 @@
 | `templates/repository.java` | Spring Data JPA repository with @Modifying + clearAutomatically. |
 | `templates/application-test.yml` | `@DataJpaTest` configuration with Testcontainers DB. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,158 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (read vs write path, fetch strategy, test layer) to a rule from `01-core-rules.xml`. Use it before scaffolding a new entity or refactoring a hot query.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/entity.java`
+
+```java
+// JPA entity skeleton — explicit @Table, @Column, @Version, business-key equals
+// Replace: User, users, user_roles, Role, Order
+
+package com.example.entity;
+
+import jakarta.persistence.*;
+import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+
+@Entity
+@Table(
+    name = "users",
+    indexes = { @Index(name = "idx_users_email", columnList = "email") }
+)
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    @Column(nullable = false)
+    private String password;
+
+    @Version
+    private Long version;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+        name = "user_roles",
+        joinColumns = @JoinColumn(name = "user_id"),
+        inverseJoinColumns = @JoinColumn(name = "role_id")
+    )
+    @Builder.Default
+    private Set<Role> roles = new HashSet<>();
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    // Business-key equals/hashCode — never use @Data on JPA entities
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof User u)) return false;
+        return email != null && email.equalsIgnoreCase(u.email);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(email != null ? email.toLowerCase() : null);
+    }
+}
+```
+
+### `templates/repository.java`
+
+```java
+// Spring Data JPA repository skeleton
+// Replace: User, Role, UserRepository
+
+package com.example.repository;
+
+import com.example.entity.User;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.time.LocalDateTime;
+import java.util.Optional;
+
+@Repository
+public interface UserRepository extends JpaRepository<User, Long> {
+
+    // Derived methods — no @Query needed
+    Optional<User> findByEmail(String email);
+    boolean existsByEmail(String email);
+
+    // JOIN FETCH — load roles in one query, avoid N+1
+    @Query("SELECT u FROM User u JOIN FETCH u.roles WHERE u.id = :id")
+    Optional<User> findByIdWithRoles(@Param("id") Long id);
+
+    // Pageable search with nullable filters
+    @Query("""
+        SELECT u FROM User u
+        WHERE (:name IS NULL OR LOWER(u.name) LIKE LOWER(CONCAT('%', :name, '%')))
+        AND (:isActive IS NULL OR u.isActive = :isActive)
+        """)
+    Page<User> search(
+        @Param("name") String name,
+        @Param("isActive") Boolean isActive,
+        Pageable pageable
+    );
+
+    // Bulk update — must clear L1 cache after
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE User u SET u.isActive = false WHERE u.lastLoginAt < :cutoff")
+    int deactivateInactive(@Param("cutoff") LocalDateTime cutoff);
+}
+```
+
+### `templates/application-test.yml`
+
+```yaml
+spring:
+  jpa:
+    show-sql: false
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: true
+        generate_statistics: true   # log query count per test
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+  flyway:
+    enabled: true
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.stat: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+```

@@ -69,6 +69,8 @@
 | `templates/debt-scoring-rubric.json` | JSON Schema for the debt-register artefact. |
 | `templates/anchor-calibration.md` | 1-5 anchor definitions per factor, signed off by stakeholder. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,168 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree first verifies anchor calibration is signed off by the stakeholder. It then walks per-item: all 5 factors scored with evidence? formula computed correctly? confidence band assigned? Aggregate: items above threshold flagged for next sprint. Leaves emit `publish-register`, `block-missing-anchors`, `block-formula-mismatch`, or `block-no-evidence`. Each leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/debt-scoring-rubric.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/debt-scoring-rubric.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "anchors_signed_off_by",
+    "items",
+    "threshold",
+    "verdict",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^dsr-[a-z0-9-]{6,}$"
+    },
+    "anchors_signed_off_by": {
+      "type": "string",
+      "format": "email"
+    },
+    "anchors_signed_off_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "items": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "item_id",
+          "title",
+          "category",
+          "factors",
+          "score",
+          "confidence",
+          "evidence",
+          "what_changes_if_paid"
+        ],
+        "properties": {
+          "item_id": {
+            "type": "string",
+            "pattern": "^debt-[a-z0-9-]{4,}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 5
+          },
+          "category": {
+            "enum": [
+              "architecture",
+              "code",
+              "test",
+              "design",
+              "infra",
+              "dependency",
+              "documentation"
+            ]
+          },
+          "factors": {
+            "type": "object",
+            "required": [
+              "user_impact",
+              "change_frequency",
+              "fragility",
+              "blast_radius",
+              "fix_cost"
+            ],
+            "properties": {
+              "user_impact": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "change_frequency": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "fragility": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "blast_radius": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              },
+              "fix_cost": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 5
+              }
+            }
+          },
+          "score": {
+            "type": "number"
+          },
+          "confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "evidence": {
+            "type": "object",
+            "required": [
+              "change_freq_source",
+              "fragility_source",
+              "blast_source"
+            ],
+            "properties": {
+              "change_freq_source": {
+                "type": "string"
+              },
+              "fragility_source": {
+                "type": "string"
+              },
+              "blast_source": {
+                "type": "string"
+              }
+            }
+          },
+          "what_changes_if_paid": {
+            "type": "string",
+            "minLength": 10
+          }
+        }
+      }
+    },
+    "threshold": {
+      "type": "number",
+      "minimum": 0
+    },
+    "verdict": {
+      "enum": [
+        "publish-register",
+        "block-missing-anchors",
+        "block-formula-mismatch",
+        "block-no-evidence"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

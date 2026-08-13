@@ -63,6 +63,8 @@
 | `templates/prompt-haiku-detail.txt` | Haiku prompt for detail pass. |
 | `templates/_smoke-test.json` | Filled discovery-phase persona report. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,123 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the report; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/persona-report.json`
+
+```json
+{
+  "personas": [
+    {
+      "id": "p1",
+      "name": "First-time saver",
+      "validation_required": true,
+      "secondary_sources": [
+        "analytics:segment:new-user",
+        "report:fed-2025-savings"
+      ]
+    },
+    {
+      "id": "p2",
+      "name": "Switcher from neobank",
+      "validation_required": true,
+      "secondary_sources": [
+        "analytics:segment:switcher"
+      ]
+    },
+    {
+      "id": "p3",
+      "name": "Family planner",
+      "validation_required": true,
+      "secondary_sources": [
+        "report:pew-family-2025"
+      ]
+    }
+  ],
+  "validated": false,
+  "use_for": "FILL_ME",
+  "next_step": "FILL_ME"
+}
+```
+
+### `templates/prompt-sonnet-scaffold.txt`
+
+```text
+Prompt template — Sonnet prompt for persona scaffold pass.
+
+Fill the slots below per task.
+
+[CONTEXT]
+...
+
+[TASK]
+...
+
+[OUTPUT_FORMAT]
+...
+
+[CONSTRAINTS]
+- Follow content/01-core-rules.xml.
+- Output MUST validate against content/02-output-contract.xml.
+```
+
+### `templates/prompt-haiku-detail.txt`
+
+```text
+Prompt template — Haiku prompt for detail pass.
+
+Fill the slots below per task.
+
+[CONTEXT]
+...
+
+[TASK]
+...
+
+[OUTPUT_FORMAT]
+...
+
+[CONSTRAINTS]
+- Follow content/01-core-rules.xml.
+- Output MUST validate against content/02-output-contract.xml.
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "personas": [
+    {
+      "id": "p1",
+      "name": "First-time saver",
+      "validation_required": true,
+      "secondary_sources": [
+        "analytics:segment:new-user",
+        "report:fed-2025-savings"
+      ]
+    },
+    {
+      "id": "p2",
+      "name": "Switcher from neobank",
+      "validation_required": true,
+      "secondary_sources": [
+        "analytics:segment:switcher"
+      ]
+    },
+    {
+      "id": "p3",
+      "name": "Family planner",
+      "validation_required": true,
+      "secondary_sources": [
+        "report:pew-family-2025"
+      ]
+    }
+  ],
+  "validated": false,
+  "use_for": "FILL_ME",
+  "next_step": "FILL_ME"
+}
+```

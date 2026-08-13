@@ -58,9 +58,7 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-risk-aging-agent.json` | JSON schema for the daily risk report |
 | `templates/ai-risk-aging-agent.md` | Markdown skeleton with daily report structure |
-| `templates/_smoke-test.json` | Minimum-viable filled report |
 
 ## Scripts
 

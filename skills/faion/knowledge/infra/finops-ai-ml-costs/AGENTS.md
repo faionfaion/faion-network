@@ -63,8 +63,9 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
 | `templates/config-instance.json` | JSON instance of a filled config artefact |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,52 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/config-instance.json`
+
+```json
+{
+  "training": {
+    "spot_policy": "spot_when_checkpointable",
+    "checkpoint_interval_min": 15,
+    "max_interruptions_pct": 5
+  },
+  "inference": {
+    "caching": {
+      "enabled": true,
+      "ttl_seconds": 3600,
+      "cache_keys": [
+        "model_version",
+        "prompt_hash"
+      ]
+    },
+    "quantization_policy": "int8_required_with_quality_gate",
+    "batching": {
+      "strategy": "dynamic",
+      "target_batch_size": 16,
+      "max_wait_ms": 30
+    }
+  },
+  "attribution": {
+    "per_run_fields": [
+      "job_id",
+      "team",
+      "dataset_hash",
+      "gpu_hours",
+      "total_cost"
+    ],
+    "per_request_tags": [
+      "team",
+      "product",
+      "model_version"
+    ]
+  },
+  "model_registry_ref": "registry://models",
+  "owner": "ml-finops@team.io",
+  "last_reviewed": "2026-05-23"
+}
+```

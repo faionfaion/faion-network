@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/pattern-bank-tagging-schema.json` | JSON skeleton conforming to the output-contract schema. |
 | `templates/pattern-bank-tagging-schema.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

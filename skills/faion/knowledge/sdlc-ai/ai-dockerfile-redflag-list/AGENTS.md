@@ -62,6 +62,8 @@
 | `templates/redflag-report.json` | JSON skeleton for the validator output |
 | `templates/Dockerfile.template` | Reference Dockerfile satisfying every red-flag rule |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,34 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/redflag-report.json`
+
+```json
+{
+  "dockerfile_path": "services/api/Dockerfile",
+  "findings": [],
+  "verdict": "pass"
+}
+```
+
+### `templates/Dockerfile.template`
+
+```text
+FROM python:3.12.4-slim-bookworm@sha256:0000000000000000000000000000000000000000000000000000000000000000 AS builder
+WORKDIR /app
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv pip install uv && uv sync --frozen
+
+FROM python:3.12.4-slim-bookworm@sha256:0000000000000000000000000000000000000000000000000000000000000000 AS runtime
+RUN useradd -r -u 10001 app
+WORKDIR /app
+COPY --from=builder /app /app
+USER app
+HEALTHCHECK --interval=15s --timeout=3s --start-period=10s CMD ["python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/healthz').status==200 else 1)"]
+ENTRYPOINT ["python", "-m", "app"]
+```

@@ -69,6 +69,8 @@
 | `templates/characterization-test-recipes.json` | JSON Schema for the suite-manifest artefact. |
 | `templates/snapshot-stabilize-rules.md` | Common normalization rules: timestamps, UUIDs, ordering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,128 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree first checks whether the path has strong existing coverage (skip) or is being deleted (skip). It then verifies real input samples are available and branch coverage meets the threshold (≥70% lines covered by the sweep). Leaves emit `wrap-refactor`, `block-insufficient-coverage`, `block-bug-on-purpose`, or `skip-deleting-code`. Each leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/characterization-test-recipes.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/characterization-test-recipes.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "module_under_test",
+    "capture_branch_sha",
+    "fixtures",
+    "normalizer_path",
+    "branch_coverage_pct",
+    "baseline_signoff",
+    "verdict",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^ctr-[a-z0-9-]{6,}$"
+    },
+    "module_under_test": {
+      "type": "string",
+      "minLength": 1
+    },
+    "capture_branch_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{7,40}$"
+    },
+    "fixtures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "origin",
+          "capture_date",
+          "redacted"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "origin": {
+            "enum": [
+              "production-sample",
+              "spec-edge",
+              "regression-test",
+              "synthetic"
+            ]
+          },
+          "capture_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "redacted": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "normalizer_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "branch_coverage_pct": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "baseline_signoff": {
+      "type": "object",
+      "required": [
+        "reviewer",
+        "signed_off_at",
+        "snapshot_commit_sha"
+      ],
+      "properties": {
+        "reviewer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "signed_off_at": {
+          "type": "string",
+          "format": "date"
+        },
+        "snapshot_commit_sha": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{7,40}$"
+        }
+      }
+    },
+    "ci_auto_update_disabled": {
+      "type": "boolean"
+    },
+    "verdict": {
+      "enum": [
+        "wrap-refactor",
+        "block-insufficient-coverage",
+        "block-no-signoff",
+        "block-bug-on-purpose",
+        "skip-deleting-code"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

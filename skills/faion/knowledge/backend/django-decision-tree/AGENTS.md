@@ -68,6 +68,8 @@
 | `templates/arch-decision-record.json` | Reference output. |
 | `templates/arch-decision-record.md` | Markdown skeleton for human-readable record. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,78 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree walks: (1) Django at all? (2) DRF vs Ninja vs vanilla. (3) layering tier (simple/services/clean). (4) DB engine. (5) deployment target. (6) per-dep audit verdict. Each leaf cites a rule id and consumes the recorded project signals.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/arch-decision-record.json`
+
+```json
+{
+  "_purpose": "Reference architecture decision-record output.",
+  "_consumes": "signals + candidate deps.",
+  "_produces": "JSON for architecture doc + dep registry.",
+  "_depends-on": "content/02-output-contract.xml.",
+  "_token-budget-impact": "~200 tokens.",
+  "artefact_id": "faion-net-be-arch",
+  "owner": "ruslan@faion.net",
+  "project": "faion-net-be",
+  "signals": {
+    "team_size": 1,
+    "model_count": 12,
+    "traffic_req_s": 5,
+    "needs_admin": true,
+    "needs_async": false,
+    "bounded_contexts": 2
+  },
+  "decisions": {
+    "framework": "django",
+    "api_stack": "drf",
+    "layering": "service-layer",
+    "db": "postgres-managed",
+    "deployment": "vps",
+    "rationales": {
+      "framework": "Solopreneur with admin-heavy product; needs ORM + admin + auth out of the box.",
+      "api_stack": "Team familiarity with DRF + drf-spectacular requirement for the OpenAPI client.",
+      "layering": "12 models with two bounded contexts; service layer keeps logic testable.",
+      "db": "Managed PostgreSQL (Hetzner managed) for JSONB + full-text search.",
+      "deployment": "Hetzner VPS with systemd; cost-efficient, no scale need for K8s yet."
+    }
+  },
+  "dependencies": [
+    {
+      "name": "djangorestframework",
+      "verdict": "adopt",
+      "audit": {
+        "recent_commits": true,
+        "django_compat": true,
+        "license_ok": true,
+        "no_known_cves": true
+      }
+    },
+    {
+      "name": "djangorestframework-simplejwt",
+      "verdict": "adopt",
+      "audit": {
+        "recent_commits": true,
+        "django_compat": true,
+        "license_ok": true,
+        "no_known_cves": true
+      }
+    },
+    {
+      "name": "drf-spectacular",
+      "verdict": "adopt",
+      "audit": {
+        "recent_commits": true,
+        "django_compat": true,
+        "license_ok": true,
+        "no_known_cves": true
+      }
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```

@@ -64,7 +64,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/tailwind-design-tokens.json` | JSON skeleton conforming to the output-contract schema. |
 | `templates/tailwind-design-tokens.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Related

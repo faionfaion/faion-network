@@ -70,6 +70,8 @@
 | `templates/retro.md` | Markdown skeleton for the artefact. |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,121 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Does this release have multiple stages with stakeholders and real users?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/cycle_record.json`
+
+```json
+{
+  "cycle_id": "rel-2026-05-23-v2.4",
+  "release_id": "v2.4.0",
+  "stages": [
+    {
+      "id": "strategy",
+      "owner": "alice",
+      "outcome": "pass",
+      "waiver_reason": null,
+      "artefact_link": "release/v2.4/strategy.md"
+    },
+    {
+      "id": "smoke",
+      "owner": "bob",
+      "outcome": "pass",
+      "waiver_reason": null,
+      "artefact_link": "release/v2.4/smoke.yaml"
+    },
+    {
+      "id": "bug_bash",
+      "owner": "carol",
+      "outcome": "pass",
+      "waiver_reason": null,
+      "artefact_link": "release/v2.4/bug-bash-ledger.csv"
+    },
+    {
+      "id": "perf",
+      "owner": "dave",
+      "outcome": "pass",
+      "waiver_reason": null,
+      "artefact_link": "release/v2.4/perf-verdict.json"
+    },
+    {
+      "id": "rollback_triggers",
+      "owner": "eve",
+      "outcome": "pass",
+      "waiver_reason": null,
+      "artefact_link": "release/v2.4/rollback-canon.yaml"
+    },
+    {
+      "id": "go_no_go",
+      "owner": "frank",
+      "outcome": "pass",
+      "waiver_reason": null,
+      "artefact_link": "release/v2.4/go-no-go.md"
+    }
+  ],
+  "decision": "go",
+  "approver": "frank",
+  "retro_note": "keep: smoke pack speed; change: bug-bash needs earlier kickoff.",
+  "recorded_at": "2026-05-23T16:00:00Z"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "cycle_id": "rel-2026-05-23-v2.4",
+  "release_id": "v2.4.0",
+  "stages": [
+    {
+      "id": "strategy",
+      "owner": "alice",
+      "outcome": "pass",
+      "waiver_reason": null,
+      "artefact_link": "release/v2.4/strategy.md"
+    },
+    {
+      "id": "smoke",
+      "owner": "bob",
+      "outcome": "pass",
+      "waiver_reason": null,
+      "artefact_link": "release/v2.4/smoke.yaml"
+    },
+    {
+      "id": "bug_bash",
+      "owner": "carol",
+      "outcome": "pass",
+      "waiver_reason": null,
+      "artefact_link": "release/v2.4/bug-bash-ledger.csv"
+    },
+    {
+      "id": "perf",
+      "owner": "dave",
+      "outcome": "pass",
+      "waiver_reason": null,
+      "artefact_link": "release/v2.4/perf-verdict.json"
+    },
+    {
+      "id": "rollback_triggers",
+      "owner": "eve",
+      "outcome": "pass",
+      "waiver_reason": null,
+      "artefact_link": "release/v2.4/rollback-canon.yaml"
+    },
+    {
+      "id": "go_no_go",
+      "owner": "frank",
+      "outcome": "pass",
+      "waiver_reason": null,
+      "artefact_link": "release/v2.4/go-no-go.md"
+    }
+  ],
+  "decision": "go",
+  "approver": "frank",
+  "retro_note": "keep: smoke pack speed; change: bug-bash needs earlier kickoff.",
+  "recorded_at": "2026-05-23T16:00:00Z"
+}
+```

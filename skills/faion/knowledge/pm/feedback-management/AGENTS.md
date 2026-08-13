@@ -69,7 +69,6 @@
 |------|---------|
 | `templates/feedback-log.md` | Monthly feedback-log skeleton with theme rows + citations. |
 | `templates/response-templates.md` | Close-loop email templates per disposition. |
-| `templates/triage-feedback.sh` | Shell entry-point to run the triage agent over the canonical store. |
 
 ## Scripts
 

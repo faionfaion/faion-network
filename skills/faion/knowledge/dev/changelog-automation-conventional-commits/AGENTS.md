@@ -70,6 +70,8 @@
 | `templates/changelog-automation-conventional-commits.json` | JSON Schema for the changelog-update artefact. |
 | `templates/CHANGELOG.md` | Skeleton CHANGELOG with `## [Unreleased]` block. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,156 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree first verifies the commit range is bounded and clean (no merge commits with foreign histories). It then walks: are all commits conventional? are any marked breaking? what semver bump is required? Leaves emit `emit-changelog`, `block-non-conventional`, `block-missing-version-bump`, or `block-merge-noise`. Each leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/changelog-automation-conventional-commits.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/changelog-automation-conventional-commits.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "range_from",
+    "range_to",
+    "release_version",
+    "release_date",
+    "sections",
+    "semver_bump",
+    "verdict",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^chg-[a-z0-9-]{6,}$"
+    },
+    "range_from": {
+      "type": "string",
+      "minLength": 1
+    },
+    "range_to": {
+      "type": "string",
+      "minLength": 1
+    },
+    "release_version": {
+      "type": "string",
+      "pattern": "^v?\\d+\\.\\d+\\.\\d+(-[a-z0-9.-]+)?$"
+    },
+    "release_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "semver_bump": {
+      "enum": [
+        "major",
+        "minor",
+        "patch"
+      ]
+    },
+    "sections": {
+      "type": "object",
+      "required": [
+        "breaking",
+        "feat",
+        "fix"
+      ],
+      "properties": {
+        "breaking": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "feat": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "fix": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "chore": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "refactor": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "docs": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "perf": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "test": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "build": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "ci": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "style": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deviations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "verdict": {
+      "enum": [
+        "emit-changelog",
+        "block-non-conventional",
+        "block-missing-version-bump",
+        "block-merge-noise"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

@@ -65,7 +65,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/skeleton.md` | Canonical section list with not_applicable markers. |
-| `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
 
 ## Scripts
 

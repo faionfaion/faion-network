@@ -58,9 +58,7 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/content-attribution-model.json` | JSON schema for the attribution report |
 | `templates/content-attribution-model.md` | Markdown skeleton with per-piece table |
-| `templates/_smoke-test.json` | Minimum-viable filled example |
 
 ## Scripts
 

@@ -65,6 +65,8 @@
 | `templates/run_pack.sh` | Shell script scaffolding the runnable artefact. |
 | `templates/_smoke-test.yaml` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,35 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Does the team promote release candidates to production with no consistent smoke gate?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/smoke_pack.yaml`
+
+```yaml
+# faion_header_json: {"__faion_header__":{"purpose":"YAML configuration scaffolding the artefact.","consumes":"see content/02-output-contract.xml","produces":"checklist","depends_on":"content/01-core-rules.xml#max-10-steps","token_budget_impact":"~150 tokens when loaded"}}
+# QA Release Candidate Smoke Pack configuration scaffold.
+version: 1
+slug: qa-rc-smoke-pack-template
+items: []
+```
+
+### `templates/run_pack.sh`
+
+```bash
+# faion_header_json: {"__faion_header__":{"purpose":"Shell script scaffolding the runnable artefact.","consumes":"see content/02-output-contract.xml","produces":"checklist","depends_on":"content/01-core-rules.xml#max-10-steps","token_budget_impact":"~150 tokens when loaded"}}
+# QA Release Candidate Smoke Pack runner scaffold.
+set -euo pipefail
+echo "running qa-rc-smoke-pack-template smoke pack"
+exit 0
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+# faion_header_json: {"__faion_header__":{"purpose":"Minimum viable filled-in artefact for sanity-checking the schema.","consumes":"see content/02-output-contract.xml","produces":"checklist","depends_on":"content/01-core-rules.xml#max-10-steps","token_budget_impact":"~150 tokens when loaded"}}
+# QA Release Candidate Smoke Pack — smoke test (minimum viable filled-in artefact, see templates/ for production-grade skeletons).
+slug: qa-rc-smoke-pack-template
+```

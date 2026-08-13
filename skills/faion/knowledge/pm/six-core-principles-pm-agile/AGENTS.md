@@ -60,6 +60,8 @@
 |------|---------|
 | `templates/pmbok7-audit.sh` | Bash audit walker: scores each principle 0-3 from artefact heuristics |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[seven-performance-domains]]
@@ -70,3 +72,43 @@
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, baseline presence, threshold pass/fail) to a concrete action; each leaf references a rule from `01-core-rules.xml`. Use it when in doubt about whether or how to apply this methodology to the case at hand.
 
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pmbok7-audit.sh`
+
+```bash
+#!/usr/bin/env bash
+# pmbok7-audit.sh — Emit a PMBOK 7 six-principle audit form for a decision.
+#
+# Usage: ./pmbok7-audit.sh "ADR-005: Migrate to Linear"
+# Output: Markdown audit table on stdout; fill PASS/WARN/FAIL + evidence in your editor.
+set -euo pipefail
+
+DECISION="${1:-<describe the decision here>}"
+
+cat <<MD
+# PMBOK 7 Audit: $DECISION
+
+| Principle | PASS/WARN/FAIL | Evidence |
+|-----------|----------------|----------|
+| Adopt Holistic View | | |
+| Focus on Value | | |
+| Embed Quality | | |
+| Lead Accountably | | |
+| Integrate Sustainability | | |
+| Build Empowered Teams | | |
+
+## Constraints
+
+- At least one WARN or FAIL required. If all pass, explain why with specific evidence.
+- Separate audit from recommendation: do not write the recommendation in this document.
+
+## Highest-Risk Violation
+
+Principle: <name>
+Evidence: <one sentence>
+Mitigation: <one concrete action>
+MD
+```

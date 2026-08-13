@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/solo-kpi-dashboard-template.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/solo-kpi-dashboard-template.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

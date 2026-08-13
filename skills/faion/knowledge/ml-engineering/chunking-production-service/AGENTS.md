@@ -65,6 +65,8 @@
 | `templates/chunking_service.py` | ChunkingService reference with dispatch + fallback + metadata propagation. |
 | `templates/chunking-service-schema.json` | JSON Schema for the service output envelope. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,169 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` routes based on `config.strategy` (explicit) vs auto-detect (content-type sniff). Fallback is only reachable through the exception handler, never as a default.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/chunking_service.py`
+
+```python
+"""ChunkingService — production wrapper with fail-fast config + logged fallback."""
+from __future__ import annotations
+
+import hashlib
+import logging
+from dataclasses import dataclass
+from enum import Enum
+from typing import Callable
+
+logger = logging.getLogger("chunking_service")
+
+
+class Strategy(str, Enum):
+    FIXED = "fixed"
+    SENTENCE = "sentence"
+    PARAGRAPH = "paragraph"
+    SEMANTIC = "semantic"
+    RECURSIVE = "recursive"
+    MARKDOWN = "markdown"
+    HTML = "html"
+    CODE = "code"
+
+
+@dataclass
+class ChunkingConfig:
+    strategy: Strategy = Strategy.RECURSIVE
+    chunk_size: int = 500
+    overlap: int = 50
+    min_chunk_size: int = 100
+    embedding_func: Callable[[str], list[float]] | None = None
+    version: str = "1.0.0"
+
+
+class ChunkingService:
+    def __init__(self, config: ChunkingConfig, sub_chunkers: dict[Strategy, object]) -> None:
+        if not isinstance(config.strategy, Strategy):
+            raise ValueError("strategy must be Strategy enum")
+        if config.strategy is Strategy.SEMANTIC and config.embedding_func is None:
+            raise ValueError("SEMANTIC requires embedding_func at __init__")
+        if config.overlap >= config.chunk_size:
+            raise ValueError("overlap must be < chunk_size")
+        if config.strategy not in sub_chunkers:
+            raise ValueError(f"no sub-chunker registered for {config.strategy}")
+        self.cfg = config
+        self.sub = sub_chunkers
+
+    def chunk(self, text: str, source: str, metadata: dict | None = None) -> dict:
+        meta = dict(metadata or {})
+        warnings: list[dict] = []
+        try:
+            chunks = self.sub[self.cfg.strategy].chunk(text, source)
+            strategy_used = self.cfg.strategy.value
+        except Exception as exc:
+            logger.warning(
+                "chunker failure -> fallback",
+                extra={"source": source, "requested_strategy": self.cfg.strategy.value, "exception": str(exc)},
+            )
+            chunks = self._word_split(text, source)
+            strategy_used = "fallback"
+            warnings.append({
+                "source": source, "requested_strategy": self.cfg.strategy.value, "exception": str(exc),
+            })
+        for c in chunks:
+            chunk_meta = c.get("metadata") or {}
+            chunk_meta.update(meta)
+            c["metadata"] = chunk_meta
+            c["strategy_used"] = strategy_used
+        return {
+            "requested_strategy": self.cfg.strategy.value,
+            "strategy_used": strategy_used,
+            "chunk_count": len(chunks),
+            "chunks": chunks,
+            "warnings": warnings,
+        }
+
+    def _word_split(self, text: str, source: str) -> list[dict]:
+        words = text.split()
+        records: list[dict] = []
+        for i, start in enumerate(range(0, len(words), self.cfg.chunk_size)):
+            body = " ".join(words[start:start + self.cfg.chunk_size])
+            key = f"{source}|{i}|fallback@{self.cfg.version}"
+            records.append({
+                "id": hashlib.md5(key.encode("utf-8")).hexdigest(),
+                "text": body, "token_count": len(body.split()),
+                "source": source, "strategy_used": "fallback",
+                "version": self.cfg.version, "metadata": {},
+            })
+        return records
+```
+
+### `templates/chunking-service-schema.json`
+
+```json
+{
+  "_header": {
+    "purpose": "Service-level envelope schema for ChunkingService.chunk() output",
+    "consumes": "envelope dict returned by ChunkingService.chunk()",
+    "produces": "pass/fail validation",
+    "depends-on": "content/02-output-contract.xml",
+    "token-budget-impact": "small"
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://chunking-production-service/output.schema.json",
+  "type": "object",
+  "required": [
+    "requested_strategy",
+    "strategy_used",
+    "chunk_count",
+    "chunks",
+    "warnings"
+  ],
+  "properties": {
+    "requested_strategy": {
+      "type": "string",
+      "enum": [
+        "fixed",
+        "sentence",
+        "paragraph",
+        "semantic",
+        "recursive",
+        "markdown",
+        "html",
+        "code"
+      ]
+    },
+    "strategy_used": {
+      "type": "string",
+      "enum": [
+        "fixed",
+        "sentence",
+        "paragraph",
+        "semantic",
+        "recursive",
+        "markdown",
+        "html",
+        "code",
+        "fallback"
+      ]
+    },
+    "chunk_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "chunks": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    }
+  }
+}
+```

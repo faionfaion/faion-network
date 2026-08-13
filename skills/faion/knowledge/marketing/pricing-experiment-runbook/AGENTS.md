@@ -74,6 +74,8 @@
 | `templates/decision-memo.md` | Post-experiment go/no-go memo skeleton |
 | `templates/_smoke-test.json` | Minimum viable plan+preflight+memo for validator self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,3 +91,85 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps subscription count, grandfather mechanism, Stripe pre-flight status, currency coverage, and dispute risk to a rule from `01-core-rules.xml`, telling the agent whether to greenlight the experiment, block on a missing gate, or skip the methodology entirely. Walk it on every fresh invocation; do not cache outcomes across distinct engagements.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/grandfather-coupon.json`
+
+```json
+{
+  "id": "grandfather_REPLACE_quarter",
+  "name": "Grandfather window \u2014 REPLACE",
+  "percent_off": 100,
+  "duration": "repeating",
+  "duration_in_months": 12,
+  "applies_to": {
+    "products": [
+      "prod_REPLACE_new"
+    ]
+  },
+  "metadata": {
+    "experiment_id": "REPLACE-experiment-id",
+    "grandfathered_before": "REPLACE-YYYY-MM-DD"
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "plan": {
+    "experiment_id": "exp-smoke",
+    "start_date": "2026-06-01",
+    "end_date": "2026-07-30",
+    "duration_days": 60,
+    "variant_old": {
+      "stripe_price_id": "price_old"
+    },
+    "variant_new": {
+      "stripe_price_id": "price_new"
+    },
+    "audience": "new_signups_only",
+    "exposure_rule": "random 50/50 by signup-id hash",
+    "success_metric_primary": "trial_to_paid_conversion_pct",
+    "success_metric_threshold": 0.18,
+    "significance_target": "p<0.05",
+    "guardrail_metrics": [
+      "refund_rate",
+      "dispute_rate"
+    ],
+    "grandfathering": {
+      "audience": "all subs before start",
+      "mechanism": "100% off coupon",
+      "stripe_coupon_id": "grandfather_smoke",
+      "window_months": 12
+    },
+    "currencies_in_test": [
+      "usd"
+    ],
+    "tax_behavior": "exclusive"
+  },
+  "stripe_preflight": {
+    "passed_at": "2026-05-28T09:00:00Z",
+    "checks_run": [
+      "new_price_exists",
+      "old_price_active",
+      "coupon_attached",
+      "no_orphan_subs"
+    ]
+  },
+  "decision_memo": {
+    "written_at": "2026-07-31T18:00:00Z",
+    "decision": "adopt_new",
+    "metric_readouts": {
+      "new": 0.21,
+      "old": 0.17
+    },
+    "qualitative_signals": "no spike",
+    "next_action": "Move all signups to price_new on 2026-08-01."
+  }
+}
+```

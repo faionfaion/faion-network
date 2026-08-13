@@ -65,6 +65,8 @@
 | `templates/eslint.config.js` | ESLint 9 flat config baseline |
 | `templates/package.json.snippet.json` | package.json scripts + engines snippet |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,105 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches on runtime (Node 22 / Bun / browser / edge) → tsconfig target + lib. Then on monorepo? → pnpm workspaces or single package. Then on legacy presence → migration mode.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tsconfig.strict.json`
+
+```json
+{
+  "_header": {
+    "purpose": "strict TypeScript baseline for modern JS/TS stack",
+    "consumes": "runtime choice from javascript-modern decision tree",
+    "produces": "tsconfig.json the team commits at repo root",
+    "depends-on": "TypeScript >= 5.4",
+    "token-budget-impact": "~200 tokens when loaded as context"
+  },
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": false,
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noEmit": true
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "coverage"
+  ]
+}
+```
+
+### `templates/eslint.config.js`
+
+```javascript
+import eslint from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import react from 'eslint-plugin-react';
+import reactHooks from 'eslint-plugin-react-hooks';
+
+export default tseslint.config(
+  eslint.configs.recommended,
+  ...tseslint.configs.strictTypeChecked,
+  {
+    plugins: {
+      react,
+      'react-hooks': reactHooks,
+    },
+    rules: {
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      '@typescript-eslint/explicit-function-return-type': ['error', { allowExpressions: true }],
+    },
+  },
+);
+```
+
+### `templates/package.json.snippet.json`
+
+```json
+{
+  "_header": {
+    "purpose": "package.json scripts + engines snippet for modern JS/TS",
+    "consumes": "runtime + package_manager from javascript-modern config",
+    "produces": "scripts + engines section the team merges into package.json",
+    "depends-on": "Node >= 20.10 or Bun >= 1.1",
+    "token-budget-impact": "~150 tokens when loaded as context"
+  },
+  "engines": {
+    "node": ">=20.10",
+    "pnpm": ">=9"
+  },
+  "packageManager": "pnpm@9.6.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit && vite build",
+    "dev": "vite",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "coverage": "vitest run --coverage"
+  }
+}
+```

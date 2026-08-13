@@ -69,6 +69,8 @@
 | `templates/audit-trail.sql` | Hash-chained append-only audit table DDL |
 | `templates/oversight-plan.md` | Human-oversight plan template |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,25 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-risk-tier-first`, `r2-named-dri`, `r3-audit-trail-immutable`, `r4-fairness-explainability`, `r5-human-oversight` from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/audit-trail.sql`
+
+```sql
+-- Minimal append-only audit table for ai-governance-compliance artefacts.
+CREATE TABLE IF NOT EXISTS ai_governance_compliance_audit (
+    id BIGSERIAL PRIMARY KEY,
+    produced_at TIMESTAMPTZ NOT NULL,
+    owner TEXT NOT NULL,
+    approver TEXT NOT NULL,
+    payload JSONB NOT NULL,
+    hash TEXT NOT NULL
+);
+
+-- Forbid UPDATE / DELETE — append-only.
+CREATE OR REPLACE RULE no_update AS ON UPDATE TO ai_governance_compliance_audit DO INSTEAD NOTHING;
+CREATE OR REPLACE RULE no_delete AS ON DELETE TO ai_governance_compliance_audit DO INSTEAD NOTHING;
+```

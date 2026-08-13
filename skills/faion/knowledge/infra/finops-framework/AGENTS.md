@@ -62,8 +62,9 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
 | `templates/config-instance.json` | JSON instance of a filled config artefact |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -80,3 +81,55 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/config-instance.json`
+
+```json
+{
+  "current_phase": "optimize",
+  "lead": "finops-lead@team.io",
+  "raci": {
+    "responsible": [
+      "finops-lead@team.io"
+    ],
+    "accountable": [
+      "cfo@team.io"
+    ],
+    "consulted": [
+      "eng-vp@team.io",
+      "infra-lead@team.io"
+    ],
+    "informed": [
+      "all-eng-managers@team.io"
+    ]
+  },
+  "cadence": {
+    "council_meeting_frequency": "biweekly",
+    "phase_review_frequency": "quarterly"
+  },
+  "kpis_per_phase": {
+    "inform": {
+      "tag_coverage_pct": 92,
+      "dashboard_adoption_pct": 100
+    },
+    "optimize": {
+      "waste_rate_pct": 18,
+      "ri_sp_coverage_pct": 65
+    },
+    "operate": {
+      "budget_variance_pct": 4,
+      "automation_coverage_pct": 70
+    }
+  },
+  "exit_gates": {
+    "inform_exit": "tag_coverage>=80 AND dashboards_live",
+    "optimize_exit": "waste_rate<=25 AND ri_sp_coverage>=50"
+  },
+  "owner": "finops-lead@team.io",
+  "last_reviewed": "2026-05-23"
+}
+```

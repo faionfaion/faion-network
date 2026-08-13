@@ -68,6 +68,8 @@
 | `templates/sticky-haproxy.cfg` | HAProxy cookie-based sticky session snippet |
 | `templates/sticky-nginx.conf` | Nginx Plus / OSS cookie-hash sticky snippet |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,45 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (session-storage location, NAT/autoscale, conn lifetime) to a method choice, each leaf referencing a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/sticky-haproxy.cfg`
+
+```ini
+backend app_servers
+    balance leastconn
+    option httpchk GET /health
+    http-check expect status 200
+
+    # LB-inserted sticky cookie with bounded lifetime + invalidate on backend removal
+    cookie SRVID insert indirect nocache maxidle 1h maxlife 24h
+
+    server srv1 10.0.1.1:8080 cookie srv1 check
+    server srv2 10.0.1.2:8080 cookie srv2 check
+    server srv3 10.0.1.3:8080 cookie srv3 check
+```
+
+### `templates/sticky-nginx.conf`
+
+```conf
+upstream app_backend {
+    zone app_backend 64k;
+
+    # Nginx Plus (commercial): real sticky-cookie support
+    # sticky cookie SRVID expires=1h path=/;
+
+    # OSS Nginx workaround: hash on Set-Cookie or app-managed cookie
+    # hash $cookie_session_id consistent;
+
+    server 10.0.1.1:8080;
+    server 10.0.1.2:8080;
+    server 10.0.1.3:8080;
+
+    keepalive 32;
+}
+
+# NEVER `ip_hash;` with autoscaling or NAT — see lb-session-persistence rule no-iphash-asg-nat.
+```

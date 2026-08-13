@@ -69,6 +69,8 @@
 | `templates/FeatureService.cs` | Service + DI skeleton |
 | `templates/EntityConfiguration.cs` | `IEntityTypeConfiguration<T>` skeleton |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,120 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (runtime constraints, stack, async needs) to a rule from `01-core-rules.xml`, either approving the ASP.NET Core feature layout or redirecting to a smaller stack (script, edge function, BFF). Use it whenever starting a new .NET feature folder or porting from Web Forms / .NET Framework.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/FeatureController.cs`
+
+```csharp
+using Microsoft.AspNetCore.Mvc;
+
+namespace Faion.Features.Orders;
+
+[ApiController]
+[Route("api/[controller]")]
+public sealed class OrdersController : ControllerBase
+{
+    private readonly IOrdersService _service;
+
+    public OrdersController(IOrdersService service) => _service = service;
+
+    [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(OrderResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<OrderResponse>> Get(int id, CancellationToken ct)
+    {
+        var order = await _service.GetAsync(id, ct);
+        return order is null ? NotFound() : Ok(order);
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(OrderResponse), StatusCodes.Status201Created)]
+    public async Task<ActionResult<OrderResponse>> Create(CreateOrderRequest req, CancellationToken ct)
+    {
+        var created = await _service.CreateAsync(req, ct);
+        return CreatedAtAction(nameof(Get), new { id = created.Id }, created);
+    }
+}
+
+public sealed record CreateOrderRequest(string CustomerName, decimal Total);
+public sealed record OrderResponse(int Id, string CustomerName, decimal Total);
+```
+
+### `templates/FeatureService.cs`
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+
+namespace Faion.Features.Orders;
+
+public interface IOrdersService
+{
+    Task<OrderResponse?> GetAsync(int id, CancellationToken ct);
+    Task<OrderResponse> CreateAsync(CreateOrderRequest req, CancellationToken ct);
+}
+
+public sealed class OrdersService : IOrdersService
+{
+    private readonly AppDbContext _db;
+
+    public OrdersService(AppDbContext db) => _db = db;
+
+    public Task<OrderResponse?> GetAsync(int id, CancellationToken ct) =>
+        _db.Orders
+            .AsNoTracking()
+            .Where(o => o.Id == id)
+            .Select(o => new OrderResponse(o.Id, o.CustomerName, o.Total))
+            .FirstOrDefaultAsync(ct);
+
+    public async Task<OrderResponse> CreateAsync(CreateOrderRequest req, CancellationToken ct)
+    {
+        var order = new Order(req.CustomerName, req.Total);
+        _db.Orders.Add(order);
+        await _db.SaveChangesAsync(ct);
+        return new OrderResponse(order.Id, order.CustomerName, order.Total);
+    }
+}
+
+public sealed class Order
+{
+    public int Id { get; private set; }
+    public string CustomerName { get; private set; } = "";
+    public decimal Total { get; private set; }
+    private Order() { }
+    public Order(string customerName, decimal total)
+    {
+        CustomerName = customerName;
+        Total = total;
+    }
+}
+
+public sealed class AppDbContext : DbContext
+{
+    public DbSet<Order> Orders => Set<Order>();
+    public AppDbContext(DbContextOptions<AppDbContext> opt) : base(opt) { }
+}
+```
+
+### `templates/EntityConfiguration.cs`
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+
+namespace Faion.Features.Orders;
+
+public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
+{
+    public void Configure(EntityTypeBuilder<Order> builder)
+    {
+        builder.ToTable("orders");
+        builder.HasKey(o => o.Id);
+        builder.Property(o => o.CustomerName).IsRequired().HasMaxLength(200);
+        builder.Property(o => o.Total).HasPrecision(18, 2);
+        builder.HasIndex(o => o.CustomerName);
+    }
+}
+```

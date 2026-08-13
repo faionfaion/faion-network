@@ -65,6 +65,8 @@
 | `templates/image-gen-config.json` | Skeleton config |
 | `templates/prompt_formula.txt` | 6-element prompt template |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[llm-decision-framework]] — same provider posture as text models
@@ -74,3 +76,48 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches on text-in-image y/n, brand-consistency requirement, and volume.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/image-gen-config.json`
+
+```json
+{
+  "_header": "purpose: skeleton image-gen-config.json | consumes: use-case spec + brand guide | produces: config | depends-on: 01-core-rules + 02-output-contract | token-budget-impact: +250t",
+  "artefact_id": "ig-<slug>-<yyyy-mm>",
+  "version": "1.0.0",
+  "last_reviewed": "YYYY-MM-DD",
+  "task_class": "bulk",
+  "model": "flux-schnell",
+  "prompt_template": {
+    "subject": "<dynamic topic or character>",
+    "style": "editorial illustration | photoreal | watercolour",
+    "lighting": "soft diffused | golden hour | rim",
+    "composition": "16:9 wide | square | rule-of-thirds",
+    "details": "subtle texture; no text in image",
+    "technical": "1024x576, 4 steps, seed 42"
+  },
+  "pipeline": {
+    "concurrency": 8,
+    "retry_max": 2,
+    "cost_per_image_usd": 0.002
+  },
+  "safety": {
+    "likeness_block": true,
+    "content_filter": "stability-safety"
+  }
+}
+```
+
+### `templates/prompt_formula.txt`
+
+```text
+Subject: <what is in the image — main entity + action>
+Style: <art style + medium + palette>
+Lighting: <direction + temperature + quality>
+Composition: <aspect ratio + framing + focal placement>
+Details: <texture, props, secondary elements>
+Technical: <resolution + steps/quality + seed if reproducible>
+```

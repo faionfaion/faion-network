@@ -57,11 +57,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/first-rubric.md.tmpl` | 1-page FIRST + AAA + naming rubric for CONTRIBUTING. |
-| `templates/test-naming.md.tmpl` | Three naming conventions with examples; pick one. |
 | `templates/aaa-skeleton.py.tmpl` | AAA template in Python. |
-| `templates/aaa-skeleton.ts.tmpl` | AAA template in TypeScript. |
 | `templates/_smoke-test.md` | Minimal filled rubric. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Related
 
@@ -75,3 +74,25 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters whether unit-testing applies: root question — "Is the code under test a pure function or method (no I/O)?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/aaa-skeleton.py.tmpl`
+
+```python
+Python AAA skeleton
+"""
+from __future__ import annotations
+
+
+def main() -> None:
+    """Entry point. Fill per methodology procedure."""
+    # TODO: implement per 04-procedure.xml
+    raise NotImplementedError
+
+
+if __name__ == "__main__":
+    main()
+```

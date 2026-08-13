@@ -62,8 +62,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/filter-then-reason.py` | Anthropic SDK filter-then-reason cascade (Haiku filter → Opus reasoner) with escape hatch |
-| `templates/rank-then-rerank.py` | rank-then-rerank cascade for high-stakes routes |
 | `templates/cost-savings-report.md` | Markdown skeleton for the cost-savings audit report |
 
 ## Scripts

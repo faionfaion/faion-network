@@ -65,6 +65,8 @@
 | `templates/config.py` | Settings: embed model, chunk_size, top_k. |
 | `templates/prompt-qa.txt` | QA prompt with source-citation policy. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,127 @@
 ## Decision tree
 
 Decision tree at `content/06-decision-tree.xml` decides index type (vector / property-graph / hybrid) and pipeline shape (Workflow vs QueryEngine).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rag_workflow.py`
+
+```python
+"""
+
+"""LlamaIndex RAG Workflow with typed events and parallel retrieval."""
+from llama_index.core.workflow import (
+    Event,
+    StartEvent,
+    StopEvent,
+    Workflow,
+    step,
+    Context,
+)
+from llama_index.core import VectorStoreIndex, SimpleDirectoryReader
+from llama_index.core.response_synthesizers import get_response_synthesizer
+from pydantic import BaseModel
+from typing import Optional
+
+
+class QueryEvent(Event):
+    query: str
+
+
+class RetrievedEvent(Event):
+    query: str
+    nodes: list
+
+
+class RAGWorkflow(Workflow):
+    def __init__(self, index: VectorStoreIndex, similarity_top_k: int = 5, **kwargs):
+        super().__init__(**kwargs)
+        self.index = index
+        self.similarity_top_k = similarity_top_k
+
+    @step
+    async def retrieve(self, ctx: Context, ev: StartEvent) -> RetrievedEvent:
+        """Retrieve relevant nodes from the index."""
+        query = ev.get("query")
+        retriever = self.index.as_retriever(similarity_top_k=self.similarity_top_k)
+        nodes = await retriever.aretrieve(query)
+        return RetrievedEvent(query=query, nodes=nodes)
+
+    @step
+    async def synthesize(self, ctx: Context, ev: RetrievedEvent) -> StopEvent:
+        """Synthesize answer from retrieved nodes."""
+        synthesizer = get_response_synthesizer(response_mode="compact")
+        response = await synthesizer.asynthesize(ev.query, nodes=ev.nodes)
+        return StopEvent(result=str(response))
+
+
+async def run_rag(index: VectorStoreIndex, query: str) -> str:
+    """Execute RAG workflow and return answer."""
+    workflow = RAGWorkflow(index=index, timeout=60)
+    result = await workflow.run(query=query)
+    return result
+```
+
+### `templates/config.py`
+
+```python
+"""
+
+"""LlamaIndex storage and service context configuration."""
+import os
+from llama_index.core import Settings, StorageContext, load_index_from_storage
+from llama_index.core.node_parser import SentenceSplitter
+from llama_index.llms.anthropic import Anthropic
+from llama_index.embeddings.openai import OpenAIEmbedding
+
+
+def configure_llamaindex(
+    model: str = "claude-opus-4-5",
+    embed_model: str = "text-embedding-3-large",
+    chunk_size: int = 512,
+    chunk_overlap: int = 64,
+) -> None:
+    """Set global LlamaIndex settings."""
+    Settings.llm = Anthropic(model=model, api_key=os.environ["ANTHROPIC_API_KEY"])
+    Settings.embed_model = OpenAIEmbedding(
+        model=embed_model,
+        api_key=os.environ["OPENAI_API_KEY"],
+    )
+    Settings.node_parser = SentenceSplitter(
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
+    )
+    Settings.num_output = 1024
+    Settings.context_window = 4096
+
+
+def load_or_create_storage(persist_dir: str) -> StorageContext:
+    """Load existing index or return empty storage context."""
+    if os.path.exists(persist_dir):
+        return StorageContext.from_defaults(persist_dir=persist_dir)
+    return StorageContext.from_defaults()
+```
+
+### `templates/prompt-qa.txt`
+
+```text
+-->
+
+You are a precise question-answering assistant. Answer questions based ONLY on the provided context.
+
+Rules:
+1. Answer directly from the context. Do not add information not present in the context.
+2. If the context does not contain the answer, say: "I don't have enough information to answer that question."
+3. Cite the source document when providing answers using the format: [Source: {filename}]
+4. Keep answers concise — use bullet points for multi-part answers.
+5. Do not speculate or extrapolate beyond what the context states.
+
+Context:
+{context_str}
+
+Question: {query_str}
+
+Answer:
+```

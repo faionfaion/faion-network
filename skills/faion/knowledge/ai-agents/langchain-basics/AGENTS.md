@@ -61,6 +61,8 @@
 | `templates/structured-extraction.py` | Inline chain using `with_structured_output()` for extraction |
 | `templates/_smoke-test.json` | Minimum valid extraction output for self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,57 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question is whether the workflow needs stateful branching. Branches route to LangGraph (stateful), LangChain LCEL (sequential), or raw vendor SDK (latency-critical).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/structured-extraction.py`
+
+```python
+"""LCEL chain that runs structured extraction with Pydantic validation."""
+from __future__ import annotations
+
+from langchain_anthropic import ChatAnthropic
+from langchain_core.prompts import ChatPromptTemplate
+from pydantic import BaseModel, Field
+
+
+class Extraction(BaseModel):
+    entities: list[str] = Field(description="Named entities found.")
+    sentiment: str = Field(description="positive | neutral | negative")
+    summary: str = Field(description="One-sentence summary.")
+
+
+model = ChatAnthropic(model="claude-sonnet-4-7")
+structured_model = model.with_structured_output(Extraction)
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "Extract entities, sentiment, and a one-sentence summary from the text."),
+    ("human", "{text}"),
+])
+
+chain = (prompt | structured_model).with_retry(stop_after_attempt=3, wait_exponential_jitter=True)
+
+
+def extract(text: str) -> Extraction:
+    return chain.invoke({"text": text})
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "smallest valid Extraction output for the validator",
+  "_consumes": "nothing",
+  "_produces": "example Extraction matching content/02-output-contract.xml",
+  "_depends_on": "content/01-core-rules.xml",
+  "_token_budget_impact": "~50 tokens",
+  "entities": [
+    "Apple",
+    "Q1"
+  ],
+  "sentiment": "positive",
+  "summary": "Apple reported record Q1 profits despite market uncertainty."
+}
+```

@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/at-finding-record.json` | JSON skeleton for AT finding record. |
 | `templates/at-test-case.txt` | Plaintext per-test case template. |
-| `templates/guidepup-nvda-form-error.js` | Guidepup script template for NVDA form-error flow. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Related
 
@@ -75,3 +76,19 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, choice of variant, and the verdict label.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/at-finding-record.json`
+
+```json
+{}
+```
+
+### `templates/at-test-case.txt`
+
+```text
+Testing with Assistive Technology — fill per artefact. See AGENTS.md.
+```

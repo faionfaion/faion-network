@@ -63,8 +63,9 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
 | `templates/config-instance.json` | JSON instance of a filled config artefact |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,57 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/config-instance.json`
+
+```json
+{
+  "environments": [
+    {
+      "name": "staging",
+      "url": "https://staging.acme.io",
+      "approvers": [],
+      "branch_filter": "main"
+    },
+    {
+      "name": "production",
+      "url": "https://acme.io",
+      "approvers": [
+        "release-captain@team.io"
+      ],
+      "branch_filter": "main"
+    }
+  ],
+  "reusable_workflow_ref": {
+    "uses": "acme/cd-library/.github/workflows/deploy.yml",
+    "version_tag": "v2.4.0"
+  },
+  "strategy": {
+    "type": "canary",
+    "rollout_steps": [
+      "10%",
+      "50%",
+      "100%"
+    ],
+    "rollback_gate": {
+      "metric": "http_5xx_ratio",
+      "threshold": 0.02,
+      "window_minutes": 5
+    }
+  },
+  "release_automation": {
+    "tag_pattern": "v{major}.{minor}.{patch}",
+    "changelog_generator": "release-drafter",
+    "release_artifacts": [
+      "binary",
+      "sbom"
+    ]
+  },
+  "owner": "cd-lead@team.io",
+  "last_reviewed": "2026-05-23"
+}
+```

@@ -61,9 +61,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/content-audit-prompt.txt` | Prompt template for auditing existing pages |
-| `templates/gsc-fetch.sh` | Shell script to pull GSC freshness data |
-| `templates/google-ai-overviews-optimization.json` | JSON schema for the AIO spec |
 | `templates/_smoke-test.md` | Minimum-viable filled spec |
 
 ## Scripts

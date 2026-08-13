@@ -66,7 +66,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/growth-content-marketing.json` | JSON skeleton matching the output contract. |
 | `templates/growth-content-marketing.md` | Markdown skeleton with required fields. |
 
 ## Scripts

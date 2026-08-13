@@ -70,6 +70,8 @@
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum viable filled `HandoverSessionRecord` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,57 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (outgoing-availability, task-list readiness, gap-log completeness, sign-off captured) to run-session / defer / forensic-fallback. Every leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+owner:
+  role: ""
+  person: ""
+last_reviewed: ""
+version: ""
+outgoing_engineer: ""
+receiver: ""
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "session_id": "smoke",
+  "header": {
+    "owner": {
+      "role": "PM",
+      "person": "pm-handle"
+    },
+    "last_reviewed": "2026-05-20",
+    "version": "1.0",
+    "outgoing_engineer": "outgoing-handle",
+    "receiver": "receiver-handle"
+  },
+  "task_list": [
+    {
+      "task_id": "T1",
+      "description": "Restart worker pool with no user impact",
+      "receiver_drove": true,
+      "verdict": "unaided"
+    }
+  ],
+  "gap_log": [
+    {
+      "question": "Where does the prod DB password live?",
+      "answer": "1Password vault 'prod-db'",
+      "doc_link": "wiki/secrets#prod-db"
+    }
+  ],
+  "sign_off": {
+    "outgoing_signed_by": "outgoing-handle",
+    "receiver_signed_by": "receiver-handle",
+    "signed_at": "2026-05-20"
+  }
+}
+```

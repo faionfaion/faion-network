@@ -69,6 +69,8 @@
 | `templates/prompt-map.txt` | Agent prompt skeleton for journey-map synthesis. |
 | `templates/funnel-to-stages.py` | Convert funnel CSV to stage summaries for ingest. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,104 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, named persona + scope, research evidence reachable) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-map.txt`
+
+```text
+Given the following user interview excerpts and support ticket summaries, produce a journey map
+for [persona] doing [journey name]. Scope: from [start point] to [end point].
+
+Output a markdown table with these rows:
+Stage | Actions | Touchpoints | Thoughts | Emotions (1-5) | Pain Points | Opportunities
+
+Rules:
+- Base every cell on cited evidence from the input materials
+- For each cell, add a citation: (Interview P3) or (Ticket #1234) or (Analytics: checkout page)
+- If no evidence exists for a cell, write "no data" — do not invent content
+- Emotions: use 1 (most negative/frustrated) to 5 (most positive/delighted)
+- Identify sharp emotional dips (2+ point drop between stages) — these are the highest-priority pain points
+- Do not smooth emotional arcs — report variance between participants explicitly
+- Opportunities must be specific improvements, not generic ("improve the UX") — they must link to the pain point evidence
+
+After the table, add:
+- Top 3 pain points ranked by emotional impact and frequency
+- 3 prioritized opportunities with backlog hypothesis statements
+
+Note: this output is a research synthesis draft. Mark any inferences with [INFERRED].
+Human review required before sharing with stakeholders.
+
+INTERVIEW EXCERPTS:
+[paste excerpts here]
+
+SUPPORT TICKET SUMMARIES:
+[paste ticket summaries here]
+
+ANALYTICS FUNNEL DATA:
+[paste stage summary JSON from funnel-to-stages.py or describe key drop-off points]
+```
+
+### `templates/funnel-to-stages.py`
+
+```python
+"""
+Convert funnel analytics CSV to stage summaries for agent journey map ingestion.
+
+Input CSV columns: stage, sessions, drop_off_pct, avg_time_sec
+Output: JSON list of stage summary dicts for use as agent context.
+
+Usage:
+    python funnel-to-stages.py funnel.csv
+
+Example CSV:
+    stage,sessions,drop_off_pct,avg_time_sec
+    Home,10000,15,45
+    Product Page,8500,22,120
+    Cart,6630,45,60
+    Checkout,3647,38,180
+    Confirmation,2261,0,30
+"""
+
+import csv
+import json
+import sys
+
+
+def summarize(path: str) -> list:
+    stages = []
+    with open(path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            drop_pct = float(row["drop_off_pct"])
+            stages.append({
+                "stage": row["stage"],
+                "sessions": int(row["sessions"]),
+                "drop_off_pct": drop_pct,
+                "avg_time_sec": int(row["avg_time_sec"]),
+                "risk": "high" if drop_pct > 30 else "normal",
+                "note": (
+                    f"High drop-off ({drop_pct:.0f}%) — likely pain point. Investigate."
+                    if drop_pct > 30
+                    else f"Normal drop-off ({drop_pct:.0f}%)."
+                ),
+            })
+    return stages
+
+
+def main() -> None:
+    if len(sys.argv) < 2:
+        print("Usage: python funnel-to-stages.py <funnel.csv>")
+        sys.exit(1)
+    result = summarize(sys.argv[1])
+    print(json.dumps(result, indent=2))
+
+    high_risk = [s for s in result if s["risk"] == "high"]
+    if high_risk:
+        print(f"\nHigh-risk stages for journey map priority: {[s['stage'] for s in high_risk]}")
+
+
+if __name__ == "__main__":
+    main()
+```

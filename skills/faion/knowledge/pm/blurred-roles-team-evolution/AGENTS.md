@@ -67,6 +67,8 @@
 | `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
 | `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,75 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/artefact-instance.json`
+
+```json
+{
+  "report_id": "blurred-acme-2026q2",
+  "owner": "hr@acme.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "roles": [
+    {
+      "id": "pm",
+      "title": "Product Manager",
+      "headcount": 1
+    },
+    {
+      "id": "eng-lead",
+      "title": "Eng Lead",
+      "headcount": 1
+    },
+    {
+      "id": "design-lead",
+      "title": "Design Lead",
+      "headcount": 1
+    },
+    {
+      "id": "data",
+      "title": "Data Analyst",
+      "headcount": 1
+    }
+  ],
+  "overlap_map": [
+    {
+      "from": "pm",
+      "to": "eng-lead",
+      "areas": [
+        "prompt-engineering",
+        "spec authoring"
+      ],
+      "evidence": "interview 1:1 2026-05"
+    }
+  ],
+  "ownership_gaps": [
+    {
+      "area": "ML evaluation harness",
+      "evidence": "decision log 2026-04 nobody approved"
+    }
+  ],
+  "duplications": [
+    {
+      "area": "competitor analysis",
+      "owners": [
+        "pm",
+        "design-lead"
+      ],
+      "evidence": "two parallel reports 2026-04"
+    }
+  ],
+  "recommendations": [
+    {
+      "action": "Hire ML PM",
+      "owner": "cpo@acme.io",
+      "due_cycle": "2026-Q3"
+    }
+  ],
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}
+```

@@ -65,6 +65,8 @@
 | `templates/test_api.py` | Skeleton for DRF API integration test with auth + status + body asserts. |
 | `templates/pyproject.toml.fragment` | Pytest-django config block: DJANGO_SETTINGS_MODULE, addopts, markers, coverage. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,92 @@
 ## Decision tree
 
 The tree at content/06-decision-tree.xml routes the test author between savepoint (default) vs transaction=True, parametrization vs N test functions, and ORM mocking vs real DB fixtures. Walk it before writing any new test module.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/conftest.py`
+
+```python
+"""
+
+import pytest
+from pytest_factoryboy import register
+
+
+# Register your factories here:
+# from tests.factories import UserFactory
+# register(UserFactory)
+
+
+@pytest.fixture
+def api_client():
+    """DRF APIClient (override per project)."""
+    from rest_framework.test import APIClient
+
+    return APIClient()
+
+
+@pytest.fixture
+def authed_client(api_client, user):
+    api_client.force_authenticate(user=user)
+    return api_client
+
+
+@pytest.fixture
+def staff_client(api_client, user_factory):
+    staff_user = user_factory(is_staff=True)
+    api_client.force_authenticate(user=staff_user)
+    return api_client
+```
+
+### `templates/test_api.py`
+
+```python
+"""
+
+import pytest
+
+
+@pytest.mark.django_db
+def test_endpoint_unauth_returns_401(api_client):
+    response = api_client.get("/api/v1/example/")
+    assert response.status_code == 401
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "client_fixture,expected_status",
+    [
+        ("api_client", 401),
+        ("authed_client", 200),
+        ("staff_client", 200),
+    ],
+    ids=["unauth", "user", "staff"],
+)
+def test_endpoint_permission_matrix(request, client_fixture, expected_status):
+    client = request.getfixturevalue(client_fixture)
+    response = client.get("/api/v1/example/")
+    assert response.status_code == expected_status
+```
+
+### `templates/pyproject.toml.fragment`
+
+```toml
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "T20", "S", "ASYNC"]
+
+[tool.mypy]
+python_version = "3.13"
+strict = true
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --cov --cov-fail-under=80 -n auto"
+testpaths = ["tests"]
+markers = ["integration: requires external services"]
+```

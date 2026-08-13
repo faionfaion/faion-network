@@ -67,6 +67,8 @@
 | `templates/output-schema.json` | JSON Schema (draft-07) for the asset-harvest-checklist artefact |
 | `templates/_smoke-test.json` | Minimum viable filled-in asset-harvest-checklist artefact for validator round-trip |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,136 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on the schema's required cross-field checks; every leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/asset-harvest-checklist.json",
+  "type": "object",
+  "required": [
+    "checklist_id",
+    "page_url",
+    "items"
+  ],
+  "properties": {
+    "checklist_id": {
+      "type": "string",
+      "pattern": "^AH-[A-Z0-9-]{2,40}$"
+    },
+    "page_url": {
+      "type": "string",
+      "minLength": 4
+    },
+    "items": {
+      "type": "array",
+      "minItems": 5,
+      "items": {
+        "type": "object",
+        "required": [
+          "category",
+          "name",
+          "status",
+          "required_by_launch",
+          "source"
+        ],
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": [
+              "visual",
+              "textual",
+              "legal",
+              "analytics",
+              "seo"
+            ]
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "done",
+              "in-progress",
+              "missing"
+            ]
+          },
+          "required_by_launch": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "string",
+            "minLength": 2
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "checklist_id": "AH-LANDING-Q2",
+  "page_url": "https://example.com/launch",
+  "items": [
+    {
+      "category": "visual",
+      "name": "og-image-1200x630",
+      "status": "done",
+      "required_by_launch": true,
+      "source": "design/og/launch.png"
+    },
+    {
+      "category": "visual",
+      "name": "favicon",
+      "status": "done",
+      "required_by_launch": true,
+      "source": "public/favicon.ico"
+    },
+    {
+      "category": "textual",
+      "name": "meta-description",
+      "status": "done",
+      "required_by_launch": true,
+      "source": "pages/launch.mdx frontmatter"
+    },
+    {
+      "category": "legal",
+      "name": "privacy-page-link",
+      "status": "done",
+      "required_by_launch": true,
+      "source": "/privacy"
+    },
+    {
+      "category": "analytics",
+      "name": "plausible-script",
+      "status": "done",
+      "required_by_launch": true,
+      "source": "_app.tsx"
+    },
+    {
+      "category": "analytics",
+      "name": "consent-gate",
+      "status": "done",
+      "required_by_launch": true,
+      "source": "components/CookieBanner.tsx"
+    },
+    {
+      "category": "seo",
+      "name": "canonical-url",
+      "status": "done",
+      "required_by_launch": true,
+      "source": "head meta"
+    }
+  ]
+}
+```

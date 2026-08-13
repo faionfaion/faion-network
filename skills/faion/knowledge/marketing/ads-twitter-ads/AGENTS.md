@@ -68,6 +68,8 @@
 | `templates/brand-safety-exclusions.json` | Standard brand-safety category exclusion list. |
 | `templates/campaign-spec.json` | Schema-conformant sample artefact used by validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,45 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/brand-safety-exclusions.json`
+
+```json
+{
+  "category_exclusions": [
+    "politics",
+    "hate",
+    "harassment",
+    "sensitive_news",
+    "tragedy",
+    "graphic_content"
+  ]
+}
+```
+
+### `templates/campaign-spec.json`
+
+```json
+{
+  "objective": "website_clicks",
+  "audience": {
+    "mode": "follower_lal",
+    "size_estimate": 320000
+  },
+  "bid_strategy": "autobid",
+  "brand_safety": {
+    "category_exclusions": [
+      "politics",
+      "hate"
+    ]
+  },
+  "kpi": {
+    "target_cpc": 0.85,
+    "viewability_floor_pct": 50
+  }
+}
+```

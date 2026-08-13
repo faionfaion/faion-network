@@ -60,7 +60,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/agentic-readiness-checklist.md` | Per-axis readiness checklist with scoring guidance |
-| `templates/agentic-commerce-future-trends.json` | JSON schema for the readiness report |
 | `templates/_smoke-test.md` | Minimum-viable filled report |
 
 ## Scripts

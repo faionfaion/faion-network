@@ -61,13 +61,6 @@
 | Trivial workers (classify / format) | haiku | Cost-saver per role-specialized-models. |
 | Cycle-check on plan | code (no LLM) | Plan-time graph check; deterministic. |
 
-## Templates
-
-| File | Purpose |
-|------|---------|
-| `templates/hierarchical_runner.py` | `HierarchicalRunner` class with manager plan + worker dispatch + synthesis; respects `deps[]` and per-worker timeouts. |
-| `templates/plan-schema.json` | JSON Schema for the `Plan` the manager emits. |
-
 ## Related
 
 - [[multi-agent-basics]] — upstream spec.

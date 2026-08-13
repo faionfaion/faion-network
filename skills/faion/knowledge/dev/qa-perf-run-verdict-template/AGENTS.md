@@ -67,6 +67,8 @@
 | `templates/slo.yaml` | YAML configuration scaffolding the artefact. |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,65 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is there a perf gate with declared SLOs blocking release promotion?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/verdict.json`
+
+```json
+{
+  "run_id": "perf-2026-05-23-rc1",
+  "verdict": "FAIL",
+  "baseline_ref": "perf-2026-05-16-green",
+  "environment_fingerprint": "c5.2xlarge|dataset-v3|shape-A",
+  "samples_per_endpoint": 4200,
+  "metrics": [
+    {
+      "endpoint": "POST /orders",
+      "p50": 145,
+      "p95": 690,
+      "p99": 1200,
+      "error_rate": 0.002,
+      "slo_target": "p95<500ms",
+      "pass": false
+    }
+  ],
+  "recommendation": "hold"
+}
+```
+
+### `templates/slo.yaml`
+
+```yaml
+# faion_header_json: {"__faion_header__":{"purpose":"YAML configuration scaffolding the artefact.","consumes":"see content/02-output-contract.xml","produces":"report","depends_on":"content/01-core-rules.xml#binary-verdict","token_budget_impact":"~150 tokens when loaded"}}
+# QA Performance Run Verdict Template configuration scaffold.
+version: 1
+slug: qa-perf-run-verdict-template
+items: []
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "run_id": "perf-2026-05-23-rc1",
+  "verdict": "FAIL",
+  "baseline_ref": "perf-2026-05-16-green",
+  "environment_fingerprint": "c5.2xlarge|dataset-v3|shape-A",
+  "samples_per_endpoint": 4200,
+  "metrics": [
+    {
+      "endpoint": "POST /orders",
+      "p50": 145,
+      "p95": 690,
+      "p99": 1200,
+      "error_rate": 0.002,
+      "slo_target": "p95<500ms",
+      "pass": false
+    }
+  ],
+  "recommendation": "hold"
+}
+```

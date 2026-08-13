@@ -62,7 +62,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/tech-radar.md` | Markdown radar with quadrants + entries + evidence column |
-| `templates/tech-radar.schema.json` | JSON Schema for the radar artefact |
 
 ## Scripts
 

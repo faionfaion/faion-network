@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ai-content-quality-review.json` | JSON skeleton matching the output contract. |
 | `templates/ai-content-quality-review.md` | Markdown skeleton with required fields. |
 
 ## Scripts

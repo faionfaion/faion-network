@@ -64,6 +64,8 @@
 | `templates/capture_corpus.py` | Python script sampling top-N+tail+fuzz inputs and capturing legacy outputs. |
 | `templates/golden_master_test.py` | pytest runner that diffs (input, expected) pairs and checks `approved_diffs.yaml`. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,118 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/capture_corpus.py`
+
+```python
+"""Capture a golden-master corpus by wrapping the legacy callable.
+
+Run:
+    python -m capture_corpus < production_inputs.jsonl
+
+Inputs file: one JSON object per line, each with `id` and `input` (kwargs dict).
+Output: appends `(id, input, expected)` rows to `tests/golden/corpus.jsonl`.
+
+Normalization is REQUIRED. Without it the replay test goes flaky and gets
+disabled, which destroys the whole gate. Extend `normalize()` for your domain.
+"""
+
+from __future__ import annotations
+
+import json
+import pathlib
+import random
+import sys
+from typing import Any
+
+import freezegun  # type: ignore[import-not-found]
+
+from legacy import process  # adapt import to the legacy entry point
+
+CORPUS = pathlib.Path("tests/golden/corpus.jsonl")
+FROZEN_AT = "2026-01-01T00:00:00Z"
+SEED = 42
+
+
+def normalize(value: Any) -> Any:
+    """Strip volatile data so replay is deterministic.
+
+    Sort dict keys, strip UUID-shaped strings, round floats, sort lists by stable
+    key when order is irrelevant. Add domain-specific rules here.
+    """
+    if isinstance(value, dict):
+        return {k: normalize(value[k]) for k in sorted(value)}
+    if isinstance(value, list):
+        return [normalize(v) for v in value]
+    if isinstance(value, float):
+        return round(value, 6)
+    return value
+
+
+def main() -> None:
+    random.seed(SEED)
+    CORPUS.parent.mkdir(parents=True, exist_ok=True)
+    seen = {json.loads(line)["id"] for line in CORPUS.read_text().splitlines() if line.strip()} if CORPUS.exists() else set()
+
+    with freezegun.freeze_time(FROZEN_AT), CORPUS.open("a") as out:
+        for line in sys.stdin:
+            case = json.loads(line)
+            if case["id"] in seen:
+                continue
+            expected = normalize(process(**case["input"]))
+            out.write(json.dumps({"id": case["id"], "input": case["input"], "expected": expected}, sort_keys=True) + "\n")
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### `templates/golden_master_test.py`
+
+```python
+"""Pytest replay harness: assert byte-for-byte parity with the corpus.
+
+Each row in `tests/golden/corpus.jsonl` becomes one parametrized case so a
+single failing input is reported with a precise id. Updating `expected` values
+requires a separate commit whose message starts with `golden:`.
+"""
+
+from __future__ import annotations
+
+import difflib
+import json
+import pathlib
+from typing import Any
+
+import pytest
+
+from rewrite import process  # adapt import to the rewrite entry point
+from corpus_normalize import normalize  # share normalize() with capture_corpus.py
+
+CORPUS = pathlib.Path("tests/golden/corpus.jsonl")
+CASES = [json.loads(line) for line in CORPUS.read_text().splitlines() if line.strip()]
+
+
+def _diff(expected: Any, actual: Any) -> str:
+    return "\n".join(
+        difflib.unified_diff(
+            json.dumps(expected, indent=2, sort_keys=True).splitlines(),
+            json.dumps(actual, indent=2, sort_keys=True).splitlines(),
+            fromfile="expected",
+            tofile="actual",
+            lineterm="",
+        )
+    )
+
+
+@pytest.mark.parametrize("case", CASES, ids=lambda c: c["id"])
+def test_golden_master(case: dict) -> None:
+    actual = normalize(process(**case["input"]))
+    expected = case["expected"]
+    if actual != expected:
+        pytest.fail(f"{case['id']} diverged:\n{_diff(expected, actual)}")
+```

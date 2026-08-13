@@ -63,6 +63,8 @@
 | `templates/continuous-discovery.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/continuous-discovery.md` | Markdown skeleton for human-readable artefact rendering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[product-discovery]]
@@ -71,3 +73,28 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/continuous-discovery.json`
+
+```json
+{
+  "artefact_id": "continuous-discovery-example",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "weekly_touch_count": 3,
+  "assumption_tree_url": "notion://workspace/assumption_tree_url",
+  "touch_types": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "cadence_slot": {
+    "key": "value"
+  },
+  "owner": "@solo-founder"
+}
+```

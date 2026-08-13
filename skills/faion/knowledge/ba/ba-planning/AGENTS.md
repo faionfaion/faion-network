@@ -66,6 +66,8 @@
 | `templates/ba-planning.json` | Skeleton artefact with required fields |
 | `templates/_smoke-test.json` | Minimum viable filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,59 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes on artefact-state signal to the active rule.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ba-planning.json`
+
+```json
+{
+  "engagement_id": "REPLACE",
+  "version_tag": "REPLACE",
+  "approach": "REPLACE",
+  "approach_rationale": "REPLACE",
+  "stakeholders": [],
+  "deliverables": [],
+  "governance": {},
+  "signoff": {}
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "engagement_id": "acme-migration",
+  "version_tag": "v1.0.0",
+  "approach": "hybrid",
+  "approach_rationale": "Regulated domain + multi-team coordination requires plan-driven discovery + change-driven implementation.",
+  "stakeholders": [
+    {
+      "name": "Maria Lopes",
+      "role": "VP Ops",
+      "authority": "Approve",
+      "channel": "weekly sync",
+      "cares_about": "Reduce cycle time 50%"
+    }
+  ],
+  "deliverables": [
+    {
+      "name": "AS-IS BPMN",
+      "format": "BPMN 2.0 XML",
+      "due_by": "2026-06-15",
+      "owner": "Maria Lopes"
+    }
+  ],
+  "governance": {
+    "approver": "Pedro Silva (CFO)",
+    "change_process": "PR review + sponsor signoff",
+    "escalation_path": "BA \u2192 PM \u2192 Sponsor \u2192 Steering"
+  },
+  "signoff": {
+    "sponsor_name": "Pedro Silva",
+    "ts": "2026-05-23T17:00:00Z"
+  }
+}
+```

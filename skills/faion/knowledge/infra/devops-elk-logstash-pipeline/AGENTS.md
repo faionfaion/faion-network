@@ -69,6 +69,8 @@
 | `templates/main.conf` | Pipeline: Beats input → grok + JSON + PII mask → Elasticsearch output |
 | `templates/_smoke-test.json` | Minimum config used by validate-devops-elk-logstash-pipeline.py --self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,108 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it when wiring Logstash for mixed-format ingest or PII masking.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pipelines.yml`
+
+```yaml
+- pipeline.id: heavy
+  path.config: "/etc/logstash/conf.d/heavy.conf"
+  pipeline.workers: 4
+  pipeline.batch.size: 250
+  dead_letter_queue.enable: true
+
+- pipeline.id: routing
+  path.config: "/etc/logstash/conf.d/routing.conf"
+  pipeline.workers: 2
+  pipeline.batch.size: 500
+  dead_letter_queue.enable: true
+```
+
+### `templates/main.conf`
+
+```conf
+input {
+  beats {
+    port => 5044
+    ssl => true
+    ssl_certificate => "/etc/logstash/certs/logstash.crt"
+    ssl_key         => "/etc/logstash/certs/logstash.key"
+  }
+}
+
+filter {
+  if [log_type] == "nginx-access" {
+    grok {
+      match => { "message" => "%{COMBINEDAPACHELOG}" }
+      tag_on_failure => ["_grokparsefailure"]
+    }
+    date { match => ["timestamp", "dd/MMM/yyyy:HH:mm:ss Z"] }
+    geoip { source => "clientip" }
+  }
+
+  if [log_type] == "app-json" {
+    json {
+      source => "message"
+      tag_on_failure => ["_jsonparsefailure"]
+    }
+  }
+
+  # PII masking — credit card numbers + bearer tokens
+  mutate {
+    gsub => [
+      "message", "\b(?:\d[ -]*?){13,16}\b", "[REDACTED-CC]",
+      "message", "Bearer\s+[A-Za-z0-9._\-]+", "Bearer [REDACTED-TOKEN]"
+    ]
+  }
+}
+
+output {
+  if "_grokparsefailure" in [tags] or "_jsonparsefailure" in [tags] {
+    # DLQ
+    file { path => "/var/log/logstash/dlq/%{+yyyy-MM-dd}.log" }
+  } else {
+    elasticsearch {
+      hosts => ["https://elasticsearch:9200"]
+      ssl => true
+      cacert => "/etc/logstash/certs/ca.crt"
+      user => "${ES_USER}"
+      password => "${ES_PASS}"
+      index => "logs-write"
+      action => "create"
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "pipelines": [
+    {
+      "id": "heavy",
+      "workers": 4,
+      "batch_size": 250,
+      "dlq_enabled": true
+    }
+  ],
+  "pii_masking": [
+    {
+      "field": "message",
+      "pattern": "credit-card",
+      "replacement": "[REDACTED-CC]"
+    }
+  ],
+  "outputs": [
+    {
+      "target": "elasticsearch",
+      "tls": true,
+      "auth": true
+    }
+  ]
+}
+```

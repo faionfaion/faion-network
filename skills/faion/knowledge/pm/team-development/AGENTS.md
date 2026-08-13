@@ -75,6 +75,8 @@
 | `templates/retro.md` | Went-well / didn't-go-well / ideas / action items (owner + sprint deadline). |
 | `templates/_smoke-test.json` | Minimum-viable filled `TeamDevelopmentReport` for validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -91,3 +93,56 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (team size, retro corpus depth, throughput shape, conflict signal) to a concrete action — Forming workshop, Storming mediation, gap plan, or escalation — each leaf referencing a rule from `01-core-rules.xml`. Use the tree before deciding which sub-agent to invoke first.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "team_id": "smoke-team",
+  "as_of": "2026-05-23",
+  "tuckman_stage": "Norming",
+  "tuckman_confidence": 0.65,
+  "tuckman_evidence": [
+    "throughput stable over 3 sprints",
+    "PR review SLA met in S12-S13"
+  ],
+  "charter": {
+    "co_authored": true,
+    "mission": "Ship checkout to <2s p95 by Q3",
+    "working_agreements": [
+      "PR review SLA 24h",
+      "async-first comms",
+      "decisions via RFC"
+    ]
+  },
+  "skills_gap_plan": [
+    {
+      "skill": "loadtesting",
+      "gap_severity": "high",
+      "gap_options_evaluated": [
+        "training",
+        "pairing",
+        "contracting",
+        "hiring"
+      ],
+      "chosen_option": "pairing",
+      "owner_role": "SRE lead",
+      "deadline_sprint": "S14"
+    }
+  ],
+  "themes": [
+    {
+      "theme": "PR review backlog blocking merges",
+      "evidence_sprints": [
+        "S11",
+        "S12"
+      ],
+      "proposed_experiment": "Cap WIP at 5; rotate reviewer-of-the-day."
+    }
+  ]
+}
+```

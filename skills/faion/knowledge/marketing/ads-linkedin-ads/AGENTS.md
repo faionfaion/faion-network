@@ -68,6 +68,8 @@
 | `templates/abm-account-list.csv` | Matched-account list CSV header for ABM seeding. |
 | `templates/campaign-plan.json` | Schema-conformant sample artefact used by validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,54 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/abm-account-list.csv`
+
+```csv
+company_name,domain,industry,size_band,priority
+Acme Co,acme.com,SaaS,201-1000,1
+```
+
+### `templates/campaign-plan.json`
+
+```json
+{
+  "objective": "lead_generation",
+  "audience": {
+    "matched_accounts": "acme_top500",
+    "icp_filters": {
+      "seniority": [
+        "director",
+        "vp"
+      ],
+      "function": [
+        "engineering"
+      ]
+    },
+    "exclusions": [
+      "competitors"
+    ]
+  },
+  "formats": [
+    "lead_form"
+  ],
+  "bid_strategy": "cost_cap",
+  "budget": {
+    "daily": 200,
+    "currency": "USD"
+  },
+  "creative_brief": {
+    "hook": "Ship faster",
+    "value_prop": "10x SDD throughput",
+    "cta": "Get demo"
+  },
+  "kpi": {
+    "target_cost_per_mql": 80,
+    "target_mql_to_sql": 0.25
+  }
+}
+```

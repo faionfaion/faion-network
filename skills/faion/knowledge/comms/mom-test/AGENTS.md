@@ -70,6 +70,8 @@
 | `templates/prompt-transcript-analysis.txt` | Prompt to classify a transcript on the commitment ladder |
 | `templates/signal-classifier.py` | Python classifier: tags utterances as compliment / fact / commitment |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,78 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts with stage (pre-call script vs post-call analysis), routes by hypothesis maturity, and lands on either a past-tense rule, a current-spend rule, or a commitment-ladder rule.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-question-gen.txt`
+
+```text
+Generate 10 customer discovery interview questions using The Mom Test methodology.
+Problem hypothesis: <HYPOTHESIS>
+Rules — each question must:
+- Ask about past behavior and specific experiences only
+- NOT ask for opinions ("Do you think...", "Do you like...")
+- NOT use future hypotheticals ("Would you...", "Could you imagine...")
+- NOT be leading (no embedded assumptions about the problem)
+Output: numbered list of questions only. No preamble.
+Review each question against the three Mom Test rules before including it.
+```
+
+### `templates/prompt-transcript-analysis.txt`
+
+```text
+Classify each statement from this interview transcript.
+Categories: PROBLEM_SIGNAL | CURRENT_SOLUTION | COMMITMENT | RED_FLAG | COMPLIMENT
+Format: [CATEGORY] "exact quote"
+Transcript: <TRANSCRIPT>
+
+Rules:
+- Use exact quotes — never paraphrase
+- A statement can have multiple categories
+- RED_FLAG = hypothetical language ("would", "might", "probably")
+- COMPLIMENT = positive but no commitment of time, money, or reputation
+- Require 3+ independent PROBLEM_SIGNAL mentions across interviews before treating a problem as validated
+```
+
+### `templates/signal-classifier.py`
+
+```python
+"""
+Keyword-based signal classifier for post-interview note processing.
+Input: list of statement strings from interview notes.
+Output: list of dicts with statement and matched signal types.
+
+Signal types:
+  PROBLEM       — interviewee describes pain or friction
+  CURRENT_SOL   — interviewee describes what they use now
+  COMMITMENT    — interviewee offers time, reputation, or money
+  RED_FLAG      — hypothetical language, predicts unreliable signal
+  COMPLIMENT    — positive but non-committal (discard for validation)
+"""
+
+SIGNAL_KEYWORDS: dict[str, list[str]] = {
+    "PROBLEM": ["struggle", "hard", "frustrating", "pain", "waste", "annoying", "broken", "hate"],
+    "CURRENT_SOL": ["I use", "we use", "currently", "right now", "we pay", "we spend", "we rely"],
+    "COMMITMENT": ["introduce", "pilot", "deposit", "beta", "send you", "schedule", "sign", "prepay"],
+    "RED_FLAG": ["would", "might", "probably", "I think I'd", "generally", "usually I'd"],
+}
+
+
+def classify_statement(statement: str) -> list[str]:
+    lower = statement.lower()
+    matched = [
+        signal
+        for signal, keywords in SIGNAL_KEYWORDS.items()
+        if any(kw in lower for kw in keywords)
+    ]
+    return matched if matched else ["COMPLIMENT"]
+
+
+def classify_interview(statements: list[str]) -> list[dict]:
+    return [
+        {"statement": s, "signals": classify_statement(s)}
+        for s in statements
+    ]
+```

@@ -68,6 +68,8 @@
 | `templates/appproject.yaml` | AppProject with sourceRepos/destinations/roles |
 | `templates/applicationset.yaml` | ApplicationSet generator across envs |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,52 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, owner, downstream consumer) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it before applying the ArgoCD GitOps for Kubernetes Deployments methodology when in doubt about scope or fit.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/application.yaml`
+
+```yaml
+# ArgoCD GitOps for Kubernetes Deployments — application.yaml
+# Replace placeholder values per instance.
+
+artefact_id: "<slug-or-uuid>"
+owner: "<single-named-handle>"
+inputs_used: []
+decision: "<the-answer>"
+rationale: "<>=2 sentences referencing at least one input by name>"
+version: "1.0.0"
+last_reviewed: "2026-05-23"
+```
+
+### `templates/appproject.yaml`
+
+```yaml
+# ArgoCD GitOps for Kubernetes Deployments — appproject.yaml
+# Replace placeholder values per instance.
+
+artefact_id: "<slug-or-uuid>"
+owner: "<single-named-handle>"
+inputs_used: []
+decision: "<the-answer>"
+rationale: "<>=2 sentences referencing at least one input by name>"
+version: "1.0.0"
+last_reviewed: "2026-05-23"
+```
+
+### `templates/applicationset.yaml`
+
+```yaml
+# ArgoCD GitOps for Kubernetes Deployments — applicationset.yaml
+# Replace placeholder values per instance.
+
+artefact_id: "<slug-or-uuid>"
+owner: "<single-named-handle>"
+inputs_used: []
+decision: "<the-answer>"
+rationale: "<>=2 sentences referencing at least one input by name>"
+version: "1.0.0"
+last_reviewed: "2026-05-23"
+```

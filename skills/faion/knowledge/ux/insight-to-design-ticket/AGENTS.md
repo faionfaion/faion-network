@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/insight-to-design-ticket.json` | JSON skeleton conforming to the output-contract schema. |
 | `templates/insight-to-design-ticket.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

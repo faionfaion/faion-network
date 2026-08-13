@@ -64,6 +64,8 @@
 | `templates/metric-deviation-hypothesis-framework.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,106 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/metric-deviation-hypothesis-framework.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/metric-deviation-hypothesis-framework.json",
+  "title": "Metric Deviation Hypothesis Framework Output Contract",
+  "type": "object",
+  "required": [
+    "metric_name",
+    "baseline",
+    "deviation_magnitude",
+    "time_window",
+    "hypotheses",
+    "next_checks",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "metric_name": {
+      "type": "string",
+      "description": "named metric"
+    },
+    "baseline": {
+      "type": "object",
+      "description": "baseline value + window"
+    },
+    "deviation_magnitude": {
+      "type": "string",
+      "description": "\u03c3 or % vs baseline"
+    },
+    "time_window": {
+      "type": "object",
+      "description": "ISO start/end"
+    },
+    "hypotheses": {
+      "type": "array",
+      "description": "\u22653 ranked causal hypotheses with detector + probability",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "next_checks": {
+      "type": "array",
+      "description": "ranked check list with P(falsify) and cost",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "owner": {
+      "type": "string",
+      "description": "named human owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "metric_name": "sample-metric_name",
+  "baseline": {
+    "k": "v"
+  },
+  "deviation_magnitude": "sample-deviation_magnitude",
+  "time_window": {
+    "k": "v"
+  },
+  "hypotheses": [
+    {
+      "k": "v"
+    }
+  ],
+  "next_checks": [
+    {
+      "k": "v"
+    }
+  ],
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

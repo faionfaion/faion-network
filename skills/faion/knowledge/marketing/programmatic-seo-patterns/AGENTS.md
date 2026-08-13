@@ -65,8 +65,9 @@
 | File | Purpose |
 |------|---------|
 | `templates/program-plan.md` | Programmatic-SEO program plan Markdown skeleton. |
-| `templates/comparison-template.html` | Comparison-intent HTML template skeleton with schema.org markup. |
 | `templates/program-plan.json` | Schema-conformant sample artefact used by validator self-test. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -83,3 +84,44 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/program-plan.json`
+
+```json
+{
+  "data_source": {
+    "provider": "internal_db",
+    "refresh_cadence_days": 30,
+    "quality_pct": 95
+  },
+  "intent_template_map": [
+    {
+      "intent": "comparison",
+      "template_id": "tpl-vs"
+    },
+    {
+      "intent": "listing",
+      "template_id": "tpl-list"
+    }
+  ],
+  "thin_content_threshold": {
+    "min_words": 300,
+    "min_data_points": 2,
+    "schema_required": true
+  },
+  "indexability_tiers": {
+    "tier_1": "indexed+sitemap",
+    "tier_2": "indexed",
+    "tier_3": "noindex"
+  },
+  "internal_link_graph": {
+    "sibling_pattern": "category-siblings-5",
+    "parent_pattern": "category-parent-1"
+  },
+  "owner": "seo-lead@faion.net"
+}
+```

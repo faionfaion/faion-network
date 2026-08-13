@@ -69,6 +69,8 @@
 | `templates/trunk-based-dev-principles.json` | JSON Schema for the readiness checklist artefact. |
 | `templates/branch-policy.md` | Markdown snippet for `BRANCHING.md`: max branch age, naming, merge rules. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,157 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree walks the four principles in order (single trunk → small commits → releasable trunk → fast CI). Any FAIL on the first two principles → verdict not-ready. FAIL only on principles 3 or 4 with a fix-plan → verdict partial-adopt. ALL PASS → adopt. Each leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/trunk-based-dev-principles.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/trunk-based-dev-principles.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "repo_ref",
+    "principles",
+    "total",
+    "verdict",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^tbd-[a-z0-9-]{6,}$"
+    },
+    "repo_ref": {
+      "type": "string",
+      "minLength": 1
+    },
+    "principles": {
+      "type": "object",
+      "required": [
+        "single_trunk",
+        "small_commits",
+        "releasable_trunk",
+        "fast_ci"
+      ],
+      "properties": {
+        "single_trunk": {
+          "type": "object",
+          "required": [
+            "score",
+            "evidence"
+          ],
+          "properties": {
+            "score": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 25
+            },
+            "evidence": {
+              "type": "string"
+            }
+          }
+        },
+        "small_commits": {
+          "type": "object",
+          "required": [
+            "score",
+            "evidence"
+          ],
+          "properties": {
+            "score": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 25
+            },
+            "evidence": {
+              "type": "string"
+            }
+          }
+        },
+        "releasable_trunk": {
+          "type": "object",
+          "required": [
+            "score",
+            "evidence"
+          ],
+          "properties": {
+            "score": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 25
+            },
+            "evidence": {
+              "type": "string"
+            }
+          }
+        },
+        "fast_ci": {
+          "type": "object",
+          "required": [
+            "score",
+            "evidence"
+          ],
+          "properties": {
+            "score": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 25
+            },
+            "evidence": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "verdict": {
+      "enum": [
+        "adopt",
+        "partial-adopt",
+        "not-ready"
+      ]
+    },
+    "fixes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "principle",
+          "issue",
+          "suggested_fix"
+        ],
+        "properties": {
+          "principle": {
+            "type": "string"
+          },
+          "issue": {
+            "type": "string"
+          },
+          "suggested_fix": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

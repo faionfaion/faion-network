@@ -78,6 +78,8 @@
 | `templates/async-pulse.md` | 5-min Loom or written pulse questionnaire. |
 | `templates/_smoke-test.md` | Minimum filled-in run-book. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -94,3 +96,205 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The mandatory tree maps observable signals (engagement type, perspective set, scope, audit needs, baseline presence) to a single rule from `01-core-rules.xml`; every leaf references either a numbered core rule or the `skip-this-methodology` conclusion that routes the agent to a different methodology when this one does not apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/miro-canvas-process-map.json`
+
+```json
+{
+  "example": {
+    "workshop_id": "ws-2026-05-23-process-map",
+    "objective": "Build to-be process map for invoice exception handling with sign-off-ready BPMN draft",
+    "agenda": [
+      {
+        "block": "Opening",
+        "duration_min": 10,
+        "mode": "plenary",
+        "deliverable": "ground-rules ack"
+      }
+    ],
+    "pre_read": {
+      "url": "https://wiki/ws/pre-read",
+      "sent_at": "2026-05-21T09:00:00Z",
+      "acknowledgement_threshold": 0.7,
+      "acknowledgement_rate": 0.82
+    },
+    "ground_rules": {
+      "camera_policy": "on for plenary",
+      "mic_policy": "on in breakouts \u22646",
+      "chat_use": "questions + side-notes",
+      "hand_raise": "tool-native"
+    },
+    "breakouts": [
+      {
+        "facilitator": "BA",
+        "timekeeper": "PM",
+        "scribe": "Ops lead",
+        "canvas_frame": "frame-1",
+        "deliverable_definition": "exception path bpmn draft",
+        "read_out_template": "3-bullet summary"
+      }
+    ],
+    "canvas_links": [
+      {
+        "tool": "miro",
+        "url": "https://miro/abc",
+        "template_id": "process-map"
+      }
+    ],
+    "time_zones": {
+      "zones": [
+        "UTC+1",
+        "UTC-5"
+      ],
+      "working_hours_coverage_pct": 0.85,
+      "split_decision": "single session"
+    },
+    "async_pulses": [
+      {
+        "window": "T-24h",
+        "questions": [
+          "What is the worst exception you saw last month?"
+        ],
+        "response_rate_threshold": 0.6
+      }
+    ],
+    "decision_log": []
+  }
+}
+```
+
+### `templates/miro-canvas-story-map.json`
+
+```json
+{
+  "example": {
+    "workshop_id": "ws-2026-05-23-process-map",
+    "objective": "Build to-be process map for invoice exception handling with sign-off-ready BPMN draft",
+    "agenda": [
+      {
+        "block": "Opening",
+        "duration_min": 10,
+        "mode": "plenary",
+        "deliverable": "ground-rules ack"
+      }
+    ],
+    "pre_read": {
+      "url": "https://wiki/ws/pre-read",
+      "sent_at": "2026-05-21T09:00:00Z",
+      "acknowledgement_threshold": 0.7,
+      "acknowledgement_rate": 0.82
+    },
+    "ground_rules": {
+      "camera_policy": "on for plenary",
+      "mic_policy": "on in breakouts \u22646",
+      "chat_use": "questions + side-notes",
+      "hand_raise": "tool-native"
+    },
+    "breakouts": [
+      {
+        "facilitator": "BA",
+        "timekeeper": "PM",
+        "scribe": "Ops lead",
+        "canvas_frame": "frame-1",
+        "deliverable_definition": "exception path bpmn draft",
+        "read_out_template": "3-bullet summary"
+      }
+    ],
+    "canvas_links": [
+      {
+        "tool": "miro",
+        "url": "https://miro/abc",
+        "template_id": "process-map"
+      }
+    ],
+    "time_zones": {
+      "zones": [
+        "UTC+1",
+        "UTC-5"
+      ],
+      "working_hours_coverage_pct": 0.85,
+      "split_decision": "single session"
+    },
+    "async_pulses": [
+      {
+        "window": "T-24h",
+        "questions": [
+          "What is the worst exception you saw last month?"
+        ],
+        "response_rate_threshold": 0.6
+      }
+    ],
+    "decision_log": []
+  }
+}
+```
+
+### `templates/miro-canvas-event-storming.json`
+
+```json
+{
+  "example": {
+    "workshop_id": "ws-2026-05-23-process-map",
+    "objective": "Build to-be process map for invoice exception handling with sign-off-ready BPMN draft",
+    "agenda": [
+      {
+        "block": "Opening",
+        "duration_min": 10,
+        "mode": "plenary",
+        "deliverable": "ground-rules ack"
+      }
+    ],
+    "pre_read": {
+      "url": "https://wiki/ws/pre-read",
+      "sent_at": "2026-05-21T09:00:00Z",
+      "acknowledgement_threshold": 0.7,
+      "acknowledgement_rate": 0.82
+    },
+    "ground_rules": {
+      "camera_policy": "on for plenary",
+      "mic_policy": "on in breakouts \u22646",
+      "chat_use": "questions + side-notes",
+      "hand_raise": "tool-native"
+    },
+    "breakouts": [
+      {
+        "facilitator": "BA",
+        "timekeeper": "PM",
+        "scribe": "Ops lead",
+        "canvas_frame": "frame-1",
+        "deliverable_definition": "exception path bpmn draft",
+        "read_out_template": "3-bullet summary"
+      }
+    ],
+    "canvas_links": [
+      {
+        "tool": "miro",
+        "url": "https://miro/abc",
+        "template_id": "process-map"
+      }
+    ],
+    "time_zones": {
+      "zones": [
+        "UTC+1",
+        "UTC-5"
+      ],
+      "working_hours_coverage_pct": 0.85,
+      "split_decision": "single session"
+    },
+    "async_pulses": [
+      {
+        "window": "T-24h",
+        "questions": [
+          "What is the worst exception you saw last month?"
+        ],
+        "response_rate_threshold": 0.6
+      }
+    ],
+    "decision_log": []
+  }
+}
+```

@@ -67,6 +67,8 @@
 | `templates/batch-job.php` | Bus::batch fan-out for parallel processing of N records |
 | `templates/supervisor.ini` | Supervisor config for Horizon-managed queue workers per named queue |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,138 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/job.php`
+
+```php
+<?php
+
+namespace App\Jobs;
+
+use App\Models\Order;
+use App\Services\MailService;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\WithoutOverlapping;
+use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
+use Sentry\Laravel\Integration;
+use Throwable;
+
+class SendOrderConfirmationJob implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $tries = 5;
+    public int $timeout = 30;
+
+    public function __construct(
+        public readonly int $orderId,
+        public readonly string $idempotencyKey,
+    ) {}
+
+    public function backoff(): array
+    {
+        return [10, 30, 60, 120, 240];
+    }
+
+    public function middleware(): array
+    {
+        return [(new WithoutOverlapping($this->idempotencyKey))->expireAfter(300)];
+    }
+
+    public function handle(MailService $mail): void
+    {
+        $order = Order::findOrFail($this->orderId);
+        if ($order->confirmation_sent_at !== null) {
+            return; // idempotent: already processed
+        }
+        $mail->send($order->customer->email, "Order #{$order->id} confirmed", view('mail.order-confirmation', ['order' => $order])->render());
+        $order->update(['confirmation_sent_at' => now()]);
+    }
+
+    public function failed(Throwable $e): void
+    {
+        Log::error('SendOrderConfirmationJob failed', ['order_id' => $this->orderId, 'exception' => $e->getMessage()]);
+        Integration::captureUnhandledException($e);
+    }
+}
+```
+
+### `templates/batch-job.php`
+
+```php
+<?php
+
+namespace App\Services;
+
+use App\Jobs\ProcessOrderItemJob;
+use Illuminate\Bus\Batch;
+use Illuminate\Support\Facades\Bus;
+use Throwable;
+
+class OrderItemProcessor
+{
+    public function dispatchBatch(array $orderItemIds): string
+    {
+        $jobs = array_map(fn (int $id) => new ProcessOrderItemJob($id), $orderItemIds);
+
+        $batch = Bus::batch($jobs)
+            ->name('process-order-items')
+            ->onQueue('low')
+            ->allowFailures()
+            ->then(function (Batch $batch) {
+                // all jobs completed (with or without failures since allowFailures)
+            })
+            ->catch(function (Batch $batch, Throwable $e) {
+                // first failure callback
+            })
+            ->finally(function (Batch $batch) {
+                // cleanup
+            })
+            ->dispatch();
+
+        return $batch->id;
+    }
+}
+```
+
+### `templates/supervisor.ini`
+
+```ini
+[program:laravel-horizon]
+process_name=%(program_name)s
+command=php /var/www/artisan horizon
+autostart=true
+autorestart=true
+user=www-data
+redirect_stderr=true
+stdout_logfile=/var/log/horizon.log
+stopwaitsecs=3600
+
+[program:laravel-worker-mail]
+process_name=%(program_name)s_%(process_num)02d
+command=php /var/www/artisan queue:work redis --queue=mail --sleep=3 --tries=5 --max-time=3600
+autostart=true
+autorestart=true
+user=www-data
+numprocs=4
+redirect_stderr=true
+stdout_logfile=/var/log/worker-mail.log
+
+[program:laravel-worker-default]
+process_name=%(program_name)s_%(process_num)02d
+command=php /var/www/artisan queue:work redis --queue=default --sleep=3 --tries=3 --max-time=3600
+autostart=true
+autorestart=true
+user=www-data
+numprocs=2
+redirect_stderr=true
+stdout_logfile=/var/log/worker-default.log
+```

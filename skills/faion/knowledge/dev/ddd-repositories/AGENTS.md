@@ -68,6 +68,8 @@
 | `templates/SqlAlchemyRepository.py` | Infra implementation + mapper |
 | `templates/InMemoryRepository.py` | Test double for domain tests |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,126 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (query shape, aggregate count, ORM dependency cost) to a rule from `01-core-rules.xml`. Use it whenever adding a new repository or refactoring a method that currently returns `IQueryable`/`QuerySet`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/RepositoryInterface.py`
+
+```python
+from __future__ import annotations
+
+from abc import ABC, abstractmethod
+from typing import Optional
+from uuid import UUID
+
+# import only domain types; the line below is a domain import, not an ORM one
+from .order import Order
+
+
+class OrderRepository(ABC):
+    @abstractmethod
+    def find_by_id(self, order_id: UUID) -> Optional[Order]: ...
+
+    @abstractmethod
+    def find_by_external_key(self, key: str) -> Optional[Order]: ...
+
+    @abstractmethod
+    def save(self, order: Order) -> None: ...
+
+    @abstractmethod
+    def delete(self, order: Order) -> None: ...
+```
+
+### `templates/SqlAlchemyRepository.py`
+
+```python
+from __future__ import annotations
+
+from typing import Optional
+from uuid import UUID
+
+# Vendor imports live HERE — never in the domain layer.
+from sqlalchemy.orm import Session
+
+from ..domain.order import Order, OrderItem
+from ..domain.order_repository import OrderRepository
+from .models import OrderModel, OrderItemModel  # ORM models
+
+
+class SqlAlchemyOrderRepository(OrderRepository):
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def find_by_id(self, order_id: UUID) -> Optional[Order]:
+        row = self._session.get(OrderModel, order_id)
+        return None if row is None else self._to_aggregate(row)
+
+    def find_by_external_key(self, key: str) -> Optional[Order]:
+        row = self._session.query(OrderModel).filter_by(external_key=key).one_or_none()
+        return None if row is None else self._to_aggregate(row)
+
+    def save(self, order: Order) -> None:
+        existing = self._session.get(OrderModel, order.id)
+        if existing is None:
+            self._session.add(self._to_model(order))
+        else:
+            self._merge_state(order, existing)
+
+    def delete(self, order: Order) -> None:
+        row = self._session.get(OrderModel, order.id)
+        if row is not None:
+            self._session.delete(row)
+
+    @staticmethod
+    def _to_aggregate(row: OrderModel) -> Order:
+        order = Order(row.id, row.customer_id)
+        for item_row in row.items:
+            order._items.append(OrderItem(item_row.sku, item_row.price, item_row.quantity))
+        return order
+
+    @staticmethod
+    def _to_model(order: Order) -> OrderModel:
+        return OrderModel(
+            id=order.id,
+            customer_id=order._customer_id,
+            items=[OrderItemModel(sku=i.sku, price=i.price, quantity=i.quantity) for i in order.items],
+        )
+
+    def _merge_state(self, order: Order, existing: OrderModel) -> None:
+        existing.items.clear()
+        for it in order.items:
+            existing.items.append(OrderItemModel(sku=it.sku, price=it.price, quantity=it.quantity))
+```
+
+### `templates/InMemoryRepository.py`
+
+```python
+from __future__ import annotations
+
+from typing import Optional
+from uuid import UUID
+
+from ..domain.order import Order
+from ..domain.order_repository import OrderRepository
+
+
+class InMemoryOrderRepository(OrderRepository):
+    def __init__(self) -> None:
+        self._by_id: dict[UUID, Order] = {}
+        self._by_key: dict[str, UUID] = {}
+
+    def find_by_id(self, order_id: UUID) -> Optional[Order]:
+        return self._by_id.get(order_id)
+
+    def find_by_external_key(self, key: str) -> Optional[Order]:
+        oid = self._by_key.get(key)
+        return None if oid is None else self._by_id.get(oid)
+
+    def save(self, order: Order) -> None:
+        self._by_id[order.id] = order
+
+    def delete(self, order: Order) -> None:
+        self._by_id.pop(order.id, None)
+```

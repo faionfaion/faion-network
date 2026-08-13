@@ -72,6 +72,8 @@
 | `templates/prompt-pyramid.txt` | Prompt to generate a Pyramid executive memo |
 | `templates/scqa.md` | SCQA worksheet |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,37 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes by narrative goal (decision / tension / outcome-story) to one of the three frameworks.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-case-study.txt`
+
+```text
+Write a case study using the Pixar framework.
+Situation: <who the customer is and their baseline state>
+Change event: <what was implemented or what decision was made>
+Consequence chain: <what happened as a result, in sequence (at least 2 "Because of that" steps)>
+Resolution: <final outcome with specific metrics — numbers required>
+Add a 1-sentence customer or stakeholder quote at the end.
+Keep to 150 words maximum.
+Every result must pass the so-what test: include the implication, not just the metric.
+```
+
+### `templates/prompt-pyramid.txt`
+
+```text
+Apply the Pyramid Principle to write an executive summary.
+Recommendation (1 sentence): <recommendation>
+Data/evidence available: <bullet list of facts with numbers>
+Audience: <role, e.g. C-suite with 5 min to read>
+Output format:
+1. Recommendation — 1 sentence, leads with the conclusion
+2. Argument 1 + evidence (2-3 bullets)
+3. Argument 2 + evidence (2-3 bullets)
+4. Argument 3 + evidence (2-3 bullets)
+5. Next steps — 2-3 specific actions with owners
+MECE check: flag any overlapping arguments before finalizing.
+Every data point must include a "so what" implication for the audience.
+```

@@ -64,6 +64,8 @@
 | `templates/standup-script.json` | Daily 3-bullet skeleton with required fields |
 | `templates/_smoke-test.json` | Minimum viable filled standup script |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,67 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes on script-state (clarifications/AC-ready/blockers populated?) to the active rule.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/standup-script.json`
+
+```json
+{
+  "date": "YYYY-MM-DD",
+  "ba_name": "Full Name",
+  "clarifications_needed": [
+    {
+      "story_id": "STORY-XXX",
+      "question": "...",
+      "stakeholder": "Full Name"
+    }
+  ],
+  "ac_ready_for_dev": [
+    {
+      "story_id": "STORY-XXX",
+      "ac_count": 0
+    }
+  ],
+  "blockers": [
+    {
+      "description": "...",
+      "owner": "Full Name",
+      "raised_at": "YYYY-MM-DDTHH:MM:SSZ",
+      "severity": "low|medium|high"
+    }
+  ]
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "date": "2026-05-23",
+  "ba_name": "Maria Lopes",
+  "clarifications_needed": [
+    {
+      "story_id": "STORY-101",
+      "question": "Refund window after 30 days?",
+      "stakeholder": "Pedro Silva"
+    }
+  ],
+  "ac_ready_for_dev": [
+    {
+      "story_id": "STORY-098",
+      "ac_count": 5
+    }
+  ],
+  "blockers": [
+    {
+      "description": "DPO classification pending",
+      "owner": "Ana Rodrigues",
+      "raised_at": "2026-05-22T10:00:00Z",
+      "severity": "high"
+    }
+  ]
+}
+```

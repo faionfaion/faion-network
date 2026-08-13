@@ -67,6 +67,8 @@
 | `templates/django-model-lint.sh` | grep-based audit script for common antipatterns. |
 | `templates/models-spec.json` | Reference output document. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,194 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Per FK: parent is user/account → PROTECT or SET_NULL; child-without-parent has no meaning → CASCADE (only). Per field used in filter()/order_by() on production traffic → add db_index OR composite Index with justification. Per cross-field invariant → CheckConstraint (pg) or clean() (cross-engine).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/base_model.py`
+
+```python
+"""
+Django BaseModel + SoftDeleteModel scaffold.
+Location: core/models.py
+"""
+import uuid
+from django.db import models
+from django.utils import timezone
+
+
+class BaseModel(models.Model):
+    uid = models.UUIDField(
+        default=uuid.uuid4,  # callable — NOT uuid.uuid4()
+        editable=False,
+        unique=True,
+        db_index=True,
+    )
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+        ordering = ['-created_at']
+        get_latest_by = 'created_at'
+
+    def __str__(self) -> str:
+        return f"{type(self).__name__}({self.uid})"
+
+
+class SoftDeleteManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(deleted_at__isnull=True)
+
+
+class SoftDeleteModel(BaseModel):
+    """For non-PII data only. Do NOT use for models containing user PII."""
+
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+    objects = SoftDeleteManager()
+    all_objects = models.Manager()
+
+    class Meta(BaseModel.Meta):
+        abstract = True
+
+    def delete(self, using=None, keep_parents=False):
+        self.deleted_at = timezone.now()
+        self.save(update_fields=['deleted_at', 'updated_at'])
+
+    def hard_delete(self, using=None, keep_parents=False):
+        super().delete(using=using, keep_parents=keep_parents)
+
+    def restore(self):
+        self.deleted_at = None
+        self.save(update_fields=['deleted_at', 'updated_at'])
+
+    @property
+    def is_deleted(self) -> bool:
+        return self.deleted_at is not None
+```
+
+### `templates/django-model-lint.sh`
+
+```bash
+#!/usr/bin/env bash
+# django-model-lint.sh — AST-based lint for common Django model antipatterns.
+# Fails (exit 1) if any issues found.
+# Usage: bash scripts/django-model-lint.sh
+set -euo pipefail
+
+python - <<'PY'
+import ast
+import pathlib
+import sys
+
+fails = []
+
+for p in pathlib.Path("apps").rglob("models.py"):
+    try:
+        tree = ast.parse(p.read_text())
+    except SyntaxError as e:
+        fails.append(f"{p}: SyntaxError: {e}")
+        continue
+
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func_attr = getattr(node.func, "attr", "")
+        kwargs = {kw.arg for kw in node.keywords}
+
+        # ForeignKey missing related_name
+        if func_attr == "ForeignKey" and "related_name" not in kwargs:
+            fails.append(f"{p}:{node.lineno}  ForeignKey missing related_name")
+
+        # CharField with raw choices tuples instead of TextChoices
+        if func_attr == "CharField":
+            for kw in node.keywords:
+                if kw.arg == "choices" and isinstance(kw.value, ast.List):
+                    fails.append(
+                        f"{p}:{node.lineno}  CharField uses raw choices list — use TextChoices"
+                    )
+
+for f in fails:
+    print(f)
+
+sys.exit(1 if fails else 0)
+PY
+```
+
+### `templates/models-spec.json`
+
+```json
+{
+  "_purpose": "Reference Django models spec output.",
+  "_consumes": "ERD + chosen TextChoices + base-model decisions.",
+  "_produces": "JSON for models.py codegen + migration review.",
+  "_depends-on": "content/02-output-contract.xml.",
+  "_token-budget-impact": "~200 tokens.",
+  "artefact_id": "billing-models",
+  "owner": "ruslan@faion.net",
+  "django_version": "5.2.1",
+  "db_engine": "postgresql",
+  "app": "billing",
+  "models": [
+    {
+      "name": "Invoice",
+      "extends": "SoftDeletableModel",
+      "fields": [
+        {
+          "name": "number",
+          "type": "CharField"
+        },
+        {
+          "name": "status",
+          "type": "CharField",
+          "choices_class": "InvoiceStatus",
+          "db_index": true,
+          "db_index_reason": "filter+order_by on every list endpoint; cardinality ~5."
+        },
+        {
+          "name": "amount",
+          "type": "DecimalField"
+        }
+      ],
+      "foreign_keys": [
+        {
+          "field": "customer",
+          "to": "accounts.Customer",
+          "on_delete": "PROTECT",
+          "reason": "Preserve invoice history when a customer is soft-deleted; compliance retention."
+        }
+      ],
+      "constraints": [
+        {
+          "name": "invoice_amount_positive",
+          "kind": "CheckConstraint",
+          "expression": "amount > 0"
+        },
+        {
+          "name": "unique_active_invoice_number",
+          "kind": "UniqueConstraint",
+          "fields": [
+            "number"
+          ],
+          "condition": "deleted_at IS NULL"
+        }
+      ],
+      "indexes": [
+        {
+          "fields": [
+            "customer",
+            "created_at"
+          ],
+          "reason": "list-by-customer ordered by recent; primary access pattern."
+        }
+      ],
+      "full_clean_in_service": true,
+      "is_pii": false,
+      "soft_delete": true
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```

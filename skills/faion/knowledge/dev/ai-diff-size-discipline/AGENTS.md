@@ -68,6 +68,8 @@
 | `templates/output-schema.json` | JSON Schema (draft-07) for the diff-rubric artefact |
 | `templates/_smoke-test.json` | Minimum viable filled-in diff-rubric for validator round-trip |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,102 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on (a) LOC &lt;= 200, (b) files &lt;= 8, (c) semantic_units == 1. Any breach drives verdict=split; the rubric must then carry a split-plan. Every leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ai-diff-size-discipline.json",
+  "type": "object",
+  "required": [
+    "pr_id",
+    "loc_touched",
+    "files_touched",
+    "semantic_units",
+    "verdict"
+  ],
+  "properties": {
+    "pr_id": {
+      "type": "string",
+      "pattern": "^PR-[0-9]{1,7}$"
+    },
+    "loc_touched": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "loc_test_touched": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "files_touched": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "semantic_units": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "string",
+        "enum": [
+          "feature",
+          "refactor",
+          "fix",
+          "docs",
+          "test",
+          "build"
+        ]
+      }
+    },
+    "split_plan": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "slice_id",
+          "summary",
+          "acceptance"
+        ]
+      }
+    },
+    "override": {
+      "type": "object",
+      "properties": {
+        "reviewer": {
+          "type": "string"
+        },
+        "justification": {
+          "type": "string"
+        }
+      }
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "split",
+        "fail"
+      ]
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "pr_id": "PR-1432",
+  "loc_touched": 142,
+  "loc_test_touched": 88,
+  "files_touched": 5,
+  "semantic_units": [
+    "feature"
+  ],
+  "verdict": "pass"
+}
+```

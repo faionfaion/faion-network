@@ -64,7 +64,8 @@
 | `templates/turbo.json` | Turborepo task graph: build / lint / test with cache |
 | `templates/pnpm-workspace.yaml` | pnpm workspace declaration |
 | `templates/tsconfig.base.json` | Shared TypeScript base config (strict) |
-| `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,79 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Are there ≥2 deployable surfaces AND is the stack TypeScript-only AND has ops bandwidth?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/turbo.json`
+
+```json
+{
+  "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": [
+    "**/.env.*local"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**",
+        ".next/**",
+        "!.next/cache/**"
+      ],
+      "inputs": [
+        "src/**",
+        "tsconfig.json",
+        "package.json"
+      ]
+    },
+    "lint": {
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "coverage/**"
+      ]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    }
+  }
+}
+```
+
+### `templates/pnpm-workspace.yaml`
+
+```yaml
+# faion_header_json: {"__faion_header__":{"purpose":"pnpm workspace declaration","consumes":"see content/02-output-contract.xml","produces":"config","depends_on":"content/01-core-rules.xml#two-tier-workspaces","token_budget_impact":"~150 tokens when loaded"}}
+packages:
+  - apps/*
+  - packages/*
+```
+
+### `templates/tsconfig.base.json`
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}
+```

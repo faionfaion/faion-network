@@ -59,10 +59,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/policy.md.tmpl` | Eval cost policy skeleton with 3 cadences + ceiling + fallback. |
 | `templates/stratified-sample.py.tmpl` | Stratified subset selector. |
 | `templates/fallback-judge.py.tmpl` | Cheap-judge fallback switch. |
 | `templates/_smoke-test.md` | Filled example for a 200-example suite. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -80,3 +81,43 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters whether agent-eval-cost-budget-policy applies: root question — "Is eval spend ≥$50/month AND ≥1 PR/day touches the agent?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/stratified-sample.py.tmpl`
+
+```python
+Sampler skeleton
+"""
+from __future__ import annotations
+
+
+def main() -> None:
+    """Entry point. Fill per methodology procedure."""
+    # TODO: implement per 04-procedure.xml
+    raise NotImplementedError
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### `templates/fallback-judge.py.tmpl`
+
+```python
+Fallback skeleton
+"""
+from __future__ import annotations
+
+
+def main() -> None:
+    """Entry point. Fill per methodology procedure."""
+    # TODO: implement per 04-procedure.xml
+    raise NotImplementedError
+
+
+if __name__ == "__main__":
+    main()
+```

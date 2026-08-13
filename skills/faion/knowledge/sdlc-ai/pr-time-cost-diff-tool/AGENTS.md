@@ -68,6 +68,8 @@
 | `templates/cost-report.md` | PR-comment report skeleton (latency delta, $/req delta, eval pass-rate delta). |
 | `templates/cost-table.yaml` | Per-model cost table format with input/output rates. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,26 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from observable signals (PR touches LLM surface? eval set exists? cost table present?) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether the checker should fire on a given PR — the tree terminates either on the active rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/cost-table.yaml`
+
+```yaml
+version: "2026.05.20"
+models:
+  claude-opus-4-7:
+    input_per_1k_usd: 0.015
+    output_per_1k_usd: 0.075
+    p50_latency_ms: 480
+  claude-sonnet-4-7:
+    input_per_1k_usd: 0.003
+    output_per_1k_usd: 0.015
+    p50_latency_ms: 320
+  claude-haiku-4-5:
+    input_per_1k_usd: 0.00025
+    output_per_1k_usd: 0.00125
+    p50_latency_ms: 180
+```

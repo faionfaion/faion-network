@@ -63,6 +63,8 @@
 | `templates/certbot-renew.service` | systemd service invoking certbot renew + deploy hook |
 | `templates/backup-config.example.json` | Filled config artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,40 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/certbot-renew.timer`
+
+```ini
+[Unit]
+Description=cicd-tls-renewal-automation unit skeleton
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### `templates/certbot-renew.service`
+
+```ini
+[Unit]
+Description=cicd-tls-renewal-automation unit skeleton
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### `templates/backup-config.example.json`
+
+```json
+{
+  "acme_client": "certbot",
+  "scheduler": "systemd-timer",
+  "challenge": "http-01",
+  "deploy_hook": "example-value",
+  "expiry_alert_days": 7,
+  "staging_validated": true
+}
+```

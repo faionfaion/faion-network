@@ -65,6 +65,8 @@
 | `templates/problem-validation-2026.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,89 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/problem-validation-2026.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/problem-validation-2026.json",
+  "title": "Problem Validation 2026 Output Contract",
+  "type": "object",
+  "required": [
+    "hypothesis",
+    "evidence_ledger",
+    "cold_respondent_count",
+    "verdict",
+    "next_revalidation_due",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "hypothesis": {
+      "type": "string",
+      "description": "problem hypothesis under test"
+    },
+    "evidence_ledger": {
+      "type": "array",
+      "description": "\u226510 entries sorted by tier with citation + signal_type",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "cold_respondent_count": {
+      "type": "integer",
+      "description": "count of non-network respondents (\u22653 tier-1/2 required for validated)"
+    },
+    "verdict": {
+      "type": "string",
+      "description": "one of: validated | hypothesis | invalidated"
+    },
+    "next_revalidation_due": {
+      "type": "string",
+      "description": "ISO date 90 days from last_reviewed",
+      "format": "date"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named researcher"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "hypothesis": "sample-hypothesis",
+  "evidence_ledger": [
+    {
+      "k": "v"
+    }
+  ],
+  "cold_respondent_count": 3,
+  "verdict": "sample-verdict",
+  "next_revalidation_due": "2026-05-23",
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

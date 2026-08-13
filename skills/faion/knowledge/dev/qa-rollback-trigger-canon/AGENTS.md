@@ -66,6 +66,8 @@
 | `templates/alerts.yaml` | YAML configuration scaffolding the artefact. |
 | `templates/_smoke-test.yaml` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,35 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is there a rollback mechanism and monitoring to act on declared triggers?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rollback_canon.yaml`
+
+```yaml
+# faion_header_json: {"__faion_header__":{"purpose":"YAML configuration scaffolding the artefact.","consumes":"see content/02-output-contract.xml","produces":"decision-record","depends_on":"content/01-core-rules.xml#pre-declared","token_budget_impact":"~150 tokens when loaded"}}
+# QA Rollback Trigger Canon configuration scaffold.
+version: 1
+slug: qa-rollback-trigger-canon
+items: []
+```
+
+### `templates/alerts.yaml`
+
+```yaml
+# faion_header_json: {"__faion_header__":{"purpose":"YAML configuration scaffolding the artefact.","consumes":"see content/02-output-contract.xml","produces":"decision-record","depends_on":"content/01-core-rules.xml#pre-declared","token_budget_impact":"~150 tokens when loaded"}}
+# QA Rollback Trigger Canon configuration scaffold.
+version: 1
+slug: qa-rollback-trigger-canon
+items: []
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+# faion_header_json: {"__faion_header__":{"purpose":"Minimum viable filled-in artefact for sanity-checking the schema.","consumes":"see content/02-output-contract.xml","produces":"decision-record","depends_on":"content/01-core-rules.xml#pre-declared","token_budget_impact":"~150 tokens when loaded"}}
+# QA Rollback Trigger Canon — smoke test (minimum viable filled-in artefact, see templates/ for production-grade skeletons).
+slug: qa-rollback-trigger-canon
+```

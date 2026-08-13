@@ -68,6 +68,8 @@
 | `templates/Jenkinsfile` | Declarative pipeline skeleton with build/test/deploy + post-actions |
 | `templates/kubernetes-agent.groovy` | Kubernetes pod template for dynamic Jenkins agents |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,209 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (project host, infra ownership, build complexity, agent strategy) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the Jenkins methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/Jenkinsfile`
+
+```text
+// Replace: DOCKER_IMAGE, DEPLOY_CMD, SLACK_CHANNEL, branch names
+
+pipeline {
+    agent {
+        docker {
+            image 'node:20-alpine'
+            args '-v $HOME/.npm:/root/.npm'
+        }
+    }
+
+    environment {
+        CI = 'true'
+        // Add credentials here, e.g.:
+        // DEPLOY_KEY = credentials('deploy-ssh-key')
+    }
+
+    options {
+        timeout(time: 30, unit: 'MINUTES')
+        timestamps()
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        stage('Install') {
+            steps {
+                sh 'npm ci --cache .npm --prefer-offline'
+            }
+        }
+
+        stage('Validate') {
+            parallel {
+                stage('Lint') {
+                    steps { sh 'npm run lint' }
+                }
+                stage('Type Check') {
+                    steps { sh 'npm run typecheck' }
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh 'npm test -- --coverage'
+            }
+            post {
+                always {
+                    junit testResults: 'junit.xml', allowEmptyResults: true
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'npm run build'
+            }
+            post {
+                success {
+                    archiveArtifacts artifacts: 'dist/**', fingerprint: true
+                }
+            }
+        }
+
+        stage('Deploy Staging') {
+            when {
+                branch 'develop'
+                not { changeRequest() }
+            }
+            steps {
+                sh './scripts/deploy.sh staging'
+            }
+            post {
+                success {
+                    echo "Deployed to staging: https://staging.example.com"
+                }
+            }
+        }
+
+        stage('Deploy Production') {
+            when {
+                branch 'main'
+                not { changeRequest() }
+            }
+            input {
+                message 'Deploy to production?'
+                ok 'Deploy'
+                submitter 'release-team'
+            }
+            steps {
+                sh './scripts/deploy.sh production'
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+        failure {
+            slackSend(
+                channel: '#ci-alerts',
+                color: 'danger',
+                message: "FAILED: ${env.JOB_NAME} #${env.BUILD_NUMBER} (<${env.BUILD_URL}|Open>)"
+            )
+        }
+        success {
+            script {
+                if (env.BRANCH_NAME == 'main') {
+                    slackSend(
+                        channel: '#deployments',
+                        color: 'good',
+                        message: "DEPLOYED: ${env.JOB_NAME} #${env.BUILD_NUMBER}"
+                    )
+                }
+            }
+        }
+    }
+}
+```
+
+### `templates/kubernetes-agent.groovy`
+
+```groovy
+// Copy into vars/ of your Shared Library.
+// Usage: kubernetesAgent(nodeImage: 'node:20', helmVersion: '3.14') { ... }
+
+def call(Map config = [:], Closure body) {
+    def nodeImage  = config.get('nodeImage',  'node:20-alpine')
+    def helmVersion = config.get('helmVersion', '3.14')
+    def cpuRequest  = config.get('cpuRequest',  '500m')
+    def memRequest  = config.get('memRequest',  '512Mi')
+    def cpuLimit    = config.get('cpuLimit',    '2')
+    def memLimit    = config.get('memLimit',    '2Gi')
+
+    podTemplate(
+        label: "jenkins-k8s-${UUID.randomUUID().toString()}",
+        containers: [
+            containerTemplate(
+                name: 'jnlp',
+                image: 'jenkins/inbound-agent:latest',
+                resourceRequestCpu: '100m',
+                resourceRequestMemory: '128Mi'
+            ),
+            containerTemplate(
+                name: 'build',
+                image: nodeImage,
+                command: 'cat',
+                ttyEnabled: true,
+                resourceRequestCpu: cpuRequest,
+                resourceRequestMemory: memRequest,
+                resourceLimitCpu: cpuLimit,
+                resourceLimitMemory: memLimit
+            ),
+            containerTemplate(
+                name: 'helm',
+                image: "alpine/helm:${helmVersion}",
+                command: 'cat',
+                ttyEnabled: true,
+                resourceRequestCpu: '100m',
+                resourceRequestMemory: '128Mi'
+            ),
+            containerTemplate(
+                name: 'docker',
+                image: 'docker:24-dind',
+                privileged: true,
+                resourceRequestCpu: '500m',
+                resourceRequestMemory: '512Mi'
+            )
+        ],
+        volumes: [
+            emptyDirVolume(mountPath: '/var/lib/docker', memory: false)
+        ]
+    ) {
+        node(POD_LABEL) {
+            body()
+        }
+    }
+}
+
+// Example usage in a Jenkinsfile:
+//
+// @Library('my-shared-library@main') _
+//
+// kubernetesAgent(nodeImage: 'node:20-alpine', helmVersion: '3.14') {
+//     stage('Build') {
+//         container('build') {
+//             sh 'npm ci && npm run build'
+//         }
+//     }
+//     stage('Deploy') {
+//         container('helm') {
+//             withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+//                 sh 'helm upgrade --install myapp ./charts/myapp --wait'
+//             }
+//         }
+//     }
+// }
+```

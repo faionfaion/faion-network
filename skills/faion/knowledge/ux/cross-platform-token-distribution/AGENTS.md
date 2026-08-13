@@ -66,6 +66,8 @@
 | `templates/tokens.json` | Canonical W3C DTCG tokens skeleton (primitive + semantic + component layers) |
 | `templates/sd-config.json` | Style Dictionary config defining per-platform transforms + output paths |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,82 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes from observable inputs to a rule-grounded conclusion, every leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tokens.json`
+
+```json
+{
+  "color": {
+    "primitive": {
+      "blue-500": {
+        "$value": "#1c5fdb",
+        "$type": "color"
+      }
+    },
+    "semantic": {
+      "text": {
+        "primary": {
+          "$value": "{color.primitive.blue-500}",
+          "$type": "color"
+        }
+      }
+    }
+  }
+}
+```
+
+### `templates/sd-config.json`
+
+```json
+{
+  "source": [
+    "tokens.json"
+  ],
+  "platforms": {
+    "web-css": {
+      "transformGroup": "css",
+      "buildPath": "dist/web/",
+      "files": [
+        {
+          "destination": "tokens.css",
+          "format": "css/variables"
+        }
+      ]
+    },
+    "ios-swift": {
+      "transformGroup": "ios-swift",
+      "buildPath": "dist/ios/",
+      "files": [
+        {
+          "destination": "Tokens.swift",
+          "format": "ios-swift/class.swift"
+        }
+      ]
+    },
+    "android-xml": {
+      "transformGroup": "android",
+      "buildPath": "dist/android/",
+      "files": [
+        {
+          "destination": "colors.xml",
+          "format": "android/colors"
+        }
+      ]
+    },
+    "tailwind": {
+      "transformGroup": "js",
+      "buildPath": "dist/web/",
+      "files": [
+        {
+          "destination": "tailwind.tokens.js",
+          "format": "javascript/es6"
+        }
+      ]
+    }
+  }
+}
+```

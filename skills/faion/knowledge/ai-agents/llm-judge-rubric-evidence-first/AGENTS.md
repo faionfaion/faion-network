@@ -63,6 +63,8 @@ none
 | `templates/judge-spec.md` | Output. |
 | `templates/_smoke-test.yaml` | Minimum. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,23 @@ none
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on criteria_count (1 → single-criterion focused; 2-5 → per-criterion structured; >5 → split into multiple judges), then on bias_targets (position → swap order; verbosity → length-penalty; self-preference → judge != SUT model). Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/eval-task-profile.yaml`
+
+```yaml
+criteria_count: TODO          # fill with concrete value per the driver definition
+bias_targets: TODO          # fill with concrete value per the driver definition
+judge_model: TODO          # fill with concrete value per the driver definition
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+criteria_count: low
+bias_targets: low
+judge_model: low
+```

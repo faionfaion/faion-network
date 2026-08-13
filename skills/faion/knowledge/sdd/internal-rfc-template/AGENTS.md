@@ -64,7 +64,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/RFC-template.md` | Markdown RFC skeleton with required sections + frontmatter |
-| `templates/rfc.schema.json` | JSON Schema for RFC frontmatter |
 
 ## Scripts
 

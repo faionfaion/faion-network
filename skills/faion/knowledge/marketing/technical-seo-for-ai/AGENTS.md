@@ -59,8 +59,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/article-schema.json` | Article schema JSON-LD template with author credentials |
-| `templates/llms-txt.txt` | llms.txt template with crawler-allow rules |
 | `templates/technical-seo-for-ai.md` | Spec skeleton with all six axes |
 | `templates/_smoke-test.md` | Minimum-viable filled spec |
 

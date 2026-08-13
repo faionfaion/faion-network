@@ -65,6 +65,8 @@
 | `templates/bug-report-quality-rubric.json` | JSON Schema for the rubric output |
 | `templates/bug-report-quality-rubric.md` | Markdown skeleton issue body the reporter fills in |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,143 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree branches first on `is_ai_feature` — if true, AI-specific dimensions (prompt id, model id, seed) become mandatory before evidence checks. For non-AI bugs it falls back to the 6-dimension classical rubric. Leaves emit `accept`, `block-need-repro`, `block-need-evidence`, or `block-need-ai-context`, each referencing a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/bug-report-quality-rubric.json`
+
+```json
+{
+  "_header": {
+    "purpose": "JSON Schema for bug-report-quality-rubric output artefact",
+    "consumes": "scorer output (object) from rubric scoring task",
+    "produces": "validated rubric verdict consumable by tracker bot",
+    "depends-on": "draft 2020-12 JSON Schema validator",
+    "token-budget-impact": "~400 tokens when loaded as context"
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/bug-report-quality-rubric.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "ticket_ref",
+    "verdict",
+    "score",
+    "dimensions",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^brq-[a-z0-9-]{6,}$"
+    },
+    "ticket_ref": {
+      "type": "string"
+    },
+    "verdict": {
+      "enum": [
+        "accept",
+        "block-need-repro",
+        "block-need-evidence",
+        "block-need-ai-context",
+        "block-need-env"
+      ]
+    },
+    "score": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "is_ai_feature": {
+      "type": "boolean"
+    },
+    "dimensions": {
+      "type": "object",
+      "required": [
+        "title",
+        "repro",
+        "expected_vs_actual",
+        "environment",
+        "severity",
+        "priority",
+        "evidence"
+      ],
+      "properties": {
+        "title": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "repro": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 20
+        },
+        "expected_vs_actual": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        },
+        "environment": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        },
+        "severity": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "priority": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "evidence": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        },
+        "ai_context": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        }
+      }
+    },
+    "field_fixes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "field",
+          "issue",
+          "suggested_fix"
+        ],
+        "properties": {
+          "field": {
+            "type": "string"
+          },
+          "issue": {
+            "type": "string"
+          },
+          "suggested_fix": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

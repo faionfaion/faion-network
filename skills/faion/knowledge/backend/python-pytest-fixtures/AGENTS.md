@@ -58,6 +58,8 @@
 | `templates/conftest.py` | Skeleton: function-scope client, session-scope DB, factory fixture, yield teardown. |
 | `templates/test_with_fixtures.py` | Tests composing the fixtures. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -74,3 +76,65 @@
 ## Decision tree
 
 The tree at content/06-decision-tree.xml decides the right scope, factory vs plain fixture, and autouse vs explicit injection. Walk it whenever you write a new conftest entry.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/conftest.py`
+
+```python
+"""
+
+import pytest
+from pytest_factoryboy import register
+
+
+# Register your factories here:
+# from tests.factories import UserFactory
+# register(UserFactory)
+
+
+@pytest.fixture
+def api_client():
+    """DRF APIClient (override per project)."""
+    from rest_framework.test import APIClient
+
+    return APIClient()
+
+
+@pytest.fixture
+def authed_client(api_client, user):
+    api_client.force_authenticate(user=user)
+    return api_client
+
+
+@pytest.fixture
+def staff_client(api_client, user_factory):
+    staff_user = user_factory(is_staff=True)
+    api_client.force_authenticate(user=staff_user)
+    return api_client
+```
+
+### `templates/test_with_fixtures.py`
+
+```python
+"""
+
+import pytest
+
+
+@pytest.fixture
+def make_user():
+    """Factory fixture: returns a callable that creates a user dict."""
+
+    def _make(name: str = "demo", **extra):
+        return {"name": name, **extra}
+
+    return _make
+
+
+def test_factory_fixture_creates_user(make_user):
+    user = make_user(name="alice", role="admin")
+    assert user == {"name": "alice", "role": "admin"}
+```

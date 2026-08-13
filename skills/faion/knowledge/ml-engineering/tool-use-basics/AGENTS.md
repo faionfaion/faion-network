@@ -67,6 +67,8 @@
 | `templates/tool-registry.py` | Typed ToolRegistry with Pydantic input models |
 | `templates/audit-logger.py` | Per-call audit log helper |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,121 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-typed-tool`, `r2-bounded-iterations`, `r3-audit-every-call`, `r4-deterministic-naming`, `r5-error-as-tool-result` from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tool-definition.json`
+
+```json
+{
+  "_header": "purpose: Example JSON tool definition for OpenAI / Anthropic | consumes: Inputs declared in AGENTS.md Prerequisites. | produces: Filled artefact for tool-use-basics matching content/02-output-contract.xml. | depends-on: content/01-core-rules.xml, scripts/validate-tool-use-basics.py | token-budget-impact: small",
+  "purpose": "Example JSON tool definition for OpenAI / Anthropic",
+  "consumes": "Inputs declared in AGENTS.md Prerequisites.",
+  "produces": "Filled artefact for tool-use-basics matching content/02-output-contract.xml.",
+  "depends-on": [
+    "content/01-core-rules.xml",
+    "scripts/validate-tool-use-basics.py"
+  ],
+  "token-budget-impact": "small",
+  "_": "real fields below (this is a template; fill or remove the metadata header)",
+  "name": "<tool_name>",
+  "description": "<short description>",
+  "input_schema": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  }
+}
+```
+
+### `templates/agent-loop.py`
+
+```python
+"""Skeleton for the `tool-use-basics` template `agent-loop.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "tool-use-basics"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/tool-registry.py`
+
+```python
+"""Skeleton for the `tool-use-basics` template `tool-registry.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "tool-use-basics"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/audit-logger.py`
+
+```python
+"""Skeleton for the `tool-use-basics` template `audit-logger.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "tool-use-basics"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```

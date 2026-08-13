@@ -67,6 +67,8 @@
 |------|---------|
 | `templates/ar-budget.sh` | CI helper running Prosopite N+1 assertions across the request spec suite. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,37 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (model count, hot path, batch size) to a rule from `01-core-rules.xml`. Use it before extracting a Query Object or optimising a query.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ar-budget.sh`
+
+```bash
+# ar-budget.sh — fail CI on N+1 or queries over per-spec budget.
+# Usage: ar-budget.sh [BUDGET]
+# Requires: bullet and prosopite gems in test group.
+set -euo pipefail
+BUDGET="${1:-15}"
+export BULLET=true PROSOPITE=true
+LOG=$(mktemp)
+bundle exec rspec --format documentation 2>&1 | tee "$LOG"
+ruby -e '
+budget = ARGV[0].to_i
+log = File.read(ARGV[1])
+fails = []
+log.scan(/^(.+?_spec\.rb:\d+).*?queries:\s*(\d+)/m) do |loc, n|
+  fails << [loc, n.to_i] if n.to_i > budget
+end
+nplus1 = log.scan(/USE eager loading detected.*$/).length \
+  + log.scan(/Prosopite::NPlusOneQueriesError/).length
+unless fails.empty? && nplus1.zero?
+  puts "FAIL: #{nplus1} N+1, #{fails.size} budget breaches"
+  fails.each { |loc, n| puts "  #{loc}: #{n} queries (>#{budget})" }
+  exit 1
+end
+puts "OK: zero N+1, all specs within #{budget} queries"
+' "$BUDGET" "$LOG"
+bundle exec rake lol_dba:missing_indexes || true
+```

@@ -59,10 +59,7 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/scoring-rubric.json` | Six-axis scoring definition + thresholds |
-| `templates/decision-row.json` | Per-query decision row schema |
 | `templates/quarterly-review.md` | Markdown template for the quarterly re-score review |
-| `templates/_smoke-test.json` | Minimum-viable filled decision row |
 
 ## Scripts
 

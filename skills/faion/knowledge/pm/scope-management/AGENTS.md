@@ -70,6 +70,8 @@
 | `templates/scope-statement.md` | Scope statement with deliverables, boundaries, constraints, assumptions |
 | `templates/rtm.yaml` | Requirements Traceability Matrix YAML schema |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,21 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rtm.yaml`
+
+```yaml
+# Requirements Traceability Matrix YAML schema
+
+__faion_header__:
+  methodology: scope-management
+  version: 1.1.0
+  template: rtm.yaml
+
+# Fill the entries below per artefact instance.
+entries: []
+```

@@ -66,6 +66,8 @@
 | `templates/rubric.json` | Rubric skeleton with anchors_1_3_5 + weights + dimensions |
 | `templates/_smoke-test.json` | Minimum viable filled-in rubric for one AC set |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,132 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes on observable signals (AC stakes value, rater count, evidence completeness) to one of the 4 core rules. Use it when in doubt whether a single-rater pass suffices or reconciliation is required.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rubric.json`
+
+```json
+{
+  "dimensions": [
+    {
+      "name": "happy_path",
+      "anchors_1_3_5": {
+        "1": "no happy path covered",
+        "3": "one primary flow covered",
+        "5": "all primary flows covered with preconditions"
+      },
+      "weight": 0.3
+    },
+    {
+      "name": "negative_cases",
+      "anchors_1_3_5": {
+        "1": "no negative cases",
+        "3": "1-2 common failure modes",
+        "5": "all common failure modes + clear error contracts"
+      },
+      "weight": 0.25
+    },
+    {
+      "name": "edge_cases",
+      "anchors_1_3_5": {
+        "1": "no edge handling",
+        "3": "boundaries only (min/max)",
+        "5": "boundary + null + overflow + concurrency"
+      },
+      "weight": 0.2
+    },
+    {
+      "name": "performance_thresholds",
+      "anchors_1_3_5": {
+        "1": "no SLA stated",
+        "3": "p95 latency target only",
+        "5": "p50/p95/p99 + throughput + degradation policy"
+      },
+      "weight": 0.15
+    },
+    {
+      "name": "accessibility",
+      "anchors_1_3_5": {
+        "1": "no a11y mention",
+        "3": "WCAG AA target stated",
+        "5": "AA + keyboard-only + screen-reader transcript per AC"
+      },
+      "weight": 0.1
+    }
+  ],
+  "instance_scores": [],
+  "rater_count": 1,
+  "weighted_total": 0,
+  "weights_locked_at": "REPLACE_WITH_ISO8601_BEFORE_SCORING"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "dimensions": [
+    {
+      "name": "happy_path",
+      "anchors_1_3_5": {
+        "1": "missing",
+        "3": "one path",
+        "5": "all flows"
+      },
+      "weight": 0.5
+    },
+    {
+      "name": "negative",
+      "anchors_1_3_5": {
+        "1": "none",
+        "3": "some",
+        "5": "all failure modes"
+      },
+      "weight": 0.3
+    },
+    {
+      "name": "edge",
+      "anchors_1_3_5": {
+        "1": "none",
+        "3": "boundary",
+        "5": "boundary+null+overflow"
+      },
+      "weight": 0.2
+    }
+  ],
+  "instance_scores": [
+    {
+      "instance_id": "AC-smoke",
+      "dimension_scores": [
+        {
+          "dimension": "happy_path",
+          "score": 4,
+          "evidence_refs": [
+            "draft.md#L1"
+          ]
+        },
+        {
+          "dimension": "negative",
+          "score": 3,
+          "evidence_refs": [
+            "draft.md#L5"
+          ]
+        },
+        {
+          "dimension": "edge",
+          "score": 5,
+          "evidence_refs": [
+            "draft.md#L9"
+          ]
+        }
+      ]
+    }
+  ],
+  "rater_count": 2,
+  "weighted_total": 76.0,
+  "weights_locked_at": "2026-05-23T09:00:00Z"
+}
+```

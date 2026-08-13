@@ -68,6 +68,8 @@
 | `templates/99-hardening.conf` | Drop-in sshd_config.d/99-hardening.conf (key-only, modern crypto, AllowUsers). |
 | `templates/ssh-client-config` | Reference ~/.ssh/config with multiplexing + host alias. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,142 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ssh-hardening.json`
+
+```json
+{
+  "artefact_id": "ssh-<host>",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "host": "<host>",
+  "port": 22022,
+  "allow_users": [
+    "<unix-user>"
+  ],
+  "password_auth": false,
+  "permit_root_login": false,
+  "second_terminal_verified": false,
+  "owner": "<@handle>"
+}
+```
+
+### `templates/99-hardening.conf`
+
+```conf
+# /etc/ssh/sshd_config.d/99-hardening.conf
+# SSH Hardening — Production VPS (Ubuntu 24.04)
+# Applied on top of default Ubuntu 24.04 sshd_config via drop-in
+
+# --- Network ---
+# Port is set via systemd socket override on Ubuntu 24.04
+# See /etc/systemd/system/ssh.socket.d/override.conf
+
+# --- Authentication ---
+PermitRootLogin no
+PubkeyAuthentication yes
+PasswordAuthentication no
+ChallengeResponseAuthentication no
+KbdInteractiveAuthentication no
+PermitEmptyPasswords no
+MaxAuthTries 3
+MaxSessions 10
+LoginGraceTime 30
+
+# --- Access Control ---
+# Space-separated list of allowed users
+AllowUsers nero
+
+# --- Host Keys (ed25519 only) ---
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+# --- Cryptographic Hardening ---
+# Key Exchange: post-quantum hybrid + curve25519
+KexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org
+
+# Ciphers: AEAD only
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
+
+# MACs: encrypt-then-mac only (used as fallback for non-AEAD)
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+
+# --- Features ---
+X11Forwarding no
+AllowAgentForwarding no
+AllowTcpForwarding no
+PermitTunnel no
+GatewayPorts no
+
+# --- Logging ---
+LogLevel VERBOSE
+SyslogFacility AUTH
+
+# --- Misc ---
+UsePAM yes
+PrintMotd no
+AcceptEnv LANG LC_*
+Subsystem sftp /usr/lib/openssh/sftp-server
+```
+
+### `templates/ssh-client-config`
+
+```text
+# ~/.ssh/config — SSH Client Configuration
+
+# --- Global Defaults ---
+Host *
+    # Security
+    HashKnownHosts yes
+    IdentitiesOnly yes
+
+    # Key management
+    AddKeysToAgent yes
+
+    # Connection keepalive
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+
+    # Connection multiplexing (reuse connections — speeds up agent tools)
+    ControlMaster auto
+    ControlPath ~/.ssh/sockets/%r@%h-%p
+    ControlPersist 600
+
+    # Crypto (match server hardening)
+    KexAlgorithms sntrup761x25519-sha512@openssh.com,curve25519-sha256,curve25519-sha256@libssh.org
+    Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com
+    MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com
+
+# --- Host Definitions ---
+
+# Production VPS
+Host nero-prod
+    HostName 1.2.3.4
+    User nero
+    Port 2222
+    IdentityFile ~/.ssh/id_ed25519
+
+# Staging / Dev server
+Host nero-staging
+    HostName 5.6.7.8
+    User nero
+    Port 2222
+    IdentityFile ~/.ssh/id_ed25519
+
+# Internal host via jump (ProxyJump is safer than ForwardAgent)
+Host internal-db
+    HostName 10.0.0.5
+    User dbadmin
+    Port 22
+    ProxyJump nero-prod
+    IdentityFile ~/.ssh/id_ed25519_internal
+
+# GitHub
+Host github.com
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh/id_ed25519
+```

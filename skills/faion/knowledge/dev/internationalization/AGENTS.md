@@ -69,6 +69,8 @@
 | `templates/babel-cfg.ini` | Babel/extraction config for gettext-style flows |
 | `templates/pseudo-loc.py` | Pseudo-localization transformer for catalogue values |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,60 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps locale count, UI surface, and pipeline ownership to a rule from `01-core-rules.xml`, telling the agent whether to run the full i18n setup or skip when premature. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/babel-cfg.ini`
+
+```ini
+# babel.cfg — string extraction config for Babel
+# Usage: pybabel extract -F babel.cfg -o locales/messages.pot .
+# Then:  pybabel init -i locales/messages.pot -d locales -l uk
+#        pybabel update -i locales/messages.pot -d locales
+#        pybabel compile -d locales
+
+[python: **.py]
+encoding = utf-8
+
+[jinja2: **/templates/**.html]
+encoding = utf-8
+extensions = jinja2.ext.autoescape,jinja2.ext.with_
+```
+
+### `templates/pseudo-loc.py`
+
+```python
+"""Generate pseudo-localised catalogue to surface truncation in CI.
+
+Usage: python pseudo-loc.py locales/en.json locales/pseudo.json
+
+Pads every string by ~30% with [!!...~~] markers so truncation, overflow,
+and hardcoded-string bugs appear in staging before real translators are involved.
+"""
+import json
+import sys
+from pathlib import Path
+
+
+def pseudo(s: str) -> str:
+    pad = "~~" * max(1, len(s) // 3)
+    return f"[!!{s}{pad}!!]"
+
+
+def walk(obj: object) -> object:
+    if isinstance(obj, dict):
+        return {k: walk(v) for k, v in obj.items()}
+    if isinstance(obj, str):
+        return pseudo(obj)
+    return obj
+
+
+if __name__ == "__main__":
+    src = Path(sys.argv[1])
+    dst = Path(sys.argv[2])
+    data = json.loads(src.read_text(encoding="utf-8"))
+    dst.write_text(json.dumps(walk(data), ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"pseudo-loc: {src} -> {dst}")
+```

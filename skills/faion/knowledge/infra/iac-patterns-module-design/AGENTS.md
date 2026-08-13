@@ -65,6 +65,8 @@
 | `templates/config.json` | Config skeleton matching the output schema. |
 | `templates/_smoke-test.json` | Minimum viable filled artefact. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,95 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/config.json`
+
+```json
+{
+  "module_name": "vpc-network",
+  "module_version": "1.4.0",
+  "inputs": [
+    {
+      "name": "region",
+      "type": "string",
+      "required": true,
+      "description": "GCP region for the VPC."
+    },
+    {
+      "name": "subnets",
+      "type": "list(object)",
+      "required": true,
+      "description": "Subnet definitions."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "network_id",
+      "type": "string",
+      "description": "VPC network self-link."
+    },
+    {
+      "name": "subnet_ids",
+      "type": "list(string)",
+      "description": "Subnet self-links keyed by name."
+    }
+  ],
+  "examples": [
+    "examples/simple",
+    "examples/multi-region"
+  ],
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "platform engineer"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "module_name": "vpc-network",
+  "module_version": "1.4.0",
+  "inputs": [
+    {
+      "name": "region",
+      "type": "string",
+      "required": true,
+      "description": "GCP region for the VPC."
+    },
+    {
+      "name": "subnets",
+      "type": "list(object)",
+      "required": true,
+      "description": "Subnet definitions."
+    }
+  ],
+  "outputs": [
+    {
+      "name": "network_id",
+      "type": "string",
+      "description": "VPC network self-link."
+    },
+    {
+      "name": "subnet_ids",
+      "type": "list(string)",
+      "description": "Subnet self-links keyed by name."
+    }
+  ],
+  "examples": [
+    "examples/simple",
+    "examples/multi-region"
+  ],
+  "owner": {
+    "name": "Tetiana Lytvyn",
+    "role": "platform engineer"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+```

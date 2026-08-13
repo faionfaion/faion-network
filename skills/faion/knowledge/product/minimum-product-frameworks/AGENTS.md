@@ -57,7 +57,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/minimum-product-frameworks.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/minimum-product-frameworks.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

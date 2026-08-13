@@ -71,6 +71,8 @@
 | `templates/prompt-test-plan.txt` | Agent prompt for plan draft. |
 | `templates/prompt-synthesize.txt` | Agent prompt for findings synthesis. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,60 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, prototype reachable, recruitment ≥5/segment) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-test-plan.txt`
+
+```text
+You are a UX research assistant. Given the feature spec below, write a usability test plan including:
+- 3-5 research objectives (what questions will this study answer?)
+- 4-6 realistic task scenarios written as user situations, not instructions (no UI element names, no navigation hints)
+- success criteria per task (observable completion behavior, not subjective judgment)
+- post-task questions (1-5 satisfaction rating + one open question)
+- participant profile (who to recruit, how many per segment)
+
+Rules for task wording:
+- Write as scenarios: "Imagine you want to [situation]..."
+- Never name UI elements ("click the account button")
+- Never describe navigation steps
+- Every task must have one measurable success criterion
+
+Output as markdown following this structure:
+## Objectives
+## Participants
+## Tasks (one subsection per task with Scenario, Task, Success Criteria)
+## Post-task Questions
+## Metrics
+
+FEATURE SPEC:
+[paste spec here]
+```
+
+### `templates/prompt-synthesize.txt`
+
+```text
+You are analyzing usability test notes. Each note is tagged [P1]..[PN] for participant.
+
+Group observations by task. For each observation group, identify:
+- Problem description (what happened, not why — no inference)
+- Frequency: N of [total] participants affected
+- Severity: Critical (task blocked, 60%+ affected) / High (task blocked OR 60%+ affected) / Medium (40-60% affected) / Low (under 40% affected)
+- One concrete recommendation (specific fix, not "improve the design")
+
+Rules:
+- Mark direct quotes as [VERBATIM], your inferences as [INFERRED]
+- Weight observations by participant count, not by how vocal participants were
+- "no data" is valid when an observation applies to fewer than 2 participants
+- Do not smooth or average — report sharp disagreements between participants explicitly
+
+Output as a findings report with:
+1. Summary table: Finding | Severity | Frequency | Task
+2. Full finding per row with: problem, evidence (quotes and observations), impact, recommendation
+3. Prioritized action list ordered by: Critical first, then High, then effort (low effort Critical before high effort Critical)
+
+SESSION NOTES:
+[paste notes here]
+```

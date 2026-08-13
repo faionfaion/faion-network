@@ -64,6 +64,8 @@
 | `templates/bun-service-skeleton.ts` | Hello-world Bun + Hono entry |
 | `templates/bun-test-skeleton.ts` | bun:test skeleton |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,52 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches: route count (≤5 simple / &gt;5 needs grouping) → Hono with or without grouping. Auth shape (none / token / session) → Bun.password and which primitive to use.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/bun-service-skeleton.ts`
+
+```typescript
+import { Hono } from 'hono'
+
+const app = new Hono()
+
+app.get('/health', (c) => c.json({ ok: true }))
+
+app.post('/register', async (c) => {
+  const { email, password } = await c.req.json<{ email: string; password: string }>()
+  const hash = await Bun.password.hash(password)
+  return c.json({ ok: true, email, hash_prefix: hash.slice(0, 8) })
+})
+
+export default {
+  port: Number(Bun.env.PORT ?? 3000),
+  fetch: app.fetch,
+}
+```
+
+### `templates/bun-test-skeleton.ts`
+
+```typescript
+import { test, expect } from 'bun:test'
+import app from './bun-service-skeleton'
+
+test('health returns ok', async () => {
+  const res = await app.fetch(new Request('http://localhost/health'))
+  expect(res.status).toBe(200)
+  expect(await res.json()).toEqual({ ok: true })
+})
+
+test('register hashes password', async () => {
+  const res = await app.fetch(new Request('http://localhost/register', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: 'a@b.c', password: 'hunter2' }),
+  }))
+  expect(res.status).toBe(200)
+  const body = await res.json()
+  expect(body.ok).toBe(true)
+})
+```

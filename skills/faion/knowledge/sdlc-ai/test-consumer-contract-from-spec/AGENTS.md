@@ -64,6 +64,8 @@
 | `templates/canigo-deploy.yml` | CI workflow that runs the generator and gates merge on Pact `can-i-deploy`. |
 | `templates/pactflow-mcp-prompt.txt` | Prompt template for invoking PactFlow MCP generator with the pinned source. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,75 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/canigo-deploy.yml`
+
+```yaml
+# Provider release pipeline step: gate deploy on can-i-deploy.
+# Drop into .github/workflows/release.yml AFTER tests pass and BEFORE any push/publish.
+
+- name: can-i-deploy
+  env:
+    PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+    PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+  run: |
+    npx --yes @pact-foundation/pact-cli can-i-deploy \
+      --pacticipant "${PROVIDER_NAME}" \
+      --version "${{ github.sha }}" \
+      --to-environment production \
+      --retry-while-unknown 6 \
+      --retry-interval 10
+
+- name: publish image
+  if: success()
+  run: |
+    docker push "${REGISTRY}/${PROVIDER_NAME}:${{ github.sha }}"
+
+- name: record-deployment
+  if: success()
+  env:
+    PACT_BROKER_BASE_URL: ${{ secrets.PACT_BROKER_BASE_URL }}
+    PACT_BROKER_TOKEN: ${{ secrets.PACT_BROKER_TOKEN }}
+  run: |
+    npx --yes @pact-foundation/pact-cli broker record-deployment \
+      --pacticipant "${PROVIDER_NAME}" \
+      --version "${{ github.sha }}" \
+      --environment production
+```
+
+### `templates/pactflow-mcp-prompt.txt`
+
+```text
+# PactFlow MCP / skill prompt fragment for generating consumer Pacts.
+# Inputs: OPENAPI_PATH, CONSUMER, PROVIDER, OUT_PATH, LANG (ts|py|java).
+# Output: pact JSON at OUT_PATH plus a matching client test file under tests/contract/.
+# Run via: pactflow-mcp generate (or invoke the Pact AI skill with the same args).
+
+ROLE: You generate a CONSUMER Pact contract and matching client test from an OpenAPI spec.
+INPUT:
+  - OpenAPI: ${OPENAPI_PATH}
+  - Consumer name: ${CONSUMER}
+  - Provider name: ${PROVIDER}
+  - Output Pact path: ${OUT_PATH}
+  - Output client test language: ${LANG}
+
+RULES:
+  1. Use the spec as the single source of truth for paths, methods, status codes, schemas.
+  2. For every endpoint the consumer actually calls (resolve from imports/usages in the
+     consumer codebase), emit one interaction.
+  3. Use schema-aware matchers (term, regex, like) — NEVER literal-only bodies.
+  4. Add explicit provider states only when the spec includes example values you can map.
+  5. Emit the client test in ${LANG} using the project's existing test framework
+     (jest/pytest/junit) and the official Pact DSL for that language.
+  6. Do NOT invent endpoints not in the spec. Fail loudly if the consumer code references
+     an endpoint missing from the spec.
+
+OUTPUT:
+  - ${OUT_PATH} (committed)
+  - tests/contract/${CONSUMER}-${PROVIDER}.test.${LANG} (committed)
+  - One-line summary printed to stdout: "<N> interactions, <M> matchers, <K> states".
+```

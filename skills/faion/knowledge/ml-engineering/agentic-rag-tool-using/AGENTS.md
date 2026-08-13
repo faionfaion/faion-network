@@ -67,6 +67,8 @@
 | `templates/tool_using_rag.py` | Reference implementation of ToolUsingRAG with 4-tool registry, max_calls cap, result cache, and JSON trace emit. |
 | `templates/output-schema.json` | JSON Schema for the agent's `{answer, trace, calls_used}` output. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,185 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` decides whether tool-using RAG is the right pattern at all (≥2 retrieval modalities + auditable + reliable function calling) versus collapsing to a single-store iterative agent. Branches gate `web_search` behind an explicit allow-list before any production rollout.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tool_using_rag.py`
+
+```python
+"""Reference ToolUsingRAG skeleton — see content/05-examples.xml for the full body."""
+from __future__ import annotations
+
+import time
+from typing import Callable
+
+
+class ToolUsingRAG:
+    """Tool-using agentic RAG with bounded loop, intra-run cache, allow-listed web_search."""
+
+    def __init__(
+        self,
+        registry: dict[str, Callable[[str], list[dict]]],
+        routing_model: str = "claude-3-haiku-20240307",
+        synthesis_model: str = "claude-3-5-sonnet-20241022",
+        max_calls: int = 3,
+        web_search_allowlist: list[str] | None = None,
+    ) -> None:
+        self.registry = registry
+        self.routing_model = routing_model
+        self.synthesis_model = synthesis_model
+        self.max_calls = max_calls
+        self.allowlist = set(web_search_allowlist or [])
+
+    def answer(self, query: str) -> dict:
+        trace: list[dict] = []
+        cache: dict[tuple[str, str], list[dict]] = {}
+        violations: list[str] = []
+        for i in range(1, self.max_calls + 1):
+            tool = self._select_tool(query, trace)
+            if tool == "generate_answer":
+                break
+            key = (tool, query.strip().lower())
+            if key in cache:
+                result, cached, latency = cache[key], True, 0
+            else:
+                t0 = time.perf_counter()
+                result = self.registry[tool](query)
+                latency = int((time.perf_counter() - t0) * 1000)
+                cache[key] = result
+                cached = False
+                if tool == "web_search":
+                    violations += [r["source"] for r in result if not self._allowed(r.get("source", ""))]
+            trace.append({
+                "iteration": i,
+                "tool": tool,
+                "query": query,
+                "result_summary": self._summarise(result)[:200],
+                "latency_ms": latency,
+                "cached": cached,
+            })
+        return {
+            "answer": self._synthesise(query, trace),
+            "trace": trace,
+            "calls_used": len(trace),
+            "max_calls": self.max_calls,
+            "synthesis_model": self.synthesis_model,
+            "routing_model": self.routing_model,
+            "web_search_allowlist_violations": violations,
+        }
+
+    def _allowed(self, url: str) -> bool:
+        return any(url.startswith(domain) for domain in self.allowlist)
+
+    def _summarise(self, result: list[dict]) -> str:
+        if not result:
+            return "no results"
+        top = result[0]
+        return f"hits={len(result)} top_score={top.get('score', 0):.2f} snippet={top.get('text', '')[:80]}"
+
+    def _select_tool(self, query: str, trace: list[dict]) -> str:
+        raise NotImplementedError("wire routing model call here")
+
+    def _synthesise(self, query: str, trace: list[dict]) -> str:
+        raise NotImplementedError("wire synthesis model call here")
+```
+
+### `templates/output-schema.json`
+
+```json
+{
+  "_header": {
+    "purpose": "JSON Schema for ToolUsingRAG agent output",
+    "consumes": "agent emitted dict {answer, trace, calls_used, max_calls, models, violations}",
+    "produces": "pass/fail validation against this schema",
+    "depends-on": "content/02-output-contract.xml",
+    "token-budget-impact": "small"
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "faion://agentic-rag-tool-using/output.schema.json",
+  "type": "object",
+  "required": [
+    "answer",
+    "trace",
+    "calls_used",
+    "max_calls",
+    "synthesis_model",
+    "routing_model"
+  ],
+  "properties": {
+    "answer": {
+      "type": "string",
+      "minLength": 1
+    },
+    "trace": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "iteration",
+          "tool",
+          "query",
+          "result_summary",
+          "latency_ms"
+        ],
+        "properties": {
+          "iteration": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "tool": {
+            "type": "string",
+            "enum": [
+              "vector_search",
+              "keyword_search",
+              "sql_query",
+              "web_search",
+              "generate_answer"
+            ]
+          },
+          "query": {
+            "type": "string",
+            "minLength": 1
+          },
+          "result_summary": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "latency_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "cached": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "calls_used": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "max_calls": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 10
+    },
+    "synthesis_model": {
+      "type": "string"
+    },
+    "routing_model": {
+      "type": "string"
+    },
+    "web_search_allowlist_violations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 0
+    }
+  }
+}
+```

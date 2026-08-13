@@ -63,6 +63,8 @@
 | `templates/layout-spec.json` | Reference output. |
 | `templates/startapp-skeleton.tree` | Canonical per-app folder tree to copy. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,117 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Per concept (new model / new function / new shared base): does it belong to one business domain? → apps/&lt;domain&gt;/. Cross-domain shared base? → core/. Settings or wiring? → config/. Test factory? → tests/factories/.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/layout-spec.json`
+
+```json
+{
+  "_purpose": "Reference Django project layout spec output.",
+  "_consumes": "Domain list + envs.",
+  "_produces": "JSON consumed by startapp + onboarding doc.",
+  "_depends-on": "content/02-output-contract.xml.",
+  "_token-budget-impact": "~200 tokens.",
+  "artefact_id": "faion-net-be-layout",
+  "owner": "ruslan@faion.net",
+  "project": "faion-net-be",
+  "django_version": "5.2.1",
+  "apps": [
+    {
+      "name": "accounts",
+      "files": [
+        "models.py",
+        "services.py",
+        "selectors.py",
+        "apis.py",
+        "serializers.py",
+        "urls.py",
+        "constants.py",
+        "admin.py",
+        "tests/test_models.py",
+        "tests/test_services.py",
+        "tests/test_selectors.py",
+        "tests/test_apis.py"
+      ]
+    },
+    {
+      "name": "billing",
+      "files": [
+        "models.py",
+        "services.py",
+        "selectors.py",
+        "apis.py",
+        "serializers.py",
+        "urls.py",
+        "constants.py",
+        "admin.py",
+        "tests/test_models.py",
+        "tests/test_services.py",
+        "tests/test_selectors.py",
+        "tests/test_apis.py"
+      ]
+    },
+    {
+      "name": "content",
+      "files": [
+        "models.py",
+        "services.py",
+        "selectors.py",
+        "apis.py",
+        "serializers.py",
+        "urls.py",
+        "constants.py",
+        "admin.py",
+        "tests/test_models.py",
+        "tests/test_services.py",
+        "tests/test_selectors.py",
+        "tests/test_apis.py"
+      ]
+    }
+  ],
+  "core_modules": [
+    "base_models.py",
+    "exceptions.py",
+    "pagination.py",
+    "permissions.py"
+  ],
+  "config_modules": [
+    "settings/base.py",
+    "settings/dev.py",
+    "settings/staging.py",
+    "settings/prod.py",
+    "urls.py",
+    "celery.py",
+    "wsgi.py",
+    "asgi.py"
+  ],
+  "test_root": "tests/",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```
+
+### `templates/startapp-skeleton.tree`
+
+```text
+apps/<domain>/
+├── __init__.py
+├── apps.py
+├── admin.py
+├── apis.py
+├── constants.py
+├── models.py
+├── selectors.py
+├── serializers.py
+├── services.py
+├── urls.py
+└── tests/
+    ├── __init__.py
+    ├── test_apis.py
+    ├── test_models.py
+    ├── test_selectors.py
+    └── test_services.py
+```

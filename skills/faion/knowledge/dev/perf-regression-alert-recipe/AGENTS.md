@@ -62,7 +62,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/output.json` | Config template (JSON) matching the schema in 02-output-contract.xml |
 | `templates/_smoke-test.md` | Filled-in canonical example for calibration |
 
 ## Scripts

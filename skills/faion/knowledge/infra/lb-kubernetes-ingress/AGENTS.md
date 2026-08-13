@@ -68,6 +68,8 @@
 | `templates/controller-deployment.yaml` | Ingress-nginx Deployment + Service + PDB + ServiceAccount |
 | `templates/ingress.yaml` | Per-app Ingress with cert-manager + rate-limit + CORS annotations |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,134 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (managed vs self-hosted, traffic class, Gateway API readiness, controller choice) to a concrete config shape, each leaf referencing a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/controller-deployment.yaml`
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata: { name: ingress-nginx }
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: ingress-nginx, namespace: ingress-nginx }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: { name: ingress-nginx-controller, namespace: ingress-nginx }
+spec:
+  replicas: 3
+  selector:
+    matchLabels: { app.kubernetes.io/name: ingress-nginx }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: ingress-nginx }
+    spec:
+      serviceAccountName: ingress-nginx
+      terminationGracePeriodSeconds: 300
+
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels: { app.kubernetes.io/name: ingress-nginx }
+              topologyKey: kubernetes.io/hostname
+
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app.kubernetes.io/name: ingress-nginx }
+
+      containers:
+        - name: controller
+          image: registry.k8s.io/ingress-nginx/controller:v1.10.0
+          args:
+            - /nginx-ingress-controller
+            - --ingress-class=public
+            - --publish-service=ingress-nginx/ingress-nginx
+          resources:
+            requests: { cpu: "200m", memory: "256Mi" }
+            limits:   { cpu: "1",    memory: "512Mi" }
+          ports:
+            - { name: http,    containerPort: 80,  protocol: TCP }
+            - { name: https,   containerPort: 443, protocol: TCP }
+            - { name: metrics, containerPort: 10254 }
+          livenessProbe:
+            httpGet: { path: /healthz, port: 10254 }
+            periodSeconds: 10
+            failureThreshold: 5
+          readinessProbe:
+            httpGet: { path: /healthz, port: 10254 }
+            periodSeconds: 10
+            failureThreshold: 3
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata: { name: ingress-nginx-pdb, namespace: ingress-nginx }
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels: { app.kubernetes.io/name: ingress-nginx }
+---
+apiVersion: v1
+kind: Service
+metadata: { name: ingress-nginx, namespace: ingress-nginx }
+spec:
+  type: LoadBalancer
+  selector: { app.kubernetes.io/name: ingress-nginx }
+  ports:
+    - { name: http,  port: 80,  targetPort: http }
+    - { name: https, port: 443, targetPort: https }
+---
+apiVersion: networking.k8s.io/v1
+kind: IngressClass
+metadata:
+  name: public
+spec:
+  controller: k8s.io/ingress-nginx
+```
+
+### `templates/ingress.yaml`
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+  namespace: prod
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "8m"
+    nginx.ingress.kubernetes.io/limit-rpm: "600"
+    nginx.ingress.kubernetes.io/limit-connections: "30"
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "https://app.example.com"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "GET,POST,PUT,DELETE,OPTIONS"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "5"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+spec:
+  ingressClassName: public
+  tls:
+    - hosts: [app.example.com]
+      secretName: app-tls
+  rules:
+    - host: app.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
+                port:
+                  number: 80
+```

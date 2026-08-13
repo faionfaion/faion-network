@@ -63,6 +63,8 @@
 | `templates/pattern-memory.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,100 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pattern-memory.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/pattern-memory.json",
+  "title": "Pattern Memory Output Contract",
+  "type": "object",
+  "required": [
+    "pattern_id",
+    "title",
+    "confidence",
+    "contexts_used",
+    "rationale",
+    "synced_to_claude_md",
+    "occurrence_count",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "pattern_id": {
+      "type": "string",
+      "description": "stable id (PM-001..)"
+    },
+    "title": {
+      "type": "string",
+      "description": "pattern name"
+    },
+    "confidence": {
+      "type": "number",
+      "description": "0.5..0.95"
+    },
+    "contexts_used": {
+      "type": "array",
+      "description": "\u22652 with citation",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "rationale": {
+      "type": "string",
+      "description": "why it works"
+    },
+    "synced_to_claude_md": {
+      "type": "boolean",
+      "description": "true when confidence \u22650.8"
+    },
+    "occurrence_count": {
+      "type": "integer",
+      "description": "\u22652"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named author"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "pattern_id": "sample-pattern_id",
+  "title": "sample-title",
+  "confidence": 0.7,
+  "contexts_used": [
+    {
+      "k": "v"
+    }
+  ],
+  "rationale": "sample-rationale",
+  "synced_to_claude_md": true,
+  "occurrence_count": 3,
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

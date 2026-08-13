@@ -61,9 +61,10 @@
 |------|---------|
 | `templates/conftest.py.tmpl` | Project-wide fixture skeleton with scopes and teardown. |
 | `templates/test_module.py.tmpl` | Function-style test with parametrize + mocker. |
-| `templates/pyproject-pytest.toml.tmpl` | Pyproject section for pytest + coverage config. |
 | `templates/test_async.py.tmpl` | Async test using `@pytest.mark.asyncio`. |
 | `templates/_smoke-test.py` | Minimal pytest sanity test. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -83,3 +84,79 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters whether testing-pytest applies: root question — "Is the test target Python code intended for pytest 8.x?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/conftest.py.tmpl`
+
+```python
+pytest conftest.py skeleton
+"""
+from __future__ import annotations
+
+
+def main() -> None:
+    """Entry point. Fill per methodology procedure."""
+    # TODO: implement per 04-procedure.xml
+    raise NotImplementedError
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### `templates/test_module.py.tmpl`
+
+```python
+pytest test file skeleton
+"""
+from __future__ import annotations
+
+
+def main() -> None:
+    """Entry point. Fill per methodology procedure."""
+    # TODO: implement per 04-procedure.xml
+    raise NotImplementedError
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### `templates/test_async.py.tmpl`
+
+```python
+pytest async test skeleton
+"""
+from __future__ import annotations
+
+
+def main() -> None:
+    """Entry point. Fill per methodology procedure."""
+    # TODO: implement per 04-procedure.xml
+    raise NotImplementedError
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### `templates/_smoke-test.py`
+
+```python
+Smoke test.
+"""
+from __future__ import annotations
+
+
+def main() -> None:
+    """Entry point. Fill per methodology procedure."""
+    # TODO: implement per 04-procedure.xml
+    raise NotImplementedError
+
+
+if __name__ == "__main__":
+    main()
+```

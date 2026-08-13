@@ -71,6 +71,8 @@
 | `templates/portability-spec.json` | JSON skeleton matching 02-output-contract. |
 | `templates/portability-spec.md` | Narrative review draft. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,43 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes to a single-provider exit if no redundancy is planned; otherwise picks the abstraction layer (tool-schema adapter vs system-prompt rewrite vs both) based on the provider matrix. Walk it before opening the migration PR.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/portability-spec.json`
+
+```json
+{
+  "artefact_id": "portability-<feature>-<period>",
+  "owner": "<handle>@faion.net",
+  "providers": [
+    {
+      "name": "anthropic",
+      "model": "claude-opus-4-7",
+      "docs_url": "https://docs.anthropic.com/en/api/messages"
+    },
+    {
+      "name": "openai",
+      "model": "gpt-5-pro",
+      "docs_url": "https://platform.openai.com/docs/api-reference/chat"
+    }
+  ],
+  "abstraction_layer": "tool_and_system",
+  "tool_schema_adapter": "faion.adapters.tools.universal_v2",
+  "refusal_policy_ref": "git://<repo>/safety/refusal.md",
+  "inputs_used": [
+    {
+      "name": "current_prompts",
+      "source": "git://<repo>/prompts/<suite>.yaml"
+    },
+    {
+      "name": "provider_matrix",
+      "source": "git://<repo>/platform/providers.yaml"
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```

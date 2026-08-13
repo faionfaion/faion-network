@@ -70,6 +70,8 @@
 | `templates/dockerfile-pnpm` | Multi-stage Dockerfile using pnpm fetch for layer caching |
 | `templates/artefact.json` | Sample artefact metadata consumed by validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,97 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/npmrc`
+
+```text
+strict-peer-dependencies=true
+auto-install-peers=true
+prefer-frozen-lockfile=true
+engine-strict=true
+# shamefully-hoist intentionally unset (defaults to false)
+# node-linker=hoisted is ONLY acceptable with an inline comment naming the native add-on
+```
+
+### `templates/pnpm-workspace.yaml`
+
+```yaml
+packages:
+  - 'apps/*'
+  - 'packages/*'
+  - 'tools/*'
+```
+
+### `templates/ci-pnpm.yml`
+
+```yaml
+name: CI
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Setup Node.js with pnpm store cache
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      - name: Install (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+      - name: Build changed packages only
+        run: pnpm --filter '...[origin/main]' build
+      - name: Test changed packages only
+        run: pnpm --filter '...[origin/main]' test
+      - name: Lint all packages
+        run: pnpm -r lint
+```
+
+### `templates/dockerfile-pnpm`
+
+```text
+FROM node:20-alpine AS base
+RUN corepack enable
+WORKDIR /app
+
+FROM base AS deps
+COPY pnpm-lock.yaml ./
+RUN pnpm fetch
+
+FROM deps AS build
+COPY . .
+RUN pnpm install --frozen-lockfile --offline
+RUN pnpm -r build
+
+FROM base AS runtime
+COPY --from=build /app/dist /app/dist
+COPY --from=build /app/node_modules /app/node_modules
+CMD ["node", "dist/main.js"]
+```
+
+### `templates/artefact.json`
+
+```json
+{
+  "package_manager": "pnpm@9.1.0",
+  "npmrc_shamefully_hoist": false,
+  "npmrc_strict_peer_dependencies": true,
+  "npmrc_engine_strict": true,
+  "ci_frozen_lockfile": true,
+  "preinstall_only_allow": true,
+  "workspace_packages": [
+    "apps/*",
+    "packages/*"
+  ],
+  "lockfile_committed": true
+}
+```

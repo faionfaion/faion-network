@@ -66,6 +66,8 @@
 | `templates/base_model.py` | BaseModel + TimestampMixin + SoftDeleteMixin + managers reference. |
 | `templates/base-model-spec.json` | Reference output document. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,173 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree branches per concrete model: needs soft-delete? → SoftDeleteMixin + partial unique. exposes public API? → `uid` UUID field. tenant-scoped? → TenantAwareModel + tenant_context wrapper.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/base_model.py`
+
+```python
+"""
+
+from __future__ import annotations
+
+import uuid
+
+from django.db import models
+from django.db.models import Q, UniqueConstraint
+from django.utils import timezone
+
+
+class TimestampMixin(models.Model):
+    """Adds created_at and updated_at to any model."""
+
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+
+class UidMixin(models.Model):
+    """Adds a public-facing UUID `uid` while keeping integer `id` as the PK."""
+
+    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+
+    class Meta:
+        abstract = True
+
+
+class SoftDeleteQuerySet(models.QuerySet):
+    """Overrides delete() at the QuerySet level — without this, bulk deletes hard-delete."""
+
+    def delete(self):  # type: ignore[override]
+        return self.update(deleted_at=timezone.now())
+
+    def hard_delete(self):
+        return super().delete()
+
+    def alive(self):
+        return self.filter(deleted_at__isnull=True)
+
+    def dead(self):
+        return self.filter(deleted_at__isnull=False)
+
+
+class SoftDeleteManager(models.Manager):
+    """Default manager: only live rows. Pair with `all_objects = models.Manager()` on the model."""
+
+    def get_queryset(self) -> SoftDeleteQuerySet:
+        return SoftDeleteQuerySet(self.model, using=self._db).alive()
+
+
+class SoftDeleteMixin(models.Model):
+    deleted_at = models.DateTimeField(null=True, blank=True, db_index=True)
+
+    objects = SoftDeleteManager()
+    all_objects = models.Manager()  # required: gives admin / loaddata access to every row
+
+    class Meta:
+        abstract = True
+
+    def delete(self, using=None, keep_parents=False):  # type: ignore[override]
+        self.deleted_at = timezone.now()
+        self.save(update_fields=["deleted_at"])
+
+    def hard_delete(self, using=None, keep_parents=False):
+        super().delete(using=using, keep_parents=keep_parents)
+
+    def restore(self) -> None:
+        self.deleted_at = None
+        self.save(update_fields=["deleted_at"])
+
+
+class BaseModel(TimestampMixin, UidMixin):
+    class Meta:
+        abstract = True
+
+
+class SoftDeletableModel(TimestampMixin, UidMixin, SoftDeleteMixin):
+    class Meta:
+        abstract = True
+
+
+# Example concrete model showing the partial-unique pattern required by r3.
+# class Customer(SoftDeletableModel):
+#     email = models.EmailField()
+#
+#     class Meta:
+#         constraints = [
+#             UniqueConstraint(
+#                 fields=["email"],
+#                 condition=Q(deleted_at__isnull=True),
+#                 name="unique_active_customer_email",
+#             ),
+#         ]
+```
+
+### `templates/base-model-spec.json`
+
+```json
+{
+  "_purpose": "Reference base-model spec output.",
+  "_consumes": "ERD + soft-delete scope + tenant scope.",
+  "_produces": "JSON for codegen.",
+  "_depends-on": "content/02-output-contract.xml.",
+  "_token-budget-impact": "~150 tokens.",
+  "artefact_id": "billing-base-model-spec",
+  "owner": "ruslan@faion.net",
+  "django_version": "5.2.1",
+  "db_engine": "postgresql",
+  "bases": [
+    {
+      "name": "BaseModel",
+      "abstract": true,
+      "mixins": [
+        "TimestampMixin",
+        "UidMixin"
+      ]
+    },
+    {
+      "name": "SoftDeletableModel",
+      "abstract": true,
+      "mixins": [
+        "TimestampMixin",
+        "UidMixin",
+        "SoftDeleteMixin"
+      ]
+    }
+  ],
+  "models": [
+    {
+      "name": "Customer",
+      "extends": "SoftDeletableModel",
+      "soft_delete": true,
+      "exposes_uid": true,
+      "tenant_scoped": false,
+      "unique_fields": [
+        "email"
+      ],
+      "foreign_keys": []
+    },
+    {
+      "name": "Order",
+      "extends": "SoftDeletableModel",
+      "soft_delete": true,
+      "exposes_uid": true,
+      "tenant_scoped": false,
+      "unique_fields": [],
+      "foreign_keys": [
+        {
+          "field": "customer",
+          "on_delete": "PROTECT",
+          "reason": "Retain order history even when Customer is soft-deleted; compliance requires 7y retention."
+        }
+      ]
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```

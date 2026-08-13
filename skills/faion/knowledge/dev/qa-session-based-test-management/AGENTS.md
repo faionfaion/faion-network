@@ -66,6 +66,8 @@
 | `templates/charter.md` | Markdown skeleton for the artefact. |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,59 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Are we running uncharted exploratory testing on a non-trivial UI feature?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/session_report.json`
+
+```json
+{
+  "session_id": "sbtm-2026-05-23-001",
+  "charter": "Explore the bulk role-edit flow as an admin user; mission: surface inconsistencies between filter and bulk action.",
+  "tester": "alice",
+  "duration_minutes": 90,
+  "split": {
+    "T": 60,
+    "B": 25,
+    "S": 15
+  },
+  "findings": [
+    {
+      "id": "f1",
+      "type": "bug",
+      "severity": "S2",
+      "summary": "Bulk role-edit ignores admin filter when applied via the toolbar."
+    }
+  ],
+  "debrief_notes": "Filter inconsistencies look architectural; recommend a deeper session focused on filter state across UI components.",
+  "build_under_test": "v2.4.0-rc1"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "session_id": "sbtm-2026-05-23-001",
+  "charter": "Explore the bulk role-edit flow as an admin user; mission: surface inconsistencies between filter and bulk action.",
+  "tester": "alice",
+  "duration_minutes": 90,
+  "split": {
+    "T": 60,
+    "B": 25,
+    "S": 15
+  },
+  "findings": [
+    {
+      "id": "f1",
+      "type": "bug",
+      "severity": "S2",
+      "summary": "Bulk role-edit ignores admin filter when applied via the toolbar."
+    }
+  ],
+  "debrief_notes": "Filter inconsistencies look architectural; recommend a deeper session focused on filter state across UI components.",
+  "build_under_test": "v2.4.0-rc1"
+}
+```

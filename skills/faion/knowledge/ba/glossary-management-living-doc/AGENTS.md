@@ -73,6 +73,8 @@
 | `templates/conflict-resolution-record.md` | Record of a resolution: parties, dispute, decision, date. |
 | `templates/_smoke-test.json` | Minimum viable filled-in entry. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,3 +91,63 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The mandatory tree maps observable signals (engagement type, perspective set, scope, audit needs, baseline presence) to a single rule from `01-core-rules.xml`; every leaf references either a numbered core rule or the `skip-this-methodology` conclusion that routes the agent to a different methodology when this one does not apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/glossary-entry.json`
+
+```json
+{
+  "example": {
+    "term": "active customer",
+    "scope": "billing",
+    "status": "canonical",
+    "definition": "A customer with at least one paid invoice in the trailing 30 days.",
+    "aliases": [
+      "paying customer"
+    ],
+    "examples": [
+      "Used in billing/active-customers.sql"
+    ],
+    "propagation_hooks": [
+      {
+        "hook_type": "code_constant",
+        "location": "billing/constants.py",
+        "owner": "billing-team"
+      }
+    ],
+    "owner": "Finance Ops",
+    "last_reviewed": "2026-05-20"
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "example": {
+    "term": "active customer",
+    "scope": "billing",
+    "status": "canonical",
+    "definition": "A customer with at least one paid invoice in the trailing 30 days.",
+    "aliases": [
+      "paying customer"
+    ],
+    "examples": [
+      "Used in billing/active-customers.sql"
+    ],
+    "propagation_hooks": [
+      {
+        "hook_type": "code_constant",
+        "location": "billing/constants.py",
+        "owner": "billing-team"
+      }
+    ],
+    "owner": "Finance Ops",
+    "last_reviewed": "2026-05-20"
+  }
+}
+```

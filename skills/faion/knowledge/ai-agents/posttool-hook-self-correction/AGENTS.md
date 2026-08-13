@@ -63,6 +63,8 @@
 | `templates/settings-json-snippet.json` | PostToolUse hook fragment ready to merge into settings.json. |
 | `templates/_smoke-test.yaml` | Minimum pattern (one ruff hook). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,49 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on `language` (python → ruff; typescript → tsc/eslint; mixed → multi-validator), then on `runtime_per_file` (&lt;1s → keep; 1-5s → narrow glob; &gt;5s → defer to commit gate). Each leaf cites a rule id.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/settings-json-snippet.json`
+
+```json
+{
+  "_header": {
+    "purpose": "PostToolUse hook fragment for self-correction loop (ruff/eslint/tsc)",
+    "consumes": "Claude Code Write/Edit events on language-matching files",
+    "produces": "validator stderr injected into next turn as tool-result error",
+    "depends-on": "validator binaries on PATH (ruff/eslint/tsc)",
+    "token-budget-impact": "fragment ~200 tokens; per-edit error adds ~150"
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "case \"$CLAUDE_FILE_PATH\" in *.py) ruff check --quiet \"$CLAUDE_FILE_PATH\" ;; *.ts|*.tsx) tsc --noEmit && eslint --max-warnings 0 \"$CLAUDE_FILE_PATH\" ;; esac",
+            "timeout_seconds": 5
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+file_patterns:
+  - {glob: "**/*.py", validator_cmd: "ruff check --quiet $CLAUDE_FILE_PATH", timeout_seconds: 5}
+
+drivers:
+  language: python
+  runtime_per_file: 1
+  validators_available: [ruff]
+
+settings_json_path: .claude/settings.json
+```

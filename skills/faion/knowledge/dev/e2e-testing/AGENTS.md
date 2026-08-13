@@ -66,6 +66,8 @@
 | `templates/playwright.config.ts` | Multi-browser config with retries, reporters, baseURL, webServer. |
 | `templates/smoke-gate.sh` | Deploy gate script running `@smoke`-tagged tests against staging URL. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,101 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters whether an incoming testing need belongs in E2E at all: critical journey not covered cheaper → write E2E; logic branch covered by unit/integration → skip; pre-MVP UI churning weekly → skip.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/page-object.ts`
+
+```typescript
+import { Page, Locator, expect } from '@playwright/test';
+
+// Skeleton Page Object — copy and rename for each route.
+// Convention: one POM per route; methods named after user intent.
+export class ExamplePage {
+  readonly page: Page;
+  // Declare all locators as properties using data-testid
+  readonly primaryElement: Locator;
+
+  constructor(page: Page) {
+    this.page = page;
+    this.primaryElement = page.getByTestId('primary-element');
+  }
+
+  // Navigation: wait for the page to be ready
+  async goto() {
+    await this.page.goto('/example');
+    await expect(this.primaryElement).toBeVisible();
+  }
+
+  // Action: named after user intent, not DOM event
+  async performAction(input: string) {
+    await this.page.getByTestId('input').fill(input);
+    await this.page.getByTestId('submit').click();
+  }
+
+  // Assertion: use expect() for auto-retry
+  async expectSuccess(expected: string) {
+    await expect(this.page.getByTestId('result')).toContainText(expected);
+  }
+}
+```
+
+### `templates/playwright.config.ts`
+
+```typescript
+import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './e2e',
+  fullyParallel: true,
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
+  reporter: [
+    ['html', { open: 'never' }],
+    ['junit', { outputFile: 'test-results/junit.xml' }],
+  ],
+  use: {
+    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
+  },
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+    { name: 'mobile-chrome', use: { ...devices['Pixel 5'] } },
+  ],
+  webServer: {
+    command: 'npm run start',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120000,
+  },
+});
+```
+
+### `templates/smoke-gate.sh`
+
+```bash
+# Usage: BASE_URL=https://staging.example.com bash smoke-gate.sh
+set -euo pipefail
+BASE_URL="${BASE_URL:?BASE_URL required}"
+TIMEOUT="${TIMEOUT:-300}"
+SMOKE_TAG="${SMOKE_TAG:-@smoke}"
+
+echo "smoke against $BASE_URL"
+npx playwright install --with-deps chromium >/dev/null
+
+timeout "${TIMEOUT}" npx playwright test \
+  --project=chromium \
+  --grep "${SMOKE_TAG}" \
+  --reporter=list,html \
+  --workers=2 \
+  || { echo "smoke FAILED — see playwright-report/"; exit 1; }
+
+echo "smoke OK"
+```

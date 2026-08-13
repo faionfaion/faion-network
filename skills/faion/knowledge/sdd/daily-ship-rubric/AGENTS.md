@@ -62,6 +62,8 @@
 | `templates/daily-ship-rubric.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,83 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/daily-ship-rubric.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/daily-ship-rubric.json",
+  "title": "Daily Ship Rubric Output Contract",
+  "type": "object",
+  "required": [
+    "date",
+    "operator",
+    "backlog_item",
+    "gates",
+    "verdict",
+    "note",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "date": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    },
+    "operator": {
+      "type": "string",
+      "description": "named human"
+    },
+    "backlog_item": {
+      "type": "string",
+      "description": "task id"
+    },
+    "gates": {
+      "type": "object",
+      "description": "5 binary gates: spec/code/tests/deploy/customer_visible"
+    },
+    "verdict": {
+      "type": "string",
+      "description": "ship | no-ship"
+    },
+    "note": {
+      "type": "string",
+      "description": "\u2264200 char free-text"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "date": "2026-05-23",
+  "operator": "sample-operator",
+  "backlog_item": "sample-backlog_item",
+  "gates": {
+    "k": "v"
+  },
+  "verdict": "sample-verdict",
+  "note": "sample-note",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

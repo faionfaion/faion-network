@@ -68,6 +68,8 @@
 | `templates/dependency-adoption-checklist.md` | Markdown skeleton with the required fields |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,99 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, stake level, downstream-consumer presence, regime overlay) to a concrete rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology, defer to a peer, or skip outright.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/dependency-adoption-checklist.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/dependency-adoption-checklist.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "decision",
+    "rationale",
+    "inputs_used",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]+$"
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 3
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 4
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 30
+    },
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "source"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "produces": {
+      "const": "checklist"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "artefact_id": "dependency-adoption-checklist-2026-05-23-001",
+  "owner": "alice@example.com",
+  "decision": "Adopt the canonical checklist shape per r1-bound-scope.",
+  "rationale": "Driven by parent-activity-context (last sprint events) and owner-roster (CODEOWNERS maps area to alice).",
+  "inputs_used": [
+    {
+      "name": "parent-activity-context",
+      "source": "repo://docs/parent.md"
+    },
+    {
+      "name": "owner-roster",
+      "source": "repo://CODEOWNERS"
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "produces": "checklist"
+}
+```

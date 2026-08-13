@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/spec-examples-basic.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/spec-examples-basic.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

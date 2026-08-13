@@ -68,7 +68,6 @@
 |------|---------|
 | `templates/mlp-plan.md` | MLP plan skeleton with 4 layer scores + delight backlog + curve target. |
 | `templates/delight-sprint.md` | Single-theme delight sprint plan template. |
-| `templates/audit-to-backlog.sh` | Shell script converting layer scores to a prioritized delight backlog. |
 
 ## Scripts
 

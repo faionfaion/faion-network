@@ -66,7 +66,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/portability-audit-report.json` | JSON skeleton matching 02-output-contract. |
 | `templates/portability-audit-report.md` | Narrative review draft. |
 
 ## Scripts

@@ -64,6 +64,8 @@
 | `templates/pyproject.toml` | pyproject.toml skeleton with [project] + [tool.uv] sections. |
 | `templates/agents-md-snippet.md` | Markdown snippet enforcing `uv run` for all Python tool calls in AGENTS.md. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,49 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pyproject.toml`
+
+```toml
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "my-pkg"
+version = "0.1.0"
+description = "uv-managed project skeleton."
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "pydantic>=2.9",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=9.0",
+  "ruff>=0.15",
+  "hypothesis>=6.150",
+  "pytest-cov>=5.0",
+]
+
+[tool.uv]
+managed = true
+package = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP", "SIM", "RUF", "T20"]
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+addopts = "-ra --strict-markers --strict-config"
+testpaths = ["tests"]
+```

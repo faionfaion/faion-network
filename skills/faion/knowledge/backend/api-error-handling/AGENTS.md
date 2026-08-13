@@ -70,6 +70,8 @@
 | `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-api-error-handling.py --self-test` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,34 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes (envelope standard, external vs internal, validation surface) to full RFC 7807 / minimal-status-only / custom-envelope-with-justification. Every leaf cites a rule from `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, picks any variant, and ties the chosen leaf to the rule the orchestrator must enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "artefact_id": "api-error-handling-2026-05-23",
+  "owner": "ruslan@faion.net",
+  "last_touched": "2026-05-23T12:00:00Z",
+  "template_version": "1.1.0",
+  "status": "ready_for_review",
+  "evidence": [
+    {
+      "source": "https://example.com/source-1",
+      "citation": "verbatim quote from source"
+    }
+  ],
+  "api_id": "draft",
+  "envelope_standard": "draft",
+  "type_uri_base": "draft",
+  "trace_header": "draft",
+  "error_catalogue": [
+    "draft-item"
+  ],
+  "field_level_validation": true,
+  "raw_exception_banned": true
+}
+```

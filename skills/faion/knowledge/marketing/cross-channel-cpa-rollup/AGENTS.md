@@ -73,6 +73,8 @@
 | `templates/attribution-policy.md` | Pinned attribution model + view-through window + appeal process. |
 | `templates/rollup-row.json` | JSON example matching the output contract. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -89,3 +91,37 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes the agent from the observable signal (e.g. "view-through count > attributed conversions", "branded share > 30%") to the rule that gates the fix. Use it before publishing a rollup that looks too rosy or too dire — the explanation is usually a rule violation upstream.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rollup-sheet.csv`
+
+```csv
+week,channel,gross_spend_usd,self_reported_conversions,attributed_conversions,view_through_count,cpa_gross,incremental_over_organic,cpa_incremental,cohort_d30_retention,cohort_d60_retention,cohort_d90_retention,attribution_policy_version,notes
+2026-W20,Meta-paid,4800.00,51,32,18,150.00,22,218.18,0.71,,,1.2.0,Includes $600 agency fee
+2026-W20,Google-search,3200.00,42,28,4,114.29,21,152.38,0.83,,,1.2.0,
+2026-W20,Organic,0,,60,,0,60,0,0.84,,,1.2.0,
+```
+
+### `templates/rollup-row.json`
+
+```json
+{
+  "week": "2026-W20",
+  "channel": "Meta-paid",
+  "gross_spend_usd": 4800.0,
+  "attributed_conversions": 32,
+  "self_reported_conversions": 51,
+  "view_through_count": 18,
+  "cpa_gross": 150.0,
+  "incremental_over_organic": 22,
+  "cpa_incremental": 218.18,
+  "cohort_d30_retention": 0.71,
+  "cohort_d60_retention": null,
+  "cohort_d90_retention": null,
+  "attribution_policy_version": "1.2.0",
+  "notes": "Includes $600 agency fee."
+}
+```

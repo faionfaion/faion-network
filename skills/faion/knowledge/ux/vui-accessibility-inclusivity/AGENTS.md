@@ -63,6 +63,8 @@
 |------|---------|
 | `templates/inclusivity-report.json` | Skeleton report |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,19 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches by audience scope and measurement signal; remediation actions are tied to specific rule violations. Each leaf cites a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/inclusivity-report.json`
+
+```json
+{
+  "wer_per_slice": [],
+  "fairness_gap_pct": 0,
+  "prompts": [],
+  "transcript_available": true,
+  "non_voice_fallback": true
+}
+```

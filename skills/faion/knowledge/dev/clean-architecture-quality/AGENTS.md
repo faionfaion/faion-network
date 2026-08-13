@@ -66,6 +66,8 @@
 | `templates/repository-interface.py` | Repository interface owned by the domain layer. |
 | `templates/import-linter.ini` | Import-linter contract that enforces inward-only layer dependencies. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[domain-driven-design]]
@@ -75,3 +77,69 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree picks Clean Architecture only when complexity and longevity justify the layer overhead AND the team will enforce the rule with architecture tests.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/use-case.py`
+
+```python
+"""
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+
+InputT = TypeVar("InputT")
+OutputT = TypeVar("OutputT")
+
+
+class UseCase(ABC, Generic[InputT, OutputT]):
+    @abstractmethod
+    async def execute(self, input_data: InputT) -> OutputT: ...
+
+
+@dataclass
+class CreateUserInput:
+    name: str
+    email: str
+
+
+@dataclass
+class CreateUserOutput:
+    user_id: str
+```
+
+### `templates/repository-interface.py`
+
+```python
+"""
+from abc import ABC, abstractmethod
+from typing import Optional
+
+
+class UserRepository(ABC):
+    @abstractmethod
+    async def get_by_id(self, user_id: str) -> Optional[object]: ...
+
+    @abstractmethod
+    async def save(self, user: object) -> None: ...
+```
+
+### `templates/import-linter.ini`
+
+```ini
+[importlinter]
+root_packages = myapp
+
+[importlinter:contract:layers]
+name = Clean architecture layers must point inward
+type = layers
+layers =
+    myapp.presentation
+    myapp.application
+    myapp.domain
+containers =
+    myapp.infrastructure
+ignore_imports =
+```

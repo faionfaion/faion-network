@@ -70,6 +70,8 @@
 | `templates/verdict-card.md` | Markdown skeleton with the 7-field verdict card |
 | `templates/verdict-card.json` | JSON example matching the output contract |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,51 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes from primary + secondary signal + power state to one of the 5 verdicts + the routed action, pinning the rule from `01-core-rules.xml`. Use it before drafting the verdict — picking the wrong verdict is the most consequential failure of the ritual.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/verdict-card.json`
+
+```json
+{
+  "experiment_id": "EXP-2026-Q2-031",
+  "hypothesis": "Shortening the hero copy increases primary CTA clicks for cold pricing traffic.",
+  "arms": [
+    "control",
+    "B-short"
+  ],
+  "primary": {
+    "metric": "cta_ctr",
+    "lift_pct": 6.2,
+    "ci": [
+      2.1,
+      10.3
+    ],
+    "p_value": 0.004
+  },
+  "secondary": [
+    {
+      "metric": "signup_cr",
+      "result": "-1.8% NS"
+    },
+    {
+      "metric": "d7_retention",
+      "result": "flat"
+    }
+  ],
+  "verdict": "ship-treatment",
+  "exec_sign_off": null,
+  "learning": {
+    "claim": "Shorter hero copy on cold pricing traffic improves CTA CTR with no clear bottom-of-funnel regression.",
+    "confidence": "moderate"
+  },
+  "routed": {
+    "owner": "@marina",
+    "target_date": "2026-05-23",
+    "ticket": "REL-1402"
+  },
+  "closed_at": "2026-05-20T17:00:00Z"
+}
+```

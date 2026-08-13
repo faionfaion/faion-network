@@ -67,6 +67,8 @@
 | `templates/scrubber.ts` | Regex scrubber for HAR and log bodies |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,68 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/capture.ts`
+
+```typescript
+import { Page } from 'puppeteer';
+import fs from 'node:fs';
+
+export async function screenshot(page: Page, outPath: string, opts: { fullPage?: boolean } = {}) {
+  await page.screenshot({
+    path: outPath,
+    type: 'jpeg',
+    quality: 80,
+    fullPage: opts.fullPage ?? false,
+  });
+}
+
+export async function pdf(page: Page, anchorSelector: string, outPath: string) {
+  await page.waitForSelector(anchorSelector);
+  await page.evaluate(() => (document as any).fonts?.ready);
+  await page.pdf({
+    path: outPath,
+    printBackground: true,
+    preferCSSPageSize: true,
+    format: 'A4',
+  });
+}
+```
+
+### `templates/scrubber.ts`
+
+```typescript
+const PATTERNS: Array<[RegExp, string]> = [
+  [/Bearer [A-Za-z0-9._\-]+/g, 'Bearer [REDACTED]'],
+  [/Authorization:\s*[^\s]+/gi, 'Authorization: [REDACTED]'],
+  [/Set-Cookie:[^\n]+/gi, 'Set-Cookie: [REDACTED]'],
+  [/eyJ[A-Za-z0-9._\-]+/g, '[JWT_REDACTED]'],
+  [/\b\d{16}\b/g, '[CARD_REDACTED]'],
+];
+
+export function scrub(body: string): string {
+  let out = body;
+  for (const [re, rep] of PATTERNS) out = out.replace(re, rep);
+  return out;
+}
+```
+
+### `templates/artefact.json`
+
+```json
+{
+  "output_type": "mixed",
+  "screenshot_format": "jpeg",
+  "screenshot_quality": 80,
+  "pdf_print_background": true,
+  "uses_correct_format": true,
+  "applies_scrub": true,
+  "waits_before_pdf": true,
+  "bounded_artifact_path": true,
+  "artifact_dir": "/tmp/agent-run/job-42"
+}
+```

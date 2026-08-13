@@ -72,6 +72,8 @@
 | `templates/stop-bleed-alert.json` | PagerDuty-compatible alert payload |
 | `templates/_smoke-test.json` | Minimum-viable EvalCandidate that validates clean |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,217 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes a feedback row by: cluster-size (>3 → stop-the-bleed), PII-clean flag, judge-vote (≥2/3 admit), and weekly-cap remaining.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/eval-candidate.schema.json`
+
+```json
+{
+  "_header": [
+    "purpose: JSON Schema for EvalCandidate emitted by ingest stage",
+    "consumes: feedback-store row",
+    "produces: validation schema for validate-thumbs-down-to-eval-pipeline.py",
+    "depends-on: jsonschema at validation time",
+    "token-budget-impact: 0 at runtime"
+  ],
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "interaction_id",
+    "prompt",
+    "response",
+    "signal",
+    "timestamp",
+    "pii_clean",
+    "judge_votes",
+    "cluster_size",
+    "admitted_this_week"
+  ],
+  "properties": {
+    "interaction_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "prompt": {
+      "type": "string",
+      "minLength": 1
+    },
+    "response": {
+      "type": "string",
+      "minLength": 1
+    },
+    "signal": {
+      "type": "string",
+      "enum": [
+        "down",
+        "report"
+      ]
+    },
+    "comment": {
+      "type": "string"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "user_hash": {
+      "type": "string"
+    },
+    "pii_clean": {
+      "type": "boolean"
+    },
+    "judge_votes": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "string",
+        "enum": [
+          "ADMIT",
+          "REJECT"
+        ]
+      }
+    },
+    "cluster_size": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "admitted_this_week": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 50
+    }
+  }
+}
+```
+
+### `templates/admitted-row.schema.json`
+
+```json
+{
+  "_header": [
+    "purpose: eval-suite row schema (final admitted form)",
+    "consumes: EvalCandidate (admit_decision=ADMIT)",
+    "produces: validation schema for eval-suite PR contents",
+    "depends-on: jsonschema",
+    "token-budget-impact: 0 at runtime"
+  ],
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "id",
+    "input",
+    "expected",
+    "rubric_ref",
+    "source",
+    "admitted_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^er-[a-z0-9-]+$"
+    },
+    "input": {
+      "type": "string"
+    },
+    "expected": {
+      "type": "string"
+    },
+    "rubric_ref": {
+      "type": "string"
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "type",
+        "candidate_id"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "thumbs-down",
+            "report",
+            "manual"
+          ]
+        },
+        "candidate_id": {
+          "type": "string"
+        }
+      }
+    },
+    "admitted_at": {
+      "type": "string",
+      "format": "date"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}
+```
+
+### `templates/stop-bleed-alert.json`
+
+```json
+{
+  "_header": [
+    "purpose: PagerDuty-compatible alert payload for stop-the-bleed cluster",
+    "consumes: cluster from step 3 with size >=3",
+    "produces: HTTP POST body for PD events API v2",
+    "depends-on: pagerduty events-api v2",
+    "token-budget-impact: 0 at runtime"
+  ],
+  "routing_key": "<integration-key>",
+  "event_action": "trigger",
+  "dedup_key": "td-eval-cluster-<cluster_id>",
+  "payload": {
+    "summary": "Stop-the-bleed: 3+ thumbs-down on similar response pattern",
+    "severity": "warning",
+    "source": "thumbs-down-to-eval-pipeline",
+    "custom_details": {
+      "cluster_id": "<cluster_id>",
+      "size": 3,
+      "similarity_centroid": 0.91,
+      "first_seen": "<timestamp>",
+      "intent": "<intent_name>",
+      "runbook": "https://runbooks.example.com/td-stop-bleed"
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_header": [
+    "purpose: minimum-viable EvalCandidate fixture",
+    "consumes: nothing",
+    "produces: JSON instance for --self-test",
+    "depends-on: eval-candidate.schema.json",
+    "token-budget-impact: 0 at runtime"
+  ],
+  "interaction_id": "i-001",
+  "prompt": "What is the refund window?",
+  "response": "refund window is 60 days",
+  "signal": "down",
+  "comment": "actually it's 30 days",
+  "timestamp": "2026-05-22T14:32:00Z",
+  "user_hash": "u-deadbeef",
+  "pii_clean": true,
+  "judge_votes": [
+    "ADMIT",
+    "ADMIT",
+    "REJECT"
+  ],
+  "cluster_size": 3,
+  "admitted_this_week": 12
+}
+```

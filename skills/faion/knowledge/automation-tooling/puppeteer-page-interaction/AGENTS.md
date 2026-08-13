@@ -68,6 +68,8 @@
 | `templates/form.ts` | Form submission waiting for API response |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,93 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/interact.ts`
+
+```typescript
+import { Page } from 'puppeteer';
+
+const sel = (testId: string) => `[data-testid="${testId}"]`;
+
+export async function clickByTestId(page: Page, testId: string) {
+  const handle = await page.waitForSelector(sel(testId), { visible: true });
+  if (!handle) throw new Error(`element not found: ${testId}`);
+  const disabled = await handle.evaluate((el: any) => !!el.disabled);
+  if (disabled) throw new Error(`element disabled: ${testId}`);
+  await handle.click();
+}
+
+export async function typeByTestId(page: Page, testId: string, value: string) {
+  await page.waitForSelector(sel(testId), { visible: true });
+  await page.type(sel(testId), value);
+}
+
+export async function selectByTestId(page: Page, testId: string, value: string) {
+  await page.waitForSelector(sel(testId), { visible: true });
+  await page.select(sel(testId), value);
+}
+```
+
+### `templates/interception.ts`
+
+```typescript
+import { Page } from 'puppeteer';
+
+const BLOCK = [
+  'google-analytics.com',
+  'doubleclick.net',
+  'googletagmanager.com',
+  'fullstory.com',
+  'hotjar.com',
+  'segment.com',
+];
+
+export async function blockNoise(page: Page) {
+  await page.setRequestInterception(true);
+  page.on('request', (req) => {
+    const url = req.url();
+    if (BLOCK.some((d) => url.includes(d))) return req.abort();
+    return req.continue();
+  });
+}
+```
+
+### `templates/form.ts`
+
+```typescript
+import { Page } from 'puppeteer';
+import { clickByTestId, typeByTestId } from './interact';
+
+export async function submitCheckout(page: Page, email: string, card: string) {
+  await typeByTestId(page, 'email', email);
+  await typeByTestId(page, 'card-number', card);
+  const [response] = await Promise.all([
+    page.waitForResponse((r) => r.url().includes('/api/checkout')),
+    clickByTestId(page, 'submit'),
+  ]);
+  if (!response.ok()) throw new Error(`checkout failed: ${response.status()}`);
+  return response.json();
+}
+```
+
+### `templates/artefact.json`
+
+```json
+{
+  "uses_attribute_selectors": true,
+  "no_wait_for_timeout": true,
+  "waits_before_action": true,
+  "request_interception_on": true,
+  "blocked_domains": [
+    "google-analytics.com",
+    "doubleclick.net",
+    "fullstory.com"
+  ],
+  "form_uses_native_apis": true,
+  "page_evaluate_actions": 0
+}
+```

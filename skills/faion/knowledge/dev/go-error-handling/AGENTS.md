@@ -65,6 +65,8 @@
 | `templates/error-middleware.go` | HTTP middleware translating AppError to JSON via errors.As. |
 | `templates/prompt-error-scaffold.txt` | Prompt for sub-agent generating the apperror package + middleware. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,164 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters: Go service with HTTP layer, %w available (Go 1.13+), team can install one translation middleware. Any "no" -> skip.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/apperror.go`
+
+```go
+// Package apperror defines a structured error type for HTTP services.
+// Use constructors (NewNotFound, NewValidation, etc.); never modify package-level vars.
+package apperror
+
+import (
+	"errors"
+	"fmt"
+	"net/http"
+)
+
+// AppError carries an API-stable code, human message, HTTP status, and optional wrapped error.
+type AppError struct {
+	Code       string `json:"code"`
+	Message    string `json:"message"`
+	HTTPStatus int    `json:"-"`
+	Err        error  `json:"-"`
+}
+
+func (e *AppError) Error() string {
+	if e.Err != nil {
+		return fmt.Sprintf("%s: %v", e.Message, e.Err)
+	}
+	return e.Message
+}
+
+func (e *AppError) Unwrap() error { return e.Err }
+
+func NewNotFound(resource string) *AppError {
+	return &AppError{
+		Code:       "NOT_FOUND",
+		Message:    fmt.Sprintf("%s not found", resource),
+		HTTPStatus: http.StatusNotFound,
+	}
+}
+
+func NewUnauthorized(msg string) *AppError {
+	return &AppError{Code: "UNAUTHORIZED", Message: msg, HTTPStatus: http.StatusUnauthorized}
+}
+
+func NewValidation(msg string) *AppError {
+	return &AppError{Code: "VALIDATION_ERROR", Message: msg, HTTPStatus: http.StatusBadRequest}
+}
+
+// Wrap preserves Code and HTTPStatus from an inner *AppError when present.
+func Wrap(err error, msg string) *AppError {
+	var inner *AppError
+	if errors.As(err, &inner) {
+		return &AppError{
+			Code:       inner.Code,
+			Message:    msg,
+			HTTPStatus: inner.HTTPStatus,
+			Err:        err,
+		}
+	}
+	return &AppError{
+		Code:       "INTERNAL_ERROR",
+		Message:    msg,
+		HTTPStatus: http.StatusInternalServerError,
+		Err:        err,
+	}
+}
+```
+
+### `templates/error-middleware.go`
+
+```go
+// Package httpx provides HTTP handler wrappers including error translation middleware.
+// Handler is a func(ResponseWriter, *Request) error variant of http.HandlerFunc.
+// Wrap converts it to a standard HandlerFunc and translates *AppError to JSON responses.
+package httpx
+
+import (
+	"encoding/json"
+	"errors"
+	"log/slog"
+	"net/http"
+
+	"yourmod/pkg/apperror"
+)
+
+type errBody struct {
+	Code    string `json:"code"`
+	Message string `json:"message"`
+	TraceID string `json:"trace_id,omitempty"`
+}
+
+// Handler is like http.HandlerFunc but returns an error.
+type Handler func(http.ResponseWriter, *http.Request) error
+
+// Wrap converts a Handler to http.HandlerFunc with error translation.
+func Wrap(h Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		err := h(w, r)
+		if err == nil {
+			return
+		}
+		var appErr *apperror.AppError
+		if !errors.As(err, &appErr) {
+			appErr = apperror.Wrap(err, "internal error")
+		}
+		if appErr.HTTPStatus >= 500 {
+			slog.ErrorContext(r.Context(), "http error",
+				"code", appErr.Code, "status", appErr.HTTPStatus, "err", err)
+		} else {
+			slog.InfoContext(r.Context(), "http client error",
+				"code", appErr.Code, "status", appErr.HTTPStatus)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(appErr.HTTPStatus)
+		if encErr := json.NewEncoder(w).Encode(errBody{
+			Code:    appErr.Code,
+			Message: appErr.Message,
+			TraceID: TraceIDFromCtx(r.Context()),
+		}); encErr != nil {
+			slog.ErrorContext(r.Context(), "failed to encode error response", "err", encErr)
+		}
+	}
+}
+
+// TraceIDFromCtx extracts the trace ID from context — implement per project.
+func TraceIDFromCtx(r interface{ Value(any) any }) string {
+	if id, ok := r.Value("trace_id").(string); ok {
+		return id
+	}
+	return ""
+}
+```
+
+### `templates/prompt-error-scaffold.txt`
+
+```text
+Create pkg/apperror with AppError type per
+free/dev/software-developer/go-error-handling/templates/apperror.go.
+
+Requirements:
+  1. Constructor functions only — no exported mutable package vars.
+  2. Wrap must preserve inner *AppError's HTTPStatus and Code when wrapping a typed error.
+  3. Add WrapWithStatus(err, msg, status int) for explicit override.
+
+Add pkg/httpx/error_middleware.go per
+free/dev/software-developer/go-error-handling/templates/error-middleware.go:
+  - Recovery middleware that catches panics and converts to 500 AppError.
+  - Wrap adapter translating Handler errors to JSON responses.
+  - 4xx → slog.Info, 5xx → slog.Error.
+
+Add table-driven tests in pkg/apperror/apperror_test.go covering:
+  - errors.As across wrapping chains.
+  - Wrap preserves inner HTTPStatus (NewNotFound wrapped should still be 404).
+  - Error() string format.
+
+Run: go test ./pkg/apperror/... -race -v
+Run: golangci-lint run --enable errorlint,wrapcheck,errcheck ./...
+```

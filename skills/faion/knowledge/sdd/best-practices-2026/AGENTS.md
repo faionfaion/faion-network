@@ -63,7 +63,8 @@
 |------|---------|
 | `templates/rubric.json` | 2026 baseline rubric: each item has weight + acceptance criteria |
 | `templates/audit_report.md` | Markdown audit report skeleton: per-item PASS/WARN/FAIL with remediation |
-| `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -80,3 +81,47 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is the stack TS or Python AND repo >100 LOC?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rubric.json`
+
+```json
+{
+  "version": "2026.1",
+  "items": [
+    {
+      "id": "ts-strict",
+      "weight": 3,
+      "check": "tsconfig.json has \"strict\": true and \"noUncheckedIndexedAccess\": true"
+    },
+    {
+      "id": "react-19-suspense",
+      "weight": 2,
+      "check": "async server components use Suspense boundaries on every data fetch"
+    },
+    {
+      "id": "py-3-13-strict",
+      "weight": 3,
+      "check": "mypy --strict passes; ruff check ."
+    },
+    {
+      "id": "uv-or-poetry",
+      "weight": 2,
+      "check": "pyproject.toml managed by uv or poetry, never raw pip"
+    },
+    {
+      "id": "pre-commit",
+      "weight": 2,
+      "check": ".pre-commit-config.yaml with ruff + format + typecheck hooks"
+    },
+    {
+      "id": "sdd-aidocs",
+      "weight": 1,
+      "check": ".aidocs/ present with spec/design/test-plan structure"
+    }
+  ]
+}
+```

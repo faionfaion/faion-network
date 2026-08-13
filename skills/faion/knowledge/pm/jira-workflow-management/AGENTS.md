@@ -69,6 +69,8 @@
 | `templates/jql-queries.yaml` | Day-1 saved JQL queries. |
 | `templates/automation-rules.yaml` | Automation rule set. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,79 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observables (atlassian_tier, team_size, workflow_complexity) to apply / fall-back / skip. Each leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/jira-workflow.yaml`
+
+```yaml
+name: REPLACE-workflow-name
+statuses:
+  - name: To Do
+    category: New
+  - name: In Progress
+    category: Indeterminate
+  - name: Code Review
+    category: Indeterminate
+  - name: Done
+    category: Done
+transitions:
+  - name: Start
+    from: To Do
+    to: In Progress
+    conditions:
+      - type: role
+        role: Developers
+  - name: Submit for review
+    from: In Progress
+    to: Code Review
+    validators:
+      - type: field-required
+        field: pull_request
+  - name: Approve
+    from: Code Review
+    to: Done
+    conditions:
+      - type: role
+        role: Reviewers
+```
+
+### `templates/jql-queries.yaml`
+
+```yaml
+filters:
+  - name: My Active
+    jql: assignee = currentUser() AND statusCategory != Done
+  - name: Sprint Burn
+    jql: sprint in openSprints() AND project = REPLACE
+  - name: Stale In-Progress
+    jql: status = "In Progress" AND updated < -7d
+  - name: Code Review Backlog
+    jql: status = "Code Review" AND assignee in membersOf("Reviewers")
+```
+
+### `templates/automation-rules.yaml`
+
+```yaml
+rules:
+  - name: auto-assign-bug
+    scope: project
+    rate_limit_per_min: 60
+    trigger:
+      type: issue-created
+      jql: type = Bug
+    action:
+      type: assign
+      to: lead-of(component)
+  - name: stale-warn
+    scope: project
+    rate_limit_per_min: 30
+    trigger:
+      type: scheduled
+      cron: "0 9 * * MON"
+    action:
+      type: comment
+      body: "Stale > 7 days — please update or close."
+```

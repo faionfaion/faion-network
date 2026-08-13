@@ -66,6 +66,8 @@
 | `templates/decision-matrix.py` | Score → recommendation calculator. |
 | `templates/prompt-requirements.txt` | Constraint-elicitation prompt. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,122 @@
 ## Decision tree
 
 Decision tree at `content/06-decision-tree.xml` walks (accuracy gap, data freshness, budget, latency, team skill) and lands on prompt / RAG / FT / RAFT.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/decision-matrix.py`
+
+```python
+"""
+
+"""LLM architecture decision scoring matrix."""
+from dataclasses import dataclass
+from typing import Literal
+
+
+@dataclass
+class TaskProfile:
+    """Profile of a task to route to the right LLM architecture."""
+    example_count: int            # labeled training examples available
+    knowledge_changes: bool       # does the knowledge update frequently?
+    latency_budget_ms: int        # acceptable p50 latency
+    monthly_calls: int            # expected API calls per month
+    accuracy_required: float      # 0.0-1.0 required accuracy
+    privacy_required: bool        # must not send data to 3rd party
+
+
+def score_approach(profile: TaskProfile) -> dict[str, float]:
+    """Score each approach 0-10 for this task profile."""
+    scores: dict[str, float] = {
+        "prompt_engineering": 0.0,
+        "rag": 0.0,
+        "fine_tuning": 0.0,
+        "raft": 0.0,
+    }
+
+    # Prompt engineering: fast, no infra, limited by model capability
+    scores["prompt_engineering"] = 8.0
+    if profile.accuracy_required > 0.90:
+        scores["prompt_engineering"] -= 3.0
+    if profile.example_count > 100:
+        scores["prompt_engineering"] -= 1.0
+
+    # RAG: good for knowledge-intensive, frequently changing data
+    scores["rag"] = 6.0
+    if profile.knowledge_changes:
+        scores["rag"] += 3.0
+    if profile.example_count < 500:
+        scores["rag"] += 1.0
+    if profile.latency_budget_ms < 500:
+        scores["rag"] -= 2.0
+
+    # Fine-tuning: best for stable patterns, high volume, style/format
+    scores["fine_tuning"] = 5.0
+    if profile.example_count >= 1000:
+        scores["fine_tuning"] += 3.0
+    if profile.knowledge_changes:
+        scores["fine_tuning"] -= 4.0
+    if profile.monthly_calls > 100_000:
+        scores["fine_tuning"] += 2.0
+    if profile.privacy_required:
+        scores["fine_tuning"] += 1.0
+
+    # RAFT: combines RAG + fine-tuning for domain synthesis
+    scores["raft"] = 4.0
+    if profile.example_count >= 500 and profile.knowledge_changes:
+        scores["raft"] += 4.0
+    if profile.accuracy_required > 0.95:
+        scores["raft"] += 2.0
+
+    return {k: max(0.0, min(10.0, v)) for k, v in scores.items()}
+
+
+def recommend(profile: TaskProfile) -> str:
+    """Return the recommended approach for this task profile."""
+    scores = score_approach(profile)
+    return max(scores, key=lambda k: scores[k])
+```
+
+### `templates/prompt-requirements.txt`
+
+```text
+-->
+
+You are an ML architect assistant. Help the user determine the correct LLM architecture for their task by gathering requirements and scoring approaches.
+
+Step 1: Ask these questions one at a time (do not ask all at once):
+1. Describe the task in one sentence — what does the model need to produce?
+2. How many labeled input-output examples do you have (or can create within 2 weeks)?
+3. Does the knowledge the model needs change frequently (weekly/monthly)?
+4. What is the acceptable latency for a user-facing response (in milliseconds)?
+5. What accuracy level is required — what failure rate is acceptable?
+6. What is the monthly call volume expected?
+7. Are there privacy constraints preventing sending data to third-party APIs?
+
+Step 2: After gathering answers, score each approach:
+- Prompt engineering: zero data, fast, limited accuracy ceiling
+- RAG: best for frequently changing knowledge, needs vector DB infra
+- Fine-tuning: needs 500+ examples, stable task, high volume
+- RAFT: combines RAG+fine-tuning, highest quality, highest complexity
+
+Step 3: Recommend ONE approach with clear rationale. Format:
+
+RECOMMENDATION: [approach]
+
+RATIONALE:
+- [Primary reason based on their answers]
+- [Why alternatives were ruled out]
+
+NEXT STEPS:
+1. [Concrete first action]
+2. [Second action]
+3. [Evaluation plan]
+
+RISKS:
+- [Main risk of the recommended approach]
+- [Mitigation]
+
+Do not recommend fine-tuning unless the user has confirmed 500+ examples and tried prompt engineering first.
+```

@@ -67,6 +67,8 @@
 | `templates/task-entry.md` | Markdown skeleton for a single trial-task entry. |
 | `templates/rubric.md` | Rubric skeleton with good/acceptable/fail anchors. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,86 @@ See `content/06-decision-tree.xml`. The tree maps observable signals (input
 preconditions, source-of-truth access, named-consumer presence) onto a concrete
 verdict — apply the methodology, downgrade to draft, or skip — with each leaf
 referencing a rule id from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/paid-trial-task-library.json",
+  "type": "object",
+  "required": [
+    "library_id",
+    "tasks"
+  ],
+  "properties": {
+    "library_id": {
+      "type": "string"
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "task_id",
+          "discipline",
+          "time_box_hours",
+          "payout",
+          "deliverable",
+          "rubric"
+        ],
+        "properties": {
+          "task_id": {
+            "type": "string"
+          },
+          "discipline": {
+            "type": "string"
+          },
+          "time_box_hours": {
+            "type": "number",
+            "minimum": 0.5,
+            "maximum": 16
+          },
+          "payout": {
+            "type": "object",
+            "required": [
+              "amount",
+              "currency"
+            ],
+            "properties": {
+              "amount": {
+                "type": "number",
+                "minimum": 50
+              }
+            }
+          },
+          "deliverable": {
+            "type": "string"
+          },
+          "rubric": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 5,
+            "items": {
+              "type": "object",
+              "required": [
+                "criterion",
+                "good",
+                "fail"
+              ]
+            }
+          },
+          "ip_safe": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}
+```

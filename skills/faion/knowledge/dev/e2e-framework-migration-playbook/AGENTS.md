@@ -69,6 +69,8 @@
 |------|---------|
 | `templates/wave-record.json` | Wave exit-gate record skeleton matching the 02-output-contract schema; copy per wave (1..4) and fill before submitting to the validator. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,22 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps migration scope, duration, and target maturity to a rule from `01-core-rules.xml`, telling the agent whether to invoke the wave playbook or skip in favour of sprint-scale refactor or big-bang. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/wave-record.json`
+
+```json
+{
+  "migration_id": "cypress-to-playwright-2026q2",
+  "wave": 1,
+  "entry_criteria_met": true,
+  "exit_criteria_met": false,
+  "modules_in_wave": 1,
+  "rollback_documented": true,
+  "parity_tests_passing": 0,
+  "validated_at": "2026-05-23T00:00:00Z"
+}
+```

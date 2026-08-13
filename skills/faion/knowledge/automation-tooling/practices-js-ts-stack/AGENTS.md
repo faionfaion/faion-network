@@ -70,6 +70,8 @@
 | `templates/ci.yml` | GitHub Actions workflow with discrete typecheck step |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,112 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tsconfig.json`
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": [
+      "ES2022"
+    ],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "exactOptionalPropertyTypes": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "declaration": true,
+    "outDir": "dist",
+    "rootDir": "src"
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "**/*.test.ts"
+  ]
+}
+```
+
+### `templates/eslint.config.js`
+
+```javascript
+import js from '@eslint/js';
+import tseslint from 'typescript-eslint';
+import prettier from 'eslint-config-prettier';
+
+export default [
+  js.configs.recommended,
+  ...tseslint.configs.strictTypeChecked,
+  prettier,
+  {
+    languageOptions: {
+      parserOptions: { projectService: true },
+    },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    },
+  },
+];
+```
+
+### `templates/.prettierrc`
+
+```text
+{
+  "semi": true,
+  "singleQuote": true,
+  "trailingComma": "all",
+  "printWidth": 100,
+  "arrowParens": "always"
+}
+```
+
+### `templates/ci.yml`
+
+```yaml
+name: CI
+on: [push, pull_request]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 9 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'pnpm' }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm exec eslint .
+      - run: pnpm exec vitest run
+      - run: pnpm run build
+```
+
+### `templates/artefact.json`
+
+```json
+{
+  "strict_tsconfig": true,
+  "no_unchecked_indexed_access": true,
+  "esm_module": true,
+  "exports_map_present": true,
+  "flat_eslint": true,
+  "ci_typecheck_step": true,
+  "prettier_configured": true,
+  "no_any_error": true,
+  "test_runner": "vitest"
+}
+```

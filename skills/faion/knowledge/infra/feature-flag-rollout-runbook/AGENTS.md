@@ -59,7 +59,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/runbook.md` | Full rollout runbook with 1/10/50/100 stages + abort criteria. |
-| `templates/auto-rollback-alert.yaml` | Alert manager / Datadog monitor template. |
 | `templates/post-rollout-audit.md` | Cleanup checklist + flag-removal PR template. |
 | `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
 

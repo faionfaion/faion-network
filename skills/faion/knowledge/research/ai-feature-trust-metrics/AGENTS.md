@@ -63,6 +63,8 @@
 |------|---------|
 | `templates/trust-rubric.yaml` | Per-feature trust rubric |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,30 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from the question "Is the feature live with WAU >= 100 and instrumentation pipeline?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/trust-rubric.yaml`
+
+```yaml
+# trust-rubric.yaml — AI feature trust scorecard.
+feature_id: summarize-thread
+dimensions:
+  perceived_accuracy:
+    signal_event: thumbs_up
+    survey_item: "I trusted the summary"
+  transparency:
+    signal_event: citation_hover
+    survey_item: "I understood where the answer came from"
+  recovery:
+    signal_event: regen_rate
+    survey_item: "Fixing wrong output was easy"
+  fairness:
+    signal_event: thumbs_up
+    survey_item: "Quality felt consistent for me"
+    segment_cuts: [language, plan_tier]
+segments: [en, uk]
+baseline_date: 2026-05-01
+```

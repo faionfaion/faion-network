@@ -66,7 +66,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/verbatim-to-backlog-pattern.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/verbatim-to-backlog-pattern.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

@@ -71,6 +71,8 @@
 | `templates/scoring-rubric.md` | Rubric for impact + interest scores (1-5 scale, anchored examples). |
 | `templates/_smoke-test.json` | Filled-in minimum viable debt ledger for validator smoke-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,27 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree checks preconditions, then ledger presence, then scoring discipline, then 20%-cap, then sign-off. Every leaf maps to a rule id from `content/01-core-rules.xml`, with skip-this-methodology as the default for pre-MVP / enterprise contexts.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "cycle_length_days": 14,
+  "cap_percent": 20,
+  "items": [
+    {
+      "id": "td-001",
+      "title": "extract auth middleware",
+      "impact": 4,
+      "interest": 3,
+      "decision": "pay"
+    }
+  ],
+  "owner": "ruslan@faion.net",
+  "last_signed_utc": "2026-05-15T10:00:00Z"
+}
+```

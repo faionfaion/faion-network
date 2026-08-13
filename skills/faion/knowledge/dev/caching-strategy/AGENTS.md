@@ -70,6 +70,8 @@
 | `templates/output-schema.json` | JSON Schema (draft-07) for the caching-strategy artefact |
 | `templates/_smoke-test.json` | Minimum viable filled-in caching-strategy artefact for validator round-trip |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,214 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on the schema's required cross-field checks; every leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/cache-aside.py`
+
+```python
+"""cache-aside.py — Cache-aside decorator backed by Redis with TTL, key builder, and invalidation.
+
+Usage:
+    @cache_aside("user", ttl=1800, key_builder=lambda user_id: user_id)
+    def get_user(user_id: str) -> dict:
+        return db.users.find_one({"_id": user_id})
+
+    # Explicit invalidation after write:
+    get_user.invalidate(user_id)
+"""
+import hashlib
+import json
+from functools import wraps
+
+import redis
+
+_redis: redis.Redis = redis.Redis(host="localhost", port=6379, decode_responses=True)
+
+
+def cache_aside(key_prefix: str, ttl: int = 3600, key_builder=None):
+    """Decorator: check Redis first; on miss load from function, cache result."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if key_builder:
+                cache_key = f"{key_prefix}:{key_builder(*args, **kwargs)}"
+            else:
+                key_data = f"{args}:{sorted(kwargs.items())}"
+                key_hash = hashlib.md5(key_data.encode()).hexdigest()[:12]
+                cache_key = f"{key_prefix}:{key_hash}"
+
+            cached = _redis.get(cache_key)
+            if cached is not None:
+                return json.loads(cached)
+
+            result = func(*args, **kwargs)
+            if result is not None:
+                _redis.setex(cache_key, ttl, json.dumps(result))
+            else:
+                # Negative cache with shorter TTL to prevent DB hammering
+                _redis.setex(cache_key, min(ttl, 60), json.dumps(None))
+            return result
+
+        def invalidate(*args, **kwargs):
+            if key_builder:
+                cache_key = f"{key_prefix}:{key_builder(*args, **kwargs)}"
+                _redis.delete(cache_key)
+            else:
+                # Cannot compute key without args — caller must supply them
+                raise ValueError("Provide key_builder to use .invalidate()")
+
+        wrapper.invalidate = invalidate
+        return wrapper
+    return decorator
+```
+
+### `templates/cache-singleflight.py`
+
+```python
+#!/usr/bin/env python3
+"""cache-singleflight.py — Async cache-aside with thundering-herd protection.
+
+On cache miss, only one coroutine fetches from the origin; others poll until
+the result is available. Uses Redis NX SET as a distributed mutex.
+
+Usage:
+    sf = CacheSingleflight(redis_client, ttl=600)
+    user = await sf.get_or_set("user:123", lambda: db.fetch_user(123))
+"""
+import asyncio
+import json
+
+import redis.asyncio as aioredis
+
+
+class CacheSingleflight:
+    def __init__(self, redis: aioredis.Redis, ttl: int = 600, lock_ttl: int = 30):
+        self.r = redis
+        self.ttl = ttl
+        self.lock_ttl = lock_ttl
+
+    async def get_or_set(self, key: str, loader):
+        """Return cached value or load it; coalesce concurrent misses."""
+        cached = await self.r.get(key)
+        if cached is not None:
+            return json.loads(cached)
+
+        lock_key = f"lock:{key}"
+        # NX SET: only one winner acquires the lock
+        won = await self.r.set(lock_key, "1", nx=True, ex=self.lock_ttl)
+        if won:
+            try:
+                value = await loader()
+                await self.r.set(key, json.dumps(value), ex=self.ttl)
+                return value
+            finally:
+                await self.r.delete(lock_key)
+        else:
+            # Losers poll with bounded retries (50 × 50 ms = 2.5 s max)
+            for _ in range(50):
+                await asyncio.sleep(0.05)
+                cached = await self.r.get(key)
+                if cached is not None:
+                    return json.loads(cached)
+            # Fallback: winner may have crashed; load independently
+            return await loader()
+```
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/caching-strategy.json",
+  "type": "object",
+  "required": [
+    "strategy_id",
+    "pattern",
+    "ttl_seconds_base",
+    "ttl_jitter_pct",
+    "invalidation",
+    "single_flight",
+    "hit_rate_target"
+  ],
+  "properties": {
+    "strategy_id": {
+      "type": "string",
+      "pattern": "^CACHE-[A-Z0-9-]{2,40}$"
+    },
+    "pattern": {
+      "type": "string",
+      "enum": [
+        "cache-aside",
+        "read-through",
+        "write-through",
+        "write-behind"
+      ]
+    },
+    "ttl_seconds_base": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 86400
+    },
+    "ttl_jitter_pct": {
+      "type": "integer",
+      "minimum": 5,
+      "maximum": 50
+    },
+    "invalidation": {
+      "type": "object",
+      "required": [
+        "mode"
+      ],
+      "properties": {
+        "mode": {
+          "type": "string",
+          "enum": [
+            "ttl-only",
+            "write-through",
+            "pubsub-event"
+          ]
+        }
+      }
+    },
+    "single_flight": {
+      "type": "boolean"
+    },
+    "hit_rate_target": {
+      "type": "number",
+      "minimum": 0.5,
+      "maximum": 1.0
+    },
+    "store": {
+      "type": "string",
+      "enum": [
+        "redis",
+        "valkey",
+        "memcached",
+        "in-memory",
+        "cdn"
+      ]
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "strategy_id": "CACHE-PRICING-GET",
+  "pattern": "cache-aside",
+  "ttl_seconds_base": 300,
+  "ttl_jitter_pct": 20,
+  "invalidation": {
+    "mode": "pubsub-event",
+    "channel": "pricing-changes"
+  },
+  "single_flight": true,
+  "hit_rate_target": 0.85,
+  "store": "redis"
+}
+```

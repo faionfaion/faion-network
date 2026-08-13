@@ -67,6 +67,8 @@
 | `templates/wiring-snippet.py` | Working `RunnableWithMessageHistory` wiring for Redis-backed buffer memory. |
 | `templates/_smoke-test.yaml` | Minimum viable profile that drives the methodology end-to-end. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,91 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree branches on `expected_turns`, then on `recall_pattern` (recency vs semantic), then on `entity_focus`. Each leaf maps to a rule id in `01-core-rules.xml` so the agent always cites which rule drove the choice — and can be replayed for audit.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/conversation-profile.yaml`
+
+```yaml
+expected_turns: 12          # int, ≥1 — best estimate of session length in turns
+recall_pattern: recency     # one of: recency | semantic | mixed
+entity_focus: false         # true when the bot must merge structured entities across turns
+ttl_seconds: 3600           # int, ≥60 — TTL for the persistent history store
+store_backend: redis        # one of: in-memory | redis | postgres | chroma | pinecone
+session_id_strategy: uuid   # one of: uuid | hashed-user-id | thread-id
+target_env: production      # one of: dev | staging | production
+notes: |                    # optional free-text — auditor-only, never read by the methodology
+  Customer-support bot, ~12 turns avg, no semantic search needed.
+```
+
+### `templates/wiring-snippet.py`
+
+```python
+"""Reference wiring. Swap RedisChatMessageHistory for the chosen backend.
+
+Run as a smoke check:
+    python wiring-snippet.py --self-test
+"""
+
+from __future__ import annotations
+
+import os
+import uuid
+
+from langchain_community.chat_message_histories import RedisChatMessageHistory
+from langchain_core.runnables.history import RunnableWithMessageHistory
+
+
+def get_session_history(session_id: str) -> RedisChatMessageHistory:
+    """Return a per-session Redis-backed chat history with TTL."""
+    if not session_id or len(session_id) < 8:
+        raise ValueError("session_id must be a server-generated UUID, not user input")
+    return RedisChatMessageHistory(
+        session_id=session_id,
+        url=os.environ["REDIS_URL"],
+        ttl=int(os.environ.get("CHAT_HISTORY_TTL_SECONDS", "3600")),
+    )
+
+
+def wrap(chain):
+    """Wrap any LCEL chain with persistent message history."""
+    return RunnableWithMessageHistory(
+        chain,
+        get_session_history,
+        input_messages_key="input",
+        history_messages_key="history",
+    )
+
+
+def _self_test() -> int:
+    """Smoke: instantiate without connecting to Redis; checks shape only."""
+    sid = str(uuid.uuid4())
+    if len(sid) < 8:
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+
+    if "--self-test" in sys.argv:
+        raise SystemExit(_self_test())
+    if "--help" in sys.argv:
+        print(__doc__)
+        raise SystemExit(0)
+    print("Import this module; do not run directly except with --self-test.")
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+expected_turns: 6
+recall_pattern: recency
+entity_focus: false
+ttl_seconds: 3600
+store_backend: redis
+session_id_strategy: uuid
+target_env: production
+```

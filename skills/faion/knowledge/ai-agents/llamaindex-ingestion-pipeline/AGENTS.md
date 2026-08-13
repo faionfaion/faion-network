@@ -65,6 +65,8 @@
 | `templates/pipeline.py` | Working IngestionPipeline. |
 | `templates/_smoke-test.yaml` | Minimum. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,50 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on update_frequency (high → docstore dedup required), then on embedding_budget (low → SentenceSplitter; high → SemanticSplitterNodeParser), then on metadata needs. Each leaf cites a rule id in 01-core-rules.xml so the agent always cites which rule drove the choice — and can be replayed for audit.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/corpus-profile.yaml`
+
+```yaml
+doc_count: TODO          # fill with concrete value per the driver definition
+update_frequency: TODO          # fill with concrete value per the driver definition
+embedding_budget_usd: TODO          # fill with concrete value per the driver definition
+```
+
+### `templates/pipeline.py`
+
+```python
+"""Reference artefact for llamaindex-ingestion-pipeline. Self-test only verifies the scaffold compiles."""
+from __future__ import annotations
+
+
+def build(decision: dict):
+    """Build the runtime object from a validated decision-record."""
+    if not isinstance(decision, dict):
+        raise TypeError("decision must be dict from validated decision-record")
+    return decision  # placeholder: real implementations wire here
+
+
+def _self_test() -> int:
+    out = build({"slug": "llamaindex-ingestion-pipeline", "version": "2.0.0"})
+    return 0 if out["slug"] == "llamaindex-ingestion-pipeline" else 1
+
+
+if __name__ == "__main__":
+    import sys
+    if "--self-test" in sys.argv:
+        raise SystemExit(_self_test())
+    if "--help" in sys.argv:
+        print(__doc__)
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+doc_count: low
+update_frequency: low
+embedding_budget_usd: low
+```

@@ -66,6 +66,8 @@
 |------|---------|
 | `templates/product-kb-validate.sh` | Validate KB structure + schema markup |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - parent skill: `skills/faion/knowledge/pro/product/product-operations/`
@@ -75,3 +77,21 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions satisfied, owner present, prior-cycle output available, cycle window fit) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about whether to run this methodology this cycle or defer.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/product-kb-validate.sh`
+
+```bash
+set -euo pipefail
+F="${1:?path to KB page markdown}"
+v=0
+grep -q 'application/ld+json' "$F" || { echo "VIOLATION: no schema markup"; v=1; }
+grep -qE '"@type":\s*"(Product|SoftwareApplication)"' "$F" || { echo "VIOLATION: @type not Product/SoftwareApplication"; v=1; }
+grep -qi 'does NOT do\|out of scope\|limitations' "$F" || { echo "VIOLATION: no boundary section"; v=1; }
+grep -qE '^owner:' "$F" || { echo "VIOLATION: no owner frontmatter"; v=1; }
+grep -qE '^review_cadence:' "$F" || { echo "VIOLATION: no review_cadence frontmatter"; v=1; }
+exit "$v"
+```

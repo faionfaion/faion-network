@@ -61,6 +61,8 @@
 | `templates/model-upgrade-checklist.json` | JSON schema for the output contract. |
 | `templates/model-upgrade-checklist.md` | Markdown skeleton with required fields. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -75,3 +77,113 @@
 ## Decision tree
 
 The tree at `content/06-decision-tree.xml` triages: typed input set + named owner + downstream consumer? → ship the checklist; otherwise → skip + escalate. Walk it before authoring so the upgrade plan has an eval gate and a named owner.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/model-upgrade-checklist.json`
+
+```json
+{
+  "_purpose": "JSON Schema for the Model Upgrade Checklist output contract.",
+  "_consumes": "upgrade-checklist.json from subagent",
+  "_produces": "validation report for validate-model-upgrade-checklist.py",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "0 \u2014 schema-only",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/model-upgrade-checklist",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "decision",
+    "rationale",
+    "inputs_used",
+    "version",
+    "last_reviewed",
+    "current_model",
+    "target_model",
+    "eval_baseline_id",
+    "rollout"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 2,
+      "not": {
+        "pattern": "(?i)^(team|we|us|engineering|the (team|squad|group))$"
+      }
+    },
+    "decision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 30
+    },
+    "inputs_used": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "source"
+        ]
+      },
+      "minItems": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "current_model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "eval_baseline_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "rollout": {
+      "type": "object",
+      "required": [
+        "stages",
+        "kill_switch_armed"
+      ],
+      "properties": {
+        "stages": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "shadow",
+              "canary_1pct",
+              "canary_5pct",
+              "canary_25pct",
+              "100pct"
+            ]
+          },
+          "minItems": 1
+        },
+        "kill_switch_armed": {
+          "type": "boolean",
+          "const": true
+        }
+      }
+    }
+  }
+}
+```

@@ -67,6 +67,8 @@
 | `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract |
 | `templates/artefact-instance.json` | JSON instance of a filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,57 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/artefact-instance.json`
+
+```json
+{
+  "spec_id": "cp-acme-2026q2",
+  "owner": "pm@acme.io",
+  "last_touched": "2026-05-23T11:00:00Z",
+  "category": {
+    "name": "AI-assisted onboarding for B2B SaaS",
+    "evidence": "5 customer-win notes name this category 2026-04"
+  },
+  "target_customer": {
+    "role": "VP Eng",
+    "company_size": "50-200",
+    "trigger": "post-Series-A onboarding rebuild"
+  },
+  "alternatives": [
+    {
+      "name": "in-house build",
+      "why_we_win": "4-week delivery vs 6-month"
+    },
+    {
+      "name": "competitor X",
+      "why_we_win": "explicit handover SOP"
+    },
+    {
+      "name": "do nothing",
+      "why_we_win": "documented +18pp conversion"
+    }
+  ],
+  "differentiators": [
+    "4-week delivery",
+    "handover SOP",
+    "+18pp conversion proof"
+  ],
+  "value_themes": [
+    "speed",
+    "ownership",
+    "measurable outcome"
+  ],
+  "anti_positioning": [
+    "enterprise full-suite",
+    "marketing-site builders",
+    "design agencies"
+  ],
+  "template_version": "1.1.0",
+  "status": "ready_for_review"
+}
+```

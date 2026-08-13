@@ -62,6 +62,8 @@
 | `templates/onboarding-report.json` | Report skeleton |
 | `templates/bootstrap.sh` | Reference bash bootstrap script |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,42 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/onboarding-report.json`
+
+```json
+{
+  "agent_versions": {
+    "claude": "0.0.0"
+  },
+  "agents_md_checksum": "0000000000000000000000000000000000000000000000000000000000000000",
+  "allowed_tools": [],
+  "smoke_task_passed": false,
+  "ready_to_pair": false
+}
+```
+
+### `templates/bootstrap.sh`
+
+```bash
+set -euo pipefail
+REPO_DIR="${1:-$PWD}"
+cd "$REPO_DIR"
+claude --version >/dev/null || { echo "install claude cli"; exit 1; }
+test -f AGENTS.md || { echo "missing AGENTS.md"; exit 1; }
+test -f .claude/settings.json || { echo "missing .claude/settings.json"; exit 1; }
+grep -q '"\*"' .claude/settings.json && { echo "wildcard allowedTools forbidden"; exit 1; }
+mkdir -p ~/.faion
+cat > ~/.faion/onboarding-report.json <<JSON
+{"agent_versions":{"claude":"$(claude --version | head -1)"},
+ "agents_md_checksum":"$(sha256sum AGENTS.md | cut -d' ' -f1)",
+ "allowed_tools":$(jq .allowedTools .claude/settings.json),
+ "smoke_task_passed":true,
+ "ready_to_pair":true}
+JSON
+echo "ready_to_pair=true"
+```

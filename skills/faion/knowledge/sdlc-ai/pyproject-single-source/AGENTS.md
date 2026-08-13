@@ -68,6 +68,8 @@
 | `templates/pyproject.toml` | Full pyproject skeleton with [project] + [tool.*] tables. |
 | `templates/check-no-legacy.sh` | CI script that fails on legacy Python config files. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,110 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from observable signals (Python project? tool support? exotic build?) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether to consolidate config — the tree terminates either on the active rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pyproject.toml`
+
+```toml
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "my-pkg"
+version = "0.1.0"
+description = "Single-source pyproject.toml example."
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "pydantic>=2.9",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=9.0",
+  "pytest-cov>=5.0",
+  "ruff>=0.15",
+  "hypothesis>=6.150",
+  "bandit>=1.8",
+  "mutmut>=3.0",
+]
+
+[tool.uv]
+managed = true
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "C4", "UP", "SIM", "RUF", "T20"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"
+docstring-code-format = true
+
+[tool.pytest.ini_options]
+minversion = "9.0"
+addopts = "-ra --strict-markers --strict-config --tb=short --cov=src --cov-branch --cov-fail-under=85"
+testpaths = ["tests"]
+xfail_strict = true
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+
+[tool.coverage.report]
+fail_under = 85
+show_missing = true
+skip_covered = true
+
+[tool.ty.environment]
+python-version = "3.12"
+
+[tool.bandit]
+skips = []
+exclude_dirs = ["tests"]
+
+[tool.mutmut]
+paths_to_mutate = "src/"
+runner = "uv run pytest -x -q"
+tests_dir = "tests/"
+```
+
+### `templates/check-no-legacy.sh`
+
+```bash
+# Drop into CI as: `bash check-no-legacy.sh`.
+set -euo pipefail
+
+forbidden=(
+  setup.cfg
+  .flake8
+  pytest.ini
+  tox.ini
+  mypy.ini
+  .coveragerc
+  requirements.txt
+  requirements-dev.txt
+)
+
+found=()
+for f in "${forbidden[@]}"; do
+  [[ -f "$f" ]] && found+=("$f")
+done
+
+if (( ${#found[@]} > 0 )); then
+  echo "ERROR: legacy config file(s) present; move config into pyproject.toml:" >&2
+  printf '  %s\n' "${found[@]}" >&2
+  exit 1
+fi
+
+[[ -f pyproject.toml ]] || { echo "ERROR: pyproject.toml missing." >&2; exit 1; }
+echo "OK: pyproject.toml is the single source of config."
+```

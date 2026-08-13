@@ -63,7 +63,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/grooming-agenda.md` | Markdown agenda with 3 fixed blocks + decision column |
-| `templates/grooming.schema.json` | JSON Schema for the agenda artefact |
 
 ## Scripts
 

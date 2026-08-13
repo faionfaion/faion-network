@@ -65,6 +65,8 @@
 | `templates/step-gate-result.json` | Per-step gate result schema. |
 | `templates/rollback-receipt.json` | Rollback receipt schema (records the 60s contract). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,257 @@
 ## Decision tree
 
 The tree at `content/06-decision-tree.xml` enumerates the per-step gate path: golden eval pass + online quality within band + latency p95 within +20% → promote; else → rollback within 60s. Walk it before promoting any step; never skip the hold.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rollout-plan.json`
+
+```json
+{
+  "_purpose": "JSON Schema for the RAG canary rollout plan.",
+  "_consumes": "rollout-plan.json from subagent",
+  "_produces": "validation report for validate-rag-canary-rollout-plan.py",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "0 \u2014 schema-only",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/rag-canary-rollout-plan",
+  "type": "object",
+  "required": [
+    "feature_id",
+    "target_version",
+    "baseline_version",
+    "steps",
+    "golden_eval",
+    "online_quality",
+    "kill_switch"
+  ],
+  "properties": {
+    "feature_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "baseline_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": [
+          "percent",
+          "hold_hours",
+          "min_samples"
+        ],
+        "properties": {
+          "percent": {
+            "enum": [
+              1,
+              5,
+              25,
+              100
+            ]
+          },
+          "hold_hours": {
+            "type": "integer",
+            "minimum": 12
+          },
+          "min_samples": {
+            "type": "integer",
+            "minimum": 100
+          }
+        }
+      }
+    },
+    "golden_eval": {
+      "type": "object",
+      "required": [
+        "suite_id",
+        "thresholds"
+      ],
+      "properties": {
+        "suite_id": {
+          "type": "string"
+        },
+        "thresholds": {
+          "type": "object",
+          "required": [
+            "primary_no_regression",
+            "secondary_max_regression_pct",
+            "p95_latency_max_delta_pct"
+          ],
+          "properties": {
+            "primary_no_regression": {
+              "type": "boolean",
+              "const": true
+            },
+            "secondary_max_regression_pct": {
+              "type": "number",
+              "maximum": 5
+            },
+            "p95_latency_max_delta_pct": {
+              "type": "number",
+              "maximum": 20
+            }
+          }
+        }
+      }
+    },
+    "online_quality": {
+      "type": "object",
+      "required": [
+        "rubric_id",
+        "sample_rate",
+        "floor_composite_score"
+      ],
+      "properties": {
+        "rubric_id": {
+          "type": "string"
+        },
+        "sample_rate": {
+          "type": "number",
+          "minimum": 0.05,
+          "maximum": 0.2
+        },
+        "floor_composite_score": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "kill_switch": {
+      "type": "object",
+      "required": [
+        "criteria",
+        "atomic_flip",
+        "rehearsed_within_days"
+      ],
+      "properties": {
+        "criteria": {
+          "type": "array",
+          "minItems": 4,
+          "items": {
+            "type": "string"
+          }
+        },
+        "atomic_flip": {
+          "type": "boolean",
+          "const": true
+        },
+        "rehearsed_within_days": {
+          "type": "integer",
+          "maximum": 90
+        }
+      }
+    }
+  }
+}
+```
+
+### `templates/step-gate-result.json`
+
+```json
+{
+  "_purpose": "Schema for the per-step canary gate result.",
+  "_consumes": "step-gate-result.json from rollout runner",
+  "_produces": "evidence record consumed by promote/rollback logic",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "0 \u2014 schema-only",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/rag-canary-step-gate-result",
+  "type": "object",
+  "required": [
+    "step_id",
+    "percent",
+    "golden_pass",
+    "composite_score",
+    "p95_latency_delta_pct",
+    "decision"
+  ],
+  "properties": {
+    "step_id": {
+      "type": "string"
+    },
+    "percent": {
+      "enum": [
+        1,
+        5,
+        25,
+        100
+      ]
+    },
+    "golden_pass": {
+      "type": "boolean"
+    },
+    "composite_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "p95_latency_delta_pct": {
+      "type": "number"
+    },
+    "decision": {
+      "enum": [
+        "promote",
+        "hold",
+        "rollback"
+      ]
+    }
+  }
+}
+```
+
+### `templates/rollback-receipt.json`
+
+```json
+{
+  "_purpose": "Schema for the rollback receipt \u2014 records the \u226460s contract.",
+  "_consumes": "rollback-receipt.json from gateway",
+  "_produces": "evidence of meeting kill-switch SLO",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "0 \u2014 schema-only",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/rag-canary-rollback-receipt",
+  "type": "object",
+  "required": [
+    "feature_id",
+    "from_version",
+    "to_version",
+    "triggered_at",
+    "completed_within_seconds",
+    "reason"
+  ],
+  "properties": {
+    "feature_id": {
+      "type": "string"
+    },
+    "from_version": {
+      "type": "string"
+    },
+    "to_version": {
+      "type": "string"
+    },
+    "triggered_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completed_within_seconds": {
+      "type": "integer",
+      "maximum": 60
+    },
+    "reason": {
+      "type": "string"
+    }
+  }
+}
+```

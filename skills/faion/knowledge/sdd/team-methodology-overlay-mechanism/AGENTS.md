@@ -63,7 +63,8 @@
 |------|---------|
 | `templates/overlay-manifest.yml` | YAML manifest declaring overlay scope + precedence |
 | `templates/conflict.log.tmpl` | Conflict log template line shape |
-| `templates/overlay.schema.json` | JSON Schema for overlay manifest |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -79,3 +80,29 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/overlay-manifest.yml`
+
+```yaml
+slug: team-methodology-overlay-mechanism
+version: 1.0.0
+owner: TODO-name@example.com
+produced_at: 2026-05-22T12:00:00Z
+evidence:
+  - https://example.com/adr/0001
+body:
+  summary: TODO short summary
+ai_drafted: false
+reviewer: TODO-reviewer@example.com
+```
+
+### `templates/conflict.log.tmpl`
+
+```text
+# format: <iso-timestamp> | <overlay-path> | <base-path> | <reason>
+2026-05-22T00:00:00Z | .faion/overlays/project/team-methodology-overlay-mechanism.xml | faion-network/skills/.../team-methodology-overlay-mechanism/content/02-output-contract.xml | first overlay
+```

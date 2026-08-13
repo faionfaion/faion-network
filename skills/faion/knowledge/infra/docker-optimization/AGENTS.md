@@ -63,6 +63,8 @@
 | `templates/dockerignore` | .dockerignore skeleton excluding common bloat |
 | `templates/backup-config.example.json` | Filled config artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,45 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/Dockerfile.optimized`
+
+```text
+# syntax=docker/dockerfile:1.7
+FROM gcr.io/distroless/static-debian12 AS runtime
+USER 10001
+COPY app /app
+ENTRYPOINT ["/app"]
+```
+
+### `templates/dockerignore`
+
+```text
+.git
+node_modules
+.venv
+__pycache__
+*.pyc
+.cache
+```
+
+### `templates/backup-config.example.json`
+
+```json
+{
+  "multi_stage": true,
+  "runtime_base": "distroless",
+  "digest_pinned": true,
+  "user_uid": 1,
+  "cache_mounts": true,
+  "scanners": [
+    "hadolint",
+    "trivy"
+  ],
+  "target_size_mb": 1
+}
+```

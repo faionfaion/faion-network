@@ -62,6 +62,8 @@
 | `templates/trigger-rules.yaml` | Trigger rule library template. |
 | `templates/_smoke-test.json` | Filled design-review-bot decision record. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,71 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the decision-record; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/decision-record.json`
+
+```json
+{
+  "assistant_id": "FILL_ME",
+  "pattern": "FILL_ME",
+  "trigger_rules": [
+    {
+      "event": "pr-opened",
+      "condition": "labels include design",
+      "cooldown_ms": 60000
+    }
+  ],
+  "context_disclosure": "FILL_ME",
+  "fallback_states": {
+    "offline": "Banner: 'Bot offline; manual review.'",
+    "rate_limited": "Queue with ETA.",
+    "low_confidence": "Comment: 'Confidence low; please review manually.'"
+  },
+  "checkpoints": [
+    "designer-confirm-before-merge"
+  ]
+}
+```
+
+### `templates/trigger-rules.yaml`
+
+```yaml
+# trigger-rules.yaml — AI Design Assistant Patterns (UX/UI)
+# Fill per task; validator: scripts/validate-ai-design-assistant-patterns.py
+
+assistant_id: design-review-bot
+pattern: review
+trigger_rules: [{"event": "pr-opened", "condition": "labels include design", "cooldown_ms": 60000}]
+context_disclosure: Reads modified frames + design system tokens; does not access analytics.
+fallback_states: {"offline": "Banner: 'Bot offline; manual review.'", "rate_limited": "Queue with ETA.", "low_confidence": "Comment: 'Confidence low; please review manually.'"}
+checkpoints: ["designer-confirm-before-merge"]
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "assistant_id": "FILL_ME",
+  "pattern": "FILL_ME",
+  "trigger_rules": [
+    {
+      "event": "pr-opened",
+      "condition": "labels include design",
+      "cooldown_ms": 60000
+    }
+  ],
+  "context_disclosure": "FILL_ME",
+  "fallback_states": {
+    "offline": "Banner: 'Bot offline; manual review.'",
+    "rate_limited": "Queue with ETA.",
+    "low_confidence": "Comment: 'Confidence low; please review manually.'"
+  },
+  "checkpoints": [
+    "designer-confirm-before-merge"
+  ]
+}
+```

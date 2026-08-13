@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/stakeholder-walkthrough-script.json` | JSON skeleton conforming to the output-contract schema. |
 | `templates/stakeholder-walkthrough-script.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

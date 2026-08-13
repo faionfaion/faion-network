@@ -65,6 +65,8 @@
 | `templates/market-sizing-report.md` | Final report skeleton with three estimates + reconciliation |
 | `templates/market-sizing.json` | Machine-readable estimate matching schema |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,47 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from the question "Are stakes >= $10k AND public market figures exist?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/market-sizing.json`
+
+```json
+{
+  "market_definition": "AI coding-agent tools for solo developers, 2026, NA+EU",
+  "year_horizon": 2026,
+  "currency": "USD",
+  "top_down": {
+    "value": 8200000000,
+    "rationale": "AI dev tools market 40B times 20pct coding share"
+  },
+  "bottom_up": {
+    "value": 5400000000,
+    "rationale": "18M solo devs times 25/mo ARPU times 100pct"
+  },
+  "value_theory": {
+    "value": 6800000000,
+    "rationale": "Time saved 500/dev/yr times 18M times 75pct capture"
+  },
+  "reconciliation": "Spread 1.5x; top-down high (bundled revenue), bottom-up low (ARPU floor), value-theory mid. Plan on 6B central estimate.",
+  "citations": [
+    {
+      "url": "https://example.com/r1",
+      "year": 2026,
+      "claim": "AI dev tools market $40B"
+    },
+    {
+      "url": "https://example.com/r2",
+      "year": 2025,
+      "claim": "Coding-agent share 20%"
+    },
+    {
+      "url": "https://example.com/r3",
+      "year": 2026,
+      "claim": "Solo developer population 18M"
+    }
+  ]
+}
+```

@@ -70,6 +70,8 @@
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum viable filled `AcceptanceRecord` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,66 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps presence of regulator mandate, stakeholder availability, cost-curve data, and refresh status to mandate-adopt / negotiate / defer / refresh. Every leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+owner:
+  role: ""
+  person: ""
+version: ""
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "record_id": "smoke",
+  "system_id": "checkout-prod",
+  "header": {
+    "owner": {
+      "role": "architect",
+      "person": "architect-handle"
+    },
+    "version": "1.0"
+  },
+  "options_presented": [
+    {
+      "tier_name": "tier-0",
+      "rpo": "24h",
+      "rto": "8h",
+      "annual_cost_delta": "+$0",
+      "operational_impact": "current baseline"
+    },
+    {
+      "tier_name": "tier-1",
+      "rpo": "1h",
+      "rto": "4h",
+      "annual_cost_delta": "+$11k/yr",
+      "operational_impact": "hourly snapshots; warm standby"
+    },
+    {
+      "tier_name": "tier-2",
+      "rpo": "15min",
+      "rto": "1h",
+      "annual_cost_delta": "+$28k/yr",
+      "operational_impact": "streaming replication"
+    }
+  ],
+  "chosen": {
+    "tier_name": "tier-2",
+    "rpo": "15min",
+    "rto": "1h",
+    "stakeholder_echo": "We accept tier-2 at +$28k/yr."
+  },
+  "impact_basis": "$9k/hr revenue lost; 6h/yr historical outage = $54k/yr exposure",
+  "stakeholder_handle": "@cfo",
+  "evidence_link": "meet://transcripts/2026-05-20",
+  "decided_at": "2026-05-20",
+  "refresh_due": "2027-05-20"
+}
+```

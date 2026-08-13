@@ -63,6 +63,8 @@
 | `templates/_smoke-test.md` | Minimum-viable filled-in example used by the validator self-test. |
 | `templates/spec.md.tmpl` | Markdown spec skeleton with the required sections + placeholders. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,38 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` walks the agent from the input shape to a concrete rule id in `01-core-rules.xml`. Use it before applying any rule: the root question filters whether `multi-agent-systems` applies at all; branches narrow on observable input fields; every leaf is a `<conclusion ref="...">` pointing at a rule id, so the agent never lands on free-text guidance.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/spec.md.tmpl`
+
+```markdown
+-->
+
+# multi-agent-systems — spec skeleton
+
+> Replace every `TODO` block before handing off. The skeleton is wired to the schema in `content/02-output-contract.xml`; run `scripts/validate-multi-agent-systems.py` after filling.
+
+## Inputs
+
+- Task brief: <link>
+- Constraints: <link>
+
+## Body
+
+- TODO — section 1
+- TODO — section 2
+- TODO — section 3
+
+## Acceptance
+
+- All required keys present per the output contract.
+- `forbidden_seen` is empty.
+- Validator exits 0.
+
+## Signature
+
+- `signature: sha1(slug + version + date)[:16]`
+```

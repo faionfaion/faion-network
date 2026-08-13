@@ -69,6 +69,8 @@
 | `templates/output.example.json` | Filled example. |
 | `templates/postmortem.md` | Markdown skeleton with the required ML-specific sections. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,82 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Asks: (1) is this an ML failure (not pure infra)? (2) which root-cause class fits (drift / prompt regression / schema change / judge change / retrieval failure / tool fault / hallucination / data poisoning)? (3) is an eval-guard added that would have caught it? Leaves point to the postmortem section template.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/ai-incident-postmortem-template/output.json",
+  "title": "Ai Incident Postmortem Template Output",
+  "description": "purpose=schema; consumes=brief+context; produces=artefact; depends-on=01-core-rules.xml; token-budget-impact=low",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "version",
+    "version_stamp",
+    "produced_at",
+    "rationale",
+    "inputs_used"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "version_stamp": {
+      "type": "string"
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fields": {
+      "type": "object"
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 20
+    },
+    "inputs_used": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    }
+  }
+}
+```
+
+### `templates/output.example.json`
+
+```json
+{
+  "artefact_id": "ai-incident-postmortem-template-example-001",
+  "owner": "alex@faion.net",
+  "version": "1.0.0",
+  "version_stamp": "ai-incident-postmortem-template@1.0.0",
+  "produced_at": "2026-05-22T12:00:00Z",
+  "fields": {
+    "placeholder_field": "filled-by-author"
+  },
+  "rationale": "Example output for Ai Incident Postmortem Template; references at least one named input.",
+  "inputs_used": [
+    "docs/brief.md"
+  ]
+}
+```

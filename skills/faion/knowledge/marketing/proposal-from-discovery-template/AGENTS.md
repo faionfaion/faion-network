@@ -70,6 +70,8 @@
 | `templates/header.yaml` | Frontmatter schema: owner, version, last_reviewed, evidence_root. |
 | `templates/proposal-from-discovery-template.json` | JSON schema for the output contract. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,151 @@
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs (inbound count, has_discovery_notes, named_owner_present, recurrence_per_year) to a rule from `01-core-rules.xml`. Use it whenever an inbound lead lands and you have to decide between filling the proposal template, deferring (no owner), or writing a one-off email.
 
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+version: 1.0.0          # semver
+owner: <named-human>    # not "team", not "we"
+last_reviewed: 2026-05-23  # ISO date; ≤90 days old at use time
+client: <client-name>   # ≥2 chars
+title: <one-line>       # 8-120 chars
+```
+
+### `templates/proposal-from-discovery-template.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/proposal-from-discovery-template.json",
+  "type": "object",
+  "required": [
+    "header",
+    "discovery_inputs",
+    "options",
+    "actions"
+  ],
+  "properties": {
+    "header": {
+      "type": "object",
+      "required": [
+        "version",
+        "owner",
+        "last_reviewed",
+        "client",
+        "title"
+      ],
+      "properties": {
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 3
+        },
+        "last_reviewed": {
+          "type": "string",
+          "format": "date"
+        },
+        "client": {
+          "type": "string",
+          "minLength": 2
+        },
+        "title": {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 120
+        }
+      }
+    },
+    "discovery_inputs": {
+      "type": "object",
+      "required": [
+        "pain",
+        "budget_signal",
+        "evidence_links"
+      ],
+      "properties": {
+        "pain": {
+          "type": "string",
+          "minLength": 30
+        },
+        "budget_signal": {
+          "type": "string"
+        },
+        "evidence_links": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "options": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "scope",
+          "price",
+          "duration_weeks"
+        ],
+        "properties": {
+          "name": {
+            "enum": [
+              "light",
+              "standard",
+              "outcome-based"
+            ]
+          },
+          "scope": {
+            "type": "string",
+            "minLength": 20
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0
+          },
+          "duration_weeks": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 52
+          }
+        }
+      }
+    },
+    "actions": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "owner",
+          "due_date",
+          "action"
+        ],
+        "properties": {
+          "owner": {
+            "type": "string"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "action": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
+```

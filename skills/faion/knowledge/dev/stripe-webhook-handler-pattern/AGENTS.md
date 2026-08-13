@@ -71,6 +71,8 @@
 | `templates/idempotency-table.sql` | Postgres schema for event-id idempotency table. |
 | `templates/_smoke-test.json` | Filled-in minimum viable handler spec for validator smoke-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,78 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree checks preconditions, then verification, then idempotency store, then sync-vs-queue path, then DLQ presence. Every leaf maps to a rule id from `content/01-core-rules.xml`, with skip-this-methodology as the default.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/handler.py`
+
+```python
+from __future__ import annotations
+import os
+import stripe
+from fastapi import APIRouter, Request, HTTPException, Header
+
+router = APIRouter()
+WEBHOOK_SECRET = os.environ["STRIPE_WEBHOOK_SECRET"]
+
+
+@router.post("/webhooks/stripe")
+async def stripe_webhook(req: Request, stripe_signature: str = Header(...)) -> dict:
+    body = await req.body()
+    # 1) verify signature
+    try:
+        event = stripe.Webhook.construct_event(body, stripe_signature, WEBHOOK_SECRET)
+    except Exception:
+        raise HTTPException(status_code=400, detail="bad signature")
+
+    # 2) idempotency dedup on event.id
+    if await _seen_event(event["id"]):
+        return {"ok": True, "deduped": True}
+
+    # 3) fast 2xx: enqueue heavy work
+    await _enqueue(event)
+    return {"ok": True}
+
+
+async def _seen_event(event_id: str) -> bool:
+    # INSERT INTO stripe_events(event_id) ON CONFLICT DO NOTHING RETURNING 1
+    raise NotImplementedError
+
+
+async def _enqueue(event: dict) -> None:
+    # push to SQS / Celery / pg-boss
+    raise NotImplementedError
+```
+
+### `templates/idempotency-table.sql`
+
+```sql
+CREATE TABLE IF NOT EXISTS stripe_events (
+    event_id TEXT PRIMARY KEY,
+    event_type TEXT NOT NULL,
+    received_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    processed_at TIMESTAMPTZ,
+    payload JSONB NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS ix_stripe_events_type_received
+    ON stripe_events (event_type, received_at DESC);
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "event_types": [
+    "invoice.paid"
+  ],
+  "verification_method": "stripe-sdk",
+  "idempotency_store": "postgres-unique-index",
+  "processing_path": "queue",
+  "dead_letter_url": "sqs://billing-dlq",
+  "replay_safety_test": "tests/test_invoice_paid_replay.py::test_replay_idempotent",
+  "owner": "ruslan@faion.net"
+}
+```

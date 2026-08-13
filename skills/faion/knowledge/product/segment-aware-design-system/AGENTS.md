@@ -65,6 +65,8 @@
 | `templates/segments.yaml` | Segment registry consumed by tokens + i18n |
 | `templates/button-variants.stories.tsx` | Storybook stories showing Button across segments |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,45 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from the question "Does the product serve ≥2 user segments with differing tone/copy on the same functional core?" and routes observable input signals to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Apply it whenever the input shape changes or before scaling a pilot run.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/segments.yaml`
+
+```yaml
+# segments.yaml — segment registry for design-system.
+segments:
+  - id: developer
+    label: Solo developer
+    tone: technical
+  - id: exec
+    label: Engineering leader
+    tone: formal
+```
+
+### `templates/button-variants.stories.tsx`
+
+```tsx
+// Storybook stories showing Button across segments.
+import type { Meta, StoryObj } from "@storybook/react";
+import { Button } from "./Button";
+
+const meta: Meta<typeof Button> = {
+  title: "Primitives/Button",
+  component: Button,
+  argTypes: {
+    segment: { control: "select", options: ["developer", "exec"] },
+  },
+};
+export default meta;
+
+export const Developer: StoryObj<typeof Button> = {
+  args: { segment: "developer", children: "Run faion search" },
+};
+
+export const Exec: StoryObj<typeof Button> = {
+  args: { segment: "exec", children: "Request enterprise demo" },
+};
+```

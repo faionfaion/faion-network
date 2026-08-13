@@ -73,6 +73,8 @@
 | `templates/wbs-validate.py` | Helper validator (weight + 8-80) consumed by Step 6 |
 | `templates/_smoke-test.json` | Minimum-viable filled `WBS` for validator self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -88,3 +90,214 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree decides per node whether to: split a too-large leaf, merge a too-small leaf, reject a verb-named node, refuse renumbering on id collision, or add a missing overhead branch. Each leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/wbs-validate.py`
+
+```python
+"""Validate wbs.yaml: 100% rule (weight_pct children sum) + 8-80h leaf effort rule.
+
+Input YAML structure:
+  items:
+    - id: "1"
+      name: "Project Management"
+      weight_pct: 15
+      children:
+        - id: "1.1"
+          name: "Planning Documentation"
+          effort_hours: 20
+
+Usage: wbs-validate.py <wbs.yaml>
+Exit 0 = valid. Exit 1 = failures found.
+"""
+import sys
+import yaml
+
+REQUIRED_PACKAGES = {
+    "project management", "qa", "quality", "testing",
+    "deployment", "documentation", "training", "transition",
+}
+ERR: list[str] = []
+
+
+def walk(node: dict) -> None:
+    children = node.get("children", [])
+    if children:
+        weights = [c.get("weight_pct", 0) for c in children]
+        total = sum(weights)
+        if abs(total - 100) > 0.5:
+            ERR.append(
+                f"{node['id']} '{node['name']}': children sum to {total:.1f}%, expected 100"
+            )
+        for child in children:
+            walk(child)
+    else:
+        hours = node.get("effort_hours")
+        if hours is None:
+            ERR.append(f"{node['id']} '{node['name']}': leaf missing effort_hours")
+        elif not (8 <= float(hours) <= 80):
+            ERR.append(
+                f"{node['id']} '{node['name']}': effort {hours}h violates 8-80 rule"
+            )
+        deliverable = node.get("deliverable") or node.get("acceptance_criteria")
+        if not deliverable:
+            ERR.append(f"{node['id']} '{node['name']}': leaf missing deliverable or acceptance_criteria")
+
+
+def collect_names(node: dict, names: set) -> None:
+    names.add(node["name"].lower())
+    for child in node.get("children", []):
+        collect_names(child, names)
+
+
+def check_overhead(items: list) -> None:
+    all_names: set[str] = set()
+    for item in items:
+        collect_names(item, all_names)
+    for pkg in REQUIRED_PACKAGES:
+        if not any(pkg in name for name in all_names):
+            ERR.append(f"WBS: missing required overhead package '{pkg}'")
+
+
+def main(path: str) -> None:
+    doc = yaml.safe_load(open(path))
+    items = doc.get("items", doc) if isinstance(doc, dict) else doc
+    for top in items:
+        walk(top)
+    check_overhead(items)
+    if ERR:
+        for e in ERR:
+            print(f"[FAIL] {e}")
+        sys.exit(1)
+    print("WBS valid")
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: wbs-validate.py <wbs.yaml>")
+        sys.exit(2)
+    main(sys.argv[1])
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "project": "smoke",
+  "version": "1.0",
+  "items": [
+    {
+      "id": "1",
+      "name": "Project Management",
+      "level": 1,
+      "kind": "deliverable",
+      "parent": null,
+      "weight_pct": 12
+    },
+    {
+      "id": "2",
+      "name": "Authentication Module",
+      "level": 1,
+      "kind": "deliverable",
+      "parent": null,
+      "weight_pct": 22
+    },
+    {
+      "id": "2.1",
+      "name": "Login Endpoint",
+      "level": 2,
+      "kind": "work_package",
+      "parent": "2",
+      "weight_pct": 60
+    },
+    {
+      "id": "2.2",
+      "name": "Logout Endpoint",
+      "level": 2,
+      "kind": "work_package",
+      "parent": "2",
+      "weight_pct": 40
+    },
+    {
+      "id": "3",
+      "name": "Quality Assurance",
+      "level": 1,
+      "kind": "deliverable",
+      "parent": null,
+      "weight_pct": 18
+    },
+    {
+      "id": "4",
+      "name": "Deployment",
+      "level": 1,
+      "kind": "deliverable",
+      "parent": null,
+      "weight_pct": 14
+    },
+    {
+      "id": "5",
+      "name": "Documentation",
+      "level": 1,
+      "kind": "deliverable",
+      "parent": null,
+      "weight_pct": 12
+    },
+    {
+      "id": "6",
+      "name": "Training",
+      "level": 1,
+      "kind": "deliverable",
+      "parent": null,
+      "weight_pct": 11
+    },
+    {
+      "id": "7",
+      "name": "Transition",
+      "level": 1,
+      "kind": "deliverable",
+      "parent": null,
+      "weight_pct": 11
+    }
+  ],
+  "dictionary": [
+    {
+      "id": "2.1",
+      "name": "Login Endpoint",
+      "description": {
+        "included": "POST /login with session token",
+        "excluded": "OAuth providers"
+      },
+      "deliverable": "Working /login endpoint + integration test",
+      "acceptance_criteria": [
+        "Returns 200 + token on valid creds",
+        "Returns 401 on invalid"
+      ],
+      "owner": "Backend Team Lead",
+      "effort_hours": 20,
+      "dependencies": []
+    },
+    {
+      "id": "2.2",
+      "name": "Logout Endpoint",
+      "description": {
+        "included": "POST /logout invalidates session",
+        "excluded": "Global logout across devices"
+      },
+      "deliverable": "Working /logout endpoint + integration test",
+      "acceptance_criteria": [
+        "Returns 204 on valid session",
+        "Session invalidated server-side"
+      ],
+      "owner": "Backend Team Lead",
+      "effort_hours": 12,
+      "dependencies": [
+        "2.1"
+      ]
+    }
+  ]
+}
+```

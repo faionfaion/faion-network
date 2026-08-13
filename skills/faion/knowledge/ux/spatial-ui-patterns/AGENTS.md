@@ -63,6 +63,8 @@
 |------|---------|
 | `templates/panel-spec.json` | Skeleton panel spec |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,27 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches by panel role (primary / tool / reference / safety-telemetry) and applies the panel-type rule; FoV-occupancy gate fires when sum exceeds 40%. Each leaf cites a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/panel-spec.json`
+
+```json
+{
+  "platforms": [
+    "visionos",
+    "quest"
+  ],
+  "panels": [
+    {
+      "id": "main",
+      "type": "body-locked",
+      "distance_m": 1.8,
+      "min_target_pt": 60,
+      "primary": true
+    }
+  ]
+}
+```

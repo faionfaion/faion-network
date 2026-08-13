@@ -64,7 +64,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/build-in-public-content-engine.json` | JSON skeleton matching the output contract. |
 | `templates/build-in-public-content-engine.md` | Markdown skeleton with required fields. |
 
 ## Scripts

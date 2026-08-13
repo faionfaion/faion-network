@@ -63,6 +63,8 @@
 | `templates/generator-prompt.md` | Prompt skeleton with brand-token + must-not-have injection slots. |
 | `templates/_smoke-test.json` | Filled checkout-redesign ideation spec. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[ai-design-assistant-patterns]]
@@ -71,3 +73,39 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the spec; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ideation-spec.json`
+
+```json
+{
+  "brief_id": "FILL_ME",
+  "variants_generated": 8,
+  "selected_variant_id": "FILL_ME",
+  "selection_rationale": "FILL_ME",
+  "labelled_not_production": true,
+  "generators_used": [
+    "v0",
+    "claude-artifacts"
+  ]
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "brief_id": "FILL_ME",
+  "variants_generated": 8,
+  "selected_variant_id": "FILL_ME",
+  "selection_rationale": "FILL_ME",
+  "labelled_not_production": true,
+  "generators_used": [
+    "v0",
+    "claude-artifacts"
+  ]
+}
+```

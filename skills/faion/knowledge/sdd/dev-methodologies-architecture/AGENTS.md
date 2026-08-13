@@ -63,7 +63,8 @@
 |------|---------|
 | `templates/api_envelope.py` | Standard API response envelope: data + meta + errors |
 | `templates/structured_logger.py` | Structured JSON logger with request_id correlation |
-| `templates/_smoke-test.py` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -80,3 +81,49 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is the service backend AND has tests AND can iterate per pattern?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/api_envelope.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Standard API response envelope: data + meta + errors","consumes":"see content/02-output-contract.xml","produces":"rubric","depends_on":"content/01-core-rules.xml#indexed-foreign-keys","token_budget_impact":"~150 tokens when loaded"}}
+from typing import Any
+from dataclasses import dataclass, field
+
+
+@dataclass
+class ApiResponse:
+    data: Any = None
+    meta: dict = field(default_factory=dict)
+    errors: list[dict] = field(default_factory=list)
+
+    def to_dict(self) -> dict:
+        return {"data": self.data, "meta": self.meta, "errors": self.errors}
+```
+
+### `templates/structured_logger.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Structured JSON logger with request_id correlation","consumes":"see content/02-output-contract.xml","produces":"rubric","depends_on":"content/01-core-rules.xml#indexed-foreign-keys","token_budget_impact":"~150 tokens when loaded"}}
+import json
+import logging
+import sys
+
+
+def get_logger(name: str) -> logging.Logger:
+    h = logging.StreamHandler(sys.stdout)
+    h.setFormatter(logging.Formatter('%(message)s'))
+    l = logging.getLogger(name)
+    l.handlers.clear()
+    l.addHandler(h)
+    l.setLevel(logging.INFO)
+    return l
+
+
+def log(logger: logging.Logger, level: str, event: str, **fields) -> None:
+    payload = {"event": event, "level": level, **fields}
+    getattr(logger, level)(json.dumps(payload, default=str))
+```

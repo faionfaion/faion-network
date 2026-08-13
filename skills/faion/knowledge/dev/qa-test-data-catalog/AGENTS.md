@@ -67,6 +67,8 @@
 | `templates/factories.py` | Python scaffold realising the artefact in code. |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,81 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Are tests creating fixtures ad-hoc with drift symptoms or PII concerns?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/catalog.json`
+
+```json
+{
+  "catalog_id": "test-data-v3",
+  "fixtures": [
+    {
+      "id": "order-paid-eur",
+      "owner_service": "orders",
+      "refresh": "function",
+      "contains_pii": false,
+      "factory_path": "apps.orders.tests.factories.PaidOrderEurFactory",
+      "consumers": [
+        "apps/orders/tests/test_refund.py",
+        "apps/payments/tests/test_payout.py"
+      ]
+    }
+  ],
+  "blocked_patterns": [
+    "Order\\.objects\\.create",
+    "User\\.objects\\.create_user"
+  ],
+  "stale_threshold_days": 60,
+  "last_reviewed": "2026-05-23"
+}
+```
+
+### `templates/factories.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Python scaffold realising the artefact in code.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#named-fixture-id","token_budget_impact":"~150 tokens when loaded"}}
+"""QA Test Data Catalog scaffold. See AGENTS.md for context and content/02-output-contract.xml for the contract."""
+from __future__ import annotations
+
+# Minimal scaffold for the qa-test-data-catalog methodology.
+# Replace this stub with real implementation; keep the header intact.
+
+def main() -> int:
+    """Entrypoint; returns exit code."""
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+    sys.exit(main())
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "catalog_id": "test-data-v3",
+  "fixtures": [
+    {
+      "id": "order-paid-eur",
+      "owner_service": "orders",
+      "refresh": "function",
+      "contains_pii": false,
+      "factory_path": "apps.orders.tests.factories.PaidOrderEurFactory",
+      "consumers": [
+        "apps/orders/tests/test_refund.py",
+        "apps/payments/tests/test_payout.py"
+      ]
+    }
+  ],
+  "blocked_patterns": [
+    "Order\\.objects\\.create",
+    "User\\.objects\\.create_user"
+  ],
+  "stale_threshold_days": 60,
+  "last_reviewed": "2026-05-23"
+}
+```

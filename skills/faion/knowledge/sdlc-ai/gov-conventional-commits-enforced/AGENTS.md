@@ -62,6 +62,8 @@
 | `templates/commitlint.config.cjs` | commitlint config |
 | `templates/lefthook.yml` | lefthook hook config |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,34 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/commitlint.config.cjs`
+
+```javascript
+module.exports = {
+  extends: ["@commitlint/config-conventional"],
+  rules: {
+    "type-enum": [2, "always", ["feat", "fix", "chore", "refactor", "docs", "test", "perf", "build", "ci", "style", "revert"]],
+    "subject-case": [2, "never", ["upper-case", "pascal-case", "start-case"]],
+    "subject-empty": [2, "never"],
+    "subject-full-stop": [2, "never", "."],
+    "header-max-length": [2, "always", 72],
+    "body-leading-blank": [2, "always"],
+    "footer-leading-blank": [2, "always"],
+    "scope-case": [2, "always", "kebab-case"]
+  }
+};
+```
+
+### `templates/lefthook.yml`
+
+```yaml
+commit-msg:
+  commands:
+    commitlint:
+      run: npx --no -- commitlint --edit {1}
+```

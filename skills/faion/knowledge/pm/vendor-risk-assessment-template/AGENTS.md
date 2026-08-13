@@ -62,6 +62,8 @@
 | `templates/vendor-risk-assessment-template.json` | JSON schema for the vendor risk assessment output contract. |
 | `templates/vendor-risk-assessment-template.md` | Markdown skeleton with the required fields. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,114 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` first checks whether the vendor handles customer data or credentials. If no → skip and document. If yes → check DPA + subprocessor list available. If missing → block and request from vendor. Otherwise → emit the assessment using the rule set.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/vendor-risk-assessment-template.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "vendor_name",
+    "owner",
+    "version",
+    "last_reviewed",
+    "risk_rating",
+    "fields",
+    "inputs_used"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "vendor_name": {
+      "type": "string"
+    },
+    "owner": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "risk_rating": {
+      "enum": [
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "status": {
+      "enum": [
+        "active",
+        "pending-review",
+        "deprecated"
+      ]
+    },
+    "fields": {
+      "type": "object",
+      "required": [
+        "dpa_url",
+        "subprocessor_list_url",
+        "data_residency",
+        "encryption_at_rest",
+        "retention_days",
+        "breach_notification_sla_hours"
+      ],
+      "properties": {
+        "dpa_url": {
+          "type": "string"
+        },
+        "subprocessor_list_url": {
+          "type": "string"
+        },
+        "data_residency": {
+          "type": "string"
+        },
+        "encryption_at_rest": {
+          "type": "boolean"
+        },
+        "retention_days": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "breach_notification_sla_hours": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "source"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
+```

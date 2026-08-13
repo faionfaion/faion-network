@@ -66,6 +66,8 @@
 | `templates/skeleton.json` | Skeleton template |
 | `templates/skeleton.md` | Skeleton template |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,53 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/skeleton.json`
+
+```json
+{
+  "report_period": "2026-Q2",
+  "resources": [
+    {
+      "name": "eks-prod-api",
+      "type": "compute",
+      "provisioned": "20 vCPU",
+      "utilisation_p95_30d": 0.62,
+      "headroom_pct": 38,
+      "cost_unit_usd": 0.04,
+      "monthly_cost_usd": 580
+    },
+    {
+      "name": "rds-postgres-prod",
+      "type": "db",
+      "provisioned": "8 vCPU 32GB 5000 IOPS",
+      "utilisation_p95_30d": 0.71,
+      "headroom_pct": 29,
+      "cost_unit_usd": 0.0,
+      "monthly_cost_usd": 720
+    }
+  ],
+  "alerts": [
+    {
+      "resource": "rds-postgres-prod",
+      "threshold": "70pct",
+      "action": "open re-provision ticket"
+    }
+  ],
+  "quarterly_projection": {
+    "next_quarter_demand_delta_pct": 30,
+    "next_quarter_cost_delta_usd": 450
+  },
+  "anomalies": [],
+  "review_date": "2026-05-15",
+  "signoff": {
+    "engineering_leader": "Alice",
+    "finance": "Carol",
+    "date": "2026-05-15"
+  }
+}
+```

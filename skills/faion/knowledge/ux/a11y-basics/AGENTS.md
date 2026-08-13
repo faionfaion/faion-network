@@ -65,7 +65,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/quick-check-report.md` | Markdown skeleton for a11y quick-check report. |
-| `templates/a11y-ci.js` | axe-core CI wiring snippet. |
 
 ## Scripts
 

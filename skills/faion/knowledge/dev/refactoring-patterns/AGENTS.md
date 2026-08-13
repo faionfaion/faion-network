@@ -69,6 +69,8 @@
 | `templates/refactor-scope-guard.sh` | Pre-commit hook blocking `refactor:` commits touching >5 files |
 | `templates/refactor-playbook.example.json` | Reference playbook artefact populating the output-contract schema |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,77 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree maps detected smell to canonical transform: long method → Extract Method; complex conditional → Replace Conditional with Polymorphism OR Decompose Conditional; long parameter list → Introduce Parameter Object; magic number → Replace Magic Number with Symbolic Constant; unclear name → Rename for Clarity. All leaves reference rules from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/refactor-scope-guard.sh`
+
+```bash
+#!/usr/bin/env bash
+# scripts/refactor-scope-guard.sh — block sprawling refactor commits.
+# Wire as pre-commit hook. Fails if a commit with "refactor:" title touches > 5 files.
+set -euo pipefail
+
+msg=$(git log -1 --format=%s 2>/dev/null || echo "")
+[[ "$msg" =~ ^refactor: ]] || exit 0
+
+files=$(git diff --cached --name-only | wc -l)
+if (( files > 5 )); then
+  echo "FAIL — refactor commit touches $files files (max 5). Split the change."
+  exit 1
+fi
+
+echo "OK — refactor scope is within limits ($files files)"
+```
+
+### `templates/refactor-playbook.example.json`
+
+```json
+{
+  "//purpose": "Reference filled refactor playbook conforming to 02-output-contract.xml schema",
+  "//consumes": "smell list from lint; coverage from CI",
+  "//produces": "git commit chain with one transformation each",
+  "//depends-on": "scripts/validate-refactoring-patterns.py for schema check",
+  "//token-budget-impact": "~250 tokens at validation time only",
+  "target": "src/billing/invoice.py",
+  "steps": [
+    {
+      "transform": "extract-method",
+      "scope_files": [
+        "src/billing/invoice.py"
+      ],
+      "before_pointer": "abc1234:src/billing/invoice.py:42",
+      "after_pointer": "def5678:src/billing/invoice.py:60",
+      "tests_green_before": true,
+      "tests_green_after": true,
+      "rollback": "git revert def5678"
+    },
+    {
+      "transform": "extract-method",
+      "scope_files": [
+        "src/billing/invoice.py"
+      ],
+      "before_pointer": "def5678:src/billing/invoice.py:72",
+      "after_pointer": "0123456:src/billing/invoice.py:85",
+      "tests_green_before": true,
+      "tests_green_after": true,
+      "rollback": "git revert 0123456"
+    },
+    {
+      "transform": "replace-magic-number",
+      "scope_files": [
+        "src/billing/invoice.py"
+      ],
+      "before_pointer": "0123456:src/billing/invoice.py:5",
+      "after_pointer": "789abcd:src/billing/invoice.py:8",
+      "tests_green_before": true,
+      "tests_green_after": true,
+      "rollback": "git revert 789abcd"
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```

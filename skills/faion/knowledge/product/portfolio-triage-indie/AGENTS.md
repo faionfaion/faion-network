@@ -64,6 +64,8 @@
 | `templates/portfolio-triage-indie.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,82 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/portfolio-triage-indie.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/portfolio-triage-indie.json",
+  "title": "Portfolio Triage Indie Output Contract",
+  "type": "object",
+  "required": [
+    "iteration_id",
+    "operator",
+    "rows",
+    "outcome_review",
+    "knowledge_space_url",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "iteration_id": {
+      "type": "string",
+      "description": "yyyy-ww or yyyy-mm identifier"
+    },
+    "operator": {
+      "type": "string",
+      "description": "named owner"
+    },
+    "rows": {
+      "type": "array",
+      "description": "per-product rows (name, mode, mrr, traffic, verdict, evidence_link, next_action)",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "outcome_review": {
+      "type": "string",
+      "description": "reference to prior iteration's actions"
+    },
+    "knowledge_space_url": {
+      "type": "string",
+      "description": "where report lives"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "iteration_id": "sample-iteration_id",
+  "operator": "ruslan@faion.net",
+  "rows": [
+    {
+      "k": "v"
+    }
+  ],
+  "outcome_review": "sample-outcome_review",
+  "knowledge_space_url": "sample-knowledge_space_url",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

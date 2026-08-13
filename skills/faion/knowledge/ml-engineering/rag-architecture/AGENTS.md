@@ -64,6 +64,8 @@
 | `templates/rag-architecture.md.tmpl` | Decision record skeleton with all 7 architecture sections. |
 | `templates/_smoke-test.md` | Filled example for a docs Q&amp;A RAG. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,53 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` decides whether RAG is the right approach at all: root question — "Does the corpus exceed a single LLM context window AND is it private/freshly updated?". Branches lead to long-context prompting (no), fine-tuning (closed corpus, stable), or RAG architecture (default). Each leaf references the rule that owns it.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rag-architecture.md.tmpl`
+
+```markdown
+# RAG Architecture Decision Record
+
+Owner: <name>
+Date: YYYY-MM-DD
+
+## 1. Chunking
+- Strategy: fixed | sentence | paragraph | semantic | header
+- Size: N tokens
+- Overlap: M tokens
+- Rationale: <one paragraph>
+
+## 2. Embeddings
+- Model: <provider/model>
+- Dimensions: <int>
+- Rationale: <one paragraph>
+
+## 3. Vector DB
+- Choice: qdrant | weaviate | chroma | pgvector | pinecone | milvus
+- Rationale: <one paragraph>
+
+## 4. Retrieval
+- Mode: vector | hybrid
+- Top-K pool: 20
+- Reranker: <model> → top-K final: 5
+- Rationale: <one paragraph>
+
+## 5. Context
+- Budget tokens: <int>
+- Ordering: relevance | recency | source
+- Rationale: <one paragraph>
+
+## 6. Metrics & Gates
+- MRR@10 target: 0.70
+- Faithfulness target: 0.90
+- Latency p95: <ms>
+- Cost per query: <$>
+
+## 7. Sign-off
+- Owner: <name>
+- Date: YYYY-MM-DD
+- Revisit date: YYYY-MM-DD
+```

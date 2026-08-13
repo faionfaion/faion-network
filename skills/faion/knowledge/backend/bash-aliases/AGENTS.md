@@ -68,6 +68,8 @@
 | `templates/_smoke-test.md` | Minimum viable filled-in audit. |
 | `templates/bash_aliases` | Categorized ~/.bash_aliases template with safety + gating + completion. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,51 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, status of prerequisites) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/bash_aliases`
+
+```text
+# ~/.bash_aliases — source from ~/.bashrc with: [ -f ~/.bash_aliases ] && . ~/.bash_aliases
+
+# --- safety ---
+alias rm="rm -i"
+alias mv="mv -i"
+alias cp="cp -i"
+
+# --- system ---
+alias ll="ls -alF --color=auto"
+alias la="ls -A --color=auto"
+alias h="history | tail -50"
+
+# --- git ---
+alias g="git"
+alias gs="git status -sb"
+alias gd="git diff"
+alias gl="git log --oneline -20"
+if declare -F __git_complete &>/dev/null; then __git_complete g git; fi
+
+# --- docker ---
+alias dk="docker"
+alias dkc="docker compose"
+alias dkps="docker ps --format 'table {{.Names}}\t{{.Status}}'"
+
+# --- systemd ---
+alias sc="systemctl --user"
+alias jc="journalctl --user -u"
+
+# --- modern tools (gated) ---
+if command -v eza &>/dev/null; then
+  alias ls="eza --color=always --group-directories-first"
+  alias ll="eza -la --color=always --group-directories-first --git"
+fi
+if command -v bat &>/dev/null; then
+  alias cat="bat --paging=never"
+fi
+
+# --- reload ---
+alias reload="source ~/.bash_aliases && source ~/.bashrc"
+```

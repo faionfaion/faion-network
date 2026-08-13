@@ -68,6 +68,8 @@
 | `templates/cloud-run-jobs.yaml` | Skeleton for the config artefact this methodology produces. |
 | `templates/_smoke-test.yaml` | Minimum viable filled-in example. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,32 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree branches on observable workload / configuration signals and routes to a specific rule id from `01-core-rules.xml`. Use it whenever the input shape is ambiguous between two adjacent methodologies in this sub-skill (e.g. cloud-run-jobs vs an adjacent sibling).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/cloud-run-jobs.yaml`
+
+```yaml
+name: example-name
+image: example-image
+task_count: 0  # int|number|string
+parallelism: example-parallelism
+task_timeout: 0  # int|number|string
+max_retries: 0  # int|number|string
+idempotent: false  # boolean
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+# minimum viable filled-in example of cloud-run-jobs.yaml
+name: example-name
+image: example-image
+task_count: 1
+parallelism: example-parallelism
+task_timeout: 1
+max_retries: 1
+idempotent: true
+```

@@ -55,8 +55,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/standup.md.tmpl` | Daily standup artefact skeleton with all sections. |
-| `templates/anomaly-table.md.tmpl` | Anomaly table with metric, delta, hypothesis, owner columns. |
 | `templates/_smoke-test.md` | Example filled standup. |
 
 ## Scripts

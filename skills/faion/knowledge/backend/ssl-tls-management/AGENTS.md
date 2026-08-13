@@ -69,6 +69,8 @@
 | `templates/site-letsencrypt.conf` | Reference vhost using Let's Encrypt cert + ACME challenge. |
 | `templates/setup-cloudflare-origin-cert.sh` | Generates origin cert via Cloudflare API + installs to /etc/nginx/ssl. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,155 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ssl-tls-management.json`
+
+```json
+{
+  "artefact_id": "tls-<domain>",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "domain": "<example.com>",
+  "mode": "letsencrypt",
+  "cert_path": "/etc/letsencrypt/live/<domain>/fullchain.pem",
+  "key_path": "/etc/letsencrypt/live/<domain>/privkey.pem",
+  "expiry_monitor_cron": "0 6 * * * /usr/local/bin/check-cert-expiry.sh",
+  "renewal_hook": "systemctl reload nginx",
+  "owner": "<@handle>"
+}
+```
+
+### `templates/ssl-params.conf`
+
+```conf
+# /etc/nginx/snippets/ssl-params.conf
+# Reusable SSL/TLS parameters — include in every ssl server block
+
+ssl_protocols             TLSv1.2 TLSv1.3;
+ssl_ciphers               ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+ssl_prefer_server_ciphers off;
+
+ssl_session_timeout 1d;
+ssl_session_cache   shared:SSL:10m;
+ssl_session_tickets off;
+
+# DH params for TLS 1.2 DHE ciphers (generate: openssl dhparam -out /etc/nginx/dhparam.pem 2048)
+# ssl_dhparam /etc/nginx/dhparam.pem;
+
+# OCSP stapling — enable ONLY with Let's Encrypt or commercial certs
+# NOT for Cloudflare origin certs (no OCSP responder)
+# ssl_stapling        on;
+# ssl_stapling_verify on;
+# resolver 1.1.1.1 8.8.8.8 valid=300s;
+# resolver_timeout 5s;
+```
+
+### `templates/site-cloudflare.conf`
+
+```conf
+# /etc/nginx/sites-available/DOMAIN.conf
+# nginx site template using Cloudflare origin cert (15-year, no renewal)
+# Requires: Cloudflare SSL mode set to Full (Strict)
+
+server {
+    listen 80;
+    listen 443 ssl;
+    server_name DOMAIN;
+
+    ssl_certificate     /etc/nginx/ssl/cloudflare-origin.pem;
+    ssl_certificate_key /etc/nginx/ssl/cloudflare-origin-key.pem;
+    include snippets/ssl-params.conf;
+
+    include snippets/security-headers.conf;
+    client_max_body_size 10M;
+
+    location / {
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:BACKEND_PORT;
+    }
+}
+```
+
+### `templates/site-letsencrypt.conf`
+
+```conf
+# /etc/nginx/sites-available/DOMAIN.conf
+# nginx site template using Let's Encrypt certificate (with OCSP stapling)
+# Requires: certbot installed, cert issued at /etc/letsencrypt/live/DOMAIN/
+
+server {
+    listen 80;
+    server_name DOMAIN www.DOMAIN;
+
+    # Allow certbot HTTP-01 challenge (required for renewal)
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    server_name DOMAIN www.DOMAIN;
+
+    ssl_certificate     /etc/letsencrypt/live/DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/DOMAIN/privkey.pem;
+    include snippets/ssl-params.conf;
+
+    # Enable OCSP stapling (valid for Let's Encrypt)
+    ssl_stapling        on;
+    ssl_stapling_verify on;
+    resolver            1.1.1.1 8.8.8.8 valid=300s;
+    resolver_timeout    5s;
+
+    include snippets/security-headers.conf;
+    client_max_body_size 10M;
+
+    location / {
+        include snippets/proxy-params.conf;
+        proxy_pass http://127.0.0.1:BACKEND_PORT;
+    }
+}
+```
+
+### `templates/setup-cloudflare-origin-cert.sh`
+
+```bash
+# setup-cloudflare-origin-cert.sh — Place origin cert + key in /etc/nginx/ssl/, set permissions
+# Prerequisites: copy cert and key content from Cloudflare Dashboard
+# Usage: bash setup-cloudflare-origin-cert.sh cert.pem key.pem
+set -euo pipefail
+
+CERT_FILE="${1:?Usage: $0 <cert.pem> <key.pem>}"
+KEY_FILE="${2:?Usage: $0 <cert.pem> <key.pem>}"
+
+SSL_DIR="/etc/nginx/ssl"
+sudo mkdir -p "$SSL_DIR"
+
+sudo cp "$CERT_FILE" "$SSL_DIR/cloudflare-origin.pem"
+sudo cp "$KEY_FILE"  "$SSL_DIR/cloudflare-origin-key.pem"
+
+sudo chmod 644 "$SSL_DIR/cloudflare-origin.pem"
+sudo chmod 600 "$SSL_DIR/cloudflare-origin-key.pem"
+sudo chown root:root "$SSL_DIR/cloudflare-origin.pem" "$SSL_DIR/cloudflare-origin-key.pem"
+
+echo "Cert installed:"
+echo "  $SSL_DIR/cloudflare-origin.pem"
+echo "  $SSL_DIR/cloudflare-origin-key.pem"
+echo ""
+
+# Show cert expiry
+sudo openssl x509 -in "$SSL_DIR/cloudflare-origin.pem" -noout -dates
+echo ""
+echo "Test nginx config: sudo nginx -t"
+echo "Then: sudo systemctl reload nginx"
+echo ""
+echo "IMPORTANT: Set Cloudflare SSL mode to Full (Strict)"
+```

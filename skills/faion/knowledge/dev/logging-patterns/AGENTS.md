@@ -68,6 +68,8 @@
 | `templates/structlog-config.py` | structlog (Python) config with JSON renderer + processors |
 | `templates/request-middleware.py` | Middleware: bind correlation_id + request context |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,127 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps service architecture, log destination, and PII exposure to a rule from `01-core-rules.xml`, telling the agent whether to apply the conventions or skip for managed/CLI cases. Walk it on every fresh invocation; do not memo-ise outcomes across distinct engagements.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/structlog-config.py`
+
+```python
+"""Production structlog configuration with context vars and sensitive data masking."""
+import re
+from contextvars import ContextVar
+from typing import Optional
+
+import structlog
+
+# Context variables — set once per request in middleware
+request_id_var: ContextVar[Optional[str]] = ContextVar("request_id", default=None)
+user_id_var: ContextVar[Optional[str]] = ContextVar("user_id", default=None)
+
+SENSITIVE_FIELDS = {"password", "secret", "token", "api_key", "authorization", "ssn", "credit_card"}
+SENSITIVE_PATTERNS = [
+    (re.compile(r"\b\d{16}\b"), "****-****-****-****"),
+    (re.compile(r"password[\"\\s:=]+[\"']?([^\"'\\s]+)", re.IGNORECASE), "password: [REDACTED]"),
+]
+
+
+def _add_request_context(logger, method_name, event_dict):
+    event_dict["request_id"] = request_id_var.get()
+    event_dict["user_id"] = user_id_var.get()
+    return event_dict
+
+
+def _mask_sensitive(logger, method_name, event_dict):
+    masked = {}
+    for key, value in event_dict.items():
+        if key.lower() in SENSITIVE_FIELDS:
+            masked[key] = "[REDACTED]"
+        elif isinstance(value, str):
+            for pattern, replacement in SENSITIVE_PATTERNS:
+                value = pattern.sub(replacement, value)
+            masked[key] = value
+        else:
+            masked[key] = value
+    return masked
+
+
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso"),
+        _add_request_context,
+        _mask_sensitive,
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.JSONRenderer(),
+    ],
+    wrapper_class=structlog.stdlib.BoundLogger,
+    context_class=dict,
+    logger_factory=structlog.stdlib.LoggerFactory(),
+    cache_logger_on_first_use=True,
+)
+
+logger = structlog.get_logger()
+```
+
+### `templates/request-middleware.py`
+
+```python
+"""FastAPI request logging middleware — sets correlation context and logs start/end."""
+import time
+import uuid
+
+import structlog
+from fastapi import FastAPI, Request
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from .structlog_config import request_id_var, user_id_var
+
+logger = structlog.get_logger()
+
+
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
+        request_id_var.set(request_id)
+        user_id_var.set(getattr(request.state, "user_id", None))
+
+        start = time.perf_counter()
+        logger.info(
+            "request.started",
+            method=request.method,
+            path=request.url.path,
+            client_ip=request.client.host if request.client else None,
+        )
+
+        try:
+            response = await call_next(request)
+            duration_ms = round((time.perf_counter() - start) * 1000, 2)
+            logger.info(
+                "request.completed",
+                method=request.method,
+                path=request.url.path,
+                status_code=response.status_code,
+                duration_ms=duration_ms,
+            )
+            response.headers["X-Request-ID"] = request_id
+            return response
+
+        except Exception as exc:
+            duration_ms = round((time.perf_counter() - start) * 1000, 2)
+            logger.error(
+                "request.failed",
+                method=request.method,
+                path=request.url.path,
+                duration_ms=duration_ms,
+                exc_info=True,
+            )
+            raise
+
+
+app = FastAPI()
+app.add_middleware(RequestLoggingMiddleware)
+```

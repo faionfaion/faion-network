@@ -68,6 +68,8 @@
 | `templates/raci-template.md` | Markdown skeleton for the RACI matrix table. |
 | `templates/raci-lint.py` | Reference script enforcing one-A-per-row + non-empty R. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - parent skill: `pro/pm/` (see neighbouring methodologies).
@@ -81,3 +83,156 @@ See `content/06-decision-tree.xml`. The tree maps observable signals (input
 preconditions, source-of-truth access, named-consumer presence) onto a concrete
 verdict — apply the methodology, downgrade to draft, or skip — with each leaf
 referencing a rule id from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/raci-matrix.json",
+  "type": "object",
+  "required": [
+    "matrix_id",
+    "program_id",
+    "tasks",
+    "stakeholders",
+    "assignments",
+    "lead",
+    "review_due"
+  ],
+  "properties": {
+    "matrix_id": {
+      "type": "string"
+    },
+    "program_id": {
+      "type": "string"
+    },
+    "tasks": {
+      "type": "array",
+      "minItems": 1
+    },
+    "stakeholders": {
+      "type": "array",
+      "minItems": 2
+    },
+    "assignments": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "task",
+          "R",
+          "A"
+        ],
+        "properties": {
+          "task": {
+            "type": "string"
+          },
+          "R": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "A": {
+            "type": "string"
+          },
+          "C": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "I": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "lead": {
+      "type": "string"
+    },
+    "review_due": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```
+
+### `templates/raci-lint.py`
+
+```python
+"""
+
+
+"""raci-lint.py — validate a Markdown RACI table from stdin.
+
+Rules enforced:
+  - Exactly one A per task row
+  - At least one R per task row
+  - Maximum 3 C per task row
+
+Exit 0 if valid, exit 1 if violations found.
+
+Usage:
+    python3 raci-lint.py < RACI.md
+    cat RACI.md | python3 raci-lint.py
+"""
+from __future__ import annotations
+
+import sys
+
+
+def main() -> int:
+    text = sys.stdin.read()
+    rows = [
+        line
+        for line in text.splitlines()
+        if line.startswith("|") and "---" not in line
+    ]
+    if len(rows) < 2:
+        print("No RACI table found in input.", file=sys.stderr)
+        return 2
+
+    # Skip header row
+    violations: list[str] = []
+    for row in rows[1:]:
+        cells = [c.strip() for c in row.strip("|").split("|")]
+        if len(cells) < 2:
+            continue
+        task = cells[0]
+        vals = cells[1:]
+
+        a_count = sum(1 for v in vals if "A" in v)
+        r_count = sum(1 for v in vals if "R" in v)
+        c_count = sum(1 for v in vals if v.strip() == "C")
+
+        if a_count != 1:
+            violations.append(f"Row '{task}': A_count={a_count} (must be exactly 1)")
+        if r_count < 1:
+            violations.append(f"Row '{task}': no R assigned")
+        if c_count > 3:
+            violations.append(f"Row '{task}': too many C ({c_count}, max 3)")
+
+    if violations:
+        for v in violations:
+            print(v)
+        return 1
+
+    print("RACI table is valid.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+```

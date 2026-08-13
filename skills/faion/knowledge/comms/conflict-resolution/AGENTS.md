@@ -69,6 +69,8 @@
 | `templates/prompt-mode-selection.txt` | Prompt to apply TK matrix to a conflict description |
 | `templates/prompt-nvc-rewrite.txt` | Prompt to rewrite an evaluative draft into observation/feeling/need/request |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,37 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes by stakes × relationship matrix to one of the five TK modes, then to NVC structuring. Avoiding leaf is the only one that maps to skip-this-methodology.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-mode-selection.txt`
+
+```text
+Given this conflict situation, recommend the best Thomas-Kilmann conflict mode.
+Situation: <describe the conflict in 2-4 sentences>
+Stakes: <high / medium / low>
+Relationship importance: <long-term partner / short-term / one-off>
+Time available: <urgent (hours) / moderate (days) / flexible>
+Power balance: <equal / I have more / they have more>
+Output:
+1. Recommended mode — one-sentence rationale
+2. One alternative mode to consider and why
+3. One mode to avoid and why
+```
+
+### `templates/prompt-nvc-rewrite.txt`
+
+```text
+Rewrite the following message using Nonviolent Communication (NVC) format.
+Original message: "<paste emotionally charged draft>"
+Target audience: <colleague / manager / direct report>
+Apply the 4 steps:
+1. Observation: replace evaluations with specific factual observations (include date or frequency)
+2. Feeling: identify the specific emotion (reject "I feel that..." — must be an emotion word)
+3. Need: name the universal need behind the feeling (not a strategy or demand)
+4. Request: make a specific, positive, doable request
+Output: the rewritten NVC message only, no commentary.
+End with a request to meet or discuss, not a demand.
+```

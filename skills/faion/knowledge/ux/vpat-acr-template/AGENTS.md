@@ -68,6 +68,8 @@
 | `templates/vpat-acr-template.md` | Markdown VPAT 2.5 ACR skeleton |
 | `templates/vpat-acr-template.json` | JSON skeleton matching the output schema |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,31 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on upstream audit availability, VPAT edition, and signature presence. Any gate failure halts publication.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/vpat-acr-template.json`
+
+```json
+{
+  "product": "",
+  "version": "",
+  "vpat_edition": "2.5 INT 2024",
+  "scope": "",
+  "rows": [
+    {
+      "sc": "1.4.3 Contrast (Minimum)",
+      "status": "Supports",
+      "evaluation_method": "automated + manual",
+      "remarks": ""
+    }
+  ],
+  "signed_by": {
+    "name": "",
+    "role": "",
+    "date": ""
+  }
+}
+```

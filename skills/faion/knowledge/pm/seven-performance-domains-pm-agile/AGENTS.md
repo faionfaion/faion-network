@@ -65,6 +65,8 @@
 |------|---------|
 | `templates/domains.yaml` | Seven-domain skeleton with owner, health colour, top-3 risks per domain |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[six-core-principles]]
@@ -75,3 +77,68 @@
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (preconditions, baseline presence, threshold pass/fail) to a concrete action; each leaf references a rule from `01-core-rules.xml`. Use it when in doubt about whether or how to apply this methodology to the case at hand.
 
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/domains.yaml`
+
+```yaml
+# Per-project PMBOK 8 domain status manifest.
+# Fill before each monthly review. Owner = accountable person.
+# Status: G (green) | A (amber) | R (red)
+# Evidence: path or quoted text from a real artifact.
+# Gap: required for A and R; explain what is missing.
+
+domains:
+  governance:
+    status: G
+    owner: pm
+    evidence: charter.md#authority-section
+    gap: ""
+
+  scope:
+    status: A
+    owner: po
+    evidence: spec.md
+    gap: "Acceptance criteria missing for 3 user stories in sprint 4"
+
+  schedule:
+    status: G
+    owner: pm
+    evidence: roadmap.md
+    gap: ""
+
+  finance:
+    status: A
+    owner: sponsor
+    evidence: budget.xlsx
+    gap: "Q3 forecast not updated since last month"
+
+  stakeholders:
+    status: G
+    owner: pm
+    evidence: stakeholder-register.md
+    gap: ""
+
+  resources:
+    status: R
+    owner: line_manager
+    evidence: capacity.md
+    gap: "Senior engineer departed; no backfill plan exists"
+
+  risk:
+    status: G
+    owner: pm
+    evidence: risk-register.md
+    gap: ""
+
+value_delivery:
+  outputs_shipped: 0       # replace with actual count
+  outcomes_realized: 0     # replace with actual count
+  value_realization_rate: 0.0
+
+sustainability_metrics:
+  - co2_per_user_session_kg: null   # measure or "not applicable: <reason>"
+  - inclusive_a11y_score: null      # WCAG level achieved
+```

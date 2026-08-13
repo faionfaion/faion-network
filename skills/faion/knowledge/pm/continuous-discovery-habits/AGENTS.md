@@ -69,6 +69,8 @@
 | `templates/weekly-discovery.md` | Weekly discovery readout template with shipped / coded / tree-diff / next-week sections. |
 | `templates/ost-apply.py` | Apply a tree-diff (JSON-patch / YAML-diff) to the current OST file. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,116 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals to apply / skip / route-elsewhere, with each leaf referencing a rule id from `01-core-rules.xml`. Consult the tree before applying the methodology when signals are ambiguous.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ost.yaml`
+
+```yaml
+# Opportunity Solution Tree (OST)
+# Source of truth for continuous discovery. Edit via PR; agents emit diffs only.
+# Run scripts/ost-apply.py to apply agent-proposed diffs.
+
+outcome:
+  id: outcome_YYYY_QN_<slug>
+  metric: <measurable_metric_name>      # e.g., pct_new_signups_completing_first_value_action
+  baseline: 0.00
+  target: 0.00
+  owner: pm@team.com
+  frozen_since: "YYYY-MM-DD"
+
+opportunities:
+  - id: opp_<slug>
+    statement: "<customer need/pain in customer's own words — no 'build X' phrases>"
+    evidence:
+      - quote_id: q_YYYY-MM-DD_p000   # participant-id + interview-date
+        verbatim: "<exact quote>"
+        participant_segment: <segment>
+        interview_date: "YYYY-MM-DD"
+    parent: outcome_YYYY_QN_<slug>
+    last_evidence_date: "YYYY-MM-DD"
+    status: active                      # active | parked | shipped | invalidated
+    solutions:
+      - id: sol_<slug>
+        assumption_tests:
+          - type: desirability           # desirability | viability | feasibility | usability | ethical
+            method: prototype_test
+            owner: ux
+          - type: feasibility
+            method: spike
+            owner: tech_lead
+        decision: not_started           # not_started | testing | win | kill
+
+# OST diff format (for agent output):
+# diffs:
+#   add:
+#     - id: opp_new
+#       statement: "..."
+#       evidence: [...]
+#       parent: outcome_...
+#   update:
+#     - id: opp_existing
+#       last_evidence_date: "YYYY-MM-DD"
+#   park:
+#     - opp_stale_no_evidence
+#   archive:
+#     - opp_old_180d
+```
+
+### `templates/ost-apply.py`
+
+```python
+"""
+
+#!/usr/bin/env python3
+"""
+ost-apply.py — apply OST diffs emitted by agents.
+Usage: python ost-apply.py <ost.yaml> <diff.yaml>
+The diff format is the schema defined in ost.yaml under 'diffs:'.
+PM reviews the diff file before running this script.
+Operations: add (new opportunity), update (patch fields), park (set status=parked),
+            archive (remove from active tree).
+"""
+import sys, yaml, copy
+from pathlib import Path
+
+
+def apply_diff(ost: dict, diff: dict) -> dict:
+    out = copy.deepcopy(ost)
+    by_id = {o["id"]: o for o in out.get("opportunities", [])}
+
+    for op in diff.get("add", []):
+        if op["id"] in by_id:
+            raise SystemExit(f"add: id already exists: {op['id']}")
+        out["opportunities"].append(op)
+        by_id[op["id"]] = op
+
+    for op in diff.get("update", []):
+        if op["id"] not in by_id:
+            raise SystemExit(f"update: missing opportunity: {op['id']}")
+        by_id[op["id"]].update(op)
+
+    for op_id in diff.get("park", []):
+        if op_id not in by_id:
+            raise SystemExit(f"park: missing opportunity: {op_id}")
+        by_id[op_id]["status"] = "parked"
+
+    for op_id in diff.get("archive", []):
+        out["opportunities"] = [
+            o for o in out["opportunities"] if o["id"] != op_id
+        ]
+
+    return out
+
+
+if __name__ == "__main__":
+    ost_path = Path(sys.argv[1])
+    diff_path = Path(sys.argv[2])
+    ost = yaml.safe_load(ost_path.read_text())
+    diff = yaml.safe_load(diff_path.read_text())
+    result = apply_diff(ost, diff.get("diffs", diff))
+    ost_path.write_text(yaml.safe_dump(result, sort_keys=False, allow_unicode=True))
+    print(f"Applied diff from {diff_path} to {ost_path}")
+```

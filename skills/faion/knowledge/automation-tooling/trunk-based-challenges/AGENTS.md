@@ -67,6 +67,8 @@
 | `templates/report.md` | Diagnostic report skeleton |
 | `templates/artefact.json` | Sample artefact metadata for validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,21 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, environment context, risk level) to a concrete conclusion, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which rule applies to the current context.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/artefact.json`
+
+```json
+{
+  "trunk_break_freq": "1_to_3_per_week",
+  "first_failing_check": "pr_size",
+  "recommended_fix": "Cap PR size at 200 lines via policy + reviewer training; re-measure in 4 weeks.",
+  "report_format": "markdown",
+  "pr_size_p95": 380,
+  "ci_p95_minutes": 6.2,
+  "review_p95_hours": 11.5
+}
+```

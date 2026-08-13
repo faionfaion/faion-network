@@ -63,6 +63,8 @@
 |------|---------|
 | `templates/duo-flows.yaml` | GitLab Duo Agent Platform flows config mapping labels to named flows. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,55 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal (input shape, infra availability, decision class) and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/duo-flows.yaml`
+
+```yaml
+# .gitlab/duo-flows.yaml — canonical Developer + Code Review Flow composition.
+# Drop into project root. Requires GitLab 18.8 or later.
+
+require_gitlab_version: ">=18.8"
+on_unmet_version: error_and_disable_flows
+
+flows:
+  developer:
+    trigger:
+      issue_label_added: "agent:implement"
+    require_human_review: true
+    output: merge_request
+    auto_link_issue: true              # MR body gets "Closes #issue"
+    respect:
+      - protected_branches
+      - codeowners
+      - approval_rules
+    forbid:
+      - direct_rest_api                # all writes via Duo
+      - shared_bot_token               # use OAuth user grant
+    timeout: 30m
+    on_timeout: comment_stalled
+
+  code_review:
+    trigger:
+      merge_request_opened: any
+    standards: [security, perf, style]
+    require_human_approver: true
+    sast:
+      filter_false_positives: true
+      report_to: mr_discussion
+
+  software_development:
+    trigger:
+      issue_label_added: "agent:plan"
+    output: plan_comment_then_merge_request
+    require_plan_approval: true        # human signs off plan before MR opens
+
+  cicd_legacy_conversion:
+    trigger:
+      pipeline_label: "agent:cicd-migrate"
+    output: merge_request
+    standards: [security]
+```

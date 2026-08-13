@@ -62,6 +62,8 @@
 | `templates/growth-linkedin-strategy.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,91 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/growth-linkedin-strategy.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/growth-linkedin-strategy.json",
+  "title": "Growth LinkedIn Strategy Output Contract",
+  "type": "object",
+  "required": [
+    "operator",
+    "positioning",
+    "post_rotation",
+    "daily_engagement_quota",
+    "dm_trigger",
+    "kpi_set",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "operator": {
+      "type": "string",
+      "description": "named LinkedIn account owner"
+    },
+    "positioning": {
+      "type": "object",
+      "description": "{icp, pain, outcome}"
+    },
+    "post_rotation": {
+      "type": "array",
+      "description": "\u22653 typed posts (story/how-to/carousel) for the next week",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "daily_engagement_quota": {
+      "type": "integer",
+      "description": "\u226510 strangers-replied-to per day"
+    },
+    "dm_trigger": {
+      "type": "string",
+      "description": "exact trigger phrase + CTA"
+    },
+    "kpi_set": {
+      "type": "object",
+      "description": "{profile_visits, qualified_dms, inbound_calls, conversion_rate}"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "operator": "sample-operator",
+  "positioning": {
+    "key": "value"
+  },
+  "post_rotation": [
+    {
+      "key": "value"
+    }
+  ],
+  "daily_engagement_quota": 1,
+  "dm_trigger": "sample-dm_trigger",
+  "kpi_set": {
+    "key": "value"
+  },
+  "version": "sample-version",
+  "last_reviewed": "2026-05-23"
+}
+```

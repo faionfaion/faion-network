@@ -71,6 +71,8 @@
 | `templates/contrast-pairs.json` | Example contrast-pair table for one screen |
 | `templates/_smoke-test.json` | Minimum viable filled-in a11y-report for validator round-trip |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,150 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on (a) axe-core critical count > 0 → fail, (b) keyboard-path incomplete → fail, (c) contrast violations on text → fail. Verdict pass requires all three clean. Every leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/accessibility.json",
+  "type": "object",
+  "required": [
+    "screen_id",
+    "url",
+    "wcag_level",
+    "checks",
+    "axe",
+    "verdict"
+  ],
+  "properties": {
+    "screen_id": {
+      "type": "string",
+      "pattern": "^A11Y-[A-Z0-9-]{2,40}$"
+    },
+    "url": {
+      "type": "string"
+    },
+    "wcag_level": {
+      "type": "string",
+      "enum": [
+        "A",
+        "AA",
+        "AAA"
+      ]
+    },
+    "checks": {
+      "type": "object",
+      "required": [
+        "semantic",
+        "aria",
+        "keyboard",
+        "contrast"
+      ]
+    },
+    "axe": {
+      "type": "object",
+      "required": [
+        "critical",
+        "serious",
+        "moderate",
+        "minor"
+      ]
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    }
+  }
+}
+```
+
+### `templates/contrast-pairs.json`
+
+```json
+{
+  "pairs": [
+    {
+      "context": "body text",
+      "fg": "#1a1a1a",
+      "bg": "#ffffff",
+      "ratio_required": 4.5
+    },
+    {
+      "context": "muted text",
+      "fg": "#555555",
+      "bg": "#ffffff",
+      "ratio_required": 4.5
+    },
+    {
+      "context": "primary CTA text",
+      "fg": "#ffffff",
+      "bg": "#1e6bdb",
+      "ratio_required": 4.5
+    },
+    {
+      "context": "focus ring",
+      "fg": "#1e6bdb",
+      "bg": "#ffffff",
+      "ratio_required": 3.0
+    },
+    {
+      "context": "disabled button",
+      "fg": "#999999",
+      "bg": "#f0f0f0",
+      "ratio_required": 3.0,
+      "non_interactive": true
+    }
+  ]
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "screen_id": "A11Y-PRICING",
+  "url": "https://example.com/pricing",
+  "wcag_level": "AA",
+  "checks": {
+    "semantic": {
+      "pass": true,
+      "landmarks": [
+        "header",
+        "main",
+        "footer"
+      ],
+      "div_buttons": 0
+    },
+    "aria": {
+      "pass": true,
+      "redundant_count": 0
+    },
+    "keyboard": {
+      "pass": true,
+      "reachable": 14,
+      "focus_visible": true,
+      "traps": 0
+    },
+    "contrast": {
+      "pass": true,
+      "violations": []
+    }
+  },
+  "axe": {
+    "critical": 0,
+    "serious": 1,
+    "moderate": 3,
+    "minor": 2
+  },
+  "verdict": "pass",
+  "must_fix": []
+}
+```

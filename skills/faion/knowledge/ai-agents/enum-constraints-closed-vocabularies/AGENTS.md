@@ -60,6 +60,8 @@
 | `templates/enum_schema.py` | Pydantic model with Literal enum fields wired for OpenAI strict mode |
 | `templates/_smoke-test.json` | Minimum valid ticket object for self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -75,3 +77,62 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The root question is whether the value set is finite. The tree then routes finite-closed sets to `Literal[...]`, finite-mostly-closed sets to a discriminated union with a "novel" branch, and genuinely open sets to free-string. Each leaf maps to a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/enum_schema.py`
+
+```python
+"""Strict-mode Pydantic schema with Literal enum fields.
+
+Use with OpenAI:
+    client.responses.parse(model="gpt-5", input=msgs, text_format=Ticket)
+
+Or Anthropic tool-call mode:
+    tools=[{"name": "submit_ticket", "input_schema": Ticket.model_json_schema()}]
+    tool_choice={"type": "tool", "name": "submit_ticket"}
+"""
+
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+# Closed enums — every valid value listed; decoder masks all others.
+Category = Literal["billing", "tech_support", "refund", "spam", "other"]
+Priority = Literal["P0", "P1", "P2", "P3"]
+Sentiment = Literal["angry", "frustrated", "neutral", "happy"]
+
+
+class Ticket(BaseModel):
+    """Support ticket classification.
+
+    `extra=forbid` translates to JSON Schema `additionalProperties: false`,
+    which is mandatory under OpenAI strict mode.
+    """
+
+    model_config = {"extra": "forbid"}
+
+    reasoning: str = Field(
+        description="Brief evidence for the labels below. Keep under 60 words."
+    )
+    category: Category = Field(description="Primary intent of the message.")
+    priority: Priority = Field(description="Urgency level; P0 = service down.")
+    sentiment: Sentiment = Field(description="Emotional tone of the customer.")
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "smallest valid ticket for the enum validator",
+  "_consumes": "nothing",
+  "_produces": "example Ticket with all-enum fields",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "~50 tokens",
+  "category": "billing",
+  "priority": "P1",
+  "sentiment": "frustrated"
+}
+```

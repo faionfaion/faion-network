@@ -67,6 +67,8 @@
 | `templates/bootstrap.sh` | Bootstrap script: create policy + template + initial index + write alias |
 | `templates/_smoke-test.json` | Minimum config used by validate-devops-elk-index-management.py --self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,141 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it when wiring index management on a new ES cluster.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/index-template.json`
+
+```json
+{
+  "index_patterns": [
+    "logs-*"
+  ],
+  "priority": 100,
+  "template": {
+    "settings": {
+      "number_of_shards": 1,
+      "number_of_replicas": 1,
+      "index.lifecycle.name": "logs-policy",
+      "index.lifecycle.rollover_alias": "logs-write",
+      "refresh_interval": "5s"
+    },
+    "mappings": {
+      "properties": {
+        "@timestamp": {
+          "type": "date"
+        },
+        "service": {
+          "type": "keyword"
+        },
+        "environment": {
+          "type": "keyword"
+        },
+        "level": {
+          "type": "keyword"
+        },
+        "message": {
+          "type": "text"
+        },
+        "kubernetes.pod.name": {
+          "type": "keyword"
+        }
+      }
+    }
+  },
+  "data_stream": {}
+}
+```
+
+### `templates/ilm-policy.json`
+
+```json
+{
+  "policy": {
+    "phases": {
+      "hot": {
+        "actions": {
+          "rollover": {
+            "max_primary_shard_size": "50gb",
+            "max_age": "7d"
+          },
+          "set_priority": {
+            "priority": 100
+          }
+        }
+      },
+      "warm": {
+        "min_age": "7d",
+        "actions": {
+          "allocate": {
+            "include": {
+              "data_tier": "data_warm"
+            }
+          },
+          "forcemerge": {
+            "max_num_segments": 1
+          },
+          "set_priority": {
+            "priority": 50
+          }
+        }
+      },
+      "cold": {
+        "min_age": "30d",
+        "actions": {
+          "searchable_snapshot": {
+            "snapshot_repository": "s3-logs-cold"
+          },
+          "set_priority": {
+            "priority": 0
+          }
+        }
+      },
+      "delete": {
+        "min_age": "90d",
+        "actions": {
+          "delete": {}
+        }
+      }
+    }
+  }
+}
+```
+
+### `templates/bootstrap.sh`
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+ES_URL="${ES_URL:?missing}"
+AUTH=(-u "${ES_USER:?}:${ES_PASS:?}")
+
+curl -sfX PUT "$ES_URL/_ilm/policy/logs-policy" "${AUTH[@]}" -H "Content-Type: application/json" --data-binary @ilm-policy.json
+curl -sfX PUT "$ES_URL/_index_template/logs-template" "${AUTH[@]}" -H "Content-Type: application/json" --data-binary @index-template.json
+curl -sfX PUT "$ES_URL/logs-000001" "${AUTH[@]}" -H "Content-Type: application/json" -d '{"aliases": {"logs-write": {"is_write_index": true}}}'
+echo OK
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "index_pattern": "logs-*",
+  "policy_name": "logs-policy",
+  "phases": [
+    "hot",
+    "warm",
+    "cold",
+    "delete"
+  ],
+  "rollover": {
+    "max_primary_shard_size": "50gb",
+    "max_age_days": 7
+  },
+  "shard_count": 1,
+  "replica_count": 1,
+  "write_alias": "logs-write"
+}
+```

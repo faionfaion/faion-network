@@ -69,6 +69,8 @@
 | `templates/warmup-schedule.csv` | Warmup schedule CSV (days, % of target budget). |
 | `templates/fb-launch-plan.json` | Schema-conformant sample artefact used by validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,38 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/warmup-schedule.csv`
+
+```csv
+day,pct_of_target
+1,50
+4,75
+7,100
+```
+
+### `templates/fb-launch-plan.json`
+
+```json
+{
+  "account_warmup": {
+    "start_pct": 50,
+    "ramp_pct_per_3d": 25
+  },
+  "placements": [
+    "feed",
+    "reels",
+    "marketplace"
+  ],
+  "learning_phase": {
+    "weekly_conv_forecast": 80,
+    "ramp_days": 14
+  },
+  "aem_configured": true,
+  "page_quality": "standard"
+}
+```

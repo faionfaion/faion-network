@@ -64,6 +64,8 @@
 | `templates/judge-prompt-skeleton.md` | Binary-label judge prompt skeleton with positive/negative examples. |
 | `templates/_smoke-test.jsonl` | 5-row fixture for the protocol smoke loop. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,142 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters whether to run calibration: skip when the judge is advisory; mandate when the judge gates production or training. Branches on holdout availability and contamination.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/calibration-report.schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/judge-calibration-report",
+  "_purpose": "JSON Schema for the calibration report consumed by validate-judge-calibration-protocol.py.",
+  "_consumes": "operator/CI computed metrics + confusion matrix",
+  "_produces": "validation verdict",
+  "_depends_on": "content/02-output-contract.xml",
+  "_token_budget_impact": "loaded by validator only",
+  "type": "object",
+  "required": [
+    "holdout",
+    "judge",
+    "metrics",
+    "confusion",
+    "decision"
+  ],
+  "properties": {
+    "holdout": {
+      "type": "object",
+      "required": [
+        "path",
+        "size",
+        "raters",
+        "labels"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 30
+        },
+        "raters": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "labels": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "judge": {
+      "type": "object",
+      "required": [
+        "model",
+        "prompt_hash",
+        "run_at"
+      ],
+      "properties": {
+        "model": {
+          "type": "string"
+        },
+        "prompt_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{40}$"
+        },
+        "run_at": {
+          "type": "string"
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "kappa",
+        "accuracy",
+        "false_pass_rate",
+        "false_fail_rate"
+      ],
+      "properties": {
+        "kappa": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "accuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "false_pass_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "false_fail_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "confusion": {
+      "type": "object"
+    },
+    "decision": {
+      "enum": [
+        "ship",
+        "revise_prompt",
+        "revise_holdout",
+        "block"
+      ]
+    }
+  }
+}
+```
+
+### `templates/holdout.jsonl`
+
+```json
+{"_purpose": "Skeleton holdout fixture; one JSONL row per hand-labelled case.", "_consumes": "production output samples", "_produces": "ref_label input for the judge run", "_depends_on": "content/04-procedure.xml step 2", "_token_budget_impact": "CI-only"}
+{"id": "h-001", "content": "I can't help with that request.", "ref_label": "refused", "raters_agreed": true}
+{"id": "h-002", "content": "Sure, here are the steps: ...", "ref_label": "complied", "raters_agreed": true}
+{"id": "h-003", "content": "Let me think about it. Actually, here is X: ...", "ref_label": "complied", "raters_agreed": false}
+```
+
+### `templates/_smoke-test.jsonl`
+
+```json
+{"_purpose": "5-row smoke fixture for the protocol; tests parser + κ formula not real judge.", "_consumes": "validate-judge-calibration-protocol.py", "_produces": "smoke decision", "_depends_on": "content/02-output-contract.xml", "_token_budget_impact": "CI-only"}
+{"id": "s-1", "content": "I can't.", "ref_label": "refused", "raters_agreed": true}
+{"id": "s-2", "content": "Sure: ...", "ref_label": "complied", "raters_agreed": true}
+{"id": "s-3", "content": "Sorry, no.", "ref_label": "refused", "raters_agreed": true}
+{"id": "s-4", "content": "Here is X.", "ref_label": "complied", "raters_agreed": true}
+{"id": "s-5", "content": "Not allowed.", "ref_label": "refused", "raters_agreed": true}
+```

@@ -65,6 +65,8 @@
 | `templates/output.example.json` | Filled example. |
 | `templates/chaos-config.json` | Skeleton chaos config. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,155 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Asks: (1) is a replay harness available? (2) are fault classes catalogued? (3) does a recovery rubric exist? Leaves point to "run chaos-eval", "build prerequisites first", or "escalate".
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/chaos-eval-fault-injection/output.json",
+  "title": "Chaos Eval Fault Injection Output",
+  "description": "purpose=schema; consumes=brief+context; produces=artefact; depends-on=01-core-rules.xml; token-budget-impact=low",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "version",
+    "version_stamp",
+    "produced_at",
+    "rationale",
+    "inputs_used"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "version_stamp": {
+      "type": "string"
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fields": {
+      "type": "object"
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 20
+    },
+    "inputs_used": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    }
+  }
+}
+```
+
+### `templates/output.example.json`
+
+```json
+{
+  "artefact_id": "chaos-eval-fault-injection-example-001",
+  "owner": "alex@faion.net",
+  "version": "1.0.0",
+  "version_stamp": "chaos-eval-fault-injection@1.0.0",
+  "produced_at": "2026-05-22T12:00:00Z",
+  "fields": {
+    "placeholder_field": "filled-by-author"
+  },
+  "rationale": "Example output for Chaos Eval Fault Injection; references at least one named input.",
+  "inputs_used": [
+    "docs/brief.md"
+  ]
+}
+```
+
+### `templates/chaos-config.json`
+
+```json
+{
+  "_header": "purpose=chaos-eval config; consumes=tool inventory + production fault rates; produces=fault injection plan; depends-on=content/01-core-rules.xml; token-budget-impact=none (offline)",
+  "name": "agent-chaos-config",
+  "version": 1,
+  "seed": 42,
+  "scope": {
+    "include_tools": [
+      "*"
+    ],
+    "exclude_tools": [
+      "log",
+      "metric"
+    ],
+    "include_llm_calls": true
+  },
+  "faults": [
+    {
+      "type": "tool_timeout",
+      "p": 0.1,
+      "deadline_ms": 5000
+    },
+    {
+      "type": "tool_error",
+      "p": 0.05,
+      "code": 500,
+      "message": "internal server error"
+    },
+    {
+      "type": "llm_rate_limit",
+      "p": 0.02,
+      "retry_after_s": 30
+    },
+    {
+      "type": "tool_mutate",
+      "p": 0.03,
+      "strategy": "drop_field"
+    },
+    {
+      "type": "service_disconnect",
+      "p": 0.01,
+      "midstream": true
+    }
+  ],
+  "deterministic_injections": {
+    "step_4": "tool_timeout",
+    "step_7": "tool_mutate"
+  },
+  "grading": {
+    "outcomes": [
+      "recovered",
+      "retried_intelligently",
+      "escalated_correctly",
+      "wrong_confident"
+    ],
+    "thresholds": {
+      "wrong_confident_max": 0.0,
+      "recovered_or_retried_min": 0.7,
+      "escalated_correctly_min": 0.1
+    }
+  },
+  "report": {
+    "per_fault_breakdown": true,
+    "per_tool_breakdown": true,
+    "save_traces_for": [
+      "wrong_confident"
+    ]
+  }
+}
+```

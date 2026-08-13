@@ -55,16 +55,6 @@
 | Author component test | sonnet | Pattern application from template. |
 | Debug ESM/CJS interop crash | opus | Cross-cuts bundler, runner, transformer chain. |
 
-## Templates
-
-| File | Purpose |
-|------|---------|
-| `templates/vitest.config.ts.tmpl` | Vitest config with jsdom env, coverage, setup file path. |
-| `templates/jest.config.cjs.tmpl` | Jest config with jsdom env, transform, coverage thresholds. |
-| `templates/setup.ts.tmpl` | Test setup: jest-dom + MSW server + timer teardown. |
-| `templates/component.test.tsx.tmpl` | React component test using `screen.getByRole` + MSW handler. |
-| `templates/_smoke-test.test.ts` | Minimal Vitest sanity test verifying the toolchain. |
-
 ## Scripts
 
 | File | Purpose | When to call |

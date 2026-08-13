@@ -66,6 +66,8 @@
 | `templates/migration-spec.json` | Reference migration spec output. |
 | `templates/.eslintrc.strict-backstop.json` | ESLint rules that backstop common workarounds. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,135 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree picks the per-error fix strategy: optional chain when the read is single-shot; destructure-with-default when iterating; assertion function when the call site guarantees presence; type predicate when narrowing unknown.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tsconfig.strict.json`
+
+```json
+{
+  "compilerOptions": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "target": "ES2022",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "outDir": "./dist",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
+```
+
+### `templates/migration-spec.json`
+
+```json
+{
+  "_purpose": "Reference strict-mode migration spec output.",
+  "_consumes": "tsconfig.json + tsc baseline + owner.",
+  "_produces": "JSON for migration backlog.",
+  "_depends-on": "content/02-output-contract.xml.",
+  "_token-budget-impact": "~150 tokens.",
+  "artefact_id": "billing-strict-migration",
+  "owner": "ruslan@faion.net",
+  "repo": "faion-net-be",
+  "ts_version": "^5.4.0",
+  "current_flags": {
+    "strict": false
+  },
+  "target_flags": {
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true
+  },
+  "migration_steps": [
+    {
+      "order": 1,
+      "flag": "strict",
+      "fix_strategy": "Enable bundle; address strictNullChecks errors by adding | undefined to optional returns and explicit return types.",
+      "error_budget": 80
+    },
+    {
+      "order": 2,
+      "flag": "noUncheckedIndexedAccess",
+      "fix_strategy": "Destructure with default OR optional chain at every array[i] / record[key] read site.",
+      "error_budget": 80
+    },
+    {
+      "order": 3,
+      "flag": "exactOptionalPropertyTypes",
+      "fix_strategy": "Audit optional fields; add | undefined where explicit undefined assignment is part of the contract.",
+      "error_budget": 30
+    }
+  ],
+  "lint_backstops": [
+    "@typescript-eslint/no-non-null-assertion",
+    "@typescript-eslint/no-explicit-any",
+    "@typescript-eslint/no-unsafe-assignment",
+    "@typescript-eslint/ban-ts-comment"
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```
+
+### `templates/.eslintrc.strict-backstop.json`
+
+```json
+{
+  "_purpose": "ESLint backstop rules that prevent regressions of TS strict mode wins.",
+  "_consumes": "nothing \u2014 extend in repo .eslintrc.",
+  "_produces": "rule set.",
+  "_depends-on": "@typescript-eslint/eslint-plugin >= 7.",
+  "_token-budget-impact": "~80 tokens.",
+  "extends": [
+    "plugin:@typescript-eslint/recommended-type-checked"
+  ],
+  "rules": {
+    "@typescript-eslint/no-non-null-assertion": "error",
+    "@typescript-eslint/no-explicit-any": [
+      "error",
+      {
+        "ignoreRestArgs": false
+      }
+    ],
+    "@typescript-eslint/no-unsafe-assignment": "error",
+    "@typescript-eslint/no-unsafe-member-access": "error",
+    "@typescript-eslint/no-unsafe-return": "error",
+    "@typescript-eslint/ban-ts-comment": [
+      "error",
+      {
+        "ts-expect-error": true,
+        "ts-ignore": true,
+        "ts-nocheck": "allow-with-description"
+      }
+    ]
+  }
+}
+```

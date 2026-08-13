@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/architecture-decision-records.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/architecture-decision-records.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Related

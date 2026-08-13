@@ -65,6 +65,8 @@ none — methodology is self-contained.
 | `templates/lhci-config.json` | Lighthouse CI config wiring mobile preset + budgets |
 | `templates/perf-budget.md` | Human-readable budget doc with rationale + change process |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,137 @@ none — methodology is self-contained.
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/budgets.json`
+
+```json
+{
+  "budgets": [
+    {
+      "path": "/",
+      "timings": [
+        {
+          "metric": "largest-contentful-paint",
+          "budget": 2500
+        },
+        {
+          "metric": "interactive",
+          "budget": 3500
+        },
+        {
+          "metric": "cumulative-layout-shift",
+          "budget": 0.1
+        },
+        {
+          "metric": "total-blocking-time",
+          "budget": 300
+        }
+      ],
+      "resourceSizes": [
+        {
+          "resourceType": "script",
+          "budget": 200
+        },
+        {
+          "resourceType": "image",
+          "budget": 800
+        },
+        {
+          "resourceType": "total",
+          "budget": 1500
+        }
+      ]
+    },
+    {
+      "path": "/product/*",
+      "timings": [
+        {
+          "metric": "largest-contentful-paint",
+          "budget": 2500
+        },
+        {
+          "metric": "cumulative-layout-shift",
+          "budget": 0.1
+        }
+      ],
+      "resourceSizes": [
+        {
+          "resourceType": "image",
+          "budget": 900
+        },
+        {
+          "resourceType": "total",
+          "budget": 1500
+        }
+      ]
+    },
+    {
+      "path": "/checkout",
+      "timings": [
+        {
+          "metric": "largest-contentful-paint",
+          "budget": 2200
+        },
+        {
+          "metric": "interactive",
+          "budget": 3000
+        },
+        {
+          "metric": "total-blocking-time",
+          "budget": 250
+        }
+      ],
+      "resourceSizes": [
+        {
+          "resourceType": "script",
+          "budget": 120
+        },
+        {
+          "resourceType": "total",
+          "budget": 900
+        }
+      ]
+    }
+  ]
+}
+```
+
+### `templates/lhci-config.json`
+
+```json
+{
+  "ci": {
+    "collect": {
+      "url": [
+        "https://example.com/",
+        "https://example.com/product/sample",
+        "https://example.com/checkout"
+      ],
+      "numberOfRuns": 3,
+      "settings": {
+        "preset": "mobile",
+        "emulatedFormFactor": "mobile",
+        "throttlingMethod": "simulate"
+      }
+    },
+    "assert": {
+      "budgetsFile": "./budgets.json",
+      "assertions": {
+        "categories:performance": [
+          "error",
+          {
+            "minScore": 0.9
+          }
+        ]
+      }
+    },
+    "upload": {
+      "target": "temporary-public-storage"
+    }
+  }
+}
+```

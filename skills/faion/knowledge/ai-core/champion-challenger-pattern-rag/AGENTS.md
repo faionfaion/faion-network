@@ -63,8 +63,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/bench-config.yml` | Full bench config YAML (cycle + arms + judge + promotion criteria) |
-| `templates/shadow-runner.py` | Python shadow-traffic mirror skeleton |
 | `templates/cycle-report.md` | Cycle report Markdown template |
 
 ## Scripts

@@ -68,6 +68,8 @@
 | `templates/weekly-report.json` | JSON example of weekly AARRR report |
 | `templates/weekly-dashboard.md` | Markdown dashboard skeleton |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,60 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes observable signals to one of the rules in `01-core-rules.xml`. Use it before producing the output — picking the wrong branch is the most common failure.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/weekly-report.json`
+
+```json
+{
+  "report_id": "aarrr-2026-w20",
+  "as_of": "2026-05-20",
+  "stages": {
+    "acquisition": {
+      "metric": "weekly_signups",
+      "value": 420,
+      "baseline_30d": 410,
+      "delta_pct": 2.4
+    },
+    "activation": {
+      "metric": "d7_activation_pct",
+      "value": 0.31,
+      "baseline_30d": 0.38,
+      "delta_pct": -18.4
+    },
+    "retention": {
+      "metric": "d30_active_pct",
+      "value": 0.42,
+      "baseline_30d": 0.45,
+      "delta_pct": -6.7
+    },
+    "revenue": {
+      "metric": "mrr_growth_pct",
+      "value": 4.1,
+      "baseline_30d": 4.0,
+      "delta_pct": 2.5
+    },
+    "referral": {
+      "metric": "viral_k",
+      "value": 0.18,
+      "baseline_30d": 0.17,
+      "delta_pct": 5.9
+    }
+  },
+  "bottleneck": "activation",
+  "tactics_queued": [
+    {
+      "tactic": "Pre-seed sample data in empty state",
+      "stage": "activation"
+    },
+    {
+      "tactic": "Reduce signup fields to 3",
+      "stage": "activation"
+    }
+  ],
+  "owner": "@ruslan"
+}
+```

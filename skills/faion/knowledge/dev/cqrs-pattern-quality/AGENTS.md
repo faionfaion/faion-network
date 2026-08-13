@@ -67,6 +67,8 @@
 | `templates/query-handler.py` | Query + QueryHandler skeleton; returns a read model only. |
 | `templates/mediator.py` | Type-based Mediator dispatching to the right handler. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[clean-architecture]]
@@ -76,3 +78,102 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree gates CQRS on read/write asymmetry + team readiness for eventual consistency; otherwise plain repository pattern is enough.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/command-handler.py`
+
+```python
+"""
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+from uuid import UUID, uuid4
+
+T = TypeVar("T")
+
+
+@dataclass
+class Command:
+    pass
+
+
+class CommandHandler(ABC, Generic[T]):
+    @abstractmethod
+    async def handle(self, cmd: Command) -> T | None: ...
+
+
+@dataclass
+class PlaceOrderCommand(Command):
+    user_id: UUID
+    items: list[str]
+
+
+class PlaceOrderHandler(CommandHandler[UUID]):
+    async def handle(self, cmd: PlaceOrderCommand) -> UUID:
+        # validate, write to event store, return new id
+        return uuid4()
+```
+
+### `templates/query-handler.py`
+
+```python
+"""
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Generic, TypeVar
+from uuid import UUID
+
+T = TypeVar("T")
+
+
+@dataclass
+class Query:
+    pass
+
+
+class QueryHandler(ABC, Generic[T]):
+    @abstractmethod
+    async def handle(self, q: Query) -> T: ...
+
+
+@dataclass
+class GetOrderQuery(Query):
+    order_id: UUID
+
+
+@dataclass
+class OrderView:
+    order_id: UUID
+    status: str
+    total_cents: int
+
+
+class GetOrderHandler(QueryHandler[OrderView]):
+    async def handle(self, q: GetOrderQuery) -> OrderView:
+        # read from projection / view
+        return OrderView(q.order_id, "placed", 0)
+```
+
+### `templates/mediator.py`
+
+```python
+"""
+from typing import Any
+
+
+class Mediator:
+    def __init__(self) -> None:
+        self._handlers: dict[type, Any] = {}
+
+    def register(self, message_type: type, handler: Any) -> None:
+        self._handlers[message_type] = handler
+
+    async def send(self, message: Any) -> Any:
+        handler = self._handlers.get(type(message))
+        if handler is None:
+            raise KeyError(f"no handler for {type(message).__name__}")
+        return await handler.handle(message)
+```

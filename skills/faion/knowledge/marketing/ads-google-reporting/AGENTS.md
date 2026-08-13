@@ -69,6 +69,8 @@
 | `templates/weekly-checklist.md` | 30-minute weekly optimization checklist. |
 | `templates/report-artefact.json` | Schema-conformant sample artefact used by validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,47 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/report-artefact.json`
+
+```json
+{
+  "period": {
+    "start": "2026-05-12",
+    "end": "2026-05-18"
+  },
+  "metrics": {
+    "spend": 4250.0,
+    "conversions": 73,
+    "cpa": 58.22,
+    "roas": 4.1,
+    "impression_share": 0.71
+  },
+  "campaigns": [
+    {
+      "name": "brand-search",
+      "spend": 1200.0,
+      "cpa": 25.1,
+      "status": "ok"
+    }
+  ],
+  "search_terms": {
+    "high_cost_non_converting": 4,
+    "negatives_added": [
+      "free trial"
+    ]
+  },
+  "actions": [
+    {
+      "priority": 1,
+      "lever": "add_negatives",
+      "rationale": "$120 wasted on 4 queries",
+      "owner": "ops"
+    }
+  ]
+}
+```

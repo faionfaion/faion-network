@@ -68,6 +68,8 @@
 | `templates/positioning-spec.json` | JSON example of positioning spec |
 | `templates/validation-log.md` | Markdown skeleton for the 3-signal validation log |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,38 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes observable signals to one of the rules in `01-core-rules.xml`. Use it before producing the output — picking the wrong branch is the most common failure.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/positioning-spec.json`
+
+```json
+{
+  "positioning_id": "fnp-2026q2",
+  "x": "rebuild onboarding flows",
+  "y": "B2B SaaS founders with stalled activation",
+  "z": {
+    "unit": "%",
+    "direction": "up",
+    "magnitude": "+20% Day-7 activation"
+  },
+  "validations": {
+    "search_find": {
+      "passed": true,
+      "evidence": "Top 3 on 'onboarding rebuild B2B SaaS'"
+    },
+    "peer_recall": {
+      "passed": true,
+      "evidence": "4 of 5 peers paraphrased back; transcripts saved"
+    },
+    "buyer_paraphrase": {
+      "passed": true,
+      "evidence": "Discovery call 2026-05-12: prospect said '+20% activation'"
+    }
+  },
+  "valid_after": "2026-05-23",
+  "owner": "@ruslan"
+}
+```

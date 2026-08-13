@@ -61,6 +61,8 @@
 | `templates/1-1-question-bank-by-tenure.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/1-1-question-bank-by-tenure.md` | Markdown skeleton for human-readable artefact rendering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -75,3 +77,80 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/1-1-question-bank-by-tenure.json`
+
+```json
+{
+  "artefact_id": "1on1-question-bank-2026-q2",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "buckets": {
+    "0-30d": [
+      "What's missing that I haven't realised yet?",
+      "What surprised you about onboarding?",
+      "Where do you feel most stuck right now?",
+      "What's one thing that's better than expected?",
+      "Which doc was the most useful?",
+      "Which doc made no sense?",
+      "Who haven't you met yet?",
+      "What's your biggest question I haven't answered?",
+      "What pace feels sustainable for you?",
+      "What's slowing you down?"
+    ],
+    "31-60d": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "Q4",
+      "Q5",
+      "Q6",
+      "Q7",
+      "Q8",
+      "Q9",
+      "Q10"
+    ],
+    "61-90d": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "Q4",
+      "Q5",
+      "Q6",
+      "Q7",
+      "Q8",
+      "Q9",
+      "Q10"
+    ],
+    "4-6mo": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "Q4",
+      "Q5",
+      "Q6",
+      "Q7",
+      "Q8",
+      "Q9",
+      "Q10"
+    ],
+    "6mo+": [
+      "Q1",
+      "Q2",
+      "Q3",
+      "Q4",
+      "Q5",
+      "Q6",
+      "Q7",
+      "Q8",
+      "Q9",
+      "Q10"
+    ]
+  },
+  "owner": "@ruslan"
+}
+```

@@ -71,6 +71,8 @@
 | `templates/ha-decision-record.md` | ADR skeleton: SLA → topology → failure modes → mitigations |
 | `templates/sigterm-drain.py` | FastAPI graceful-shutdown handler |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,53 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (SLA target, geographic reach, infra ownership, deploy cadence) to a concrete HA topology, each leaf referencing a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/sigterm-drain.py`
+
+```python
+from __future__ import annotations
+
+import asyncio
+import signal
+
+from fastapi import FastAPI, Response
+
+app = FastAPI()
+_is_shutting_down: bool = False
+
+
+@app.on_event("startup")
+async def _install_handlers() -> None:
+    loop = asyncio.get_event_loop()
+    loop.add_signal_handler(signal.SIGTERM, _handle_sigterm)
+    loop.add_signal_handler(signal.SIGINT,  _handle_sigterm)
+
+
+def _handle_sigterm() -> None:
+    global _is_shutting_down
+    _is_shutting_down = True
+    # readiness probe will return 503 on next poll;
+    # LB removes this backend within one health-check interval (≤ 10–30 s)
+
+
+@app.get("/health/live")
+async def live(response: Response):
+    return {"status": "alive"}
+
+
+@app.get("/health/ready")
+async def ready(response: Response):
+    if _is_shutting_down:
+        response.status_code = 503
+        return {"status": "shutting_down"}
+    return {"status": "ready"}
+
+
+@app.get("/")
+async def root():
+    return {"hello": "world"}
+```

@@ -66,10 +66,11 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/feature-narrative.yaml` | Canonical feature-narrative skeleton. |
 | `templates/feature-narrative-gate.sh` | Gate script enforcing 90s + outcome-not-feature. |
 | `templates/prompt-audience-render.txt` | Audience-render prompt template. |
 | `templates/prompt-story-extraction.txt` | Story-extraction prompt template. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -86,3 +87,100 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals to apply / skip / route-elsewhere, with each leaf referencing a rule id from `01-core-rules.xml`. Consult the tree before applying the methodology when signals are ambiguous.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/feature-narrative-gate.sh`
+
+```bash
+set -euo pipefail
+#!/usr/bin/env bash
+# feature-narrative-gate.sh — block release if narrative missing required fields or contains banned tokens.
+# Usage: feature-narrative-gate.sh path/to/feature-narrative.json
+# Exit: 0 = valid, 1 = validation failure
+set -euo pipefail
+fn="${1:?usage: feature-narrative-gate.sh NARRATIVE.json}"
+schema="$(dirname "$0")/feature-narrative.schema.json"
+
+cat > "$schema" <<'JSON'
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["purpose","behavior_change","measurable_outcome","limit","affected_personas"],
+  "properties": {
+    "purpose":{"type":"string","minLength":20,"maxLength":200},
+    "behavior_change":{"type":"object",
+      "required":["before","after"],
+      "properties":{"before":{"type":"string"},"after":{"type":"string"}}},
+    "measurable_outcome":{"type":"object",
+      "required":["metric","baseline","current","isolation_method"],
+      "properties":{"metric":{"type":"string"},"baseline":{"type":"string"},
+                    "current":{"type":"string"},
+                    "isolation_method":{"enum":["a/b","holdout","pre/post","unverified"]}}},
+    "limit":{"type":"string","minLength":15},
+    "affected_personas":{"type":"array","minItems":1,"items":{
+      "type":"object","required":["name","job","value_received"]}},
+    "risks":{"type":"array"}
+  }
+}
+JSON
+
+ajv validate -s "$schema" -d "$fn" --strict=true || exit 1
+
+banned='best|leading|revolutionary|seamless|powerful|next-gen|delight|thrilled|excited|delighted'
+if grep -E -i "\"($banned)\"" "$fn" >/dev/null; then
+  echo "FAIL: banned marketing token in narrative"; exit 1
+fi
+echo "OK: feature-narrative.json passes all gates"
+```
+
+### `templates/prompt-audience-render.txt`
+
+```text
+Render the feature-narrative.json for audience={exec|sales|support|customer|ai}.
+
+Constraints by audience:
+  exec:     <=200 words, lead with outcome and cost, single risk, no jargon.
+  sales:    job + pain + capability + limit (verbatim) + 2 objection-handlers; cite source line.
+  support:  symptom -> cause -> fix -> known-limit (verbatim); runbook tone.
+  customer: <=80 words, plain language, second-person, link to docs.
+  ai:       JSON array of {capability, status, since_version, limit} triples; no prose.
+
+Forbidden tokens across all renders:
+  "best", "leading", "revolutionary", "seamless", "powerful", "next-gen",
+  "delight", "thrilled", "excited", "delighted", "top-tier", "category-defining".
+
+Hard rules:
+  - measurable_outcome.metric + baseline + current must be echoed verbatim; no rephrasing of numbers.
+  - limit field must appear in every render, verbatim, never summarized or softened.
+  - Do not publish. Output a draft only. A human must approve before distribution.
+  - Use a different model family for the comprehension probe agent than for this render.
+```
+
+### `templates/prompt-story-extraction.txt`
+
+```text
+You extract a stakeholder-ready feature narrative. Inputs:
+  <prd_path>{path to PRD or spec.md}</prd_path>
+  <release_notes>{path or text}</release_notes>
+  <telemetry_diff>{metric deltas before/after}</telemetry_diff>
+  <impl_diff>{merged PR titles or commit log}</impl_diff>
+  <research_clips>{user research excerpts if any}</research_clips>
+
+Output JSON with exactly these fields:
+  purpose (one sentence, no marketing adjectives, names the user job),
+  behavior_change: {before: "...", after: "..."},
+  measurable_outcome: {metric, baseline, current, isolation_method (a/b|holdout|pre/post|unverified)},
+  limit (what it intentionally does NOT do, why),
+  affected_personas[]: [{name, job, value_received}],
+  risks[]: [{description}]
+
+Hard rules:
+  - Refuse to invent outcomes. If a metric is unverified write isolation_method="unverified".
+  - Every field must cite the source document path in a parallel source_citations: {} field.
+  - Flag any mismatch between PRD intent and impl_diff as "conflict" and block render until PM resolves.
+  - Banned tokens in any string field: best, leading, revolutionary, seamless, powerful, next-gen, delight.
+  - affected_personas must match names from the project personas registry; reject unknown personas.
+```

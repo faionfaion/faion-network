@@ -67,6 +67,8 @@
 | `templates/ritual-notes.md` | Markdown skeleton for tech-talk / demo / arch-review notes. |
 | `templates/skip-level-themes.md` | Markdown skeleton for anonymised skip-level theme aggregation. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,68 @@ See `content/06-decision-tree.xml`. The tree maps observable signals (input
 preconditions, source-of-truth access, named-consumer presence) onto a concrete
 verdict — apply the methodology, downgrade to draft, or skip — with each leaf
 referencing a rule id from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/knowledge-sharing-ritual-set.json",
+  "type": "object",
+  "required": [
+    "ritual_type",
+    "instance_id",
+    "occurred_on",
+    "presenter",
+    "artefact_url",
+    "action_items",
+    "status"
+  ],
+  "properties": {
+    "ritual_type": {
+      "enum": [
+        "weekly-tech-talk",
+        "biweekly-demo",
+        "monthly-arch-review",
+        "quarterly-skip-level"
+      ]
+    },
+    "instance_id": {
+      "type": "string"
+    },
+    "occurred_on": {
+      "type": "string",
+      "format": "date"
+    },
+    "presenter": {
+      "type": "string"
+    },
+    "artefact_url": {
+      "type": "string",
+      "format": "uri-reference"
+    },
+    "action_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "title",
+          "owner",
+          "due"
+        ]
+      }
+    },
+    "status": {
+      "enum": [
+        "held",
+        "skipped-with-reason",
+        "cancelled"
+      ]
+    }
+  }
+}
+```

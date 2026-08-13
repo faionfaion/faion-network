@@ -63,6 +63,8 @@
 |------|---------|
 | `templates/dialog-spec.json` | Skeleton dialog spec |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,21 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches by turn count + state-machine completeness; enforces reprompt cap + noise-test coverage. Each leaf cites a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/dialog-spec.json`
+
+```json
+{
+  "states": [],
+  "reprompt_cap": 3,
+  "noise_test_conditions": [
+    "quiet",
+    "ambient",
+    "kitchen"
+  ]
+}
+```

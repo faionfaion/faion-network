@@ -67,7 +67,8 @@
 |------|---------|
 | `templates/Worker.cs` | BackgroundService + Channel reader skeleton |
 | `templates/ProgramRegistration.cs` | Channel + worker + health check DI registration |
-| `templates/prompt-worker.txt` | Subagent prompt for generating worker + test |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -85,3 +86,96 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (job durability requirement, throughput, CPU profile, distribution) to a rule from `01-core-rules.xml` and either approves BackgroundService or redirects to a durable broker / Worker host. Use it whenever an engineer reaches for `Task.Run` or considers a hosted-service for periodic work.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/Worker.cs`
+
+```csharp
+using System.Threading.Channels;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace Faion.Workers;
+
+public sealed class OrderProcessorService : BackgroundService
+{
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<OrderProcessorService> _logger;
+    private readonly Channel<int> _channel;
+
+    public OrderProcessorService(
+        IServiceProvider serviceProvider,
+        ILogger<OrderProcessorService> logger,
+        Channel<int> channel)
+    {
+        _serviceProvider = serviceProvider;
+        _logger = logger;
+        _channel = channel;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+    {
+        await foreach (var orderId in _channel.Reader.ReadAllAsync(stoppingToken))
+        {
+            try
+            {
+                await ProcessAsync(orderId, stoppingToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed processing order {OrderId}", orderId);
+            }
+        }
+    }
+
+    private async Task ProcessAsync(int orderId, CancellationToken ct)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var service = scope.ServiceProvider.GetRequiredService<IOrderService>();
+        await service.ProcessAsync(orderId, ct);
+    }
+}
+
+public interface IOrderService
+{
+    Task ProcessAsync(int orderId, CancellationToken ct);
+}
+```
+
+### `templates/ProgramRegistration.cs`
+
+```csharp
+using System.Threading.Channels;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Faion.Workers;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddSingleton(Channel.CreateBounded<int>(
+    new BoundedChannelOptions(1000) { FullMode = BoundedChannelFullMode.Wait }));
+
+builder.Services.AddScoped<IOrderService, OrderService>();
+builder.Services.AddSingleton<OrderProcessorHealth>();
+builder.Services.AddHostedService<OrderProcessorService>();
+builder.Services.AddHealthChecks()
+    .AddCheck<OrderProcessorHealth>("order-processor");
+
+var app = builder.Build();
+app.MapHealthChecks("/healthz");
+app.Run();
+
+public sealed class OrderProcessorHealth : IHealthCheck
+{
+    public DateTime LastSuccess { get; set; } = DateTime.UtcNow;
+
+    public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext _, CancellationToken __)
+        => Task.FromResult(
+            DateTime.UtcNow - LastSuccess > TimeSpan.FromMinutes(5)
+                ? HealthCheckResult.Unhealthy("no successful run in >5m")
+                : HealthCheckResult.Healthy());
+}
+```

@@ -70,6 +70,8 @@
 | `templates/runway-model.json` | Runway model skeleton |
 | `templates/burn-checklist.md` | All-categories burn checklist |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,41 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes by runway months, MRR / burn ratio, MRR growth, geo-arbitrage scenario presence, and stress-test presence onto a rule from `content/01-core-rules.xml`. Walk it before any quit-day-job conversation.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/runway-model.json`
+
+```json
+{
+  "burn_personal": 0,
+  "burn_business": 0,
+  "savings_buffer": 0,
+  "mrr_current": 0,
+  "mrr_3mo_growth_pct": 0,
+  "leave_job_trigger": {
+    "runway_months": 12,
+    "mrr_pct_of_burn": 0.3,
+    "growth_min": 0
+  },
+  "geo_arbitrage_scenario": {
+    "target_city": "Lisbon",
+    "expected_burn_reduction_pct": 0.45
+  },
+  "stress_tests": [
+    {
+      "scenario": "flat MRR 12mo",
+      "runway_at_that_burn": 0
+    },
+    {
+      "scenario": "MRR -20% over 6mo",
+      "runway_at_that_burn": 0
+    }
+  ],
+  "review_quarter": "2026-Q2",
+  "owner": "",
+  "decision_status": "pending"
+}
+```

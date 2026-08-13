@@ -62,7 +62,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/routing-rubric.md` | Human-readable routing rubric printable card. |
-| `templates/rubric-decision.json` | JSON skeleton for the routing-decision artefact. |
 
 ## Scripts
 

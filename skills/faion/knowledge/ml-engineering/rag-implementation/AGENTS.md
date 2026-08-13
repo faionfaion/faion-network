@@ -61,6 +61,8 @@
 | `templates/rag-config.yaml` | Production RAG config skeleton. |
 | `templates/rag-system-prompt.txt` | Answer-only-from-context system prompt. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,43 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` decides whether this Chroma-backed implementation fits the target store. Each leaf references a rule id from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rag-config.yaml`
+
+```yaml
+loaders: [md, pdf]
+chunker:
+  strategy: md-header        # fixed | sentence | paragraph | semantic | md-header
+  size: 1024
+  overlap: 200
+embedding:
+  model: text-embedding-3-large
+store:
+  backend: chroma
+  path: ./chroma-docs
+retrieval:
+  top_k: 10
+  query_enhancement: hyde    # none | expansion | hyde | rewrite
+generation:
+  model: claude-sonnet-4-6
+  answer_only_from_context: true
+incremental: true
+```
+
+### `templates/rag-system-prompt.txt`
+
+```text
+You are a retrieval-augmented assistant.
+Rules:
+1. Answer ONLY from the provided context. If the context does not contain the answer, reply exactly: "I don't have enough information in the provided sources to answer that."
+2. Cite every factual claim with [Source: filename, page N].
+3. Do not introduce facts not in the context.
+
+Query: {query}
+Context: {context}
+Answer:
+```

@@ -72,6 +72,8 @@
 | `templates/question-bank.md` | Pre-vetted question phrasings by survey type |
 | `templates/bias-linter.py` | Lint questions for leading/double-barreled/loaded patterns |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,74 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals onto a rule id from `content/01-core-rules.xml`, so the agent can decide in one read whether to run the methodology, halt, or route elsewhere. Use it whenever the inputs feel ambiguous.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/bias-linter.py`
+
+```python
+#!/usr/bin/env python3
+"""
+bias_linter.py — deterministic pre-filter for survey question drafts.
+Run before LLM bias-review pass to catch patterns the LLM rationalizes away.
+
+Usage:
+    cat questions.json | python bias_linter.py
+    python bias_linter.py < questions.json
+
+Input (stdin): JSON array of {"text": "question string"} objects.
+Output (stdout): JSON array of flagged items with {q, text, flags}.
+Exit code: 0 if clean, 1 if any flags found.
+"""
+import re
+import sys
+import json
+
+LEADING = re.compile(
+    r"\b(don't you (think|agree)|isn't it|wouldn't you say|how amazing|how awful)\b",
+    re.IGNORECASE,
+)
+DOUBLE = re.compile(r"\b(and|or)\b.*\?")  # crude double-barrel heuristic
+HYPOTHETICAL = re.compile(
+    r"\b(would you|will you|do you plan to|how often will)\b",
+    re.IGNORECASE,
+)
+ABSOLUTIST = re.compile(
+    r"\b(always|never|every time|all of the time)\b",
+    re.IGNORECASE,
+)
+MAX_WORDS = 28
+
+
+def lint(items: list[dict]) -> list[dict]:
+    out = []
+    for i, q in enumerate(items, 1):
+        text = q.get("text", "")
+        flags = []
+        if LEADING.search(text):
+            flags.append("leading")
+        if HYPOTHETICAL.search(text):
+            flags.append("hypothetical")
+        if ABSOLUTIST.search(text):
+            flags.append("absolutist-anchor")
+        if "?" in text and DOUBLE.search(text) and len(text.split()) > 8:
+            # rough check: long question with "and/or" before the "?"
+            if "satisf" in text.lower() or "engag" in text.lower():
+                flags.append("possible-double-barrel")
+        if len(text.split()) > MAX_WORDS:
+            flags.append("too-long")
+        if flags:
+            out.append({"q": i, "text": text, "flags": flags})
+    return out
+
+
+if __name__ == "__main__":
+    data = json.load(sys.stdin)  # [{"text": "..."}]
+    results = lint(data)
+    json.dump(results, sys.stdout, indent=2)
+    print()
+    if results:
+        sys.exit(1)
+```

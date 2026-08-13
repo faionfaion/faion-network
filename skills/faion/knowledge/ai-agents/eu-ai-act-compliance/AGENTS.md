@@ -67,6 +67,8 @@
 | `templates/model_card_skeleton.md` | Markdown skeleton matching the Article 11 technical documentation outline |
 | `templates/_smoke-test.json` | Minimum valid risk-classification report for the validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,30 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The root question asks whether the system or any of its features falls under Annex III enumeration of high-risk uses. Branches then route to "prohibited" (unacceptable risk, must halt), "high-risk" (full Annex III obligations), "limited" (Article 50 transparency only), or "minimal" (no obligation beyond ordinary engineering practice). Each leaf maps to a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "smallest valid risk-classification report",
+  "_consumes": "nothing",
+  "_produces": "example output matching content/02-output-contract.xml",
+  "_depends_on": "content/01-core-rules.xml",
+  "_token_budget_impact": "~120 tokens",
+  "risk_tier": "high",
+  "applicable_articles": [
+    "Article 6",
+    "Article 11"
+  ],
+  "rationale": "Smoke fixture: employment-screening agent falls under Annex III point 4.",
+  "requires_conformity_assessment": true,
+  "reviewer_signoff": {
+    "reviewer_id": "legal-lead-smoke",
+    "signed_at": "2026-05-22T10:00:00Z"
+  }
+}
+```

@@ -60,11 +60,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/drift-spec.md.tmpl` | Drift-detection spec skeleton with all 3 detectors. |
 | `templates/cusum.py.tmpl` | CUSUM detector implementation. |
 | `templates/kl-detector.py.tmpl` | KL divergence detector. |
 | `templates/regression-test.py.tmpl` | Paired t-test with Bonferroni. |
 | `templates/_smoke-test.py` | Smoke test wiring all three detectors. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -82,3 +83,79 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` filters whether agent-drift-detection-statistical applies: root question — "Does the team gate prod decisions on eval scores?". Branches lead to a specific core rule (e.g., `rule:r1`) when the methodology fits, or to a `skip:` conclusion when it does not.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/cusum.py.tmpl`
+
+```python
+CUSUM skeleton
+"""
+from __future__ import annotations
+
+
+def main() -> None:
+    """Entry point. Fill per methodology procedure."""
+    # TODO: implement per 04-procedure.xml
+    raise NotImplementedError
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### `templates/kl-detector.py.tmpl`
+
+```python
+KL skeleton
+"""
+from __future__ import annotations
+
+
+def main() -> None:
+    """Entry point. Fill per methodology procedure."""
+    # TODO: implement per 04-procedure.xml
+    raise NotImplementedError
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### `templates/regression-test.py.tmpl`
+
+```python
+Regression test skeleton
+"""
+from __future__ import annotations
+
+
+def main() -> None:
+    """Entry point. Fill per methodology procedure."""
+    # TODO: implement per 04-procedure.xml
+    raise NotImplementedError
+
+
+if __name__ == "__main__":
+    main()
+```
+
+### `templates/_smoke-test.py`
+
+```python
+Smoke test.
+"""
+from __future__ import annotations
+
+
+def main() -> None:
+    """Entry point. Fill per methodology procedure."""
+    # TODO: implement per 04-procedure.xml
+    raise NotImplementedError
+
+
+if __name__ == "__main__":
+    main()
+```

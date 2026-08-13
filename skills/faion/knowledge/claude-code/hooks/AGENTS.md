@@ -58,14 +58,6 @@
 | `write-script` | haiku | Bash/Python boilerplate. |
 | `wire-audit-log` | haiku | Template logging. |
 
-## Templates
-
-| File | Purpose |
-|------|---------|
-| `templates/settings-hooks-block.json` | settings.json hooks block template |
-| `templates/pretooluse-block-dangerous.sh` | PreToolUse hook blocking rm -rf / DROP TABLE / sudo |
-| `templates/posttooluse-format.sh` | PostToolUse hook running prettier / ruff format on edited files |
-
 ## Scripts
 
 | File | Purpose | When to call |

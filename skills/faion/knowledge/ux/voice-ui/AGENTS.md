@@ -65,6 +65,8 @@
 | `templates/voice-spec.json` | Skeleton voice-spec |
 | `templates/dialogue-template.md` | Dialogue-authoring template |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,34 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches by intent reversibility + utterance coverage; enforces confirmation for irreversible actions and 3-tier ladder for the rest. Each leaf cites a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/voice-spec.json`
+
+```json
+{
+  "platform": "custom-llm",
+  "intents": [
+    {
+      "name": "intent-name",
+      "sample_utterances": [
+        "u1",
+        "u2",
+        "u3"
+      ],
+      "slots": [],
+      "prompt": "What next?",
+      "error_ladder": [
+        "Try again?",
+        "Say one of...",
+        "Handing off."
+      ],
+      "irreversible": false
+    }
+  ],
+  "barge_in": true
+}
+```

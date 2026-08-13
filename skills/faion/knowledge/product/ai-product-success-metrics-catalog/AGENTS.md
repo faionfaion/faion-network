@@ -62,6 +62,8 @@
 | `templates/ai-product-success-metrics-catalog.json` | JSON schema for the catalog output contract. |
 | `templates/ai-product-success-metrics-catalog.md` | Markdown skeleton with required metrics. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,79 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` first checks whether at least one user-facing AI feature exists. If no → skip. If yes but logs are unavailable → block until telemetry is wired. If yes + logs available → emit the catalog with grounded definitions.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ai-product-success-metrics-catalog.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "version",
+    "last_reviewed",
+    "metrics",
+    "inputs_used"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "owner": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9._-]+:[a-zA-Z0-9._-]+$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    },
+    "metrics": {
+      "type": "object",
+      "required": [
+        "deflection_rate",
+        "intervention_rate",
+        "hallucination_rate",
+        "time_to_correction",
+        "retention_on_ai_features"
+      ],
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "definition",
+          "source",
+          "baseline"
+        ],
+        "properties": {
+          "definition": {
+            "type": "string",
+            "minLength": 20
+          },
+          "source": {
+            "type": "string"
+          },
+          "baseline": {
+            "type": [
+              "number",
+              "string"
+            ]
+          }
+        }
+      }
+    },
+    "inputs_used": {
+      "type": "array",
+      "minItems": 1
+    }
+  }
+}
+```

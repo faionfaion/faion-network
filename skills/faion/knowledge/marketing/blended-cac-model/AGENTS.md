@@ -58,9 +58,7 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/blended-cac-model.json` | JSON schema for the blended-CAC output contract |
 | `templates/blended-cac-model.md` | Markdown report skeleton with per-channel table |
-| `templates/_smoke-test.json` | Minimum-viable filled example |
 
 ## Scripts
 

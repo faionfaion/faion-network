@@ -59,7 +59,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/review-rubric.md` | AI-IaC review rubric with weighted criteria. |
-| `templates/ci-gate.yaml` | GitHub Actions workflow with the gate steps. |
 | `templates/blast-radius-matrix.md` | Classification rubric (low/medium/high). |
 | `templates/_smoke-test.md` | Minimum-viable filled-in example (smoke test). |
 

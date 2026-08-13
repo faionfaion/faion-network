@@ -57,14 +57,6 @@
 | Annotation / aggregation design | opus | Q/F/Count/Subquery composition is judgement-heavy |
 | N+1 test generation | sonnet | template substitution |
 
-## Templates
-
-| File | Purpose |
-|------|---------|
-| `templates/selector_list.py` | list selector skeleton: kwarg-only, QuerySet return, optional filters |
-| `templates/selector_get.py` | single-object selector skeleton: kwarg-only, raises DoesNotExist |
-| `templates/test_selector.py` | pytest skeleton asserting query count via django_assert_num_queries |
-
 ## Scripts
 
 | File | Purpose | When to call |

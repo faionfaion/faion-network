@@ -71,6 +71,8 @@
 | `templates/audit-log.md` | Per-cluster 60-min audit log template |
 | `templates/_smoke-test.json` | Minimum viable rotation + audit-log bundle for validator self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,86 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps graph-spec freshness, cluster count, calendar availability, and deferred-fix backlog to a rule from `01-core-rules.xml`, telling the agent whether to publish the rotation calendar, block on a missing prerequisite, or skip the schedule. Walk it at the start of every quarter; do not cache outcomes across quarters.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/rotation-calendar.yaml`
+
+```yaml
+quarter: 2026-Q3
+rotation_calendar:
+  - slot_n: 1
+    scheduled_date: 2026-07-07
+    cluster_id: REPLACE-cluster-1
+    status: scheduled
+  - slot_n: 2
+    scheduled_date: 2026-07-21
+    cluster_id: REPLACE-cluster-2
+    status: scheduled
+  - slot_n: 3
+    scheduled_date: 2026-08-04
+    cluster_id: REPLACE-cluster-3
+    status: scheduled
+  - slot_n: 4
+    scheduled_date: 2026-08-18
+    cluster_id: REPLACE-cluster-4
+    status: scheduled
+  - slot_n: 5
+    scheduled_date: 2026-09-01
+    cluster_id: REPLACE-cluster-5
+    status: scheduled
+  - slot_n: 6
+    scheduled_date: 2026-09-15
+    cluster_id: REPLACE-cluster-6
+    status: scheduled
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "quarter": "2026-Q3",
+  "rotation_calendar": [
+    {
+      "slot_n": 1,
+      "scheduled_date": "2026-07-07",
+      "cluster_id": "saas-pricing",
+      "status": "scheduled"
+    },
+    {
+      "slot_n": 2,
+      "scheduled_date": "2026-07-21",
+      "cluster_id": "stripe-ops",
+      "status": "scheduled"
+    },
+    {
+      "slot_n": 3,
+      "scheduled_date": "2026-08-04",
+      "cluster_id": "indie-launch",
+      "status": "scheduled"
+    }
+  ],
+  "audit_log": [
+    {
+      "slot_n": 1,
+      "cluster_id": "saas-pricing",
+      "started_at": "2026-07-07T09:00:00Z",
+      "duration_minutes": 58,
+      "fixes_shipped": 4,
+      "fixes_deferred": 1
+    }
+  ],
+  "deferred_fixes": [
+    {
+      "fix_id": "DF-001",
+      "logged_at": "2026-07-07",
+      "due_date": "2026-08-06",
+      "cluster_id": "saas-pricing",
+      "status": "open"
+    }
+  ],
+  "retrospective": {}
+}
+```

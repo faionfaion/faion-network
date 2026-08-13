@@ -66,6 +66,8 @@
 | `templates/langfuse-init.py` | Langfuse client init. |
 | `templates/eval-probe-runner.py` | Periodic eval-probe runner. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,23 @@
 ## Decision tree
 
 Decision tree at `content/06-decision-tree.xml` picks vendor (Langfuse self-host / LangSmith SaaS / Phoenix OSS / native OTel) from data-residency + integration + budget.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/langfuse-init.py`
+
+```python
+"""
+
+# Stub — see methodology AGENTS.md ## Templates table.
+```
+
+### `templates/eval-probe-runner.py`
+
+```python
+"""
+
+# Stub — see methodology AGENTS.md ## Templates table.
+```

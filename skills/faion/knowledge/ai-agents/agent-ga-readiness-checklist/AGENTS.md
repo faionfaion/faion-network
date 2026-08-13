@@ -59,8 +59,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/ga-readiness.md.tmpl` | 12-item checklist skeleton with grouped sections. |
-| `templates/rollback-test.md.tmpl` | Rollback test recipe + sign-off. |
 | `templates/_smoke-test.md` | Filled example for a customer-support agent GA. |
 
 ## Scripts

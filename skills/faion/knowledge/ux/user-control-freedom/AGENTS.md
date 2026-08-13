@@ -67,6 +67,8 @@
 | `templates/control-audit.md` | Control audit report skeleton. |
 | `templates/verify-escape-exits.spec.js` | Playwright spec verifying Escape + outside-click + back-button. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,36 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, action inventory reachable, undo-supportable) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/verify-escape-exits.spec.js`
+
+```javascript
+//
+// verify-escape-exits.spec.js — verify Escape key closes all modals
+// Requires: Playwright (npm install -D playwright)
+// Usage: npx playwright test verify-escape-exits.spec.js
+// Set BASE_URL env var or update the goto() call below.
+
+const { test, expect } = require('@playwright/test');
+
+// Add all trigger/modal pairs for your product here.
+const MODAL_TRIGGERS = [
+  { trigger: '[data-testid="delete-btn"]', modal: '[role="dialog"]' },
+  { trigger: '[data-testid="settings-btn"]', modal: '[aria-label="Settings"]' },
+  // Example: { trigger: '[data-testid="share-btn"]', modal: '[aria-label="Share dialog"]' },
+];
+
+for (const { trigger, modal } of MODAL_TRIGGERS) {
+  test(`Escape closes modal triggered by ${trigger}`, async ({ page }) => {
+    await page.goto(process.env.BASE_URL || 'http://localhost:3000');
+    await page.click(trigger);
+    await expect(page.locator(modal)).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator(modal)).not.toBeVisible();
+  });
+}
+```

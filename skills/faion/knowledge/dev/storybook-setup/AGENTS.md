@@ -60,6 +60,8 @@
 | `templates/.storybook/preview.ts` | Global decorators (Theme, Router, ReactQuery). |
 | `templates/Component.stories.tsx` | CSF3 story: Meta + Default + variants + play function. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -75,3 +77,66 @@
 ## Decision tree
 
 The tree at content/06-decision-tree.xml decides static stories vs play functions, Chromatic vs no visual regression, and MDX docs vs autodocs. Walk it whenever a new component is added.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/.storybook/main.ts`
+
+```typescript
+ */
+
+import type { StorybookConfig } from "@storybook/react-vite";
+
+const config: StorybookConfig = {
+  stories: ["../src/**/*.stories.@(ts|tsx|mdx)"],
+  addons: ["@storybook/addon-essentials", "@storybook/addon-a11y"],
+  framework: { name: "@storybook/react-vite", options: {} },
+  docs: { autodocs: "tag" },
+};
+
+export default config;
+```
+
+### `templates/.storybook/preview.ts`
+
+```typescript
+ */
+
+import type { Preview } from "@storybook/react";
+import "../src/index.css";
+
+const preview: Preview = {
+  parameters: {
+    controls: { matchers: { color: /(background|color)$/i } },
+  },
+};
+
+export default preview;
+```
+
+### `templates/Component.stories.tsx`
+
+```tsx
+ */
+
+import type { Meta, StoryObj } from "@storybook/react";
+
+import { Button } from "./Button";
+
+const meta = {
+  title: "Components/Button",
+  component: Button,
+  tags: ["autodocs"],
+  args: { label: "Click me", variant: "primary" },
+} satisfies Meta<typeof Button>;
+
+export default meta;
+
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {};
+
+export const Destructive: Story = { args: { variant: "destructive" } };
+```

@@ -68,6 +68,8 @@
 | `templates/session-notes.md` | Per-session notes skeleton (observation vs inference). |
 | `templates/transcribe-sessions.sh` | Local whisper-based transcription + redaction. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,34 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, recruitment reachable, consent obtained) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/transcribe-sessions.sh`
+
+```bash
+#
+# transcribe-sessions.sh — batch-transcribe interview recordings with OpenAI Whisper
+# Requires: whisper (pip install openai-whisper), ffmpeg
+# Usage: bash transcribe-sessions.sh ./recordings/
+INPUT_DIR="${1:?Usage: $0 <recordings-dir>}"
+OUT_DIR="${INPUT_DIR}/transcripts"
+mkdir -p "$OUT_DIR"
+
+for f in "$INPUT_DIR"/*.mp3 "$INPUT_DIR"/*.mp4 "$INPUT_DIR"/*.m4a "$INPUT_DIR"/*.wav; do
+  [[ -f "$f" ]] || continue
+  base=$(basename "${f%.*}")
+  echo "Transcribing: $f"
+  whisper "$f" \
+    --model medium \
+    --language en \
+    --output_format txt \
+    --output_dir "$OUT_DIR" \
+    --fp16 False
+  echo "  -> $OUT_DIR/${base}.txt"
+done
+echo "Done. Transcripts in $OUT_DIR/"
+echo "Next: sanitize participant names (replace with IDs) before passing to LLM APIs."
+```

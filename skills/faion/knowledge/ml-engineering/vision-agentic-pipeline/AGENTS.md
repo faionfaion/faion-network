@@ -65,6 +65,8 @@
 | `templates/pipeline-config.yaml` | Three-subagent pipeline config skeleton |
 | `templates/router-prompt.txt` | Router classification prompt |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,36 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root: Has the pipeline received a new image event? Branches route to a rule id from `content/01-core-rules.xml` (idempotent-by-hash, router-cheap-model, retry-on-schema-fail, ...) so every leaf is traceable to a testable statement.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pipeline-config.yaml`
+
+```yaml
+# vision-agentic-pipeline — config skeleton
+version: 1.0.0
+slug: vision-agentic-pipeline
+fields:
+  - name: example-field
+    type: string
+    required: true
+defaults: {}
+```
+
+### `templates/router-prompt.txt`
+
+```text
+# Router classification prompt
+
+## Context
+{Insert situational context for vision-agentic-pipeline: audience, channel, constraints.}
+
+## Body
+{Insert main body. Keep it scoped to one purpose.}
+
+## Constraints
+- {Constraint 1 from 01-core-rules.xml}
+- {Constraint 2}
+```

@@ -62,9 +62,7 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/cache-audit.py` | Python daily-cron audit script template |
 | `templates/daily-report.md` | Markdown report template (overall + prefixes + alerts) |
-| `templates/alert.yml` | Slack webhook + threshold YAML |
 
 ## Scripts
 

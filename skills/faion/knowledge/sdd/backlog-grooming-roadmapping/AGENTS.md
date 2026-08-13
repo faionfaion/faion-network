@@ -63,6 +63,8 @@
 | `templates/backlog-grooming-roadmapping.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,133 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/backlog-grooming-roadmapping.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/backlog-grooming-roadmapping.json",
+  "title": "Backlog Grooming and Roadmapping Output Contract",
+  "type": "object",
+  "required": [
+    "backlog_items",
+    "p0_items",
+    "scoring_framework",
+    "now_items",
+    "next_items",
+    "later_items",
+    "last_groomed_at",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "backlog_items": {
+      "type": "array",
+      "description": "\u226510 with score + rationale + status",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "p0_items": {
+      "type": "array",
+      "description": "\u22643",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "scoring_framework": {
+      "type": "string",
+      "description": "RICE | MoSCoW"
+    },
+    "now_items": {
+      "type": "array",
+      "description": "currently in flight",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "next_items": {
+      "type": "array",
+      "description": "next horizon",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "later_items": {
+      "type": "array",
+      "description": "later horizon",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "last_groomed_at": {
+      "type": "string",
+      "description": "ISO datetime",
+      "format": "date-time"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named PM"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "backlog_items": [
+    {
+      "k": "v"
+    }
+  ],
+  "p0_items": [
+    {
+      "k": "v"
+    }
+  ],
+  "scoring_framework": "sample-scoring_framework",
+  "now_items": [
+    {
+      "k": "v"
+    }
+  ],
+  "next_items": [
+    {
+      "k": "v"
+    }
+  ],
+  "later_items": [
+    {
+      "k": "v"
+    }
+  ],
+  "last_groomed_at": "2026-05-23T12:00:00Z",
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

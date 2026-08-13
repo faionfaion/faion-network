@@ -68,6 +68,8 @@
 | `templates/OrderService.php` | Service owning DB::transaction + business rules |
 | `templates/StoreOrderRequest.php` | Form Request with authorize() + rules() + messages() |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,123 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/OrderController.php`
+
+```php
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreOrderRequest;
+use App\Http\Requests\UpdateOrderRequest;
+use App\Http\Resources\OrderResource;
+use App\Models\Order;
+use App\Services\OrderService;
+
+class OrderController extends Controller
+{
+    public function __construct(private readonly OrderService $service)
+    {
+        $this->authorizeResource(Order::class, 'order');
+    }
+
+    public function store(StoreOrderRequest $request): OrderResource
+    {
+        return new OrderResource($this->service->create($request->validated()));
+    }
+
+    public function update(UpdateOrderRequest $request, Order $order): OrderResource
+    {
+        return new OrderResource($this->service->update($order, $request->validated()));
+    }
+
+    public function show(Order $order): OrderResource
+    {
+        return new OrderResource($order->loadMissing('items'));
+    }
+}
+```
+
+### `templates/OrderService.php`
+
+```php
+<?php
+
+namespace App\Services;
+
+use App\Models\Order;
+use Illuminate\Support\Facades\DB;
+
+class OrderService
+{
+    public function create(array $data): Order
+    {
+        return DB::transaction(function () use ($data) {
+            $order = Order::create([
+                'user_id' => auth()->id(),
+                'status' => 'pending',
+            ]);
+            foreach ($data['items'] as $item) {
+                $order->items()->create($item);
+            }
+            return $order->load('items');
+        });
+    }
+
+    public function update(Order $order, array $data): Order
+    {
+        return DB::transaction(function () use ($order, $data) {
+            $order->update(array_filter($data, fn($k) => $k !== 'items', ARRAY_FILTER_USE_KEY));
+            if (isset($data['items'])) {
+                $order->items()->delete();
+                foreach ($data['items'] as $item) {
+                    $order->items()->create($item);
+                }
+            }
+            return $order->fresh('items');
+        });
+    }
+}
+```
+
+### `templates/StoreOrderRequest.php`
+
+```php
+<?php
+
+namespace App\Http\Requests;
+
+use App\Models\Order;
+use Illuminate\Foundation\Http\FormRequest;
+
+class StoreOrderRequest extends FormRequest
+{
+    public function authorize(): bool
+    {
+        return $this->user()->can('create', Order::class);
+    }
+
+    public function rules(): array
+    {
+        return [
+            'items' => ['required', 'array', 'min:1', 'max:100'],
+            'items.*.sku' => ['required', 'string', 'regex:/^[A-Z0-9-]+$/'],
+            'items.*.qty' => ['required', 'integer', 'min:1', 'max:999'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'items.required' => 'order must have at least one line item',
+            'items.*.sku.regex' => 'SKU must be uppercase alphanumeric',
+        ];
+    }
+}
+```

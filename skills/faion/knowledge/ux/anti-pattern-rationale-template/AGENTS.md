@@ -64,7 +64,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/anti-pattern-rationale-template.json` | JSON skeleton conforming to the output-contract schema. |
 | `templates/anti-pattern-rationale-template.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

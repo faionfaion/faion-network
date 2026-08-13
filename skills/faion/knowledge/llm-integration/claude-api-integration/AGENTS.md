@@ -74,6 +74,8 @@
 | `templates/batch-api.py` | `create_batch()` + `poll_batch()` helpers. |
 | `templates/_smoke-test.py` | Minimal viable invocation against stub responses. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -93,3 +95,163 @@
 ## Decision tree
 
 The decision tree at `content/06-decision-tree.xml` gates whether the full integration applies. Root question — "Will more than one Claude surface (completion + tool use + cache + batch + vision) be reused across subagents?". Branches name observables (single-surface vs. multi-surface, sync-only vs. streaming, tools-on vs. tools-off) and conclude with one of the core rule ids from `01-core-rules.xml` or a `skip-this-methodology` directive when a narrower methodology (`claude-messages-api`, `claude-tool-use`, `claude-advanced-features`) is enough.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/claude-service.py`
+
+```python
+"""ClaudeService — production-ready Claude API wrapper."""
+from __future__ import annotations
+
+import logging
+from dataclasses import dataclass, field
+from typing import Any
+
+from anthropic import APIConnectionError, APIStatusError, Anthropic, RateLimitError
+from tenacity import (
+    retry,
+    retry_if_exception,
+    stop_after_attempt,
+    wait_exponential,
+)
+
+RETRYABLE_STATUSES = {500, 502, 503, 529}
+
+
+def _is_retryable(exc: BaseException) -> bool:
+    if isinstance(exc, (RateLimitError, APIConnectionError)):
+        return True
+    if isinstance(exc, APIStatusError):
+        return getattr(exc, "status_code", 0) in RETRYABLE_STATUSES
+    return False
+
+
+@dataclass
+class ClaudeConfig:
+    model: str = "claude-sonnet-4-20250514"
+    max_tokens: int = 1024
+    system: Any = ""  # str | list[dict] for prompt caching.
+    timeout: float = 60.0
+    thinking: dict | None = None  # {"type": "enabled", "budget_tokens": N}
+    tools: list[dict] = field(default_factory=list)
+
+
+class ClaudeService:
+    """Centralises stop_reason discipline, retry, and prompt caching for Claude."""
+
+    def __init__(self, api_key: str | None = None) -> None:
+        self.client = Anthropic(api_key=api_key)
+        self.logger = logging.getLogger(__name__)
+
+    @retry(
+        retry=retry_if_exception(_is_retryable),
+        wait=wait_exponential(multiplier=1, min=1, max=60),
+        stop=stop_after_attempt(5),
+    )
+    def complete(self, messages: list[dict[str, Any]], config: ClaudeConfig | None = None) -> dict:
+        cfg = config or ClaudeConfig()
+        kwargs: dict[str, Any] = {
+            "model": cfg.model,
+            "max_tokens": cfg.max_tokens,
+            "messages": messages,
+            "timeout": cfg.timeout,
+        }
+        if cfg.system:
+            kwargs["system"] = cfg.system
+        if cfg.thinking:  # rule r5: never pass temperature with thinking.
+            kwargs["thinking"] = cfg.thinking
+        if cfg.tools:
+            kwargs["tools"] = cfg.tools
+        response = self.client.messages.create(**kwargs)
+        if response.stop_reason == "max_tokens":  # rule r1.
+            raise RuntimeError(
+                f"Response truncated — increase max_tokens (current: {cfg.max_tokens})"
+            )
+        return {
+            "content": response.content,  # rule r3: full content list, not just text.
+            "model": response.model,  # rule r4 in claude-api-basics: response field.
+            "usage": {
+                "input": response.usage.input_tokens,
+                "output": response.usage.output_tokens,
+                "cache_read": getattr(response.usage, "cache_read_input_tokens", 0),
+                "cache_creation": getattr(response.usage, "cache_creation_input_tokens", 0),
+            },
+            "stop_reason": response.stop_reason,
+        }
+```
+
+### `templates/batch-api.py`
+
+```python
+"""Anthropic Batch API helpers — create + poll + resubmit-errored."""
+from __future__ import annotations
+
+import time
+
+import anthropic
+
+POLL_INTERVAL_SECONDS = 60  # rule r7: ≥60s.
+
+
+def create_batch(client: anthropic.Anthropic, requests: list[dict]) -> str:
+    if not requests:
+        raise ValueError("Empty batch refused.")
+    batch = client.messages.batches.create(
+        requests=[
+            {
+                "custom_id": r["id"],
+                "params": {
+                    "model": r.get("model", "claude-sonnet-4-20250514"),
+                    "max_tokens": r.get("max_tokens", 1024),
+                    "messages": r["messages"],
+                },
+            }
+            for r in requests
+        ]
+    )
+    return batch.id
+
+
+def poll_batch(client: anthropic.Anthropic, batch_id: str, poll_interval: int = POLL_INTERVAL_SECONDS) -> list[dict]:
+    """Poll until `processing_status == "ended"`. Errored items flagged for resubmit."""
+    if poll_interval < 60:
+        raise ValueError("Poll interval below 60 violates rule r7.")
+    while True:
+        batch = client.messages.batches.retrieve(batch_id)
+        if batch.processing_status == "ended":
+            out: list[dict] = []
+            for r in client.messages.batches.results(batch_id):
+                if r.result.type == "succeeded":
+                    out.append({"id": r.custom_id, "text": r.result.message.content[0].text})
+                else:
+                    out.append({"id": r.custom_id, "error": str(r.result.error), "resubmit": True})
+            return out
+        time.sleep(poll_interval)
+```
+
+### `templates/_smoke-test.py`
+
+```python
+"""Smoke test — minimum viable filled-in version of the integration wiring."""
+from __future__ import annotations
+
+
+def fake_output() -> dict:
+    return {
+        "surfaces_wired": ["completion_sync", "prompt_caching", "streaming", "tool_use"],
+        "default_model": "claude-sonnet-4-20250514",
+        "stop_reason_centralised": True,
+        "retry_installed": True,
+        "prompt_caching": {"cached_prefix_tokens": 3200, "hit_ratio_target": 0.75},
+        "forbidden_seen": [],
+    }
+
+
+if __name__ == "__main__":
+    import json
+
+    print(json.dumps(fake_output(), indent=2))
+```

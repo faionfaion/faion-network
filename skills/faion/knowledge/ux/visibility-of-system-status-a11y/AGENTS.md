@@ -64,6 +64,8 @@
 | `templates/visibility-of-system-status.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/visibility-of-system-status.md` | Markdown skeleton for human-readable artefact rendering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[recognition-over-recall]]
@@ -73,3 +75,32 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/visibility-of-system-status.json`
+
+```json
+{
+  "artefact_id": "visibility-of-system-status-example",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "owner": "@solo-founder",
+  "subject": "subject under review",
+  "criteria": [
+    {
+      "id": "c1",
+      "score": 4,
+      "weight": 1.0
+    },
+    {
+      "id": "c2",
+      "score": 3,
+      "weight": 1.0
+    }
+  ],
+  "overall": 0.75
+}
+```

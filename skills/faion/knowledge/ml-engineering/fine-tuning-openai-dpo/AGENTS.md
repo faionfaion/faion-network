@@ -63,7 +63,8 @@
 |------|---------|
 | `templates/openai-dpo-job.py` | Job-launch script with beta + epochs. |
 | `templates/preference-pair-schema.json` | JSON schema for preference pairs. |
-| `templates/dpo-eval-prompt.txt` | LLM-as-judge prompt for preference scoring. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -80,3 +81,21 @@
 ## Decision tree
 
 Decision tree at `content/06-decision-tree.xml` decides beta + epochs + whether DPO is even justified given pair quality.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/openai-dpo-job.py`
+
+```python
+"""
+
+# Stub — see methodology AGENTS.md ## Templates table.
+```
+
+### `templates/preference-pair-schema.json`
+
+```json
+{}
+```

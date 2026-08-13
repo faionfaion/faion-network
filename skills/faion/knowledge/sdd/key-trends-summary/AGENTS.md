@@ -63,6 +63,8 @@
 | `templates/key-trends-summary.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,98 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/key-trends-summary.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/key-trends-summary.json",
+  "title": "Key Trends Summary 2025-2026 Output Contract",
+  "type": "object",
+  "required": [
+    "report_id",
+    "trends",
+    "loaded_at",
+    "next_refresh_due",
+    "audience",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "report_id": {
+      "type": "string",
+      "description": "stable id"
+    },
+    "trends": {
+      "type": "array",
+      "description": "exactly 6 trends with name + source + implication",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "loaded_at": {
+      "type": "string",
+      "description": "ISO datetime",
+      "format": "date-time"
+    },
+    "next_refresh_due": {
+      "type": "string",
+      "description": "loaded_at + 90 days",
+      "format": "date"
+    },
+    "audience": {
+      "type": "array",
+      "description": "named roles",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "owner": {
+      "type": "string",
+      "description": "named author"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "report_id": "sample-report_id",
+  "trends": [
+    {
+      "k": "v"
+    }
+  ],
+  "loaded_at": "2026-05-23T12:00:00Z",
+  "next_refresh_due": "2026-05-23",
+  "audience": [
+    {
+      "k": "v"
+    }
+  ],
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

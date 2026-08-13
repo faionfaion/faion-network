@@ -67,6 +67,8 @@
 | `templates/output.example.json` | Filled example. |
 | `templates/run-headless.sh` | Shell wrapper showing the canonical argv. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,112 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Asks: (1) is the task coding/devops/research with shell affinity? (2) do tool requirements fit MCP catalogue? (3) is shell-out permitted? (4) is inner-loop control required? Leaves point to "use claude-code-headless" or "drop to SDK with named trigger".
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/claude-code-headless-default/output.json",
+  "title": "Claude Code Headless Default Output",
+  "description": "purpose=schema; consumes=brief+context; produces=artefact; depends-on=01-core-rules.xml; token-budget-impact=low",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "owner",
+    "version",
+    "version_stamp",
+    "produced_at",
+    "rationale",
+    "inputs_used"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "minLength": 3
+    },
+    "owner": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "version_stamp": {
+      "type": "string"
+    },
+    "produced_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "fields": {
+      "type": "object"
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 20
+    },
+    "inputs_used": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    }
+  }
+}
+```
+
+### `templates/output.example.json`
+
+```json
+{
+  "artefact_id": "claude-code-headless-default-example-001",
+  "owner": "alex@faion.net",
+  "version": "1.0.0",
+  "version_stamp": "claude-code-headless-default@1.0.0",
+  "produced_at": "2026-05-22T12:00:00Z",
+  "fields": {
+    "placeholder_field": "filled-by-author"
+  },
+  "rationale": "Example output for Claude Code Headless Default; references at least one named input.",
+  "inputs_used": [
+    "docs/brief.md"
+  ]
+}
+```
+
+### `templates/run-headless.sh`
+
+```bash
+# run-headless.sh — canonical headless `claude -p` wrapper.
+#
+# Usage:
+#   ./run-headless.sh "<task prompt>" [allowlist] [max_turns]
+#
+# Defaults:
+#   allowlist  = "Read,Edit,Bash(pytest:*),Bash(git:status)"
+#   max_turns  = 20
+#
+# Stdout: stream-json events, one per line.
+# Exit:   non-zero if claude returns non-zero or wall-clock timeout fires.
+
+set -euo pipefail
+
+TASK="${1:?task prompt required}"
+ALLOWED="${2:-Read,Edit,Bash(pytest:*),Bash(git:status)}"
+MAX_TURNS="${3:-20}"
+WALL_TIMEOUT="${WALL_TIMEOUT:-600}"
+
+exec timeout "$WALL_TIMEOUT" \
+  claude -p "$TASK" \
+    --output-format stream-json --verbose \
+    --allowedTools "$ALLOWED" \
+    --max-turns "$MAX_TURNS" \
+    < /dev/null
+```

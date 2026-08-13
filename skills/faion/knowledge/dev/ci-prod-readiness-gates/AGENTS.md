@@ -65,6 +65,8 @@
 | `templates/prod-readiness.yml` | GitHub Actions workflow bundling all 6 gates. |
 | `templates/prod-readiness.yaml` | Budget config consumed by the gates. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,56 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Tree routes between shipping a new gate, flipping a gate to blocking, or rolling back based on shadow-mode noise rate.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prod-readiness.yml`
+
+```yaml
+name: prod-readiness
+on:
+  pull_request:
+
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint
+        run: make lint
+      - name: Perf budget
+        run: scripts/check-perf-budget.sh prod-readiness.yaml
+      - name: A11y
+        run: pa11y-ci --config .pa11yci.json
+      - name: SLO instrumentation
+        run: scripts/check-slo-instrumented.sh
+      - name: Dep vuln
+        uses: aquasecurity/trivy-action@0.19.0
+        with:
+          scan-type: fs
+          severity: HIGH,CRITICAL
+      - name: License
+        run: scripts/check-licenses.sh
+```
+
+### `templates/prod-readiness.yaml`
+
+```yaml
+version: 1
+perf_budget:
+  bundle_kb_max: 220
+  lcp_p95_ms: 2500
+  inp_p95_ms: 200
+a11y:
+  wcag_level: AA
+dep_vuln:
+  block_severity: [HIGH, CRITICAL]
+licenses:
+  allowed: [MIT, Apache-2.0, BSD-3-Clause]
+  denied: [AGPL-3.0]
+slo:
+  required_metrics: [http_requests_total, http_request_duration_seconds]
+shadow_mode_days: 14
+```

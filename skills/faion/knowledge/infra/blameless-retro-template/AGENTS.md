@@ -73,6 +73,8 @@
 | `templates/action-item.json` | Schema for one action item |
 | `templates/_smoke-test.json` | Minimum retro-record used by validate-blameless-retro-template.py --self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,97 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it after every prod incident with ≥3 involved people.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/retro-record.json`
+
+```json
+{
+  "incident_id": "",
+  "retro_date": "2026-05-23",
+  "facilitator": "",
+  "participants": [],
+  "timeline_pre_read_link": "",
+  "contributing_factors": [],
+  "action_items": [],
+  "meta_round_notes": "",
+  "publication_url": "",
+  "published_within_48h": false
+}
+```
+
+### `templates/action-item.json`
+
+```json
+{
+  "text": "",
+  "owner": "",
+  "target_date": "2026-08-22",
+  "tracking_ticket": "",
+  "category": "tooling-gap"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "incident_id": "INC-2026-042",
+  "retro_date": "2026-05-23",
+  "facilitator": "jane.s",
+  "participants": [
+    {
+      "name": "alex.k",
+      "role": "responder"
+    },
+    {
+      "name": "bob.r",
+      "role": "subsystem-owner"
+    },
+    {
+      "name": "lin.p",
+      "role": "downstream-consumer"
+    }
+  ],
+  "timeline_pre_read_link": "https://wiki/inc-042-draft",
+  "contributing_factors": [
+    {
+      "factor_text": "deploy pipeline allowed --skip-tests outside hotfix context",
+      "category": "tooling-gap",
+      "evidence_ref": "log#L42"
+    },
+    {
+      "factor_text": "alert latency 12 min from first error to page",
+      "category": "detection-gap",
+      "evidence_ref": "alert-history"
+    },
+    {
+      "factor_text": "no Friday-late-deploy soft-block in CI",
+      "category": "tooling-gap",
+      "evidence_ref": "ci-config"
+    }
+  ],
+  "action_items": [
+    {
+      "text": "Replace --skip-tests with explicit hotfix-mode requiring incident-id",
+      "owner": "alex.k",
+      "target_date": "2026-06-15",
+      "tracking_ticket": "JIRA-1234",
+      "category": "tooling-gap"
+    },
+    {
+      "text": "Add Friday-after-3pm deploy soft-warning",
+      "owner": "jane.s",
+      "target_date": "2026-06-08",
+      "tracking_ticket": "JIRA-1235",
+      "category": "tooling-gap"
+    }
+  ],
+  "meta_round_notes": "Almost learned: the deploy-flag flag dates back to 2023; nobody knew current owner. Pattern: ownerless flags persist across reorgs.",
+  "publication_url": "https://wiki/inc-042-final",
+  "published_within_48h": true
+}
+```

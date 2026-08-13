@@ -67,6 +67,8 @@
 | `templates/decision-record.json` | JSON example of billing decision record |
 | `templates/pricing-page-math.md` | Pricing-page math template (unit breakdown) |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,36 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes observable signals to one of the rules in `01-core-rules.xml`. Use it before producing the output — picking the wrong branch is the most common failure.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/decision-record.json`
+
+```json
+{
+  "decision_id": "fsb-2026q2",
+  "signals": {
+    "value_predictability": "medium",
+    "primary_value_driver": "per_seat",
+    "expansion_surface": "seat_growth",
+    "customer_size": "smb"
+  },
+  "options_considered": [
+    "subscription",
+    "usage",
+    "hybrid"
+  ],
+  "chosen": "subscription",
+  "kill_criteria": {
+    "subscription": "if median customer expansion <1.1x in 6 months, revisit"
+  },
+  "reassessment_at": {
+    "customer_count_threshold": 100,
+    "time_window_days": 180
+  },
+  "pricing_page_math": "Team plan: $20 / seat / month. 5-seat min. Annual = 2 months free.",
+  "owner": "@ruslan"
+}
+```

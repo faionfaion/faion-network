@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/structured_logger.py` | Python structured JSON logger with request_id context |
 | `templates/redaction.py` | PII redaction patterns: email, phone, credit-card-like |
-| `templates/_smoke-test.py` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,65 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is the service production-runtime AND does it have a log sink configured?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/structured_logger.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"Python structured JSON logger with request_id context","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#json-structured","token_budget_impact":"~150 tokens when loaded"}}
+import json
+import logging
+import sys
+import uuid
+from contextvars import ContextVar
+from typing import Any
+
+REQUEST_ID: ContextVar[str] = ContextVar("request_id", default="-")
+
+
+class JsonFormatter(logging.Formatter):
+    def format(self, record: logging.LogRecord) -> str:
+        payload: dict[str, Any] = {
+            "ts": self.formatTime(record),
+            "level": record.levelname.lower(),
+            "event": record.getMessage(),
+            "request_id": REQUEST_ID.get(),
+            "logger": record.name,
+        }
+        for k, v in getattr(record, "__dict__", {}).items():
+            if k.startswith("_") or k in payload or k in {"args", "msg", "levelname", "name"}:
+                continue
+            payload[k] = v
+        return json.dumps(payload, default=str)
+
+
+def configure() -> None:
+    h = logging.StreamHandler(sys.stdout)
+    h.setFormatter(JsonFormatter())
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.addHandler(h)
+    root.setLevel(logging.INFO)
+```
+
+### `templates/redaction.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"PII redaction patterns: email, phone, credit-card-like","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#json-structured","token_budget_impact":"~150 tokens when loaded"}}
+import re
+
+PATTERNS = {
+    "email": re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+"),
+    "phone": re.compile(r"\+?[0-9][0-9 .-]{8,}\d"),
+    "card_like": re.compile(r"\b(?:\d[ -]*?){13,16}\b"),
+}
+
+
+def redact(text: str) -> str:
+    for name, pat in PATTERNS.items():
+        text = pat.sub(f"[REDACTED:{name}]", text)
+    return text
+```

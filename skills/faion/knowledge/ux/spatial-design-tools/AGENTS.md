@@ -67,6 +67,8 @@
 | `templates/tool-stack-config.json` | Skeleton config artefact |
 | `templates/spatial-budget.sh` | Asset-budget enforcement script for CI |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,58 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree branches on project phase first; in prototype/production it splits on whether visionOS is in the platform list (forcing USDZ alongside glTF). Budgets-set check fires on any leaf. Each leaf cites a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tool-stack-config.json`
+
+```json
+{
+  "phase": "prototype",
+  "platforms": [
+    "visionos",
+    "quest"
+  ],
+  "tool_stack": {
+    "concept": [
+      "figma",
+      "shapesxr"
+    ],
+    "prototype": [
+      "unity"
+    ],
+    "production": [
+      "unity"
+    ]
+  },
+  "asset_format": {
+    "primary": "gltf",
+    "secondary": [
+      "usdz"
+    ]
+  },
+  "budgets": {
+    "polygon_max": 100000,
+    "file_size_mb_max": 30,
+    "draw_calls_max": 100
+  },
+  "engine_rationale": "team-skill + cross-platform reach"
+}
+```
+
+### `templates/spatial-budget.sh`
+
+```bash
+set -euo pipefail
+MAX_SIZE_MB="${1:-30}"
+for f in $(find assets/3d -type f \( -name "*.glb" -o -name "*.gltf" -o -name "*.usdz" \)); do
+  size=$(du -m "$f" | cut -f1)
+  if [ "$size" -gt "$MAX_SIZE_MB" ]; then
+    echo "FAIL: $f is ${size}MB > ${MAX_SIZE_MB}MB"
+    exit 1
+  fi
+done
+echo "OK: all assets under ${MAX_SIZE_MB}MB"
+```

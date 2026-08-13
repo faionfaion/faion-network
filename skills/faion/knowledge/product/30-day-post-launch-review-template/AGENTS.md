@@ -64,6 +64,8 @@
 | `templates/30-day-post-launch-review-template.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,104 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/30-day-post-launch-review-template.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/30-day-post-launch-review-template.json",
+  "title": "30 Day Post Launch Review Template Output Contract",
+  "type": "object",
+  "required": [
+    "launch_id",
+    "launch_comms_kit_id",
+    "review_at",
+    "funnel_by_channel",
+    "hypothesis_verdicts",
+    "next_bets",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "launch_id": {
+      "type": "string",
+      "description": "named launch"
+    },
+    "launch_comms_kit_id": {
+      "type": "string",
+      "description": "upstream artefact id"
+    },
+    "review_at": {
+      "type": "string",
+      "description": "ISO date (T+30)"
+    },
+    "funnel_by_channel": {
+      "type": "object",
+      "description": "per-channel acquire/activate/retain/revenue counts"
+    },
+    "hypothesis_verdicts": {
+      "type": "array",
+      "description": "\u22651 verdict object (hypothesis_id, verdict, evidence)",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "next_bets": {
+      "type": "array",
+      "description": "\u22653 ranked bets with budget_usd + budget_hours",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "owner": {
+      "type": "string",
+      "description": "named owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "launch_id": "sample-launch_id",
+  "launch_comms_kit_id": "sample-launch_comms_kit_id",
+  "review_at": "sample-review_at",
+  "funnel_by_channel": {
+    "k": "v"
+  },
+  "hypothesis_verdicts": [
+    {
+      "k": "v"
+    }
+  ],
+  "next_bets": [
+    {
+      "k": "v"
+    }
+  ],
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

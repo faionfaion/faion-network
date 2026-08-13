@@ -65,6 +65,8 @@
 | `templates/metric-card.yaml` | Per-task metric card skeleton |
 | `templates/rubric.md` | LLM-as-judge rubric template |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,20 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root: Is the task's quality dimension quantifiable by exact-match or F1? Branches route to a rule id from `content/01-core-rules.xml` (metric-per-dim-or-na, anchored-rubric, safety-and-reliability-floor, ...) so every leaf is traceable to a testable statement.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/metric-card.yaml`
+
+```yaml
+# evaluation-metrics — config skeleton
+version: 1.0.0
+slug: evaluation-metrics
+fields:
+  - name: example-field
+    type: string
+    required: true
+defaults: {}
+```

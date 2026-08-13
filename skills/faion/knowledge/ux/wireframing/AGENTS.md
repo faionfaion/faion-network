@@ -68,6 +68,8 @@
 | `templates/component-wireframe.md` | Single-component wireframe template. |
 | `templates/prompt-wireframe.txt` | Agent prompt skeleton for wireframe generation. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,50 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals (precondition pass, spec available, ≥3 variants required) to a conclusion that references a rule id from `content/01-core-rules.xml`. Use it when in doubt about whether this methodology applies or which variant rule to enforce.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/prompt-wireframe.txt`
+
+```text
+You are a UX designer producing a low-fidelity wireframe specification.
+Given the user story below, produce a wireframe document for each screen in the flow.
+
+For each screen:
+
+1. ASCII layout diagram
+   - Use boxes and text labels only (no colors, no styling)
+   - Show: header/nav, content areas, calls to action, form elements, footer
+   - Keep boxes clearly labeled: [Button name], [Form field: Label], [Image placeholder], [List of items]
+
+2. Annotation table
+   - Columns: Element | Description | Behavior / Notes
+   - Include: every interactive element, every content area, every conditional element
+   - Be specific about behavior: "clicking X opens modal Y", not "triggers action"
+
+3. States checklist
+   - Mark which states this screen must handle: Default / Empty / Loading / Error / Success / Permission Denied
+   - For each state: describe what the user sees (one sentence per state)
+
+4. Responsive notes
+   - What changes at mobile breakpoint (375px)
+   - What collapses, reorders, or becomes a different component
+
+5. Open Questions
+   - Any ambiguous requirement that needs a design decision before engineering begins
+   - Do not guess — flag ambiguity explicitly
+
+Rules:
+- Do not produce high-fidelity visuals or specify colors/fonts
+- Do not produce clickable prototypes
+- Include all error, empty, loading, and permission-denied states — not just the happy path
+- Generate at least 2 layout variants for the primary screen before recommending one
+
+USER STORY:
+[paste user story here]
+
+ACCEPTANCE CRITERIA:
+[paste ACs here]
+```

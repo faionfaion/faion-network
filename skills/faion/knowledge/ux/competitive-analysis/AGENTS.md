@@ -70,6 +70,8 @@
 | `templates/competitive-analysis.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/competitive-analysis.md` | Markdown skeleton for human-readable artefact rendering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,35 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/competitive-analysis.json`
+
+```json
+{
+  "artefact_id": "competitive-analysis-example",
+  "method": "Method used for the report (e.g. interview / heuristic / test).",
+  "sample_size": 6,
+  "findings": [
+    "item-1",
+    "item-2",
+    "item-3"
+  ],
+  "severity_breakdown": {
+    "high": 1,
+    "medium": 2,
+    "low": 0
+  },
+  "recommendations": [
+    "item-1",
+    "item-2"
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "lint_status": "pass",
+  "owner": "@solo-founder"
+}
+```

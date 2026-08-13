@@ -64,9 +64,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/server.ts` | TypeScript MCP server skeleton (stdio transport) |
-| `templates/server.py` | Python MCP server skeleton (stdio transport) |
-| `templates/server-remote.ts` | TypeScript MCP server skeleton (streamable-http) |
 | `templates/install-cmd.md` | claude mcp add command with env-var passing template |
 
 ## Scripts

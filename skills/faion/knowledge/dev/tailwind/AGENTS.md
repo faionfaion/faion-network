@@ -59,6 +59,8 @@
 | `templates/cn.ts` | cn() helper combining clsx + tailwind-merge. |
 | `templates/Component.tsx` | Component composing utilities via cn() with conditional variants. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -73,3 +75,69 @@
 ## Decision tree
 
 The tree at content/06-decision-tree.xml decides utility vs arbitrary value vs token addition, and cn() vs raw template string composition. Walk it any time a component needs a non-trivial className.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tailwind.config.ts`
+
+```typescript
+ */
+
+import type { Config } from "tailwindcss";
+
+const config: Config = {
+  content: ["./src/**/*.{ts,tsx}", "./.storybook/**/*.{ts,tsx}"],
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        primary: "var(--color-primary)",
+        destructive: "var(--color-destructive)",
+      },
+      spacing: { "1": "4px", "2": "8px", "3": "12px", "4": "16px" },
+    },
+  },
+};
+
+export default config;
+```
+
+### `templates/cn.ts`
+
+```typescript
+ */
+
+export {};
+```
+
+### `templates/Component.tsx`
+
+```tsx
+ */
+
+import { cn } from "./cn";
+
+type Props = {
+  label: string;
+  variant?: "primary" | "destructive";
+  className?: string;
+};
+
+export function Button({ label, variant = "primary", className }: Props) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        "px-4 py-2 rounded font-medium",
+        variant === "primary" && "bg-primary text-white",
+        variant === "destructive" && "bg-destructive text-white",
+        className,
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+```

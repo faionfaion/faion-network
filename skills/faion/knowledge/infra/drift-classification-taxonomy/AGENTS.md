@@ -65,6 +65,8 @@
 | `templates/skeleton.json` | Skeleton template |
 | `templates/skeleton.md` | Skeleton template |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,27 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/skeleton.json`
+
+```json
+{
+  "drift_id": "drift-2026-05-20-001",
+  "environment": "prod",
+  "resource_address": "module.api.aws_security_group.sg",
+  "detected_at": "2026-05-20T10:00:00Z",
+  "class": "legitimate_emergency",
+  "evidence": {
+    "source": "cloudtrail",
+    "reference": "arn:aws:cloudtrail:event/abc123"
+  },
+  "fix_action": "backport",
+  "fix_pr_url": "https://github.com/acme/infra/pull/4321",
+  "triage_owner": "platform-team",
+  "triage_at": "2026-05-21T10:00:00Z"
+}
+```

@@ -68,6 +68,8 @@
 | `templates/ServiceTests.cs` | Service unit test with Moq |
 | `templates/ProgramPartial.cs` | `public partial class Program {}` shim |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,127 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps test scope (unit / slice / integration) to a rule from `01-core-rules.xml`. Use it whenever choosing between mocking a collaborator vs spinning up `WebApplicationFactory` vs using Testcontainers for a real database.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ControllerTests.cs`
+
+```csharp
+using System.Net;
+using System.Net.Http.Json;
+using FluentAssertions;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Faion.Tests;
+
+public sealed class OrdersControllerTests : IClassFixture<TestAppFactory>
+{
+    private readonly HttpClient _client;
+
+    public OrdersControllerTests(TestAppFactory factory) => _client = factory.CreateClient();
+
+    [Fact]
+    public async Task Get_ExistingId_Returns200()
+    {
+        var response = await _client.GetAsync("/api/orders/1");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var dto = await response.Content.ReadFromJsonAsync<OrderResponse>();
+        dto.Should().BeEquivalentTo(new OrderResponse(1, "Alice", 10m));
+    }
+
+    [Theory]
+    [InlineData(0, HttpStatusCode.NotFound)]
+    [InlineData(99, HttpStatusCode.NotFound)]
+    public async Task Get_MissingId_Returns404(int id, HttpStatusCode expected)
+    {
+        var response = await _client.GetAsync($"/api/orders/{id}");
+        response.StatusCode.Should().Be(expected);
+    }
+}
+
+public sealed class TestAppFactory : WebApplicationFactory<Program>
+{
+    private readonly SqliteConnection _conn = new("DataSource=:memory:");
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        _conn.Open();
+        builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<DbContextOptions<AppDbContext>>();
+            services.AddDbContext<AppDbContext>(opt => opt.UseSqlite(_conn));
+        });
+    }
+}
+
+public sealed record OrderResponse(int Id, string CustomerName, decimal Total);
+```
+
+### `templates/ServiceTests.cs`
+
+```csharp
+using FluentAssertions;
+using Moq;
+
+namespace Faion.Tests;
+
+public sealed class OrdersServiceTests
+{
+    private readonly Mock<IOrderRepository> _repo = new();
+    private readonly OrdersService _svc;
+
+    public OrdersServiceTests()
+    {
+        _svc = new OrdersService(_repo.Object);
+    }
+
+    [Fact]
+    public async Task GetAsync_ExistingOrder_ReturnsDto()
+    {
+        _repo.Setup(r => r.GetAsync(It.Is<int>(id => id == 1), It.IsAny<CancellationToken>()))
+             .ReturnsAsync(new Order(1, "Alice", 10m));
+
+        var result = await _svc.GetAsync(1, CancellationToken.None);
+
+        result.Should().BeEquivalentTo(new OrderResponse(1, "Alice", 10m));
+        _repo.Verify(r => r.GetAsync(1, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public async Task GetAsync_NonPositiveId_Throws(int id)
+    {
+        var act = () => _svc.GetAsync(id, CancellationToken.None);
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>();
+    }
+}
+
+public interface IOrderRepository { Task<Order?> GetAsync(int id, CancellationToken ct); }
+public sealed record Order(int Id, string CustomerName, decimal Total);
+public sealed record OrderResponse(int Id, string CustomerName, decimal Total);
+public sealed class OrdersService
+{
+    private readonly IOrderRepository _r;
+    public OrdersService(IOrderRepository r) => _r = r;
+    public async Task<OrderResponse?> GetAsync(int id, CancellationToken ct)
+    {
+        if (id <= 0) throw new ArgumentOutOfRangeException(nameof(id));
+        var o = await _r.GetAsync(id, ct);
+        return o is null ? null : new OrderResponse(o.Id, o.CustomerName, o.Total);
+    }
+}
+```
+
+### `templates/ProgramPartial.cs`
+
+```csharp
+// Append to the bottom of the API project's Program.cs:
+
+public partial class Program { }
+```

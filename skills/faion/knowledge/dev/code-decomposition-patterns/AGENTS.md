@@ -64,6 +64,8 @@
 |------|---------|
 | `templates/pattern-guard.sh` | Shell guard that checks file size + symbol mix before allowing a decomposition refactor |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,66 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree asks first 'does this file have I/O?' → if yes, Extract Service. Otherwise it asks 'is it UI?' → Extract Component. 'Pure logic?' → Extract Module. 'Constants table?' → Extract Configuration. 'Types only?' → Extract Types. Each leaf references a rule from `01-core-rules.xml` and points at the procedure for that pattern.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/pattern-guard.sh`
+
+```bash
+#!/usr/bin/env bash
+# pattern-guard.sh — enforce decomposition pattern invariants post-refactor.
+# Usage: ./pattern-guard.sh [path]
+# Checks: view line counts (Extract Service), component line counts (Extract Component),
+#         settings file size (Extract Configuration), circular imports.
+set -euo pipefail
+ROOT="${1:-.}"
+MAX_VIEW=120
+MAX_COMPONENT=200
+MAX_SERVICE=300
+MAX_CONFIG=150
+
+FAIL=0
+
+# Views must be thin (Extract Service)
+while IFS= read -r f; do
+  n=$(wc -l < "$f")
+  if [ "$n" -gt "$MAX_VIEW" ]; then
+    echo "FAIL: $f: $n lines (> $MAX_VIEW) — apply Extract Service"
+    FAIL=$((FAIL + 1))
+  fi
+done < <(find "$ROOT" -path '*/views/*' -name '*.py' 2>/dev/null)
+
+# React components capped (Extract Component)
+while IFS= read -r f; do
+  n=$(wc -l < "$f")
+  if [ "$n" -gt "$MAX_COMPONENT" ]; then
+    echo "FAIL: $f: $n lines (> $MAX_COMPONENT) — apply Extract Component"
+    FAIL=$((FAIL + 1))
+  fi
+done < <(find "$ROOT/src/components" -name '*.tsx' 2>/dev/null)
+
+# Settings split (Extract Configuration)
+if [ -f "$ROOT/settings.py" ]; then
+  n=$(wc -l < "$ROOT/settings.py")
+  if [ "$n" -gt "$MAX_CONFIG" ]; then
+    echo "FAIL: settings.py: $n lines (> $MAX_CONFIG) — extract per-env"
+    FAIL=$((FAIL + 1))
+  fi
+fi
+
+# Circular imports
+if command -v madge >/dev/null 2>&1; then
+  madge --circular "$ROOT/src" 2>/dev/null || true
+fi
+if command -v pydeps >/dev/null 2>&1; then
+  pydeps --show-cycles "$ROOT" 2>/dev/null || true
+fi
+
+if [ "$FAIL" -gt 0 ]; then
+  echo "$FAIL invariant(s) violated"
+  exit 1
+fi
+echo "OK"
+```

@@ -63,6 +63,8 @@
 | `templates/substack-to-product-funnel.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,119 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/substack-to-product-funnel.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/substack-to-product-funnel.json",
+  "title": "Substack-to-Product Funnel Output Contract",
+  "type": "object",
+  "required": [
+    "operator",
+    "publication_url",
+    "paid_tier",
+    "recommendation_partners",
+    "cross_post_cadence",
+    "welcome_sequence",
+    "hard_product_url",
+    "hard_product_cta_text",
+    "kpi_set",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "operator": {
+      "type": "string",
+      "description": "named publication owner"
+    },
+    "publication_url": {
+      "type": "string",
+      "description": "Substack URL"
+    },
+    "paid_tier": {
+      "type": "object",
+      "description": "{name, monthly_price, annual_price, concrete_benefit}"
+    },
+    "recommendation_partners": {
+      "type": "array",
+      "description": "\u22653 publications with URL + agreement_at",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "cross_post_cadence": {
+      "type": "object",
+      "description": "{per_month, partner_rotation}"
+    },
+    "welcome_sequence": {
+      "type": "array",
+      "description": "5 emails; email 4 carries the hard-product CTA",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "hard_product_url": {
+      "type": "string",
+      "description": "URL"
+    },
+    "hard_product_cta_text": {
+      "type": "string",
+      "description": "\u2264140 chars"
+    },
+    "kpi_set": {
+      "type": "object",
+      "description": "{free_subs, paid_subs, hard_product_conversions, recommendation_inflow}"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "operator": "sample-operator",
+  "publication_url": "sample-publication_url",
+  "paid_tier": {
+    "key": "value"
+  },
+  "recommendation_partners": [
+    {
+      "key": "value"
+    }
+  ],
+  "cross_post_cadence": {
+    "key": "value"
+  },
+  "welcome_sequence": [
+    {
+      "key": "value"
+    }
+  ],
+  "hard_product_url": "sample-hard_product_url",
+  "hard_product_cta_text": "sample-hard_product_cta_text",
+  "kpi_set": {
+    "key": "value"
+  },
+  "version": "sample-version",
+  "last_reviewed": "2026-05-23"
+}
+```

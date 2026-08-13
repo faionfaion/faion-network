@@ -72,7 +72,6 @@
 |------|---------|
 | `templates/automation-assessment.md` | Per-candidate automation assessment template. |
 | `templates/conformance-report.md` | Per-process conformance report. |
-| `templates/scoring-matrix.yaml` | Volume/frequency/variance/rule-density scoring matrix. |
 | `templates/_smoke-test.md` | Minimum filled-in report. |
 
 ## Scripts

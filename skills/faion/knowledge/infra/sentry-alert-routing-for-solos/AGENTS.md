@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/sentry-alert-routing-for-solos.json` | JSON skeleton matching the output contract. |
 | `templates/sentry-alert-routing-for-solos.md` | Markdown skeleton with required fields. |
 
 ## Scripts

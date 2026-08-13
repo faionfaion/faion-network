@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/rfc-lite-pm-template.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/rfc-lite-pm-template.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

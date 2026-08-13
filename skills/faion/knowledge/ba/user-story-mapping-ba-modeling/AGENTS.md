@@ -67,6 +67,8 @@
 | `templates/story-map.yaml` | Canonical YAML skeleton (activities → tasks → stories with release band) |
 | `templates/_smoke-test.yaml` | Minimum viable filled map |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[use-case-modeling]]
@@ -77,3 +79,53 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes on map shape (R1 walking? persona-tagged? ≤8 activities?) to the rule firing.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/story-map.yaml`
+
+```yaml
+map_id: REPLACE-map-id
+version_tag: v1.0.0
+personas:
+  - {id: shopper, name: "Returning shopper"}
+activities:
+  - id: act-discover
+    name: Discover catalogue
+    tasks:
+      - id: task-browse
+        stories:
+          - {id: s-1, title: "Browse top categories", persona_id: shopper, release: R1}
+          - {id: s-2, title: "Filter by brand",       persona_id: shopper, release: R2}
+  - id: act-purchase
+    name: Purchase
+    tasks:
+      - id: task-checkout
+        stories:
+          - {id: s-3, title: "Pay with card",  persona_id: shopper, release: R1}
+          - {id: s-4, title: "Save payment for next time", persona_id: shopper, release: R3}
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+map_id: smoke
+version_tag: v0.1.0
+personas:
+  - {id: u, name: "Smoke user"}
+activities:
+  - id: act-1
+    name: Pick
+    tasks:
+      - id: t-1
+        stories:
+          - {id: s-1, title: "pick", persona_id: u, release: R1}
+  - id: act-2
+    name: Pay
+    tasks:
+      - id: t-2
+        stories:
+          - {id: s-2, title: "pay", persona_id: u, release: R1}
+```

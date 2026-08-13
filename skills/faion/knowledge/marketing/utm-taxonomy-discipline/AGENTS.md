@@ -60,6 +60,8 @@
 | `templates/utm-taxonomy-discipline.json` | JSON Schema for the output contract (machine-validatable). |
 | `templates/utm-taxonomy-discipline.md` | Markdown skeleton with the required fields. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -74,3 +76,72 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/utm-taxonomy-discipline.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/utm-taxonomy-discipline.json",
+  "title": "UTM Taxonomy Discipline Output Contract",
+  "type": "object",
+  "required": [
+    "operator",
+    "source_vocabulary",
+    "medium_vocabulary",
+    "campaign_id_pattern",
+    "validation_regex",
+    "link_builder_url",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "operator": {
+      "type": "string",
+      "description": "named taxonomy owner"
+    },
+    "source_vocabulary": {
+      "type": "array",
+      "description": "\u226412 kebab-case values",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "medium_vocabulary": {
+      "type": "array",
+      "description": "\u22646 kebab-case values",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "campaign_id_pattern": {
+      "type": "string",
+      "description": "regex (yyyymmdd-asset-slug shape)"
+    },
+    "validation_regex": {
+      "type": "string",
+      "description": "full URL regex"
+    },
+    "link_builder_url": {
+      "type": "string",
+      "description": "tool URL"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```

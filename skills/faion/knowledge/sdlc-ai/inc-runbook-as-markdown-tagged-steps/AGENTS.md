@@ -62,6 +62,8 @@
 | `templates/runbook-template.md` | Runbook markdown skeleton with tagged steps |
 | `templates/parser.py` | Reference runbook parser |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,52 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/parser.py`
+
+````python
+"""Parse markdown runbook into structured steps."""
+from __future__ import annotations
+import re
+import json
+import sys
+from pathlib import Path
+
+STEP_RE = re.compile(r"^### `\[(?P<tag>read|write|approval-required|verify|wait)\]` id=(?P<id>[a-z0-9-]+)\s*$")
+
+
+def parse(md_path: Path) -> list[dict]:
+    steps: list[dict] = []
+    current: dict | None = None
+    in_code = False
+    for line in md_path.read_text().splitlines():
+        m = STEP_RE.match(line)
+        if m:
+            if current:
+                steps.append(current)
+            current = {"id": m["id"], "tag": m["tag"], "command": ""}
+            continue
+        if current is None:
+            continue
+        if line.startswith("```"):
+            in_code = not in_code
+            continue
+        if in_code:
+            current["command"] += line + "\n"
+        elif line.startswith("assertion:"):
+            current["assertion"] = line.split(":", 1)[1].strip(" `")
+    if current:
+        steps.append(current)
+    return steps
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        sys.stderr.write("usage: parser.py <runbook.md>\n")
+        sys.exit(2)
+    print(json.dumps(parse(Path(sys.argv[1])), indent=2))
+````

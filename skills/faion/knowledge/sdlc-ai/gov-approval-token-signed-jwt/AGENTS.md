@@ -62,6 +62,8 @@
 | `templates/approval-config.yaml` | Approval verifier config |
 | `templates/verifier.py` | Reference JWT verifier implementation |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,50 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/approval-config.yaml`
+
+```yaml
+issuer_key_id: kms://arn:aws:kms:eu-west-1:123:key/abc
+audience: prod-cluster-us-east-1
+scope_pattern: "^[a-z]+:[a-z0-9-]+$"
+exp_seconds_max: 900
+nonce_store: redis://nonce.svc:6379/0
+hsm_rooted: true
+crl_url: https://approvals.internal/crl
+```
+
+### `templates/verifier.py`
+
+```python
+"""Minimal reference verifier; production uses pyjwt or jose."""
+from __future__ import annotations
+import json
+
+
+def verify(token: str, public_jwk: dict, expected_aud: str, nonce_seen: set) -> tuple[bool, str]:
+    """Return (allowed, reason). Production: replace with pyjwt."""
+    header_b64, payload_b64, sig_b64 = token.split(".")
+    payload = json.loads(_b64url_decode(payload_b64).decode())
+    if payload.get("aud") != expected_aud:
+        return False, "aud mismatch"
+    if payload.get("scope", "").endswith(":*") or payload["scope"] == "*":
+        return False, "wildcard scope"
+    if payload.get("exp", 0) - payload.get("iat", 0) > 900:
+        return False, "expiry too long"
+    jti = payload.get("jti")
+    if not jti or jti in nonce_seen:
+        return False, "replay or missing jti"
+    nonce_seen.add(jti)
+    return True, "ok"
+
+
+def _b64url_decode(s: str) -> bytes:
+    import base64
+    pad = "=" * (-len(s) % 4)
+    return base64.urlsafe_b64decode(s + pad)
+```

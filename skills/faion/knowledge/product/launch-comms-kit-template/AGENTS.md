@@ -64,6 +64,8 @@
 | `templates/launch-comms-kit-template.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,98 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/launch-comms-kit-template.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/launch-comms-kit-template.json",
+  "title": "Launch Comms Kit Template Output Contract",
+  "type": "object",
+  "required": [
+    "launch_name",
+    "positioning_sentence",
+    "launch_window",
+    "channels",
+    "publish_timeline",
+    "retro_at",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "launch_name": {
+      "type": "string",
+      "description": "named launch"
+    },
+    "positioning_sentence": {
+      "type": "string",
+      "description": "\u2264140 chars canonical sentence"
+    },
+    "launch_window": {
+      "type": "object",
+      "description": "ISO start/end"
+    },
+    "channels": {
+      "type": "object",
+      "description": "per-channel draft objects (PH/HN/X/mail/changelog)"
+    },
+    "publish_timeline": {
+      "type": "array",
+      "description": "per-channel publish_at ISO datetimes",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "retro_at": {
+      "type": "string",
+      "description": "ISO datetime for T+7 retro"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named human owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "launch_name": "sample-launch_name",
+  "positioning_sentence": "sample-positioning_sentence",
+  "launch_window": {
+    "k": "v"
+  },
+  "channels": {
+    "k": "v"
+  },
+  "publish_timeline": [
+    {
+      "k": "v"
+    }
+  ],
+  "retro_at": "sample-retro_at",
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

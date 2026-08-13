@@ -62,6 +62,8 @@
 | `templates/growth-community-building.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,117 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/growth-community-building.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/growth-community-building.json",
+  "title": "Growth Community Building Output Contract",
+  "type": "object",
+  "required": [
+    "community_id",
+    "host",
+    "platform",
+    "seed_members",
+    "planted_conversations",
+    "rituals",
+    "guidelines",
+    "health_targets",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "community_id": {
+      "type": "string",
+      "description": "kebab-case slug"
+    },
+    "host": {
+      "type": "string",
+      "description": "named human accountable for rituals"
+    },
+    "platform": {
+      "type": "string",
+      "description": "discord|slack|circle|telegram"
+    },
+    "seed_members": {
+      "type": "array",
+      "description": "\u226550 entries with name + handle + reason",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "planted_conversations": {
+      "type": "array",
+      "description": "5-10 conversation prompts with author",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "rituals": {
+      "type": "array",
+      "description": "\u22653 with cadence + owner + agenda",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "guidelines": {
+      "type": "string",
+      "description": "community guidelines markdown"
+    },
+    "health_targets": {
+      "type": "object",
+      "description": "{dau_mau: 0.25, weekly_active_members_pct: 0.4}"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "community_id": "sample-community_id",
+  "host": "sample-host",
+  "platform": "value",
+  "seed_members": [
+    {
+      "key": "value"
+    }
+  ],
+  "planted_conversations": [
+    {
+      "key": "value"
+    }
+  ],
+  "rituals": [
+    {
+      "key": "value"
+    }
+  ],
+  "guidelines": "sample-guidelines",
+  "health_targets": {
+    "key": "value"
+  },
+  "version": "sample-version",
+  "last_reviewed": "2026-05-23"
+}
+```

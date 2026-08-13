@@ -72,6 +72,8 @@
 | `templates/power-calc-spec.json` | JSON skeleton matching 02-output-contract. |
 | `templates/power-calc-spec.md` | Narrative review draft. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,42 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes to the calculator if baseline rate and MDE are pinned; refuses if traffic-per-day cannot reach the computed n within the review cadence. Walk it before scheduling the A/B; running an under-powered test wastes the cadence slot.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/power-calc-spec.json`
+
+```json
+{
+  "artefact_id": "ab-<feature>-<period>",
+  "owner": "<handle>@faion.net",
+  "trigger": {
+    "kind": "schedule",
+    "value": "weekly: thursday"
+  },
+  "baseline_rate": 0.62,
+  "mde": 0.04,
+  "alpha": 0.05,
+  "power": 0.8,
+  "traffic_per_day": 1200,
+  "per_arm_n": 2350,
+  "inputs_used": [
+    {
+      "name": "baseline_eval",
+      "source": "git://<repo>/eval/<file>.json"
+    },
+    {
+      "name": "mde_target",
+      "source": "git://<repo>/product/<file>.md"
+    },
+    {
+      "name": "traffic_analytics",
+      "source": "warehouse://<table>"
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```

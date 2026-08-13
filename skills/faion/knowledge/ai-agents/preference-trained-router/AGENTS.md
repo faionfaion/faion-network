@@ -64,6 +64,8 @@
 | `templates/router-spec.md` | Markdown wrapper. |
 | `templates/_smoke-test.yaml` | Minimum preference set. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -78,3 +80,21 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on `preference_data_size` (&lt; 1000 → skip; otherwise deploy), then on `weak_strong_cost_ratio` (&gt;= 5 → enable router; &lt; 5 → static rule). Each leaf cites a rule id.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+drivers:
+  prompt_volume_per_day: 5000
+  weak_strong_cost_ratio: 15
+  preference_data_size: 4000
+  latency_budget_ms: 1500
+
+weak_model_id: haiku
+strong_model_id: opus
+target_strong_accuracy: 0.9
+```

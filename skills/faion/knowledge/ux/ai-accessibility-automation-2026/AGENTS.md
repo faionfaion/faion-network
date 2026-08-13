@@ -62,6 +62,8 @@
 | `templates/triage-prompt.txt` | AI triage prompt template with severity rubric. |
 | `templates/_smoke-test.yml` | Filled WCAG 2.2 AA workflow. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,56 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the config; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/a11y-ci.yml`
+
+```yaml
+# a11y-ci.yml — AI Accessibility Automation 2026
+# Fill per task; validator: scripts/validate-ai-accessibility-automation-2026.py
+
+ci_config_path: .github/workflows/a11y.yml
+scanners: ["axe-core@4.10", "lighthouse@12.x"]
+triage_model: claude-sonnet-4.7
+wcag_target: 2.2-AA
+at_testing_cadence: monthly
+ci_fail_on_severity: critical
+```
+
+### `templates/triage-prompt.txt`
+
+```text
+Prompt template — AI triage prompt template with severity rubric.
+
+Fill the slots below per task.
+
+[CONTEXT]
+...
+
+[TASK]
+...
+
+[OUTPUT_FORMAT]
+...
+
+[CONSTRAINTS]
+- Follow content/01-core-rules.xml.
+- Output MUST validate against content/02-output-contract.xml.
+```
+
+### `templates/_smoke-test.yml`
+
+```yaml
+# _smoke-test.yml — AI Accessibility Automation 2026
+# Fill per task; validator: scripts/validate-ai-accessibility-automation-2026.py
+
+ci_config_path: .github/workflows/a11y.yml
+scanners: ["axe-core@4.10", "lighthouse@12.x"]
+triage_model: claude-sonnet-4.7
+wcag_target: 2.2-AA
+at_testing_cadence: monthly
+ci_fail_on_severity: critical
+```

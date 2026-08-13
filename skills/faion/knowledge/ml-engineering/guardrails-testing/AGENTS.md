@@ -68,6 +68,8 @@
 | `templates/test_perf.py` | Latency / throughput benchmark skeleton |
 | `templates/_smoke-test.py` | Minimal runner |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,127 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches on deploy stage (pre-deploy / monthly / on-incident) and on whether model was upgraded.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/test_security.py`
+
+```python
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from unittest.mock import AsyncMock
+
+import pytest
+
+PAYLOADS = [
+    json.loads(line)
+    for line in Path(__file__).parent.joinpath("payloads/v1.jsonl").read_text().splitlines()
+    if line.strip()
+]
+
+
+@pytest.mark.parametrize("payload", PAYLOADS, ids=[p["id"] for p in PAYLOADS])
+def test_payload_is_blocked(payload: dict, pipeline) -> None:
+    """Each adversarial payload must be blocked or transformed; never passed."""
+    pipeline.client = AsyncMock()
+    result = pipeline.process_input_sync(payload["attack_string"])
+    sanitised, violations = result
+    assert sanitised is None or any(v["type"] == "injection" for v in violations), (
+        f"payload {payload['id']} leaked: expected block, got pass"
+    )
+```
+
+### `templates/test_accuracy.py`
+
+```python
+"""
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+
+import pytest
+
+FP_BUDGET = float(os.environ.get("FP_BUDGET", "0.01"))
+LEGIT = [
+    json.loads(line)
+    for line in Path(__file__).parent.joinpath("legitimate.jsonl").read_text().splitlines()
+    if line.strip()
+]
+
+
+def test_false_positive_rate_under_budget(pipeline) -> None:
+    blocked = 0
+    for item in LEGIT:
+        sanitised, violations = pipeline.process_input_sync(item["text"])
+        if sanitised is None or any(v["type"] in {"injection", "moderation"} for v in violations):
+            blocked += 1
+    fp = blocked / len(LEGIT)
+    assert fp <= FP_BUDGET, f"FP rate {fp:.3f} exceeds budget {FP_BUDGET}"
+
+
+@pytest.mark.parametrize("item", LEGIT[:50], ids=lambda x: x.get("id", "x"))
+def test_individual_legit_passes(item: dict, pipeline) -> None:
+    sanitised, violations = pipeline.process_input_sync(item["text"])
+    blocking = [v for v in violations if v["type"] in {"injection", "moderation"}]
+    assert sanitised is not None and not blocking, f"legit '{item.get('id')}' wrongly blocked"
+```
+
+### `templates/test_perf.py`
+
+```python
+"""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import pytest
+
+BASELINE = json.loads(Path(__file__).parent.joinpath("bench.json").read_text())
+
+
+def test_p99_within_budget(pipeline, benchmark) -> None:
+    benchmark.pedantic(
+        pipeline.process_input_sync,
+        args=("benign hello message",),
+        iterations=1,
+        rounds=200,
+    )
+    p99 = benchmark.stats.stats.max  # rough p99 proxy
+    assert p99 * 1000 <= BASELINE["p99_ms"] * 1.2, f"p99 {p99 * 1000:.1f} ms exceeds budget"
+
+
+@pytest.mark.parametrize("payload", ["hi", "what's my order status", "tell me about products"])
+def test_warm_latency(pipeline, payload: str, benchmark) -> None:
+    benchmark(pipeline.process_input_sync, payload)
+```
+
+### `templates/_smoke-test.py`
+
+```python
+"""
+from __future__ import annotations
+
+import json
+
+report = {
+    "artefact_id": "gtr-smoke-2026-05",
+    "version": "1.0.0",
+    "last_reviewed": "2026-05-22",
+    "system_under_test": {"name": "smoke", "version": "0.0.1", "model": "mock"},
+    "suites": {
+        "security": {"payloads_total": 10, "blocked": 10, "leaked": 0},
+        "accuracy": {"legit_total": 20, "passed": 20, "false_positive_rate": 0.0, "fp_budget": 0.01},
+        "perf": {"p50_ms": 5, "p99_ms": 20, "throughput_rps": 200, "baseline_p99_ms": 25},
+    },
+    "verdict": "pass",
+}
+print(json.dumps(report, indent=2))
+```

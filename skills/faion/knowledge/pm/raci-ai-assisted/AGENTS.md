@@ -71,6 +71,8 @@
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum-viable filled `RACIMatrix` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,59 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (trigger fired, owner named, A-count per row, evidence presence, staleness) to run / suppress / repair-A / refresh. Every leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+owner:
+  role: ""
+  person: ""
+last_reviewed: ""   # YYYY-MM-DD
+version: ""         # semver
+trigger: ""         # kickoff | roster_delta | quarterly_review
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "project_id": "smoke",
+  "header": {
+    "owner": {
+      "role": "PM",
+      "person": "pm-handle"
+    },
+    "last_reviewed": "2026-05-10",
+    "version": "1.0",
+    "trigger": "kickoff"
+  },
+  "rows": [
+    {
+      "wbs_id": "2.1",
+      "deliverable": "Login Endpoint",
+      "responsible": [
+        "backend-engineer"
+      ],
+      "accountable": "backend-lead",
+      "consulted": [
+        "security-lead"
+      ],
+      "informed": [
+        "PM"
+      ],
+      "evidence": [
+        "charter#auth-section"
+      ]
+    }
+  ],
+  "review_log": [
+    {
+      "reviewed_at": "2026-05-10"
+    }
+  ]
+}
+```

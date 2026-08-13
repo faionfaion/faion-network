@@ -61,6 +61,8 @@
 | `templates/openrouter_call.py` | OpenRouter chat-completions call with primary + explicit fallback chain |
 | `templates/_smoke-test.json` | Minimum valid call request body |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,85 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The root question asks whether the workload has compliance constraints or vendor-feature dependencies. Branches route to direct SDK with app-level fallback, hosted gateway with cross-provider chain, or self-hosted LiteLLM proxy inside the compliance boundary. Each leaf maps to a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/openrouter_call.py`
+
+```python
+"""OpenRouter chat-completions call with primary model + fallback chain.
+
+Input  → list of messages, primary model id, ordered fallback ids.
+Output → completion text plus the model id that actually served it.
+
+Defaults configure ANTHROPIC primary, OPENAI fallback, GOOGLE second
+fallback — three different upstream providers so a vendor-wide outage in
+any one of them does not take the call down.
+
+See content/01-gateway-fallback.xml for fallback semantics.
+"""
+
+import os
+from dataclasses import dataclass
+
+from openai import OpenAI
+
+
+@dataclass
+class GatewayResult:
+    text: str
+    used_model: str
+    fallback_count: int
+
+
+def call_with_fallback(
+    messages: list[dict],
+    primary: str = "anthropic/claude-opus-4",
+    fallbacks: tuple[str, ...] = (
+        "openai/gpt-5",
+        "google/gemini-2.5-pro",
+    ),
+) -> GatewayResult:
+    client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=os.environ["OPENROUTER_API_KEY"],
+    )
+    chain = [primary, *fallbacks]
+    resp = client.chat.completions.create(
+        model=primary,
+        messages=messages,
+        extra_body={"models": chain, "route": "fallback"},
+    )
+    used = getattr(resp, "model", primary)
+    return GatewayResult(
+        text=resp.choices[0].message.content,
+        used_model=used,
+        fallback_count=chain.index(used) if used in chain else 0,
+    )
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "smallest valid call request body for the validator",
+  "_consumes": "nothing",
+  "_produces": "example request matching content/02-output-contract.xml",
+  "_depends_on": "content/01-core-rules.xml",
+  "_token_budget_impact": "~50 tokens",
+  "model": "anthropic/claude-opus-4-7",
+  "messages": [
+    {
+      "role": "user",
+      "content": "hello"
+    }
+  ],
+  "models": [
+    "anthropic/claude-opus-4-7",
+    "openai/gpt-5",
+    "google/gemini-2.5-pro"
+  ]
+}
+```

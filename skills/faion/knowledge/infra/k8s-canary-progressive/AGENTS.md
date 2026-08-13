@@ -66,6 +66,8 @@
 | `templates/config.json` | Config skeleton matching the output schema. |
 | `templates/_smoke-test.json` | Minimum viable filled artefact. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,85 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/config.json`
+
+```json
+{
+  "service": "acme-api",
+  "engine": "argo-rollouts",
+  "strategy": "canary",
+  "steps": [
+    {
+      "weight": 5,
+      "pause_seconds": 300
+    },
+    {
+      "weight": 25,
+      "pause_seconds": 600
+    },
+    {
+      "weight": 50,
+      "pause_seconds": 600
+    },
+    {
+      "weight": 100,
+      "pause_seconds": 60
+    }
+  ],
+  "analysis": {
+    "template": "http-slo-v1",
+    "success_condition": "result[0] < 0.01",
+    "failure_condition": "result[0] >= 0.02"
+  },
+  "rollback_seconds": 180,
+  "owner": {
+    "name": "Olena Boyko",
+    "role": "platform lead"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "service": "acme-api",
+  "engine": "argo-rollouts",
+  "strategy": "canary",
+  "steps": [
+    {
+      "weight": 5,
+      "pause_seconds": 300
+    },
+    {
+      "weight": 25,
+      "pause_seconds": 600
+    },
+    {
+      "weight": 50,
+      "pause_seconds": 600
+    },
+    {
+      "weight": 100,
+      "pause_seconds": 60
+    }
+  ],
+  "analysis": {
+    "template": "http-slo-v1",
+    "success_condition": "result[0] < 0.01",
+    "failure_condition": "result[0] >= 0.02"
+  },
+  "rollback_seconds": 180,
+  "owner": {
+    "name": "Olena Boyko",
+    "role": "platform lead"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+```

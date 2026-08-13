@@ -65,7 +65,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/scope-creep-park-list-template.json` | JSON skeleton conforming to the output-contract schema. |
 | `templates/scope-creep-park-list-template.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

@@ -72,6 +72,8 @@
 | `templates/ost-render.sh` | Render OST YAML to a Markdown tree visualisation |
 | `templates/ost-audit-checklist.md` | OST hygiene audit (8 binary checks) |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,80 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals onto a rule id from `content/01-core-rules.xml`, so the agent can decide in one read whether to run the methodology, halt, or route elsewhere. Use it whenever the inputs feel ambiguous.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ost.yaml`
+
+```yaml
+# ost.yaml — canonical agent-friendly OST schema
+# Source of truth for the tree; Miro/Vistaly/FigJam are render targets only.
+# All passes read and write this file. Use stable IDs for all nodes.
+
+outcome:
+  id: O-1
+  metric: "Activation rate W1"
+  target: "30% to 45% by Q3"
+
+opportunities:
+  - id: OP-1
+    parent: O-1
+    statement: "New users can't tell what to do first after signup"
+    evidence: [INT-04, INT-09, TKT-211]  # interview/ticket IDs — min 2 required
+    sizing:
+      reach: high
+      impact: high
+      confidence: med
+    status: open  # open | tested | parked | killed
+
+solutions:
+  - id: S-1
+    parent: OP-1
+    statement: "Interactive 3-step product tour"
+    assumption_types: [desirability, usability]
+  - id: S-2
+    parent: OP-1
+    statement: "Templated starter project on first login"
+    assumption_types: [desirability, feasibility]
+  - id: S-3
+    parent: OP-1
+    statement: "Contextual tooltip overlay on empty states"
+    assumption_types: [usability, technical]
+
+experiments:
+  - id: E-1
+    parent: S-1
+    type: prototype-test
+    riskiest_assumption: "users will complete a 3-step tour without abandoning"
+    success_metric: "60% or more complete all 3 steps"
+    falsifier: "less than 40% complete — drop S-1"
+    status: open
+```
+
+### `templates/ost-render.sh`
+
+```bash
+#!/usr/bin/env bash
+# ost-render.sh — convert ost.yaml to Mermaid diagram and render to SVG
+# Requires: yq, jq, mmdc (npm i -g @mermaid-js/mermaid-cli)
+# Usage: ./ost-render.sh [ost.yaml] [output.svg]
+set -euo pipefail
+
+INPUT="${1:-ost.yaml}"
+OUTPUT="${2:-ost.svg}"
+MMD="$(mktemp /tmp/ost-XXXX.mmd)"
+
+yq -o=json "$INPUT" | jq -r '
+  "graph TD",
+  (.outcome | "O[\(.id): \(.metric | gsub(" "; "_"))]"),
+  (.opportunities[] | "O --> \(.id)[\(.statement | gsub(" "; "_") | .[0:40])]"),
+  (.solutions[] | "\(.parent) --> \(.id)((\(.statement | gsub(" "; "_") | .[0:30])))"),
+  (.experiments[] | "\(.parent) --> \(.id)>\(.type)]")
+' > "$MMD"
+
+mmdc -i "$MMD" -o "$OUTPUT"
+rm -f "$MMD"
+echo "Rendered: $OUTPUT"
+```

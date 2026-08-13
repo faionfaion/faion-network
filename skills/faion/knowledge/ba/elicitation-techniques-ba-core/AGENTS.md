@@ -68,6 +68,8 @@
 | `templates/workshop-agenda.md` | Multi-stakeholder workshop agenda with facilitation cues. |
 | `templates/technique-selector.py` | CLI selector mapping (info_type, stakeholder_count) → technique. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[stakeholder-analysis]]
@@ -76,3 +78,32 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input fields, scores, thresholds) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/technique-selector.py`
+
+```python
+#!/usr/bin/env python3
+"""technique-selector.py — map (info_type, stakeholder_count) to elicitation technique."""
+from __future__ import annotations
+import sys
+
+MATRIX = {
+    ('sme-deep', 1): 'interview', ('sme-deep', 2): 'interview', ('sme-deep', 3): 'interview',
+    ('consensus-needs', 4): 'workshop', ('consensus-needs', 8): 'workshop',
+    ('broad-preference', 15): 'survey', ('broad-preference', 100): 'survey',
+    ('process-observe', 1): 'observation',
+    ('artefact-analysis', 0): 'document-analysis',
+}
+
+def pick(info_type: str, count: int) -> str:
+    for (it, n), tech in MATRIX.items():
+        if it == info_type and count >= n: return tech
+    return 'interview'
+
+if __name__ == '__main__':
+    print(pick(sys.argv[1], int(sys.argv[2])))
+```

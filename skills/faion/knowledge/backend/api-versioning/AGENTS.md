@@ -64,7 +64,8 @@
 |------|---------|
 | `templates/versioned_router.py` | FastAPI v1/v2 router scaffold with frozen v1 module |
 | `templates/oasdiff-ci.sh` | CI breaking-change gate: oasdiff diff + .changelog-pending enforcement |
-| `templates/_smoke-test.py` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -81,3 +82,56 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Is the pending change a breaking semantic change?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/versioned_router.py`
+
+```python
+# faion_header_json: {"__faion_header__":{"purpose":"FastAPI v1/v2 router scaffold with frozen v1 module","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#additive-first","token_budget_impact":"~150 tokens when loaded"}}
+from fastapi import FastAPI, APIRouter
+
+app = FastAPI()
+v1_router = APIRouter(prefix="/api/v1")
+v2_router = APIRouter(prefix="/api/v2")
+
+
+@v1_router.get("/users", tags=["Users v1"])
+async def get_users_v1():
+    return {"format": "v1", "users": []}
+
+
+@v2_router.get("/users", tags=["Users v2"])
+async def get_users_v2():
+    return {"data": {"users": []}, "meta": {}}
+
+
+app.include_router(v1_router)
+app.include_router(v2_router)
+```
+
+### `templates/oasdiff-ci.sh`
+
+```bash
+# faion_header_json: {"__faion_header__":{"purpose":"CI breaking-change gate: oasdiff diff + .changelog-pending enforcement","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#additive-first","token_budget_impact":"~150 tokens when loaded"}}
+set -euo pipefail
+SPEC="${1:-openapi.yaml}"
+CHANGELOG_PENDING="${2:-.changelog-pending}"
+git fetch origin main:main 2>/dev/null || true
+if ! git show main:"$SPEC" > /tmp/main-openapi.yaml 2>/dev/null; then
+  echo "No main branch spec; skipping breaking-change check"
+  exit 0
+fi
+oasdiff breaking /tmp/main-openapi.yaml "$SPEC" --fail-on ERR --format json > /tmp/diff.json 2>&1 || true
+n=$(jq 'length' /tmp/diff.json 2>/dev/null || echo 0)
+if [ "$n" -gt 0 ]; then
+  jq -r '.[] | "  \(.id) \(.path) \(.text)"' /tmp/diff.json
+  if [ ! -f "$CHANGELOG_PENDING" ] || ! grep -qE '^v[0-9]+: breaking' "$CHANGELOG_PENDING"; then
+    echo "breaking change without changelog-pending bump" >&2
+    exit 1
+  fi
+fi
+echo "OK"
+```

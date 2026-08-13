@@ -67,6 +67,8 @@
 | `templates/cloud-run-traffic-management.yaml` | Skeleton for the config artefact this methodology produces. |
 | `templates/_smoke-test.yaml` | Minimum viable filled-in example. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -82,3 +84,28 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree branches on observable workload / configuration signals and routes to a specific rule id from `01-core-rules.xml`. Use it whenever the input shape is ambiguous between two adjacent methodologies in this sub-skill (e.g. cloud-run-traffic-management vs an adjacent sibling).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/cloud-run-traffic-management.yaml`
+
+```yaml
+service: example-service
+splits: []  # array
+tags: []  # array
+rollout_strategy: example-rollout_strategy
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+# minimum viable filled-in example of cloud-run-traffic-management.yaml
+service: example-service
+splits:
+  - example-splits-1
+tags:
+  - example-tags-1
+rollout_strategy: example-rollout_strategy
+```

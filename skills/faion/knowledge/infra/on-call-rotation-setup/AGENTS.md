@@ -58,10 +58,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/rotation-config.yaml` | Paging-platform rotation config. |
 | `templates/fairness-report.md` | Per-engineer load report template. |
 | `templates/compensation-policy.md` | On-call comp + time-off-in-lieu policy. |
-| `templates/_smoke-test.yaml` | Minimum-viable filled-in example (smoke test). |
 
 ## Scripts
 

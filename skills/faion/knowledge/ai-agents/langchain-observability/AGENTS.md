@@ -66,6 +66,8 @@
 | `templates/structured-callback.py` | Working CallbackHandler scaffold with redaction. |
 | `templates/_smoke-test.yaml` | Minimum-viable profile. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,97 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. Branches on `pii_posture` first (no-export → local-only OpenTelemetry; else LangSmith), then on `latency_target_ms` (≤500ms → streaming required; else optional), then on `cost_cap_per_turn_usd` (≤$0.01 → token logging only, no full payload). Each leaf cites a rule in 01-core-rules.xml.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/runtime-profile.yaml`
+
+```yaml
+latency_target_ms: 800
+cost_cap_per_turn_usd: 0.02
+pii_posture: internal       # public | internal | no-export
+tracing_backend: langsmith  # langsmith | opentelemetry | none
+project_name: prod-bot
+sample_hint: 1.0            # 0..1; methodology may override based on cost cap
+```
+
+### `templates/tracing-config.env`
+
+```bash
+LANGCHAIN_TRACING_V2=true
+LANGCHAIN_PROJECT=prod-bot
+LANGCHAIN_ENDPOINT=https://api.smith.langchain.com
+# LANGCHAIN_API_KEY=  # injected by 1Password / vault; never commit
+LANGCHAIN_CALLBACKS_BACKGROUND=true
+LANGCHAIN_TRACING_SAMPLE_RATE=1.0
+```
+
+### `templates/structured-callback.py`
+
+```python
+"""Wrap LangSmith with redaction + structured logging.
+
+Use as:
+    chain.invoke(payload, config={"callbacks": [RedactingHandler()]})
+"""
+from __future__ import annotations
+
+import json
+import logging
+import re
+from typing import Any
+
+from langchain_core.callbacks import BaseCallbackHandler
+
+LOG = logging.getLogger("langchain.obs")
+SSN_RE = re.compile(r"\b\d{3}-\d{2}-\d{4}\b")
+EMAIL_RE = re.compile(r"\b[\w.+-]+@[\w-]+\.[\w.-]+\b")
+
+
+def _redact(s: str) -> str:
+    s = SSN_RE.sub("[REDACTED-SSN]", s)
+    s = EMAIL_RE.sub("[REDACTED-EMAIL]", s)
+    return s
+
+
+class RedactingHandler(BaseCallbackHandler):
+    raise_error = True  # do NOT swallow callback errors
+
+    def on_chain_start(self, serialized: dict[str, Any], inputs: dict[str, Any], **kw: Any) -> None:
+        LOG.info(json.dumps({"event": "chain_start", "name": serialized.get("name"), "input_keys": list(inputs)}))
+
+    def on_chain_end(self, outputs: dict[str, Any], **kw: Any) -> None:
+        red = {k: _redact(str(v)) for k, v in outputs.items()}
+        LOG.info(json.dumps({"event": "chain_end", "outputs": red}))
+
+    def on_chain_error(self, error: BaseException, **kw: Any) -> None:
+        LOG.error(json.dumps({"event": "chain_error", "error": str(error)}))
+
+
+def _self_test() -> int:
+    assert _redact("contact me at a@b.com") == "contact me at [REDACTED-EMAIL]"
+    assert _redact("ssn 123-45-6789") == "ssn [REDACTED-SSN]"
+    return 0
+
+
+if __name__ == "__main__":
+    import sys
+
+    if "--self-test" in sys.argv:
+        raise SystemExit(_self_test())
+    if "--help" in sys.argv:
+        print(__doc__)
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+latency_target_ms: 400
+cost_cap_per_turn_usd: 0.02
+pii_posture: internal
+tracing_backend: langsmith
+project_name: smoke
+sample_hint: 1.0
+```

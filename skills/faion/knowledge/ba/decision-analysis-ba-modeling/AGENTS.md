@@ -68,6 +68,8 @@
 | `templates/decision-record.md` | Markdown skeleton (decision, options, criteria, scores, sensitivity, signoff) |
 | `templates/_smoke-test.json` | Minimum viable decision-record JSON |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[ai-acceptance-criteria-generator-reviewer]]
@@ -78,3 +80,94 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree routes on observable signals (weight lock timestamp, evidence completeness, sensitivity rank-flips) to the active rule. Use when in doubt whether the record is ready for sign-off.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "decision_id": "smoke-vendor",
+  "options": [
+    {
+      "id": "do-nothing",
+      "name": "Status quo",
+      "is_baseline": true
+    },
+    {
+      "id": "vendor-a",
+      "name": "Vendor A"
+    }
+  ],
+  "criteria": [
+    {
+      "id": "tco",
+      "name": "TCO",
+      "weight": 0.5
+    },
+    {
+      "id": "fit",
+      "name": "Fit",
+      "weight": 0.3
+    },
+    {
+      "id": "risk",
+      "name": "Risk",
+      "weight": 0.2
+    }
+  ],
+  "weights_locked_at": "2026-05-23T08:00:00Z",
+  "scores": [
+    {
+      "option_id": "do-nothing",
+      "criterion_id": "tco",
+      "score": 3,
+      "evidence": "baseline.md#L1"
+    },
+    {
+      "option_id": "do-nothing",
+      "criterion_id": "fit",
+      "score": 2,
+      "evidence": "baseline.md#L4"
+    },
+    {
+      "option_id": "do-nothing",
+      "criterion_id": "risk",
+      "score": 5,
+      "evidence": "baseline.md#L7"
+    },
+    {
+      "option_id": "vendor-a",
+      "criterion_id": "tco",
+      "score": 4,
+      "evidence": "a-tco.pdf#p12"
+    },
+    {
+      "option_id": "vendor-a",
+      "criterion_id": "fit",
+      "score": 4,
+      "evidence": "a-demo.mp4#10:00"
+    },
+    {
+      "option_id": "vendor-a",
+      "criterion_id": "risk",
+      "score": 3,
+      "evidence": "a-soc2.pdf"
+    }
+  ],
+  "sensitivity": {
+    "monte_carlo_runs": 1000,
+    "weight_jitter_pct": 20,
+    "rank_flip_rate": 0.05,
+    "unstable_pairs": []
+  },
+  "approver": {
+    "name": "Pedro Silva",
+    "role": "CFO",
+    "signoff_ts": "2026-05-23T11:00:00Z"
+  },
+  "rationale": "Vendor A wins; sensitivity flip rate 5% well under 15% threshold."
+}
+```

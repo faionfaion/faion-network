@@ -62,6 +62,8 @@
 | `templates/token-scanner.config.json` | Token scanner glob list + violation severity mapping. |
 | `templates/_smoke-test.yaml` | Filled minimum-viable config for one ds package. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[ai-design-assistant-patterns]]
@@ -70,3 +72,60 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input signals to a rule in `01-core-rules.xml`. Walk it before producing the config; mis-routing leads to producing the wrong artefact shape.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/ds-automation.config.yaml`
+
+```yaml
+# ds-automation.config.yaml — AI-Enhanced Design Systems
+# Fill per task; validator: scripts/validate-ai-enhanced-design-systems.py
+
+ds_root: packages/ds
+token_map: packages/ds/tokens.json
+doc_generator: {"source": "packages/ds/src", "story_root": "packages/ds/stories", "output": "packages/ds/docs"}
+token_scanner: {"block_on_violation": true, "scan_globs": ["apps/**/*.tsx"]}
+variant_generator: {"visreg_provider": "chromatic", "max_variants_per_component": 24}
+human_review_required: true
+```
+
+### `templates/token-scanner.config.json`
+
+```json
+{
+  "ds_root": "FILL_ME",
+  "token_map": "FILL_ME",
+  "doc_generator": {
+    "source": "packages/ds/src",
+    "story_root": "packages/ds/stories",
+    "output": "packages/ds/docs"
+  },
+  "token_scanner": {
+    "block_on_violation": true,
+    "scan_globs": [
+      "apps/**/*.tsx"
+    ]
+  },
+  "variant_generator": {
+    "visreg_provider": "chromatic",
+    "max_variants_per_component": 24
+  },
+  "human_review_required": true
+}
+```
+
+### `templates/_smoke-test.yaml`
+
+```yaml
+# _smoke-test.yaml — AI-Enhanced Design Systems
+# Fill per task; validator: scripts/validate-ai-enhanced-design-systems.py
+
+ds_root: packages/ds
+token_map: packages/ds/tokens.json
+doc_generator: {"source": "packages/ds/src", "story_root": "packages/ds/stories", "output": "packages/ds/docs"}
+token_scanner: {"block_on_violation": true, "scan_globs": ["apps/**/*.tsx"]}
+variant_generator: {"visreg_provider": "chromatic", "max_variants_per_component": 24}
+human_review_required: true
+```

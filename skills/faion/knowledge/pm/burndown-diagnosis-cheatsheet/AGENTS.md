@@ -63,6 +63,8 @@
 | `templates/burndown-diagnosis-cheatsheet.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/burndown-diagnosis-cheatsheet.md` | Markdown skeleton for human-readable artefact rendering. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,48 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable inputs to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip and which rule path applies.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/burndown-diagnosis-cheatsheet.json`
+
+```json
+{
+  "artefact_id": "burndown-diag-sprint-2026-w20",
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-23",
+  "sprint_id": "2026-W20",
+  "diagnosis_date": "2026-05-22",
+  "drift_pct": 35,
+  "diagnosed_causes": [
+    {
+      "cause": "scope-creep",
+      "evidence": [
+        "STORY-117 added day 3",
+        "STORY-118 added day 4"
+      ]
+    },
+    {
+      "cause": "blocker-stack",
+      "evidence": [
+        "BLOCK-7 stale 4 days waiting on design"
+      ]
+    }
+  ],
+  "remediations": [
+    {
+      "action": "Move STORY-117/118 to next sprint",
+      "owner": "@ruslan",
+      "due": "2026-05-23"
+    },
+    {
+      "action": "Escalate BLOCK-7 to async designer; set 24h ETA",
+      "owner": "@ruslan",
+      "due": "2026-05-23"
+    }
+  ],
+  "owner": "@ruslan"
+}
+```

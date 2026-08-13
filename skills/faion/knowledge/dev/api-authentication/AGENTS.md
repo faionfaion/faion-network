@@ -71,6 +71,8 @@
 | `templates/output-schema.json` | JSON Schema (draft-07) for the api-authentication artefact |
 | `templates/_smoke-test.json` | Minimum viable filled-in api-authentication artefact for validator round-trip |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,139 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on the schema's required cross-field checks; every leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/api-key-check.py`
+
+```python
+# Constant-time SHA-256 API key verification
+# Usage: from templates.api_key_check import hash_key, verify_api_key
+
+import hashlib
+import hmac
+
+
+def hash_key(plaintext: str) -> str:
+    """Return SHA-256 hex digest of key for storage."""
+    return hashlib.sha256(plaintext.encode()).hexdigest()
+
+
+def verify_api_key(presented: str, stored_hash: str) -> bool:
+    """Constant-time comparison to prevent timing attacks."""
+    return hmac.compare_digest(hash_key(presented), stored_hash)
+```
+
+### `templates/fastapi-jwt-verifier.py`
+
+```python
+# FastAPI JWT verifier using RS256 public key
+# Usage: from templates.fastapi_jwt_verifier import verify_jwt_token
+# Requires: python-jose[cryptography], fastapi
+
+import os
+from fastapi import Depends, HTTPException, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from jose import jwt, JWTError
+
+ALGORITHM = "RS256"
+PUBLIC_KEY = os.environ["JWT_PUBLIC_KEY"]   # PEM-encoded RSA public key
+AUDIENCE = os.environ["JWT_AUDIENCE"]        # e.g. "https://api.example.com"
+ISSUER = os.environ["JWT_ISSUER"]            # e.g. "https://auth.example.com"
+
+_bearer = HTTPBearer()
+
+
+def verify_jwt_token(
+    credentials: HTTPAuthorizationCredentials = Security(_bearer),
+) -> dict:
+    """Verify RS256 JWT; return decoded payload or raise 401."""
+    token = credentials.credentials
+    try:
+        payload = jwt.decode(
+            token,
+            PUBLIC_KEY,
+            algorithms=[ALGORITHM],
+            audience=AUDIENCE,
+            issuer=ISSUER,
+        )
+    except JWTError as exc:
+        raise HTTPException(status_code=401, detail=f"Invalid token: {exc}") from exc
+    return payload
+```
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/api-authentication.json",
+  "type": "object",
+  "required": [
+    "spec_id",
+    "scheme",
+    "audience",
+    "access_token_ttl_seconds",
+    "revocation_path"
+  ],
+  "properties": {
+    "spec_id": {
+      "type": "string",
+      "pattern": "^AUTH-[A-Z0-9-]{2,40}$"
+    },
+    "scheme": {
+      "type": "string",
+      "enum": [
+        "jwt",
+        "oauth2-client-credentials",
+        "api-key",
+        "mtls",
+        "opaque-session"
+      ]
+    },
+    "audience": {
+      "type": "string",
+      "enum": [
+        "b2c-browser",
+        "b2c-mobile",
+        "b2b-partner",
+        "server-to-server",
+        "iot"
+      ]
+    },
+    "access_token_ttl_seconds": {
+      "type": "integer",
+      "minimum": 30,
+      "maximum": 86400
+    },
+    "refresh_token_rotates": {
+      "type": "boolean"
+    },
+    "revocation_path": {
+      "type": "string",
+      "minLength": 8
+    },
+    "key_rotation_cadence_days": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 365
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "spec_id": "AUTH-PARTNER-API",
+  "scheme": "oauth2-client-credentials",
+  "audience": "b2b-partner",
+  "access_token_ttl_seconds": 3600,
+  "refresh_token_rotates": false,
+  "revocation_path": "POST /oauth/revoke; client_id+client_secret; cascades to introspection cache eviction",
+  "key_rotation_cadence_days": 90
+}
+```

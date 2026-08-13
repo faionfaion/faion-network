@@ -65,6 +65,8 @@
 | `templates/config.json` | Config skeleton matching the output schema. |
 | `templates/_smoke-test.json` | Minimum viable filled artefact. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,83 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/config.json`
+
+```json
+{
+  "module_name": "vpc-network",
+  "test_layers": {
+    "unit": [
+      "terraform fmt -check",
+      "terraform validate",
+      "tflint"
+    ],
+    "component": [
+      "terraform plan -out plan.bin",
+      "json-assert: resource_count==12"
+    ],
+    "integration": [
+      "terratest examples/simple",
+      "terratest examples/multi-region"
+    ]
+  },
+  "policy_gates": [
+    {
+      "engine": "opa",
+      "policies": [
+        "no-public-buckets",
+        "cmek-required",
+        "no-primitive-roles"
+      ]
+    }
+  ],
+  "owner": {
+    "name": "Olha Petrenko",
+    "role": "platform lead"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "module_name": "vpc-network",
+  "test_layers": {
+    "unit": [
+      "terraform fmt -check",
+      "terraform validate",
+      "tflint"
+    ],
+    "component": [
+      "terraform plan -out plan.bin",
+      "json-assert: resource_count==12"
+    ],
+    "integration": [
+      "terratest examples/simple",
+      "terratest examples/multi-region"
+    ]
+  },
+  "policy_gates": [
+    {
+      "engine": "opa",
+      "policies": [
+        "no-public-buckets",
+        "cmek-required",
+        "no-primitive-roles"
+      ]
+    }
+  ],
+  "owner": {
+    "name": "Olha Petrenko",
+    "role": "platform lead"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+```

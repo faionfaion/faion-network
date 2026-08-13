@@ -62,6 +62,8 @@
 | `templates/validation-paralysis-breaker.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -77,3 +79,88 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/validation-paralysis-breaker.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/validation-paralysis-breaker.json",
+  "title": "Validation Paralysis Breaker Output Contract",
+  "type": "object",
+  "required": [
+    "hypothesis",
+    "falsification_trigger",
+    "budget_start",
+    "budget_end",
+    "verdict",
+    "named_risk",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "hypothesis": {
+      "type": "string",
+      "description": "one-line statement"
+    },
+    "falsification_trigger": {
+      "type": "string",
+      "description": "observable that would falsify"
+    },
+    "budget_start": {
+      "type": "string",
+      "description": "ISO datetime",
+      "format": "date-time"
+    },
+    "budget_end": {
+      "type": "string",
+      "description": "budget_start + 72h",
+      "format": "date-time"
+    },
+    "verdict": {
+      "type": "string",
+      "description": "ship | park | extend-once"
+    },
+    "named_risk": {
+      "type": "string",
+      "description": "the risk being taken or carried"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "hypothesis": "sample-hypothesis",
+  "falsification_trigger": "sample-falsification_trigger",
+  "budget_start": "2026-05-23T12:00:00Z",
+  "budget_end": "2026-05-23T12:00:00Z",
+  "verdict": "sample-verdict",
+  "named_risk": "sample-named_risk",
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

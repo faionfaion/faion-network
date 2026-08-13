@@ -63,7 +63,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/promotion-gate-checklist.md` | Markdown checklist with binary criteria + evidence column |
-| `templates/promotion-gate.schema.json` | JSON Schema for the gate artefact |
 
 ## Scripts
 

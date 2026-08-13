@@ -70,6 +70,8 @@
 | `templates/header.yaml` | Frontmatter schema |
 | `templates/_smoke-test.json` | Minimum viable filled `RegulatoryBuffer` |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,52 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps jurisdiction + signal to buffer % / pause / escalate-to-legal. Every leaf references a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+owner:
+  role: ""
+  person: ""
+last_reviewed: ""
+version: ""
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "project_id": "smoke",
+  "header": {
+    "owner": {
+      "role": "delivery-manager",
+      "person": "dm-handle"
+    },
+    "last_reviewed": "2026-05-10",
+    "version": "1.0"
+  },
+  "rules": [
+    {
+      "rule_id": "eu-ai-act-annex3",
+      "jurisdiction": "EU",
+      "regulation": "AI Act 2024",
+      "signal": "system classified Annex III high-risk",
+      "threshold": true,
+      "default_action": "proceed",
+      "buffer_pct": 30,
+      "evidence": [
+        "counsel-memo-2026-04"
+      ]
+    }
+  ],
+  "review_log": [
+    {
+      "reviewed_at": "2026-05-10"
+    }
+  ]
+}
+```

@@ -69,6 +69,8 @@
 | `templates/breakdown-checklist.md` | Breakdown checklist for the weekly cadence. |
 | `templates/report-artefact.json` | Schema-conformant sample artefact used by validator self-test. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,54 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from one observable (do preconditions hold?) and maps each branch to a concrete `<conclusion ref="rule-id">` from `01-core-rules.xml`. Use it whenever the operator must choose between applying this methodology, deferring, or routing to a sibling.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/report-artefact.json`
+
+```json
+{
+  "period": {
+    "start": "2026-05-16",
+    "end": "2026-05-22"
+  },
+  "metrics": {
+    "spend": 5200,
+    "cpm": 18.4,
+    "ctr": 0.014,
+    "cpc": 1.32,
+    "cvr": 0.041,
+    "cpa": 32.1,
+    "roas": 3.6,
+    "frequency": 2.7
+  },
+  "breakdowns": [
+    {
+      "dimension": "placement",
+      "rows": [
+        {
+          "placement": "reels",
+          "cpa": 22.0
+        }
+      ]
+    }
+  ],
+  "diagnoses": [
+    {
+      "symptom": "frequency_2.7",
+      "root_cause": "creative_fatigue",
+      "evidence": "CTR -28% wk/wk"
+    }
+  ],
+  "actions": [
+    {
+      "priority": 1,
+      "lever": "rotate_creative_bottom2",
+      "expected_impact": "CPA -15%",
+      "owner": "creative"
+    }
+  ]
+}
+```

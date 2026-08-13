@@ -65,6 +65,8 @@
 | `templates/skeleton.json` | Skeleton template |
 | `templates/skeleton.md` | Skeleton template |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,51 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, scale) to a concrete action, each leaf referencing a rule id from `01-core-rules.xml`. Use it before applying any other section of the methodology to confirm scope and pick the right variant.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/skeleton.json`
+
+```json
+{
+  "slo_id": "checkout-api-availability-30d",
+  "slo_target": 0.999,
+  "windows": [
+    {
+      "length": "1h",
+      "burn_rate_threshold": 14.4,
+      "routing": "page"
+    },
+    {
+      "length": "6h",
+      "burn_rate_threshold": 6.0,
+      "routing": "page"
+    },
+    {
+      "length": "3d",
+      "burn_rate_threshold": 1.0,
+      "routing": "ticket"
+    },
+    {
+      "length": "30d",
+      "burn_rate_threshold": 0.1,
+      "routing": "review"
+    }
+  ],
+  "sli_recording_rule_prefix": "level:checkout_api:slo",
+  "alertmanager_routes": {
+    "1h": "oncall-page",
+    "6h": "oncall-page",
+    "3d": "slo-tickets",
+    "30d": "slo-review"
+  },
+  "runbook_urls": {
+    "1h": "https://runbooks/api-availability-1h",
+    "6h": "https://runbooks/api-availability-6h",
+    "3d": "https://runbooks/api-availability-3d",
+    "30d": "https://runbooks/api-availability-30d"
+  }
+}
+```

@@ -70,6 +70,8 @@
 | `templates/idp-spec.json` | JSON template for the IDP spec artefact (validator target) |
 | `templates/_smoke-test.json` | Minimum filled IDP spec used by validate-platform-engineering.py --self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -85,3 +87,125 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it when scoping a year-1 platform investment with a named sponsor.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/golden-path-go-microservice.yaml`
+
+```yaml
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: go-microservice
+  title: Go Microservice Golden Path
+  description: Production-ready Go service with CI/CD, observability, RBAC
+spec:
+  owner: platform-team
+  type: service
+  lifecycle: production
+  parameters:
+    - title: Service Details
+      properties:
+        serviceName:
+          type: string
+          pattern: "^[a-z][a-z0-9-]+$"
+        owner:
+          type: string
+  steps:
+    - id: fetch
+      name: Fetch Skeleton
+      action: fetch:template
+      input:
+        url: ./skeleton
+        values:
+          serviceName: ${{ parameters.serviceName }}
+    - id: publish
+      name: Publish to Git
+      action: publish:github
+      input:
+        allowedHosts: [github.com]
+        repoUrl: github.com?owner=acme&repo=${{ parameters.serviceName }}
+    - id: register
+      name: Register in Catalog
+      action: catalog:register
+      input:
+        repoContentsUrl: ${{ steps.publish.output.repoContentsUrl }}
+        catalogInfoPath: /catalog-info.yaml
+```
+
+### `templates/idp-spec.json`
+
+```json
+{
+  "org": "",
+  "current_state": {
+    "devops_tickets_month": 0,
+    "ttfd_days": 0,
+    "dev_nps": 0,
+    "service_count": 0
+  },
+  "decisions": {
+    "portal": "backstage",
+    "orchestrator": "crossplane",
+    "iac": "terraform",
+    "golden_path_first": "go-microservice",
+    "rbac_includes_ai_agents": true
+  },
+  "metrics": {
+    "dora": [
+      "DF",
+      "LT",
+      "MTTR",
+      "CFR"
+    ],
+    "platform": [
+      "adoption_rate",
+      "ttfd_new_dev",
+      "ticket_trend",
+      "nps"
+    ]
+  },
+  "non_goals_year1": []
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "org": "acme",
+  "current_state": {
+    "devops_tickets_month": 220,
+    "ttfd_days": 14,
+    "dev_nps": -5,
+    "service_count": 38
+  },
+  "decisions": {
+    "portal": "backstage",
+    "orchestrator": "crossplane",
+    "iac": "terraform",
+    "golden_path_first": "go-microservice",
+    "rbac_includes_ai_agents": true
+  },
+  "metrics": {
+    "dora": [
+      "DF",
+      "LT",
+      "MTTR",
+      "CFR"
+    ],
+    "platform": [
+      "adoption_rate",
+      "ttfd_new_dev",
+      "ticket_trend",
+      "nps"
+    ]
+  },
+  "non_goals_year1": [
+    "multi-cloud",
+    "self-service databases"
+  ]
+}
+```

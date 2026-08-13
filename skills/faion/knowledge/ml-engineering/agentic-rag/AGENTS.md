@@ -69,6 +69,8 @@
 | `templates/prompt-grader.txt` | Relevance / groundedness grader prompt template |
 | `templates/prompt-router.txt` | Query router prompt template |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,119 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` picks the right rule branch for the current task. Branches use observable inputs (numeric / boolean / categorical) and every leaf cites one of `r1-typed-state`, `r2-router-first`, `r3-grade-before-generate`, `r4-bounded-loop`, `r5-groundedness-gate` from `content/01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/crag-workflow.py`
+
+```python
+"""Skeleton for the `agentic-rag` template `crag-workflow.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "agentic-rag"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/state-schemas.py`
+
+```python
+"""Skeleton for the `agentic-rag` template `state-schemas.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "agentic-rag"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/pydantic-schemas.py`
+
+```python
+"""Skeleton for the `agentic-rag` template `pydantic-schemas.py` — fill the placeholders."""
+from __future__ import annotations
+from dataclasses import dataclass
+
+
+@dataclass
+class Skeleton:
+    slug: str = "agentic-rag"
+    version: str = "1.1.0"
+    owner: str = "role:person"
+    approver: str = "role:person"
+
+    def render(self) -> dict:
+        return {
+            "slug": self.slug,
+            "version": self.version,
+            "owner": self.owner,
+            "approver": self.approver,
+        }
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    sys.stdout.write(json.dumps(Skeleton().render(), indent=2) + "\n")
+```
+
+### `templates/prompt-grader.txt`
+
+```text
+# Prompt Grader
+# Prompt skeleton for agentic-rag.
+
+SYSTEM: You are applying methodology `agentic-rag`. Honour every rule in content/01-core-rules.xml.
+USER: <task input>
+ASSISTANT (expected shape): <see content/02-output-contract.xml>
+```
+
+### `templates/prompt-router.txt`
+
+```text
+# Prompt Router
+# Prompt skeleton for agentic-rag.
+
+SYSTEM: You are applying methodology `agentic-rag`. Honour every rule in content/01-core-rules.xml.
+USER: <task input>
+ASSISTANT (expected shape): <see content/02-output-contract.xml>
+```

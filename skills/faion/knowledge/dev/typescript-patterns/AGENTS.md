@@ -68,6 +68,8 @@
 | `templates/zod-user.ts` | UserSchema + z.infer + validators reference. |
 | `templates/typed-shapes-spec.json` | Reference output document. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,138 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree routes each domain type by trust boundary (external input → Zod-validated schema; internal-only → plain interface), by failure modality (nullable result → Result discriminated union; throwing failure → assertion function), and by identity uniqueness (ID-of-string → branded type).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/repository.ts`
+
+```typescript
+// Generic Repository interface — constrain T to have an id: string property
+interface Repository<T extends { id: string }> {
+  findById(id: string): Promise<T | null>;
+  findAll(): Promise<T[]>;
+  create(data: Omit<T, 'id'>): Promise<T>;
+  update(id: string, data: Partial<T>): Promise<T>;
+  delete(id: string): Promise<void>;
+}
+```
+
+### `templates/result.ts`
+
+```typescript
+// Discriminated union Result type
+export type Result<T, E = Error> =
+  | { success: true; data: T }
+  | { success: false; error: E };
+
+// Assertion helper — narrows T | null | undefined to T
+export function assertDefined<T>(
+  value: T | null | undefined,
+  message = 'Value is null or undefined',
+): asserts value is T {
+  if (value === null || value === undefined) {
+    throw new Error(message);
+  }
+}
+```
+
+### `templates/zod-user.ts`
+
+```typescript
+import { z } from 'zod';
+import type { Result } from './result';
+
+export const UserSchema = z.object({
+  id: z.string().uuid(),
+  email: z.string().email(),
+  name: z.string().min(2).max(100),
+  age: z.number().int().positive().optional(),
+  role: z.enum(['admin', 'user', 'guest']),
+  createdAt: z.date(),
+});
+
+export type User = z.infer<typeof UserSchema>;
+
+// Partial schema for update endpoints — id cannot be changed
+export const UpdateUserSchema = UserSchema.partial().omit({ id: true });
+export type UpdateUserData = z.infer<typeof UpdateUserSchema>;
+
+// Throws ZodError for invalid input
+export function validateUser(data: unknown): User {
+  return UserSchema.parse(data);
+}
+
+// Returns Result — safe to use at API boundaries
+export function safeValidateUser(data: unknown): Result<User> {
+  const result = UserSchema.safeParse(data);
+  if (result.success) {
+    return { success: true, data: result.data };
+  }
+  return { success: false, error: result.error };
+}
+```
+
+### `templates/typed-shapes-spec.json`
+
+```json
+{
+  "_purpose": "Reference typed-shapes spec output.",
+  "_consumes": "Domain glossary + external-input inventory.",
+  "_produces": "JSON for codegen / review.",
+  "_depends-on": "content/02-output-contract.xml.",
+  "_token-budget-impact": "~140 tokens.",
+  "artefact_id": "billing-domain-types",
+  "owner": "ruslan@faion.net",
+  "scope": "billing service domain types",
+  "ts_version": "^5.4.0",
+  "types": [
+    {
+      "name": "UserId",
+      "kind": "id-brand",
+      "representation": "branded-string"
+    },
+    {
+      "name": "OrderId",
+      "kind": "id-brand",
+      "representation": "branded-string"
+    },
+    {
+      "name": "Money",
+      "kind": "internal",
+      "representation": "interface"
+    },
+    {
+      "name": "User",
+      "kind": "internal",
+      "representation": "interface"
+    },
+    {
+      "name": "Order",
+      "kind": "internal",
+      "representation": "interface"
+    },
+    {
+      "name": "CreateOrderInput",
+      "kind": "external-input",
+      "representation": "zod-schema",
+      "validation": "zod-safe-parse"
+    },
+    {
+      "name": "PlaceOrderResult",
+      "kind": "result",
+      "representation": "discriminated-union",
+      "validation": "none",
+      "discriminator": "kind",
+      "variants": [
+        "ok",
+        "validation-failed",
+        "insufficient-funds"
+      ]
+    }
+  ],
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```

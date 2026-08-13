@@ -66,6 +66,8 @@
 | `templates/supabase-backup-and-restore-drill.json` | DrillReport JSON skeleton. |
 | `templates/supabase-backup-and-restore-drill.md` | Audit trail + restore-time evidence. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,24 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/supabase-backup-and-restore-drill.json`
+
+```json
+{
+  "artefact_id": "drill-<date>",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "drill_date": "<YYYY-MM-DD>",
+  "source_snapshot_id": "<provider snapshot id>",
+  "target_project": "<empty-clone-project>",
+  "restore_seconds": 0,
+  "row_count_delta": 0,
+  "checksum_match": true,
+  "owner": "<@handle>"
+}
+```

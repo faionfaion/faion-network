@@ -61,6 +61,8 @@
 | `templates/launch-tier-decision-frame.json` | JSON Schema for the output contract (machine-validatable). |
 | `templates/launch-tier-decision-frame.md` | Markdown skeleton with the required fields. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -76,3 +78,69 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/launch-tier-decision-frame.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/launch-tier-decision-frame.json",
+  "title": "Launch Tier Decision Frame Output Contract",
+  "type": "object",
+  "required": [
+    "launch_name",
+    "funnel_goal",
+    "selected_tier",
+    "readiness_score",
+    "retreat_cost",
+    "rationale",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "launch_name": {
+      "type": "string",
+      "description": "named launch"
+    },
+    "funnel_goal": {
+      "type": "string",
+      "description": "enum (signups | paid | waitlist | press | qualitative)"
+    },
+    "selected_tier": {
+      "type": "integer",
+      "description": "1-4 (soft / friend / ph-day / blitz)"
+    },
+    "readiness_score": {
+      "type": "object",
+      "description": "capacity + support + rollback subscores"
+    },
+    "retreat_cost": {
+      "type": "string",
+      "description": "concrete units"
+    },
+    "rationale": {
+      "type": "string",
+      "description": "\u2265200 chars"
+    },
+    "owner": {
+      "type": "string",
+      "description": "named human owner"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```

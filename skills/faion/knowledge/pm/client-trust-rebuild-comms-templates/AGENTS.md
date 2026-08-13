@@ -60,7 +60,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/client-trust-rebuild-comms-templates.json` | JSON schema for the comms spec |
 | `templates/apology-email.md` | Apology email template (no excuses, specific commitments) |
 | `templates/reset-deck-outline.md` | Reset deck outline (problem, root cause, plan, milestones) |
 | `templates/weekly-recovery-digest.md` | Weekly recovery digest template |

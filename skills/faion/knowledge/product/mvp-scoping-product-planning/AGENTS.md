@@ -60,7 +60,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/mvp-scoping.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/mvp-scoping.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Related

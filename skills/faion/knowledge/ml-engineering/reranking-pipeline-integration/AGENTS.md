@@ -56,6 +56,8 @@
 |------|---------|
 | `templates/reranking_rag.py.tmpl` | RerankingRAG class skeleton with backends + circuit breaker. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -71,3 +73,70 @@
 ## Decision tree
 
 The mandatory tree at `content/06-decision-tree.xml` decides class abstraction vs minimal wrap vs skip based on swap likelihood. Each leaf references a rule id from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/reranking_rag.py.tmpl`
+
+```python
+import time
+from typing import Callable, List, Dict
+
+
+class CircuitBreaker:
+    def __init__(self, threshold=5, window_s=60, cooldown_s=30):
+        self.threshold = threshold
+        self.window_s = window_s
+        self.cooldown_s = cooldown_s
+        self.failures: List[float] = []
+        self.opened_at = 0.0
+
+    def open(self):
+        now = time.time()
+        if self.opened_at and now - self.opened_at < self.cooldown_s:
+            return True
+        self.failures = [t for t in self.failures if now - t < self.window_s]
+        return len(self.failures) >= self.threshold
+
+    def record_failure(self):
+        self.failures.append(time.time())
+        if len(self.failures) >= self.threshold:
+            self.opened_at = time.time()
+
+
+class RerankingRAG:
+    def __init__(self, retriever: Callable[[str, int], List[Dict]], reranker: Callable[[str, List[Dict], int], List[Dict]], warmup: Callable[[], None] = None):
+        self.retriever = retriever
+        self.reranker = reranker
+        self.breaker = CircuitBreaker()
+        if warmup is not None:
+            try:
+                warmup()
+            except Exception:
+                pass
+
+    def retrieve(self, query: str, top_k: int = 5, pool: int = 50) -> Dict:
+        t0 = time.time()
+        cands = self.retriever(query, pool)
+        t1 = time.time()
+        retrieval_ms = (t1 - t0) * 1000
+        degraded = False
+        if self.breaker.open():
+            results = cands[:top_k]
+            degraded = True
+            rerank_ms = 0.0
+        else:
+            try:
+                ranked = self.reranker(query, cands, top_k)
+                rerank_ms = (time.time() - t1) * 1000
+                results = ranked
+            except Exception:
+                self.breaker.record_failure()
+                results = cands[:top_k]
+                rerank_ms = 0.0
+                degraded = True
+        formatted = [{'id': r['id'], 'score': float(r.get('score', 0.0)), 'source': 'rerank' if not degraded else 'ann'} for r in results]
+        return {'query': query, 'results': formatted, 'latency': {'retrieval_ms': retrieval_ms, 'rerank_ms': rerank_ms}, 'degraded': degraded}
+```

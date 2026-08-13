@@ -61,6 +61,8 @@
 | `templates/skeleton.md` | Framework adoption checklist: AI-decision log template + PMBOK 8 mapping table + DORA baseline columns + audit-trail block. |
 | `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[ai-assisted-velocity-anomaly-detection]]
@@ -70,3 +72,16 @@
 ## Decision tree
 
 The mandatory decision tree at `content/06-decision-tree.xml` Decides whether to adopt the framework (baseline + policy + alignment) or block until prerequisites exist. Run at AI-adoption kickoff before any tool is procured.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/header.yaml`
+
+```yaml
+version: 0.1.0           # bump on every refresh; semver
+owner: <role>:<person>   # named person, never a team
+last_reviewed: YYYY-MM-DD
+evidence_root: <link>    # URL or file path that anchors body claims
+```

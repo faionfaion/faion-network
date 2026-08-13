@@ -72,6 +72,8 @@
 | `templates/wg0-home-gateway.conf` | Site-to-site home LAN gateway. |
 | `templates/sysctl-wireguard.conf` | Drop-in: net.ipv4.ip_forward=1, ipv6 forwarding. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -90,3 +92,160 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable input fields to one of the rules in `content/01-core-rules.xml`. Use it before drafting the artefact: it decides apply-vs-skip, the verdict label, and which template variant to fill.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/wireguard-vpn.json`
+
+```json
+{
+  "artefact_id": "vpn-<name>",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "server_endpoint": "<ip>:<udp_port>",
+  "server_subnet": "10.66.66.0/24",
+  "peers": [
+    {
+      "name": "<peer>",
+      "role": "split|full|site|mobile",
+      "allowed_ips": "10.66.66.<n>/32",
+      "keepalive": false
+    }
+  ],
+  "ip_forward": true,
+  "owner": "<@handle>"
+}
+```
+
+### `templates/wg0-server.conf`
+
+```conf
+# /etc/wireguard/wg0.conf — WireGuard Server
+# VPN subnet: 10.0.0.0/24  |  Server: 10.0.0.1
+# Replace eth0 with actual default interface: ip route | grep default
+
+[Interface]
+PrivateKey  = SERVER_PRIVATE_KEY_HERE
+Address     = 10.0.0.1/24
+ListenPort  = 51820
+SaveConfig  = false
+
+PostUp   = iptables -A FORWARD -i wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+
+# Peer: Dev laptop (split tunnel — VPN subnet only)
+[Peer]
+PublicKey    = LAPTOP_PUBLIC_KEY_HERE
+PresharedKey = LAPTOP_PRESHARED_KEY_HERE
+AllowedIPs   = 10.0.0.2/32
+
+# Peer: Home RPi + LAN (site-to-site)
+[Peer]
+PublicKey           = RPI_PUBLIC_KEY_HERE
+PresharedKey        = RPI_PRESHARED_KEY_HERE
+AllowedIPs          = 10.0.0.3/32, 192.168.1.0/24
+PersistentKeepalive = 25
+
+# Peer: Phone (full tunnel)
+[Peer]
+PublicKey           = PHONE_PUBLIC_KEY_HERE
+PresharedKey        = PHONE_PRESHARED_KEY_HERE
+AllowedIPs          = 10.0.0.4/32
+PersistentKeepalive = 25
+```
+
+### `templates/wg0-client-split.conf`
+
+```conf
+# WireGuard Client — Split Tunnel (VPN subnet only)
+# Internet traffic goes through normal gateway.
+# /etc/wireguard/wg0.conf on dev machine (Linux/macOS)
+
+[Interface]
+PrivateKey = CLIENT_PRIVATE_KEY_HERE
+Address    = 10.0.0.2/32
+
+[Peer]
+PublicKey           = SERVER_PUBLIC_KEY_HERE
+PresharedKey        = CLIENT_PRESHARED_KEY_HERE
+Endpoint            = SERVER_PUBLIC_IP:51820
+AllowedIPs          = 10.0.0.0/24
+PersistentKeepalive = 25
+```
+
+### `templates/wg0-client-full.conf`
+
+```conf
+# WireGuard Client — Full Tunnel (all traffic through VPN)
+# Use for Linux/macOS machines needing full privacy routing.
+# /etc/wireguard/wg0.conf
+
+[Interface]
+PrivateKey = CLIENT_PRIVATE_KEY_HERE
+Address    = 10.0.0.2/32
+DNS        = 1.1.1.1, 8.8.8.8
+
+[Peer]
+PublicKey           = SERVER_PUBLIC_KEY_HERE
+PresharedKey        = CLIENT_PRESHARED_KEY_HERE
+Endpoint            = SERVER_PUBLIC_IP:51820
+AllowedIPs          = 0.0.0.0/0, ::/0
+PersistentKeepalive = 25
+```
+
+### `templates/wg0-client-mobile.conf`
+
+```conf
+# WireGuard Mobile Client — Full Tunnel
+# Scan as QR code in WireGuard iOS/Android app:
+#   sudo apt install qrencode
+#   qrencode -t ansiutf8 < wg0-client-mobile.conf
+
+[Interface]
+PrivateKey = MOBILE_PRIVATE_KEY_HERE
+Address    = 10.0.0.4/32
+DNS        = 1.1.1.1
+
+[Peer]
+PublicKey           = SERVER_PUBLIC_KEY_HERE
+PresharedKey        = MOBILE_PRESHARED_KEY_HERE
+Endpoint            = SERVER_PUBLIC_IP:51820
+AllowedIPs          = 0.0.0.0/0, ::/0
+PersistentKeepalive = 25
+```
+
+### `templates/wg0-home-gateway.conf`
+
+```conf
+# WireGuard Home Gateway (RPi / Site-to-Site)
+# Bridges home LAN (192.168.1.0/24) to VPS VPN network.
+# /etc/wireguard/wg0.conf on home Raspberry Pi
+
+[Interface]
+PrivateKey = HOME_GATEWAY_PRIVATE_KEY_HERE
+Address    = 10.0.0.3/32
+
+# Replace eth0 with LAN interface (ip route | grep default)
+PostUp   = iptables -A FORWARD -i wg0 -o eth0 -j ACCEPT; iptables -A FORWARD -i eth0 -o wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i wg0 -o eth0 -j ACCEPT; iptables -D FORWARD -i eth0 -o wg0 -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+
+[Peer]
+PublicKey           = SERVER_PUBLIC_KEY_HERE
+PresharedKey        = HOME_PRESHARED_KEY_HERE
+Endpoint            = SERVER_PUBLIC_IP:51820
+AllowedIPs          = 10.0.0.0/24
+PersistentKeepalive = 25
+```
+
+### `templates/sysctl-wireguard.conf`
+
+```conf
+# /etc/sysctl.d/99-wireguard.conf
+# IP forwarding settings for WireGuard VPN server
+# Apply: sudo sysctl -p /etc/sysctl.d/99-wireguard.conf
+
+net.ipv4.ip_forward = 1
+net.ipv6.conf.all.forwarding = 1
+```

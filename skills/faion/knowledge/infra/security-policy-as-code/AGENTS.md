@@ -69,6 +69,8 @@
 | `templates/verify-images-policy.yaml` | Kyverno verifyImages policy — only accepts cosign-signed images |
 | `templates/_smoke-test.json` | Minimum policy-bundle artefact used by validate-security-policy-as-code.py --self-test |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -83,3 +85,142 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals on the input to a conclusion that points back to a rule from `01-core-rules.xml`. Use it when designing the admission-control layer for a new cluster or hardening an existing one.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/baseline-cluster-policy.yaml`
+
+```yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: baseline-security
+  annotations:
+    policies.kyverno.io/title: Baseline Security Policy
+    policies.kyverno.io/category: Pod Security
+    policies.kyverno.io/severity: high
+spec:
+  validationFailureAction: Audit   # START IN AUDIT; flip to Enforce only after triage
+  background: true
+  rules:
+    - name: deny-privileged
+      match:
+        any:
+          - resources: { kinds: [Pod] }
+      validate:
+        message: "Privileged containers are not allowed."
+        pattern:
+          spec:
+            =(initContainers):
+              - securityContext: { privileged: "false" }
+            containers:
+              - securityContext: { privileged: "false" }
+    - name: require-run-as-non-root
+      match:
+        any:
+          - resources: { kinds: [Pod] }
+      validate:
+        message: "Containers must run as non-root user."
+        pattern:
+          spec:
+            securityContext: { runAsNonRoot: true }
+    - name: require-resource-limits
+      match:
+        any:
+          - resources: { kinds: [Pod] }
+      validate:
+        message: "Containers must declare CPU + memory limits."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  limits:
+                    memory: "?*"
+                    cpu: "?*"
+    - name: trusted-registries
+      match:
+        any:
+          - resources: { kinds: [Pod] }
+      validate:
+        message: "Images must come from a trusted registry (ghcr.io/acme/* | quay.io/acme/*)."
+        pattern:
+          spec:
+            containers:
+              - image: "ghcr.io/acme/* | quay.io/acme/*"
+```
+
+### `templates/kyverno-test.yaml`
+
+```yaml
+apiVersion: cli.kyverno.io/v1alpha1
+kind: Test
+name: baseline-security-test
+policies:
+  - ../baseline-cluster-policy.yaml
+resources:
+  - resources/pod-good.yaml
+  - resources/pod-privileged-bad.yaml
+  - resources/pod-root-bad.yaml
+results:
+  - policy: baseline-security
+    rule: deny-privileged
+    resource: pod-privileged-bad
+    kind: Pod
+    result: fail
+  - policy: baseline-security
+    rule: require-run-as-non-root
+    resource: pod-root-bad
+    kind: Pod
+    result: fail
+  - policy: baseline-security
+    rule: deny-privileged
+    resource: pod-good
+    kind: Pod
+    result: pass
+```
+
+### `templates/verify-images-policy.yaml`
+
+```yaml
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: verify-image-signatures
+spec:
+  validationFailureAction: Audit
+  rules:
+    - name: verify-cosign
+      match:
+        any:
+          - resources: { kinds: [Pod] }
+      verifyImages:
+        - imageReferences: ["ghcr.io/acme/*"]
+          attestors:
+            - entries:
+                - keyless:
+                    issuer: "https://token.actions.githubusercontent.com"
+                    subject: "https://github.com/acme/*/.github/workflows/*"
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "engine": "kyverno",
+  "engine_version": "1.12.0",
+  "policies": [
+    "baseline-security",
+    "verify-image-signatures"
+  ],
+  "rollout_phase": "audit",
+  "unit_tests_present": true,
+  "delivery_via_gitops": true,
+  "trusted_registries": [
+    "ghcr.io/acme/*",
+    "quay.io/acme/*"
+  ],
+  "verify_images": true
+}
+```

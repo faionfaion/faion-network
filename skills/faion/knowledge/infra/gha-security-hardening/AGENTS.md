@@ -62,8 +62,9 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/config.yaml` | YAML config skeleton conforming to the output contract |
 | `templates/config-instance.json` | JSON instance of a filled config artefact |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -80,3 +81,39 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree starts from a concrete observable signal and routes each branch to a `<conclusion ref="rule-id">` resolved against `content/01-core-rules.xml`. Use it whenever you are unsure whether this methodology applies — the tree always terminates either on an applicable rule or on `skip-this-methodology`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/config-instance.json`
+
+```json
+{
+  "action_pinning": {
+    "mode": "sha-only",
+    "allowlist": [
+      "actions/checkout@a1b2c3d",
+      "actions/setup-node@d4e5f6g"
+    ]
+  },
+  "oidc_trust": [
+    {
+      "cloud": "aws",
+      "subject_pattern": "repo:acme/api:ref:refs/heads/main",
+      "role": "arn:aws:iam::111:role/gh-deploy"
+    }
+  ],
+  "permissions_default": "explicit-per-job",
+  "pull_request_target_audit": {
+    "allowed": false,
+    "rule": "block-with-actionlint-rule"
+  },
+  "actionlint": {
+    "required_check": true,
+    "config_ref": ".github/actionlint.yaml"
+  },
+  "owner": "security@team.io",
+  "last_reviewed": "2026-05-23"
+}
+```

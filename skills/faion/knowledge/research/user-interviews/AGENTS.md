@@ -64,6 +64,8 @@
 | `templates/user-interviews.md` | Markdown skeleton with the required fields. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,96 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree gates whether to apply the methodology at all (preconditions present? required inputs present?) and routes the decision into either 'run-it' (produce the artefact per output contract) or 'skip-it' (defer, naming the missing precondition).
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/user-interviews.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.network/schema/user-interviews.json",
+  "title": "User Interviews Output Contract",
+  "type": "object",
+  "required": [
+    "session_id",
+    "respondent",
+    "script_used",
+    "transcript_path",
+    "behavioural_ask_outcome",
+    "insights",
+    "owner",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "session_id": {
+      "type": "string",
+      "description": "stable id"
+    },
+    "respondent": {
+      "type": "object",
+      "description": "Pnnn + cold/warm flag"
+    },
+    "script_used": {
+      "type": "string",
+      "description": "path to Mom Test script"
+    },
+    "transcript_path": {
+      "type": "string",
+      "description": "path to diarized transcript"
+    },
+    "behavioural_ask_outcome": {
+      "type": "string",
+      "description": "yes-with-evidence | no | pending"
+    },
+    "insights": {
+      "type": "array",
+      "description": "\u22651 insight with frequency_count \u22651 and citation",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 1
+    },
+    "owner": {
+      "type": "string",
+      "description": "named researcher"
+    },
+    "version": {
+      "type": "string",
+      "description": "semver"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "description": "ISO date",
+      "format": "date"
+    }
+  },
+  "additionalProperties": true
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "session_id": "sample-session_id",
+  "respondent": {
+    "k": "v"
+  },
+  "script_used": "sample-script_used",
+  "transcript_path": "sample-transcript_path",
+  "behavioural_ask_outcome": "sample-behavioural_ask_outcome",
+  "insights": [
+    {
+      "k": "v"
+    }
+  ],
+  "owner": "ruslan@faion.net",
+  "version": "1.1.0",
+  "last_reviewed": "2026-05-23",
+  "__sample__": true
+}
+```

@@ -64,6 +64,8 @@ none — methodology is self-contained.
 | `templates/PaymentServiceProvider.php` | Service Provider binding contracts to implementations |
 | `templates/config-stripe.php` | Config file pattern that survives config:cache |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,49 @@ none — methodology is self-contained.
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, stack, runtime, scale, etc.) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/PaymentServiceProvider.php`
+
+```php
+<?php
+
+namespace App\Providers;
+
+use App\Contracts\MailService;
+use App\Contracts\CacheService;
+use App\Services\SendgridMailService;
+use App\Services\RedisCacheService;
+use Illuminate\Support\ServiceProvider;
+
+class PaymentServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        $this->app->bind(MailService::class, SendgridMailService::class);
+        $this->app->bind(CacheService::class, RedisCacheService::class);
+    }
+
+    public function boot(): void
+    {
+        // Macros, route model bindings, blade directives go here — not env() or DB queries.
+    }
+}
+```
+
+### `templates/config-stripe.php`
+
+```php
+<?php
+
+return [
+    'key' => env('STRIPE_KEY'),
+    'secret' => env('STRIPE_SECRET'),
+    'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    'currency' => env('STRIPE_CURRENCY', 'USD'),
+    'capture_method' => env('STRIPE_CAPTURE_METHOD', 'automatic'),
+];
+```

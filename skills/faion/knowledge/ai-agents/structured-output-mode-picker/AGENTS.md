@@ -65,6 +65,8 @@
 | `templates/mode_examples.py` | Four side-by-side minimal calls — one per mode — using openai / anthropic / outlines bindings. |
 | `templates/decision-record.md` | Markdown skeleton for the SO-mode decision record (chosen, alternatives, rationale, eval delta). |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,64 @@
 ## Decision tree
 
 The tree at `content/06-decision-tree.xml` picks the mode from three observables: output consumer (extraction / action / DSL / legacy), provider support (does the provider ship strict SO + tool-call + grammar?), and output shape (JSON / SQL / regex / arbitrary CFG). Use it whenever the choice between modes is contested; the tree is intentionally short because the mapping is mostly mechanical once the consumer is named.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/mode_examples.py`
+
+```python
+"""Four constrained-decoding modes side by side.
+
+One minimal call per mode so you can compare guarantees and pick by use
+case rather than by API familiarity.
+"""
+
+from typing import Literal
+from pydantic import BaseModel
+
+
+class Verdict(BaseModel):
+    decision: Literal["approve", "reject"]
+    confidence: Literal["low", "medium", "high"]
+    reason: str
+
+
+# 1. JSON mode — legacy fallback only, no schema guarantee.
+def call_json_mode(client, msgs):
+    return client.chat.completions.create(
+        model="gpt-5",
+        messages=msgs,
+        response_format={"type": "json_object"},
+    )
+
+
+# 2. Structured Outputs — full schema compliance.
+def call_so_strict(client, msgs):
+    return client.responses.parse(
+        model="gpt-5",
+        input=msgs,
+        text_format=Verdict,
+    )
+
+
+# 3. Tool call — schema compliance + dispatch semantics.
+def call_tool(client, msgs):
+    return client.messages.create(
+        model="claude-opus-4-7",
+        max_tokens=1024,
+        messages=msgs,
+        tools=[{"name": "submit_verdict", "input_schema": Verdict.model_json_schema()}],
+        tool_choice={"type": "tool", "name": "submit_verdict"},
+    )
+
+
+# 4. Grammar mode — non-JSON DSLs and local models.
+# Requires `pip install outlines` and a local-model provider.
+def call_grammar(model, sql_grammar, prompt):
+    import outlines  # noqa: PLC0415 — optional dep
+
+    generator = outlines.generate.cfg(model, sql_grammar)
+    return generator(prompt)
+```

@@ -66,6 +66,8 @@
 | `templates/config.json` | Config skeleton matching the output schema. |
 | `templates/_smoke-test.json` | Minimum viable filled artefact. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,85 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree maps observable signals (input shape, scope, evidence presence, owner presence, cadence status) to a concrete action, each leaf referencing a rule from `01-core-rules.xml`. Use it when in doubt about which variant of the methodology to apply.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/config.json`
+
+```json
+{
+  "service": "acme-api",
+  "hpa": {
+    "api_version": "autoscaling/v2",
+    "min_replicas": 3,
+    "max_replicas": 20,
+    "metrics": [
+      {
+        "type": "Resource",
+        "resource": {
+          "name": "cpu",
+          "target": {
+            "type": "Utilization",
+            "averageUtilization": 70
+          }
+        }
+      }
+    ],
+    "stabilization_window_seconds": 300
+  },
+  "topology_spread": {
+    "topology_key": "topology.kubernetes.io/zone",
+    "max_skew": 1
+  },
+  "pdb": {
+    "name": "acme-api-pdb",
+    "min_available": "60%"
+  },
+  "owner": {
+    "name": "Olena Boyko",
+    "role": "platform lead"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "service": "acme-api",
+  "hpa": {
+    "api_version": "autoscaling/v2",
+    "min_replicas": 3,
+    "max_replicas": 20,
+    "metrics": [
+      {
+        "type": "Resource",
+        "resource": {
+          "name": "cpu",
+          "target": {
+            "type": "Utilization",
+            "averageUtilization": 70
+          }
+        }
+      }
+    ],
+    "stabilization_window_seconds": 300
+  },
+  "topology_spread": {
+    "topology_key": "topology.kubernetes.io/zone",
+    "max_skew": 1
+  },
+  "pdb": {
+    "name": "acme-api-pdb",
+    "min_available": "60%"
+  },
+  "owner": {
+    "name": "Olena Boyko",
+    "role": "platform lead"
+  },
+  "produced_at": "2026-05-23T10:00:00Z"
+}
+```

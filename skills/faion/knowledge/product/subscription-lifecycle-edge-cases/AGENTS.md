@@ -66,7 +66,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/subscription-lifecycle-edge-cases.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/subscription-lifecycle-edge-cases.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Scripts

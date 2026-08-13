@@ -69,6 +69,8 @@
 | `templates/xp-extreme-programming.json` | JSON Schema for the readiness checklist. |
 | `templates/done-definition.md` | Done rule snippet for PR template. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Related
 
 - [[trunk-based-dev-principles]] — TBD is the branching substrate XP small-releases depends on.
@@ -78,3 +80,99 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree first checks substrate (tests + CI + release cadence). If substrate missing → phase 1 only (build substrate). If substrate present → phase 2 (flow: small releases, refactor, YAGNI). If flow stable → phase 3 (craft: pair programming, collective ownership, metaphor). Leaves emit `phase-1`, `phase-2`, `phase-3`, `block-substrate-missing`, or `block-org-hostile`. Each leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/xp-extreme-programming.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/xp-extreme-programming.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "team",
+    "practices",
+    "phase",
+    "verdict",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^xp-[a-z0-9-]{6,}$"
+    },
+    "team": {
+      "type": "string",
+      "minLength": 1
+    },
+    "practices": {
+      "type": "object",
+      "required": [
+        "tdd",
+        "ci",
+        "small_releases",
+        "refactor",
+        "simple_design",
+        "pair_programming",
+        "collective_ownership",
+        "coding_standards",
+        "metaphor",
+        "planning_game",
+        "on_site_customer",
+        "sustainable_pace"
+      ],
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "score",
+          "evidence"
+        ],
+        "properties": {
+          "score": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 5
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 5
+          }
+        }
+      }
+    },
+    "done_definition_wired": {
+      "type": "boolean"
+    },
+    "phase": {
+      "enum": [
+        "phase-1-substrate",
+        "phase-2-flow",
+        "phase-3-craft",
+        "complete"
+      ]
+    },
+    "verdict": {
+      "enum": [
+        "phase-1",
+        "phase-2",
+        "phase-3",
+        "block-substrate-missing",
+        "block-org-hostile"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```

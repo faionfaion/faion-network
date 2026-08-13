@@ -72,6 +72,8 @@
 | `templates/pagination.py` | StandardPagination + TimelinePagination (cursor). |
 | `templates/api-spec.json` | Reference API spec output. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -87,3 +89,482 @@
 ## Decision tree
 
 Lives at `content/06-decision-tree.xml`. The tree first picks framework once at project bootstrap (DRF for ecosystem / Ninja for async-first). Per endpoint: maps single-resource CRUD → ModelViewSet; action verbs / multi-resource → APIView. Per list endpoint: timeline-style → cursor; counted page list → page-number.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/apiview.py`
+
+```python
+"""
+Thin APIView: validate → service → return pattern.
+Use for action verbs (activate, archive, retry) or multi-model aggregates.
+"""
+
+from rest_framework import serializers, status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.request import Request
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from apps.orders import services as order_services
+from apps.orders.serializers import OrderDetailSerializer
+
+
+class ArchiveOrderView(APIView):
+    """
+    POST /api/v1/orders/{pk}/archive/
+    Archive an order. Archived orders are hidden from default list views.
+    """
+
+    permission_classes = [IsAuthenticated]
+    throttle_scope = "burst"
+
+    def post(self, request: Request, pk: int) -> Response:
+        # 1. Validate input (empty body in this case, but pattern is same)
+        serializer = ArchiveOrderInputSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # 2. Delegate to service
+        try:
+            result = order_services.archive_order(
+                order_id=pk,
+                user=request.user,
+                reason=serializer.validated_data.get("reason"),
+            )
+        except order_services.OrderNotFound as e:
+            return Response({"error": str(e)}, status=status.HTTP_404_NOT_FOUND)
+        except order_services.OrderAlreadyArchived as e:
+            return Response({"error": str(e)}, status=status.HTTP_409_CONFLICT)
+        except order_services.PermissionDenied as e:
+            return Response({"error": str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+        # 3. Return typed response
+        return Response(OrderDetailSerializer(result).data, status=status.HTTP_200_OK)
+
+
+class ArchiveOrderInputSerializer(serializers.Serializer):
+    """Optional reason for archiving — validates input shape."""
+
+    reason = serializers.CharField(max_length=500, required=False, allow_blank=True)
+```
+
+### `templates/viewset.py`
+
+```python
+"""
+ModelViewSet with action-specific serializers, get_queryset, and @action.
+Pattern: thin viewset — validate in serializer, delegate logic to service.
+"""
+
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.request import Request
+from rest_framework.response import Response
+
+from apps.orders import services as order_services
+from apps.orders.models import Order
+from apps.orders.serializers import (
+    CreateOrderSerializer,
+    OrderDetailSerializer,
+    OrderListSerializer,
+    UpdateOrderSerializer,
+)
+
+
+class OrderViewSet(viewsets.ModelViewSet):
+    """
+    CRUD endpoints for orders.
+    URL: /api/v1/orders/ (router-registered)
+    """
+
+    queryset = Order.objects.all()
+    permission_classes = [IsAuthenticated]
+    throttle_scope = "burst"  # Applies to write actions
+
+    def get_queryset(self):
+        """Scope queryset to current user's organization."""
+        return (
+            Order.objects.filter(
+                organization=self.request.user.organization,
+            )
+            .select_related("user", "organization")
+            .prefetch_related("items__product")
+            .order_by("-created_at")
+        )
+
+    def get_serializer_class(self):
+        """Return action-specific serializer."""
+        if self.action == "create":
+            return CreateOrderSerializer
+        if self.action in ("update", "partial_update"):
+            return UpdateOrderSerializer
+        if self.action == "list":
+            return OrderListSerializer
+        return OrderDetailSerializer  # retrieve, custom actions
+
+    def perform_create(self, serializer: CreateOrderSerializer) -> None:
+        """Delegate creation to service layer."""
+        order_services.create_order(
+            validated_data=serializer.validated_data,
+            user=self.request.user,
+        )
+
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="confirm",
+        throttle_classes=[],  # Override throttle for this action if needed
+    )
+    def confirm(self, request: Request, pk: int | None = None) -> Response:
+        """POST /api/v1/orders/{id}/confirm/ — confirm a pending order."""
+        order = self.get_object()  # Calls has_object_permission
+        try:
+            result = order_services.confirm_order(order=order, user=request.user)
+        except order_services.OrderAlreadyConfirmed as e:
+            return Response({"error": str(e)}, status=status.HTTP_409_CONFLICT)
+        return Response(OrderDetailSerializer(result).data)
+```
+
+### `templates/ninja-routes.py`
+
+```python
+"""
+Django Ninja router with ModelSchema, AuthBearer, and CRUD endpoints.
+Pattern: Ninja router per app, mounted in api.py.
+"""
+
+from decimal import Decimal
+
+from ninja import ModelSchema, Router, Schema
+from ninja.security import HttpBearer
+from pydantic import Field, field_validator
+
+from apps.orders.models import Order
+from apps.orders import services as order_services
+
+
+# ─── Auth ────────────────────────────────────────────────────────────────────
+
+class AuthBearer(HttpBearer):
+    def authenticate(self, request, token: str):
+        from rest_framework_simplejwt.tokens import AccessToken
+        try:
+            validated_token = AccessToken(token)
+            from django.contrib.auth import get_user_model
+            User = get_user_model()
+            return User.objects.get(id=validated_token["user_id"])
+        except Exception:
+            return None
+
+
+# ─── Schemas ─────────────────────────────────────────────────────────────────
+
+class CreateOrderSchema(Schema):
+    """Input: validated at route entry."""
+    amount: Decimal = Field(..., ge=0, decimal_places=2)
+    product_id: int
+    notes: str | None = None
+
+    @field_validator("amount")
+    @classmethod
+    def amount_positive(cls, v: Decimal) -> Decimal:
+        if v <= 0:
+            raise ValueError("Amount must be greater than zero")
+        return v
+
+
+class OrderSchema(ModelSchema):
+    """Output: read-only fields from the model."""
+    class Meta:
+        model = Order
+        fields = ["id", "uid", "amount", "status", "created_at", "updated_at"]
+
+
+# ─── Router ──────────────────────────────────────────────────────────────────
+
+router = Router(auth=AuthBearer(), tags=["orders"])
+
+
+@router.get("/", response=list[OrderSchema])
+def list_orders(request):
+    return Order.objects.filter(
+        organization=request.auth.organization,
+    ).order_by("-created_at")
+
+
+@router.get("/{order_id}", response=OrderSchema)
+def get_order(request, order_id: int):
+    from ninja.errors import HttpError
+    try:
+        return Order.objects.get(id=order_id, organization=request.auth.organization)
+    except Order.DoesNotExist:
+        raise HttpError(404, "Order not found")
+
+
+@router.post("/", response={201: OrderSchema})
+def create_order(request, payload: CreateOrderSchema):
+    order = order_services.create_order(
+        validated_data=payload.model_dump(),
+        user=request.auth,
+    )
+    return 201, order
+
+
+# Mount in api.py:
+# from ninja import NinjaAPI
+# from apps.orders.routes import router as orders_router
+# api = NinjaAPI()
+# api.add_router("/orders/", orders_router)
+```
+
+### `templates/drf-settings.py`
+
+```python
+"""
+Complete REST_FRAMEWORK + SIMPLE_JWT + SPECTACULAR_SETTINGS config block.
+Copy into settings.py (or settings/base.py).
+"""
+
+from datetime import timedelta
+
+REST_FRAMEWORK = {
+    # Authentication
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
+    ],
+    # Permissions — locked down by default, opt-in to AllowAny per view
+    "DEFAULT_PERMISSION_CLASSES": [
+        "rest_framework.permissions.IsAuthenticated",
+    ],
+    # Renderer — JSON only in production; BrowsableAPI only in development
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
+    # Throttling — scoped per endpoint type
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.ScopedRateThrottle",
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "100/day",
+        "user": "1000/day",
+        "burst": "30/min",      # Write endpoints (POST/PUT/PATCH/DELETE)
+        "login": "5/min",       # Auth endpoints — brute-force protection
+    },
+    # Pagination — always paginate list endpoints
+    "DEFAULT_PAGINATION_CLASS": "apps.core.pagination.StandardPagination",
+    "PAGE_SIZE": 20,
+    # Filtering
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
+    ],
+    # Schema generation
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    # Versioning
+    "DEFAULT_VERSIONING_CLASS": "rest_framework.versioning.URLPathVersioning",
+    "DEFAULT_VERSION": "v1",
+    "ALLOWED_VERSIONS": ["v1"],
+    # Exception handler
+    "EXCEPTION_HANDLER": "apps.core.exceptions.custom_exception_handler",
+}
+
+# JWT Configuration — simplejwt
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),   # Short-lived: 15 min
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),       # 7-day refresh
+    "ROTATE_REFRESH_TOKENS": True,                     # New refresh on use
+    "BLACKLIST_AFTER_ROTATION": True,                  # Blacklist old refresh
+    "UPDATE_LAST_LOGIN": True,
+    "ALGORITHM": "HS256",
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
+}
+
+# drf-spectacular OpenAPI schema settings
+SPECTACULAR_SETTINGS = {
+    "TITLE": "API",
+    "DESCRIPTION": "REST API documentation",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    # Postprocessing hooks
+    "POSTPROCESSING_HOOKS": [
+        "drf_spectacular.hooks.postprocess_schema_enums",
+    ],
+    # Component naming
+    "COMPONENT_SPLIT_REQUEST": True,   # Separate request/response schemas
+    "SCHEMA_PATH_PREFIX": r"/api/v[0-9]+",
+}
+```
+
+### `templates/permissions.py`
+
+```python
+"""
+Custom DRF permission classes: IsOrganizationMember, IsOwnerOrReadOnly, IsOwnerOrAdmin.
+"""
+
+from rest_framework import permissions
+from rest_framework.request import Request
+from rest_framework.views import APIView
+
+
+class IsOrganizationMember(permissions.BasePermission):
+    """
+    Object-level: user must belong to the object's organization.
+    Supports objects with .organization or .user FK.
+    """
+
+    message = "You don't have access to this resource."
+
+    def has_object_permission(self, request: Request, view: APIView, obj) -> bool:
+        if hasattr(obj, "organization"):
+            return obj.organization == request.user.organization
+        if hasattr(obj, "user"):
+            return obj.user.organization == request.user.organization
+        return False
+
+
+class IsOwnerOrReadOnly(permissions.BasePermission):
+    """
+    Object-level: write access only for owner; read access for authenticated users.
+    Requires obj.user or obj.owner FK.
+    """
+
+    def has_object_permission(self, request: Request, view: APIView, obj) -> bool:
+        if request.method in permissions.SAFE_METHODS:
+            return True
+        owner = getattr(obj, "user", None) or getattr(obj, "owner", None)
+        return owner == request.user
+
+
+class IsOwnerOrAdmin(permissions.BasePermission):
+    """
+    Object-level: owner or staff/superuser can access.
+    Unauthenticated users are always denied.
+    """
+
+    def has_permission(self, request: Request, view: APIView) -> bool:
+        return bool(request.user and request.user.is_authenticated)
+
+    def has_object_permission(self, request: Request, view: APIView, obj) -> bool:
+        if request.user.is_staff or request.user.is_superuser:
+            return True
+        owner = getattr(obj, "user", None) or getattr(obj, "owner", None)
+        return owner == request.user
+```
+
+### `templates/pagination.py`
+
+```python
+"""
+StandardPagination (page-number) and TimelinePagination (cursor).
+Reference these in REST_FRAMEWORK DEFAULT_PAGINATION_CLASS.
+"""
+
+from rest_framework.pagination import CursorPagination, PageNumberPagination
+from rest_framework.response import Response
+
+
+class StandardPagination(PageNumberPagination):
+    """
+    Page-number pagination for general list endpoints.
+    Supports ?page=N and ?page_size=N query params.
+    """
+
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 100
+
+    def get_paginated_response(self, data) -> Response:
+        return Response(
+            {
+                "count": self.page.paginator.count,
+                "next": self.get_next_link(),
+                "previous": self.get_previous_link(),
+                "results": data,
+            }
+        )
+
+    def get_paginated_response_schema(self, schema: dict) -> dict:
+        return {
+            "type": "object",
+            "properties": {
+                "count": {"type": "integer"},
+                "next": {"type": "string", "nullable": True},
+                "previous": {"type": "string", "nullable": True},
+                "results": schema,
+            },
+        }
+
+
+class TimelinePagination(CursorPagination):
+    """
+    Cursor pagination for timeline/feed endpoints.
+    Ordered by -created_at with -id tie-breaker.
+    REQUIRES: ordering fields must be indexed in the DB.
+    """
+
+    page_size = 20
+    ordering = ("-created_at", "-id")  # -id ensures stable ordering
+    cursor_query_param = "cursor"
+    page_size_query_param = "page_size"
+    max_page_size = 50
+```
+
+### `templates/api-spec.json`
+
+```json
+{
+  "_purpose": "Reference Django REST API spec output.",
+  "_consumes": "Endpoint list + auth model + SLO.",
+  "_produces": "JSON for endpoint codegen / review.",
+  "_depends-on": "content/02-output-contract.xml.",
+  "_token-budget-impact": "~200 tokens.",
+  "artefact_id": "billing-api-spec",
+  "owner": "ruslan@faion.net",
+  "framework": "drf",
+  "django_version": "5.2.1",
+  "endpoints": [
+    {
+      "resource": "Invoice",
+      "kind": "model-viewset",
+      "methods": [
+        "GET",
+        "POST",
+        "PATCH",
+        "DELETE"
+      ],
+      "input_serializer": "CreateInvoiceSerializer",
+      "output_serializer": "InvoiceDetailSerializer",
+      "permission_classes": [
+        "IsAuthenticated",
+        "IsOrganizationMember"
+      ],
+      "throttle_scope": "user",
+      "pagination": "cursor"
+    }
+  ],
+  "auth": {
+    "mode": "jwt-simplejwt",
+    "access_ttl_minutes": 15,
+    "refresh_ttl_days": 7,
+    "rotate_refresh": true,
+    "blacklist_after_rotation": true,
+    "transport": "httponly-cookie"
+  },
+  "throttle": {
+    "scopes": [
+      "anon",
+      "user",
+      "burst",
+      "login"
+    ]
+  },
+  "version": "1.0.0",
+  "last_reviewed": "2026-05-22"
+}
+```

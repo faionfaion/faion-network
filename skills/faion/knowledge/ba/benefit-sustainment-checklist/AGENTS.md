@@ -66,6 +66,8 @@
 | `templates/benefit-sustainment-checklist.json` | Skeleton artefact with required fields |
 | `templates/_smoke-test.json` | Minimum viable filled artefact |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -81,3 +83,42 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Routes on artefact-state signals to the active rule. Use when in doubt whether the artefact is ready for downstream consumption.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/benefit-sustainment-checklist.json`
+
+```json
+{
+  "initiative_id": "REPLACE",
+  "version": "v1.0.0",
+  "metrics": [],
+  "review_date": "YYYY-MM-DD",
+  "named_owner": "Full Name",
+  "signoff": {}
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "initiative_id": "invoice-automation",
+  "metrics": [
+    {
+      "name": "cycle_time_min",
+      "target": 5,
+      "measured": 4.2,
+      "variance": -0.8
+    }
+  ],
+  "review_date": "2026-08-20",
+  "named_owner": "Maria Lopes",
+  "signoff": {
+    "approver": "Pedro Silva",
+    "ts": "2026-08-20T16:00:00Z"
+  }
+}
+```

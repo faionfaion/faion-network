@@ -60,7 +60,6 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/micro-mvps.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/micro-mvps.md` | Markdown skeleton for human-readable artefact rendering. |
 
 ## Related

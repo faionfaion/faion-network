@@ -65,6 +65,8 @@
 | `templates/two-level-cascade-pydantic.py` | Python implementation of two-level cascade with Pydantic + Anthropic client (covers core cascade pattern) |
 | `templates/_smoke-test.json` | Minimum viable cheap-model output for self-test of the validator |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -80,3 +82,63 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The root question asks whether the task has high volume AND elicitable confidence. The tree then branches by criticality (mission-critical → single-strong only) and by difficulty distribution (uniform → two-level enough; long-tail → three-level worth the cost). Each leaf maps to a concrete rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/two-level-cascade-pydantic.py`
+
+```python
+"""Two-level cascade with Pydantic-validated cheap-model schema."""
+from pydantic import BaseModel, Field
+from anthropic import Anthropic
+
+client = Anthropic()
+THRESHOLD = 0.85
+
+
+class CheapAnswer(BaseModel):
+    reasoning: str
+    answer: str
+    confidence_0_to_1: float = Field(ge=0.0, le=1.0)
+    requires_escalation: bool
+
+
+class StrongAnswer(BaseModel):
+    reasoning: str
+    answer: str
+
+
+def cascade(task: str) -> str:
+    cheap = client.messages.create(
+        model="claude-haiku-4-5",
+        max_tokens=512,
+        messages=[{"role": "user", "content": f"Task: {task}\nReturn STRICT JSON matching the CheapAnswer schema."}],
+    )
+    parsed = CheapAnswer.model_validate_json(cheap.content[0].text)
+    if not parsed.requires_escalation and parsed.confidence_0_to_1 >= THRESHOLD:
+        return parsed.answer
+    strong = client.messages.create(
+        model="claude-opus-4-7",
+        max_tokens=2048,
+        messages=[{"role": "user", "content": f"Task: {task}\nReturn STRICT JSON matching the StrongAnswer schema."}],
+    )
+    return StrongAnswer.model_validate_json(strong.content[0].text).answer
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "_purpose": "smallest valid CheapAnswer for self-test",
+  "_consumes": "nothing",
+  "_produces": "example output matching content/02-output-contract.xml",
+  "_depends_on": "content/01-core-rules.xml",
+  "_token_budget_impact": "~80 tokens",
+  "reasoning": "Smoke fixture for validator self-test; the input is trivial and the cheap model is highly confident.",
+  "answer": "ok",
+  "confidence_0_to_1": 0.92,
+  "requires_escalation": false
+}
+```

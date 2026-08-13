@@ -70,6 +70,8 @@
 | `templates/output-schema.json` | JSON Schema (draft-07) for the api-documentation artefact |
 | `templates/_smoke-test.json` | Minimum viable filled-in api-documentation artefact for validator round-trip |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -86,3 +88,206 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree gates on the schema's required cross-field checks; every leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/openapi-examples.yaml`
+
+```yaml
+openapi: "3.1.0"
+info:
+  title: Example API
+  version: "1.0.0"
+
+paths:
+  /users:
+    post:
+      operationId: createUser
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+            examples:
+              basic:
+                summary: Minimal user
+                value:
+                  name: "Jane Doe"
+                  email: "jane@example.com"
+              with-role:
+                summary: Admin user
+                value:
+                  name: "Admin"
+                  email: "admin@example.com"
+                  role: "admin"
+      responses:
+        "201":
+          description: User created
+          headers:
+            Location:
+              schema:
+                type: string
+              description: URL of the created user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+        "400":
+          $ref: '#/components/responses/ValidationError'
+        "409":
+          $ref: '#/components/responses/Conflict'
+
+components:
+  schemas:
+    CreateUserRequest:
+      type: object
+      required: [name, email]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [user, admin]
+          default: user
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        email:
+          type: string
+
+  responses:
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+    Conflict:
+      description: Resource already exists
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProblemDetail'
+
+    ProblemDetail:
+      type: object
+      required: [type, title, status]
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        traceId:
+          type: string
+```
+
+### `templates/output-schema.json`
+
+```json
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/api-documentation.json",
+  "type": "object",
+  "required": [
+    "docs_id",
+    "sections",
+    "quick_start_curl_count",
+    "endpoints_documented",
+    "error_codes_documented",
+    "changelog_entries",
+    "verdict"
+  ],
+  "properties": {
+    "docs_id": {
+      "type": "string",
+      "pattern": "^DOCS-[A-Z0-9-]{2,40}$"
+    },
+    "sections": {
+      "type": "array",
+      "minItems": 6,
+      "items": {
+        "type": "string",
+        "enum": [
+          "overview",
+          "authentication",
+          "quick-start",
+          "endpoints",
+          "error-codes",
+          "changelog"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "quick_start_curl_count": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "endpoints_documented": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "error_codes_documented": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "changelog_entries": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "examples_source": {
+      "type": "string",
+      "enum": [
+        "openapi",
+        "hand"
+      ]
+    },
+    "verdict": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail"
+      ]
+    }
+  }
+}
+```
+
+### `templates/_smoke-test.json`
+
+```json
+{
+  "docs_id": "DOCS-PUBLIC-API-V1",
+  "sections": [
+    "overview",
+    "authentication",
+    "quick-start",
+    "endpoints",
+    "error-codes",
+    "changelog"
+  ],
+  "quick_start_curl_count": 3,
+  "endpoints_documented": 18,
+  "error_codes_documented": 12,
+  "changelog_entries": 6,
+  "examples_source": "openapi",
+  "verdict": "pass"
+}
+```

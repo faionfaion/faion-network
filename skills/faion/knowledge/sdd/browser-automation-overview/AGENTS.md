@@ -60,7 +60,8 @@ none
 |------|---------|
 | `templates/decision_record.json` | Decision record: tool picked + rationale + sibling methodology to load next |
 | `templates/feature_matrix.md` | Puppeteer vs Playwright vs web-scraping feature matrix |
-| `templates/_smoke-test.json` | Minimum viable filled-in artefact for sanity-checking the schema. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 
@@ -77,3 +78,22 @@ none
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Root question: *Does the workload need JS rendering AND is the tool not already chosen?* The tree's purpose is to route an input through observable signals to a conclusion that references a rule from `content/01-core-rules.xml`; the skip-this-methodology branch is always reachable so an inappropriate caller exits cleanly.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/decision_record.json`
+
+```json
+{
+  "tool": "playwright",
+  "language": "typescript",
+  "reasons": [
+    "multi-browser",
+    "auto-wait",
+    "trace viewer"
+  ],
+  "next_methodology": "playwright-automation"
+}
+```

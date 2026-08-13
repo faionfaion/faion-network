@@ -63,6 +63,8 @@
 |------|---------|
 | `templates/tokens-three-tier.json` | Skeleton three-tier token config |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -79,3 +81,36 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. Branches by token role and assigns tier + naming pattern. Interactive-state branch enforces state-suffix coverage. Each leaf cites a rule from `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/tokens-three-tier.json`
+
+```json
+{
+  "tiers": [
+    "primitives",
+    "semantic",
+    "component"
+  ],
+  "naming_convention": "{category}.{property}.{variant}.{state}",
+  "tokens": {
+    "primitives": {
+      "color.blue.600": "#0066cc"
+    },
+    "semantic": {
+      "color.action.primary.default": "{color.blue.600}"
+    },
+    "component": {
+      "button.primary.background.default": "{color.action.primary.default}"
+    }
+  },
+  "lint": {
+    "reject_primitive_in_component": true,
+    "reject_raw_values_above_primitives": true,
+    "require_state_suffix": true
+  }
+}
+```

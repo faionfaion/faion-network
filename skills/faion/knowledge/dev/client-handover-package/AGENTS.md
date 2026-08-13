@@ -69,6 +69,8 @@
 | `templates/client-handover-package.json` | JSON Schema for the handover artefact. |
 | `templates/handover-package.md` | Markdown skeleton with the 7 sections. |
 
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+
 ## Scripts
 
 | File | Purpose | When to call |
@@ -84,3 +86,230 @@
 ## Decision tree
 
 See `content/06-decision-tree.xml`. The tree checks 7-section completeness, credential transfer evidence (rotated + acknowledged), open items each with risk score, named successor, and signed sign-off by both consultant and client. Leaves emit `archive-and-close`, `block-missing-sections`, `block-secrets-not-transferred`, `block-no-successor`, or `block-no-signoff`. Each leaf references a rule in `01-core-rules.xml`.
+
+## Template Contents
+
+Bodies of the templates above that the packer does not ship as standalone files, inlined here so they are deliverable.
+
+### `templates/client-handover-package.json`
+
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/client-handover-package.json",
+  "type": "object",
+  "required": [
+    "artefact_id",
+    "client",
+    "engagement_end",
+    "sections",
+    "credentials",
+    "open_items",
+    "successor_email",
+    "support_window",
+    "signoff",
+    "verdict",
+    "version",
+    "last_reviewed"
+  ],
+  "properties": {
+    "artefact_id": {
+      "type": "string",
+      "pattern": "^chp-[a-z0-9-]{6,}$"
+    },
+    "client": {
+      "type": "string",
+      "minLength": 1
+    },
+    "engagement_end": {
+      "type": "string",
+      "format": "date"
+    },
+    "sections": {
+      "type": "object",
+      "required": [
+        "scope_summary",
+        "runbook",
+        "architecture",
+        "ops_surface"
+      ],
+      "properties": {
+        "scope_summary": {
+          "type": "string",
+          "minLength": 50
+        },
+        "runbook": {
+          "type": "string",
+          "minLength": 100
+        },
+        "architecture": {
+          "type": "string",
+          "minLength": 100
+        },
+        "ops_surface": {
+          "type": "string",
+          "minLength": 50
+        }
+      }
+    },
+    "credentials": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "vault_path",
+          "rotation_date",
+          "acknowledged_by",
+          "acknowledged_at"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "vault_path": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rotation_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "acknowledged_by": {
+            "type": "string",
+            "format": "email"
+          },
+          "acknowledged_at": {
+            "type": "string",
+            "format": "date"
+          }
+        }
+      }
+    },
+    "open_items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "title",
+          "severity",
+          "effort",
+          "blast_radius",
+          "next_step"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 5
+          },
+          "severity": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "effort": {
+            "enum": [
+              "S",
+              "M",
+              "L"
+            ]
+          },
+          "blast_radius": {
+            "enum": [
+              1,
+              3,
+              5
+            ]
+          },
+          "next_step": {
+            "type": "string",
+            "minLength": 5
+          }
+        }
+      }
+    },
+    "successor_email": {
+      "type": "string",
+      "format": "email"
+    },
+    "support_window": {
+      "type": "object",
+      "required": [
+        "days",
+        "scope",
+        "sla_hours",
+        "channel",
+        "after_window"
+      ],
+      "properties": {
+        "days": {
+          "type": "integer",
+          "minimum": 7,
+          "maximum": 90
+        },
+        "scope": {
+          "type": "string"
+        },
+        "sla_hours": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 168
+        },
+        "channel": {
+          "type": "string"
+        },
+        "after_window": {
+          "type": "string"
+        }
+      }
+    },
+    "signoff": {
+      "type": "object",
+      "required": [
+        "consultant_signed_by",
+        "consultant_signed_at",
+        "client_signed_by",
+        "client_signed_at"
+      ],
+      "properties": {
+        "consultant_signed_by": {
+          "type": "string",
+          "format": "email"
+        },
+        "consultant_signed_at": {
+          "type": "string",
+          "format": "date"
+        },
+        "client_signed_by": {
+          "type": "string",
+          "format": "email"
+        },
+        "client_signed_at": {
+          "type": "string",
+          "format": "date"
+        }
+      }
+    },
+    "verdict": {
+      "enum": [
+        "archive-and-close",
+        "block-missing-sections",
+        "block-secrets-not-transferred",
+        "block-no-successor",
+        "block-no-signoff"
+      ]
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "last_reviewed": {
+      "type": "string",
+      "format": "date"
+    }
+  }
+}
+```
