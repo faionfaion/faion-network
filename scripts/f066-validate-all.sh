@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # F-066 Phase D: corpus-wide validation runner.
-# Runs all 8 validators across the corpus, summarizes pass/fail per validator.
+# Runs all 10 validators across the corpus, summarizes pass/fail per validator.
 
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -23,5 +23,7 @@ run "5. validate-methodology-templates"     python3 scripts/validate-methodology
 run "6. validate-methodology-scripts"       python3 scripts/validate-methodology-scripts.py --all
 run "7. validate-lexicon"                   python3 scripts/validate-lexicon.py
 run "8. validate-recipes"                   python3 scripts/validate-recipes.py
+run "9. validate-fragments"                 python3 scripts/validate-fragments.py
+run "10. validate-tools"                    python3 scripts/validate-tools.py
 
 echo "report: $REPORT"
