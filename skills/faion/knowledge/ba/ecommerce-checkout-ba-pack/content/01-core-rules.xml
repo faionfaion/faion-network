@@ -1,38 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="E-commerce Checkout BA Pack Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
+<text id="01-core-rules" title="E-commerce Checkout BA Pack Core Rules" version="1.2.0" est_tokens="1000" depth="essential">
   <summary>8 testable rules with rationale + source for ecommerce-checkout-ba-pack. Includes terminal skip-this-methodology rule.</summary>
   <section title="Rule set">
     <rule id="flow-states-enumerated" testable="true" depth="essential">
       <statement>Pack MUST enumerate all 12 checkout states: cart, address, shipping, summary, payment-init, 3DS / SCA, payment-confirmed, order-created, receipt-sent, error, retry, abandon-recovery; missing states are blocked.</statement>
-      <rationale source="PCI DSS + PSD2 SCA flow">PCI DSS + PSD2 SCA flow — applies to E-commerce Checkout BA Pack.</rationale>
+      <rationale source="PCI DSS + PSD2 SCA flow">Checkout defects cluster in the states nobody specified: the 3DS challenge that returns to a dead session, the retry after a decline, the abandoned cart that already reserved stock. The happy path gets built and passes QA, while the unnamed states are invented by whichever developer hits them first, producing behaviour that differs per provider and cannot be tested against a spec that never described it.</rationale>
     </rule>
     <rule id="edge-case-catalogue" testable="true" depth="essential">
       <statement>Pack MUST contain at least 25 edge cases: declined card, 3DS challenge fail, partial stock, address-validation fail, currency mismatch, tax exempt, discount stack collisions, etc. Each carries trigger + expected handling.</statement>
-      <rationale source="E-commerce checkout failure research">E-commerce checkout failure research — applies to E-commerce Checkout BA Pack.</rationale>
+      <rationale source="E-commerce checkout failure research">Checkout is where money and inventory change state together, so an unhandled branch is not cosmetic: it is a double charge, an oversold item, or a lost order. These branches appear in production traffic within days whether or not anyone specified them. The only real choice is whether the expected handling was decided by a BA with the finance stakeholder present, or by a developer at incident time.</rationale>
     </rule>
     <rule id="nfr-thresholds" testable="true" depth="essential">
       <statement>NFR table MUST pin: time-to-interactive &lt; 3s, payment authorisation &lt; 5s P95, error-rate &lt; 0.5% P50, abandonment &lt; industry median; each backed by an observable metric.</statement>
-      <rationale source="Web vitals + payment-provider SLAs">Web vitals + payment-provider SLAs — applies to E-commerce Checkout BA Pack.</rationale>
+      <rationale source="Web vitals + payment-provider SLAs">Checkout latency is a revenue variable rather than a comfort one, since every extra second between intent and authorisation is measurable abandonment. Unquantified qualities like fast or reliable cannot fail a build or a release, so they are the first thing traded away under schedule pressure. Binding each to an observable metric makes the trade explicit and gives the team something concrete to point at when it regresses.</rationale>
     </rule>
     <rule id="regulatory-checklist" testable="true" depth="essential">
       <statement>Pack MUST include regulatory checklist: PSD2 SCA, GDPR consent, PCI DSS scope, OSS/IOSS (EU), local-tax-id capture if B2B, age-verification if regulated goods.</statement>
-      <rationale source="PSD2 + GDPR + PCI DSS">PSD2 + GDPR + PCI DSS — applies to E-commerce Checkout BA Pack.</rationale>
+      <rationale source="PSD2 + GDPR + PCI DSS">Each regime bites at a different point and none of them is visible in the UI: SCA changes the authorisation flow, PCI scope is decided by where the card fields are hosted, and OSS/IOSS changes the tax computed before the customer ever sees a total. Found after build, these are not bug fixes but re-architecture of the flow, and in the PCI case they can retroactively enlarge what the whole system is audited as.</rationale>
     </rule>
     <rule id="psp-integration-spec" testable="true" depth="essential">
       <statement>For each payment provider, pack pins: API version, webhook contract, retry policy, idempotency key strategy, refund flow, dispute flow.</statement>
-      <rationale source="Stripe / Adyen / Mollie API references">Stripe / Adyen / Mollie API references — applies to E-commerce Checkout BA Pack.</rationale>
+      <rationale source="Stripe / Adyen / Mollie API references">The parts of a payment integration that fail are the asynchronous ones. Webhooks arrive twice, out of order, or not at all, and with no pinned idempotency strategy the retry that recovers a lost confirmation creates a second order. Refunds and disputes get skipped during build because they are not on the launch path, then get implemented by hand under time pressure against real customer money.</rationale>
     </rule>
     <rule id="a11y-min-floor" testable="true" depth="essential">
       <statement>Checkout MUST meet WCAG 2.2 AA: keyboard nav, ARIA labels, contrast ratios, error-recovery hints, no time-limited steps without warning.</statement>
-      <rationale source="WCAG 2.2 AA">WCAG 2.2 AA — applies to E-commerce Checkout BA Pack.</rationale>
+      <rationale source="WCAG 2.2 AA">Checkout is the one flow with no alternative route: a user who cannot complete it cannot buy at all, so a defect here is lost revenue plus, in several jurisdictions, direct legal exposure. It is also the flow most often broken by the patterns used to make it feel fast, such as custom-styled inputs with no labels, inline errors announced to nothing, and session timers that expire a screen-reader user mid-form.</rationale>
     </rule>
     <rule id="test-data-set" testable="true" depth="essential">
       <statement>Pack ships test-data set for every PSP: success card, declined card, 3DS-required card, refundable scenario, dispute scenario.</statement>
-      <rationale source="PSP sandbox documentation">PSP sandbox documentation — applies to E-commerce Checkout BA Pack.</rationale>
+      <rationale source="PSP sandbox documentation">Failure paths cannot be exercised on demand without provider-specific magic values, so teams test the success card, ship, and meet the decline and 3DS branches in production. Shipping the data set inside the pack makes those branches as cheap to test as the happy path, and gives QA a shared reference when a provider is added or swapped.</rationale>
     </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
       <statement>If the engagement is not e-commerce or has no checkout flow, return `skipped`.</statement>
-      <rationale source="Methodology applicability">Methodology applicability — applies to E-commerce Checkout BA Pack.</rationale>
+      <rationale source="Methodology applicability">The pack's content is entirely payment-flow specific: provider contracts, SCA, card test data, checkout NFRs. Applied to an engagement with no money capture it yields a large document of inapplicable requirements, which is worse than none, because reviewers stop reading BA packs that are mostly N/A.</rationale>
     </rule>
   </section>
   <see-also>
