@@ -42,6 +42,6 @@ Schemas: [`recipe-meta`](../../../docs/schemas/recipe-meta.schema.json) · [`rec
 
 - `vfs-pack` ships `.md` and `.xml` only, so the **cards ship in the CLI blob but `recipe.json` does not** — same gap F029 has with `scripts/*.py`. Until the packer's allowlist widens, a recipe body reaches a user through the repo, not the binary.
 - The gate verifier contract is `{clean, findings}` — the emitted artifact branches on `verdict.clean`. Any verifier fragment other than `corpus:gate-runner` must return that shape.
-- `corpus:gate-runner` and `corpus:gate-fixer` name their subject slot `article` for historical reasons; in a code pipeline pass the directory under verification in that slot.
+- `corpus:gate-runner` and `corpus:gate-fixer` read `{{slot:subject}}` — one file, a directory or a repo, whatever this pipeline gates. A stage whose own prompt also names the thing (`article-pipeline`'s editor) fills both slots from the same var.
 - Fan-out only ranges over an earlier stage's JSON array (`stage:<id>.file#<path>`) — there is no fan-out over a var, which is why `research-first-build` runs its three axes as three stages of one fragment.
 - Tier comes from `<name>/meta.json`; `scripts/regen-tier-manifest.py` walks it alongside knowledge, playbooks, fragments and tools.
