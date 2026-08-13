@@ -260,7 +260,14 @@ def main() -> int:
             target = base / "INDEX.xml"
             previous = target.read_text(encoding="utf-8") if target.is_file() else None
             out = render(domain, args.date, previous)
-            count = re.search(r'count="(\d+)"', out).group(1)
+            # `render` returns `previous` verbatim when the body is
+            # unchanged, so a hand-mangled INDEX.xml can reach here with
+            # no count= at all. Report it; never crash on the match.
+            found = re.search(r'count="(\d+)"', out)
+            if found is None:
+                raise Abort(f"{rel(target)}: no count= attribute — the file "
+                            "is not a generated index; delete it and rerun")
+            count = found.group(1)
             if out == previous:
                 print(f"{domain}: up to date ({count} entries)")
                 continue

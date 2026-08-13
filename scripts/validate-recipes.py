@@ -54,6 +54,7 @@ one finding · 2 the validator could not run (no recipes directory,
 unreadable input).
 """
 import argparse
+import importlib.util
 import json
 import os
 import re
@@ -63,8 +64,20 @@ import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-from schema_check import SchemaError, check, load  # noqa: E402
+# `schema_check.py` sits beside this file. Load it from that absolute
+# path rather than by name: a bare `from schema_check import ...` leans
+# on sys.path[0] being this directory, which is true only when this file
+# is the invoked script, and is unresolvable to a static checker that
+# does not replay a sys.path mutation.
+_spec = importlib.util.spec_from_file_location(
+    "faion_schema_check", Path(__file__).resolve().parent / "schema_check.py")
+if _spec is None or _spec.loader is None:  # pragma: no cover - packaging error
+    raise ImportError("cannot load schema_check.py beside this script")
+schema_check = importlib.util.module_from_spec(_spec)
+sys.modules.setdefault(_spec.name, schema_check)
+_spec.loader.exec_module(schema_check)
+SchemaError, check, load = (schema_check.SchemaError, schema_check.check,
+                            schema_check.load)
 
 ROOT = Path(__file__).resolve().parent.parent
 RECIPES = ROOT / "skills" / "faion" / "recipes"
@@ -303,7 +316,7 @@ def check_index(directories: list[Path]) -> list[str]:
     slugs = [e.get("slug") or "" for e in entries]
     if slugs != sorted(slugs):
         findings.append("recipes: INDEX.xml entries are not alphabetical by slug")
-    indexed = {e.get("name") for e in entries}
+    indexed = {e.get("name") or "" for e in entries}
     on_disk = {d.name for d in directories}
     for name in sorted(on_disk - indexed):
         findings.append(f"recipes: INDEX.xml omits {name!r}, which is on disk")
