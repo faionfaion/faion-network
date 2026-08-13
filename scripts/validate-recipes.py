@@ -11,9 +11,18 @@ The card is what an agent picks from, so a card that omits an input
 the recipe demands is not a documentation nit — it is a recipe the
 agent cannot invoke. This validator fails on:
 
+  * a `meta.json` or `recipe.json` that violates its JSON Schema under
+    docs/schemas/
   * a card missing one of the six ordered sections, or over the line cap
   * a `{{var:NAME}}` (or a declared var) absent from the card's Inputs
   * a fragment reference that resolves to no file in the corpus
+  * a stage whose `slots` do not cover every `{{slot:NAME}}` its prompt,
+    verifier and fixer fragments declare — counting slots pulled in
+    through `{{include:}}` — or that fills a slot no fragment reads
+  * **tier monotonicity**: a fragment gated above the recipe that
+    composes it. A solo user handed a solo recipe whose stages are pro
+    fragments has a pipeline that cannot run, and the failure surfaces
+    mid-run rather than at the pick
   * a recipe `faion workflow validate` refuses
 
 It also gates the fragment library on one rule that is not about
@@ -51,18 +60,26 @@ import re
 import shutil
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from schema_check import SchemaError, check, load  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 RECIPES = ROOT / "skills" / "faion" / "recipes"
 FRAGMENTS = ROOT / "skills" / "faion" / "fragments"
+SCHEMAS = ROOT / "docs" / "schemas"
 
 TIERS = ("free", "solo", "pro", "geek")
+TIER_ORDER = {tier: i for i, tier in enumerate(TIERS)}
 
 CARD_SECTIONS = ("Purpose", "Invoke", "Inputs", "Outputs", "When NOT to use", "Cost")
 MAX_CARD_LINES = 40
 
 VAR_REF = re.compile(r"\{\{var:([a-zA-Z0-9_]+)\}\}")
+SLOT_REF = re.compile(r"\{\{slot(\??):([A-Za-z0-9_][A-Za-z0-9_.-]*)\}\}")
+INCLUDE_REF = re.compile(r"\{\{include:([^}]+)\}\}")
 
 # The shared sourcing block, and the include that pulls it in.
 DISCIPLINE = "research-source-discipline"
@@ -133,6 +150,40 @@ def resolve_fragment(ref: str) -> Path | None:
     return None
 
 
+def fragment_tier(path: Path) -> str | None:
+    """The tier of the pack directory that gates this fragment."""
+    meta_path = path.parent / "meta.json"
+    if not meta_path.is_file():
+        return None
+    try:
+        return json.loads(meta_path.read_text(encoding="utf-8")).get("tier")
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def fragment_slots(ref: str, seen: set[str] | None = None) -> tuple[set[str], set[str]]:
+    """(required, optional) slot names a fragment declares, includes expanded.
+
+    A slot pulled in through `{{include:}}` is as required as one
+    written inline — the composer expands first and substitutes after,
+    so an unfilled included slot fails the run, not the include.
+    """
+    seen = set() if seen is None else seen
+    name = ref.split(":", 1)[-1]
+    path = resolve_fragment(f"corpus:{name}")
+    if path is None or name in seen:
+        return set(), set()
+    seen.add(name)
+    body = path.read_text(encoding="utf-8")
+    required = {m.group(2) for m in SLOT_REF.finditer(body) if not m.group(1)}
+    optional = {m.group(2) for m in SLOT_REF.finditer(body) if m.group(1)}
+    for match in INCLUDE_REF.finditer(body):
+        sub_required, sub_optional = fragment_slots(match.group(1).strip(), seen)
+        required |= sub_required
+        optional |= sub_optional
+    return required, optional
+
+
 def card_sections(lines: list[str]) -> list[str]:
     """The card's H2 headings, in file order."""
     return [ln[3:].strip() for ln in lines if ln.startswith("## ")]
@@ -152,7 +203,7 @@ def section_body(lines: list[str], heading: str) -> str:
 
 
 def check_card(name: str, card: Path, declared: set[str], referenced: set[str],
-               fail) -> None:
+               card_schema: dict | None, fail) -> None:
     """Card shape, line cap, and Inputs coverage of every var."""
     lines = card.read_text(encoding="utf-8").splitlines()
     if not lines or lines[0].strip() != f"# {name}":
@@ -160,22 +211,108 @@ def check_card(name: str, card: Path, declared: set[str], referenced: set[str],
     count = len(lines)
     while count and not lines[count - 1].strip():
         count -= 1
-    if count > MAX_CARD_LINES:
-        fail(f"{card.name}: {count} lines, cap is {MAX_CARD_LINES}")
 
     found = card_sections(lines)
-    if found != list(CARD_SECTIONS):
-        missing = [s for s in CARD_SECTIONS if s not in found]
-        if missing:
-            fail(f"{card.name}: missing section(s): {', '.join(missing)}")
-        else:
-            fail(f"{card.name}: sections out of order or extra: "
-                 f"{' | '.join(found)}")
-
     inputs = section_body(lines, "Inputs")
+
+    if card_schema is not None:
+        parsed = {
+            "name": name,
+            "title": lines[0].strip() if lines else "",
+            "sections": found,
+            "lines": count,
+            "invoke": section_body(lines, "Invoke").strip(),
+            "inputs": inputs.strip(),
+            "outputs": section_body(lines, "Outputs").strip(),
+        }
+        for problem in check(parsed, card_schema):
+            fail(f"{card.name}: {problem}")
+    else:
+        if count > MAX_CARD_LINES:
+            fail(f"{card.name}: {count} lines, cap is {MAX_CARD_LINES}")
+        if found != list(CARD_SECTIONS):
+            missing = [s for s in CARD_SECTIONS if s not in found]
+            if missing:
+                fail(f"{card.name}: missing section(s): {', '.join(missing)}")
+            else:
+                fail(f"{card.name}: sections out of order or extra: "
+                     f"{' | '.join(found)}")
+
     for var in sorted(declared | referenced):
         if f"`{var}`" not in inputs:
             fail(f"{card.name}: var '{var}' is not documented in ## Inputs")
+
+
+def check_stage_slots(recipe: dict, fail) -> None:
+    """Every stage fills exactly the slots its fragments declare."""
+    for i, stage in enumerate(recipe.get("stages") or []):
+        where = stage.get("id") or f"stages[{i}]"
+        gate = stage.get("gate") or {}
+        refs = [stage.get("prompt")] + [gate.get(k) for k in ("verifier", "fixer")]
+        required: set[str] = set()
+        optional: set[str] = set()
+        for ref in refs:
+            if not ref:
+                continue
+            sub_required, sub_optional = fragment_slots(ref)
+            required |= sub_required
+            optional |= sub_optional
+        filled = set((stage.get("slots") or {}).keys())
+        item_slot = (stage.get("fanout") or {}).get("item_slot")
+        if item_slot:
+            filled.add(item_slot)
+        for slot in sorted(required - filled):
+            fail(f"stage '{where}': slot '{slot}' is declared by its fragments "
+                 "and filled by nothing — Compose refuses before any work")
+        for slot in sorted(filled - required - optional):
+            fail(f"stage '{where}': fills slot '{slot}', which no fragment it "
+                 "composes reads")
+
+
+def check_tier_monotonicity(recipe_tier: str, refs: list[tuple[str, str]],
+                            fail) -> None:
+    """Every fragment a recipe composes is gated at or below the recipe."""
+    if recipe_tier not in TIER_ORDER:
+        return
+    for where, ref in refs:
+        path = resolve_fragment(ref)
+        if path is None:
+            continue
+        tier = fragment_tier(path)
+        if tier in TIER_ORDER and TIER_ORDER[tier] > TIER_ORDER[recipe_tier]:
+            fail(f"{where}: fragment {ref!r} is tier {tier}, above the recipe's "
+                 f"{recipe_tier} — a {recipe_tier} user can pick this recipe and "
+                 "cannot read the stage it runs")
+
+
+def check_index(directories: list[Path]) -> list[str]:
+    """recipes/INDEX.xml must describe the recipes that are actually there."""
+    index = RECIPES / "INDEX.xml"
+    if not index.is_file():
+        return ["recipes: INDEX.xml is missing — run "
+                "python3 scripts/regen-fragment-index.py"]
+    try:
+        root = ET.parse(index).getroot()
+    except ET.ParseError as exc:
+        return [f"recipes: INDEX.xml xml parse error: {exc}"]
+    findings = []
+    entries = root.findall("recipe")
+    if root.get("count") != str(len(entries)):
+        findings.append(f"recipes: INDEX.xml count={root.get('count')!r} but it "
+                        f"holds {len(entries)} <recipe> entries")
+    slugs = [e.get("slug") or "" for e in entries]
+    if slugs != sorted(slugs):
+        findings.append("recipes: INDEX.xml entries are not alphabetical by slug")
+    indexed = {e.get("name") for e in entries}
+    on_disk = {d.name for d in directories}
+    for name in sorted(on_disk - indexed):
+        findings.append(f"recipes: INDEX.xml omits {name!r}, which is on disk")
+    for name in sorted(indexed - on_disk):
+        findings.append(f"recipes: INDEX.xml lists {name!r}, which is not on disk")
+    if findings:
+        findings.append("recipes: INDEX.xml is generated — run "
+                        "python3 scripts/regen-fragment-index.py")
+    return findings
 
 
 def is_research_role(path: Path, body: str) -> bool:
@@ -219,7 +356,8 @@ def check_fragments() -> list[str]:
     return findings
 
 
-def check_recipe(directory: Path, faion: str | None, strict: bool) -> list[str]:
+def check_recipe(directory: Path, faion: str | None, strict: bool,
+                 schemas: dict[str, dict]) -> list[str]:
     """Validate one recipe directory; returns its findings."""
     findings: list[str] = []
     name = directory.name
@@ -244,6 +382,9 @@ def check_recipe(directory: Path, faion: str | None, strict: bool) -> list[str]:
         return findings
     if meta.get("tier") not in TIERS:
         fail(f"meta.json tier {meta.get('tier')!r} is not one of {TIERS}")
+    if "meta" in schemas:
+        for problem in check(meta, schemas["meta"]):
+            fail(f"meta.json: {problem}")
 
     try:
         recipe = json.loads(recipe_path.read_text(encoding="utf-8"))
@@ -253,14 +394,18 @@ def check_recipe(directory: Path, faion: str | None, strict: bool) -> list[str]:
 
     if recipe.get("name") != name:
         fail(f"recipe.json name {recipe.get('name')!r} != directory {name!r}")
+    if "recipe" in schemas:
+        for problem in check(recipe, schemas["recipe"]):
+            fail(f"recipe.json: {problem}")
 
     declared = set((recipe.get("vars") or {}).keys())
     referenced = set(VAR_REF.findall(json.dumps(recipe)))
     for var in sorted(referenced - declared):
         fail(f"recipe.json references undeclared var '{var}'")
 
-    check_card(name, card_path, declared, referenced, fail)
+    check_card(name, card_path, declared, referenced, schemas.get("card"), fail)
 
+    resolvable: list[tuple[str, str]] = []
     for where, ref in fragment_refs(recipe):
         if not ref.startswith("corpus:"):
             fail(f"{where}: {ref!r} is not a corpus: reference — a shipped "
@@ -269,6 +414,11 @@ def check_recipe(directory: Path, faion: str | None, strict: bool) -> list[str]:
         if resolve_fragment(ref) is None:
             fail(f"{where}: fragment {ref!r} resolves to no file under "
                  "skills/faion/fragments/")
+            continue
+        resolvable.append((where, ref))
+
+    check_tier_monotonicity(meta.get("tier"), resolvable, fail)
+    check_stage_slots(recipe, fail)
 
     if faion is None:
         if strict:
@@ -313,13 +463,27 @@ def main() -> int:
         print("validate-recipes: faion binary not found — compile check "
               "skipped (set FAION_BIN or build ../faion-cli)", file=sys.stderr)
 
+    schemas: dict[str, dict] = {}
+    try:
+        for key, filename in (("meta", "recipe-meta.schema.json"),
+                              ("recipe", "recipe.schema.json"),
+                              ("card", "card.schema.json")):
+            schemas[key] = load(SCHEMAS / filename)
+    except OSError as exc:
+        print(f"validate-recipes: {exc}", file=sys.stderr)
+        return 2
+
     findings: list[str] = []
     for directory in targets:
         if not directory.is_dir():
             print(f"validate-recipes: not a directory: {directory}",
                   file=sys.stderr)
             return 2
-        findings += check_recipe(directory, faion, args.strict)
+        try:
+            findings += check_recipe(directory, faion, args.strict, schemas)
+        except SchemaError as exc:
+            print(f"validate-recipes: docs/schemas: {exc}", file=sys.stderr)
+            return 2
 
     ok = len(targets) - len({f.split(':', 1)[0] for f in findings})
 
@@ -328,6 +492,8 @@ def main() -> int:
     # recipe composing it, including the ones not named on this line.
     fragment_findings = check_fragments()
     findings += fragment_findings
+    if not args.dirs:
+        findings += check_index(targets)
 
     for finding in findings:
         print(f"FAIL {finding}")
