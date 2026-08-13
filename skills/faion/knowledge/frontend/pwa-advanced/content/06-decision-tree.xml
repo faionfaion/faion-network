@@ -1,44 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="PWA Advanced Features Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`. Routes (push surface, sync needs, iOS share) to full-PWA / web-push-only / skip-on-iOS-Safari.</summary>
+<text id="06-decision-tree" title="PWA Advanced Features Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether a native shell already owns push, and on whether iOS Safari is the primary platform with requirements WebKit cannot serve — to the full push plus offline-queue build, a push-only iOS subset, or skip.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-native-shell-present">Does a native shell (Capacitor, Tauri, React Native) already ship this app and hold an APNs/FCM token?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="native_shell_present == true">
+      <conclusion ref="skip-this-methodology" verdict="skip; push through the shell — a web subscription and a native token are independent, so every notification is delivered twice and the user disables both"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="native_shell_present == false">
+      <question id="q-ios-primary">Is iOS Safari the primary platform for the users who must receive push or work offline?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+      <branch when="ios_primary == true">
+        <question id="q-ios-webkit-gap">Does the requirement depend on Background Sync or Periodic Background Sync, or on reaching users who will not add the app to the Home Screen (or run iOS below 16.4)?</question>
+
+        <branch when="background_sync_required == true || push_to_non_installed_users == true || ios_version &lt; 16.4">
+          <conclusion ref="skip-this-methodology" verdict="skip; WebKit implements neither Sync API and iOS delivers Web Push only to home-screen-installed web apps — the feature cannot be built as specified"/>
+        </branch>
+
+        <branch when="background_sync_required == false &amp;&amp; push_to_non_installed_users == false &amp;&amp; ios_version &gt;= 16.4">
+          <conclusion ref="permission-prompt-behind-user-gesture" verdict="apply the push half only: opt-in behind an explicit user gesture after install, a notification shown on every delivery, and flush the outbox on reconnect instead of Background Sync"/>
+        </branch>
       </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is &#8805;1 verbatim citation available per non-trivial field declared in the output contract?</question>
-
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
-        </branch>
-
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
-
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="run-the-checklist" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
-        </branch>
+      <branch when="ios_primary == false">
+        <conclusion ref="run-the-checklist" verdict="apply in full: one server-held VAPID pair, notification on every push, 404/410 subscription pruning, idempotency-keyed outbox drained by a single stable sync tag"/>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true &#8594; applies_if=true &#8594; evidence_available=true &#8594; named_owner=true &#8594; apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

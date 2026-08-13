@@ -1,44 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Tailwind Patterns with CVA Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`. Routes (variant volume, conflict frequency, type-safety need) to cva-only / cva+tv / leave-as-is.</summary>
+<text id="06-decision-tree" title="Tailwind Patterns with CVA Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether Tailwind actually owns styling, on whether the codebase clears the reuse threshold a variant schema needs, and on whether custom scales exist that tailwind-merge cannot resolve — to the full cva pattern, a merge-config-first pass, or skip.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-tailwind-owns-styling">Is Tailwind in the build pipeline and the primary styling mechanism, rather than CSS-in-JS or vanilla-extract?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="tailwind_in_build == false || styling_owner != 'tailwind'">
+      <conclusion ref="skip-this-methodology" verdict="skip; use the styling library's own recipe/variant API, which already gives typed variants and scoped class names"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="tailwind_in_build == true &amp;&amp; styling_owner == 'tailwind'">
+      <question id="q-reuse-threshold">Are there roughly 5 or more reusable components, each with more than one style axis (intent, size, state)?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+      <branch when="reusable_multi_axis_components &lt; 5">
+        <conclusion ref="skip-this-methodology" verdict="skip; below the reuse threshold there are no conflicts to resolve — a single-use component's ternary is cheaper than a variant schema"/>
       </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is &#8805;1 verbatim citation available per non-trivial field declared in the output contract?</question>
+      <branch when="reusable_multi_axis_components &gt;= 5">
+        <question id="q-custom-scales">Does the design system add custom utilities or scale keys (`text-display-lg`, `shadow-card`, plugin-generated classes) that `tailwind-merge` does not know by default?</question>
 
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
+        <branch when="custom_class_groups_present == true &amp;&amp; twmerge_extended == false">
+          <conclusion ref="twmerge-extended-for-custom-scales" verdict="apply, but register the custom class groups via `extendTailwindMerge` first — otherwise a consumer override silently loses to the component's own class"/>
         </branch>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
-
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="run-the-checklist" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
+        <branch when="custom_class_groups_present == false || twmerge_extended == true">
+          <conclusion ref="run-the-checklist" verdict="apply in full: one module-scope `cva` call per component, literal class names only, `cn(variants(...), className)` order, compound variants for cross-axis cases, defaults on every axis"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true &#8594; applies_if=true &#8594; evidence_available=true &#8594; named_owner=true &#8594; apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

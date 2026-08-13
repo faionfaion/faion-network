@@ -1,44 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="PWA Core Architecture Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`. Routes (offline need, install need, route shape) to full-PWA / shell-only / skip.</summary>
+<text id="06-decision-tree" title="PWA Core Architecture Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether offline or install is actually required, whether a native shell already owns caching and install, and whether iOS Safari is the primary target with durable-offline expectations — to the full core PWA, an install-only subset, or skip.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-offline-or-install-required">Is there a stated requirement for offline use, or for home-screen install with a standalone display mode?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="offline_required == false &amp;&amp; install_required == false">
+      <conclusion ref="skip-this-methodology" verdict="skip; a service worker adds cache-coherence risk and an update-lifecycle bug surface with no user-visible gain"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="offline_required == true || install_required == true">
+      <question id="q-native-shell-present">Does a native shell (Capacitor, Tauri, React Native) already own caching, storage and install for this app, or is the app hard real-time (live trading, conferencing)?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+      <branch when="native_shell_present == true || hard_realtime == true">
+        <conclusion ref="skip-this-methodology" verdict="skip; the shell already owns install and caching, and a second cache layer under real-time traffic adds staleness risk with no offline upside"/>
       </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is &#8805;1 verbatim citation available per non-trivial field declared in the output contract?</question>
+      <branch when="native_shell_present == false &amp;&amp; hard_realtime == false">
+        <question id="q-ios-durable-offline">Is iOS Safari the primary target while the requirement expects offline data to survive more than 7 days of non-use, or expects Background Sync?</question>
 
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
+        <branch when="ios_primary == true &amp;&amp; (offline_retention_days &gt; 7 || background_sync_required == true)">
+          <conclusion ref="maskable-icon-and-install-sizes" verdict="apply only the installability half — explicit manifest `id`, 192/512 plus maskable icons, update prompt — and promise no durable offline data; WebKit evicts script-writable storage after 7 idle days"/>
         </branch>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
-
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="run-the-checklist" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
+        <branch when="ios_primary == false || (offline_retention_days &lt;= 7 &amp;&amp; background_sync_required == false)">
+          <conclusion ref="run-the-checklist" verdict="apply the full core: `/sw.js` at scope root with `no-cache`, immutable manifest `id`, strategy per route shape, user-initiated update reload, single registration from the bootstrap module"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true &#8594; applies_if=true &#8594; evidence_available=true &#8594; named_owner=true &#8594; apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>
