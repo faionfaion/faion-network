@@ -8,10 +8,10 @@ Workflow recipes: platform-neutral F027 pipelines an agent picks from and `faion
 
 | Recipe | Tier | Stages | Shape |
 |--------|------|--------|-------|
-| `sdd-feature/` | solo | 6 | intake → plan → bootstrap gate → per-task fan-out over worktrees → review → gated fix. One written feature, built. |
-| `research-first-build/` | pro | 13 | research plan → three sourced catalogs (one a market landscape) → evidence gate → quantified concept pick → design → plan → fan-out → assets → bootstrap gate → review → gated fix. Decides what to build before building it. |
-| `article-pipeline/` | pro | 6 | outline → per-section fan-out → assemble → gated editorial pass → translate → language review. Content only, never code. |
-| `audit-and-fix/` | solo | 4 | bootstrap → machine checks → cited review → gated fix. No fan-out; the smallest recipe here. |
+| `sdd-feature/` | free | 6 | intake → plan → bootstrap gate → per-task fan-out over worktrees → review → gated fix. One written feature, built. |
+| `research-first-build/` | free | 13 | research plan → three sourced catalogs (one a market landscape) → evidence gate → quantified concept pick → design → plan → fan-out → assets → bootstrap gate → review → gated fix. Decides what to build before building it. |
+| `article-pipeline/` | free | 6 | outline → per-section fan-out → assemble → gated editorial pass → translate → language review. Content only, never code. |
+| `audit-and-fix/` | free | 4 | bootstrap → machine checks → cited review → gated fix. No fan-out; the smallest recipe here. |
 
 Four different stage shapes on purpose: the catalog teaches by contrast, so an agent picking between them is comparing pipelines, not reading four spellings of one.
 
@@ -31,7 +31,7 @@ Schemas: [`recipe-meta`](../../../docs/schemas/recipe-meta.schema.json) · [`rec
 
 - Card shape, fixed order, nothing added or dropped: `# <name>` · `## Purpose` · `## Invoke` · `## Inputs` · `## Outputs` · `## When NOT to use` · `## Cost`.
 - Only `corpus:` fragment references. A shipped recipe that composes a user-space fragment resolves on the author's machine and nowhere else.
-- Fragment tier ≤ recipe tier. The gate trio lives in `fragments/gate/` at tier solo precisely so a solo recipe can gate.
+- Fragment tier ≤ recipe tier, and `validate-recipes.py` enforces it. Every recipe and every fragment pack ships at tier **free**: the pipeline is the mechanism that makes an agent's output correct, and gating the mechanism does not sell tiers — it makes free-tier output worse. What a tier buys is the content a pipeline consumes.
 - A `bootstrap` stage wherever the pipeline runs tests. The g3/g4 pipelines burned fix rounds on a missing venv; an environment is a stage, not an assumption.
 - Service identity and paths are vars, never literals — two runs of the same recipe must not collide on a service name, a port or a state directory.
 - A research stage composes a research-role fragment, and every one of those includes `corpus:research-source-discipline` — the corpus instructs the fetch, it never substitutes for it. `validate-recipes.py` fails a research-role fragment that drops the block.

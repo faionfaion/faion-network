@@ -75,11 +75,11 @@ The composable layer: pipelines an agent runs, not prose it reads. Three L2 inde
 
 | Index | Holds | Read the leaf as |
 |-------|-------|------------------|
-| `recipes/INDEX.xml` | 4 workflow recipes — `sdd-feature` (solo, 6 stages), `research-first-build` (pro, 13), `article-pipeline` (pro, 6), `audit-and-fix` (solo, 4) | `<name>.card.md` — the card is the contract and is enough to invoke from; `recipe.json` is the compiler's input, never the agent's |
+| `recipes/INDEX.xml` | 4 workflow recipes — `sdd-feature` (free, 6 stages), `research-first-build` (free, 13), `article-pipeline` (free, 6), `audit-and-fix` (free, 4) | `<name>.card.md` — the card is the contract and is enough to invoke from; `recipe.json` is the compiler's input, never the agent's |
 | `fragments/INDEX.xml` | 6 packs of role prompts a recipe composes, addressed `corpus:<name>` | the fragment body, or `faion frag get corpus:<name>` |
 | `tools/INDEX.xml` | 3 packs of dependency-free scripts | `<name>.card.md` — read the card, never the script, and never re-implement a tool that already has one |
 
-Tier-gated on the same boundary as knowledge, and a fragment's tier is always ≤ the tier of every recipe that composes it, so picking a recipe you can read never yields a stage you cannot. Compile a recipe with `faion workflow build <recipe.json> --var …`.
+The whole layer ships at tier **free** — the pipeline is the mechanism that makes output correct, and what a tier buys is the content a pipeline consumes, not the pipeline. A fragment's tier is still always ≤ the tier of every recipe that composes it, so picking a recipe you can read never yields a stage you cannot. Compile a recipe with `faion workflow build <recipe.json> --var …`.
 
 ## Playbooks
 

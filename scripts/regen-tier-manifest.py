@@ -39,13 +39,17 @@ RECIPES = ROOT / "skills" / "faion" / "recipes"
 BACKUP = ROOT / "skills" / "tier-manifest.json.f067-pre-bak"
 
 TIERS = ("free", "solo", "pro", "geek")
-TODAY = "2026-08-11"
-NEW_VERSION = 12
+TODAY = "2026-08-13"
+NEW_VERSION = 13
 NOTES_HEAD = (
-    "v12: workflow recipes (skills/faion/recipes/<name>/meta.json, one "
-    "entry gating each recipe.json and its card) join the manifest, and "
-    "the verification-gate fragments move from fragments/article to "
-    "fragments/gate at tier solo so solo recipes can gate."
+    "v13: P1.5 — the whole composable layer moves to tier free. All four "
+    "recipes, all five paid fragment packs (article, build, gate, "
+    "research, sdd) and the research tool pack the research fragments "
+    "invoke are now free; 10 entries retiered, none added or removed. "
+    "The pipeline is the mechanism that makes an agent's output correct, "
+    "and gating the mechanism does not sell tiers — it makes free-tier "
+    "output worse. What a tier buys is the content a pipeline consumes. "
+    "Same argument F031 made for the UA->EN lexicon."
 )
 
 

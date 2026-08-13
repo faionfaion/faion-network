@@ -11,11 +11,11 @@ why this file sits here and not inside each pack.
 
 | Pack | Tier | Roles |
 |------|------|-------|
-| `research/` | solo | `research-source-discipline` (the shared sourcing block), `research-market-analyst`, `research-evidence-table`, `research-desk-brief` |
-| `gate/` | solo | `gate-bootstrap`, `gate-runner` (+ schema), `gate-fixer` |
-| `sdd/` | solo | `sdd-intake-analyzer`, `sdd-planner`, `sdd-task-executor`, `sdd-wave-coordinator`, `sdd-code-reviewer`, `sdd-fix-applier` (+ schemas) |
-| `build/` | pro | `build-domain-cataloger`, `build-concept-synthesizer` (+ schema), `build-solution-designer`, `build-asset-director` |
-| `article/` | pro | `article-outliner` (+ schema), `article-section-writer`, `article-assembler`, `article-editor-reviewer`, `article-translator`, `article-language-reviewer` |
+| `research/` | free | `research-source-discipline` (the shared sourcing block), `research-market-analyst`, `research-evidence-table`, `research-desk-brief` |
+| `gate/` | free | `gate-bootstrap`, `gate-runner` (+ schema), `gate-fixer` |
+| `sdd/` | free | `sdd-intake-analyzer`, `sdd-planner`, `sdd-task-executor`, `sdd-wave-coordinator`, `sdd-code-reviewer`, `sdd-fix-applier` (+ schemas) |
+| `build/` | free | `build-domain-cataloger`, `build-concept-synthesizer` (+ schema), `build-solution-designer`, `build-asset-director` |
+| `article/` | free | `article-outliner` (+ schema), `article-section-writer`, `article-assembler`, `article-editor-reviewer`, `article-translator`, `article-language-reviewer` |
 | `search/` | free | `search-refine` — the second-pass block `faion search` emits below strong coverage; not a role, so exempt from the role rules |
 
 `INDEX.xml` is the L2 index `SKILL.md` routes into — one entry per pack
@@ -69,11 +69,14 @@ gate — are in `scripts/validate-recipes.py`.
 ## Gotchas
 
 - Instruction plus tool, never instruction alone: `research-evidence-table`
-  names `source-table` (`tools/research/`, tier solo), which exits 1 when a
-  load-bearing claim is unsourced. The research pack is tier **solo** for
-  exactly that reason — a free fragment naming a solo tool is uninvokable.
-- Fragment tier ≤ recipe tier. `research/` and `gate/` are solo so solo
-  recipes can compose them.
+  names `source-table` (`tools/research/`), which exits 1 when a
+  load-bearing claim is unsourced. That tool pack moved to **free** with
+  this one — a free fragment naming a solo tool is uninvokable, and
+  `validate-fragments.py` fails it.
+- Fragment tier ≤ recipe tier. Every pack here is **free**, as is every
+  recipe: this layer is the mechanism that makes an agent's output
+  correct, and a paid mechanism only degrades the free tier. Paid content
+  is what a pipeline consumes.
 - A bare reference resolves against the **user** space first; recipes must
   always write `corpus:`.
 - `research-source-discipline` declares no slots on purpose — give it one
