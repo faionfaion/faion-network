@@ -1,44 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Hot Path Baseline Template Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`. Routes (traffic level, perf goal, measurement readiness) to capture-baseline / skip-cold-path / defer.</summary>
+<text id="06-decision-tree" title="Hot Path Baseline Template Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on call rate, on whether the change is motivated by performance or correctness, and on the load generator's scheduling mode and sample count — to a full baseline, a reduced p50/p95 baseline, a generator fix, or skip.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-path-call-rate">Does the path carry at least ~1 call/min of traffic representative of production during the measurement window?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="calls_per_min &lt; 1">
+      <conclusion ref="skip-this-methodology" verdict="skip; on a cold path run-to-run noise dwarfs any before/after delta the baseline could show"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="calls_per_min &gt;= 1">
+      <question id="q-change-motivation">Is the pending change motivated by latency or throughput, or by correctness?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+      <branch when="motivation == 'correctness'">
+        <conclusion ref="skip-this-methodology" verdict="skip; baseline-then-compare is the wrong gate for a correctness fix — gate it on tests, not percentiles"/>
       </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is &#8805;1 verbatim citation available per non-trivial field declared in the output contract?</question>
+      <branch when="motivation == 'performance'">
+        <question id="q-measurement-source">How is load produced — an open-loop generator you control, a closed-loop generator, or passive observation of production traffic?</question>
 
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
+        <branch when="load_generator_mode == 'closed-loop'">
+          <conclusion ref="coordinated-omission-guarded" verdict="halt; switch the generator to constant-arrival-rate (k6 `constant-arrival-rate`, Gatling `constantUsersPerSec`, `wrk2`) before recording any tail number"/>
         </branch>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
+        <branch when="samples_in_window &lt; 1000">
+          <conclusion ref="sample-count-gates-percentile" verdict="apply in reduced form: publish p50/p95 with `n` and window, and mark p99 as insufficient-samples rather than reporting it"/>
+        </branch>
 
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="run-the-checklist" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
+        <branch when="load_generator_mode == 'open-loop' &amp;&amp; samples_in_window &gt;= 1000">
+          <conclusion ref="run-the-checklist" verdict="apply the full template: p50/p95/p99/max with `n`, offered load and error rate, histogram bounds, per-operation allocation and cache counters, environment pinned to a commit SHA"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true &#8594; applies_if=true &#8594; evidence_available=true &#8594; named_owner=true &#8594; apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

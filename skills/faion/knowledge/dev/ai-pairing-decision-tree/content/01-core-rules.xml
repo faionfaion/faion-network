@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="AI Pairing Decision Tree Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the AI Pairing Decision Tree methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="AI Pairing Decision Tree Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules constraining the per-task routing record (stakes, reversibility, novelty, supervision_budget → solo | ai-pair | full-agent). Each rule is checkable against the record's fields, the repository, or the CI configuration.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for AI Pairing Decision Tree">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="stakes-from-blast-radius-not-effort" testable="true" depth="essential">
+      <statement>`stakes` MUST be derived from named observables — rows or tables written, customer-facing endpoints touched, money moved, credentials or PII read, blast radius if the change is wrong — and the record names which one applies. Task size, deadline pressure and personal difficulty MUST NOT set the field.</statement>
+      <rationale source="Change-management risk classification (ITIL change risk / SRE production-change review)">Effort and risk are uncorrelated: a one-character change to a CIDR block or a rate limit is trivial to write and takes the service down, while a 900-line vendored refactor is tedious and reversible. Scoring by effort routes exactly the wrong tasks to the least supervised mode.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="irreversible-work-never-full-agent" testable="true" depth="essential">
+      <statement>Tasks whose revert requires a data restore or an external counterparty MUST route to `solo` or `ai-pair` with pre-merge human diff review — never `full-agent`. Enumerated: destructive migrations (`DROP COLUMN`, `DROP TABLE`, non-nullable backfill), hard deletes without a soft-delete path, payment capture or refund, outbound email/push to real users, key or secret rotation, DNS and TLS cutover, IAM policy widening, published-package release.</statement>
+      <rationale source="Amazon shareholder-letter type-1 / type-2 door framing; database change-management practice">Reversible changes are protected by the revert, so supervision can be cheap; irreversible ones are protected only by the review that happens before they run. Automation removes precisely that review, and the failure surfaces after the only cheap remedy has expired.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="supervision-budget-covers-expected-diff" testable="true" depth="essential">
+      <statement>`verdict=full-agent` is admissible only if the supervision budget covers reviewing the expected diff at a sustainable inspection rate — plan on 200–400 changed lines per review sitting and no more than ~300–500 lines per hour. A task expected to produce more MUST either be split into separately reviewable commits or routed to `ai-pair`.</statement>
+      <rationale source="SmartBear / Cisco peer-code-review study (~2,500 reviews): defect-discovery rate falls sharply above ~200–400 LOC per review and above ~500 LOC/hour">Generation is the cheap half; review time still scales with the diff. Past the rate ceiling the reviewer stops reading and starts skimming for shape, so a large agent diff is nominally reviewed and empirically unread — the mode's speed advantage is paid for out of detection.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="novelty-proven-by-in-repo-precedent" testable="true" depth="essential">
+      <statement>`novelty=boilerplate` or `familiar` MUST cite a concrete in-repo precedent as `path:line` found by search, not by recall. With no precedent, or when the task introduces a new external dependency or calls an internal/undocumented API, `novelty=novel-pattern` and `full-agent` is unavailable.</statement>
+      <rationale source="USENIX Security 2025 package-hallucination study (&quot;We Have a Package for You!&quot;) — a large share of package names recommended by LLM-generated code do not exist">Absent an in-context precedent the model falls back on the shape of its training distribution and emits plausible names — a package that was never published, a helper that exists in another framework, a config key from a different major version. These fail at import or at runtime, not at review, unless a human recognises the name as invented.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="full-agent-requires-unattended-gate" testable="true" depth="essential">
+      <statement>`verdict=full-agent` requires an automated gate that runs without the operator and blocks the merge: a named test command, a type check, and a lint, each with a non-zero exit failing the pipeline. A repository whose test command does not exist or is not wired into CI cannot yield a `full-agent` verdict for any task.</statement>
+      <rationale source="Continuous-delivery deployment-pipeline practice (Humble &amp; Farley) applied to unattended generation">Full-agent means the human is absent at generation time, so the gate is the only reader of the diff before it lands. Without one the verdict is not "delegated with a safety net" but "unreviewed", and the mode's whole risk model rests on a check that was never installed.</rationale>
+    </rule>
+
+    <rule id="record-precedes-first-prompt" testable="true" depth="essential">
+      <statement>The record is written before the first prompt of the session; `last_touched` MUST precede the earliest timestamp in the session transcript. A mid-task mode change emits a NEW record referencing the previous `artefact_id` — the original verdict is never edited.</statement>
+      <rationale source="Internal — audits of retrospectively written routing records">A verdict written after the work reliably matches whatever happened, so the record stops being a decision and becomes a description. Superseding rather than editing preserves the one fact the audit needs: that the operator started in agent mode and had to fall back, which is the signal that the routing questions were answered wrong.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
-    </rule>
-
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-ai-pairing-decision-tree.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+      <statement>Do NOT produce a record when (a) the task is a throwaway script with no commit — take whatever is fastest; (b) the change is IDE-template or codegen boilerplate with no decision to make (scaffolded migration, generated client, formatter run); (c) the repository has a standing policy that already fixes the mode for this class of change — apply the policy and cite it rather than re-deriving it per task.</statement>
+      <rationale source="Methodology preconditions">The record costs roughly a minute and buys an auditable choice; where the choice is forced by policy or absent by construction it buys nothing, and per-task records that all say the same thing train the operator to stop reading them.</rationale>
     </rule>
 
   </section>

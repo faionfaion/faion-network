@@ -1,44 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Library Evaluation Rubric Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`. Routes (candidate count, risk surface, lock-in cost) to full-rubric / quick-rubric / pick-default.</summary>
+<text id="06-decision-tree" title="Library Evaluation Rubric Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on how many candidates are genuinely choosable, on the cost of reversing the choice (import sites, type leakage), and on whether the dependency ships in the artefact — to the full rubric, a reduced build-time rubric, or skip.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-candidate-count">Is there more than one viable candidate the operator is actually free to choose between?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="viable_candidates &lt;= 1 || choice_fixed_by_platform_decision == true">
+      <conclusion ref="skip-this-methodology" verdict="skip; record a one-line ADR naming the single option — a scored table would lend a forced choice authority the evidence never supported"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="viable_candidates &gt; 1 &amp;&amp; choice_fixed_by_platform_decision == false">
+      <question id="q-reversal-cost">What does reversing the choice cost — how many import sites are projected, and do the library's types leak into your public API signatures or persisted data?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+      <branch when="projected_import_sites &lt;= 3 &amp;&amp; type_leakage == false">
+        <conclusion ref="skip-this-methodology" verdict="skip; the swap is cheaper than the evaluation — adopt, and revisit if import sites grow"/>
       </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is &#8805;1 verbatim citation available per non-trivial field declared in the output contract?</question>
+      <branch when="projected_import_sites &gt; 3 || type_leakage == true">
+        <question id="q-ships-in-artefact">Does the dependency ship in the runtime artefact (client bundle or distributed binary), or is it build-time-only?</question>
 
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
+        <branch when="ships_in_artefact == false">
+          <conclusion ref="transitive-surface-and-install-scripts" verdict="apply a reduced rubric — maintenance signals, time-to-patch, transitive count and install-script surface; bundle-delta and distribution-licence criteria do not apply"/>
         </branch>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
-
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="run-the-checklist" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
+        <branch when="ships_in_artefact == true">
+          <conclusion ref="run-the-checklist" verdict="apply the full rubric: bundle delta measured on the real import path, transitive licence scan, time-to-patch history, and an adapter bounding exit cost above 10 import sites"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true &#8594; applies_if=true &#8594; evidence_available=true &#8594; named_owner=true &#8594; apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

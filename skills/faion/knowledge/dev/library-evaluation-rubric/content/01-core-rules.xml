@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Library Evaluation Rubric Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the Library Evaluation Rubric methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="Library Evaluation Rubric Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules for scoring a candidate dependency: maintenance signals that are not stars, transitive licence scanning, bundle delta measured on the real import path, security history read as time-to-patch, supply-chain surface including install scripts, bounded exit cost, and the preconditions under which the rubric is not worth running.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Library Evaluation Rubric">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="maintenance-signals-not-popularity" testable="true" depth="essential">
+      <statement>The maintenance score MUST be computed from: date of last release, number of distinct committers with &gt;=5% of commits in the trailing 12 months, and median time-to-first-response on issues. GitHub stars, download counts and "trending" placement MUST NOT contribute to the score. A candidate with one committer above the 5% line is recorded as `bus-factor=1` regardless of every other signal.</statement>
+      <rationale source="OpenSSF Scorecard — Maintained and Contributors checks">Stars are cumulative and never decay, so a package abandoned three years ago carries the same star count as the day it stopped being maintained — the metric cannot express the thing being scored. Bus factor is the signal that actually predicts an unpatched CVE: a sole maintainer who loses interest leaves no one with commit rights to ship the fix.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="licence-scanned-transitively" testable="true" depth="essential">
+      <statement>Licence review MUST cover the full transitive tree via a named tool (`license-checker`, `pip-licenses`, `cargo-deny check licenses`, `go-licenses csv`), not the candidate's own declared licence. The record MUST classify each distinct licence found as permissive / weak-copyleft / strong-copyleft / network-copyleft / source-available, and explicitly flag AGPL-3.0, SSPL and BUSL-1.1 with the BUSL change date where present.</statement>
+      <rationale source="AGPL-3.0 §13; Business Source License 1.1 change-date clause; OSI licence list">AGPL §13 triggers on network interaction rather than distribution, so a SaaS backend that never ships a binary still incurs the source-offer obligation — the clause most permissive-by-default review misses. SSPL and BUSL are not OSI-approved at all and carry field-of-use restrictions that a scanner reporting only "not MIT" will not surface, and the obligation attaches at any depth of the tree, not just the top level.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="bundle-delta-measured-on-real-import" testable="true" depth="essential">
+      <statement>For client-side dependencies the record MUST state the minified+gzip delta produced by the project's own bundler for the exact import path being adopted (esbuild `--metafile`, `size-limit`, `rollup-plugin-visualizer`) — not the package's headline size. It MUST also record whether `package.json` declares `exports`/`module` (ESM entry) and `"sideEffects": false`.</statement>
+      <rationale source="package.json sideEffects field; ESM tree-shaking semantics in Rollup/webpack/esbuild">A bundler can only drop unused exports from an ESM module that is declared side-effect-free; a CJS-only package, or one missing `"sideEffects": false`, is linked whole regardless of how narrow the import looked. This is why the measured delta for a single named import routinely lands an order of magnitude above the quoted "2 kB" figure.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="security-history-is-time-to-patch" testable="true" depth="essential">
+      <statement>The security score MUST be median days from advisory publication to a patched release, computed over the trailing 24 months of OSV.dev / GitHub Advisory (GHSA) entries for the package. A count of open or historical CVEs alone MUST NOT be used as the score. Candidates with zero advisories are recorded as `no-advisory-history` — not as `secure`.</statement>
+      <rationale source="OSV.dev; GitHub Advisory Database (GHSA) records">Advisory count tracks scrutiny, not safety: a widely audited library accumulates CVEs precisely because researchers look at it, while an unexamined one shows a clean record until the first person reads the code. Time-to-patch is the only figure that measures what the consumer actually needs — whether a fix will be available on the day one is required.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="transitive-surface-and-install-scripts" testable="true" depth="essential">
+      <statement>Record the transitive dependency count the candidate adds (`npm ls --all`, `pipdeptree`, `cargo tree`) and enumerate every package in that subtree declaring a lifecycle install script (`preinstall`, `install`, `postinstall`). Any install script in the added subtree MUST be named in the record with its command, or the candidate is scored `unreviewable`.</statement>
+      <rationale source="npm lifecycle-script execution model; event-stream and ua-parser-js compromises">Lifecycle scripts execute with the developer's or CI runner's full privileges at install time, before any code review of the dependency happens and before any test runs. Both named incidents delivered their payload this way through a transitive package that no one in the consuming project had ever heard of, which is why the count and the script list must be taken over the subtree rather than the direct dependency.</rationale>
+    </rule>
+
+    <rule id="exit-cost-bounded-by-adapter" testable="true" depth="essential">
+      <statement>The record MUST state the projected number of import sites. Where that number exceeds 10, or where the library's types appear in the project's own public API signatures, adopting it REQUIRES a single adapter/facade module, and the record names that module's path. Libraries whose types leak into persisted data or into published API contracts are scored one class higher on lock-in.</statement>
+      <rationale source="Ports and adapters / hexagonal architecture (Alistair Cockburn)">Replacement cost is proportional to the number of files that name the library, not to its size, and the rubric's verdict is only reversible if that number stays small. When a library's own types appear in serialised rows or in an exported signature, removing it becomes a data migration and a breaking release for consumers rather than a local refactor.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
-    </rule>
-
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml`, emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-library-evaluation-rubric.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+      <statement>Skip when ANY holds: (a) only one viable candidate exists in the ecosystem — record a one-line ADR instead, (b) the dependency is build-time-only and never ships in the artefact, so bundle and licence-distribution criteria do not apply, (c) projected import sites &lt;= 3 and no persisted or public-API type leakage, making the swap cheaper than the evaluation, (d) the choice is already fixed by an existing platform decision the operator cannot overturn.</statement>
+      <rationale source="Internal — methodology preconditions">Every criterion above prices the cost of being wrong. Where reversal costs less than the rubric costs to fill, the rubric is pure overhead, and its main harm is that a scored table lends a forced choice an authority the evidence never supported.</rationale>
     </rule>
 
   </section>

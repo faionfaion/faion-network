@@ -1,44 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Hidden Tech Debt Trace Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`. Routes (AI-change density, test trust, audit horizon) to full-scan / spot-scan / defer.</summary>
+<text id="06-decision-tree" title="Hidden Tech Debt Trace Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether AI-assisted commits exist in the trailing window, whether a test suite and a comparable baseline commit exist, and whether the repository is old enough for a scan to pay back — to a full trace, a baseline-first halt, or skip.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-ai-commits-in-window">Are there AI-assisted commits on the default branch in the trailing 3 months?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="ai_assisted_commits_3mo == 0">
+      <conclusion ref="skip-this-methodology" verdict="skip; run the generic tech-debt methodology instead — this trace only reads deltas over an AI-authored change set"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="ai_assisted_commits_3mo &gt; 0">
+      <question id="q-suite-exists">Does an executable test suite exist for the scanned packages?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+      <branch when="test_suite_exists == false">
+        <conclusion ref="skip-this-methodology" verdict="skip; the finding is &quot;no tests&quot;, not a debt trace — skip, mock-spec and assertion scans all read an empty set"/>
       </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is &#8805;1 verbatim citation available per non-trivial field declared in the output contract?</question>
+      <branch when="test_suite_exists == true">
+        <question id="q-baseline-available">Is there a named baseline commit with CI or coverage history on the default branch to diff duplication and suppression counts against?</question>
 
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
+        <branch when="baseline_commit == null || ci_history_on_default == false">
+          <conclusion ref="duplication-measured-against-baseline-commit" verdict="halt; pin a baseline commit and re-run the detector at the same threshold against it — raw counts without a delta are unreadable as findings"/>
         </branch>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
+        <branch when="baseline_commit != null &amp;&amp; repo_age_months &lt; 1">
+          <conclusion ref="skip-this-methodology" verdict="skip; under a month of history the finding rate does not repay the scan cost"/>
+        </branch>
 
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="run-the-checklist" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
+        <branch when="baseline_commit != null &amp;&amp; repo_age_months &gt;= 1">
+          <conclusion ref="run-the-checklist" verdict="apply the full trace: skip/collection inventory, unspecced-mock ratio, assertion-free tests, duplication delta, single-implementer abstractions, suppression density per KLOC"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true &#8594; applies_if=true &#8594; evidence_available=true &#8594; named_owner=true &#8594; apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

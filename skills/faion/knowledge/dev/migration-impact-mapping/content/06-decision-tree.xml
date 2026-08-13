@@ -1,44 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Migration Impact Mapping Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`. Routes (scope, traffic, rollback cost) to staged-migration / big-bang / defer.</summary>
+<text id="06-decision-tree" title="Migration Impact Mapping Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on migration scope, on whether live traffic or persisted data already holds the old format, and on whether a persisted schema or published contract changes — to the full map with expand/contract phases, a reduced seam-only map, or skip.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-migration-scope">Does the proposed migration touch more than ~30% of files, or cross a critical runtime boundary (persistence layer, published API, framework or language runtime)?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="files_touched_pct &lt;= 30 &amp;&amp; crosses_runtime_boundary == false">
+      <conclusion ref="skip-this-methodology" verdict="skip; a single-module refactor or one-library swap is served by a lightweight ADR, not an impact map"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="files_touched_pct &gt; 30 || crosses_runtime_boundary == true">
+      <question id="q-live-old-format">Is there production traffic, or persisted data and in-flight messages, already holding the old format?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+      <branch when="live_traffic == false &amp;&amp; persisted_old_format_rows == 0">
+        <conclusion ref="skip-this-methodology" verdict="skip; pre-launch there is no rollback surface to map — migrate directly and revisit once traffic exists"/>
       </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is &#8805;1 verbatim citation available per non-trivial field declared in the output contract?</question>
+      <branch when="live_traffic == true || persisted_old_format_rows &gt; 0">
+        <question id="q-contract-change">Does the migration change a persisted schema or a contract other deployables read, so old and new formats must coexist across a deploy?</question>
 
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
+        <branch when="persisted_schema_or_published_contract_changes == true">
+          <conclusion ref="run-the-checklist" verdict="apply the full map: counted blast radius, named seam, expand → dual-write → backfill → read-new → contract phases with reconciliation, and a declared point of no return"/>
         </branch>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
-
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="run-the-checklist" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
+        <branch when="persisted_schema_or_published_contract_changes == false">
+          <conclusion ref="seam-named-before-first-edit" verdict="apply a reduced map: counted blast radius, a named seam with its selection mechanism, and trunk-gated increments; the expand/contract and dual-write sections do not apply"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true &#8594; applies_if=true &#8594; evidence_available=true &#8594; named_owner=true &#8594; apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

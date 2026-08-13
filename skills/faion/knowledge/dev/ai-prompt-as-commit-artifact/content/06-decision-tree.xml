@@ -1,44 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="AI Prompt as Commit Artefact Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`. Decides whether the commit needs the trailer, a reduced trailer (chat-only autocomplete), or no trailer (manual commit). Every leaf cites a rule from `content/01-core-rules.xml`.</summary>
+<text id="06-decision-tree" title="AI Prompt as Commit Artefact Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether the commit actually carries an AI-authored hunk, whether a strict message parser sits downstream, and how large the prompt is — to full trailer discipline, by-reference prompt storage, or skip.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-ai-authored-hunk">Does this commit contain at least one hunk written or rewritten by a model, as opposed to formatter output, a regenerated lockfile, or a `git revert`?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="ai_authored_hunk == false">
+      <conclusion ref="skip-this-methodology" verdict="skip; a trailer on a non-AI commit is a false positive that inflates the audit denominator"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="ai_authored_hunk == true">
+      <question id="q-strict-trailer-parser">Does a downstream tool parse commit messages against a closed trailer allowlist (release-please, commitlint) that does not yet list the `Faion-*` keys?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+      <branch when="strict_parser_present == true &amp;&amp; allowlist_extended == false">
+        <conclusion ref="hook-is-commit-msg-not-pre-commit" verdict="halt; extend the parser's trailer allowlist first, then install enforcement at the `commit-msg` stage before any trailer is written"/>
       </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is &#8805;1 verbatim citation available per non-trivial field declared in the output contract?</question>
+      <branch when="strict_parser_present == false || allowlist_extended == true">
+        <question id="q-prompt-length">Is the prompt longer than a single line, or does it embed context that a secret scanner would flag (credentials, customer records, PII)?</question>
 
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
+        <branch when="prompt_lines &gt; 1 || context_contains_sensitive_values == true">
+          <conclusion ref="multiline-prompt-by-reference" verdict="apply, but commit the scrubbed prompt as `.prompts/&lt;slug&gt;.md` in the same commit and carry only path plus digest in the trailer"/>
         </branch>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
-
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="run-the-checklist" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
+        <branch when="prompt_lines == 1 &amp;&amp; context_contains_sensitive_values == false">
+          <conclusion ref="run-the-checklist" verdict="apply the full methodology; inline `Faion-*` block as the final paragraph with a dated model id, enforced by the `commit-msg` hook"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true &#8594; applies_if=true &#8594; evidence_available=true &#8594; named_owner=true &#8594; apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Migration Impact Mapping Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the Migration Impact Mapping methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="Migration Impact Mapping Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules for mapping a multi-month migration: blast radius counted rather than estimated, a named seam before the first edit, declared expand/contract phases, an explicit point of no return, dual-write reconciliation, the compatibility surface that outlives the deploy, and the trunk-not-branch constraint.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Migration Impact Mapping">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="blast-radius-counted-not-estimated" testable="true" depth="essential">
+      <statement>The map MUST state affected files and call sites as counts produced by a reproducible command recorded in the artefact — a language-aware reference search (`ts-morph`, `go/analysis`, `jdeps`, IDE find-usages export) or a stated `rg` pattern — together with the total file count used as the denominator. Adjectives ("large", "most of the service") are rejected. Where the affected share exceeds 30% of files or crosses a runtime boundary, the map MUST route to a staged plan rather than a single cutover.</statement>
+      <rationale source="Internal — migration scoping practice">Migration estimates are anchored on the files the author has recently opened, and the miss is one-directional: call sites in scripts, tests, config templates and generated code are invisible to memory but block the cutover exactly the same. A recorded command also lets the same count be re-run later as the burn-down metric, which an estimate cannot supply.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="seam-named-before-first-edit" testable="true" depth="essential">
+      <statement>Before any migration commit lands, the map MUST name the seam where old and new implementations coexist — the specific module, interface, proxy or route table — and the mechanism that selects between them (feature flag key, routing rule, environment variable). A plan with no named seam is a big-bang rewrite and MUST be labelled as such in the artefact.</statement>
+      <rationale source="Strangler Fig pattern (Martin Fowler)">Without a seam, old and new cannot both be live, so the migration cannot be shipped incrementally and cannot be reverted below whole-release granularity. Every intermediate state then exists only on a branch, and the first production signal about the new implementation arrives on the day 100% of traffic moves to it.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="expand-contract-phases-declared" testable="true" depth="essential">
+      <statement>For any change to a persisted schema or a published contract, the map MUST list the phases explicitly — expand (add new, keep old) → dual-write → backfill → read-new → contract (drop old) — and mark each phase as independently deployable and individually revertible. Phases MUST NOT be merged in a single deploy.</statement>
+      <rationale source="Parallel change / expand-and-contract (Danilo Sato, Fowler bliki); Evolutionary Database Design">During a rolling deploy or a canary, old and new code run against one database at the same time. A migration that renames or drops in the same release as the code change gives the not-yet-replaced instances a schema they cannot read, so the error window is the deploy duration, and rollback is impossible because the old column no longer exists.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="point-of-no-return-declared" testable="true" depth="essential">
+      <statement>The map MUST name the exact phase after which rollback stops being possible and only forward-fix remains — typically the contract phase, or the first destructive backfill — and state the gate that MUST pass before crossing it: soak duration at 100% traffic, zero reconciliation drift over the soak, and old-path traffic confirmed at zero. Until that gate passes, the rollback procedure MUST have been executed at least once in a non-production environment.</statement>
+      <rationale source="Internal — migration rollback practice">Teams assume rollback exists for the whole migration, when in fact it expires quietly the moment the old column is dropped or the legacy consumer is decommissioned. Naming the boundary converts an implicit assumption into a checkable gate, and an untested rollback path is discovered to be broken only under the incident that required it.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="dual-write-has-reconciliation" testable="true" depth="essential">
+      <statement>Any dual-write phase MUST ship with a reconciliation check before it is enabled: a stated comparison query or job, its run frequency, an explicit drift budget (rows allowed to differ), and an alert when the budget is exceeded. Dual-write with no divergence detector MUST NOT be enabled.</statement>
+      <rationale source="Internal — dual-write consistency practice">Two writes to two stores are not one transaction: a crash, a timeout, or a validation rule present in only one store leaves the pair silently divergent, and nothing in the request path notices because the read still comes from the old store. The divergence is discovered at the read-new switch, by which point the backfill is weeks old and there is no record of which rows drifted or when.</rationale>
     </rule>
 
-    <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+    <rule id="compatibility-surface-enumerated" testable="true" depth="essential">
+      <statement>The map MUST enumerate everything holding the old format that survives the deploy: serialised rows and JSON blobs, in-flight queue messages, cached values with their TTL, stored procedures and reports, and the oldest client version still in the wild with its forced-upgrade capability. Each entry MUST carry a drain time or a compatibility window. Mobile clients that cannot be force-upgraded are recorded with the store review lag included.</statement>
+      <rationale source="Internal — persisted-format compatibility audits">Deploying replaces running code, not stored data; queue messages written by the old producer and cache entries with a 24-hour TTL keep arriving at the new consumer for as long as the longest TTL after cutover. Shipped mobile clients are the extreme case: the field population never fully converges, so the compatibility window is set by the oldest version still in use, not by the release date.</rationale>
     </rule>
 
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml`, emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-migration-impact-mapping.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+    <rule id="migration-lands-on-trunk-behind-a-gate" testable="true" depth="essential">
+      <statement>Migration work MUST land on trunk incrementally behind the seam's flag or route. A long-lived migration branch is forbidden; the map MUST state the maximum branch lifetime (&lt;= 2 days) and the flag key gating the incomplete new path.</statement>
+      <rationale source="Trunk-based development; see [[trunk-based-feature-flags]]">Conflict cost on a divergent branch grows with the product of branch age and trunk churn, and a migration touching more than 30% of files intersects nearly every other change. A three-month branch therefore ends in a merge whose conflict resolution is itself unreviewed, untested work performed under deadline — reintroducing exactly the risk the map was written to bound.</rationale>
     </rule>
 
   </section>

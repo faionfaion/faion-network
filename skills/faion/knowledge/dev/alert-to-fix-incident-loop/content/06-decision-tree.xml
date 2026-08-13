@@ -1,44 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Alert-to-Fix Incident Loop Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`. Routes the responder by severity + observable signal quality to one of {full loop, fast-mitigate-then-loop, escalate-to-coordinated-incident}. Every leaf cites a rule from `content/01-core-rules.xml`.</summary>
+<text id="06-decision-tree" title="Alert-to-Fix Incident Loop Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether an alerting rule actually fired, whether the response fits a solo responder, and whether the page self-resolved inside its own window — to the full loop, a tuning-only pass, or skip.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-alert-fired">Did an alerting rule fire and produce an `alert_id`, or was the incident reported by a customer with no rule behind it?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="alert_id == null">
+      <conclusion ref="skip-this-methodology" verdict="skip the loop; close the detection gap first — there is no alerting rule for the closing step to patch"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="alert_id != null">
+      <question id="q-response-scope">Does the response need more than one team or vendor, with a separate incident commander and comms lead?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+      <branch when="teams_involved &gt; 1 || vendor_escalation_required == true">
+        <conclusion ref="skip-this-methodology" verdict="skip; escalate to the coordinated incident-command process — this solo loop has no field for a split response"/>
       </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is &#8805;1 verbatim citation available per non-trivial field declared in the output contract?</question>
+      <branch when="teams_involved == 1 &amp;&amp; vendor_escalation_required == false">
+        <question id="q-self-resolved-in-window">Did the alert fire and self-resolve inside its own evaluation window, with no user-visible impact confirmed?</question>
 
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
+        <branch when="self_resolved_in_window == true">
+          <conclusion ref="flapping-fixed-by-hold-down-not-threshold-bump" verdict="run the loop in tuning mode only: add a duration hold-down or reformulate as burn-rate, then record the actionability verdict — do not raise the threshold"/>
         </branch>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
+        <branch when="self_resolved_in_window == false &amp;&amp; user_visible_impact == true">
+          <conclusion ref="mitigate-before-diagnose" verdict="run the full loop starting from a service-restoring action (rollback, flag off, traffic shift); diagnosis is recorded after mitigation"/>
+        </branch>
 
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="run-the-checklist" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
+        <branch when="self_resolved_in_window == false &amp;&amp; user_visible_impact == false">
+          <conclusion ref="run-the-checklist" verdict="apply the full loop at non-paging severity: diagnose, fix, patch the rule, file every postmortem action item as an owned ticket"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true &#8594; applies_if=true &#8594; evidence_available=true &#8594; named_owner=true &#8594; apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

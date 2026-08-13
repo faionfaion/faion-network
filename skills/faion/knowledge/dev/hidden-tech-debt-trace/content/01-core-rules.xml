@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Hidden Tech Debt Trace Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the Hidden Tech Debt Trace methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="Hidden Tech Debt Trace Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules for tracing the debt a green CI run hides: skipped and uncollected tests, non-specced mocks, assertion-free tests, LLM copy-paste, single-implementer abstractions, type-suppression drift. Each rule names the scan and the threshold that turns a count into a finding.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Hidden Tech Debt Trace">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="skip-and-no-collection-inventoried" testable="true" depth="essential">
+      <statement>The report MUST list every skipped test with its reason string, and record collected-vs-executed counts per suite. Scan for `@pytest.mark.skip`, `pytest.skip(`, `@unittest.skip`, `t.Skip(`, `xit(`, `.skip(`, `.todo(`. A suite run under Jest `--passWithNoTests`, or a pytest call whose exit code 5 is swallowed by `|| true`, is recorded as a severity-high finding — never as a pass.</statement>
+      <rationale source="pytest exit-code table (5 = no tests collected); Jest CLI --passWithNoTests">A renamed directory or one broken import makes the collector find zero tests. With `--passWithNoTests` or a swallowed exit 5 the job returns 0, so the dashboard stays green while nothing is verified at all. Skips are the same failure at smaller radius: the count is printed, and nothing reads it.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="mocks-must-be-specced" testable="true" depth="essential">
+      <statement>Every `unittest.mock.patch` or `Mock()` without `autospec=True`, `spec=` or `spec_set=` counts as a debt item. Report, per test module, the ratio of `patch(` occurrences to `autospec=True` occurrences.</statement>
+      <rationale source="Python unittest.mock docs — autospeccing">A bare `Mock` answers to any attribute name and any call signature. Rename the production method, add a required argument, or delete it, and `m.old_name.assert_called_once_with(...)` still passes against the phantom attribute — the test now proves only that the test file is internally consistent.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="assertion-free-tests-are-findings" testable="true" depth="essential">
+      <statement>Any test function whose body contains zero assertions (no `assert`, no `expect(`, no `require.`, no `t.Error`) MUST appear in the findings list. Tests whose only assertion is a call-count check on a non-specced mock are classified separately as `mock-only` and summed into the mock-only coverage figure.</statement>
+      <rationale source="coverage.py / Istanbul line-coverage semantics">Line coverage records that a line executed, not that its result was checked. A test that calls the function and asserts nothing raises the coverage percentage by exactly as much as a real test does, so the coverage number cannot separate the two — only an assertion scan can.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="duplication-measured-against-baseline-commit" testable="true" depth="essential">
+      <statement>Copy-paste debt MUST be measured by a named detector at a stated threshold — `jscpd --min-tokens 50`, or PMD CPD `--minimum-tokens 100` — and reported as a delta against the same command run at a pre-AI-adoption commit SHA recorded in the artefact. An absolute duplication percentage with no baseline SHA is rejected.</statement>
+      <rationale source="jscpd / PMD Copy-Paste Detector — token-based clone detection">Every codebase has a nonzero duplication floor from generated files and boilerplate, so an absolute figure carries no verdict. LLM-assisted editing raises duplication by re-emitting a near-identical block instead of extracting it, and that shows up only as a slope between two commits.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="single-implementer-abstraction-flagged" testable="true" depth="essential">
+      <statement>Every interface, ABC, `Protocol`, or strategy/factory class with exactly one implementer AND no call site outside its own module MUST be listed as a candidate hallucinated abstraction, with implementer count and external call-site count recorded per entry.</statement>
+      <rationale source="Speculative generality code smell — Fowler, Refactoring (2nd ed.)">A model asked for "a clean, extensible design" emits the extension point together with the single concrete case, because that shape dominates its training data. The indirection then costs a hop on every read and every debug session while buying no substitution that anything performs.</rationale>
+    </rule>
+
+    <rule id="suppression-density-tracked" testable="true" depth="essential">
+      <statement>Record per-KLOC counts of `# type: ignore`, `@ts-ignore`, `@ts-expect-error`, `as any`, `eslint-disable` and `# noqa`, plus the count of suppressions that are no longer needed, taken from `mypy --warn-unused-ignores` and from the TypeScript compiler's report on unused `@ts-expect-error`.</statement>
+      <rationale source="mypy --warn-unused-ignores; TypeScript @ts-expect-error semantics">A suppression silences the checker on that line permanently — including for errors introduced there later — so the type system stops guarding the line rather than guarding it with one documented exception. Unused suppressions are the measurable tail: they prove the marker was added to make a run go green, not to describe a real limitation.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
-    </rule>
-
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml`, emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-hidden-tech-debt-trace.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+      <statement>Skip when ANY holds: (a) no AI-assisted commits in the trailing 3 months — use the generic tech-debt methodology, (b) repository younger than 1 month, where finding rate does not repay scan cost, (c) no test suite exists, in which case the finding is "no tests", not a debt trace, (d) no coverage or CI history on the default branch to compare against.</statement>
+      <rationale source="Internal — methodology preconditions">Every rule above is a delta or a ratio against a baseline. With no baseline commit, no suite and no AI-authored change set, the scans return counts that cannot be read as findings, and the report degrades into numbers nobody can act on.</rationale>
     </rule>
 
   </section>

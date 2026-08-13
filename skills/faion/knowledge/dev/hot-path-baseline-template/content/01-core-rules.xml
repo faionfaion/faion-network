@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Hot Path Baseline Template Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the Hot Path Baseline Template methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="Hot Path Baseline Template Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules fixing what a pre-optimisation baseline must capture: percentile distribution rather than a mean, the sample count that makes p99 meaningful, offered load and error rate alongside latency, histogram bucket bounds, coordinated-omission control, per-operation resource counters, and the environment the numbers are only valid in.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Hot Path Baseline Template">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="percentiles-not-mean" testable="true" depth="essential">
+      <statement>The baseline MUST record p50, p95, p99 and max for each measured operation. A mean (or a mean with a standard deviation) as the only latency figure is rejected, and no "average response time" may appear as a before/after comparison term.</statement>
+      <rationale source="Gil Tene — How NOT to Measure Latency">Service latency is right-skewed and usually multi-modal — cache hit, cache miss, retry. The mean falls in the empty gap between modes, so it describes no request that actually happened, and one 30-second outlier moves it as much as thousands of fast requests. A change that halves the mean while doubling p99 is a regression that the mean reports as a win.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="sample-count-gates-percentile" testable="true" depth="essential">
+      <statement>Every percentile MUST be published with its sample count `n` and the wall-clock measurement window. p99 requires n &gt;= 1000 in the window; below that, record p50/p95 only and mark p99 as `insufficient-samples`. p99.9 requires n &gt;= 10000.</statement>
+      <rationale source="Order-statistic sampling — a q-quantile needs ~1/(1-q) samples per observation above it">At n = 100 the p99 estimate is a single observation, so it is the max under a different name and it swings by an order of magnitude between runs. A refactor "improving p99 by 40%" measured over 100 requests is measuring run-to-run noise.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="offered-load-and-errors-recorded" testable="true" depth="essential">
+      <statement>Latency figures MUST be accompanied by the offered load (requests/sec or concurrency level) and the error rate over the same window — the RED triple: Rate, Errors, Duration. A latency number with no stated load is rejected, and any window whose error rate exceeds 1% is rejected as a baseline.</statement>
+      <rationale source="RED method (Tom Wilkie); USE method (Brendan Gregg)">Latency is a function of utilisation, and it rises non-linearly near saturation, so p99 at 10 rps and p99 at 900 rps are unrelated numbers. Errors invalidate the window independently: failed requests usually return fast, so a burst of 500s pulls every percentile down and can be reported as an improvement.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="histogram-bucket-bounds-recorded" testable="true" depth="essential">
+      <statement>When percentiles come from a bucketed histogram (Prometheus `histogram_quantile`, OpenTelemetry explicit-bucket histograms), the artefact MUST record the bucket boundaries and note whether the target percentile fell in the top finite bucket. Percentiles from separate shards or time windows MUST be recomputed from merged histograms, never averaged.</statement>
+      <rationale source="Prometheus histogram_quantile docs; HdrHistogram / t-digest merge semantics">`histogram_quantile` interpolates linearly inside the bucket the quantile lands in, so if the highest finite bucket is 1s and true p99 is 4s, the reported value is pinned near 1s and never moves however bad latency gets. Averaging percentiles is invalid for the separate reason that quantiles are not additive — the mean of two shards' p99 is not the p99 of the union.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="coordinated-omission-guarded" testable="true" depth="essential">
+      <statement>The artefact MUST name the load generator and its scheduling mode, and that mode MUST be open-loop / constant-arrival-rate — k6 `constant-arrival-rate`, Gatling `constantUsersPerSec`, `wrk2` with `-R`, or JMeter with a precise throughput timer. Closed-loop tools that issue the next request only after the previous response (`ab`, default `wrk`, a naive loop) are recorded as `coordinated-omission-uncorrected` and their high percentiles are marked unusable.</statement>
+      <rationale source="Gil Tene — coordinated omission; HdrHistogram recordValueWithExpectedInterval">A closed-loop client stops sending while the system is stalled, so the requests that would have landed inside a 2-second pause are never issued and never timed. The stall is recorded as one slow sample instead of thousands, which can understate p99 by more than an order of magnitude — exactly the regime the baseline exists to detect.</rationale>
     </rule>
 
-    <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+    <rule id="per-operation-resource-counters" testable="true" depth="essential">
+      <statement>Beyond latency the baseline MUST capture, per operation: bytes allocated and allocation count (Go `go test -benchmem` → `B/op`, `allocs/op`; JVM allocation rate via JFR), cache hit ratio with eviction count (Redis `INFO stats` → `keyspace_hits`, `keyspace_misses`, `evicted_keys`), and dependency fan-out — SQL query count and outbound HTTP call count per request.</statement>
+      <rationale source="Go testing -benchmem; Redis INFO stats; N+1 query pattern">Latency alone cannot attribute a regression. Allocation counts expose GC pressure that appears only under sustained load rather than in a single-request trace; the fan-out counter is what distinguishes an N+1 from a genuinely slow query, and a cache "hit ratio" recorded without eviction count hides a cache that is thrashing at its memory ceiling and will collapse as data grows.</rationale>
     </rule>
 
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml`, emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-hot-path-baseline-template.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+    <rule id="baseline-environment-pinned" testable="true" depth="essential">
+      <statement>The artefact MUST pin the environment the numbers are valid in: commit SHA, build flags/optimisation level, runtime version, instance type or CPU model, and dataset size or row count. The after-measurement MUST reuse every one of these values; if any differs, the comparison is labelled `not-comparable` rather than reported as a delta.</statement>
+      <rationale source="Internal — benchmark reproducibility practice">Latency on shared cloud instances varies with CPU steal, frequency scaling and neighbour load by more than most optimisations gain, and query latency tracks table size, so a baseline taken on last month's smaller dataset makes any later measurement look like a regression. Without the pinned tuple there is no way to tell an optimisation from a change of machine.</rationale>
     </rule>
 
   </section>

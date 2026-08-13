@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="AI Prompt Patterns for Test Ideation Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the AI Prompt Patterns for Test Ideation methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="AI Prompt Patterns for Test Ideation Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules constraining the boundary / oracle / mutation prompt patterns and the ideation checklist they produce. Each rule is checkable against the prompt text sent to the model, the generated test file, or a mutation-tool report.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for AI Prompt Patterns for Test Ideation">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="spec-in-context-body-withheld" testable="true" depth="essential">
+      <statement>The boundary and oracle prompts MUST carry the signature, type hints, docstring and any written spec — and MUST NOT paste the function body. The body is supplied only in the mutation pattern, where mutating it is the point.</statement>
+      <rationale source="Test-oracle problem literature (Barr et al., &quot;The Oracle Problem in Software Testing: A Survey&quot;, IEEE TSE 2015)">A test derived from the implementation inherits the implementation's mistake: if the code returns `&gt;=` where the spec says `&gt;`, a body-primed model writes the assertion that the off-by-one satisfies. The test then passes on the bug and pins it in place for every future refactor.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="boundary-list-approved-before-code" testable="true" depth="essential">
+      <statement>The boundary prompt asks for an enumerated list of edge inputs first — min-1 / min / min+1, max-1 / max / max+1, empty, single-element, all-duplicate, null/None, and per type: NaN and -0.0 for floats, DST transition and leap day for temporal, surrogate pair and combining mark for text, off-by-one at the integer width for counters. The operator approves or edits the list before a single line of test code is generated.</statement>
+      <rationale source="Boundary-value analysis, ISTQB / BS 7925-2 test-design techniques">Defects cluster at partition edges, and a model asked for tests and edges in one turn spends its output budget on test scaffolding and returns two or three edges. Splitting the turn makes the enumeration the deliverable, and an incomplete list is visible before it is buried in code.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="oracle-is-a-relation-not-a-literal" testable="true" depth="essential">
+      <statement>Each entry in `oracles` MUST state a relation that holds across many inputs — round-trip (`decode(encode(x)) == x`), idempotence (`f(f(x)) == f(x)`), order-invariance, monotonicity, conservation of a total, or a metamorphic relation between two calls. A hardcoded expected literal (`assert f(3) == 7`) is not an oracle and is rejected.</statement>
+      <rationale source="Metamorphic testing (Chen et al.) and property-based testing practice (Hypothesis, fast-check)">A literal expectation only checks the one input someone thought of, and when the model is the one supplying the literal it is guessing the same answer the implementation would. A relation is checkable on inputs nobody enumerated, which is the only way generated tests find what the author did not consider.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="mutation-score-gates-acceptance" testable="true" depth="essential">
+      <statement>The ideation is accepted only after a mutation run over the target module (mutmut or cosmic-ray for Python, Stryker for JS/TS, PIT for JVM) and `mutations_caught` maps each killed mutant to the test id that killed it. Branch coverage alone MUST NOT be used as the acceptance gate.</statement>
+      <rationale source="Mutation testing survey (Jia &amp; Harman, IEEE TSE 2011); Google &quot;State of Mutation Testing at Google&quot; 2018">Coverage records that a line executed, not that anything checked its result — a suite of assertion-free calls reaches 100% line coverage and kills no mutants. The mutation score is the only cheap measurement that distinguishes a test that observes behaviour from one that merely touches it.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="mutants-use-standard-operators" testable="true" depth="essential">
+      <statement>The mutation prompt MUST request standard operators — relational replacement (`&lt;` → `&lt;=`), arithmetic replacement (`+` → `-`), constant / boundary shift (`n` → `n+1`), condition negation, statement deletion, and swapped arguments of the same type — not free-form rewrites. Mutants judged semantically equivalent to the original are recorded as `equivalent` and excluded from the denominator, never counted as survivors.</statement>
+      <rationale source="Mutation operator taxonomy (Offutt et al.); mutmut / PIT operator sets">Free-form "break this function" prompts produce mutants that crash on import or violate a type contract; those die on every test and inflate the score without testing anything. Counting equivalent mutants as survivors does the reverse — it drives the operator to write assertions that pin arbitrary internal behaviour to chase an unreachable 100%.</rationale>
+    </rule>
+
+    <rule id="every-generated-test-asserts-an-observable" testable="true" depth="essential">
+      <statement>Reject any generated test whose body calls the function without asserting on its return value, a raised exception type, or a named side effect (row written, message published, file changed). Check: no test function in the produced file lacks an `assert` / `expect` / `pytest.raises` construct.</statement>
+      <rationale source="Assertion-free test antipattern; coverage-as-weak-oracle critiques">Models satisfy "write tests for X" with smoke calls because those always pass and always look complete. The suite then goes green through every future regression, and the coverage number that made the operator stop looking is exactly what the smoke calls produced.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
-    </rule>
-
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-ai-prompt-patterns-test-ideation.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+      <statement>Do NOT apply when (a) the unit is a one-line accessor, a pure data class, or a delegation with no branch and no invariant; (b) a property-based suite (Hypothesis, fast-check, QuickCheck) already covers the function's invariants — extend the properties instead; (c) the unit has no deterministic oracle available at all (rendering fidelity, model quality, "looks right" output) — route to golden-file or human-review testing.</statement>
+      <rationale source="Methodology preconditions + property-based testing overlap">Ideation cost is fixed per function while its yield scales with branch count and invariant count; on a getter the mutation run is longer than the code it examines, and where no oracle exists the patterns produce assertions that encode one arbitrary snapshot as truth.</rationale>
     </rule>
 
   </section>

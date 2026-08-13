@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Alert-to-Fix Incident Loop Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Alert-to-Fix Incident Loop methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="Alert-to-Fix Incident Loop Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules binding the solo on-call loop — alert → triage → mitigate → fix → postmortem → alert-quality patch. Each rule is checkable against the alerting rule file, the incident record's timestamps, or the ticket tracker.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Alert-to-Fix Incident Loop">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="mitigate-before-diagnose" testable="true" depth="essential">
+      <statement>For sev1 and sev2 the first recorded action MUST be a service-restoring one — roll back the last deploy, flip the feature flag off, shift traffic, scale out — and `mitigation` carries its own timestamp, distinct from the `root_cause` entry. Diagnosis continues after the bleeding stops.</statement>
+      <rationale source="Google SRE Book, ch. 14 &quot;Managing Incidents&quot;">Time-to-mitigate and time-to-diagnose are independent; a rollback is available in minutes while a root cause routinely takes hours. Responders who chase the cause first spend the entire customer-impact window in a debugger, and the impact figure in the postmortem is then a measure of curiosity, not of the fault.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="page-on-symptom-or-burn-rate" testable="true" depth="essential">
+      <statement>A rule with paging severity MUST fire on a user-visible symptom or on SLO error-budget burn rate — e.g. multiwindow multi-burn-rate: 14.4x burn sustained over 1h (2% of a 30-day budget) pages, 6x over 6h pages, 1x over 3d tickets. Cause metrics (CPU, memory, queue depth, pod restarts, disk IOPS) MUST route to ticket or dashboard severity, never to a page.</statement>
+      <rationale source="Google SRE Workbook, ch. 5 &quot;Alerting on SLOs&quot;">Cause alerts fire on states the system routinely survives — a saturated CPU with the SLO intact is a page with nothing to do. The multiwindow form exists because a single short window pages on transients and a single long window is slow to notice a fast burn; the pair gives both precision and detection time.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="runbook-url-on-every-paging-rule" testable="true" depth="essential">
+      <statement>Every paging rule MUST carry a `runbook_url` annotation (Prometheus `annotations.runbook_url`, or the equivalent field in the alerting backend) resolving to a page that opens with the first three commands or dashboard links to run. A page that fires without one is an alert-quality defect, and `alert_quality_patch` for that incident is the annotation plus the runbook page.</statement>
+      <rationale source="Google SRE Book, ch. 11 &quot;Being On-Call&quot; — playbooks report roughly a 3x MTTR improvement">Most of a solo responder's first fifteen minutes goes to rediscovery: which dashboard, which service, what the last similar page was. The runbook converts that from recall under adrenaline to a click, which is why its measured effect is on MTTR rather than on correctness.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="actionability-verdict-per-page" testable="true" depth="essential">
+      <statement>Closing an incident requires marking the page `actionable` or `not-actionable` and recomputing the rolling actionability rate (actionable pages / total pages over the trailing window). When the rate falls below the stated threshold, the next `alert_quality_patch` MUST change the rule — add a `for:` hold-down, move to burn rate, narrow the label selector, add an inhibition or a maintenance-window silence — rather than documenting another response.</statement>
+      <rationale source="Google SRE Book, ch. 11 — a page must be actionable, novel and urgent; on-call load target of no more than ~2 incidents per 12-hour shift">Noise is measured per rule but felt per responder: once a fraction of pages are known non-events, the responder starts triaging by intuition and the true positive that arrives at 03:00 is dismissed with the same reflex as the last five false ones.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="flapping-fixed-by-hold-down-not-threshold-bump" testable="true" depth="essential">
+      <statement>An alert that fires and self-resolves inside its own evaluation window MUST be fixed with a duration hold-down (`for: 10m`), a longer averaging window, or a burn-rate formulation — not by raising the static threshold. Check: the patch diff touches `for:`/window, not only the comparison constant.</statement>
+      <rationale source="Prometheus alerting-rule semantics (`for` clause) and the SRE Workbook's precision/recall framing">Raising the threshold trades recall for precision uniformly: the flapping stops and so does detection of the slower, larger version of the same fault. A hold-down discards only transients whose duration is below the one the SLO cares about, which is the distinction the threshold cannot express.</rationale>
+    </rule>
+
+    <rule id="postmortem-action-items-are-filed-tickets" testable="true" depth="essential">
+      <statement>Every postmortem action item MUST exist as a filed ticket with a single named human owner and a due date, and the postmortem links the ticket ids. A recommendation that appears only as a sentence in the document is not an action item and does not close the loop.</statement>
+      <rationale source="Google SRE Book, ch. 15 &quot;Postmortem Culture&quot;">Items that live only in the document have no queue that surfaces them and no owner whose backlog shows them, so they are reread only during the next postmortem for the same failure. Ticketing is what makes the follow-up visible in the place the operator actually looks each morning.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
-    </rule>
-
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-alert-to-fix-incident-loop.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+      <statement>Do NOT run the loop when (a) the alert is a known false positive already scheduled for muting — file the mute and stop; (b) the incident spans several teams or vendors and needs a coordinated incident commander with a comms lead, which this solo loop does not model; (c) there is no alerting rule at all and the incident was reported by a customer — first close the detection gap, since there is no `alert_id` to patch.</statement>
+      <rationale source="Methodology preconditions + SRE incident-command role separation">The loop's closing step patches an alerting rule; with no rule to patch, or with the response split across people the record has no field for, the artefact ends up complete-looking and structurally empty, which is worse than an explicit skip.</rationale>
     </rule>
 
   </section>

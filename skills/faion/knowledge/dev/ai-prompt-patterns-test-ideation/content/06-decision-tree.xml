@@ -1,44 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="AI Prompt Patterns for Test Ideation Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`. Routes the dev to one or more of the three patterns based on function shape (branches, invariants, side-effects). Every leaf cites a rule from `content/01-core-rules.xml`.</summary>
+<text id="06-decision-tree" title="AI Prompt Patterns for Test Ideation Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether the unit has a deterministic oracle, whether it has enough branches and invariants to repay ideation, and whether a property-based suite already covers them — to full ideation, property extension, or skip.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-deterministic-oracle">Does the unit have a deterministic oracle — a checkable relation between input and output — rather than "looks right" output such as rendering fidelity or model quality?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="deterministic_oracle == false">
+      <conclusion ref="skip-this-methodology" verdict="skip; route to golden-file or human-review testing — generated assertions would encode one arbitrary snapshot as truth"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="deterministic_oracle == true">
+      <question id="q-branches-and-invariants">Does the unit carry at least one branch or stated invariant, as opposed to a one-line accessor, a pure data class, or a delegation?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+      <branch when="branch_count == 0 &amp;&amp; invariant_count == 0">
+        <conclusion ref="skip-this-methodology" verdict="skip; on a getter the mutation run costs more than reading the code it examines"/>
       </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is &#8805;1 verbatim citation available per non-trivial field declared in the output contract?</question>
+      <branch when="branch_count &gt; 0 || invariant_count &gt; 0">
+        <question id="q-property-suite-present">Is a property-based suite (Hypothesis, fast-check, QuickCheck) already asserting this unit's invariants?</question>
 
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
+        <branch when="property_suite_covers_unit == true">
+          <conclusion ref="oracle-is-a-relation-not-a-literal" verdict="do not restart ideation; extend the existing properties with any missing relation — round-trip, idempotence, order-invariance, conservation"/>
         </branch>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
-
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="run-the-checklist" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
+        <branch when="property_suite_covers_unit == false">
+          <conclusion ref="run-the-checklist" verdict="apply the full methodology: spec-only boundary prompt, relational oracles, then gate acceptance on a mutation run over the target module"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true &#8594; applies_if=true &#8594; evidence_available=true &#8594; named_owner=true &#8594; apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

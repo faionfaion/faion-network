@@ -1,44 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="AI Over-Reliance Self-Audit Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`. Maps score vs threshold onto pass / remediate / escalate-pause-pairing. Every leaf cites a rule from `content/01-core-rules.xml`.</summary>
+<text id="06-decision-tree" title="AI Over-Reliance Self-Audit Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether the period has a measurable substrate at all, then on whether this is a first audit or a repeat, to the one measurement the audit is currently missing.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-measurable-substrate">For the period under audit, was assistant usage above about an hour a week, and does at least one measurement source exist — repository history, tracker, or agent/session logs?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="usage under about an hour a week, every diff already peer-reviewed before merge, or no measurement source for the period at all">
+      <conclusion ref="skip-this-methodology" verdict="skip; with no measurable substrate the artefact degrades back to the self-report it exists to replace, and a filled-in pass would license the reliance — emit a structured skip naming which condition held"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="usage is material and at least one measurement source covers the period">
+      <question id="q-first-or-repeat">Is this the first audit period, or does a previous audit exist to trend against?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
-      </branch>
+      <branch when="first period; no prior audit and no baseline of any kind">
+        <question id="q-which-source-is-missing">Which instrument does the period lack?</question>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is &#8805;1 verbatim citation available per non-trivial field declared in the output contract?</question>
-
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
+        <branch when="commits, PRs and tracker data exist, but no timed task was ever performed with completion, chat and agent modes off">
+          <conclusion ref="unassisted-baseline-drill" verdict="run the unassisted drill before scoring — record task, wall-clock time, whether it finished and how many API lookups; without it the audit measures the tool, not the operator"/>
         </branch>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
+        <branch when="the operator has a speedup figure they believe but has never placed next to merge or tracker data">
+          <conclusion ref="perceived-speedup-vs-measured" verdict="record estimate and measured value side by side with both signs; an item that ends at the estimate records the belief the audit exists to test"/>
+        </branch>
 
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
+        <branch when="baseline drill done and both sources available; the period is ready to score">
+          <conclusion ref="run-the-checklist" verdict="apply the full methodology; score every item against its measurement and emit the artefact with the failed items and their drills"/>
+        </branch>
+      </branch>
 
-          <branch when="named_owner == true">
-            <conclusion ref="run-the-checklist" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
+      <branch when="a previous audit exists and this period is being compared against it">
+        <question id="q-what-slipped">What is weakest in the comparison?</question>
+
+        <branch when="throughput was recorded with no stability counterpart — no change-failure rate, revert count, rollback or 24h hotfix count over the same window">
+          <conclusion ref="stability-metric-paired-with-throughput" verdict="pair every throughput item with a stability item over the same window; a throughput-only checklist passes clean while the escape rate climbs"/>
+        </branch>
+
+        <branch when="the read-before-accept item was scored from memory rather than a random sample of at least 10 AI-attributed hunks">
+          <conclusion ref="read-rate-sampled-not-recalled" verdict="sample the hunks and state control flow and error path from memory before reopening each file; score the share correct, since fluency reads as comprehension"/>
+        </branch>
+
+        <branch when="code quality was scored by impression; no tool-computed duplication or rewrite-within-two-weeks trend exists">
+          <conclusion ref="mechanical-code-health-metric" verdict="add a trended jscpd or PMD-CPD duplicate-block ratio and the share of added lines rewritten or reverted within two weeks; per-diff judgement structurally cannot see regeneration"/>
+        </branch>
+
+        <branch when="items failed last period and the remediation recorded was 'be more careful' or 'pay more attention'">
+          <conclusion ref="remediation-is-a-dated-drill" verdict="convert each failed item into a named drill with a date and a completion check; intent-shaped remediation has no completion state and gets copied forward"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true &#8594; applies_if=true &#8594; evidence_available=true &#8594; named_owner=true &#8594; apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

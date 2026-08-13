@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="AI Prompt as Commit Artefact Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the AI Prompt as Commit Artefact methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="AI Prompt as Commit Artefact Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules governing the Faion-* git trailer block that records prompt, model and verification for an AI-assisted commit. Each rule is checkable against `git interpret-trailers --parse` output, the hook file, or the commit message itself.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for AI Prompt as Commit Artefact">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="trailer-block-is-final-paragraph" testable="true" depth="essential">
+      <statement>The `Faion-Prompt` / `Faion-Model` / `Faion-Context` / `Faion-Verifier` lines MUST form the last paragraph of the commit message — one `Token: value` per line, no blank line inside the block, no prose after it. Check: `git log -1 --format='%(trailers:key=Faion-Model,valueonly)'` returns a non-empty value.</statement>
+      <rationale source="git-interpret-trailers(1), &quot;the trailer block is the last non-whitespace-only paragraph&quot;">Git's trailer parser only scans the final paragraph. A blank line or a trailing sentence after the block makes `%(trailers:...)` expand to the empty string, so every audit query silently reports zero AI-assisted commits while the text is still visibly there in `git show`.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="hook-is-commit-msg-not-pre-commit" testable="true" depth="essential">
+      <statement>Enforcement lives in `.git/hooks/commit-msg` (or the `commit-msg` stage of a pre-commit framework), which receives the message file path as `$1` and validates it with `git interpret-trailers --parse`. A `pre-commit`-stage hook MUST NOT be used for this check.</statement>
+      <rationale source="githooks(5) — hook invocation order and arguments">The `pre-commit` hook runs before the message exists and is passed no message argument, so a trailer check placed there can only ever inspect the previous commit or nothing at all — it passes unconditionally and the gate is decorative.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="model-id-pinned-not-alias" testable="true" depth="essential">
+      <statement>`Faion-Model` MUST record the fully-resolved model identifier including its dated or versioned suffix (e.g. `claude-opus-4-5-20251101`). Moving aliases (`-latest`, `default`, a bare product name, an IDE brand name like "Copilot") are rejected by the hook.</statement>
+      <rationale source="Anthropic / OpenAI model-deprecation and alias policy">Aliases are repointed to a newer snapshot on the vendor's schedule. A trailer that says `latest` names a different model every month, so the reproduction attempt six months later re-runs a model that never produced this diff and the disagreement is unattributable.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="multiline-prompt-by-reference" testable="true" depth="essential">
+      <statement>A prompt longer than one line MUST be committed as a file in the same commit (convention: `.prompts/&lt;short-sha-or-slug&gt;.md`) with the trailer carrying the path plus a digest — `Faion-Prompt: .prompts/checkout-retry.md sha256:9f2a…`. Verbatim multi-paragraph prompts in the trailer value are rejected.</statement>
+      <rationale source="git-interpret-trailers(1) — continuation-line folding rules">A trailer value is one logical line; continuation requires every wrapped line to start with whitespace, and a prompt containing a blank line or a line beginning with `#` or `-` terminates or corrupts the block. The digest is what makes the reference falsifiable — a later edit to the prompt file no longer matches the commit.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="no-secrets-in-trailer" testable="true" depth="essential">
+      <statement>Prompt text and `Faion-Context` values MUST be scrubbed of credentials, tokens, customer records and PII before they enter the message; the hook runs a secret scanner (gitleaks, detect-secrets, `git secrets`) over the message body, not only over the diff.</statement>
+      <rationale source="GitHub / GitLab secret-remediation guidance">Message text is part of the commit object and is covered by the object's SHA. Removing it requires rewriting every descendant commit and force-pushing, and any fork, CI cache or mirror that already fetched the object keeps the secret — so the only cheap moment is before the commit is created.</rationale>
+    </rule>
+
+    <rule id="one-trailer-block-survives-squash" testable="true" depth="essential">
+      <statement>When the forge squash-merges, the squash commit message MUST be regenerated to hold exactly one Faion-* block. Check: `git log -1 --format='%(trailers:key=Faion-Model,valueonly)' | wc -l` equals 1 on the merged commit.</statement>
+      <rationale source="GitHub squash-merge message composition behaviour">Squash concatenates the branch's commit messages, so a five-commit branch yields five `Faion-Model` lines in one message. `valueonly` then returns all of them and any consumer that reads the first value attributes the whole diff to whichever model happened to touch the first commit.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
-    </rule>
-
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-ai-prompt-as-commit-artifact.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+      <statement>Do NOT apply when (a) the commit contains no AI-authored hunk — pure formatter output, generated lockfile, `git revert`; (b) the branch is a throwaway prototype that will be deleted rather than merged; (c) the repository forbids extra trailers because a downstream tool parses the message strictly (release-please, commitlint with a closed trailer allowlist) and the allowlist has not been extended.</statement>
+      <rationale source="Methodology preconditions + commitlint trailer configuration">A trailer on a non-AI commit is a false positive that inflates the audit denominator; a trailer a strict parser does not know about fails the release job, so the tool config must be extended before the discipline is turned on.</rationale>
     </rule>
 
   </section>

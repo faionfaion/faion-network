@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="LS / Gumroad Pricing Flip Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the LS / Gumroad Pricing Flip methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="LS / Gumroad Pricing Flip Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules for a LemonSqueezy/Gumroad price flip: explicit grandfathering, net-of-fee-and-VAT comparison rather than sticker price, cohort tagging by variant instead of timestamp, the refund-window trap on a price cut, an enumerated list of every surface that hardcodes the old price, an honest confound statement for sequential cohorts, and the preconditions that make the flip unreadable.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for LS / Gumroad Pricing Flip">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="grandfathering-decided-explicitly" testable="true" depth="essential">
+      <statement>The record MUST state, as one of `grandfather` / `migrate-all` / `migrate-on-renewal`, what happens to existing subscribers — and if not `grandfather`, name the concrete mechanism: the LemonSqueezy `PATCH /v1/subscriptions/{id}` call with the new `variant_id` (recording the `invoice_immediately` and proration settings used), or the Gumroad membership price-change flow with its member notification. The count of subscriptions to be touched MUST be recorded before the flip.</statement>
+      <rationale source="LemonSqueezy API — update subscription (variant_id, invoice_immediately, disable_prorations); Gumroad membership pricing">Editing a variant's price on either platform changes the price for new checkouts only; existing subscriptions keep billing at the amount they were created with. So the default outcome of "we raised the price" is a permanently split book where MRR-per-customer never moves — and the operator reading a flat MRR curve two months later concludes the price rise failed, when it simply never reached anyone.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="net-not-sticker-price-compared" testable="true" depth="essential">
+      <statement>Before/after comparison MUST use net payout per sale, not the list price. The record MUST capture the platform fee schedule in force at flip time (LemonSqueezy: percentage plus fixed per-transaction fee; Gumroad: flat per-sale percentage) and whether the store is configured tax-inclusive or tax-exclusive, with the buyer-country mix of the compared cohorts.</statement>
+      <rationale source="Merchant-of-record model — LemonSqueezy and Gumroad published fee schedules; EU VAT (destination-based rates)">Both platforms are merchants of record, so VAT is settled per buyer country. Under tax-inclusive pricing the sticker price is fixed and your net moves with the buyer's rate — the same €50 nets materially less from a 23% country than from a 0% one — which means a cohort whose geography shifted can show a net-revenue change with no pricing effect at all. The fixed per-transaction component compounds this at low price points, where it is a far larger share of a $9 sale than of a $99 one.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="cohort-tagged-by-variant-not-timestamp" testable="true" depth="essential">
+      <statement>Cohort assignment MUST be derived from the order's variant/product identifier — LemonSqueezy `variant_id` from the `order_created` / `subscription_created` webhook payload, or the Gumroad product permalink plus offer code — and stored on the order record. Splitting cohorts by `created_at` relative to the flip timestamp is rejected.</statement>
+      <rationale source="LemonSqueezy webhook payloads (order_created, subscription_created); Gumroad offer-code URL form /l/{permalink}/{code}">A timestamp split misclassifies every order whose checkout was opened before the flip and completed after it, plus retried and delayed payments, and it silently breaks when dashboard timestamps are read in a different timezone from the analytics store. The variant id is what the buyer actually paid against, so it stays correct under all three.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="refund-window-priced-into-a-cut" testable="true" depth="essential">
+      <statement>For any price decrease the record MUST state the store's active refund window and the goodwill policy for buyers inside it (refund-and-rebuy allowed / partial credit / nothing), plus the count of orders currently within that window and the worst-case refund exposure in currency.</statement>
+      <rationale source="Refund-window mechanics on merchant-of-record platforms">A buyer who paid full price yesterday and sees a 40% cut today has a mechanical arbitrage: request the refund the window entitles them to, then repurchase at the new price. The loss is not only the delta but the platform fee on both transactions, and an elevated refund rate in the same window is what payment processors read as a dispute-risk signal — so the cut looks self-funding until the refund queue arrives.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="price-bearing-surfaces-enumerated" testable="true" depth="essential">
+      <statement>The record MUST enumerate every surface carrying the old price and its owner: hosted checkout links and overlay/embed buy buttons, discount and offer codes with their fixed amounts, affiliate links, the pricing page and any CDN-cached copy of it with its TTL, README and docs, lifecycle emails, and app-store or third-party listing copy. Each entry is marked updated or deliberately left, before the flip is declared complete.</statement>
+      <rationale source="Internal — pricing-change operational checklist">A fixed-amount discount code written against the old price becomes a different percentage after the flip and can invert to below cost on a cut; a cached pricing page keeps advertising the old figure for the full TTL while checkout charges the new one, which is the single most common source of "the site said $29" support tickets and chargeback disputes after a rise.</rationale>
+    </rule>
+
+    <rule id="sequential-cohort-confounds-declared" testable="true" depth="essential">
+      <statement>Because neither platform splits live traffic across price points natively, the record MUST label the design `sequential` and list the confounds present in the comparison window: traffic-source mix, launch or campaign spikes, seasonality, and any concurrent landing-page change. Subscription verdicts MUST NOT be read before one full billing cycle has elapsed past the flip. A flip run concurrently with any other pricing-page change is recorded as `not-attributable`.</statement>
+      <rationale source="Internal — sequential-cohort inference on merchant-of-record platforms">A time-based split makes the flip perfectly collinear with everything else that changed on that date, so a Product Hunt spike or a seasonal trough is indistinguishable from price elasticity. Subscriptions add a lag confound: churn and involuntary-failure effects of a price change only appear at the next renewal, so a conversion-rate win read at week two routinely reverses once the first billing cycle completes.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
-    </rule>
-
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml`, emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-ls-gumroad-pricing-flip.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+      <statement>Skip when ANY holds: (a) fewer than roughly 30 paid conversions in the comparison window — the difference will sit inside noise whatever the arithmetic says, (b) pricing is contractually fixed (enterprise, regulated, existing annual commitments), (c) another pricing-page or funnel change is shipping in the same window, making attribution impossible, (d) the store has no webhook or export capturing variant id per order, so cohorts cannot be reconstructed after the fact.</statement>
+      <rationale source="Internal — methodology preconditions">Each rule above depends on being able to attribute a revenue difference to the price. Without volume, without exclusivity of the change, or without per-order variant data, the flip may still be a fine business decision — but the decision record would document a measurement that cannot be made, which is worse than recording it as a judgement call.</rationale>
     </rule>
 
   </section>
