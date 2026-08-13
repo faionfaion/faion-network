@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/recipe.schema.json",
+  "title": "F027 workflow recipe",
+  "description": "skills/faion/recipes/<name>/recipe.json — the platform-neutral pipeline `faion workflow build` compiles into a Claude Dynamic Workflow and a Codex chain. It is data, never code: no conditionals, no expressions, nothing the compiler can be made to run. This schema mirrors the typed model in faion-cli internal/workflow/recipe.go; the CLI's own `faion workflow validate` remains the authority on cross-stage references, and scripts/validate-recipes.py runs it. Constraints encoded here are the shape checks that must hold with no binary present.",
+  "type": "object",
+  "required": ["recipe", "name", "pattern", "pattern_rationale", "stages"],
+  "additionalProperties": false,
+  "properties": {
+    "recipe": {
+      "const": 1,
+      "description": "Recipe format version. The only supported value."
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$",
+      "description": "Names the workflow and its artifacts (.claude/workflows/<name>.js, <name>.codex.sh). Must equal the recipe directory name."
+    },
+    "description": { "type": "string", "minLength": 1 },
+    "pattern": {
+      "enum": ["fan-out", "generator-critic", "hierarchical", "router", "sequential"],
+      "description": "One named orchestration pattern per workflow. Pattern stacking is the antipattern the corpus names."
+    },
+    "pattern_rationale": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Why that pattern. Reproduced in every emitted artifact's header, so a reader of the artifact can challenge the choice."
+    },
+    "vars": {
+      "type": "object",
+      "description": "The recipe's invocation surface. Every {{var:NAME}} referenced anywhere in the recipe must be declared here, and every declared var must be documented in the card's ## Inputs.",
+      "propertyNames": { "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$" },
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "required": { "type": "boolean" },
+          "default": { "type": "string" },
+          "description": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Stages run in array order. Array order is the DAG order: there is no forward reference and therefore no cycle to detect.",
+      "items": { "$ref": "#/$defs/stage" }
+    }
+  },
+  "$defs": {
+    "fragmentRef": {
+      "type": "string",
+      "pattern": "^corpus:[a-z][a-z0-9-]*(\\.schema)?$",
+      "description": "A shipped recipe may only compose corpus fragments. A bare or user: reference resolves on the author's machine and nowhere else."
+    },
+    "slotName": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$"
+    },
+    "stage": {
+      "type": "object",
+      "required": ["id", "prompt", "output"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/slotName",
+          "description": "Names the stage; becomes a filename in the run dir and a slot name in later prompts."
+        },
+        "prompt": { "$ref": "#/$defs/fragmentRef" },
+        "slots": {
+          "type": "object",
+          "description": "Values handed to frag.Compose. Keys must cover every {{slot:NAME}} the prompt fragment declares, plus those of the gate's verifier and fixer, and must not name a slot no fragment reads.",
+          "propertyNames": { "pattern": "^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$" },
+          "additionalProperties": { "type": "string" }
+        },
+        "output": {
+          "type": "object",
+          "required": ["kind"],
+          "additionalProperties": false,
+          "properties": {
+            "kind": { "enum": ["json", "text"] },
+            "schema": { "$ref": "#/$defs/fragmentRef" }
+          }
+        },
+        "capability": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "The closed {read, write, net} model. Any other key — in any spelling of danger-full-access — is refused: the ceiling is workspace-write.",
+          "properties": {
+            "read": { "type": "boolean" },
+            "write": { "type": "boolean" },
+            "net": { "type": "boolean" }
+          }
+        },
+        "retry": { "type": "integer", "minimum": 0, "maximum": 3 },
+        "resume": { "type": "boolean" },
+        "fanout": {
+          "type": "object",
+          "required": ["over", "item_slot"],
+          "additionalProperties": false,
+          "properties": {
+            "over": {
+              "type": "string",
+              "pattern": "^stage:[A-Za-z0-9_][A-Za-z0-9_.-]*\\.file#.+$",
+              "description": "Fan-out ranges only over an earlier stage's JSON array. There is no fan-out over a var."
+            },
+            "item_slot": { "$ref": "#/$defs/slotName" },
+            "max_concurrent": { "type": "integer", "minimum": 1, "maximum": 16 }
+          }
+        },
+        "gate": {
+          "type": "object",
+          "required": ["verifier"],
+          "additionalProperties": false,
+          "properties": {
+            "verifier": { "$ref": "#/$defs/fragmentRef" },
+            "verifier_schema": { "$ref": "#/$defs/fragmentRef" },
+            "fixer": { "$ref": "#/$defs/fragmentRef" },
+            "max_rounds": { "type": "integer", "minimum": 1, "maximum": 3 }
+          }
+        }
+      }
+    }
+  }
+}
