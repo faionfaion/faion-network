@@ -16,13 +16,20 @@ why this file sits here and not inside each pack.
 | `sdd/` | solo | `sdd-intake-analyzer`, `sdd-planner`, `sdd-task-executor`, `sdd-wave-coordinator`, `sdd-code-reviewer`, `sdd-fix-applier` (+ schemas) |
 | `build/` | pro | `build-domain-cataloger`, `build-concept-synthesizer` (+ schema), `build-solution-designer`, `build-asset-director` |
 | `article/` | pro | `article-outliner` (+ schema), `article-section-writer`, `article-assembler`, `article-editor-reviewer`, `article-translator`, `article-language-reviewer` |
+| `search/` | free | `search-refine` — the second-pass block `faion search` emits below strong coverage; not a role, so exempt from the role rules |
+
+`INDEX.xml` is the L2 index `SKILL.md` routes into — one entry per pack
+plus every `corpus:<name>` beneath it. Generated: never hand-edit, run
+`scripts/regen-fragment-index.py`.
 
 ## Shape
 
 - Static text first, `{{slot:…}}` last under an `Inputs:` heading. `≤80`
   lines, English, one role per file.
-- Every fragment states its hard boundary in its opening paragraph — what
-  it writes and what it must never touch.
+- Every **role** fragment — one opening `You are a|an|the <role>.` — states
+  its hard boundary in that paragraph: what it writes and what it must
+  never touch. A shared include block or an emitted block is exempt from
+  both this and the `Inputs:` rule.
 - A fragment returning structured output ships a paired
   `<name>.schema.md`; the recipe names it in `output.schema`.
 - `{{include:<ref>}}` composes shared blocks at build time. `faion frag
@@ -47,9 +54,17 @@ omits the include is a failure, not a style note.
 Measured 2026-08-11, one brief, blind judges: the pipeline run produced
 **14 competitors and 0 source URLs**; a plain agent that went to the web
 produced **31 and 108**, and won on research depth. Before the `research/`
-pack, no fragment here required a URL, an access date, a confidence tag or
-a source floor, and none named a web tool — the prompts asked for less than
-an unprompted agent does by default.
+pack no fragment here required a URL, an access date, a confidence tag or a
+source floor — the prompts asked for less than an unprompted agent does.
+
+## Validation
+
+`python3 scripts/validate-fragments.py` (validator 9) holds the rules above:
+`meta.json` against [`fragment-pack-meta.schema.json`](../../../docs/schemas/fragment-pack-meta.schema.json),
+flat name uniqueness, include resolution, schema pairing, the line cap,
+role-fragment shape, the names-a-tool tier direction, `INDEX.xml` agreement.
+Recipe-side rules — fragment tier ≤ recipe tier, slot coverage, the sourcing
+gate — are in `scripts/validate-recipes.py`.
 
 ## Gotchas
 

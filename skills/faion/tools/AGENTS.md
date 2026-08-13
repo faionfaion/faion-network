@@ -15,11 +15,14 @@ Tool packs: real, reusable scripts an agent runs instead of writing a throwaway 
 ## Layout
 
 ```
+INDEX.xml                      # L2 index, generated — never hand-edit
 tools/<pack>/
 ├── meta.json                  # tier gate for the whole pack dir
 ├── scripts/<name>.py|sh       # the executable
 └── tools/<name>.card.md       # the contract, ≤40 lines
 ```
+
+`INDEX.xml` is what `SKILL.md` routes into and the first place to look before writing a script; regenerate it with `scripts/regen-fragment-index.py`.
 
 ## Card shape
 
@@ -32,6 +35,10 @@ Fixed section order, nothing added or dropped: `# <tool-name>` · `## Purpose` �
 - One summary line to stdout; diagnostics to stderr.
 - Meaningful exit codes: `0` success, `1` the checked thing is wrong, `2` the tool could not run, further codes documented on the card.
 - Never calls a model, never writes outside the paths its card names.
+
+## Validation
+
+`python3 scripts/validate-tools.py` (validator 10) is the enforcement: `meta.json` against [`docs/schemas/tool-pack-meta.schema.json`](../../../docs/schemas/tool-pack-meta.schema.json), the card against [`docs/schemas/card.schema.json`](../../../docs/schemas/card.schema.json), card↔script pairing both ways, the `{script}` placeholder and no literal `scripts/` path, every exit status the script can return explained under `## Outputs`, a shebang plus stdlib-only imports, and — the card-first rule made mechanical — **every long option the script's parser defines must appear in `## Inputs`**, with anything the card names and the script lacks failing the other way.
 
 ## Gotchas
 

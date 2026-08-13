@@ -18,11 +18,14 @@ Four different stage shapes on purpose: the catalog teaches by contrast, so an a
 ## Layout
 
 ```
+INDEX.xml              # L2 index SKILL.md routes into, generated — never hand-edit
 recipes/<name>/
 ├── meta.json          # tier gate for the whole recipe dir
 ├── recipe.json        # the F027 recipe — what the CLI compiles
 └── <name>.card.md     # the contract, six ordered sections, ≤40 lines
 ```
+
+Schemas: [`recipe-meta`](../../../docs/schemas/recipe-meta.schema.json) · [`recipe`](../../../docs/schemas/recipe.schema.json) · [`card`](../../../docs/schemas/card.schema.json). Regenerate `INDEX.xml` with `scripts/regen-fragment-index.py`.
 
 ## Rules
 
@@ -32,7 +35,8 @@ recipes/<name>/
 - A `bootstrap` stage wherever the pipeline runs tests. The g3/g4 pipelines burned fix rounds on a missing venv; an environment is a stage, not an assumption.
 - Service identity and paths are vars, never literals — two runs of the same recipe must not collide on a service name, a port or a state directory.
 - A research stage composes a research-role fragment, and every one of those includes `corpus:research-source-discipline` — the corpus instructs the fetch, it never substitutes for it. `validate-recipes.py` fails a research-role fragment that drops the block.
-- Validate before shipping: `python3 scripts/validate-recipes.py` (card sections, var coverage, fragment resolution, the research sourcing block, and `faion workflow validate` on every recipe).
+- A stage fills exactly the slots its fragments declare — every `{{slot:}}` in the prompt, the verifier and the fixer, includes expanded, and nothing beyond them. A stale slot key is invisible at compile time and simply never reaches a prompt.
+- Validate before shipping: `python3 scripts/validate-recipes.py` (the three schemas above, card sections and var coverage, fragment resolution, tier monotonicity, slot coverage, the research sourcing block, `INDEX.xml` agreement, and `faion workflow validate` on every recipe).
 
 ## Gotchas
 
