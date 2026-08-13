@@ -18,6 +18,9 @@ python3 {script} --name {name} --port {port} --domain {host} --root {/opt/dir} [
 - `--backend` / `--frontend` — repo subdirs. Optional, default `backend` / `frontend`.
 - `--page-route {/path}={file}` — exact `location =`. Repeatable, optional.
 - `--regex-route {regex}={file}` — regex `location ~`, always emitted quoted. Repeatable, optional.
+- `--test-labels {labels}` — labels the emitted `deploy.sh` hands its test gate. Optional, default empty.
+- `--workers {n}` / `--rate {r}` / `--burst {n}` — gunicorn worker count, nginx `limit_req` rate and burst. Optional, defaults `4`, `10r/s`, `20`.
+- `--ssh-host {h}` / `--ssh-user {u}` / `--ssh-addr {ip}` / `--ssh-port {n}` — the target `deploy.sh` rsyncs to. Optional, defaults `faion-net`, `faion`, `46.225.58.119`, `22022`.
 - `--check-local` — refuse if the unit, state dir or vhost already exists on this machine. Optional.
 - `--force` — overwrite existing output files. Optional.
 
