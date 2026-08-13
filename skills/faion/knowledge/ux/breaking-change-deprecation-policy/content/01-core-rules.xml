@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Breaking Change Deprecation Policy Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Breaking Change Deprecation Policy methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+<text id="01-core-rules" title="Breaking Change Deprecation Policy Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules for the one policy that decides what counts as a breaking change to a design-system component or token, how long the deprecation window runs, and what must be true before removal executes. Governance (the umbrella operating model) references this policy; it does not restate it.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry ≥1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design file id). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Breaking Change Deprecation Policy">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="breaking-change-classification-enumerated" testable="true" depth="essential">
+      <statement>The policy MUST enumerate what forces a MAJOR bump, as a closed list: removing or renaming a component, a prop, or a token key; changing a prop's default value; changing a token's type (dimension → string, colour → alias); removing a DOM element, slot, or class name that consumers style; tightening a prop's accepted value set. Everything not on the list is MINOR (additive) or PATCH. An unclassified change MUST NOT be published.</statement>
+      <rationale source="Semantic Versioning 2.0.0 §8 + W3C Design Tokens Format Module">Consumers pin with caret ranges, so anything published below MAJOR lands in every consumer's next install without a human reading the diff. A token key rename shipped as PATCH resolves to `undefined` at build time in every consumer simultaneously — classification is the only gate between the change and that fan-out.</rationale>
     </rule>
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+
+    <rule id="contrast-regression-is-major" testable="true" depth="essential">
+      <statement>Any token value change that moves a documented foreground/background pairing below WCAG 2.2 SC 1.4.3 (4.5:1 body text, 3:1 large text) or SC 1.4.11 (3:1 for UI component and graphical boundaries) is MAJOR regardless of how similar it looks. The policy records the before and after ratio for every affected pairing.</statement>
+      <rationale source="WCAG 2.2 SC 1.4.3 / SC 1.4.11">Colour tweaks ship as PATCH because they "look the same", but contrast is not linear in perceptual similarity — a 2% lightness shift can cross 4.5:1. The change is invisible in review and turns every consumer surface using that pairing into an audit finding at once, with no code change on the consumer side to point at.</rationale>
     </rule>
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="window-sized-by-slowest-consumer" testable="true" depth="essential">
+      <statement>`deprecation_window_days` MUST be at least two release cycles of the slowest consumer named in `consumer_teams`. For native app consumers the cycle is measured against forced-update or version-adoption data, not against store submission date. The policy states which consumer set the floor.</statement>
+      <rationale source="Angular Deprecation Practices (deprecated APIs supported for two major versions, ~12 months)">A web consumer redeploys the day the fix lands; a native binary already on devices keeps calling the old component for the whole adoption tail. A window computed off web cadence expires while shipped builds still depend on the removed API, and those builds cannot be patched — only re-released and re-adopted.</rationale>
     </rule>
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, deprecate, sunset, ramp, escalation, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+
+    <rule id="codemod-or-extended-window" testable="true" depth="essential">
+      <statement>If the change is mechanically migratable (symbol rename, prop signature change, token key rename), a codemod MUST ship in the same release as the deprecation notice — jscodeshift/ts-morph for component APIs, a Style Dictionary alias or token-key map for tokens. Without a published, runnable codemod, `removal_date` extends by one additional full consumer release cycle.</statement>
+      <rationale source="React and MUI v4→v5 codemod-led migration practice">A rename touching hundreds of call-sites becomes manual work each consumer must schedule, and manual migration work always loses prioritisation to feature work. The window then expires with usage unchanged, which forces either a broken removal or an indefinite extension — the codemod is what converts the migration from a planning problem to a command.</rationale>
     </rule>
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+
+    <rule id="deprecated-path-works-and-warns-once" testable="true" depth="essential">
+      <statement>Through the whole window the deprecated API MUST stay functional and emit exactly one warning per deprecated symbol per session, in development builds only, naming the replacement, the `removal_date`, and the `migration_guide_ref` URL. Warnings on every render, or warnings present in production bundles, violate the rule.</statement>
+      <rationale source="Node.js runtime deprecation model (DEP codes, --pending-deprecation) and React dev-only warnings">Per-render warnings flood the console within seconds, so consumer teams add a blanket console filter — and the filter suppresses the one deprecation that mattered along with the noise. Once-per-symbol keeps the signal above the team's tolerance threshold for the full window.</rationale>
     </rule>
+
+    <rule id="removal-gated-on-zero-usage-scan" testable="true" depth="essential">
+      <statement>Removal executes only when a static scan across consumer repositories reports zero remaining imports or token references, with the scan command, the date, and the repository list attached as evidence. Self-reported "we're migrated" from a consumer team is not evidence.</statement>
+      <rationale source="ESLint no-restricted-imports rules plus component-usage analytics (Omlet, Figma library analytics)">Teams report migration status per their own tracking ticket, which closes when the primary surface is done and leaves the long tail — tests, storybook stories, internal admin screens — still importing. The scan finds those; the ticket does not, and the removal breaks a surface nobody remembered owning.</rationale>
+    </rule>
+
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+      <statement>Do NOT apply when (a) the component or token has no consumer outside the repository that owns it — an atomic rename in a single PR needs no window, (b) the system is pre-1.0 with a published "API unstable" contract, (c) nothing is versioned or tagged, so there is no prior version for consumers to remain on. In (c) route to design-system-governance to establish versioning first.</statement>
+      <rationale source="Semantic Versioning 2.0.0 §4 (0.y.z carries no stability guarantee)">A deprecation window is a promise about a published version. Without a published version there is nothing to deprecate against, and the policy's timeline fields become dates nobody can act on.</rationale>
     </rule>
 
   </section>

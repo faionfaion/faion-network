@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Mobile UX Basics: Touch Design, Navigation, and Performance Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Mobile UX Basics: Touch Design, Navigation, and Performance methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+<text id="01-core-rules" title="Mobile UX Basics: Touch Design, Navigation, and Performance Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules pinning the numbers a mobile spec is usually vague about: the three different target-size floors (WCAG 2.2 AA, iOS HIG, Material), the SC 2.5.8 spacing-exception computation, thumb-zone placement, inputmode and autocomplete per field, the 16px iOS zoom threshold, and Core Web Vitals stated at mobile p75.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &gt;=1 verbatim citation from an auditable source (URL, transcript_id, ticket id, dashboard snapshot). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Mobile UX Basics: Touch Design, Navigation, and Performance">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="target-size-floor-recorded-per-platform" testable="true" depth="essential">
+      <statement>touch_targets MUST record a number per platform, not an adjective. Web at WCAG 2.2 Level AA: SC 2.5.8 Target Size (Minimum) = 24 by 24 CSS pixels unless an exception applies; at Level AAA: SC 2.5.5 Target Size (Enhanced) = 44 by 44 CSS pixels. iOS: Apple Human Interface Guidelines minimum tappable area 44 by 44 pt. Android: Material Design minimum touch target 48 by 48 dp with at least 8 dp between adjacent targets. Where several apply, the spec records the strictest.</statement>
+      <rationale source="WCAG 2.2 SC 2.5.8 and SC 2.5.5; Apple HIG — Layout; Material Design — accessibility">The three numbers are genuinely different and a spec that says "meets accessibility guidance" hides which one was met — 24 px passes WCAG AA and still fails Apple review and Material's own components. The 24 px floor is a conformance minimum, not a usability target: the finger contact patch is far wider than the glyph, so a 24 px icon whose hit area is also 24 px produces adjacent-control mis-taps that the same icon inside a 48 dp hit area does not.</rationale>
     </rule>
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+
+    <rule id="spacing-exception-computed-not-asserted" testable="true" depth="essential">
+      <statement>Any target smaller than the 24 by 24 CSS pixel minimum MUST record the SC 2.5.8 spacing-exception computation: a 24 px diameter circle centred on the target's bounding box must not intersect the equivalent circle of any adjacent target. Only the enumerated exceptions (inline targets inside a sentence or block of text, user-agent-default controls, essential presentation, and a conforming equivalent elsewhere on the page) may be claimed without that computation, and the claimed exception is named on the row.</statement>
+      <rationale source="WCAG 2.2 SC 2.5.8 Target Size (Minimum), exception list">The criterion is satisfied by the target's neighbourhood, not by the target alone, so "our icons are small but it is fine" is unverifiable. Dense toolbars, paginators and star ratings are exactly where the undersized controls sit shoulder to shoulder — the layouts that look tidiest are the ones the circle test fails.</rationale>
     </rule>
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="primary-actions-in-thumb-reach" testable="true" depth="essential">
+      <statement>At handset breakpoints the most frequent and primary actions MUST sit in the lower third of the viewport — bottom tab bar, bottom sheet, or sticky footer CTA — never behind a top-corner overflow menu. Destructive and irreversible actions MUST be placed outside the easy-reach zone or gated behind a confirmation, and thumb_zones records which zone each primary action occupies.</statement>
+      <rationale source="Steven Hoober, &quot;How Do Users Really Hold Mobile Phones?&quot; (UXmatters, 2013) — 49% one-handed, 36% cradled, 15% two-handed">Under a one-handed grip the far top corner is unreachable without shifting the phone in the hand, and that re-grip is both the slowest interaction on the screen and the moment devices get dropped, so a top-corner primary action taxes roughly half of all sessions. The rule inverts for destructive actions: the easy zone is where the thumb already rests, so a delete placed there gets hit by accident.</rationale>
     </rule>
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (commit, send, ramp, freeze, escalation, ledger write, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+
+    <rule id="inputmode-and-autocomplete-declared-per-field" testable="true" depth="essential">
+      <statement>Every form field MUST declare the keyboard it summons via inputmode (numeric, decimal, tel, email, url, search) and an autocomplete token from the HTML specification's list, as required by WCAG 2.1 SC 1.3.5 Identify Input Purpose (AA) for fields collecting the user's own data. type="number" MUST NOT be used for phone numbers, card numbers, one-time codes or postcodes — use type="text" with inputmode="numeric".</statement>
+      <rationale source="WHATWG HTML — inputmode and autocomplete attributes; WCAG 2.1 SC 1.3.5">type="number" is a numeric value control, not a numeric keypad: it attaches a spinner, mutates on scroll wheel and arrow keys, and coerces the value, so a postcode entered as 01234 is submitted as 1234 and a card number with spaces is rejected as invalid. inputmode requests the keypad without touching value semantics. The autocomplete token is what lets the platform fill the field, which is the difference between a 12-field checkout taking one tap and taking two minutes of thumb typing.</rationale>
     </rule>
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+
+    <rule id="input-font-size-prevents-ios-autozoom" testable="true" depth="essential">
+      <statement>Text inputs, selects and textareas MUST have a computed font-size of at least 16 px on iOS Safari. Suppressing the zoom via viewport meta user-scalable=no or maximum-scale=1 instead is forbidden.</statement>
+      <rationale source="iOS Safari focus-zoom behaviour; WCAG 2.1 SC 1.4.4 Resize Text">Below 16 px Safari zooms the page on focus and does not zoom back out on blur, so from the second field onward the form is wider than the viewport and the submit button is off-screen — the user pans sideways to find it, which is where mobile checkout abandonment concentrates. Blocking zoom removes the symptom by removing pinch-zoom entirely, which breaks the only magnification low-vision users have on that page.</rationale>
     </rule>
+
+    <rule id="perf-budget-stated-at-mobile-field-p75" testable="true" depth="essential">
+      <statement>performance_budget MUST state Core Web Vitals thresholds at the 75th percentile of the mobile field segment specifically: LCP at most 2.5 s, INP at most 200 ms, CLS at most 0.1. The lab proxy and its throttling profile (device class, CPU multiplier, network profile) MUST be named alongside. A budget quoting desktop numbers, lab medians, or an unsegmented site average is rejected.</statement>
+      <rationale source="web.dev / Chrome — Core Web Vitals thresholds; INP replaced FID as a Core Web Vital in March 2024">Field data is scored at p75 across the segment, so a median that looks healthy can sit on a tail that fails: the mid-tier Android on a congested radio is the device the score is actually about, and it is invisible in an average taken over desktop sessions. Naming the throttling profile is what makes a lab regression check reproducible between two engineers.</rationale>
+    </rule>
+
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+      <statement>Do NOT run this methodology when (a) the surface has no handset breakpoint at all — tablet-and-up or desktop-only tooling, (b) the build is a single-platform native app, where the platform's own HIG binds directly and the cross-platform divergence table this artefact exists to produce would be empty — read the platform guidelines instead, (c) the target is fixed hardware with a known screen and a stylus or physical keys (kiosk, POS, in-vehicle), where thumb-zone and soft-keyboard rules do not apply.</statement>
+      <rationale source="Methodology preconditions — the artefact's value is the cross-platform reconciliation">Most of this spec exists to reconcile three conflicting minimums and two keyboard models into one buildable number. With a single platform and a single input method there is nothing to reconcile, so the artefact degrades to a paraphrase of one vendor's documentation — and a paraphrase drifts silently when that vendor updates.</rationale>
     </rule>
 
   </section>

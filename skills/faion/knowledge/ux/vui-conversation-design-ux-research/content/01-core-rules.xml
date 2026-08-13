@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="VUI Conversation Design Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the VUI Conversation Design methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+<text id="01-core-rules" title="VUI Conversation Design Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules for the dialog-flow spec: escalating repair branches on every slot, no-input and no-match kept distinct, confidence-banded confirmation strategy, bounded recency-ordered option menus, universals active in every state, sample utterances drawn from transcribed speech, and SSML pinning for anything read aloud.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &gt;=1 verbatim citation from an auditable source (URL, transcript_id, ticket id, dashboard snapshot). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for VUI Conversation Design">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="every-slot-has-escalating-repair-branches" testable="true" depth="essential">
+      <statement>Every slot-filling turn MUST declare no-match prompts NM1/NM2/NM3, no-input prompts NI1/NI2/NI3, and a max-retry escape (transfer to human, or a graceful close that states what was and was not captured). Each escalation MUST add information — NM1 a rapid reprompt, NM2 a reprompt carrying an example utterance or an option list, NM3 the escape. A flow specifying only the happy path is rejected.</statement>
+      <rationale source="Cohen, Giangola &amp; Balogh, &quot;Voice User Interface Design&quot; (2004) — escalating error prompts; Cathy Pearl, &quot;Designing Voice User Interfaces&quot; (O'Reilly, 2016)">Replaying the identical prompt gives the caller no new hypothesis about what the system will accept, so attempt two fails for exactly the reason attempt one did and the retry counter burns down without any change in the caller's behaviour. Each escalation has to narrow the grammar the caller is drawing from, which is why NM2 must carry a concrete example rather than a louder apology.</rationale>
     </rule>
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+
+    <rule id="no-input-and-no-match-are-separate-branches" testable="true" depth="essential">
+      <statement>no-input (silence past the endpoint timeout) and no-match (speech received, out of grammar or below the reject threshold) MUST have separate prompt copy and separate retry counters. A single shared "Sorry, I didn't catch that" for both is rejected. The endpoint timeout in milliseconds is declared per prompt.</statement>
+      <rationale source="Cohen, Giangola &amp; Balogh — error taxonomy in spoken dialog systems">The two failures have opposite fixes. Silence usually means the caller did not realise the turn had passed to them or did not hear the prompt, so the repair is to re-cue the turn and repeat the question. A no-match means they did speak and were not understood, so the repair is to constrain what they should say. Serving the "I didn't catch that" copy to a caller who never spoke tells them the system misheard something that never happened, and they repeat nothing.</rationale>
     </rule>
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="confidence-bands-drive-confirmation-strategy" testable="true" depth="essential">
+      <statement>Each slot MUST declare three recognition-confidence bands with numeric thresholds: accept silently, confirm (implicit or explicit), and reject-and-reprompt. Explicit confirmation is mandatory for irreversible or costly actions — payment, transfer, cancellation, deletion, dispatch — regardless of confidence. Implicit confirmation (echoing the value inside the next prompt) is used for low-cost slots.</statement>
+      <rationale source="Cohen, Giangola &amp; Balogh — confirmation strategies; standard IVR/ASR practice">Confirming every slot roughly doubles the turn count, and callers who are asked "did you say X?" five times in a row start answering yes reflexively without listening — the confirmation stops carrying information exactly when it is needed. Confirming nothing lets a mid-confidence misrecognition commit an action that cannot be undone. The threshold belongs where the expected cost of a wrong commit crosses the cost of one more turn, which is why it is per-slot and not global.</rationale>
     </rule>
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (commit, send, ramp, freeze, escalation, ledger write, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+
+    <rule id="option-menus-bounded-and-recency-ordered" testable="true" depth="essential">
+      <statement>An option-class prompt MUST offer at most 3-4 choices in a single turn, ordered so the most likely choice or the "more options" hook comes last. Longer sets are paginated with an explicit "say next for more". Reading a list of more than four items in one turn without a pagination hook is rejected.</statement>
+      <rationale source="Cathy Pearl, &quot;Designing Voice User Interfaces&quot; — audio has no scrollback; recency in auditory working memory">Speech is transient: there is no visual list to re-scan, so the caller holds the options in working memory and the item still there when the prompt ends is the last one heard. A seven-item spoken menu therefore collapses into "pick the last thing I heard" or into a no-input while the caller tries to recall option three — and the analytics show a selection distribution that has nothing to do with what callers actually wanted.</rationale>
     </rule>
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+
+    <rule id="universals-recognised-in-every-state" testable="true" depth="essential">
+      <statement>The global grammar MUST list universals recognised at every dialog state, not only at the top level: help, repeat, go back, start over, cancel, and an escape to a human where one exists. Platform-required built-ins (for example AMAZON.HelpIntent, AMAZON.StopIntent, AMAZON.CancelIntent on Alexa) are mapped explicitly to these behaviours in the artefact.</statement>
+      <rationale source="Cohen, Giangola &amp; Balogh — universals; Amazon Alexa and Google Assistant certification requirements for built-in help/stop/cancel intents">A caller stuck three levels inside a slot has no visible back button and no way to see the structure they are in. If "start over" is bound only at the root, their remaining exits are hanging up or waiting out max-retry — both of which are recorded as containment failures with no signal about where the dialog trapped them. Binding universals globally also converts a dead end into a logged, attributable event.</rationale>
     </rule>
-    <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+
+    <rule id="sample-utterances-from-transcribed-speech" testable="true" depth="essential">
+      <statement>Every intent MUST carry at least 10 sample utterances tagged with their source, and real transcribed speech (call recordings, Wizard-of-Oz sessions, live chat logs) MUST be represented. Designer-authored utterances are flagged as such and MUST NOT be the only source for any intent.</statement>
+      <rationale source="Wizard-of-Oz methodology in spoken dialog design; Pearl, &quot;Designing Voice User Interfaces&quot;">Designers write well-formed sentences — "I would like to check my account balance" — because they are typing. Callers produce fragments, false starts and mid-utterance self-corrections: "balance, uh, the checking one". A grammar or NLU model trained only on the written register no-matches on the spoken register, and because the failures arrive as recognition errors the team goes looking for a better ASR engine instead of at the coverage gap that actually caused them.</rationale>
+    </rule>
+
+    <rule id="spoken-strings-pinned-with-ssml" testable="true" depth="essential">
+      <statement>Prompt copy is stored as spoken text with its class labelled (open / directed / option / confirmation), MUST NOT contain URLs, parentheses or punctuation whose meaning depends on being seen, and any string containing an identifier, code, date, ordinal, phone number or currency amount MUST carry an SSML say-as (or equivalent) specification.</statement>
+      <rationale source="W3C Speech Synthesis Markup Language (SSML) — say-as and interpret-as">Left unmarked, a TTS engine guesses at "PT-1004", "04/05" and "1,004.50" using per-engine, per-locale heuristics, so the same prompt renders as a date in one voice and a fraction in another, and a reference code is read as a word. The failure does not reproduce in the design document and often not in staging — it appears only when the production voice or locale differs, which is after launch.</rationale>
     </rule>
 
   </section>

@@ -1,44 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Breaking Change Deprecation Policy Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`.</summary>
+<text id="06-decision-tree" title="Breaking Change Deprecation Policy Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether anything outside the owning repository installs a published version, what kind of change is on the table, and how the slowest consumer picks up releases — to a full policy, a classification or codemod requirement, a window recomputation, or a skip.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-external-consumers">Who consumes this component or token from a published, versioned release outside the repository that owns it?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="nothing outside this repository imports it — the rename lands in a single pull request">
+      <conclusion ref="skip-this-methodology" verdict="skip: an atomic rename inside one repo needs no window; update the call sites in the same change"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="the system is pre-1.0 with a published API-unstable contract, or nothing is versioned or tagged at all">
+      <conclusion ref="skip-this-methodology" verdict="skip: there is no published version for consumers to remain on — route to design-system-governance to establish versioning and release tagging first"/>
+    </branch>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+    <branch when="external consumers install a published version and the change has not shipped yet">
+      <question id="q-change-shape">What is actually changing in the release?</question>
+      <branch when="a token value moves and a documented foreground/background pairing crosses below 4.5:1 body, 3:1 large text, or 3:1 for a UI boundary">
+        <conclusion ref="contrast-regression-is-major" verdict="classify MAJOR however similar it looks, and record the before and after ratio for every affected pairing — contrast is not linear in perceptual similarity"/>
       </branch>
+      <branch when="a symbol, prop or token key is renamed, or a prop default changes — the migration is mechanical">
+        <conclusion ref="codemod-or-extended-window" verdict="ship a runnable codemod in the same release as the deprecation notice; without one, extend `removal_date` by a full additional consumer release cycle"/>
+      </branch>
+      <branch when="the change has not been checked against the enumerated MAJOR list at all">
+        <conclusion ref="breaking-change-classification-enumerated" verdict="classify before publishing: anything below MAJOR lands in every caret-ranged consumer's next install without a human reading the diff"/>
+      </branch>
+      <branch when="the change is classified against the enumerated list, no documented pairing regresses, and `consumer_teams` is known">
+        <conclusion ref="run-the-checklist" verdict="apply the full policy: classification, window sized on the slowest consumer, codemod, dev-only single warning, migration guide, and a usage-scan gate on removal"/>
+      </branch>
+    </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is ≥1 verbatim citation available per non-trivial field declared in the output contract?</question>
-
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
-        </branch>
-
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
-
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="human-checkpoint-before-binding-action" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
-        </branch>
+    <branch when="the deprecation is already announced and the open question is the timeline or the removal">
+      <question id="q-consumer-cadence">How do the slowest consumers actually pick up a new version?</question>
+      <branch when="at least one consumer ships a native binary whose adoption tail is measured in installed versions, not deploys">
+        <conclusion ref="window-sized-by-slowest-consumer" verdict="size `deprecation_window_days` at two release cycles of that consumer measured on forced-update or version-adoption data — not store submission dates — and name which consumer set the floor"/>
+      </branch>
+      <branch when="consumers redeploy continuously, but the deprecated path warns on every render or the warning is present in production bundles">
+        <conclusion ref="deprecated-path-works-and-warns-once" verdict="keep the deprecated API functional for the whole window and emit exactly one dev-only warning per symbol per session, naming the replacement, `removal_date` and `migration_guide_ref`"/>
+      </branch>
+      <branch when="the window has elapsed and consumer teams report they are migrated">
+        <conclusion ref="removal-gated-on-zero-usage-scan" verdict="do not remove on self-report: run a static scan across the consumer repository list and attach the command, the date and the repo list showing zero remaining imports or token references"/>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true → applies_if=true → evidence_available=true → named_owner=true → apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

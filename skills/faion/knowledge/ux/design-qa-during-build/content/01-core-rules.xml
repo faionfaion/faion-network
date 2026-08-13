@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Design QA During Build Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Design QA During Build methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+<text id="01-core-rules" title="Design QA During Build Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules for sprint-cadence design QA against a running build: hardcoded-value scan before manual review, a mandatory states matrix, deviations classified by cause, target and focus checks measured on device, and a sign-off gate at branch cut.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry ≥1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design file id). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Design QA During Build">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="audit-runs-on-the-built-artefact" testable="true" depth="essential">
+      <statement>QA MUST be performed against a running build identified by `build_ref` (commit SHA plus deploy URL for web, or build number for native), never against exported screenshots or a PR preview image. Every entry in `deviation_log` records the `build_ref` it was observed in.</statement>
+      <rationale source="WCAG 2.2 SC 1.4.12 Text Spacing / SC 1.4.4 Resize Text — both are user-agent-state dependent">Screenshots freeze one state at one viewport with one font successfully loaded, and drift lives in exactly the states a screenshot cannot contain: font fallback, dynamic type, reflow, focus. A deviation logged without a `build_ref` also cannot be verified as fixed, because the fixer has no reproduction target.</rationale>
     </rule>
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+
+    <rule id="hardcoded-value-scan-precedes-manual-review" testable="true" depth="essential">
+      <statement>Before any manual comparison, run a static scan over the diff for literal colours, spacing values, radii, font sizes, and z-index — stylelint `declaration-property-value-allowed-list`, an equivalent lint rule, or Figma variable-coverage reporting. Every literal that has a token equivalent becomes a `deviation_log` entry naming the token that should replace it.</statement>
+      <rationale source="stylelint declaration-property-value-allowed-list / design-token linting practice">A reviewer comparing build to mock accepts #3B82F6 where the token resolves to #3C82F7 — the difference is below the perceptual threshold. But the hardcoded copy will not move when the token moves, so the next theme or contrast update leaves that surface behind. Eyeballing cannot catch the class of drift that becomes permanent.</rationale>
     </rule>
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="states-matrix-audited-not-happy-path" testable="true" depth="essential">
+      <statement>Each entry in `screens_audited` MUST list which mandatory states were checked: empty, loading, error, maximum-length content, minimum supported viewport (320 CSS px width), 200% browser zoom or the largest dynamic-type step, and RTL where shipped. A screen checked only in its default state counts as zero screens audited.</statement>
+      <rationale source="WCAG 2.2 SC 1.4.4 (Resize text to 200%) and SC 1.4.10 (Reflow at 320 CSS px)">Handoff covers the happy path, so overflow behaviour is invented at implementation time — and invented differently on each screen by each implementer. Reflow and zoom failures are the most common late-discovered accessibility blockers precisely because a fixed-size mock cannot express them, so they are never spotted before a build exists.</rationale>
     </rule>
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, deprecate, sunset, ramp, escalation, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+
+    <rule id="deviation-classified-by-cause" testable="true" depth="essential">
+      <statement>Every `deviation_log` entry MUST carry a cause class: implementation-drift (build differs from an explicit spec), spec-gap (the spec is silent on this state), or system-gap (no token or component exists for the need). Every system-gap entry MUST be routed to the design-system impact queue with the queue item id recorded — it may not be closed by a local fix alone.</statement>
+      <rationale source="Orthogonal Defect Classification (IBM) — defect triggers classified to feed the process, not only the fix">Without a cause class all three get the same local patch. The spec stays silent and the system stays gap-free on paper, so the identical deviation reappears next sprint on a different screen with a different implementer. The class is what converts QA from a rework loop into a feedback loop into spec and system.</rationale>
     </rule>
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+
+    <rule id="targets-and-focus-measured-on-device" testable="true" depth="essential">
+      <statement>Interactive target sizes MUST be measured on the rendered build against the platform minimum — WCAG 2.2 SC 2.5.8 at 24x24 CSS px, Apple HIG at 44x44 pt, Material at 48x48 dp — and keyboard focus order plus visible focus indicator MUST be checked by tabbing the running build. Geometry read off the mock does not satisfy this rule.</statement>
+      <rationale source="WCAG 2.2 SC 2.5.8 Target Size (Minimum); Apple Human Interface Guidelines; Material Design accessibility guidance">Hit area is not the drawn area: padding, line-height, and transparent overlays inflate or shrink the real target, and a stacking-context change can move the tappable region off the icon entirely. A 24px glyph in a 24px box measures correct in the mock and fails on a phone, and only the build carries that geometry.</rationale>
     </rule>
+
+    <rule id="signoff-gates-the-branch-cut" testable="true" depth="essential">
+      <statement>Every deviation MUST resolve to either a fix ticket id in `fix_tickets` or an explicit accept-as-is decision recorded against `signed_off_by` (a named designer, never a team). Before the release branch is cut, `remaining_open` MUST contain no severity-1 entry — an accessibility failure or a brand/legal-visible error. `drift_count` MUST equal the length of `deviation_log`.</statement>
+      <rationale source="Internal — release-gate practice on sprint design QA">Deferred accessibility items do not get picked up next sprint; they become the permanent floor of the backlog, because after the branch cut nobody has the context that made the fix cheap. Branch cut is the last moment where the fix costs less than the coordination of scheduling it later.</rationale>
+    </rule>
+
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+      <statement>Do NOT apply when there is no design spec to compare against — a design-in-code surface with no separate source of truth has nothing to diff — or when no build is reachable before release. In the first case run token-usage lint in CI instead; in the second, fix the pipeline before adding a QA cadence that cannot execute.</statement>
+      <rationale source="Orthogonal Defect Classification (IBM) — a deviation requires a stated expected value">A deviation is defined as a difference from a stated expectation. With no spec every finding is an opinion, which makes the deviation log unarbitrable and turns the sign-off gate into a negotiation the designer loses under release pressure.</rationale>
     </rule>
 
   </section>

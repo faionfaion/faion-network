@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Design System Governance Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Design System Governance methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+<text id="01-core-rules" title="Design System Governance Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules for the umbrella operating model: who holds decision rights, what mechanically triggers an RFC, how long a proposal may sit before a default outcome fires, and how the artefact references the deprecation and breaking-change policies instead of duplicating their timelines.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry ≥1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design file id). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Design System Governance">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="decision-rights-per-pillar-not-per-component" testable="true" depth="essential">
+      <statement>`owners` MUST assign exactly one named individual per pillar — tokens/foundations, accessibility, core components, platform adapters, documentation — and every component and token in the system MUST resolve to exactly one pillar. Per-component owner tables and unassigned pillars block approval of the artefact.</statement>
+      <rationale source="Nathan Curtis, 'Team Models for Scaling a Design System' (centralised / federated / hybrid) + RACI">Per-component ownership tables go stale at the first refactor that splits or merges components, and a contributor whose component is not in the table gets bounced between reviewers until the PR dies. Pillars survive refactors because they are defined by concern, not by file layout.</rationale>
     </rule>
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+
+    <rule id="rfc-threshold-is-mechanical" testable="true" depth="essential">
+      <statement>`contribution_rules` MUST state a mechanical trigger for RFC vs plain PR. Required RFC: a new component, a new token tier or token key, any change classified MAJOR by the breaking-change policy, any change to accessible behaviour or semantics, any new prop on an existing component. Explicitly exempt: bug fixes that restore documented behaviour, documentation, and added visual-regression tests.</statement>
+      <rationale source="Rust RFC process (rust-lang/rfcs, 'substantial change' threshold) and the IETF RFC model">When the gate is "significant changes need an RFC", the reviewer's judgement decides case by case, so an identical two-line fix is waved through one week and routed to a month-long RFC the next. Contributors who get routed once stop contributing, and the system loses exactly the federated capacity governance exists to organise.</rationale>
     </rule>
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="rfc-stage-has-deadline-and-default-outcome" testable="true" depth="essential">
+      <statement>`rfc_pipeline` MUST name every stage with a maximum dwell time and the outcome that fires automatically on expiry — for example: no shepherd assigned within 5 working days → auto-closed with reason; no unresolved objection during a 10-working-day final comment period → accepted, shepherd named. A stage with no expiry default is not a pipeline stage.</statement>
+      <rationale source="Rust RFC 'final comment period' (10 days) and Python PEP 1 resolution states">Proposals without an expiry default accumulate rather than resolve, because leaving one open is free for everyone involved. A contributor who finds an eight-month-old open RFC for the thing they need builds a local override instead — and that local override is precisely the product-surface fork governance is meant to prevent.</rationale>
     </rule>
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, deprecate, sunset, ramp, escalation, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+
+    <rule id="review-sla-published-and-measured" testable="true" depth="essential">
+      <statement>`review_cadence` MUST state a numeric first-response SLA for inbound contribution PRs, and the artefact MUST carry the measured p50 and p90 first-response times for the previous review period. An SLA published without a measurement for the last period is recorded as unmet.</statement>
+      <rationale source="Nathan Curtis, 'Contribution Models for Design Systems'">An unmeasured SLA cannot fail, so it never triggers the staffing conversation it exists to trigger. Meanwhile the consuming teams do measure it, informally — and once the felt wait exceeds the cost of a local copy, they fork the component and the system's coverage number quietly stops meaning anything.</rationale>
     </rule>
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+
+    <rule id="policy-refs-not-copies" testable="true" depth="essential">
+      <statement>`deprecation_policy_ref` and `breaking_change_policy_ref` MUST be references to separately versioned documents (URL plus version or commit SHA). The governance artefact MUST NOT inline deprecation window lengths, removal timelines, or the breaking-change classification list — only the reference and the version it was last reconciled against.</statement>
+      <rationale source="Single-source-of-truth documentation practice">Duplicated timelines diverge along different update paths: the governance doc is edited at onboarding, the policy doc is edited after an incident. The stale copy is the one new teams read, so plans get built against a window that no longer exists, and the mismatch surfaces only when a removal lands earlier than a consumer scheduled for.</rationale>
     </rule>
+
+    <rule id="escalation-terminates-in-one-person" testable="true" depth="essential">
+      <statement>`escalation_path` MUST be an ordered chain ending in a single individual with authority to decide within a stated time bound, and MUST state the holding behaviour while escalation is open (default: proposal not merged, existing behaviour unchanged). "The design council decides" with no tie-break holder does not satisfy this rule.</statement>
+      <rationale source="Python PEP 13 steering-council model / consent-based decision rules (sociocracy)">Consensus-only bodies deadlock on exactly the contested changes that require governance — a token rename whose cost falls on one org unit and whose benefit falls on another. A deadlock has a default outcome whether or not you choose one: the team with the deadline ships a local override, and the decision is made by whoever moved first.</rationale>
+    </rule>
+
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+      <statement>Do NOT apply when the system has one contributor and no consuming team outside that contributor's own repository — the coordination cost exceeds the coordination removed. Also skip when nothing is published or versioned yet; establish a release and a version scheme first. For capture of system implications before a governance model exists, use design-system-impact-queue.</statement>
+      <rationale source="Nathan Curtis, 'Team Models for Scaling a Design System'">Governance is a mechanism for resolving contention between independent parties. With a single contributor there is no contention to resolve, so the RFC pipeline and escalation chain become paperwork the same person files against themselves and then stops filing.</rationale>
     </rule>
 
   </section>

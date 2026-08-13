@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Design System Impact Queue Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Design System Impact Queue methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+<text id="01-core-rules" title="Design System Impact Queue Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules for the standing capture-and-triage queue: items recorded as call-sites rather than requests, promotion gated on three independent sightings, a WIP-capped fixed triage cadence, closure from a fixed reason enum, pillar-owner assignment, and separation from the component bug tracker.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry ≥1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design file id). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Design System Impact Queue">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="item-records-a-callsite-not-a-request" testable="true" depth="essential">
+      <statement>Every item MUST record the concrete instance that triggered it: screen or file path plus Figma node id, the hardcoded value or one-off pattern actually observed, and the token or component that should have been used — or the explicit note that none exists. Items phrased as requests ("we need a better card") are rejected at intake.</statement>
+      <rationale source="Mozilla bug writing guidelines (steps to reproduce as an intake precondition)">A request cannot be deduplicated, counted, or verified as closed, because there is no artefact to re-inspect. A call-site can be grepped, so duplicates collapse automatically and closure is checked by looking at the same file again — the queue's whole throughput depends on that being cheap.</rationale>
     </rule>
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+
+    <rule id="rule-of-three-before-promotion" testable="true" depth="essential">
+      <statement>A proposed new token or component is promoted from queue to roadmap only when the item carries at least three independent call-sites from at least two different surfaces. Below that threshold the triage decision is `local-override`, with the call-site recorded on the item so the count can accumulate.</statement>
+      <rationale source="Rule of three in software reuse (Roberts &amp; Johnson, 'Evolving Frameworks'; Biggerstaff)">An abstraction derived from one call-site has its API shaped entirely by that call-site's incidental needs. The second consumer then requires a signature change — which is a MAJOR change under the breaking-change policy, so the system pays a full deprecation window as the price of having abstracted early.</rationale>
     </rule>
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="fixed-cadence-with-wip-cap" testable="true" depth="essential">
+      <statement>`review_window` MUST be a fixed recurring slot with a named attendee who can assign owners, and the number of items in accepted/in-progress MUST be capped at a stated WIP limit. Items untriaged across two consecutive windows auto-escalate or auto-close with a recorded reason.</statement>
+      <rationale source="Kanban WIP limits / Little's Law (L = λW)">When the accepted list has no cap and arrival rate exceeds triage throughput, queue length grows without bound and cycle time grows with it. Past a few months an item accepted long ago is behaviourally identical to a rejected one, so the accept decision stops carrying information for anyone reading the queue.</rationale>
     </rule>
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, deprecate, sunset, ramp, escalation, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+
+    <rule id="closure-from-a-fixed-reason-enum" testable="true" depth="essential">
+      <statement>Every item terminates either with `shipped_in_release` set to a real release id that appears in the changelog, or with `rejected_reason` drawn from a closed enum: duplicate, below-rule-of-three, product-specific, conflicts-with-foundation, deferred-to-&lt;date&gt;. Free-text "won't do" and silent closure are forbidden.</statement>
+      <rationale source="Internal — design-ops queue audits">Silent closure is the strongest predictor of a reporter never filing again, and the queue's value is proportional to intake volume from people who are not on the system team. A rejection with a stated class still teaches the reporter what the queue accepts; a disappearance teaches them to stop.</rationale>
     </rule>
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+
+    <rule id="owner-assigned-is-the-pillar-owner" testable="true" depth="essential">
+      <statement>`owner_assigned` MUST resolve through the governance ownership map to the owner of the affected pillar (tokens, foundations, core components, platform adapters). The reporter is recorded in a separate field. An item whose assigned owner equals its reporter and has no pillar mapping counts as untriaged.</statement>
+      <rationale source="design-system-governance ownership map + Nathan Curtis, 'Team Models for Scaling a Design System'">An item left with the reporter sits in the reporter's own backlog, competing with their product commitments — and a systemic improvement never wins that comparison, because its benefit lands on other teams. Assignment to the pillar owner moves the item to the only backlog where its benefit and its cost sit together.</rationale>
     </rule>
+
+    <rule id="queue-excludes-component-defects" testable="true" depth="essential">
+      <statement>Items whose fix is a defect in an existing component — the component does not match its own published spec — MUST be routed to that component's issue tracker at intake with the issue id recorded on the queue item. The queue holds only system-evolution items: new token, new component, foundation change, deprecation candidate.</statement>
+      <rationale source="Kanban classes of service (distinct arrival rates and service-level expectations per class)">Defects arrive at a different rate and carry a different SLA than evolution proposals, so mixing them makes a single WIP cap meaningless — one defect spike consumes the evolution capacity. It also makes the periodic digest unreadable for the audience that reads it for direction rather than for status.</rationale>
+    </rule>
+
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+      <statement>Do NOT apply when there is no recurring slot with an attendee empowered to assign pillar owners — the queue then only accumulates — or when the system has a single consuming surface, where drift is caught in ordinary review. For per-sprint drift capture against a spec, use design-qa-during-build instead.</statement>
+      <rationale source="Kanban WIP limits / Little's Law">A queue with intake and no bounded service rate is a backlog with extra ceremony. Without an empowered triager the arrival rate is the only live variable, and cycle time diverges — the queue then actively misleads, because items sit in accepted states that imply work is scheduled.</rationale>
     </rule>
 
   </section>

@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Content Audit Basics Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Content Audit Basics methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+<text id="01-core-rules" title="Content Audit Basics Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules binding the inventory and the decision column: crawl-derived rows with orphan detection, traffic and conversion columns as a precondition for deletion, a 12-month window, a keep/update/consolidate/delete enum with a redirect target, R/O/T classification with its proof field, and a rubric fixed before scoring.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &gt;=1 verbatim citation from an auditable source (URL, transcript_id, ticket id, dashboard snapshot). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Content Audit Basics">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="inventory-generated-from-crawl-not-navigation" testable="true" depth="essential">
+      <statement>The inventory MUST be produced by joining a crawler export (Screaming Frog, Sitebulb, or equivalent) with the XML sitemap and server-log or analytics hit data, not by walking the site navigation by hand. The artefact reports the orphan set explicitly: URLs present in the sitemap or logs but unreachable from any internal link.</statement>
+      <rationale source="Paula Ladenburg Land, &quot;Content Audits and Inventories: A Handbook&quot;">Hand-listing can only find pages the navigation links to, and orphans — retired landing pages, campaign URLs, superseded doc versions — are unlinked precisely because someone already stopped maintaining them. They are the densest source of the redundant and outdated content the audit exists to find, and a nav-walk is structurally blind to all of them.</rationale>
     </rule>
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+
+    <rule id="row-carries-traffic-and-conversion-columns" testable="true" depth="essential">
+      <statement>Every inventory row MUST carry url, title, template/type, current owner, last_updated, entrances and conversions (or assisted conversions) over one declared window, and organic impressions plus clicks from Search Console. A row missing the metric columns MAY be quality-scored but MUST NOT receive a delete or consolidate decision.</statement>
+      <rationale source="Content-strategy audit practice; Google Search Console data model">The quality rubric scores the prose; deletion destroys traffic. These are independent axes — a thin, badly written page can hold the majority of a category's organic entrances because it happens to match the query, and a beautifully edited page can have had zero visitors in a year. Deciding deletion off the rubric alone reliably removes the wrong pages.</rationale>
     </rule>
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="measurement-window-at-least-twelve-months" testable="true" depth="essential">
+      <statement>The metrics window MUST be at least 12 months and MUST be stated on the artefact. Pages first published inside the two most recent quarters are excluded from delete eligibility and flagged "too new to judge".</statement>
+      <rationale source="Seasonality control in web analytics; Google Search Central guidance on indexing and ranking maturation">A 90-day window scores a seasonal page at the bottom of its own off-season and scores a newly published page as a failure before it has ever held a stable ranking position. Both mistakes look identical in the data — low entrances — and both delete pages that would have performed, so the window has to span at least one full cycle.</rationale>
     </rule>
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (commit, send, ramp, freeze, escalation, ledger write, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+
+    <rule id="delete-requires-redirect-target-or-explicit-accept-404" testable="true" depth="essential">
+      <statement>decision is one of keep | update | consolidate | delete. Every consolidate and delete row MUST carry a redirect_target URL, or an explicit accept_404 flag with a written reason. A row with referring domains &gt; 0 or non-zero external referral entrances MUST NOT take accept_404 without a named sign-off recorded on the row.</statement>
+      <rationale source="Google Search Central — site moves and removing pages; HTTP semantics for 301/410">An unredirected removal converts every external inbound link, bookmark and old email into a 404, discarding the link equity that page accumulated and the referral traffic that still flows through it. A 301 to the nearest surviving page keeps both; a deliberate 410 tells crawlers the removal is permanent so the URL drops out of the index instead of being re-requested indefinitely.</rationale>
     </rule>
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+
+    <rule id="rot-label-with-its-proof-field" testable="true" depth="essential">
+      <statement>Every non-keep row MUST carry a ROT label — Redundant, Outdated or Trivial — together with the field that proves it: a duplicate-cluster id or the competing URL for Redundant, last_updated plus at least one named stale fact (price, version number, deprecated API, dead link) for Outdated, and the metric below the declared threshold for Trivial.</statement>
+      <rationale source="ROT analysis — standard content-strategy and government content-governance practice">"Update" with no named defect gives the writer no brief, so the ticket sits until someone re-derives the problem from scratch. The three labels also map to three different jobs with three different owners — merge and redirect, re-verify facts, remove — and lumping them under one decision guarantees the queue is worked in the wrong order.</rationale>
     </rule>
+
+    <rule id="rubric-weights-fixed-before-scoring" testable="true" depth="essential">
+      <statement>The rubric object MUST declare its criteria, their weights, and the numeric threshold separating keep from update, and MUST be recorded before the first URL is scored. Any post-hoc change to weights or thresholds requires a new artefact_id and re-scoring of every row.</statement>
+      <rationale source="Pre-registration principle applied to internal audits">Weights adjusted after the scores are visible let the audit ratify the outcome the team already wanted — the pages someone is attached to get the criteria that favour them. Fixing the rubric first makes the audit falsifiable: a surprising result stays in the artefact instead of being tuned away, and that surprise is the only new information the audit produces.</rationale>
+    </rule>
+
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+      <statement>Do NOT run this methodology when (a) the site is under roughly 50 URLs — a one-sitting read-through beats building a rubric, (b) analytics has no conversion or goal events configured, so half the decision evidence does not exist and every delete would rest on pageviews alone, (c) a URL-changing migration or replatform is already scheduled — audit against the destination information architecture instead, or the decisions are invalidated before they ship.</statement>
+      <rationale source="Methodology preconditions — audit cost versus corpus size">Audit effort scales with the inventory while its value scales with the number of pages nobody is currently tracking; below a small corpus every page is already in someone's head. Auditing pre-migration produces a keep/delete list keyed to URLs that will not exist, so the work is redone and the first list gets applied anyway by mistake.</rationale>
     </rule>
 
   </section>

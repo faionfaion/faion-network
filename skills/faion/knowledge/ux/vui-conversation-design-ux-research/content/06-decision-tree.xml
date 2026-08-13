@@ -1,44 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="VUI Conversation Design Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`.</summary>
+<text id="06-decision-tree" title="VUI Conversation Design Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether the channel is actually speech, whether the flow fills slots or only speaks, and whether any slot feeds an irreversible action — separating a chat flow and an announcement script from a full slot-filling dialog spec.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-speech-channel">Does the interface receive speech and speak its replies, or is it typed input with rendered text replies?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="typed input, rendered text output, no speech recognition and no text-to-speech">
+      <conclusion ref="skip-this-methodology" verdict="skip; there is no recognition confidence, no endpoint timeout and nothing that must survive being heard rather than seen — design it as chat"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="speech in and audio out — IVR, voice assistant, in-car, or a multimodal surface with a voice path">
+      <question id="q-slot-filling">Does the flow collect values from the user, or only speak back to them?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+      <branch when="output only — announcements, status readouts, no value the user has to supply">
+        <conclusion ref="spoken-strings-pinned-with-ssml" verdict="apply the prompt-copy subset only; spoken text with its class labelled, no URLs or sight-dependent punctuation, and an SSML say-as on every identifier, code, date, ordinal, phone number or currency amount"/>
       </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is &gt;=1 verbatim citation available per non-trivial field declared in the output contract?</question>
+      <branch when="the flow fills slots from what the user says">
+        <question id="q-action-cost-and-utterance-source">Does any slot feed an irreversible or costly action, and where do the sample utterances come from?</question>
 
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
+        <branch when="at least one slot feeds payment, transfer, cancellation, deletion or dispatch">
+          <conclusion ref="confidence-bands-drive-confirmation-strategy" verdict="apply the full methodology, and make explicit confirmation mandatory on those slots regardless of recognition confidence; implicit confirmation is only for low-cost, reversible values"/>
         </branch>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
+        <branch when="all slots are low-cost and reversible, but every sample utterance was written by the designer with no transcribed speech behind it">
+          <conclusion ref="sample-utterances-from-transcribed-speech" verdict="apply, but block the grammar sign-off; collect call recordings, Wizard-of-Oz sessions or chat logs until real speech is represented in every intent's ten-plus utterances"/>
+        </branch>
 
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="human-checkpoint-before-binding-action" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
+        <branch when="all slots are low-cost and reversible, and transcribed speech is represented in each intent">
+          <conclusion ref="run-the-checklist" verdict="apply the full methodology; NM1-NM3 and NI1-NI3 as separate escalating branches with separate counters and a max-retry escape, option menus capped at three to four with the hook last, universals recognised in every state"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true → applies_if=true → evidence_available=true → named_owner=true → apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

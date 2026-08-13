@@ -1,44 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Design QA During Build Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`.</summary>
+<text id="06-decision-tree" title="Design QA During Build Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether a stated spec and a reachable running build both exist, how the pass is being run, and what happens to logged deviations at branch cut — to a full QA cycle, a scan-first or states-matrix correction, a sign-off gate, or a skip to CI lint.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-spec-and-build">Is there a separate design spec to diff against, and can a running build be reached before release?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="the surface is designed in code with no separate source of truth — no stated expected value exists to diff against">
+      <conclusion ref="skip-this-methodology" verdict="skip: with no spec every finding is an opinion and the sign-off gate becomes a negotiation the designer loses under release pressure — run token-usage lint in CI instead"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="no build is reachable before release; only exported screenshots or a PR preview image exist">
+      <conclusion ref="skip-this-methodology" verdict="skip and fix the pipeline first: without a reachable `build_ref` no deviation can be reproduced or verified as fixed, so the cadence cannot execute"/>
+    </branch>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+    <branch when="a spec exists and a running build is reachable by commit SHA plus deploy URL, or by build number">
+      <question id="q-how-the-pass-runs">How is the pass about to be run over that build?</question>
+      <branch when="the plan is to open mock and build side by side and compare by eye">
+        <conclusion ref="hardcoded-value-scan-precedes-manual-review" verdict="run the static scan over the diff first — literal colours, spacing, radii, font sizes, z-index — and log every literal with a token equivalent; eyeballing cannot catch a one-digit hex difference that will not move when the token moves"/>
       </branch>
+      <branch when="a build exists but the review is being done against exported screenshots or a preview image out of habit">
+        <conclusion ref="audit-runs-on-the-built-artefact" verdict="run against the running build and record `build_ref` on every deviation; screenshots freeze one viewport with one state and one successfully loaded font, and drift lives in the states they cannot contain"/>
+      </branch>
+      <branch when="only the default state of each screen is on the audit list">
+        <conclusion ref="states-matrix-audited-not-happy-path" verdict="declare the states matrix per screen — empty, loading, error, maximum-length content, 320 CSS px width, 200% zoom or the largest dynamic-type step, RTL where shipped; a screen checked only in its default state counts as zero screens audited"/>
+      </branch>
+      <branch when="static scan first, states matrix declared per screen, and `build_ref` recorded on every entry">
+        <conclusion ref="run-the-checklist" verdict="apply the full methodology: scan, states matrix, on-device target and focus checks, cause-classified deviations, and a sign-off gate before branch cut"/>
+      </branch>
+    </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is ≥1 verbatim citation available per non-trivial field declared in the output contract?</question>
-
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
-        </branch>
-
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
-
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="human-checkpoint-before-binding-action" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
-        </branch>
+    <branch when="deviations are already logged and the release branch is about to be cut">
+      <question id="q-close-out">What state is the deviation log in as the branch cut approaches?</question>
+      <branch when="target geometry and focus order were read off the mock rather than measured on the rendered build">
+        <conclusion ref="targets-and-focus-measured-on-device" verdict="measure on the build against the platform minimum — 24x24 CSS px for WCAG 2.2 SC 2.5.8, 44x44 pt Apple HIG, 48x48 dp Material — and tab the running build for focus order and a visible indicator; hit area is not the drawn area"/>
+      </branch>
+      <branch when="entries carry no cause class, so a missing token, a silent spec and a local bug all get the same patch">
+        <conclusion ref="deviation-classified-by-cause" verdict="classify each entry implementation-drift, spec-gap or system-gap, and route every system-gap to the design-system impact queue with its item id — otherwise the identical deviation reappears next sprint on another screen"/>
+      </branch>
+      <branch when="severity-1 entries — accessibility failures or brand and legal-visible errors — are open and the plan is to carry them into next sprint">
+        <conclusion ref="signoff-gates-the-branch-cut" verdict="hold the branch cut: every deviation resolves to a fix ticket id or a named designer's accept-as-is, `remaining_open` carries no severity-1 entry, and `drift_count` equals the length of `deviation_log`"/>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true → applies_if=true → evidence_available=true → named_owner=true → apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

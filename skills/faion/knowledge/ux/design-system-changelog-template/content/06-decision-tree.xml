@@ -1,44 +1,60 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Design System Changelog Template Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`.</summary>
+<text id="06-decision-tree" title="Design System Changelog Template Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether the release is a versioned package with external consumers, then on the highest change class in it, to decide between skipping, halting for migration anchors or visual evidence, and writing the full changelog entry set.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-versioned-external-release">Is this release published as a versioned package that at least one team outside the system's own repository installs?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="the system is consumed from source inside the same repository by a single surface">
+      <conclusion ref="skip-this-methodology" verdict="skip; the git log already is the changelog for a single in-repo consumer"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="no versioned release scheme exists yet — nothing is published with a version number">
+      <conclusion ref="skip-this-methodology" verdict="skip; route to design-system-governance to establish a release and version scheme, then return"/>
+    </branch>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+    <branch when="the release is documentation-only with no package version change">
+      <conclusion ref="skip-this-methodology" verdict="skip; no consumer-observable impact to publish"/>
+    </branch>
+
+    <branch when="a versioned package with external consumers is being cut">
+      <question id="q-highest-change-class">What is the highest change class in the release, as assigned by the breaking-change classification?</question>
+
+      <branch when="at least one entry is classified MAJOR">
+        <question id="q-migration-anchor-per-entry">Does every breaking entry resolve to its own guide anchor (URL plus fragment) carrying a before/after snippet and the codemod invocation where one exists?</question>
+
+        <branch when="one guide URL covers several breaking changes, or an anchor has no before/after snippet">
+          <conclusion ref="migration-guide-anchors-per-breaking-entry" verdict="halt the release note; write a per-entry anchor for each item in breaking_changes before publishing"/>
+        </branch>
+
+        <branch when="anchors resolve per entry, but the release contains a non-revertible step — a token store migration, a persisted user preference, a published Figma library update">
+          <conclusion ref="rollback-plan-is-a-version-pin" verdict="apply, but replace the version pin with a named forward-fix path and state the non-revertible step explicitly"/>
+        </branch>
+
+        <branch when="anchors resolve per entry and every step is revertible">
+          <conclusion ref="run-the-checklist" verdict="apply the full methodology; the published package version bumps MAJOR even where every other entry is a patch, and rollback_plan names the exact prior version to pin"/>
+        </branch>
       </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is ≥1 verbatim citation available per non-trivial field declared in the output contract?</question>
+      <branch when="no MAJOR entry, but at least one entry changes rendered output without changing the API">
+        <question id="q-visual-diff-evidence">Is a visual-diff build referenced (Chromatic or Percy build id, or a Playwright screenshot run id) naming the affected component and token pairs?</question>
 
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
+        <branch when="no visual-diff build exists for the changed components">
+          <conclusion ref="visual-change-carries-diff-evidence" verdict="halt; run visual regression and attach the build id — risk_level for such entries must not be LOW"/>
         </branch>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
-
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="human-checkpoint-before-binding-action" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
+        <branch when="a visual-diff build id and the affected component/token pairs are available">
+          <conclusion ref="run-the-checklist" verdict="apply the full methodology; MEDIUM risk by the published rule, impact field states the rendered delta a consumer sees"/>
         </branch>
+      </branch>
+
+      <branch when="the release is additive or fix-only — no MAJOR entry and no change to rendered output">
+        <conclusion ref="entry-states-consumer-observable-impact" verdict="apply the reduced set; each entry still carries what/why/impact/migration/risk, with impact written as what the consumer sees rather than what was refactored"/>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true → applies_if=true → evidence_available=true → named_owner=true → apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

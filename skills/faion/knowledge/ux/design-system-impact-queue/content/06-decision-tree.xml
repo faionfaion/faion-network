@@ -1,44 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Design System Impact Queue Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`.</summary>
+<text id="06-decision-tree" title="Design System Impact Queue Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether an empowered triage slot exists, then on what an incoming item actually describes and how many independent call-sites it carries, to decide between skipping, routing out to a bug tracker, holding at local-override, and promoting to roadmap.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-empowered-triage-slot">Is there a fixed recurring review slot with a named attendee who can assign pillar owners on the spot?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="no recurring slot, or the attendee present cannot assign owners">
+      <conclusion ref="skip-this-methodology" verdict="skip; a queue nobody can triage only accumulates — secure the slot via design-system-governance first"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="the system has a single consuming surface, where drift surfaces in ordinary code review">
+      <conclusion ref="skip-this-methodology" verdict="skip; for per-sprint drift capture against a spec use design-qa-during-build instead"/>
+    </branch>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+    <branch when="a recurring empowered slot exists and two or more surfaces consume the system">
+      <question id="q-item-kind">What does the incoming item actually describe?</question>
+
+      <branch when="an existing component failing its own published spec — a defect, not an evolution">
+        <conclusion ref="queue-excludes-component-defects" verdict="route out at intake; file it in that component's issue tracker and record the issue id on the queue item"/>
       </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is ≥1 verbatim citation available per non-trivial field declared in the output contract?</question>
+      <branch when="a wish phrased as a request — 'we need a better card' — with no observed instance behind it">
+        <conclusion ref="item-records-a-callsite-not-a-request" verdict="reject at intake; return it for the screen or file path, Figma node id, the hardcoded value actually observed, and the token that should have existed"/>
+      </branch>
 
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
+      <branch when="a concrete call-site: an observed hardcoded value or one-off pattern with its location recorded">
+        <question id="q-callsite-accumulation">How many independent call-sites does the item now carry, and across how many distinct surfaces?</question>
+
+        <branch when="fewer than three call-sites, or all three from a single surface">
+          <conclusion ref="rule-of-three-before-promotion" verdict="triage as local-override; append the call-site to the item so the count can accumulate, and do not promote to roadmap yet"/>
         </branch>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
+        <branch when="three or more independent call-sites from at least two different surfaces, but accepted/in-progress is already at the WIP cap">
+          <conclusion ref="fixed-cadence-with-wip-cap" verdict="hold in accepted-pending; promote at the next window once WIP frees, and auto-escalate or close with a recorded reason if it misses two consecutive windows"/>
+        </branch>
 
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="human-checkpoint-before-binding-action" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
+        <branch when="three or more independent call-sites from at least two surfaces, and WIP headroom exists">
+          <conclusion ref="run-the-checklist" verdict="apply the full methodology; promote to roadmap, assign the pillar owner through the governance ownership map with the reporter recorded separately, and close from the fixed reason enum"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true → applies_if=true → evidence_available=true → named_owner=true → apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

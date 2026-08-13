@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Design System Changelog Template Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Design System Changelog Template methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+<text id="01-core-rules" title="Design System Changelog Template Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules for a design-system release changelog a consumer can act on without opening the diff: per-entry what/why/impact/migration/risk, change class tied to the version bump, visual evidence for API-compatible changes, per-entry migration anchors, and a rollback plan that is a version pin.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry ≥1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design file id). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Design System Changelog Template">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="entry-states-consumer-observable-impact" testable="true" depth="essential">
+      <statement>Every entry MUST carry five fields: what changed, why, consumer-observable impact, migration action, risk. The impact field states what the consumer sees or what fails — "type error on the removed `variant=ghost` value", "button height 40px → 44px on all touch surfaces" — not the internal change ("refactored Button internals"). An entry that can only be evaluated by reading the diff is rejected.</statement>
+      <rationale source="Keep a Changelog 1.1.0 (changelogs are for humans, grouped by consumer effect)">"Updated Button internals" forces each consuming team to open the diff and reason about their own usage. At ten consumers that is ten diff reviews per release, so most skip it — and the consequence is found in production by the team that skipped, not by the maintainer who wrote the entry.</rationale>
     </rule>
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+
+    <rule id="change-class-drives-the-package-bump" testable="true" depth="essential">
+      <statement>Each entry in `components_changed` records component name, old → new version, and a change class (MAJOR / MINOR / PATCH) assigned by the breaking-change classification. If any entry in the release is MAJOR, the published package version MUST bump MAJOR, even when every other entry is a patch.</statement>
+      <rationale source="Semantic Versioning 2.0.0 §8">A design system usually ships as one package, so the package version is the only signal consumers' dependency ranges can read. Publishing a release containing one breaking component as MINOR means every caret-ranged consumer installs the break on their next lockfile refresh, with no review step anywhere in the path.</rationale>
     </rule>
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="visual-change-carries-diff-evidence" testable="true" depth="essential">
+      <statement>Any entry that changes rendered output without changing the API MUST reference a visual-diff build (Chromatic or Percy build id, or a Playwright `toHaveScreenshot` run id) and name the affected component and token pairs. `risk_level` for such entries MUST NOT be LOW.</statement>
+      <rationale source="Visual regression testing practice (Chromatic, Percy, Playwright toHaveScreenshot)">API-compatible visual changes pass type checks, unit tests, and code review, so nothing in the consumer's pipeline fires. Without a snapshot reference in the changelog the consumer has no artefact telling them their landing page shifted or their dense table lost a row per viewport — they learn it from a support ticket.</rationale>
     </rule>
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, deprecate, sunset, ramp, escalation, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+
+    <rule id="migration-guide-anchors-per-breaking-entry" testable="true" depth="essential">
+      <statement>`migration_guide_ref` MUST resolve to a per-entry anchor (URL plus fragment) for each item in `breaking_changes`, and each anchor MUST contain a before/after code snippet and the codemod invocation if one exists. A single guide URL for a release containing more than one breaking change fails this rule.</statement>
+      <rationale source="Angular Update Guide and MUI migration docs (per-change anchors + codemod commands)">A consumer landing on one long migration page must first determine which sections apply to them, and that determination is the part that cannot be delegated or estimated. Estimation stalls, the upgrade gets deferred past the deprecation window, and the removal then breaks a consumer who intended to migrate.</rationale>
     </rule>
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+
+    <rule id="risk-level-derived-from-a-published-rule" testable="true" depth="essential">
+      <statement>`risk_level` MUST be assigned by a rule published alongside the template and cited in the entry — for example HIGH for any breaking change to a component used on an authentication, checkout, or payment path or present on more than a stated number of consumer surfaces; MEDIUM for visual change without API change; LOW for additive or docs-only. Free-hand labels are rejected.</statement>
+      <rationale source="Internal — release-risk triage on design-system releases">Hand-assigned risk tracks the author's confidence in their own change, not its blast radius, so the label is systematically lowest exactly where the author is most familiar and least cautious. Consumers calibrate on the label; once MEDIUM has meant everything from a padding tweak to a prop removal, the field stops being read.</rationale>
     </rule>
+
+    <rule id="rollback-plan-is-a-version-pin" testable="true" depth="essential">
+      <statement>`rollback_plan` MUST name the exact previously published version consumers pin to, and MUST state whether the release contained a non-revertible step (a token store migration, a persisted user preference, a published Figma library update). Where a non-revertible step exists, the plan names a forward-fix path instead of a pin. "Revert the PR" alone fails.</statement>
+      <rationale source="npm registry immutability (unpublish restricted after 72 hours)">Reverting the maintainer's PR does nothing for a consumer: the bad version stays in the registry and in every lockfile that already resolved it. The only consumer-side action is pinning the previous version, and that is only actionable if the changelog names which version was last known good for their surface.</rationale>
+    </rule>
+
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+      <statement>Do NOT apply when the system is consumed from source inside the same repository by a single surface — the git log already is the changelog — or when the release is documentation-only with no published package version change. When there is no versioned release at all, route to design-system-governance to establish a release scheme first.</statement>
+      <rationale source="Keep a Changelog 1.1.0 (a changelog documents notable changes between released versions)">A changelog entry is addressed to someone who upgrades on their own schedule. With one in-repo consumer, upgrade and change are the same commit, so the entry adds a write step with no reader on the other end.</rationale>
     </rule>
 
   </section>

@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Motion and Micro-Interaction System Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Motion and Micro-Interaction System methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+<text id="01-core-rules" title="Motion and Micro-Interaction System Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules for the token set and its runtime behaviour: a closed duration scale referenced by name, directional easing tokens, a reduced-motion policy that replaces rather than shortens motion while keeping completion events alive, compositor-only animated properties, and a perceived-performance budget bound to the 100 ms / 1 s / 10 s response limits.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry ≥1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design file id). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Motion and Micro-Interaction System">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="duration-scale-is-a-closed-token-set" testable="true" depth="essential">
+      <statement>Durations MUST come from a closed, named scale (for example instant 0 ms, short 100 ms, medium 200-300 ms, long 400-500 ms) and be referenced by token name in component code — a literal millisecond value in a component stylesheet is a lint failure. The scale is mapped to interaction class: in-place state changes and small elements at the short end, full-screen or large-surface transitions at the long end. No routine UI transition exceeds roughly 500 ms.</statement>
+      <rationale source="Material Design motion duration tokens; IBM Carbon motion guidance">A duration that reads as elegant on first view becomes a tax paid on every repetition, and past roughly 400-500 ms the user is waiting on the animation instead of reading the result — the interface measurably feels slower while the code got no slower. Literal values in components are how one screen ends up animating at three hand-picked speeds, which reads as three different products stitched together.</rationale>
     </rule>
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+
+    <rule id="easing-tokens-are-directional" testable="true" depth="essential">
+      <statement>The easing set MUST declare at minimum three directional tokens: standard/both-ends (Material's cubic-bezier(0.4, 0, 0.2, 1)), decelerate for entering elements (cubic-bezier(0, 0, 0.2, 1)), and accelerate for exiting elements (cubic-bezier(0.4, 0, 1, 1)). linear is reserved for looping indeterminate indicators — spinners, progress bars — and forbidden elsewhere.</statement>
+      <rationale source="Material Design — motion, easing and speed">Entering elements decelerate because they are arriving at a position the eye must lock onto, so ending slowly puts the settle where attention lands; exiting elements accelerate because their destination is irrelevant and lingering on the way out delays the next screen. linear motion has no acceleration phase, which nothing physical does, so it reads as mechanical and draws attention to the animation rather than the change it represents.</rationale>
     </rule>
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="reduced-motion-replaces-not-shortens" testable="true" depth="essential">
+      <statement>Under @media (prefers-reduced-motion: reduce) the policy MUST replace displacement, scale, parallax, rotation and zoom with an opacity cross-fade or an instant state change. Shortening the duration while keeping the same movement is non-conforming. Motion that is essential and cannot be removed is retained, but any auto-playing motion running longer than 5 seconds MUST carry a pause, stop or hide control.</statement>
+      <rationale source="CSS Media Queries Level 5 — prefers-reduced-motion; WCAG 2.1 SC 2.3.3 Animation from Interactions (AAA); SC 2.2.2 Pause, Stop, Hide (A)">The vestibular trigger is apparent self-motion produced by large-field displacement and scale change, not the length of the animation. Compressing a full-screen slide into 80 ms raises the angular velocity, so the "reduced" version is a stronger stimulus than the original — users who set the preference to stop feeling nauseous get a worse experience, which is the exact inversion of the setting's purpose.</rationale>
     </rule>
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, deprecate, sunset, ramp, escalation, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+
+    <rule id="reduced-motion-preserves-completion-events" testable="true" depth="essential">
+      <statement>The reduced-motion override MUST NOT set animation: none or transition: none on any element whose JavaScript depends on animationend, animationiteration or transitionend. Use a near-zero duration (0.01 ms) with animation-iteration-count: 1 and scroll-behavior: auto, or provide an explicit non-animated code path that fires the same state change.</statement>
+      <rationale source="Andy Bell — reduced-motion CSS reset pattern (0.01 ms rather than none)">A cancelled animation never fires its completion event, so any element torn down or advanced inside a transitionend handler — modal dismissals, carousel steps, toast removal, multi-step forms — silently stops progressing. The accessibility preference then converts into a functional dead end for precisely the users who set it, and it never reproduces for a developer who has not enabled the OS setting.</rationale>
     </rule>
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+
+    <rule id="animate-compositor-only-properties" testable="true" depth="essential">
+      <statement>Animated properties are restricted to transform and opacity (and GPU-composited filter where measured). Animating width, height, top, left, margin, padding or box-shadow is rejected for any looping, scroll-linked or list-wide animation. The frame budget is stated: 16 ms per frame at 60 Hz with application work held to roughly 10 ms.</statement>
+      <rationale source="Chrome RAIL performance model; CSS rendering-pipeline documentation">transform and opacity are applied at the composite stage, so the animation runs without re-running layout or paint. Layout-affecting properties re-run layout and paint for the whole affected subtree on every single frame, and the cost scales with subtree size — which is why the animation is smooth on the developer's machine with three list rows and drops frames on a mid-tier phone with sixty.</rationale>
     </rule>
+
+    <rule id="perceived-perf-budget-bound-to-response-limits" testable="true" depth="essential">
+      <statement>perceived_perf_budget_ms MUST bind feedback to the canonical response limits: acknowledge any input within 100 ms, complete the operation within 1 s or show a determinate progress indicator, and for anything beyond roughly 10 s show progress plus an exit or cancel. Skeleton screens and optimistic UI are declared per surface together with the rollback behaviour when the request fails.</statement>
+      <rationale source="Nielsen, &quot;Response Times: The 3 Important Limits&quot; (from Miller 1968 and Card, Robertson &amp; Mackinlay 1991); Chrome RAIL">Below about 100 ms the result is perceived as caused by the tap, so no indicator is needed and adding a spinner actively makes it feel slower by announcing a wait that was not there. Past roughly 1 s attention detaches from the action, and the first thing a detached user does is tap again — which is how a missing progress indicator turns into duplicate submissions and double charges.</rationale>
+    </rule>
+
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+      <statement>Do NOT run this methodology when (a) there is no token consumption path — no CSS custom properties, Style Dictionary build, Figma variables or platform theme file into which duration and easing tokens can be published, so the spec has no way to reach code, (b) the surface is a single page or a single animated component — route to motion-and-microinteraction-spec for one-off choreography, (c) the design system has no governance owner able to reject a component that hard-codes its own timings.</statement>
+      <rationale source="Design-system governance preconditions">A motion system's value comes entirely from being the only place the numbers live; published as a document rather than as tokens, it is copied once per component and diverges from the first sprint onward. Without an owner who can reject a non-conforming component, the token set becomes a fourth style in circulation instead of a replacement for the other three.</rationale>
     </rule>
 
   </section>
