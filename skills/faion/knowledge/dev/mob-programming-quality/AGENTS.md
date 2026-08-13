@@ -66,12 +66,6 @@
 | `templates/agent-navigator-prompt.txt` | Prompt scoping the agent to navigator-suggestion role |
 | `templates/rotation-log.sh` | Shell that logs rotation timestamps |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-mob-programming.py` | Validate session plan + report against schema | Before session start; after session end |
-
 ## Related
 
 - - [[pair-programming]] — same family; 2-person variant.

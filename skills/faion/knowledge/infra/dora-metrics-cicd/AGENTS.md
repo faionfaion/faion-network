@@ -65,12 +65,6 @@
 | `templates/schema.sql` | SQL schema for deploys + incidents join |
 | `templates/backup-config.example.json` | Filled report artefact |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-dora-metrics.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
-
 ## Related
 
 - Parent: `pro/infra/cicd-engineer/`

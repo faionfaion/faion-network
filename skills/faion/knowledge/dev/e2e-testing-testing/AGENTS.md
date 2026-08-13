@@ -70,12 +70,6 @@
 | `templates/ci-workflow.yml` | GitHub Actions sharded Playwright workflow. |
 | `templates/_smoke-test.yaml` | Minimum journey list (login → dashboard). |
 
-## Scripts
-
-| File | Purpose | When to call |
-|---|---|---|
-| `scripts/validate-e2e-testing.py` | Validates emitted suite-config JSON against the schema. | Pre-commit; in CI before publishing config. |
-
 ## Related
 
 - [[testing-patterns]]

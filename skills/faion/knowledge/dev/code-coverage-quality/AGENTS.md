@@ -68,12 +68,6 @@
 | `templates/jest.coverage.config.js` | JS/TS: V8 provider, per-dir thresholds, lcov reporter |
 | `templates/diff-cov-report.sh` | Runs pytest + diff-cover, emits per-file uncovered-lines prompt fragments |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-code-coverage.py` | Validate a coverage-gate config + extract against the schema | After config write, before PR merge |
-
 ## Related
 
 - [[code-review-process]] — the gate this methodology produces runs inside the review process.

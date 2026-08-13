@@ -65,12 +65,6 @@
 | `templates/cognitive-spec.md` | Markdown skeleton for cognitive-inclusion design spec. |
 | `templates/readability-gate.py` | Stdlib readability scorer. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-cognitive-inclusion-design.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
-
 ## Related
 
 - [[accessibility-first-design]]

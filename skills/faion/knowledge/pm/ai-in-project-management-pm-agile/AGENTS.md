@@ -61,12 +61,6 @@
 | `templates/skeleton.md` | Framework adoption checklist: AI-decision log template + PMBOK 8 mapping table + DORA baseline columns + audit-trail block. |
 | `templates/header.yaml` | Frontmatter contract: owner, version, last_reviewed for the produced artefact. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-ai-in-project-management.py` | Validate produced artefact against the JSON Schema in `02-output-contract.xml`. | Pre-merge and on every artefact refresh. |
-
 ## Related
 
 - [[ai-assisted-velocity-anomaly-detection]]

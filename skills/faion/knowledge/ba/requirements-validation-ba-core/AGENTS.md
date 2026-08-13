@@ -69,12 +69,6 @@
 | `templates/sign-off-form.md` | Sign-off form with reviewer + date + verdict. |
 | `templates/req-value-trace.sh` | Shell helper linking requirements to value drivers. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-requirements-validation.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[requirements-documentation]]

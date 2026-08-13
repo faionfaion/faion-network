@@ -49,8 +49,6 @@
 | `content/01-core-rules.xml` | essential | 5 rules: golden-set size ≥50, three metrics minimum, statistical-significance gate, hold-out 20%, quarterly re-eval | 900 |
 | `content/02-output-contract.xml` | essential | Schema for the eval report: per-model metric table, winner, confidence interval, stale-by date | 800 |
 | `content/03-failure-modes.xml` | essential | 4 antipatterns: tiny golden set, single metric, train-on-test contamination, no significance test | 700 |
-| `content/04-procedure.xml` | reference | 5-step procedure: build set → run candidates → compute metrics → significance → recommend | 600 |
-| `content/05-examples.xml` | reference | One worked eval comparing 3 models on a support-bot golden set | 500 |
 | `content/06-decision-tree.xml` | essential | When to escalate to live A/B vs ship offline-winner | 500 |
 
 ## Task Routing
@@ -67,12 +65,6 @@
 |------|---------|
 | `templates/golden-set.jsonl` | Schema for golden-set rows: query_id, passage_id, grade. |
 | `templates/eval-report.md` | Markdown skeleton for the eval report. |
-
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-embeddings-evaluation.py` | Validate the eval report JSON against the contract. | Pre-commit; before model swap PR. |
 
 ## Related
 

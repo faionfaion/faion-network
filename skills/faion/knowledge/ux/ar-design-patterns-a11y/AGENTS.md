@@ -65,12 +65,6 @@
 | `templates/ar-pattern-record.json` | JSON skeleton for the AR-pattern record. |
 | `templates/ar-anchor-schema.json` | Anchor metadata schema. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-ar-design-patterns.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
-
 ## Related
 
 - [[vr-design-patterns]]

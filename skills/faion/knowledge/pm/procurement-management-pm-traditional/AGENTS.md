@@ -66,12 +66,6 @@
 | `templates/sow.md` | Statement of Work template with scope, deliverables, acceptance, payment schedule |
 | `templates/vendor-scoring.py` | Vendor scoring script: criterion × weight × bid → normalised score |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-procurement-management.py` | Validate the spec artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[change-control]]

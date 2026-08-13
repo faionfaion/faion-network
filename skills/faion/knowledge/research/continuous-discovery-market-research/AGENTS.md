@@ -70,13 +70,6 @@
 | `templates/signal.jsonl` | Sub-artefact skeleton consumed by the main output |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-continuous-discovery.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
-
-
 ## Related
 
 - [[jtbd-switch-interview]]

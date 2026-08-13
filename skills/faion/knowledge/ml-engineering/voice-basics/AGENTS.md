@@ -70,12 +70,6 @@
 | `templates/vad-recording.py` | webrtcvad-based recorder stopping on silence. |
 | `templates/prompt-design.txt` | System prompt + per-turn prompt patterns for voice agents. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-voice-basics.py` | Validate per-turn output JSON against 02-output-contract. | Post-turn, before pushing audio to playback. |
-
 ## Related
 
 - [[voice-implementation]] — production state machine + WebSocket wrapper.

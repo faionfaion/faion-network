@@ -67,12 +67,6 @@
 |------|---------|
 | `templates/portfolio-allocate.sh` | Compute allocation across H1/H2/H3 horizons |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-portfolio-strategy.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
-
 ## Related
 
 - parent skill: `skills/faion/knowledge/pro/product/product-planning/`

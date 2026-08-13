@@ -63,12 +63,6 @@
 |------|---------|
 | `templates/capacity-check.py` | Capacity check: roster + tasks → per-person utilisation + over-allocation flags |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-resource-management.py` | Validate the config artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[cost-estimation]]

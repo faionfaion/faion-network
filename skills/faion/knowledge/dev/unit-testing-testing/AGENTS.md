@@ -63,12 +63,6 @@
 | `templates/aaa-skeleton.ts.tmpl` | AAA template in TypeScript. |
 | `templates/_smoke-test.md` | Minimal filled rubric. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-unit-testing.py` | Validates an output document against the 02-output-contract schema. | Pre-commit and CI before merge. |
-
 ## Related
 
 - parent skill: `free/dev/testing-developer/`

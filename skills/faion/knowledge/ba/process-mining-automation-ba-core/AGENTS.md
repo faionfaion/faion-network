@@ -68,12 +68,6 @@
 | `templates/automation-assessment.md` | Report skeleton: variants ranked, candidate automations, feasibility. |
 | `templates/pm-feasibility-audit.py` | Stdlib audit checking event-log integrity before mining. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-process-mining-automation.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[data-driven-requirements]]

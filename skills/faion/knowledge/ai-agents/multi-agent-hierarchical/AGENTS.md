@@ -68,12 +68,6 @@
 | `templates/hierarchical_runner.py` | `HierarchicalRunner` class with manager plan + worker dispatch + synthesis; respects `deps[]` and per-worker timeouts. |
 | `templates/plan-schema.json` | JSON Schema for the `Plan` the manager emits. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-multi-agent-hierarchical.py` | Validates a hierarchical config and a sample plan (cycle check, deps resolve, failure policy named, worker timeouts present). | Pre-merge of any hierarchical-pattern PR. |
-
 ## Related
 
 - [[multi-agent-basics]] — upstream spec.

@@ -64,12 +64,6 @@
 | `templates/ai-feature-prd.md` | AI-feature PRD skeleton with eval + guardrail sections baked in |
 | `templates/guardrail-review-checklist.yaml` | Reviewable guardrail checklist with sign-off slots |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-ai-native-product-development.py` | Validate output artefact against schema in 02-output-contract.xml | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[ai-feature-trust-metrics]]

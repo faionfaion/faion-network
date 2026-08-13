@@ -64,12 +64,6 @@
 | `templates/safety-policy.yaml` | Jailbreak detector + grounding source list + refusal templates. |
 | `templates/_smoke-test.json` | Filled voice-tier1 conversational AI spec. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|---|---|---|
-| `scripts/validate-llm-powered-conversational-ai.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
-
 ## Related
 
 - [[multimodal-vui-design]]

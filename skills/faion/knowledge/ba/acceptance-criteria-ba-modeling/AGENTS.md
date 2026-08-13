@@ -74,12 +74,6 @@
 | `templates/prompt-verification.xml` | LLM prompt for AC quality review. |
 | `templates/ac-coverage.sh` | Shell helper computing AC coverage across stories. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-acceptance-criteria.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[requirements-documentation]]

@@ -69,7 +69,6 @@
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-stakeholder-engagement.py` | Schema-validate engagement register JSON. | Pre-commit + weekly review. |
 | `scripts/engagement-due.py` | Flag stakeholders overdue per quadrant cadence. | Weekly cron. |
 
 ## Related

@@ -67,12 +67,6 @@
 | `templates/scaffold_focus_areas.sh` | Shell helper that scaffolds an empty ADR markdown for the 5 focus areas. |
 | `templates/adr-skeleton.md` | Markdown skeleton ADR listing the 5 focus areas with practice tables. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-pm-framework-focus-areas.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
-
 ## Related
 
 - parent skill: `pro/pm/` (see neighbouring methodologies).

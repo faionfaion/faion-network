@@ -64,12 +64,6 @@
 | `templates/framework-decision-record.md` | ADR-style framework selection record. |
 | `templates/ba-framework-select.sh` | Shell helper running the scoring matrix. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-modern-ba-framework.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[ba-planning]]

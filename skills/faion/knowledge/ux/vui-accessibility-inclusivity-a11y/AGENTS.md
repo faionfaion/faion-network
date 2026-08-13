@@ -65,12 +65,6 @@
 | `templates/vui-record.json` | JSON skeleton for VUI accessibility record. |
 | `templates/vui-grammar-help.md` | 'What can I say' help-text template. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-vui-accessibility-inclusivity.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
-
 ## Related
 
 - [[cognitive-inclusion-design]]

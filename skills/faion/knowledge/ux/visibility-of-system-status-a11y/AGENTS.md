@@ -64,12 +64,6 @@
 | `templates/visibility-of-system-status.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/visibility-of-system-status.md` | Markdown skeleton for human-readable artefact rendering. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-visibility-of-system-status.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
-
 ## Related
 
 - [[recognition-over-recall]]

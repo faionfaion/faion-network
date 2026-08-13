@@ -62,12 +62,6 @@
 | `templates/operation-spec.yaml` | YAML schema for operation + file_key + auth + output_uri. |
 | `templates/_smoke-test.yaml` | Filled minimum-viable a11y-audit operation spec. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|---|---|---|
-| `scripts/validate-ai-plugin-ecosystem.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
-
 ## Related
 
 - [[figma-ai-ecosystem]]

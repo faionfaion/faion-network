@@ -67,12 +67,6 @@
 |------|---------|
 | `templates/pql-scorer.py` | Product-Qualified-Lead scorer from usage signals |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-product-led-growth.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
-
 ## Related
 
 - parent skill: `skills/faion/knowledge/pro/product/product-operations/`

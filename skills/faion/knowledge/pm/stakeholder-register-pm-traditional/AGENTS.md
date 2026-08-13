@@ -69,7 +69,6 @@
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-stakeholder-register.py` | Schema-validate the register JSON. | Pre-commit + monthly review. |
 | `scripts/register_audit.py` | Audit register for missing evidence + stale rows. | Monthly cron. |
 
 ## Related

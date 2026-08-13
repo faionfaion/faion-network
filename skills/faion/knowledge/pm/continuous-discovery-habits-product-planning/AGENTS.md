@@ -68,12 +68,6 @@
 | `templates/ost-schema.json` | Opportunity Solution Tree schema |
 | `templates/spec-opp-link.yml` | Link spec → opportunity in OST |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-continuous-discovery-habits.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
-
 ## Related
 
 - parent skill: `skills/faion/knowledge/pro/product/product-planning/`

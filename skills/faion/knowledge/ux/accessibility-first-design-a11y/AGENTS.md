@@ -66,12 +66,6 @@
 | `templates/design-spec.md` | Markdown skeleton for accessibility-first design spec. |
 | `templates/focus-order.json` | JSON list of focus stops + return-focus targets. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-accessibility-first-design.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
-
 ## Related
 
 - [[wcag-22-compliance]]

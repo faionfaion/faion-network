@@ -69,12 +69,6 @@
 | `templates/xp-extreme-programming.json` | JSON Schema for the readiness checklist. |
 | `templates/done-definition.md` | Done rule snippet for PR template. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-xp-extreme-programming.py` | Validate readiness JSON against schema + adoption-phase rule. | After scoring; quarterly review. |
-
 ## Related
 
 - [[trunk-based-dev-principles]] — TBD is the branching substrate XP small-releases depends on.

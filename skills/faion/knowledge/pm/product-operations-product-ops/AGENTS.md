@@ -68,12 +68,6 @@
 | `templates/ops-rollup.sh` | Weekly metric rollup script |
 | `templates/ops-schema.sql` | Operational metrics warehouse schema |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-product-operations.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
-
 ## Related
 
 - parent skill: `skills/faion/knowledge/pro/product/product-operations/`

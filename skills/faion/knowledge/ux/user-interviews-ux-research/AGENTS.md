@@ -70,12 +70,6 @@
 | `templates/user-interviews.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/user-interviews.md` | Markdown skeleton for human-readable artefact rendering. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-user-interviews.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
-
 ## Related
 
 - [[journey-mapping]]

@@ -44,7 +44,6 @@
 | `content/01-core-rules.xml` | essential | Testable rules specific to django-quality | ~1000 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the produced artifact + valid/invalid examples | ~700 |
 | `content/03-failure-modes.xml` | essential | Recurring antipatterns with reason | ~900 |
-| `content/04-procedure.xml` | medium | Step-by-step procedure (when complexity >= medium) | ~600 |
 | `content/06-decision-tree.xml` | essential | Decision tree from observable inputs to a rule conclusion | ~300 |
 
 ## Task Routing

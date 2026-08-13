@@ -70,7 +70,6 @@
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-work-breakdown-structure.py` | Schema-validate WBS JSON artefact. | Pre-commit + pre-EVM baseline. |
 | `scripts/wbs-check.py` | Lint WBS outline: numbering, owners, 8-80h leaves. | Pre-commit + before steering review. |
 
 ## Related

@@ -68,12 +68,6 @@
 | `templates/post-implementation-review.md` | PIR document skeleton. |
 | `templates/solution-assessment-report.md` | Detailed assessment report with KPI table + gap callouts. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-solution-assessment.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[data-driven-requirements]]

@@ -66,12 +66,6 @@
 | `templates/prompt-scan-triage.txt` | Prompt ranking + de-duplicating axe violations for the human lead. |
 | `templates/prompt-vpat-draft.txt` | Prompt drafting a VPAT 2.5 section from scan summaries. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-ai-accessibility-automation-2026.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[ai-assisted-accessibility]]

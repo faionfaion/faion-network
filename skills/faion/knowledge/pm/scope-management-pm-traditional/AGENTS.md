@@ -72,7 +72,6 @@
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-scope-management.py` | Schema-validate scope-statement JSON. | Pre-commit + pre-baseline. |
 | `scripts/rtm_coverage.py` | Check every requirement has an acceptance test and every AC has a requirement. | Weekly + pre-release. |
 
 ## Related

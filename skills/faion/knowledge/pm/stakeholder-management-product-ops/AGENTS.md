@@ -70,12 +70,6 @@
 | `templates/stakeholder-lint.py` | Lint stakeholder register for missing owners/cadence |
 | `templates/stakeholder-register.md` | Power/Interest + Attitude register |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-stakeholder-management.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
-
 ## Related
 
 - parent skill: `skills/faion/knowledge/pro/product/product-operations/`

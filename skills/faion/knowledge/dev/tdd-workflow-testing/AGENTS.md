@@ -67,12 +67,6 @@
 | `templates/posttool-hook.json` | Settings.json fragment that runs pytest after Write/Edit on test_*.py. |
 | `templates/_smoke-test.yaml` | Minimum behavior list (one happy path). |
 
-## Scripts
-
-| File | Purpose | When to call |
-|---|---|---|
-| `scripts/validate-tdd-workflow.py` | Validates emitted config against the JSON schema. | Pre-commit. |
-
 ## Related
 
 - [[testing-pytest]]

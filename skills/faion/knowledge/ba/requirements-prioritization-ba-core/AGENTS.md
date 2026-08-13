@@ -68,12 +68,6 @@
 | `templates/rice-template.md` | RICE scoring matrix. |
 | `templates/prio_method_and_wsjf.py` | Stdlib calculator for RICE + WSJF + MoSCoW. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-requirements-prioritization.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[requirements-documentation]]

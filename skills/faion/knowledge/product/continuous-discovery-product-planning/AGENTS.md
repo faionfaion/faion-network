@@ -63,12 +63,6 @@
 | `templates/continuous-discovery.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/continuous-discovery.md` | Markdown skeleton for human-readable artefact rendering. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-continuous-discovery.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
-
 ## Related
 
 - [[product-discovery]]

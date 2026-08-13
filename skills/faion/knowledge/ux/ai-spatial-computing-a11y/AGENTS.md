@@ -64,12 +64,6 @@
 | `templates/prompt-xaur-gap-analysis.txt` | Prompt asking agent for clause-by-clause XAUR gap analysis with confidence labels. |
 | `templates/_smoke-test.md` | Filled minimum-viable spec for a single gaze→voice→controller surface. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|---|---|---|
-| `scripts/validate-ai-spatial-computing.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
-
 ## Related
 
 - [[ai-assisted-accessibility]]

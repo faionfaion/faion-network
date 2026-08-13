@@ -65,12 +65,6 @@
 | `templates/change-register.md` | Change register template with CR ID, requestor, decision, baseline impact |
 | `templates/change-request-form.md` | Change Request Form template: trigger, impact, alternatives, recommendation |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-change-control.py` | Validate the config artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[project-integration]]

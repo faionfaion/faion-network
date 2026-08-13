@@ -46,8 +46,6 @@
 | `content/01-core-rules.xml` | essential | 5 testable rules: slim contract mandatory, refs over content, fresh window per invoke, untrusted-input wrapping, parent never sees raw subagent thinking | ~900 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the slim subagent return: summary ≤200 tokens, refs[], confidence, next_actions[] | ~700 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns: leaky summary (pastes evidence), no contract (free-form), parent re-reads same files, untrusted input bypassing subagent, nested firewall stack | ~700 |
-| `content/04-procedure.xml` | medium | Migrate a heavy task to a firewalled subagent: name the contract → set token budget → invoke → consume | ~700 |
-| `content/05-examples.xml` | medium | Bug hunt in 30-file codebase, untrusted doc summarisation, speculative-branch fan-out | ~500 |
 | `content/06-decision-tree.xml` | essential | Picks subagent shape from heaviness × trust × parallelism | ~500 |
 
 ## Task Routing
@@ -69,12 +67,6 @@
 | `templates/pydantic-contract.py` | Reference Pydantic contract for the firewall output shape. |
 | `templates/untrusted-input.py` | Wrapper for attacker-controlled input — never reaches parent context. |
 | `templates/failure-mode.py` | Reference anti-example: a leaky subagent that pastes evidence into the parent. |
-
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-subagent-as-context-firewall.py` | Validates a subagent return JSON against `02-output-contract.xml`. | After each subagent call, before returning to the parent reasoner. |
 
 ## Related
 

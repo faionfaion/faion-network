@@ -64,12 +64,6 @@
 | `templates/docker-compose.json` | JSON skeleton matching the output contract. |
 | `templates/docker-compose.md` | Markdown skeleton with required fields. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-docker-compose.py` | Validate Docker Compose (CI/CD) output JSON against the schema. | After subagent returns, before downstream consumer reads. |
-
 ## Related
 
 - [[docker-compose-devops]]

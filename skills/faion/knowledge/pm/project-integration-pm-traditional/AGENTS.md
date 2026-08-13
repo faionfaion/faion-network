@@ -62,12 +62,6 @@
 |------|---------|
 | `templates/status-rag.py` | Status RAG roll-up script: per-area signal → overall RAG |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-project-integration.py` | Validate the config artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[change-control]]

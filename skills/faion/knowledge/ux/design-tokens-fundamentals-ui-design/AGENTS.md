@@ -69,12 +69,6 @@
 | `templates/design-tokens-fundamentals.json` | JSON skeleton conforming to the output-contract schema. |
 | `templates/design-tokens-fundamentals.md` | Markdown skeleton for human-readable artefact rendering. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-design-tokens-fundamentals.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
-
 ## Related
 
 - [[tailwind-design-tokens]]

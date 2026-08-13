@@ -66,12 +66,6 @@
 | `templates/repository-interface.py` | Repository interface owned by the domain layer. |
 | `templates/import-linter.ini` | Import-linter contract that enforces inward-only layer dependencies. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-clean-architecture.py` | Validate the output artefact against the schema in 02-output-contract.xml. | CI on each artefact change; pre-commit. |
-
 ## Related
 
 - [[domain-driven-design]]

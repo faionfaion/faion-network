@@ -67,12 +67,6 @@
 | `templates/prompt-generate-fix.txt` | Prompt for the Sonnet fix-generator with WCAG citation enforcement. |
 | `templates/prompt-triage-issues.txt` | Prompt for the Haiku filter + ranker. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-ai-assisted-accessibility.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[ai-accessibility-automation-2026]]

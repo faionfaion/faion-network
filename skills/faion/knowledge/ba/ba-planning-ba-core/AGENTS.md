@@ -71,12 +71,6 @@
 | `templates/ka1-bundle-skeleton.md` | Bundle index linking T1-T5 artefacts in dependency order. |
 | `templates/ka1_check.py` | Helper that verifies the 5 KA1 artefacts exist and are within review cadence; emits JSON. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-ba-planning.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[stakeholder-analysis]]

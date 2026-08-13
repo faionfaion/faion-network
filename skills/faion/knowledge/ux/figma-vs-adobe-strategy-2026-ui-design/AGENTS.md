@@ -62,12 +62,6 @@
 | `templates/score-rubric.md` | Five-axis scoring rubric definition. |
 | `templates/_smoke-test.json` | Filled figma+firefly recommendation example. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|---|---|---|
-| `scripts/validate-figma-vs-adobe-strategy-2026.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
-
 ## Related
 
 - [[figma-ai-ecosystem]]

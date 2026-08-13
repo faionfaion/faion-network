@@ -70,12 +70,6 @@
 | `templates/process-analysis.md` | Markdown skeleton for the report (current + analysis + future + diff) |
 | `templates/_smoke-test.md` | Minimum filled-in report for the smoke fixture |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-business-process-analysis.py` | Validate report JSON against output-contract | Pre-commit; CI gate before handoff |
-
 ## Related
 
 - [[bpmn-via-ai-then-human-review]]

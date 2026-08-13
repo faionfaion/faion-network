@@ -66,12 +66,6 @@
 |------|---------|
 | `templates/product-kb-validate.sh` | Validate KB structure + schema markup |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-product-explainability.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
-
 ## Related
 
 - parent skill: `skills/faion/knowledge/pro/product/product-operations/`

@@ -65,12 +65,6 @@
 | `templates/spatial-accessibility-record.json` | JSON skeleton matching the schema. |
 | `templates/xr-scene-audit.py` | Stdlib helper to scan a scene JSON for reach-zone + occlusion violations. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-spatial-accessibility.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
-
 ## Related
 
 - [[vr-design-patterns]]

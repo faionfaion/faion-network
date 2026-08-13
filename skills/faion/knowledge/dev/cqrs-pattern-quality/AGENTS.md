@@ -67,12 +67,6 @@
 | `templates/query-handler.py` | Query + QueryHandler skeleton; returns a read model only. |
 | `templates/mediator.py` | Type-based Mediator dispatching to the right handler. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-cqrs-pattern.py` | Validate the output artefact against the schema in 02-output-contract.xml. | CI on each artefact change; pre-commit. |
-
 ## Related
 
 - [[clean-architecture]]

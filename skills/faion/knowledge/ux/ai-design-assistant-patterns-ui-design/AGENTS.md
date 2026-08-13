@@ -62,12 +62,6 @@
 | `templates/score-table.json` | Scoring rubric for sidebar / modal / inline / review. |
 | `templates/_smoke-test.md` | Filled review-mode decision record example. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|---|---|---|
-| `scripts/validate-ai-design-assistant-patterns.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
-
 ## Related
 
 - [[ai-enhanced-design-systems]]

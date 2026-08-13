@@ -68,12 +68,6 @@
 | `templates/use-case.md` | Markdown skeleton (actor + goal + pre/post + main + alt + exception) |
 | `templates/_smoke-test.json` | Minimum viable use-case JSON |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-use-case-modeling.py` | Validate use-case set against output-contract | Pre-commit; before handoff to QA |
-
 ## Related
 
 - [[user-story-mapping]]

@@ -66,12 +66,6 @@
 | `templates/strong-style-prompt.txt` | Agent prompt for strong-style enforcement |
 | `templates/pair-journal.sh` | Shell that logs swap timestamps + commit moments |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-pair-programming.py` | Validate session plan + retro | Before session start; after end |
-
 ## Related
 
 - - [[mob-programming]] — 3-4 person variant of the same family.

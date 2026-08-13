@@ -46,7 +46,6 @@
 | `content/01-core-rules.xml` | essential | 5 testable rules: function scope default, yield cleanup, keyword-only factories, sequenced determinism, conftest layering | ~1100 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the fixture/factory module spec + valid/invalid examples | ~900 |
 | `content/03-failure-modes.xml` | essential | 6 antipatterns: scope leakage, faker non-determinism, factory drift, autouse cost, cleanup-order, parallel runner assumptions | ~1100 |
-| `content/04-procedure.xml` | medium | 5-step recipe: identify repetition → write factory → wire fixture → assert isolation → ratchet scope | ~900 |
 | `content/06-decision-tree.xml` | essential | Decide: inline literal vs factory vs full fixture | ~400 |
 
 ## Task Routing
@@ -63,12 +62,6 @@
 |------|---------|
 | `templates/conftest-db.py` | SQLAlchemy session fixture with savepoint rollback per test. |
 | `templates/fixture-pollution-check.sh` | Runs pytest with random ordering seeds to detect order-dependent failures. |
-
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-test-fixtures.py` | Validate a fixture/factory module spec JSON against the canonical schema; checks defaults, scope, kwarg-only enforcement. | Pre-merge gate; weekly drift scan. |
 
 ## Related
 

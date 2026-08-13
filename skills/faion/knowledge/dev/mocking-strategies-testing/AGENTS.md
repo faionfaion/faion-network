@@ -67,12 +67,6 @@
 | `templates/mocking-spec.md` | Markdown wrapper for the JSON spec. |
 | `templates/_smoke-test.yaml` | Minimum dependency graph (one HTTP client, one time call). |
 
-## Scripts
-
-| File | Purpose | When to call |
-|---|---|---|
-| `scripts/validate-mocking-strategies.py` | Validates spec against the schema. | Pre-commit; in CI before lint. |
-
 ## Related
 
 - [[testing-pytest]]

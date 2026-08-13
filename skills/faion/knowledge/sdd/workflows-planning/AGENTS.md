@@ -69,12 +69,6 @@
 |------|---------|
 | `templates/route-record.md` | Canonical phase-route record with current phase, next methodology, and blockers. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-workflows.py` | Validate the route record against the schema in `content/02-output-contract.xml`. | After subagent emits the route, before the caller dispatches the next phase. |
-
 ## Related
 
 - [[workflow-spec-phase]]

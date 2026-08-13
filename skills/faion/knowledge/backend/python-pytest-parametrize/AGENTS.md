@@ -42,7 +42,6 @@
 | `content/01-core-rules.xml` | essential | 5 rules: one body per parametrized matrix, ids for readability, pytest.param for per-case marks, stack for cartesian product, indirect to feed fixtures. | ~900 |
 | `content/02-output-contract.xml` | essential | Shape: @pytest.mark.parametrize('a,b,expected', [pytest.param(..., id=..., marks=...), ...]) def test_x(a, b, expected). Forbidden: parametrize without ids when failure messages matter; cartesian explosion >100 cases. | ~800 |
 | `content/03-failure-modes.xml` | essential | 4 antipatterns: no ids, cartesian explosion, wildly different behaviour cases together, parametrize across unrelated assertions. | ~700 |
-| `content/04-procedure.xml` | medium | Steps: identify repeated body → extract (input, expected) tuples → add ids → stack if matrix → use pytest.param for marks/skip. | ~600 |
 | `content/06-decision-tree.xml` | essential | Tree: ≥3 cases same body? → parametrize. Cases need different fixtures? → fixture params. Need per-case skip? → pytest.param. | ~400 |
 
 ## Task Routing

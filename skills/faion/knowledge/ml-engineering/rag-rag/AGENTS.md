@@ -68,12 +68,6 @@
 | `templates/answer-prompt.txt` | "Answer ONLY from the provided context" system prompt with citation format. |
 | `templates/_smoke-test.py` | Minimal end-to-end smoke test. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-rag.py` | Validates a RAG answer against schema. | Pre-commit; CI. |
-
 ## Related
 
 - [[rag-architecture]]

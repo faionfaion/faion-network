@@ -68,12 +68,6 @@
 | `templates/benefits-register.md` | Benefits-register template with owner, baseline, target, metric source per row |
 | `templates/realization-report.md` | Periodic realisation report template with RAG status per benefit |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-benefits-realization.py` | Validate the report artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[project-closure]]

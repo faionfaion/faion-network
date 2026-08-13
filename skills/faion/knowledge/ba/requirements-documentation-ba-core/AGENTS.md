@@ -70,12 +70,6 @@
 | `templates/srs-conformance.yaml` | YAML schema enforced by validator. |
 | `templates/srs_conform.py` | Conformance checker that fails CI when SRS source violates the schema. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-requirements-documentation.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[acceptance-criteria]]

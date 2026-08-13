@@ -65,12 +65,6 @@
 | `templates/immersive-record.json` | JSON skeleton for the immersive-principles record. |
 | `templates/comfort-settings.json` | Default comfort settings template. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-immersive-design-principles.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
-
 ## Related
 
 - [[vr-design-patterns]]

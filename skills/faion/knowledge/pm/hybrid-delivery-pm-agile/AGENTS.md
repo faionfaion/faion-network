@@ -67,12 +67,6 @@
 | `templates/hybrid-alignment.py` | Reference script aligning component method assignment with risk profile. |
 | `templates/component-map.md` | Markdown skeleton listing components with method + risk profile + boundary contracts. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-hybrid-delivery.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
-
 ## Related
 
 - parent skill: `pro/pm/` (see neighbouring methodologies).

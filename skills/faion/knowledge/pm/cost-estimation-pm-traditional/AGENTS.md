@@ -65,12 +65,6 @@
 | `templates/cost-worksheet.md` | Bottom-up cost worksheet with three-point PERT per package + contingency stack |
 | `templates/risk-contingency.py` | Risk register → contingency reserve via expected monetary value |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-cost-estimation.py` | Validate the spec artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[earned-value-management]]

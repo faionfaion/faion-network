@@ -66,12 +66,6 @@
 | `templates/refresh-script.py` | Anthropic web_search refresh runner emitting `vui_market_brief.json` |
 | `templates/brief.md` | Markdown brief skeleton with stats + platform comparison sections |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-vui-market-context.py` | Validate `vui_market_brief.json` against the output schema | Pre-commit / CI on every refresh |
-
 ## Related
 
 - [[market-researcher]]

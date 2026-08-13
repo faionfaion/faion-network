@@ -68,12 +68,6 @@
 | `templates/fastapi_client.py` | FastAPI TestClient and AsyncClient fixtures with dependency override. |
 | `templates/_smoke-test.yaml` | Minimum service graph (one Postgres, one FastAPI app). |
 
-## Scripts
-
-| File | Purpose | When to call |
-|---|---|---|
-| `scripts/validate-integration-testing.py` | Validates emitted config JSON against the schema. | Pre-commit; in CI before publishing config. |
-
 ## Related
 
 - [[testing-pytest]]

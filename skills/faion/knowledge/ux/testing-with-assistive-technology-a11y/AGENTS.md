@@ -66,12 +66,6 @@
 | `templates/at-test-case.txt` | Plaintext per-test case template. |
 | `templates/guidepup-nvda-form-error.js` | Guidepup script template for NVDA form-error flow. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-testing-with-assistive-technology.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
-
 ## Related
 
 - [[screen-reader-test-script-templates]]

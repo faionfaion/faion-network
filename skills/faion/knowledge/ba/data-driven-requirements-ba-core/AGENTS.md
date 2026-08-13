@@ -68,12 +68,6 @@
 | `templates/evidence-trail.md` | Per-requirement evidence trail: signal → metric → requirement. |
 | `templates/data-driven-spec.md` | Full spec.md skeleton with evidence column per requirement. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-data-driven-requirements.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[requirements-documentation]]

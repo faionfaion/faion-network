@@ -42,7 +42,6 @@
 | `content/01-core-rules.xml` | essential | 5 rules: tokens in config not in components, cn() + tailwind-merge for conditionals, no @apply for one-off styles, mobile-first responsive prefixes, dark mode via CSS variable strategy. | ~900 |
 | `content/02-output-contract.xml` | essential | Shape: tailwind.config.ts with theme.extend; components compose utility strings via cn(); no inline style props with token-equivalent values. Forbidden: hardcoded #hex when token exists, @apply for one-off, classnames lib without merge. | ~800 |
 | `content/03-failure-modes.xml` | essential | 4 antipatterns: hardcoded colors/spacing in components, @apply abuse, classnames-without-merge, dynamic class string concatenation. | ~700 |
-| `content/04-procedure.xml` | medium | Steps: install tailwind → declare tokens in config → author cn() helper → compose component classes → wire dark mode → audit drift. | ~700 |
 | `content/06-decision-tree.xml` | essential | Tree: token exists? → use utility. One-off value? → arbitrary [value]. Conditional? → cn(). Repeated component pattern? → extract to component, not @apply. | ~400 |
 
 ## Task Routing

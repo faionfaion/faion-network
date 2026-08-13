@@ -67,12 +67,6 @@
 | `templates/create-story.sh` | Bash helper to create a User Story work item via REST API. |
 | `templates/user-story.md` | Markdown template for a Scrum user story (As a / I want / So that, AC). |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-azure-devops-boards.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
-
 ## Related
 
 - parent skill: `pro/pm/` (see neighbouring methodologies).

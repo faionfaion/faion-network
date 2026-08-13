@@ -64,12 +64,6 @@
 |------|---------|
 | `templates/flow-metrics.py` | Flow-metrics computation from timestamp CSV → JSON report |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-value-stream-management.py` | Validate the report artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[scrum-ceremonies]]

@@ -60,12 +60,6 @@
 |------|---------|
 | `templates/pmbok7-audit.sh` | Bash audit walker: scores each principle 0-3 from artefact heuristics |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-six-core-principles.py` | Validate the rubric artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[seven-performance-domains]]

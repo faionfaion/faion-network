@@ -66,12 +66,6 @@
 | `templates/economic-model.example.json` | Worked filled model. |
 | `templates/economic-model.py` | Python compute kernel (deterministic). |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-fine-tune-vs-prompt-economic-model.py` | Validate the JSON against schema + recompute monthly delta to confirm consistency. | Pre-RFC, post-update. |
-
 ## Related
 
 - parent skill: `geek/ai/`

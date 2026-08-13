@@ -64,12 +64,6 @@
 | `templates/recognition-over-recall.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/recognition-over-recall.md` | Markdown skeleton for human-readable artefact rendering. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-recognition-over-recall.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
-
 ## Related
 
 - [[match-real-world]]

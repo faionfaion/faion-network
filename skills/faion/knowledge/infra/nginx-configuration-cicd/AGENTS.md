@@ -69,12 +69,6 @@
 | `templates/site-reverse-proxy.conf` | Per-site server block: HTTP→HTTPS redirect + HTTPS server + reverse-proxy with WebSocket upgrade |
 | `templates/_smoke-test.json` | Minimum filled artefact used by validate-nginx-configuration.py --self-test |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-nginx-configuration.py` | Validate the config artefact against the schema in `content/02-output-contract.xml` | CI on every artefact change + pre-commit hook |
-
 ## Related
 
 - [[load-balancing-concepts]]

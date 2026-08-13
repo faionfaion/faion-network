@@ -63,12 +63,6 @@
 | `templates/generator-prompt.md` | Prompt skeleton with brand-token + must-not-have injection slots. |
 | `templates/_smoke-test.json` | Filled checkout-redesign ideation spec. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|---|---|---|
-| `scripts/validate-generative-ui-design.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
-
 ## Related
 
 - [[ai-design-assistant-patterns]]

@@ -68,12 +68,6 @@
 | `templates/interface-spec.md` | Markdown skeleton (per interface: protocol, payload, errors, SLA, owner) |
 | `templates/_smoke-test.json` | Minimum viable interface-inventory fixture |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-interface-analysis.py` | Validate inventory JSON against output-contract | Pre-commit; before handoff to integration team |
-
 ## Related
 
 - [[data-analysis]]

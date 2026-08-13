@@ -67,12 +67,6 @@
 | `templates/stakeholder-profile.md` | Per-key-stakeholder profile with engagement strategy. |
 | `templates/raci-lint.sh` | Shell helper checking RACI has exactly one A per row. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-stakeholder-analysis.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[ba-planning]]

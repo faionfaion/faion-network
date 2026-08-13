@@ -71,7 +71,6 @@
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-risk-register.py` | Schema-validate the register JSON artefact. | Pre-commit + before steering review. |
 | `scripts/risk-audit.py` | Static-analyse the register: stale rows, missing owners, missing triggers. | Weekly cron. |
 
 ## Related

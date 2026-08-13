@@ -65,12 +65,6 @@
 |------|---------|
 | `templates/evm-report.md` | EVM report template: PV, EV, AC, SPI, CPI, EAC, TCPI per period |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-earned-value-management.py` | Validate the report artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[cost-estimation]]

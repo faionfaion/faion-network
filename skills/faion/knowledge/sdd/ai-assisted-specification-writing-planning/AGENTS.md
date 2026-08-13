@@ -65,12 +65,6 @@
 | `templates/implementation-plan.md` | Implementation-plan skeleton with task table + DAG section |
 | `templates/plan-prompt.md` | LLM prompt template for task decomposition |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-ai-assisted-specification-writing.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[ai-assisted-specification-writing]]

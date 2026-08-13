@@ -67,12 +67,6 @@
 | `templates/lifecycle-policy.md` | Lifecycle policy document skeleton. |
 | `templates/state-transition-matrix.md` | Matrix of allowed transitions per state. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-requirements-lifecycle.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[ba-requirements-mgmt]]

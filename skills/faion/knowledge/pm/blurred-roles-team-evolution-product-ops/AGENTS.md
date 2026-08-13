@@ -67,12 +67,6 @@
 |------|---------|
 | `templates/role-overlap.sh` | Emit per-author file-area distribution from git history |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-blurred-roles-team-evolution.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
-
 ## Related
 
 - parent skill: `skills/faion/knowledge/pro/product/product-operations/`

@@ -68,12 +68,6 @@
 | `templates/positioning-canvas.md` | April Dunford 6-step positioning canvas |
 | `templates/positioning-lint.sh` | Lint positioning statement for missing elements |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-competitive-positioning.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
-
 ## Related
 
 - parent skill: `skills/faion/knowledge/pro/product/product-planning/`

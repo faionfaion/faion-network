@@ -69,12 +69,6 @@
 | `templates/data-dictionary.md` | Markdown skeleton with field/source/type/owner/DQ columns |
 | `templates/_smoke-test.json` | Minimum viable data-dictionary fixture |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-data-analysis.py` | Validate dictionary JSON against output-contract | Pre-commit; CI gate before handoff to developers |
-
 ## Related
 
 - [[interface-analysis]]

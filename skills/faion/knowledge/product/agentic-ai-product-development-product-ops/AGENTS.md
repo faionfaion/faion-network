@@ -64,12 +64,6 @@
 | `templates/ops-readiness.yaml` | Ops-readiness pack schema (goal + actions + runbook + dashboard + regression). |
 | `templates/escalation-runbook.md` | Escalation runbook skeleton (role + channel + SLA + triggers). |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-agentic-ai-product-development.py` | Validate ops-readiness pack against the contract (predicate, budgets, runbook pre-launch, dashboard wired, regression hook). | Launch-gate; pre-production. |
-
 ## Related
 
 - [[ai-native-product-development]] — sibling ops methodology for non-autonomous AI-native products.

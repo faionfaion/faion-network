@@ -69,12 +69,6 @@
 | `templates/pricing-research.md` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml |
 | `templates/pricing-research.schema.json` | JSON Schema seed + filled fixture for the report artefact |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-pricing-research.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
-
 ## Related
 
 - `[[niche-evaluation]]`

@@ -64,12 +64,6 @@
 | `templates/ai-enabled-business-analysis.md` | Markdown skeleton with the required fields |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a ai-enabled-business-analysis record |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-ai-enabled-business-analysis.py` | Enforce the AI-Enabled Business Analysis output contract | After subagent returns, before downstream consumer reads |
-
 ## Related
 
 - [[ai-transcript-to-traceable-requirement]] — adjacent extraction step.

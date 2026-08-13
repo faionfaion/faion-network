@@ -74,7 +74,6 @@
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-risk-management.py` | Schema-validate the risk register JSON artefact. | Pre-commit + before steering review. |
 | `scripts/emv.py` | Score the Markdown register; exit non-zero on critical untriaged risks. | Weekly cron + pre-steering-review. |
 
 ## Related

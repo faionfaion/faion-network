@@ -68,12 +68,6 @@
 | `templates/issue-template-feature.md` | Feature request issue template (user need, acceptance criteria). |
 | `templates/scoped-labels.py` | Reference script listing the canonical scoped-label scheme. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-gitlab-boards.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
-
 ## Related
 
 - parent skill: `pro/pm/` (see neighbouring methodologies).

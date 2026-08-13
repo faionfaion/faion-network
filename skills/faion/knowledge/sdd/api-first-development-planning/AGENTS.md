@@ -69,12 +69,6 @@
 | `templates/api-first-development.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/api-first-development.md` | Markdown skeleton for human-readable artefact rendering. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-api-first-development.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
-
 ## Related
 
 - [[spec-structure]]

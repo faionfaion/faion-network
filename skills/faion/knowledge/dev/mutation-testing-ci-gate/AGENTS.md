@@ -74,8 +74,6 @@
 | File | Purpose | When to call |
 |------|---------|--------------|
 | `scripts/validate-mutation-testing-ci-gate.py` | Validate the output artefact against the schema in 02-output-contract.xml. | CI on each artefact change; pre-commit. |
-| `scripts/incremental-mutator.sh` | Reads `git diff --name-only origin/main` and constrains mutation to changed paths. | per PR in CI |
-| `scripts/triage-survivors.py` | Parses Stryker/Mutmut survivors JSON; groups by file; flags equivalent-mutant candidates. | after mutation run, before posting PR comment |
 
 ## Related
 

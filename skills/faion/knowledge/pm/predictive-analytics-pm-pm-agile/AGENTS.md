@@ -68,12 +68,6 @@
 | `templates/calibration.py` | Reference script computing calibration score against prior forecasts. |
 | `templates/forecast-report.md` | Markdown skeleton for the forecast report with predictions table + calibration block. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-predictive-analytics-pm.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
-
 ## Related
 
 - parent skill: `pro/pm/` (see neighbouring methodologies).

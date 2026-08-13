@@ -68,12 +68,6 @@
 | `templates/raci-template.md` | Markdown skeleton for the RACI matrix table. |
 | `templates/raci-lint.py` | Reference script enforcing one-A-per-row + non-empty R. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-raci-matrix.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
-
 ## Related
 
 - parent skill: `pro/pm/` (see neighbouring methodologies).

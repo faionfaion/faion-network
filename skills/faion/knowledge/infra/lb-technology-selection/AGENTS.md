@@ -50,7 +50,6 @@
 | `content/01-core-rules.xml` | essential | 5 testable rules: managed-default-on-cloud, kubernetes-uses-ingress, bare-metal-uses-haproxy-or-nginx, layer-matches-tech, operational-capacity-gates-self-hosted | 1100 |
 | `content/02-output-contract.xml` | essential | JSON Schema for decision-record + valid/invalid examples | 800 |
 | `content/03-failure-modes.xml` | essential | 3 antipatterns with symptom/root-cause/fix | 800 |
-| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 700 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
@@ -65,12 +64,6 @@
 | File | Purpose |
 |------|---------|
 | `templates/tech-decision-record.md` | ADR skeleton: environment → tech → downstream methodology pointer |
-
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-lb-technology-selection.py` | Validate the tech-decision-record artefact JSON against 02-output-contract schema | CI on each artefact change; pre-commit |
 
 ## Related
 

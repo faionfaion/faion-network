@@ -69,12 +69,6 @@
 | `templates/sample_size.py` | Sample-size + MDE calculator (stdlib only) |
 | `templates/srm_check.py` | Sample Ratio Mismatch detector |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-experimentation-at-scale.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
-
 ## Related
 
 - parent skill: `skills/faion/knowledge/pro/product/product-operations/`

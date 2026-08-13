@@ -62,12 +62,6 @@
 | `templates/token-scanner.config.json` | Token scanner glob list + violation severity mapping. |
 | `templates/_smoke-test.yaml` | Filled minimum-viable config for one ds package. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|---|---|---|
-| `scripts/validate-ai-enhanced-design-systems.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
-
 ## Related
 
 - [[ai-design-assistant-patterns]]

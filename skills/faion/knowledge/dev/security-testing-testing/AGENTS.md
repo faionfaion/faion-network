@@ -69,12 +69,6 @@
 | `templates/security-testing.json` | JSON skeleton matching the output contract. |
 | `templates/security-testing.md` | Markdown skeleton with required fields. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-security-testing.py` | Validate Security Testing output JSON against the schema. | After subagent returns, before downstream consumer reads. |
-
 ## Related
 
 - [[solo-deploy-checklist]]

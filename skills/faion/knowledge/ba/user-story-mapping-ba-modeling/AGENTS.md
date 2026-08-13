@@ -67,12 +67,6 @@
 | `templates/story-map.yaml` | Canonical YAML skeleton (activities → tasks → stories with release band) |
 | `templates/_smoke-test.yaml` | Minimum viable filled map |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-user-story-mapping.py` | Validate map against output-contract | Pre-commit; before roadmap review |
-
 ## Related
 
 - [[use-case-modeling]]

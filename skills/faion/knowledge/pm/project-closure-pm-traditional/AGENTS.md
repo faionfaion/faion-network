@@ -69,12 +69,6 @@
 | `templates/final-report.md` | Final report template: scope delivered vs baseline, schedule + cost variance, lessons highlights |
 | `templates/handover-doc.md` | Handover doc template: operating procedures, runbooks, support contacts |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-project-closure.py` | Validate the spec artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[lessons-learned]]

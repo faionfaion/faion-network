@@ -67,12 +67,6 @@
 | `templates/workflow-states.yaml` | Canonical Scrum + Kanban workflow states + transitions in YAML. |
 | `templates/bulk-transition.py` | Reference script for safe bulk transitions via Jira REST API. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-jira-workflow-management.py` | Validate the artefact against the schema in `content/02-output-contract.xml`. | CI on each artefact change; pre-commit. |
-
 ## Related
 
 - parent skill: `pro/pm/` (see neighbouring methodologies).

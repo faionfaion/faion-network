@@ -69,7 +69,6 @@
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-stakeholder-engagement-advanced.py` | Schema-validate engagement plan JSON. | Pre-commit + before review. |
 | `scripts/engagement_diff.py` | Diff prior vs current register; surface NEW/CHANGED/CLOSED. | Weekly diff cycle. |
 
 ## Related

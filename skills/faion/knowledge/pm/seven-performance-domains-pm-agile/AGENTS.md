@@ -65,12 +65,6 @@
 |------|---------|
 | `templates/domains.yaml` | Seven-domain skeleton with owner, health colour, top-3 risks per domain |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-seven-performance-domains.py` | Validate the spec artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[six-core-principles]]

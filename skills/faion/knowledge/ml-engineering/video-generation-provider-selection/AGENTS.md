@@ -48,7 +48,6 @@
 | `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | 800 |
 | `content/03-failure-modes.xml` | essential | 3 antipatterns (symptom / root-cause / fix) | 800 |
 | `content/04-procedure.xml` | reference | 5-step procedure | 700 |
-| `content/05-examples.xml` | reference | Worked example end-to-end | 500 |
 | `content/06-decision-tree.xml` | essential | Routing tree referencing rule ids | 500 |
 
 ## Task Routing

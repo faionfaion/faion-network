@@ -63,12 +63,6 @@
 | `templates/notion-pm.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/notion-pm.md` | Markdown skeleton for human-readable artefact rendering. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-notion-pm.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
-
 ## Related
 
 - [[linear-issue-tracking]]

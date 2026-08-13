@@ -64,12 +64,6 @@
 | `templates/planner-prompt.txt` | Prompt that turns a smell into a transform plan |
 | `templates/refactor-loop.sh` | Shell loop: apply transform → run tests → commit |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-refactoring-patterns.py` | Validate move plan against the schema | After plan draft, before execute_loop |
-
 ## Related
 
 - - [[code-decomposition-patterns]] — file-scale; this methodology is function-scale.

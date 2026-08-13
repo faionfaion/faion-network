@@ -63,12 +63,6 @@
 |------|---------|
 | `templates/quality-gate.py` | Quality-gate script: artefact + thresholds → pass/fail with violations |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-quality-management.py` | Validate the config artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[scrum-ceremonies]]

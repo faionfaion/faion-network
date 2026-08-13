@@ -70,12 +70,6 @@
 | `templates/embedding_service.py` | EmbeddingService class with batching + cache + guards. |
 | `templates/embedder-config.json` | Config skeleton. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-embedding-generation.py` | Validate embedder-config | Pre-commit + CI |
-
 ## Related
 
 - [[embedding-models]]

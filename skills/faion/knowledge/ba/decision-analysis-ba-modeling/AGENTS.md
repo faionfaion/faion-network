@@ -68,12 +68,6 @@
 | `templates/decision-record.md` | Markdown skeleton (decision, options, criteria, scores, sensitivity, signoff) |
 | `templates/_smoke-test.json` | Minimum viable decision-record JSON |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-decision-analysis.py` | Validate decision-record against output-contract + sensitivity threshold | Pre-commit; before stakeholder sign-off |
-
 ## Related
 
 - [[ai-acceptance-criteria-generator-reviewer]]

@@ -71,12 +71,6 @@
 | `templates/create-tasks.sh` | Bash helper that stubs empty TASK_*.md files for a wave. |
 | `templates/implementation-plan.md` | Canonical implementation-plan.md skeleton with WBS, dep graph, waves, critical path, risk, testing, rollout sections. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-writing-implementation-plans.py` | Validate the implementation-plan.md frontmatter against the schema in `content/02-output-contract.xml`. | After subagent returns the plan, before promoting to Accepted. |
-
 ## Related
 
 - [[workflow-design-phase]]

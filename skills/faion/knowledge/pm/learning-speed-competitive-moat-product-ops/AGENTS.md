@@ -67,12 +67,6 @@
 |------|---------|
 | `templates/belief_update.py` | Bayesian belief-update tracker for product hypotheses |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-learning-speed-competitive-moat.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
-
 ## Related
 
 - parent skill: `skills/faion/knowledge/pro/product/product-operations/`

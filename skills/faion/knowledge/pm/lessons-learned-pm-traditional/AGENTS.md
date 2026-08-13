@@ -64,12 +64,6 @@
 |------|---------|
 | `templates/lesson-validator.py` | Validator script: required fields, category in taxonomy, retrievability check |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-lessons-learned.py` | Validate the report artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[scrum-ceremonies]]

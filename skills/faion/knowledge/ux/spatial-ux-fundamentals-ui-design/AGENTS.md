@@ -68,12 +68,6 @@
 | `templates/spatial-ux-fundamentals.json` | JSON skeleton conforming to the output-contract schema. |
 | `templates/spatial-ux-fundamentals.md` | Markdown skeleton for human-readable artefact rendering. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-spatial-ux-fundamentals.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
-
 ## Related
 
 - [[voice-ui-basics]]

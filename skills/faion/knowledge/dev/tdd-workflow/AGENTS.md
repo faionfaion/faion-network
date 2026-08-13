@@ -43,7 +43,6 @@
 | `content/01-core-rules.xml` | essential | 5 rules: red first, minimal green, refactor green-to-green, one assertion per RED, never skip RED. | ~800 |
 | `content/02-output-contract.xml` | essential | Output: commit graph showing red → green → refactor commits. Forbidden: green-then-test, retroactive RED, RED with multiple assertions. | ~700 |
 | `content/03-failure-modes.xml` | essential | 4 antipatterns: tests-after, multi-assertion red, skip refactor, refactor while red. | ~700 |
-| `content/04-procedure.xml` | medium | Steps: write failing test → confirm RED → minimal code → confirm GREEN → refactor → confirm STILL GREEN. | ~700 |
 | `content/06-decision-tree.xml` | essential | Tree: is requirement precise? → TDD. Spike? → no TDD. UI? → visual regression instead. Else: TDD. | ~400 |
 
 ## Task Routing

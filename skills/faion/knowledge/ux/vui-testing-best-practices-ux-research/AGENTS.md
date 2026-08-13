@@ -68,12 +68,6 @@
 | `templates/stress-corpus.sh` | Bash: mix clean utterances with ambient noise at 20/10/5dB SNR via ffmpeg |
 | `templates/llm-judge-prompt.txt` | Per-turn LLM judge prompt scoring intent_match, naturalness, brevity, error_recovery |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-vui-testing-best-practices.py` | Validate artefact JSON against output schema | Pre-commit / CI on artefact change |
-
 ## Related
 
 - [[core-vui-design-principles]]

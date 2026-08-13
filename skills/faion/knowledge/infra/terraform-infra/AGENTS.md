@@ -69,12 +69,6 @@
 | `templates/spec.md` | working skeleton matching the `produces=spec` shape |
 | `templates/_smoke-test.md` | minimum-viable filled-in smoke-test fixture |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-terraform.py` | enforce `02-output-contract.xml` JSON Schema | after subagent returns, before downstream consumer reads |
-
 ## Related
 
 - parent skill: `pro/infra/`

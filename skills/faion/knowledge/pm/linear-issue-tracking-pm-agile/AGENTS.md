@@ -63,12 +63,6 @@
 | `templates/linear-issue-tracking.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/linear-issue-tracking.md` | Markdown skeleton for human-readable artefact rendering. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-linear-issue-tracking.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
-
 ## Related
 
 - [[capacity-fit-calculator]]

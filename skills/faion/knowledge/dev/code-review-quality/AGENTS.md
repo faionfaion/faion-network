@@ -64,12 +64,6 @@
 |------|---------|
 | `templates/agent-review.yml` | GitHub workflow that runs the agent reviewer on PRs |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-code-review.py` | Validate a review-report artefact against the schema | After draft, before posting to PR |
-
 ## Related
 
 - - [[code-review-basics]] — Conventional Comments labels and minimal review pattern.

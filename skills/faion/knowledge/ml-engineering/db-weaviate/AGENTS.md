@@ -63,12 +63,6 @@
 | `templates/weaviate_store.py` | WeaviateStore wrapper using client v4 with hybrid + cross-ref helpers. |
 | `templates/weaviate-schema.json` | JSON Schema for search response. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-db-weaviate.py` | Verify hybrid response carries alpha + sub-scores; flag manual fusion smell. | Post-query, pre-commit. |
-
 ## Related
 
 - [[db-qdrant]] · [[db-comparison]] · [[hybrid-search-implementation]]

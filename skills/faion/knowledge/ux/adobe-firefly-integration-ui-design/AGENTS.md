@@ -62,12 +62,6 @@
 | `templates/brand-rules.yaml` | Brand pre-filter rules skeleton (forbidden + required terms + style adherence). |
 | `templates/_smoke-test.json` | Filled minimum-viable single-asset request. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|---|---|---|
-| `scripts/validate-adobe-firefly-integration.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
-
 ## Related
 
 - [[ai-plugin-ecosystem]]

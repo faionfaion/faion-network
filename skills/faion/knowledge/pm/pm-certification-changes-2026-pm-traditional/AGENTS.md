@@ -63,12 +63,6 @@
 |------|---------|
 | `templates/score-session.py` | Scoring script for a candidate study session against ECO domain weights |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-pm-certification-changes-2026.py` | Validate the report artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[pm-certification-alignment-2026]]

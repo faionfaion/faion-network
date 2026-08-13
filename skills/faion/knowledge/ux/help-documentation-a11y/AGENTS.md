@@ -64,12 +64,6 @@
 | `templates/help-documentation.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/help-documentation.md` | Markdown skeleton for human-readable artefact rendering. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-help-documentation.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
-
 ## Related
 
 - [[match-real-world]]

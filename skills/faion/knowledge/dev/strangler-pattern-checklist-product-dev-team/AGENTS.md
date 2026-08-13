@@ -44,7 +44,6 @@
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
 | `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples | ~700 |
-| `content/03-failure-modes.xml` | essential | 3-5 antipatterns with symptom/root-cause/fix | ~800 |
 | `content/04-procedure.xml` | medium | 4-6 step procedure with input/action/output per step | ~900 |
 | `content/06-decision-tree.xml` | essential | Decision tree gating whether this methodology applies | ~500 |
 

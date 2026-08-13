@@ -51,7 +51,6 @@
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 for pivot-decision-record | 850 |
 | `content/03-failure-modes.xml` | essential | 4 antipatterns: vibe-pivot, sunk-cost continuation, runway-less pivot, serial pivot | 800 |
 | `content/04-procedure.xml` | essential | 5-step procedure: evaluate triggers -> classify type -> disclose sunk -> check runway -> author DR | 900 |
-| `content/05-examples.xml` | medium | Worked DR pivoting on segment trigger after 3 months | 800 |
 | `content/06-decision-tree.xml` | essential | Apply/skip routing on age + triggers + runway | 650 |
 
 ## Task Routing

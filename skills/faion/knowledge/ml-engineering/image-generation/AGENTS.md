@@ -65,12 +65,6 @@
 | `templates/image-gen-config.json` | Skeleton config |
 | `templates/prompt_formula.txt` | 6-element prompt template |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-image-generation.py` | Validate image-gen-config.json | Pre-deploy gate |
-
 ## Related
 
 - [[llm-decision-framework]] — same provider posture as text models

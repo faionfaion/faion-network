@@ -65,12 +65,6 @@
 | `templates/agents-md-universal.md` | Universal AGENTS.md skeleton with placeholders |
 | `templates/doc-outline.sh` | Shell that scans a dir and prints draft AGENTS.md sections |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-documentation.py` | Validate the doc-spec artefact + per-dir pair existence | After draft, before landing the docs PR |
-
 ## Related
 
 - - [[code-review-process]] — docs PRs use the same review template.

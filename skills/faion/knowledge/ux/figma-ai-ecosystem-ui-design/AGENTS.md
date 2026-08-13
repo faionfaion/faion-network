@@ -60,12 +60,6 @@
 | `templates/surface-catalogue.md` | Reference list of Figma surfaces + agent-supported flag. |
 | `templates/_smoke-test.json` | Filled hybrid-workflow decision record. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|---|---|---|
-| `scripts/validate-figma-ai-ecosystem.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
-
 ## Related
 
 - [[ai-plugin-ecosystem]]

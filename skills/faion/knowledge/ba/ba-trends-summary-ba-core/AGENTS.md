@@ -63,12 +63,6 @@
 |------|---------|
 | `templates/trends-checklist.md` | One-page quarterly trends checklist with adoption decisions. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-ba-trends-summary.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[modern-ba-framework]]

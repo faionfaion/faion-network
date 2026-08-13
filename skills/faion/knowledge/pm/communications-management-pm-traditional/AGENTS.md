@@ -63,12 +63,6 @@
 | `templates/comms-plan.md` | Comms plan template: segment × channel × cadence × content × owner |
 | `templates/action-extractor.py` | Action extraction from meeting transcript → owner + due + linked issue |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-communications-management.py` | Validate the config artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[seven-performance-domains]]

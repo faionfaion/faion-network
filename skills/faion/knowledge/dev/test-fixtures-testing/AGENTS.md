@@ -67,12 +67,6 @@
 | `templates/conftest-transactional.py` | Transactional rollback fixture for pytest-django. |
 | `templates/_smoke-test.yaml` | Minimum model inventory. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|---|---|---|
-| `scripts/validate-test-fixtures.py` | Validates emitted config against the schema. | Pre-commit. |
-
 ## Related
 
 - [[testing-pytest]]

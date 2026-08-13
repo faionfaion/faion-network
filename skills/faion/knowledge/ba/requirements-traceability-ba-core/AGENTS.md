@@ -68,12 +68,6 @@
 | `templates/rtm-template.md` | RTM matrix template with columns: req_id, design_ref, code_ref, test_ref, release_ref. |
 | `templates/rtm_min.py` | Stdlib RTM generator that scans repo for req-ID mentions. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-requirements-traceability.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[requirements-documentation]]

@@ -68,12 +68,6 @@
 | `templates/workshop-agenda.md` | Multi-stakeholder workshop agenda with facilitation cues. |
 | `templates/technique-selector.py` | CLI selector mapping (info_type, stakeholder_count) → technique. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-elicitation-techniques.py` | Validate the artefact JSON against the output contract schema | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[stakeholder-analysis]]

@@ -65,12 +65,6 @@
 | `templates/vpat-acr-skeleton.md` | VPAT-ACR template (WCAG 2.2 AA). |
 | `templates/accessibility-statement.txt` | EU EAA accessibility statement skeleton. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-regulatory-compliance-2026.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
-
 ## Related
 
 - [[ada-title-ii-compliance-2026]]

@@ -72,7 +72,6 @@
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-schedule-development.py` | Schema-validate the activity-list JSON artefact. | Pre-commit + before baseline lock. |
 | `scripts/cpm.py` | Compute critical path from activity-list CSV. | On schedule change. |
 
 ## Related

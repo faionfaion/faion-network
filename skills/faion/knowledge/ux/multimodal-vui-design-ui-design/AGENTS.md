@@ -63,12 +63,6 @@
 | `templates/statesync-test.template.ts` | Smoke test template for voice→screen state verification. |
 | `templates/_smoke-test.json` | Filled play-recipe-cards spec. |
 
-## Scripts
-
-| File | Purpose | When to call |
-|---|---|---|
-| `scripts/validate-multimodal-vui-design.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
-
 ## Related
 
 - [[llm-powered-conversational-ai]]

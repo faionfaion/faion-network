@@ -48,7 +48,6 @@
 | `content/01-core-rules.xml` | essential | 6 rules: cli-add-not-npm-install, cn-utility-canonical, css-vars-tokens, no-cross-import, drift-check, components-json-committed | 1100 |
 | `content/02-output-contract.xml` | essential | JSON Schema for shadcn install spec + components.json shape | 800 |
 | `content/03-failure-modes.xml` | essential | 4 antipatterns: importing-as-package, mixing-ui-kits, undeclared-drift, dark-mode-class-missing | 700 |
-| `content/04-procedure.xml` | essential | 5-step setup: init Tailwind → run shadcn init → add components → wire dark mode → run drift-check | 600 |
 | `content/06-decision-tree.xml` | essential | Routing: greenfield vs adopt → component picking → drift policy | 500 |
 
 ## Task Routing
@@ -67,12 +66,6 @@
 | `templates/cn-util.ts` | `cn` clsx + twMerge utility canonical location at `src/lib/utils.ts` |
 | `templates/globals.css` | Design-token CSS vars block + dark-mode class config |
 | `templates/shadcn-drift-check.sh` | Script comparing local component to upstream repo HEAD |
-
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-shadcn-ui.py` | Validate shadcn install spec JSON against schema | Post-init; pre-PR drift detection |
 
 ## Related
 

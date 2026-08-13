@@ -69,12 +69,6 @@
 | `templates/framework-fit.md` | Framework-fit report — IIBA AE / DA / SAFe comparison + recommendation + 7-principle gap table |
 | `templates/sprint-ba-activities.md` | Per-sprint BA activities checklist (refinement → planning → during → review → retro) |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-agile-ba-frameworks.py` | Validate produced artefact against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
-
 ## Related
 
 - Parent: `pro/ba/ba-core/AGENTS.md`

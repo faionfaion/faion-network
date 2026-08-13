@@ -66,12 +66,6 @@
 | `templates/skills-matrix.md` | Skills × people matrix template with primary/secondary marks |
 | `templates/team-charter.md` | Team charter template: purpose, working agreements, decision rights |
 
-## Scripts
-
-| File | Purpose | When to call |
-|------|---------|--------------|
-| `scripts/validate-team-development.py` | Validate the spec artefact against the schema in `02-output-contract.xml` | CI on each artefact change; pre-commit |
-
 ## Related
 
 - [[scrum-ceremonies]]

@@ -76,8 +76,6 @@
 | File | Purpose | When to call |
 |------|---------|--------------|
 | `scripts/validate-vercel-deployment-discipline.py` | Validate DeploymentPlan JSON against the schema. | Pre-deploy gate + post-deploy audit. |
-| `scripts/env-audit.sh` | Scans Vercel env vars, flags cross-scope leaks. | Pre-deploy + weekly. |
-| `scripts/preview-rollback.sh` | Atomic rollback to previous deployment. | Incident response. |
 
 ## Related
 
