@@ -35,6 +35,11 @@
 | `content/03-failure-modes.xml` | Six ways a constitution dies, including the one this methodology cannot prevent: nothing checks that the code obeys it. |
 | `content/06-decision-tree.xml` | Admission routing for one candidate rule: in, or to `project-spec/`, `roadmap.md`, `decisions.md`, or nowhere. |
 | `scripts/validate-constitution-md.py` | Structural validator: rule count, word cap, why present, ids sequential, sections present, footer parses, no unresolved placeholders. `--draft` relaxes the placeholder check; `--self-test` included. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
 | `templates/constitution.md` | Deliberately empty. Every rule slot is a `TODO(...)` placeholder and the examples live in HTML comments, so the template can never pre-load somebody else's opinions into your project. |
 
 ## Related

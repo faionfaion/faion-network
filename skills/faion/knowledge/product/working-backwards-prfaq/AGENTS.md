@@ -36,6 +36,11 @@
 | `content/03-failure-modes.xml` | Six ways a concept gate stops gating, with symptom, cause and the rule that prevents each. |
 | `content/06-decision-tree.xml` | Routing from what the review actually produced to `proceed` / `revise` / `kill`. |
 | `scripts/validate-working-backwards-prfaq.py` | Validates a record; enforces the early stop, the score ban, the past-tense press release and the `{concept_type}` coupling. `--self-test` included. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
 | `templates/prfaq-record.yaml` | Fill-in record for a completed five-phase review; ships valid against the contract. |
 | `templates/prfaq-record-kill.yaml` | The early-stop record — a kill at phase 1, which is the cheapest correct outcome. |
 

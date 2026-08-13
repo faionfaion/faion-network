@@ -34,6 +34,11 @@
 | `content/03-failure-modes.xml` | Six production failure modes with symptom, cause and the rule that prevents each. |
 | `content/06-decision-tree.xml` | Routing from observable schema and transport properties to split / post-validate / two-call. |
 | `scripts/validate-schema-semantic-constraint-gap.py` | Validates a record; walks the wire schema for keywords the declared transport drops and demands a checker plus counter for each. `--self-test` included. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
 | `templates/schema-pair-record.yaml` | Fill-in record for a single-transport structured-output call; ships valid against the contract. |
 | `templates/schema-pair-record-two-call.yaml` | The citations fork — call 1 structured, call 2 cited, neither doing both. |
 

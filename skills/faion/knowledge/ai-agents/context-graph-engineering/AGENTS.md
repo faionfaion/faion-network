@@ -34,6 +34,11 @@
 | `content/03-failure-modes.xml` | Six production failure modes with symptom, cause and the rule that prevents each. |
 | `content/06-decision-tree.xml` | Routing from observable data properties to graph / tree / flat. |
 | `scripts/validate-context-graph-engineering.py` | Validates a record; enforces the gate, the traversal arithmetic, and the CI integrity checks. `--self-test` included. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
 | `templates/graph-design-record.yaml` | Fill-in record for a proven warrant; ships valid against the contract. |
 | `templates/graph-design-record-no-graph.yaml` | The gate-stop record — four fields, the most common correct outcome. |
 

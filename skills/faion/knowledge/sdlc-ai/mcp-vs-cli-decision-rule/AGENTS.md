@@ -34,6 +34,11 @@
 | `content/03-failure-modes.xml` | Six failure modes with symptom, cause and the rule that prevents each. |
 | `content/06-decision-tree.xml` | Routing from what a source actually requires to CLI / MCP / neither. |
 | `scripts/validate-mcp-vs-cli-decision-rule.py` | Validates a record; enforces the CLI default, the closed justification list, the server cap and the spec-revision clock. `--self-test` included. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
 | `templates/source-routing-record.yaml` | Fill-in record for an agent with a mixed source set; ships valid against the contract. |
 | `templates/source-routing-record-cli-only.yaml` | The common outcome — every source routes to a CLI and no server is connected at all. |
 

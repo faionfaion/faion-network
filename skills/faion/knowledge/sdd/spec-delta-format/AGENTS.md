@@ -35,6 +35,11 @@
 | `content/03-failure-modes.xml` | Six ways a delta destroys the thing it was meant to protect. |
 | `content/06-decision-tree.xml` | Routing one change to a verb — including the two cases where the answer is "this is not a delta". |
 | `scripts/validate-spec-delta-format.py` | Validates a delta file: baseline ref, section vocabulary and order, ids, rename arrows, cross-section id collisions, scenario lines. `--self-test` included. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
 | `templates/spec-delta.md` | Fill-in delta, ships valid against its own contract. |
 
 ## Related

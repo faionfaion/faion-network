@@ -34,6 +34,11 @@
 | `content/03-failure-modes.xml` | Six ways a tiered index quietly becomes the bill. |
 | `content/06-decision-tree.xml` | Routing from measured index share and corpus shape to shard / build / leave alone. |
 | `scripts/validate-hierarchical-index-compression.py` | Validates a record: ceilings, reachability, entry caps, build-cost amortisation. `--self-test` included. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
 | `templates/index-budget-record.yaml` | Fill-in record; ships valid against the contract. |
 | `templates/index-entry-format.md` | The entry shape, with a before/after showing what a discriminator removes. |
 

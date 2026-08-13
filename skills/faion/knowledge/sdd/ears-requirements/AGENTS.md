@@ -35,6 +35,11 @@
 | `content/03-failure-modes.xml` | Seven ways EARS adoption fails in practice, each with symptom, cause and the rule that prevents it. |
 | `content/06-decision-tree.xml` | Routing: is this a system response to a condition at all? If yes, which keyword; if no, where it goes instead. |
 | `scripts/validate-ears-requirements.py` | Three-stage linter (normalize → head-marker split → classify + lint) plus artefact validation. `--self-test` replays every fixture. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
 | `templates/ears-rules.json` | **The grammar, as data.** Patterns, keyword ranks, cardinality, head-marker regexes, and every E/W/I rule with severity, scope and a dated citation. Single source of truth for both the Python validator and the Go runtime. |
 | `templates/ears-fixtures.tsv` | Every rule pinned to a concrete line: input → expected pattern → expected codes. Both implementations must reproduce this file exactly. |
 | `templates/requirements-block.md` | Fill-in requirements table with the `ears_pattern` column wired in; ships passing its own contract. |

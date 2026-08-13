@@ -34,6 +34,11 @@
 | `content/03-failure-modes.xml` | Six failure modes with symptom, cause and the rule that prevents each. |
 | `content/06-decision-tree.xml` | Routing from observable output shape to membership check / entailment / neither. |
 | `scripts/validate-closed-set-output-validation.py` | Validates a contract; rejects log-only handling, unbaselined thresholds, non-commercial scorers and claim decomposition of short justification strings. `--self-test` included. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
 | `templates/closed-set-validation-contract.yaml` | Fill-in contract for a fully closed output; ships valid. |
 | `templates/closed-set-validation-contract-mixed.yaml` | The common real case — a closed identifier field beside an open prose field, with the metric scoped honestly. |
 

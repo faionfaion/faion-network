@@ -34,6 +34,11 @@
 | `content/03-failure-modes.xml` | Six ways a cost audit produces a confidently wrong number. |
 | `content/06-decision-tree.xml` | Routing from the measured overhead ratio to compress / restructure / leave alone. |
 | `scripts/validate-retrieval-cost-per-answer-audit.py` | Validates a ledger; recomputes the medians and the overhead ratio from the rows. `--self-test` included. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
 | `templates/retrieval-cost-ledger.yaml` | Fill-in ledger with ten rows; ships valid against the contract. |
 | `templates/measure-lookup.md` | Instrumentation recipe: where to put the counter for the four common retrieval shapes. |
 

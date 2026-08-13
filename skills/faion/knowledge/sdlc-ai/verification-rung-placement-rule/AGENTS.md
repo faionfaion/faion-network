@@ -34,6 +34,11 @@
 | `content/03-failure-modes.xml` | Six misplacement modes with the live instance of each, including plumbing suites that are green by construction. |
 | `content/06-decision-tree.xml` | The three-question tree plus four overlays that constrain a check once it has landed. |
 | `scripts/validate-verification-rung-placement-rule.py` | Validates a record; catches rung inflation mechanically by checking rung against the placement answer. `--self-test` included. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
 | `templates/rung-placement-record.yaml` | Worked eight-check record over the faion corpus and CLI. Ships valid against the contract. |
 | `templates/rung-placement-record-single-check.yaml` | Everyday one-check triage after a manual review catch. Ships valid against the contract. |
 

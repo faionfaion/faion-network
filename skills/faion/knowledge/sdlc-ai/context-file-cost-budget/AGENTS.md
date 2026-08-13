@@ -35,6 +35,11 @@
 | `content/03-failure-modes.xml` | Six failure modes with symptom, cause and the rule that prevents each. |
 | `content/06-decision-tree.xml` | Routing from who wrote the file and what is in it to keep / cut / relocate / delete. |
 | `scripts/validate-context-file-cost-budget.py` | Validates a record; enforces the ceiling arithmetic, the overview ban, the human confirmation and the five-run protocol. `--self-test` included. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
 | `templates/context-budget-record.yaml` | Fill-in record for an audited file; ships valid against the contract. |
 | `templates/context-budget-record-delete.yaml` | The delete case — an LLM-generated file nobody confirmed, which the evidence says to remove. |
 

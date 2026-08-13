@@ -34,6 +34,11 @@
 | `content/03-failure-modes.xml` | Six failure modes, four of them observed in production runs, each with the rule that prevents it. |
 | `content/06-decision-tree.xml` | Routing from an observed state on disk to resume / dead-letter / roll back / do nothing. |
 | `scripts/validate-on-disk-checkpoint-ledger.py` | Validates a spec: lineage ordering, marker vocabulary, boundaries, dead-letter policy. `--self-test` included. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
 | `templates/checkpoint-ledger-spec.yaml` | Fill-in spec; ships valid against the contract. |
 | `templates/mark.sh` | The single creation path. Identity-checked, `flock`-guarded, appends to history. Exits non-zero on an unknown unit. |
 | `templates/rollback.sh` | Truncate-and-requeue: removes markers at or after a phase in lineage order, records `rolled-back`, requeues. |

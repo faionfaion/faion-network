@@ -34,6 +34,11 @@
 | `content/03-failure-modes.xml` | Six production ways a gate reports pass without evaluating, with the live instance of each. |
 | `content/06-decision-tree.xml` | Routing from the observed leak site to the fix. |
 | `scripts/validate-gate-fail-closed-rule.py` | Validates a contract; enforces mandatory modes per instrument, severity floors, and the dated override. `--self-test` included. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
 | `templates/gate-failure-contract.yaml` | Judge gate — the full five-mode case. Ships valid against the contract. |
 | `templates/gate-failure-contract-static.yaml` | Rung-1 static gate — where the leak is the runner, not the model. Ships valid against the contract. |
 

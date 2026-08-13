@@ -34,6 +34,11 @@
 | `content/03-failure-modes.xml` | Six ways an automation layer becomes the problem it was bought to solve. |
 | `content/06-decision-tree.xml` | Routing from the trigger inventory and the exec requirement to a surface, or to none. |
 | `scripts/validate-unattended-automation-boundary.py` | Validates a record; enforces the gate, the escalation justifications and the per-tool exec capability table. `--self-test` included. |
+
+## Templates
+
+| File | Purpose |
+|------|---------|
 | `templates/unattended-automation-record.yaml` | Fill-in record for a warranted surface; ships valid against the contract. |
 | `templates/unattended-automation-record-none.yaml` | The gate-stop record — the most common correct outcome, and it installs nothing. |
 
