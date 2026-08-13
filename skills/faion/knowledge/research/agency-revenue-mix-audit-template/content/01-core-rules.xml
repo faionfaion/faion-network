@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Agency Revenue Mix Audit Template Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Agency Revenue Mix Audit Template methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+<text id="01-core-rules" title="Agency Revenue Mix Audit Template Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules governing how an agency's trailing-12-month revenue is measured, split by type, and turned into dependence flags: the net-revenue base, the isolation of owner-billed work, concentration thresholds on both clients and referral partners, and what may legitimately be called a retainer.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry ≥1 verbatim citation from an auditable source (URL, transcript_id, ticket id, dashboard snapshot). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Agency Revenue Mix Audit Template">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="net-revenue-base-excludes-pass-through" testable="true" depth="essential">
+      <statement>All percentages in `revenue_by_type` MUST be computed on net revenue (gross income): media spend, ad buys, print, licences and subcontractor cost that are rebilled at or near cost are reported as a separate `pass_through` line and excluded from the denominator.</statement>
+      <rationale source="Agency M&amp;A practice — net revenue / gross income convention">Billings-based mix makes a media-heavy agency look large and diversified while contribution is flat. Buyers restate to net revenue in the first week of diligence; the mix percentages move materially and every conclusion drawn from the billings version is withdrawn.</rationale>
     </rule>
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+
+    <rule id="owner-billed-revenue-isolated" testable="true" depth="essential">
+      <statement>Revenue delivered personally by the owner MUST be its own `owner_billed` line with the underlying delivery hours, never folded into `project` or `retainer`. Record it even when the owner takes no salary for that work.</statement>
+      <rationale source="M&amp;A quality-of-earnings — owner add-backs and replacement cost">Owner-delivered work does not transfer at close. The buyer must hire a producer to replace it, so the replacement salary is subtracted from EBITDA. Hiding the line inside `project` overstates transferable earnings by exactly the replacement cost, and the correction lands as a price re-trade.</rationale>
     </rule>
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="client-concentration-thresholds" testable="true" depth="essential">
+      <statement>The audit MUST flag any single client at 20% or more of trailing-12-month net revenue, and any top-3 clients at 50% or more combined, each as an entry in `dependence_risks` with a named mitigation.</statement>
+      <rationale source="Lower-middle-market M&amp;A and lender diligence — customer concentration">At those levels the loss of one account removes the buyer's debt service, not just its margin. Lenders respond by requiring escrow, an earnout or a seller note, which converts headline price into contingent price — the concentration is repriced as deal structure rather than as multiple.</rationale>
     </rule>
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (commit, send, ramp, freeze, escalation, ledger write, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+
+    <rule id="referral-source-concentration-counted" testable="true" depth="essential">
+      <statement>Channel concentration MUST be measured alongside client concentration: flag any single referral partner, marketplace or platform that originated 25% or more of new revenue in the window.</statement>
+      <rationale source="Revenue-concentration analysis — origination vs billing view">A referral partner is a single point of failure that is invisible in a client-level table, because the risk sits one level upstream: the client roster looks diversified while every one of those logos arrived through one relationship that can be withdrawn in a single conversation.</rationale>
     </rule>
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+
+    <rule id="trailing-window-uses-recognized-revenue" testable="true" depth="essential">
+      <statement>The window is a rolling 12 months of revenue recognized by service delivery date. Cash receipts, issued invoices, deposits and annual prepayments MUST be allocated across the delivery period, not booked in the month of receipt.</statement>
+      <rationale source="ASC 606 / IFRS 15 — revenue recognized as performance obligations are satisfied">A December prepay or a large project deposit booked on cash inflates the retainer share and creates a recurring line that does not exist. The mix then shows rising predictability in exactly the period where the agency actually pulled cash forward.</rationale>
     </rule>
-    <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+
+    <rule id="retainer-requires-term-and-notice" testable="true" depth="essential">
+      <statement>A line may be classified `retainer` only if a written agreement exists with a stated term and a notice period of 30 days or more. Ongoing month-to-month work cancellable at will is classified `project`, however long it has been running.</statement>
+      <rationale source="Contracted-revenue diligence — cancellability testing">Buyers read the contracts and reprice zero-notice "retainers" to project multiples, because revenue that can stop next month carries the same risk as revenue that has to be re-won next month. Misclassification here is the most common single cause of a diligence-stage re-trade in agency deals.</rationale>
+    </rule>
+
+    <rule id="multiplier-impact-stated-as-direction-and-driver" testable="true" depth="essential">
+      <statement>Each entry in `multiplier_impact` MUST name the mix share it responds to, the direction of the effect, and the mechanism (transferability, predictability, or margin). Bare numeric multiplier deltas with no named driver are rejected.</statement>
+      <rationale source="Guideline-transaction market approach — value drivers">A delta with no driver cannot be acted on: the founder cannot tell whether to convert project work into retainers, to reduce owner-billed hours, or to drop a low-margin service line. Naming the mechanism turns the audit into a work plan instead of a score.</rationale>
     </rule>
 
   </section>

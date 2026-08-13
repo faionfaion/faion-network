@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Risk Assessment Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Risk Assessment methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+<text id="01-core-rules" title="Risk Assessment Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules for a likelihood × impact risk register: risks phrased as cause-event-consequence, likelihood anchored to probability bands over a fixed window, impact denominated in one unit, a single human owner per row, and triggers with dated mitigations on every top-quartile risk.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry ≥1 verbatim citation from an auditable source (URL, transcript_id, ticket id, dashboard snapshot). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Risk Assessment">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="risk-phrased-as-cause-event-consequence" testable="true" depth="essential">
+      <statement>Each row's `name` MUST follow "because of &lt;cause&gt;, &lt;uncertain event&gt; may occur, leading to &lt;consequence&gt;". Topic nouns — "competition", "regulation", "hiring" — are rejected. An event that has already occurred is an issue, not a risk, and belongs in the plan, not the register.</statement>
+      <rationale source="ISO 31000 / PMI risk-statement (cause-risk-effect) structure">You cannot assign a likelihood to a noun: "competition" is certain, so any score attached to it measures the analyst's mood rather than the world, and the resulting ordering of the register is arbitrary from row one.</rationale>
     </rule>
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+
+    <rule id="likelihood-bands-fixed-and-time-bounded" testable="true" depth="essential">
+      <statement>The 1-5 likelihood scale MUST map to explicit probability bands over one stated window used by every row — e.g. within 12 months: 1 = &lt;5%, 2 = 5-20%, 3 = 20-50%, 4 = 50-80%, 5 = &gt;80%. The band table is recorded in `matrix` and MUST NOT vary between rows.</statement>
+      <rationale source="Sherman Kent, &quot;Words of Estimative Probability&quot; (CIA Studies in Intelligence, 1964)">Kent showed that readers map verbal terms like "probable" to numbers spanning roughly a quarter to nine-tenths, so unbanded verbal likelihoods are not shared between author and reader; and without a fixed window a decade-scale risk and a quarter-scale risk receive the same score.</rationale>
     </rule>
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="impact-in-one-commensurable-unit" testable="true" depth="essential">
+      <statement>The 1-5 impact scale MUST be banded in a single unit applied to every row — currency of loss, or weeks of runway/schedule — with the unit stated in `matrix`. Scoring one risk on revenue and another on "reputation" without converting to the common unit is rejected.</statement>
+      <rationale source="Internal — risk-matrix scoring audit">Multiplying likelihood by impact is only meaningful when impact is commensurable; mixed units make the product a pseudo-number, so the `top_quartile` filter selects whichever rows the author happened to score generously rather than the rows that actually threaten the plan.</rationale>
     </rule>
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (commit, send, ramp, freeze, escalation, ledger write, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+
+    <rule id="single-human-owner-per-risk" testable="true" depth="essential">
+      <statement>Every row's `owner` MUST be one named person. Teams, roles and "TBD" are rejected. A row for which no owner can be named is removed from the register with a recorded reason — it is not carried as unowned.</statement>
+      <rationale source="ISO 31000 — risk ownership; PMBOK risk-owner assignment">An unowned risk has nobody watching for its trigger, so the register documents that the organisation knew and did nothing — legally and operationally worse than not having listed it, because the mitigation was never anyone's next action.</rationale>
     </rule>
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+
+    <rule id="top-quartile-rows-carry-trigger-and-dated-mitigation" testable="true" depth="essential">
+      <statement>Each row in `top_quartile` (score ≥16) MUST carry an observable trigger — a metric crossing a named threshold, or a dated external event — plus a mitigation with a due date, and the residual likelihood/impact score after that mitigation.</statement>
+      <rationale source="Risk-trigger / early-warning practice in ISO 31000 monitoring and review">A mitigation without a trigger is executed either never or always: never, because nothing tells anyone the moment has come; or always, because the team hedges permanently and pays the mitigation cost for a risk that stayed at 5%.</rationale>
     </rule>
+
+    <rule id="scores-rescored-not-carried-forward" testable="true" depth="essential">
+      <statement>At each `review_cycle` date, likelihood and impact are re-scored against current evidence and the prior score is retained beside the new one with the date of re-assessment. Copying a score forward without a dated re-assessment note is rejected.</statement>
+      <rationale source="ISO 31000 — monitoring and review clause">Carried-forward scores freeze the register at its authoring date: risks that already materialised sit at likelihood 2 while resolved ones sit at 4, so readers learn the register does not track reality and stop opening it, which removes the only control it provided.</rationale>
+    </rule>
+
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+      <statement>Do NOT run when (a) no decision gate consumes the register — nothing is approved or blocked on it; (b) the "risks" are certainties with known costs, which are plan line items; (c) the decision is single-person and reversible within days, where the register costs more than the exposure; (d) no owner can be named for any row, so rule `single-human-owner-per-risk` empties the register.</statement>
+      <rationale source="Internal — methodology preconditions">In each case the output is a scored list nobody acts on, and a well-formatted unowned register is the artefact most likely to be mistaken for risk management actually happening.</rationale>
     </rule>
 
   </section>

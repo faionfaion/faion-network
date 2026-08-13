@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Agent Invocation Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Agent Invocation methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+<text id="01-core-rules" title="Agent Invocation Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules constraining the invocation config for a research subagent: the tool allowlist, the pair of termination controls, caller-side output validation, sequencing against shared search quota, forced citation, context isolation on return, and the trace fields that make a run diagnosable afterwards.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry ≥1 verbatim citation from an auditable source (URL, transcript_id, ticket id, dashboard snapshot). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Agent Invocation">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="tool-allowlist-not-inherited" testable="true" depth="essential">
+      <statement>`tools_whitelist` MUST enumerate the exact tools granted. A research subagent gets Read, Grep, Glob, WebSearch, WebFetch and nothing else; if it must persist output it gets Write scoped to the one path declared in `trace_contract`. Bash, Edit and unscoped Write are forbidden.</statement>
+      <rationale source="Claude Code subagent definition — `tools` frontmatter field">Omitting the field makes the subagent inherit the parent's full toolset. An unbounded research agent that can run shell will "helpfully" reorganize files or install a package mid-run, and the damage surfaces later as an unexplained working-tree diff rather than as an agent error anyone traces back.</rationale>
     </rule>
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+
+    <rule id="iteration-cap-and-stop-condition-both-set" testable="true" depth="essential">
+      <statement>`max_iterations` MUST be a positive integer AND the config MUST declare an explicit stop condition (output validates against `output_schema`, or no new source URL in the last two tool calls). Neither may be omitted in favour of the other.</statement>
+      <rationale source="Bounded agent-loop design">A cap without a stop condition means the agent exhausts the budget and returns whatever partial state it held at the last turn — which parses as a normal answer downstream. A stop condition without a cap means a search loop that keeps finding "one more source" runs until the session limit.</rationale>
     </rule>
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="output-schema-validated-by-caller" testable="true" depth="essential">
+      <statement>The caller MUST validate the returned payload against `output_schema` before consuming it, and treat a violation as a retry with the violation echoed back — never as a field to patch, default or regex out.</statement>
+      <rationale source="Structured-output failure modes in long generations">Models emit nearly-correct JSON: under a long generation a required field is silently dropped rather than malformed. A caller that repairs the shape locally propagates the omission as a legitimate empty value, and the gap appears three stages later as a conclusion drawn from nothing.</rationale>
     </rule>
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (commit, send, ramp, freeze, escalation, ledger write, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+
+    <rule id="sequential-when-search-quota-is-shared" testable="true" depth="essential">
+      <statement>Invocations that share one search provider (Brave, Tavily, Perplexity, the built-in WebSearch quota) MUST run sequentially, with each stage passing the previous stage's output path in its prompt. Parallel fan-out over a shared provider is forbidden in the config.</statement>
+      <rationale source="agent-integration.md in this methodology directory — faion-researcher constraints">Parallel research stages issue overlapping queries against one key: the quota is consumed twice for the same answers and the provider starts rate-limiting mid-run, so some stages return degraded results while others return full ones and the difference is invisible in the merged report.</rationale>
     </rule>
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+
+    <rule id="external-facts-require-a-fetched-url" testable="true" depth="essential">
+      <statement>The subagent prompt MUST forbid estimation and require every external figure to carry a URL the agent itself fetched; where no source exists the agent writes the literal string "Data not available". A figure with no URL fails caller-side validation.</statement>
+      <rationale source="agent-integration.md — hallucinated sources in research modes">Without forced citation models generate plausible review-site slugs and vendor pricing pages that do not exist. Because a fabricated citation is formatted exactly like a real one, no downstream reader can distinguish them, and the fabrication is laundered into every artefact that quotes the report.</rationale>
     </rule>
-    <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+
+    <rule id="subagent-returns-path-not-payload" testable="true" depth="essential">
+      <statement>When expected output exceeds roughly a few thousand tokens, the subagent MUST write to the declared path and return only that path plus a short summary. Returning raw search results or full transcripts to the parent is forbidden.</statement>
+      <rationale source="Context-isolation rationale for subagents">Subagent invocation exists to keep tool noise out of the parent window. Returning the payload puts it back, so a nine-stage research run leaves the orchestrator with no room to actually orchestrate — the cost of the isolation is paid without receiving the benefit.</rationale>
+    </rule>
+
+    <rule id="trace-contract-records-stop-reason" testable="true" depth="essential">
+      <statement>`trace_contract` MUST declare the log field names and a storage path, and the field set MUST include `invocation_id`, `iterations_used`, `stop_reason` and `tools_called`.</statement>
+      <rationale source="Observability of bounded agent loops">Without `stop_reason` and `iterations_used` a run truncated at the cap is indistinguishable, after the fact, from a run that finished — both produce an output file. Every later question about why a report is thin then requires re-running the agent instead of reading the trace.</rationale>
     </rule>
 
   </section>

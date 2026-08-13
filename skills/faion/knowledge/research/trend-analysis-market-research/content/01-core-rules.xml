@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Trend Analysis Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Trend Analysis methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+<text id="01-core-rules" title="Trend Analysis Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules that separate a trend scan from a horoscope: every trend carries a measured rate of change, an expiry date, a pre-named disconfirming signal, three non-shared sources, and an implication that names the decision it flips.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry ≥1 verbatim citation from an auditable source (URL, transcript_id, ticket id, dashboard snapshot). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Trend Analysis">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="trend-carries-a-measured-rate-of-change" testable="true" depth="essential">
+      <statement>Each entry in `trends` MUST carry a metric, a t0 value with date, a t1 value with date, and the source of the series. A directional statement with no measured magnitude ("AI adoption is accelerating") is a theme, not a trend, and is cut from the artefact.</statement>
+      <rationale source="Internal — trend-scan review practice">A theme cannot be wrong, so the next review cannot score it and the scan never accumulates a track record; a rate makes the claim checkable at the next re-measurement, which is the only mechanism by which a forecasting artefact ever improves.</rationale>
     </rule>
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+
+    <rule id="valid-until-per-trend" testable="true" depth="essential">
+      <statement>Every trend carries its own `valid_until` date — the point at which its rate must be re-measured — set no later than the artefact's `horizon_months` and shorter for faster-moving series. A trend cited past its `valid_until` is treated as unsourced.</statement>
+      <rationale source="Internal — artefact-staleness audit">A single artefact-level horizon expires all claims at once, but trends inside one scan move at different speeds; without per-trend expiry the slow-moving regulatory item and the fast-moving pricing item are quoted with equal confidence eighteen months later, when only one of them is still true.</rationale>
     </rule>
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="named-disconfirming-signal" testable="true" depth="essential">
+      <statement>Each trend MUST name the observation that would falsify it: a specific metric, a threshold, and where it is published. The disconfirmer is fixed at authoring time and MUST NOT be rewritten at review time to fit what happened.</statement>
+      <rationale source="Schwartz, The Art of the Long View — early-warning indicators; Popperian falsifiability">Without a pre-committed disconfirmer, every subsequent outcome gets narrated as consistent with the trend, so the scan can never be shown wrong; that is the exact property that makes horoscopes feel accurate and makes trend reports un-improvable.</rationale>
     </rule>
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (commit, send, ramp, freeze, escalation, ledger write, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+
+    <rule id="three-signals-not-three-citations-of-one" testable="true" depth="essential">
+      <statement>`signals_per_trend` requires ≥3 signals that do not share a primary source — three articles quoting the same analyst report count as one. At least one signal MUST be a hard series (price, volume, headcount, filings, procurement or regulatory calendar), not commentary.</statement>
+      <rationale source="Internal — source-independence check">Media coverage is autocorrelated: outlets cite each other, so counting articles measures how loudly a trend was reported, and that volume peaks when the asset or the idea is most over-priced — the count is a contrarian indicator being read as a confirming one.</rationale>
     </rule>
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+
+    <rule id="implication-names-decision-and-direction" testable="true" depth="essential">
+      <statement>Each entry in `implications` MUST name (a) the first-order effect it descends from, (b) which of our decisions changes — price, roadmap item, hiring, channel, build-vs-buy, and (c) the direction of the change. An implication that restates the trend in different words is rejected.</statement>
+      <rationale source="Internal — second-order-effects discipline">Restated implications leave the artefact with nothing to act on, so it is filed and never consulted; an artefact that is never consulted is also never tested against outcomes, and its errors persist into the next scan unchallenged.</rationale>
     </rule>
+
+    <rule id="horizon-exceeds-signal-publication-lag" testable="true" depth="essential">
+      <statement>`horizon_months` (12-24) MUST be greater than the publication lag of the slowest cited signal, and each signal records its field date separately from its publication date. A trend evidenced only by annually published survey data requires at least one higher-frequency leading indicator before it can support a 12-month claim.</statement>
+      <rationale source="Internal — signal-latency check on annual industry surveys">Annual surveys are published months after their field window closes, so at authoring time a meaningful share of the horizon has already elapsed against data that describes the past; the forecast is then made about a period that partially already happened.</rationale>
+    </rule>
+
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+      <statement>Do NOT run when (a) the decision executes inside the current quarter — a 12-24 month read cannot change it; route to market-analysis for a current-state view; (b) no time series exists in the domain, only opinion pieces — rule `three-signals-not-three-citations-of-one` cannot be satisfied; (c) the domain's cadence is faster than your review cycle, where a periodic scan is structurally stale — route to a continuous monitoring setup; (d) the intended use is narrative for a pitch rather than a decision input.</statement>
+      <rationale source="Internal — methodology preconditions">Each case produces an artefact whose `signals_per_trend` and `valid_until` fields can only be filled with plausible fiction, and a fictional trend scan is more damaging than none because it is quoted with the authority of the format.</rationale>
     </rule>
 
   </section>

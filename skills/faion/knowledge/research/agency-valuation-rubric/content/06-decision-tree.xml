@@ -1,44 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Agency Valuation Rubric Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`.</summary>
+<text id="06-decision-tree" title="Agency Valuation Rubric Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether a normalized EBITDA base exists, whether banded comparable transactions are available, and whether this is a first scoring run or a re-score &#8212; to full application, scoring without a published multiplier map, or a halt to fix the base or the weights.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-base-and-run-type">Is there a normalized EBITDA to multiply, and is this the first scoring run or a re-score across time or across a comparison set?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="no EBITDA figure yet, or the P&amp;L still carries owner compensation at whatever the owner chose to pay themselves and personal or one-off expenses are unstripped">
+      <conclusion ref="ebitda-normalized-before-multiplier" verdict="halt; build the normalization bridge line by line first &#8212; the rubric multiplies whatever base it is handed, so twelve scored criteria on an un-normalized base is precision attached to the wrong quantity"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="a normalized EBITDA exists and this is the first time the target is scored">
+      <question id="q-comps-available">Are observed comparable transactions available for this target's EBITDA band, or only headline rules of thumb?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+      <branch when="only category-wide rules of thumb ('agencies sell for 4-6x'), no transactions observed in the target's EBITDA band">
+        <conclusion ref="multiplier-map-bounded-by-comps" verdict="apply the scoring half but leave the score-to-multiplier map unpublished until a banded comp range is sourced; an unbounded map becomes the seller's anchor and market-rate offers get refused against it"/>
       </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is ≥1 verbatim citation available per non-trivial field declared in the output contract?</question>
+      <branch when="transactions observed in the target's EBITDA band give a bounded multiplier range">
+        <conclusion ref="run-the-checklist" verdict="apply the full methodology; freeze the weight vector before the first score, give every 1-5 level an observable anchor, and split owner dependency into relationship and delivery axes"/>
+      </branch>
+    </branch>
 
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
-        </branch>
+    <branch when="the target has been scored before, or several targets are being scored for comparison">
+      <question id="q-weights-frozen">Was one weight vector written down and frozen before any score was visible, and reused unchanged?</question>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
+      <branch when="weights were tuned after the scores appeared, or each target was scored on its own vector">
+        <conclusion ref="weights-frozen-before-scoring" verdict="halt; re-score every target on a single frozen vector &#8212; a per-target vector means each was measured with a different yardstick and the ranking carries no information"/>
+      </branch>
 
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="human-checkpoint-before-binding-action" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
-        </branch>
+      <branch when="one frozen vector, reused unchanged across targets and re-runs">
+        <conclusion ref="criteria-non-redundant" verdict="apply, but audit the criteria set first for several proxies of one quantity (retainer share, recurring-revenue share, contracted backlog) and cap their combined weight at the weight that concept was meant to carry"/>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true → applies_if=true → evidence_available=true → named_owner=true → apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

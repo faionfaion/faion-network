@@ -1,44 +1,40 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Agent Invocation Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`.</summary>
+<text id="06-decision-tree" title="Agent Invocation Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether the invocation leaves the repo for an external search provider, whether several stages share one quota, and how large the return payload is &#8212; to the full invocation config, a reduced local-only config, or skip when there is no agent loop to bound.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-external-reach">Does the invocation reach outside the repository &#8212; WebSearch, WebFetch or a search API &#8212; or does it stay on local files?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="a single deterministic tool call with a known target (read one file, hit one known endpoint) and no iteration">
+      <conclusion ref="skip-this-methodology" verdict="skip; there is no loop to bound and no tool budget to constrain &#8212; make the call inline rather than wrapping it in a subagent config"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="the subagent iterates but only over local files (Read, Grep, Glob) and returns a short answer to the parent">
+      <question id="q-return-size">Does the expected return exceed roughly a few thousand tokens, or does it fit in a short summary?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+      <branch when="the return is a short answer or a small structured object">
+        <conclusion ref="tool-allowlist-not-inherited" verdict="apply the reduced config: enumerate the read-only tool set explicitly instead of inheriting the parent's, set both an iteration cap and a stop condition, and validate the return caller-side"/>
       </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is ≥1 verbatim citation available per non-trivial field declared in the output contract?</question>
+      <branch when="the run produces a large transcript, file inventory or extracted corpus">
+        <conclusion ref="subagent-returns-path-not-payload" verdict="apply with a declared write path; the subagent returns that path plus a summary, and the single Write is scoped to it in `tools_whitelist`"/>
+      </branch>
+    </branch>
 
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
-        </branch>
+    <branch when="the subagent queries an external search or fetch provider">
+      <question id="q-shared-quota">Do two or more stages share one provider key or the built-in WebSearch quota, or is this one standalone invocation?</question>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
+      <branch when="one standalone invocation against the provider">
+        <conclusion ref="external-facts-require-a-fetched-url" verdict="apply; the prompt forbids estimation, every external figure carries a URL the agent itself fetched, missing data is written as the literal 'Data not available', and the caller validates against `output_schema` before consuming"/>
+      </branch>
 
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="human-checkpoint-before-binding-action" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
-        </branch>
+      <branch when="several stages fan out over one shared key or quota">
+        <conclusion ref="run-the-checklist" verdict="apply the full methodology; stages run sequentially with each passing the previous stage's output path, every stage writes raw output to its declared path, and `trace_contract` records `stop_reason` and `iterations_used`"/>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true → applies_if=true → evidence_available=true → named_owner=true → apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

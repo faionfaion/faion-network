@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Business Model Research Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Business Model Research methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+<text id="01-core-rules" title="Business Model Research Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>Seven rules for comparing revenue models on unit economics: one customer and time unit across all rows, compounded rather than multiplied churn, the LTV:CAC and payback gates applied before ranking, cost-to-serve non-payers in the margin line, explicit conversion assumptions, and the sensitivity test the recommendation must survive.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry ≥1 verbatim citation from an auditable source (URL, transcript_id, ticket id, dashboard snapshot). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Business Model Research">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="one-customer-definition-and-time-unit-across-rows" testable="true" depth="essential">
+      <statement>`scoring_dimensions` declares one customer unit (a paying account — not a user, not a free signup) and one period (e.g. monthly ARPA, annual churn) stated once and applied to every row in `models_compared`. No row may redefine either.</statement>
+      <rationale source="David Skok — SaaS Metrics 2.0 (cohort and unit definitions)">A freemium row that counts free signups as customers reports a CAC an order of magnitude below a paid-trial row that counts only payers. The ranking then measures which denominator each author chose, and because both cells are numerically plausible nothing in review catches it.</rationale>
     </rule>
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+
+    <rule id="churn-compounded-not-multiplied" testable="true" depth="essential">
+      <statement>Where monthly and annual churn figures are mixed, convert with (1 − monthly)^12 and record which one was actually measured. Logo churn and revenue churn are separate cells, and net revenue retention is stated wherever the model has an expansion path.</statement>
+      <rationale source="Skok — SaaS Metrics 2.0; standard cohort retention math">5% monthly churn is roughly 46% annual, not 60% — the linear shortcut overstates churn by ~14 points and therefore understates LTV by tens of percent. LTV is the numerator of the gate every model is ranked on, so the arithmetic error reorders the whole comparison.</rationale>
     </rule>
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="ltv-cac-and-payback-gates-applied-before-ranking" testable="true" depth="essential">
+      <statement>Each model must clear LTV:CAC ≥ 3 and CAC payback ≤ ~12 months for a self-serve/SMB motion (≤ 18–24 months for an enterprise motion with funding in place) before it may enter `ranked_models`. A failing model stays in `models_compared` with its failing figure visible; it is never silently dropped.</statement>
+      <rationale source="David Skok — SaaS Metrics 2.0; Bessemer Venture Partners cloud benchmarks">A model that ranks first on strategic fit but fails payback burns cash faster than it returns it, so every incremental sale increases the funding requirement. Ranking before the gate hides that inversion behind an attractive top-line growth curve.</rationale>
     </rule>
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (commit, send, ramp, freeze, escalation, ledger write, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+
+    <rule id="margin-line-includes-cost-to-serve-non-payers" testable="true" depth="essential">
+      <statement>The gross-margin cell includes hosting and inference COGS, payment processing fees, support cost, and the cost of serving free and trial users attributed back to the paying base. A freemium or free-tier row without an explicit free-user cost-to-serve line is rejected.</statement>
+      <rationale source="Bessemer — State of the Cloud gross-margin benchmarks (software typically 70–80%)">Freemium moves a large variable cost above the margin line while leaving revenue unchanged, so a model compared on revenue alone always makes freemium look free. Inference-heavy products routinely land far below the software benchmark for exactly this reason, and the gap only appears once non-payers are costed.</rationale>
     </rule>
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+
+    <rule id="free-to-paid-conversion-assumption-stated-and-sourced" testable="true" depth="essential">
+      <statement>Every freemium or free-trial row states the assumed free-to-paid conversion rate, where that number came from, and the traffic volume it implies to hit the revenue target. Self-serve product-led conversion sits in the low single digits; any assumption above 10% must cite a comparable named product.</statement>
+      <rationale source="OpenView Product Benchmarks — free-to-paid conversion by motion">Freemium viability is traffic multiplied by conversion, so doubling the assumed conversion halves the traffic the plan needs. An optimistic rate makes an unreachable acquisition target look reachable while every other cell in the row stays unchanged, which is why the error survives review.</rationale>
     </rule>
-    <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+
+    <rule id="ranking-sensitivity-tested-on-the-pivotal-assumption" testable="true" depth="essential">
+      <statement>`recommendation` names the single assumption whose movement would reorder the top two models and states the value at which the flip occurs (e.g. "freemium overtakes paid trial above 4.5% conversion").</statement>
+      <rationale source="Osterwalder &amp; Pigneur — Business Model Generation; Bland &amp; Osterwalder — Testing Business Ideas">A model comparison rests on three to five unmeasured assumptions. Without naming the pivotal one the team relitigates the decision every time any number moves, instead of running the single test that would settle it — and each relitigation reaches a different answer.</rationale>
+    </rule>
+
+    <rule id="skip-when-no-price-signal-exists-to-score-against" testable="true" depth="essential">
+      <statement>Emit a structured skip when: nobody has paid for this product or a close comparable, so no CAC or ARPA observation exists; the pricing metric is dictated by a platform (marketplace take rate, app-store billing rules) leaving no model to choose; or the real question is a single price point rather than a model — route to pricing-strategy or business-model-planning.</statement>
+      <rationale source="Methodology boundary — business-model-planning (design one model) vs business-model-research (compare candidates)">With zero paid observations every CAC, LTV and churn cell is an assumption, so the ranking is a formatted restatement of the author's prior. The scoring table then lends it a precision the underlying data cannot support.</rationale>
     </rule>
 
   </section>

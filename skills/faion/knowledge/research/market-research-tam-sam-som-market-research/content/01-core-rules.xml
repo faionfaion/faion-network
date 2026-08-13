@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Market Research TAM SAM SOM Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Market Research TAM SAM SOM methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+<text id="01-core-rules" title="Market Research TAM SAM SOM Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 testable rules for a TAM/SAM/SOM artefact: bottom-up as the primary estimate, the mandatory top-down cross-check with a &gt;2x invalidation threshold, executable SAM filters, capacity-bounded SOM, and the price and forecast-layering constraints that keep the arithmetic honest.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry ≥1 verbatim citation from an auditable source (URL, transcript_id, ticket id, dashboard snapshot). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Market Research TAM SAM SOM">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="bottom-up-is-the-headline-number" testable="true" depth="essential">
+      <statement>TAM MUST be computed bottom-up as (addressable unit count × realised annual price per unit), with unit count and price each carrying an independent source. The top-down analyst figure is recorded in `top_down_vs_bottom_up` as a cross-check and MUST NOT be the headline `tam.value_usd`.</statement>
+      <rationale source="Bottom-up market sizing (Maurya, Running Lean; a16z/Bessemer sizing guidance)">A top-down figure inherits the publisher's market definition, which is broader than what you can sell; it cannot be decomposed into units you can name, so no downstream plan — pricing, quota, capacity — can be derived from it or checked against it.</rationale>
     </rule>
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+
+    <rule id="two-methods-with-recorded-divergence-ratio" testable="true" depth="essential">
+      <statement>`top_down_vs_bottom_up` MUST carry both values and their ratio. A ratio &gt; 2x blocks sign-off until the reconciliation note names the specific differing term — unit definition, price basis, geography, or timeframe — and restates one method under the other's assumption.</statement>
+      <rationale source="Internal — sizing reconciliation practice">A &gt;2x gap means the two methods sized two different markets; averaging them or picking the friendlier one yields a number that describes neither, and because both halves are individually cited, review passes it.</rationale>
     </rule>
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="sam-filters-are-individually-quantified" testable="true" depth="essential">
+      <statement>SAM MUST be derived from TAM by named filters (geography, segment, regulatory eligibility, language, channel reach, integration prerequisite) each with its own retained fraction and source, multiplied out. `sam.filter_logic` stating a bare percentage of TAM is rejected.</statement>
+      <rationale source="Internal — SAM derivation review">A single blended percentage hides which filter is doing all the work; when one filter is later found wrong, nobody can tell whether SAM moves 5% or 5x, so the whole estimate has to be rebuilt from scratch instead of patched.</rationale>
     </rule>
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (commit, send, ramp, freeze, escalation, ledger write, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+
+    <rule id="som-bounded-by-delivery-capacity" testable="true" depth="essential">
+      <statement>SOM MUST be reconciled against a capacity model over the stated period — (sales capacity × win rate × ACV) or (traffic × signup rate × paid conversion × ACV) — not stated as a share of SAM. If the implied growth exceeds the fastest named comparable in the same category, the comparable and the justification MUST appear in `som.3yr_assumption`.</statement>
+      <rationale source="Internal — plan-vs-capacity reconciliation">SOM stated as a share of SAM is unconstrained by the company's ability to acquire and serve, yet it becomes the plan number that hiring and burn are sized against; the shortfall surfaces only when the runway does.</rationale>
     </rule>
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+
+    <rule id="price-is-realised-not-list" testable="true" depth="essential">
+      <statement>The price term in the bottom-up build MUST be realised revenue per unit — net of discount and channel margin — and MUST declare its basis: ARR, ACV, or one-off. Annualising a one-off price, or using list price where a discount schedule exists, is rejected.</statement>
+      <rationale source="Internal — bottom-up build audit">List price × unit count overstates by exactly the average discount, and treating a one-off purchase as recurring inflates by the replacement cycle length — an order-of-magnitude error that survives review because the arithmetic is internally consistent.</rationale>
     </rule>
+
+    <rule id="single-forecast-layer" testable="true" depth="essential">
+      <statement>At most ONE forecast layer may sit in any chain. Stacking a third-party market forecast × a growth assumption × a share assumption is forbidden; where more than one uncertain term is unavoidable, the artefact MUST state the low/high range rather than a point estimate.</statement>
+      <rationale source="Error propagation in multiplicative estimates">Multiplicative terms propagate relative error: three assumptions each ±30% give a range roughly 2.5x wide from low to high, which is wide enough to contain any conclusion the author wanted, so the estimate stops constraining the decision.</rationale>
+    </rule>
+
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+      <statement>Do NOT run when (a) no unit of consumption can be named yet (no pricing hypothesis, no buyer count) — bottom-up is impossible and top-down alone is not an output; (b) the market is a created category with no existing budget line to count against — route to jtbd-switch-interview; (c) the decision is not gated on size (a size number would not change it); (d) the only available source is a single paywalled analyst summary with no unit or price breakdown.</statement>
+      <rationale source="Internal — methodology preconditions">Without a unit and a price the artefact can only restate someone else's headline number with new decimals, which is the specific failure this methodology exists to block.</rationale>
     </rule>
 
   </section>

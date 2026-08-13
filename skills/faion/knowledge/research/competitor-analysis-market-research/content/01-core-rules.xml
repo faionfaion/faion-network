@@ -1,32 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Competitor Analysis Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Competitor Analysis methodology. Each pairs a binary check with a sourced rationale; the last rule binds the decision tree skip path.</summary>
+<text id="01-core-rules" title="Competitor Analysis Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>Seven rules for a point-in-time competitor comparison: how the direct/indirect split is drawn, how prices are normalised before entering the matrix, what a matrix cell must carry, what makes positioning-map axes usable, how review sentiment is sampled, and what the recommendation must concede.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry ≥1 verbatim citation from an auditable source (URL, transcript_id, ticket id, dashboard snapshot). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Competitor Analysis">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="direct-vs-indirect-split-by-substitution-not-category" testable="true" depth="essential">
+      <statement>`direct_competitors` are products the buyer would evaluate in the same purchase decision for the same job. `indirect_competitors` are what the buyer uses instead today — a spreadsheet, an agency, an internal script, a manual process, or doing nothing — and must include at least one non-software substitute where the market has one.</statement>
+      <rationale source="Christensen — Competing Against Luck (jobs-to-be-done)">Category boundaries are drawn by vendors; budgets are not. Classifying by category hides the substitute that actually wins the deal — most often "no purchase" — so the positioning built on the matrix argues against an alternative the buyer was never choosing between.</rationale>
     </rule>
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (PMBOK 7 Tailoring)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+
+    <rule id="price-cells-normalised-to-one-unit-and-dated" testable="true" depth="essential">
+      <statement>Every price cell states the normalised figure (e.g. USD per seat per month, annual billing, list price, excl. tax), the raw plan name it came from, and the observation date. Per-seat, usage-based and flat plans are converted against a single stated reference workload before entering the matrix.</statement>
+      <rationale source="OpenView SaaS pricing benchmarks — pricing-metric taxonomy">A per-seat list price and a usage-based price are different quantities; placing them in one column ranks vendors by pricing metric rather than by what the buyer would pay. Without a reference workload the usage vendor can be made to look cheapest or dearest at will.</rationale>
     </rule>
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice from Avro / Protobuf">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+
+    <rule id="matrix-cell-carries-source-and-date-or-reads-unknown" testable="true" depth="essential">
+      <statement>Each cell of `comparison_matrix` is either {value, source_url, observed_at} or the literal string `unknown`. Values inferred from the competitor's other cells or from "typical for this segment" are forbidden, and an empty cell is not the same as `unknown`.</statement>
+      <rationale source="Internal — matrix-cell provenance discipline">An unmarked inferred cell is indistinguishable from an observed one once the matrix leaves the author's hands. It propagates into the battlecard, and a rep states it to a prospect who uses the competitor daily — which costs the deal and the credibility of every true cell beside it.</rationale>
     </rule>
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (commit, send, ramp, freeze, escalation, ledger write, contract sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal — agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+
+    <rule id="positioning-axes-are-buyer-criteria-and-uncorrelated" testable="true" depth="essential">
+      <statement>Both `positioning_map` axes must be criteria evidenced in buyer language (won/lost notes, review text, interview quotes) and must not be near-synonyms. If plotted competitors fall close to a single diagonal, the axes are redundant and one must be replaced. "Feature count" against "price" as the only two axes is rejected.</statement>
+      <rationale source="Kotler &amp; Keller — Marketing Management, perceptual mapping">Correlated axes collapse a 2-D map to 1-D: every competitor lines up on one quality scale and the apparent empty quadrant is an artefact of the axis choice, not a market gap. Teams then position into whitespace that no buyer criterion actually describes.</rationale>
     </rule>
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal — methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+
+    <rule id="review-sentiment-sampled-with-n-window-and-incentive-flag" testable="true" depth="essential">
+      <statement>Every sentiment cell states the site, the number of reviews read, the recency window (e.g. trailing 12 months), and whether the site flags incentivised or vendor-sourced reviews. A lifetime star average copied without n and window is rejected.</statement>
+      <rationale source="G2 and Gartner Digital Markets (Capterra) incentivised-review disclosure policies">Vendors run review campaigns in bursts, so a lifetime average encodes the vendor's marketing calendar as much as its product. A competitor that ran a campaign last quarter reads as "improving" on an unwindowed average while nothing about the product changed.</rationale>
     </rule>
-    <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested-sibling) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal — decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+
+    <rule id="recommendation-states-the-ground-it-gives-up" testable="true" depth="essential">
+      <statement>`recommendation` names at least one segment or use case where the product deliberately loses, and to which named competitor. A recommendation claiming advantage on every row of the matrix is rejected.</statement>
+      <rationale source="Porter — What Is Strategy? (strategy requires trade-offs); Ries &amp; Trout — Positioning">A claim that wins everywhere is either untrue or so broad it carries no information a buyer can use to choose. The conceded segment is also what makes the positioning falsifiable: the next lost deal either lands inside it (expected) or outside it (the analysis was wrong).</rationale>
+    </rule>
+
+    <rule id="skip-when-the-set-is-too-thin-or-the-need-is-monitoring" testable="true" depth="essential">
+      <statement>Emit a structured skip when: fewer than 3 direct competitors are identifiable (route to market-analysis or customer discovery first); the actual need is period-over-period change rather than a point-in-time snapshot (route to competitive-intelligence); or the majority of the set publishes no pricing and no won/lost notes exist to substitute for it.</statement>
+      <rationale source="Methodology boundary — competitive-intelligence (delta monitoring) vs competitor-analysis (snapshot)">With a two-player set the matrix is a two-column table that needs no methodology, and with no observable prices the comparison columns fill with inference — which rule `matrix-cell-carries-source-and-date-or-reads-unknown` would blank out anyway, leaving a matrix of `unknown`.</rationale>
     </rule>
 
   </section>
