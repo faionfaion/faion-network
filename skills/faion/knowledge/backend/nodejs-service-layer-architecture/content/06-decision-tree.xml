@@ -1,44 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Node.js Service Layer Architecture Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`. Routes (business-logic volume, consumer count, test depth) to full-csrep / controller+service / flat.</summary>
+<text id="06-decision-tree" title="Node.js Service Layer Architecture Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether a second transport will ever run the logic, then on where the database access lives today and which concern is leaking across a boundary, to the rule that fixes the next move.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-second-transport-and-own-rules">Will any transport other than HTTP — queue worker, cron job, CLI, webhook consumer — ever execute this logic, and does the code own business rules of its own rather than forwarding to another API?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="pass-through BFF with no rules of its own, or HTTP is the only consumer that will ever exist">
+      <conclusion ref="skip-this-methodology" verdict="skip; the layering buys reachability from a second transport and database-free tests, and neither is on offer — emit a structured skip naming which condition held"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="a second consumer exists or is planned, or the code owns real domain rules">
+      <question id="q-where-db-access-lives">Where does database access live in the code today?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+      <branch when="route handlers query the ORM directly; there is no service layer">
+        <question id="q-unit-of-work-shape">Does any single request write to two or more tables or aggregates, or call an external service alongside its writes?</question>
+
+        <branch when="yes; a unit of work spans several writes, sometimes with an HTTP or LLM call between them">
+          <conclusion ref="service-owns-the-transaction-boundary" verdict="open the transaction in the service and thread the tx client through every repository call; move external calls outside the callback before extracting anything else"/>
+        </branch>
+
+        <branch when="no; single-write handlers, but the same ORM calls are already copy-pasted into a worker or cron">
+          <conclusion ref="controller-does-three-things-only" verdict="extract to a service so one rule serves both transports, and pin it with an ESLint no-restricted-imports ban on ORM identifiers under controllers"/>
+        </branch>
       </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is &#8805;1 verbatim citation available per non-trivial field declared in the output contract?</question>
+      <branch when="a service layer exists but concerns leak across its boundaries">
+        <question id="q-what-leaks">What crosses a boundary that should not?</question>
 
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
+        <branch when="repository or service signatures return ORM-generated types (Prisma.UserGetPayload, User from @prisma/client)">
+          <conclusion ref="orm-types-stop-at-the-repository" verdict="declare domain types in the module and stop ORM imports at the repository, so a service test can construct input without the schema"/>
         </branch>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
-
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
-
-          <branch when="named_owner == true">
-            <conclusion ref="run-the-checklist" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
+        <branch when="services import shared singletons at module level (prisma, stripe) instead of receiving them">
+          <conclusion ref="dependencies-enter-through-the-constructor" verdict="pass repositories and clients as constructor or factory arguments; a module-registry substitution is process-wide and makes parallel test files share a double"/>
         </branch>
+
+        <branch when="services reference res or throw numeric HTTP statuses">
+          <conclusion ref="one-error-taxonomy-mapped-once-at-the-edge" verdict="throw typed domain errors with a stable code and map code to status in exactly one error middleware, so the queue consumer can share the service"/>
+        </branch>
+
+        <branch when="the layers look right but nothing mechanically stops a repository importing a service">
+          <conclusion ref="import-direction-checked-in-ci" verdict="wire dependency-cruiser or no-restricted-paths into CI and name the config file in the artefact; CommonJS require cycles fail by entry point, not by test"/>
+        </branch>
+      </branch>
+
+      <branch when="greenfield; no layering exists yet and the boundaries are still open">
+        <conclusion ref="run-the-checklist" verdict="apply the full methodology; emit the layer map, transaction ownership and error taxonomy as an artefact with status=ready_for_review"/>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true &#8594; applies_if=true &#8594; evidence_available=true &#8594; named_owner=true &#8594; apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

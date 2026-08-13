@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Node.js Service Layer Architecture Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the Node.js Service Layer Architecture methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="Node.js Service Layer Architecture Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>Seven rules fixing where each concern lives in a Controller-Service-Repository Node.js backend: what a controller may not touch, who owns the transaction, which types cross a layer boundary, where an error becomes an HTTP status, and how the direction of imports is enforced mechanically.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Node.js Service Layer Architecture">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="controller-does-three-things-only" testable="true" depth="essential">
+      <statement>A controller may only parse and validate the request, call exactly one service method, and map the result to a status code plus body. No ORM identifier (`prisma.`, `db.`, `knex`, a model import) may appear anywhere under the controllers directory; enforce it with an ESLint `no-restricted-imports` entry, not by review.</statement>
+      <rationale source="Layered architecture / Fowler, Patterns of Enterprise Application Architecture — Service Layer">The moment a controller queries directly, the rule it encodes becomes unreachable from the queue worker and the cron job. They copy it, the two copies drift, and the divergence shows up as an invariant that holds over HTTP and not over the worker.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="service-owns-the-transaction-boundary" testable="true" depth="essential">
+      <statement>The transaction is opened in the service (`prisma.$transaction(async (tx) =&gt; ...)`) and the `tx` client is passed into every repository call in that unit of work. Repositories MUST accept an optional client parameter and MUST NOT open transactions themselves. Any network call, LLM call or third-party API call is executed outside the transaction callback.</statement>
+      <rationale source="Prisma documentation — interactive transactions (default maxWait 2000 ms, timeout 5000 ms)">A repository that uses the base client runs its own implicit transaction, so a two-repository unit of work that throws on the second call leaves the first write committed. And an external call inside the callback holds a connection plus row locks for the remote service's latency, so it trips the 5 s interactive-transaction timeout and exhausts the pool under load.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="orm-types-stop-at-the-repository" testable="true" depth="essential">
+      <statement>Repository method signatures MUST return domain types declared in the module, not ORM-generated types (`Prisma.UserGetPayload&lt;...&gt;`, `User` imported from `@prisma/client`). No import from the ORM package may appear in a service file.</statement>
+      <rationale source="Ports and Adapters / Hexagonal Architecture (Cockburn)">A leaked ORM row type puts lazily-shaped fields and nullable columns into the service's contract, so a service test cannot construct an input without the generated types — which means it cannot run without the schema. Swapping Prisma for Drizzle then stops being a repository rewrite and becomes a rewrite of every layer that named the type.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="one-error-taxonomy-mapped-once-at-the-edge" testable="true" depth="essential">
+      <statement>Services throw typed domain errors extending a single base class with a stable `code` (NotFoundError, ConflictError, ValidationError, ForbiddenError). Exactly one error middleware maps code to HTTP status. No `res.` reference and no numeric HTTP status may appear in a service or repository file.</statement>
+      <rationale source="Node.js Error Handling best practices (nodejs.org guide) + Express error-handling middleware">An HTTP status thrown from a service is meaningless to the queue consumer that shares the same service — it has no response to attach it to and must reverse-map the number back into intent. A single mapping table is what makes the second transport possible at all, and it is the only place a 500 body can be scrubbed of internals.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="dependencies-enter-through-the-constructor" testable="true" depth="essential">
+      <statement>Every service receives its repositories and external clients as constructor arguments or factory parameters. A service file MUST NOT contain a module-level import of a shared singleton (`import { prisma } from '../db'`, `import { stripe } from '../stripe'`).</statement>
+      <rationale source="Dependency inversion / test-double practice (Meszaros, xUnit Test Patterns)">A module-level singleton is bound at import time, so a test can only replace it through the module registry (`jest.mock` with its hoisting rules). That substitution is process-wide, which makes parallel test files share the double and produces failures that depend on file order rather than on the code under test.</rationale>
+    </rule>
+
+    <rule id="import-direction-checked-in-ci" testable="true" depth="essential">
+      <statement>Imports point one way only: controller to service, service to repository. The rule is machine-checked in CI by dependency-cruiser or `eslint-plugin-import/no-restricted-paths`; the artefact names the config file that holds it.</statement>
+      <rationale source="dependency-cruiser — forbidden-dependency rules; Node.js CommonJS cyclic require semantics">A repository importing a service creates a require cycle. Under CommonJS the second module in the cycle receives a partially initialised exports object, so a class comes back `undefined` — and whether it breaks depends on which entry point was loaded first, so it passes in tests and fails in the worker.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
-    </rule>
-
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml`, emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-nodejs-service-layer-architecture.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+      <statement>Skip when the service is a BFF that only forwards to another API with no business rules of its own, or when exactly one transport (HTTP) will ever call the logic and no second consumer is planned. Emit a structured skip naming which condition held.</statement>
+      <rationale source="Methodology preconditions (AGENTS.md 'Skip If')">The layering pays for itself by making one rule reachable from several transports and testable without a database. With a single transport and no domain rules the layers add indirection and a file count with nothing on the other side of the trade.</rationale>
     </rule>
 
   </section>

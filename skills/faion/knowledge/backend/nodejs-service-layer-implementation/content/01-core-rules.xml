@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Node.js Service Layer Implementation Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the Node.js Service Layer Implementation methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="Node.js Service Layer Implementation Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>Seven rules for the TypeScript Express + Prisma implementation: where untrusted input becomes a typed value, how a rejected promise reaches the error middleware, the four-argument signature that makes a handler an error handler, which Prisma error codes map to which status, and what each layer's tests are allowed to touch.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for Node.js Service Layer Implementation">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="schema-parse-at-the-controller-boundary" testable="true" depth="essential">
+      <statement>Every controller parses `req.body`, `req.query` and `req.params` through a schema (`schema.parse(...)` with Zod or equivalent) before use, and the service method signature takes the inferred type (`z.infer&lt;typeof CreateOrderInput&gt;`). No service parameter may be typed `any`, `Request`, or an index-signature object.</statement>
+      <rationale source="@types/express — Request.body is typed `any`; Zod documentation on inference">Under `@types/express` `req.body` is `any`, so `strict: true` gives exactly zero protection at the one place untrusted data enters the process — a typo in a field name compiles fine and reaches the database as `undefined`. A single `parse` call is where the static type first becomes a checked claim.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="async-handlers-cannot-leak-rejections" testable="true" depth="essential">
+      <statement>On Express 4 every async route handler MUST be wrapped (`catchAsync(fn)` or `express-async-handler`); a bare `async (req, res) =&gt; ...` registered on a router is rejected. On Express 5 the wrapper is unnecessary and the artefact MUST state which major version is in use.</statement>
+      <rationale source="Express 5 migration guide — 'rejected promises from middleware and handlers are forwarded to next(err)'">Express 4 ignores the returned promise, so a rejection never reaches `next()`. The response is never written, the client hangs until its own timeout, and the only trace is an `unhandledRejection` — which under Node 15+ terminates the process by default, so one bad row restarts the server.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="error-middleware-declares-four-parameters" testable="true" depth="essential">
+      <statement>The terminal error handler MUST be declared with exactly four parameters `(err, req, res, next)`, registered after all routes and routers, and MUST NOT include `err.stack` or `err.message` from an unmapped error in the response body when NODE_ENV is production.</statement>
+      <rationale source="Express documentation — Error Handling ('error-handling middleware is identified by four arguments')">Express selects error middleware by function arity. Drop the unused `next` and the function is registered as ordinary middleware: it never runs on error, errors fall through to the default handler, and the default handler returns the stack trace to the caller in development-like configurations.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="prisma-error-codes-mapped-in-the-repository" testable="true" depth="essential">
+      <statement>Repositories catch `Prisma.PrismaClientKnownRequestError` and translate at minimum P2002 (unique constraint) to ConflictError, P2025 (record required but not found) to NotFoundError, and P2003 (foreign key constraint) to ValidationError. No raw Prisma error object may propagate past a repository.</statement>
+      <rationale source="Prisma documentation — error reference P2002 / P2003 / P2025">An unmapped known-request error is caught by the generic branch of the error middleware and returned as 500, so a duplicate email — a client mistake with a correct 409 answer — is reported as a server fault and retried by the client. Its `meta.target` also names the table and columns, which the 500 body then discloses.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="service-tests-inject-a-fake-repository" testable="true" depth="essential">
+      <statement>Service unit tests inject an in-memory object implementing the repository interface — no database, no `jest.mock('@prisma/client')`. Query correctness is covered separately by repository tests against a real PostgreSQL instance, each worker on its own schema or its own container.</statement>
+      <rationale source="Meszaros, xUnit Test Patterns — Test Double vs mocking the collaborator's API">Mocking the Prisma client asserts on the arguments you passed, so a `where` clause with the wrong field passes every service test and fails only in production. Sharing one database across Jest workers is the other half: parallel truncations delete rows another worker is mid-assertion on, which reads as flakiness rather than as a fixture bug.</rationale>
+    </rule>
+
+    <rule id="type-aware-lint-blocks-floating-promises" testable="true" depth="essential">
+      <statement>`tsconfig.json` sets `strict: true`, and ESLint runs the type-aware rules `@typescript-eslint/no-floating-promises` and `no-misused-promises` with `parserOptions.project` pointing at that tsconfig. The lint step runs in CI, not only in the editor.</statement>
+      <rationale source="typescript-eslint documentation — no-floating-promises requires type information">TypeScript itself accepts a discarded promise. An un-awaited repository call inside a `$transaction` callback lets the callback resolve first, so the transaction commits or rolls back before the write is issued — and whether the row lands depends on event-loop timing, which is why it survives review and CI without this rule.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
-    </rule>
-
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml`, emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-nodejs-service-layer-implementation.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+      <statement>Skip when the architecture artefact from nodejs-service-layer-architecture does not exist or is unapproved, or when the stack is plain JavaScript with no TypeScript migration agreed — six of the seven rules above are type-system or Prisma-specific and degrade to unenforceable advice. Emit a structured skip naming the missing precondition.</statement>
+      <rationale source="Methodology preconditions (AGENTS.md 'Applies If')">Implementing layers before the layer decisions are settled produces code that has to be moved once the boundaries are chosen, and the move is what silently drops the transaction ownership rule.</rationale>
     </rule>
 
   </section>

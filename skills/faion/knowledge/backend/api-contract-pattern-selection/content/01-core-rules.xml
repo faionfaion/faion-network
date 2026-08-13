@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="API Contract Pattern Selection Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the API Contract Pattern Selection methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="API Contract Pattern Selection Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>Seven rules constraining the contract-style verdict. Each one rules a style in or out on a property of that style's wire format or tooling, not on taste: type-only contracts need a shared build, gRPC needs a browser proxy, GraphQL needs cost control, codegen needs a schema document.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for API Contract Pattern Selection">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="verdict-matches-consumer-language-spread" testable="true" depth="essential">
+      <statement>If any expected consumer is written in a language other than the server's, the verdict MUST be a style with a language-neutral schema document: openapi-3.1, graphql-sdl, or grpc. trpc and undocumented json-rpc are invalid verdicts in that case, regardless of consumer_count.</statement>
+      <rationale source="tRPC documentation — 'TypeScript on both ends, no code generation'">tRPC publishes no wire schema; its contract is the exported `AppRouter` TypeScript type. A Python or Swift consumer has literally nothing to compile against, so the "contract" reduces to hand-copied JSON shapes.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="trpc-requires-one-build-graph" testable="true" depth="essential">
+      <statement>A trpc verdict is valid only when client and server compile in the same TypeScript build (monorepo with project references or a workspace package) AND deploy together. If the client can be released against a server version it was not compiled against, pick openapi-3.1 instead.</statement>
+      <rationale source="tRPC documentation — type inference across the client/server boundary">The type check happens at the client's build time against the server source it had then. Independently deployed clients therefore get zero compile-time signal for a renamed field; the break surfaces at runtime as a failed Zod parse or an undefined property, in production.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="grpc-browser-path-names-its-proxy" testable="true" depth="essential">
+      <statement>A grpc verdict whose consumer list includes a browser MUST name the translation layer (Envoy grpc-web filter, or Connect/grpc-gateway) and who operates it, as an explicit setup ticket in the artefact.</statement>
+      <rationale source="gRPC-Web protocol specification (grpc/grpc-web)">Browser fetch/XHR cannot read HTTP/2 trailers, and gRPC carries its status code in the trailer. Without a proxy that folds the trailer into the body, every call fails at the transport layer — this is not tunable from the client side.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="graphql-verdict-ships-cost-controls" testable="true" depth="essential">
+      <statement>A graphql-sdl verdict MUST name three controls in the same artefact: a maximum query depth, a complexity/cost limit with its budget, and either persisted queries or an allow-list for external callers. A GraphQL verdict without all three is rejected.</statement>
+      <rationale source="OWASP API Security Top 10 2023 — API4 Unrestricted Resource Consumption">One endpoint accepting arbitrary nesting lets a single legitimate-looking query fan out into an exponential resolver tree; per-endpoint rate limiting cannot see it because it is one request. Depth and cost limits are the only place the fan-out is bounded.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="sdk-or-mock-tooling-forces-schema-document" testable="true" depth="essential">
+      <statement>If tooling_needs contains sdk-gen, mock-server, contract-test, or doc-portal, the verdict MUST resolve to an artefact a generator can read: an OpenAPI 3.1 document, a GraphQL SDL file, or a .proto file, and the artefact MUST name the file path where it lives in the repo.</statement>
+      <rationale source="OpenAPI Specification 3.1.0 — Schema Object aligned with JSON Schema 2020-12">Generators consume the document, not the server code. Choose 3.1 rather than 3.0 when the same schemas are reused for runtime validation: 3.0 used a modified JSON Schema subset (its own `nullable`, no `examples` keyword), so a 3.0 document and a JSON Schema validator disagree on the same payload.</rationale>
+    </rule>
+
+    <rule id="evolution-rate-binds-a-change-mechanism" testable="true" depth="essential">
+      <statement>When evolution_rate is high (more than one breaking change expected per quarter) and team_boundary is external, the artefact MUST name the change mechanism that goes with the chosen style — URL major version plus a stated deprecation window for openapi-3.1/json-rpc; `@deprecated` on fields plus additive-only evolution for graphql-sdl; reserved field numbers for grpc.</statement>
+      <rationale source="GraphQL Best Practices (graphql.org) — versioning; Protocol Buffers language guide — reserved fields">Each style has exactly one supported evolution story and they are mutually exclusive. Versioning a GraphQL endpoint pays the schema-flexibility cost and then discards the benefit; reusing a retired protobuf field number silently misinterprets old bytes on the wire as the new type.</rationale>
     </rule>
 
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
-    </rule>
-
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-api-contract-pattern-selection.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+      <statement>Skip when the contract style is not actually open: the API has served production traffic under an existing style for more than six months, or the boundary never leaves the process (an in-repo function call). Emit a structured skip naming which condition held.</statement>
+      <rationale source="Methodology preconditions (AGENTS.md 'Skip If')">A contract decision on a boundary with live consumers is a migration project, not a selection: the cost is the client rewrite, which this methodology does not estimate. Producing a verdict anyway hands the operator a recommendation whose true price is invisible.</rationale>
     </rule>
 
   </section>

@@ -1,44 +1,68 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="API Monitoring Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`. Routes (backend choice, SLO maturity, alert pager budget) to full RED+SLO / minimal-RED-only / cloud-managed-only. Every leaf cites a rule from `content/01-core-rules.xml`.</summary>
+<text id="06-decision-tree" title="API Monitoring Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether a scrape path exists, which layer is still unbuilt (metrics, probes or alerts) and what is already wrong with it, to the one rule that binds the next artefact edit.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-scrape-path-exists">Can this API expose a metrics endpoint scraped by a Prometheus-compatible collector the team controls, or is one agreed to be stood up?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="no scrape path and none planned; the only telemetry is a managed vendor dashboard the team cannot add series to">
+      <conclusion ref="skip-this-methodology" verdict="skip; without a collector the RED metrics, SLI expressions and burn-rate alerts below have nowhere to live — emit a structured skip naming the missing pipeline"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="a scrape path exists or is committed">
+      <question id="q-which-layer-is-unbuilt">Which layer is missing: the metrics themselves, the probes, or the alerting on top of them?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
-      </branch>
+      <branch when="no RED metrics on this API yet">
+        <question id="q-instrumentation-plan">Does the proposed instrumentation label series with the resolved request path, or emit latency as an average or a summary quantile?</question>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is &#8805;1 verbatim citation available per non-trivial field declared in the output contract?</question>
-
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
+        <branch when="labels would carry resolved paths, ids, emails or search terms">
+          <conclusion ref="route-label-is-the-template-not-the-path" verdict="label on the route template only; state cardinality in the artefact as routes x methods x status-classes before any code lands"/>
         </branch>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
+        <branch when="latency is planned as a summary quantile or an average gauge">
+          <conclusion ref="duration-is-a-histogram-with-declared-buckets" verdict="switch to a histogram and declare bucket boundaries with an edge at the SLO threshold; list them in the artefact"/>
+        </branch>
 
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
+        <branch when="nothing instrumented yet; both the label and the latency shape are still open">
+          <conclusion ref="run-the-checklist" verdict="apply the full methodology from the metric list forward; emit the artefact with metric names, probe paths, SLOs and alert rules for review"/>
+        </branch>
+      </branch>
 
-          <branch when="named_owner == true">
-            <conclusion ref="run-the-checklist" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
+      <branch when="metrics exist and the service runs under an orchestrator that restarts on a failing probe">
+        <question id="q-probe-and-log-shape">Does the liveness endpoint reach a dependency, and do request logs carry the propagated traceparent?</question>
+
+        <branch when="liveness queries the database, cache or an upstream, or one endpoint serves both probes">
+          <conclusion ref="liveness-excludes-dependency-checks" verdict="split the endpoints and strip dependency checks from liveness; a dependency blip must not restart every replica at once"/>
+        </branch>
+
+        <branch when="probes are clean but log lines carry a locally minted request id">
+          <conclusion ref="request-id-is-the-trace-id" verdict="propagate the W3C traceparent trace-id as request_id on every line, so logs and traces key on the same value"/>
+        </branch>
+
+        <branch when="probes split correctly and logs already carry the propagated trace-id">
+          <conclusion ref="run-the-checklist" verdict="apply the full methodology from the SLO section forward; the instrumentation layer is already conformant"/>
+        </branch>
+      </branch>
+
+      <branch when="metrics exist and a human carries a pager for this API">
+        <question id="q-alert-basis">Are alerts expressed as burn rate against a target defined as good events over valid events?</question>
+
+        <branch when="targets are resource utilisation — CPU, memory, queue depth — not an event ratio">
+          <conclusion ref="sli-is-a-ratio-of-good-over-valid-events" verdict="restate each SLO as a PromQL good/valid ratio with target, rolling window and an error budget in absolute failed requests before writing any alert"/>
+        </branch>
+
+        <branch when="an SLO exists but its alert is a static error-rate threshold">
+          <conclusion ref="slo-alerts-use-multiwindow-burn-rate" verdict="replace with multiwindow burn rate — ~14.4x over 1h with a 5m short window to page, ~6x over 6h with a 30m short window to ticket"/>
+        </branch>
+
+        <branch when="burn-rate alerts exist but some page rules lack a runbook_url or a for clause longer than the scrape interval">
+          <conclusion ref="page-severity-requires-runbook-and-for-clause" verdict="every rule carries severity, a for duration above the scrape interval, and a runbook with at least one diagnostic query; page rules without one are rejected"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true &#8594; applies_if=true &#8594; evidence_available=true &#8594; named_owner=true &#8594; apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

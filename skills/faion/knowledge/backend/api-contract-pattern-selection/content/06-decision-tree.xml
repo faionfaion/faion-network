@@ -1,44 +1,56 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="API Contract Pattern Selection Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`. Maps (consumer_count, tooling, evolution_rate, team_boundary) → contract style. Every leaf cites a rule from `content/01-core-rules.xml`.</summary>
+<text id="06-decision-tree" title="API Contract Pattern Selection Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on three signals visible before any style is picked — whether the boundary is still open, whether every consumer speaks the server's language, and whether client and server share one build and one deploy — to the rule that rules a style in or out.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-boundary-still-open">Is the contract style genuinely still open — the API has not served production traffic under an existing style for more than six months, and the boundary leaves the process?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="live consumers on an existing style for 6+ months, or the call never leaves the process">
+      <conclusion ref="skip-this-methodology" verdict="skip; this is a migration costed by the client rewrite, or an in-process function call with no wire contract — emit a structured skip naming which condition held"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="new or unreleased boundary; the style is a real choice">
+      <question id="q-consumer-language-spread">Is any expected consumer written in a language other than the server's?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
-      </branch>
+      <branch when="at least one consumer is in a different language">
+        <question id="q-cross-language-need">What does that cross-language consumer list actually demand?</question>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is &#8805;1 verbatim citation available per non-trivial field declared in the output contract?</question>
-
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
+        <branch when="tooling_needs contains sdk-gen, mock-server, contract-test or doc-portal">
+          <conclusion ref="sdk-or-mock-tooling-forces-schema-document" verdict="verdict must resolve to a generator-readable artefact (OpenAPI 3.1, GraphQL SDL or .proto) and name its repo path"/>
         </branch>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
+        <branch when="a browser is on the consumer list and grpc is the leading candidate">
+          <conclusion ref="grpc-browser-path-names-its-proxy" verdict="grpc is admissible only with a named translation layer (Envoy grpc-web, Connect or grpc-gateway) and a named operator, as a setup ticket"/>
+        </branch>
 
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
+        <branch when="several client-shaped views over one graph, with callers outside the team">
+          <conclusion ref="graphql-verdict-ships-cost-controls" verdict="graphql-sdl is admissible only with max query depth, a cost limit with its budget, and persisted queries or an allow-list — all three in the artefact"/>
+        </branch>
 
-          <branch when="named_owner == true">
-            <conclusion ref="run-the-checklist" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
+        <branch when="team_boundary is external and more than one breaking change is expected per quarter">
+          <conclusion ref="evolution-rate-binds-a-change-mechanism" verdict="the artefact must name the style's one supported evolution story — URL major plus deprecation window, @deprecated plus additive-only, or reserved field numbers"/>
+        </branch>
+
+        <branch when="plain request/response, no generator tooling, no browser gRPC">
+          <conclusion ref="verdict-matches-consumer-language-spread" verdict="restrict the verdict to a language-neutral schema document (openapi-3.1, graphql-sdl, grpc); trpc and undocumented json-rpc are invalid here"/>
+        </branch>
+      </branch>
+
+      <branch when="every consumer shares the server's language">
+        <question id="q-one-build-graph">Do client and server compile in the same TypeScript build and ship in the same deploy?</question>
+
+        <branch when="one build graph (monorepo or workspace package) and coupled release">
+          <conclusion ref="trpc-requires-one-build-graph" verdict="trpc is admissible; record the build-graph and deploy-coupling evidence that makes it valid, since losing either invalidates the verdict"/>
+        </branch>
+
+        <branch when="the client can ship against a server version it was not compiled against">
+          <conclusion ref="run-the-checklist" verdict="apply the full methodology; trpc is out on the deploy-coupling test — score openapi-3.1 against tooling_needs and evolution_rate and emit the artefact for review"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true &#8594; applies_if=true &#8594; evidence_available=true &#8594; named_owner=true &#8594; apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

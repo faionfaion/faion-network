@@ -1,44 +1,52 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Node.js Service Layer Implementation Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable input signals to a conclusion. Every leaf references a rule from `content/01-core-rules.xml`. Routes (architecture readiness, stack fit, TS adoption) to full-impl / partial-impl / defer.</summary>
+<text id="06-decision-tree" title="Node.js Service Layer Implementation Decision Tree" version="1.2.0" est_tokens="600" depth="essential">
+  <summary>Routes on whether the layering decisions and TypeScript are actually in place, then on the Express major and on which edge control is missing, to the rule that has to land before more handlers are written.</summary>
 
   <decision-tree>
-    <root-question id="q-prereqs-ok">Are all prerequisites in AGENTS.md reachable and citable?</root-question>
+    <root-question id="q-preconditions-hold">Does an approved layering artefact from nodejs-service-layer-architecture exist, and is the codebase TypeScript (or on an agreed migration)?</root-question>
 
-    <branch when="prereqs_ok == false">
-      <conclusion ref="skip-when-prerequisites-missing" verdict="skip; emit structured skip decision pointing to the missing prerequisite"/>
+    <branch when="no approved architecture artefact, or plain JavaScript with no TypeScript migration agreed">
+      <conclusion ref="skip-this-methodology" verdict="skip; six of the rules are type-system or Prisma-specific and degrade to advice — emit a structured skip naming the missing precondition"/>
     </branch>
 
-    <branch when="prereqs_ok == true">
-      <question id="q-trigger-fits">Does the triggering activity match an item in the 'Applies If' list (ALL must hold)?</question>
+    <branch when="architecture artefact approved and the stack is TypeScript">
+      <question id="q-express-major-and-async">Which Express major is in use, and are async route handlers registered bare?</question>
 
-      <branch when="applies_if == false">
-        <conclusion ref="skip-this-methodology" verdict="skip; route to the sibling methodology suggested in 'Skip If' notes"/>
+      <branch when="Express 4 with bare async (req, res) handlers on a router">
+        <conclusion ref="async-handlers-cannot-leak-rejections" verdict="wrap every async handler (catchAsync or express-async-handler) before anything else; an unhandled rejection under Node 15+ takes the process down"/>
       </branch>
 
-      <branch when="applies_if == true">
-        <question id="q-evidence-available">Is &#8805;1 verbatim citation available per non-trivial field declared in the output contract?</question>
+      <branch when="Express 5, or Express 4 with every async handler already wrapped and the major stated in the artefact">
+        <question id="q-which-edge-control-is-missing">Which control at the edges is absent?</question>
 
-        <branch when="evidence_available == false">
-          <conclusion ref="anchor-evidence-required" verdict="halt; collect evidence before filling the artefact"/>
+        <branch when="controllers hand req.body straight through, or a service parameter is typed any, Request or an index-signature object">
+          <conclusion ref="schema-parse-at-the-controller-boundary" verdict="parse body, query and params through a schema at the controller and type the service on the inferred type; req.body is any, so strict mode protects nothing here"/>
         </branch>
 
-        <branch when="evidence_available == true">
-          <question id="q-named-owner">Is a single named owner willing to own the artefact?</question>
+        <branch when="the terminal error handler has three parameters, or is registered before the routes, or echoes err.stack in production">
+          <conclusion ref="error-middleware-declares-four-parameters" verdict="declare (err, req, res, next), register after all routers, and strip stack and message for unmapped errors when NODE_ENV is production"/>
+        </branch>
 
-          <branch when="named_owner == false">
-            <conclusion ref="owner-and-last-touched" verdict="skip; route to triage to find an owner before producing the artefact"/>
-          </branch>
+        <branch when="Prisma known-request errors reach the middleware unmapped — a duplicate email returns 500">
+          <conclusion ref="prisma-error-codes-mapped-in-the-repository" verdict="translate P2002 to ConflictError, P2025 to NotFoundError and P2003 to ValidationError in the repository; no raw Prisma error may propagate past it"/>
+        </branch>
 
-          <branch when="named_owner == true">
-            <conclusion ref="run-the-checklist" verdict="apply the full methodology; emit artefact with status=ready_for_review and surface to the named reviewer"/>
-          </branch>
+        <branch when="service tests jest.mock the Prisma client, or all Jest workers share one database">
+          <conclusion ref="service-tests-inject-a-fake-repository" verdict="inject an in-memory repository for service tests and give each worker its own schema or container for repository tests against real PostgreSQL"/>
+        </branch>
+
+        <branch when="CI runs no type-aware lint — no parserOptions.project, no-floating-promises off">
+          <conclusion ref="type-aware-lint-blocks-floating-promises" verdict="set strict: true and run no-floating-promises and no-misused-promises with project-aware parsing in CI; an un-awaited write inside $transaction lands by event-loop timing"/>
+        </branch>
+
+        <branch when="all six controls already in place; the work is new handlers on the existing shape">
+          <conclusion ref="run-the-checklist" verdict="apply the full methodology; implement controller, service, repository and error mapping in that order and emit the artefact with status=ready_for_review"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
-  <example trace="happy-path">
-    prereqs_ok=true &#8594; applies_if=true &#8594; evidence_available=true &#8594; named_owner=true &#8594; apply the full methodology; status=ready_for_review.
-  </example>
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+  </see-also>
 </text>

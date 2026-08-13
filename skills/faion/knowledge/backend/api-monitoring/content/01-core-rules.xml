@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="API Monitoring Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the API Monitoring methodology. Each pairs a binary check with a sourced rationale; the last two rules bind the decision tree's skip and run leaves.</summary>
+<text id="01-core-rules" title="API Monitoring Core Rules" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>Seven rules pinning the monitoring artefact: label cardinality, histogram vs summary, the liveness/readiness split, SLIs as event ratios, and multiwindow burn-rate alerting. Each is checkable against the emitted metric names, probe paths and alert expressions.</summary>
 
   <section title="Rule set">
 
-    <rule id="anchor-evidence-required" testable="true" depth="essential">
-      <statement>Every non-trivial field in the produced artefact MUST carry &#8805;1 verbatim citation from an auditable source (URL, transcript id, ticket id, dashboard snapshot, design-file id, PR URL). Fields with no anchor are rejected as fabrication.</statement>
-      <rationale source="Anti-hallucination practice for API Monitoring">LLMs cheerfully invent plausible values without inputs; verbatim anchoring makes the artefact falsifiable and a downstream reviewer can re-pull the source.</rationale>
+    <rule id="route-label-is-the-template-not-the-path" testable="true" depth="essential">
+      <statement>Every RED metric MUST be labelled with the route template (`/users/{id}`, `/orders/{id}/items`) and never the resolved path. No label may carry a user id, order id, email, search term, or full URL. Cardinality per metric is stated in the artefact as routes x methods x status-classes.</statement>
+      <rationale source="Prometheus documentation — Naming and Instrumentation, 'avoid high cardinality labels'">Prometheus stores one time series per distinct label-value combination and keeps every active series in memory. A raw path label makes cardinality grow with traffic rather than with the API surface, so the TSDB OOMs — and the very incident you needed the metrics for is the moment the scrape starts failing.</rationale>
     </rule>
 
-    <rule id="owner-and-last-touched" testable="true" depth="essential">
-      <statement>Every artefact MUST carry a single named owner and an ISO-8601 `last_touched` timestamp. Generic owners ("team", "us", "tbd", "n/a", "everyone", "design", "engineering") and empty timestamps are forbidden.</statement>
-      <rationale source="Operational hygiene (RACI / single-throat-to-choke)">Un-owned artefacts metastasize and the operator stops trusting the whole library; a named owner is the minimum precondition for follow-through.</rationale>
+    <rule id="duration-is-a-histogram-with-declared-buckets" testable="true" depth="essential">
+      <statement>The duration metric MUST be a histogram (`*_seconds_bucket`) with explicitly declared bucket boundaries chosen around the SLO threshold, not a summary and not a gauge of average latency. The artefact lists the bucket boundaries.</statement>
+      <rationale source="Prometheus documentation — Histograms and Summaries">Summary quantiles are computed per instance and cannot be aggregated: averaging two instances' p99 gives a number that is not any percentile. Histograms aggregate by summing buckets, which is what makes `histogram_quantile` over all replicas meaningful — and a bucket edge must sit at the SLO threshold or the good-event count is interpolated rather than counted.</rationale>
     </rule>
 
-    <rule id="template-version-pinned" testable="true" depth="essential">
-      <statement>Each filled instance MUST record `template_version` matching the methodology frontmatter at write time. Downstream consumers parse legacy artefacts against this pinned version, never against "latest".</statement>
-      <rationale source="Schema-evolution practice (Avro / Protobuf / OpenAPI versioning)">Templates without version pinning become a one-way ratchet; old instances become unreadable when the template drifts.</rationale>
+    <rule id="liveness-excludes-dependency-checks" testable="true" depth="essential">
+      <statement>The liveness probe MUST answer from process-local state only — no database query, no cache ping, no upstream HTTP call. Dependency checks belong exclusively to the readiness probe. The two paths MUST be different endpoints.</statement>
+      <rationale source="Kubernetes documentation — Configure Liveness, Readiness and Startup Probes">A failed liveness probe restarts the container; a failed readiness probe only removes the pod from Service endpoints. If liveness checks the database, one database blip fails the probe on every replica simultaneously and the kubelet restarts the entire fleet — converting a recoverable dependency incident into a cold-start outage with an empty connection pool.</rationale>
     </rule>
 
-    <rule id="human-checkpoint-before-binding-action" testable="true" depth="essential">
-      <statement>Before any binding action driven by this artefact (publish, deploy, send, deprecate, ramp, escalate, sign), a named human reviewer MUST approve. The agent surfaces a `ready_for_review` flag and never sets `status=approved` itself.</statement>
-      <rationale source="Internal &#8212; agent autonomy boundaries">Self-approval defeats the human checkpoint and the audit trail. The status enum exists precisely to make the human signature observable.</rationale>
+    <rule id="sli-is-a-ratio-of-good-over-valid-events" testable="true" depth="essential">
+      <statement>Each SLO entry MUST express its SLI as good events divided by valid events with both sides defined as PromQL over the RED metrics (e.g. requests with status not 5xx and duration under 300 ms, over all non-health-check requests), plus a target, a rolling window (28 or 30 days), and the error budget in absolute failed-request count for that window.</statement>
+      <rationale source="Google SRE Workbook — Implementing SLOs">Resource-level targets (CPU, memory, queue depth) do not map to user pain, so they cannot be spent. The error budget arithmetic that drives alerting and release decisions is only defined for a ratio of events; a target such as "keep latency low" yields no budget and therefore no decision.</rationale>
     </rule>
 
-    <rule id="skip-when-prerequisites-missing" testable="true" depth="essential">
-      <statement>If the prerequisites in the AGENTS.md table cannot all be satisfied, the agent MUST skip the methodology and emit a structured `skip` decision pointing to the missing prerequisite, not produce a degraded artefact.</statement>
-      <rationale source="Internal &#8212; methodology-degradation audits">Degraded artefacts pollute the library because they look complete; an explicit skip preserves the audit signal that the question was asked.</rationale>
+    <rule id="slo-alerts-use-multiwindow-burn-rate" testable="true" depth="essential">
+      <statement>Alerts on an SLO MUST be expressed as error-budget burn rate over two windows joined by AND — a fast pair for the page (about 14.4x burn over 1h with a 5m short window) and a slow pair for the ticket (about 6x over 6h with a 30m short window). A bare static threshold such as `error_rate &gt; 1% for 5m` on an SLO-backed journey is rejected.</statement>
+      <rationale source="Google SRE Workbook — Alerting on SLOs, multiwindow multi-burn-rate">A static threshold is simultaneously too twitchy for a brief spike and blind to a slow burn that eats the whole month's budget at 1.5x. The short window in the AND is what stops the alert from firing for an hour after recovery: the long window is still hot, the short one is not.</rationale>
     </rule>
 
-    <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>When the decision tree routes to `skip-this-methodology`, the agent MUST emit a structured `skip` decision (with reason + suggested sibling methodology) rather than running the methodology under degraded conditions.</statement>
-      <rationale source="Internal &#8212; decision-tree contract">The decision tree is the only place that knows the routing; skipping must be observable so the orchestrator can log the routed-elsewhere path.</rationale>
+    <rule id="page-severity-requires-runbook-and-for-clause" testable="true" depth="essential">
+      <statement>Every alert rule MUST carry severity from {page, ticket}, a `for` duration strictly greater than the scrape interval, and a runbook_url. A rule with severity=page and no runbook_url containing at least one diagnostic query or command is rejected.</statement>
+      <rationale source="Google SRE Book — Being On-Call; Prometheus alerting rules `for` semantics">A `for` shorter than the scrape interval fires on a single missed or delayed sample, which is how most alert fatigue starts. And a page with no runbook spends the responder's first minutes on orientation instead of diagnosis — at 03:00 that orientation time dominates MTTR.</rationale>
     </rule>
 
-    <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement>When the decision tree routes to apply, the agent MUST execute the procedure in `content/04-procedure.xml` (or the rule set above when complexity is light), emit the artefact specified by `content/02-output-contract.xml`, and validate with `scripts/validate-api-monitoring.py` before returning.</statement>
-      <rationale source="faion-network methodology DoD (F-066)">Tying the apply leaf to the validator script closes the loop between policy and machine check.</rationale>
+    <rule id="request-id-is-the-trace-id" testable="true" depth="essential">
+      <statement>The structured log field list MUST include ts, level, request_id, route, status and latency_ms, and request_id MUST be the trace-id propagated by the W3C `traceparent` header rather than a locally generated UUID. Every log line inside a request MUST carry it.</statement>
+      <rationale source="W3C Trace Context Recommendation — traceparent header">A locally minted id stops at the process boundary, so a 502 in the gateway and the panic in the upstream service that caused it cannot be joined. Reusing the propagated trace-id means the log query and the trace view are keyed on the same value and no correlation table is needed.</rationale>
     </rule>
 
   </section>
