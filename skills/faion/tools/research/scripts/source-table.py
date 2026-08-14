@@ -1,24 +1,33 @@
 #!/usr/bin/env python3
 """source-table.py — turn a JSONL of research claims into a markdown evidence
-table plus a gaps report, and fail the run when a load-bearing claim carries
-no source.
+table, a gaps report and a commercial-lever ledger, and fail the run when a
+load-bearing claim carries no source or a money lever carries no name.
 
 Input JSONL, one object per line:
     {"claim": "...", "url": "https://...", "date": "2026-08-11",
-     "confidence": "high", "load_bearing": true}
+     "confidence": "high", "load_bearing": true,
+     "commercial": true, "lever": "..."}
   - claim       required, non-empty string
   - url         optional in the schema, REQUIRED for a load-bearing claim
   - date        optional, YYYY-MM-DD (anything else is reported as a gap)
   - confidence  optional string (high/medium/low) or number 0..1
   - load_bearing  optional bool, default true — set false for colour/context
+  - commercial  optional bool, default false — true when the claim names
+                something that could move what the product earns
+  - lever       required when commercial is true: the action the claim
+                implies, in the product's own terms, not the claim restated
 
 Output: markdown table to --out (default stdout), gaps report to --report,
-        one summary line on stdout.
-Exit:   0 every load-bearing claim sourced · 1 at least one unsourced ·
-        2 unreadable or malformed input.
+        the ledger of commercial levers to --levers, one summary line on
+        stdout.
+Exit:   0 every load-bearing claim sourced and every lever named · 1 at
+        least one is not · 2 unreadable or malformed input.
 
 Why: a research arm that cites nothing loses to one that cites everything.
 The measured gap on the run this encodes was 108 sourced URLs against 0.
+The ledger exists for the second measured gap: the pipeline found the
+levers that decide revenue, sourced them, and then shipped without them —
+so every tagged lever leaves here with an id a later stage must answer.
 Zero model calls.
 """
 from __future__ import annotations
@@ -54,6 +63,8 @@ def main() -> int:
     ap.add_argument("--in", dest="infile", required=True, help="claims JSONL path ('-' for stdin)")
     ap.add_argument("--out", help="markdown table path (default stdout)")
     ap.add_argument("--report", help="gaps report path (default stderr when gaps exist)")
+    ap.add_argument("--levers", help="commercial-lever ledger path (JSONL); "
+                                     "written whenever given, empty when nothing is tagged")
     ap.add_argument("--title", default="Evidence table", help="H2 heading for the table")
     ap.add_argument("--require-date", action="store_true",
                     help="also fail when a load-bearing claim has no valid date")
@@ -82,6 +93,10 @@ def main() -> int:
         if not text:
             print(f"source-table: line {lineno}: empty or missing 'claim'", file=sys.stderr)
             return 2
+        if "commercial" in obj and not isinstance(obj["commercial"], bool):
+            print(f"source-table: line {lineno}: 'commercial' must be a bool",
+                  file=sys.stderr)
+            return 2
         obj["_lineno"] = lineno
         claims.append(obj)
 
@@ -91,11 +106,13 @@ def main() -> int:
 
     rows = []
     gaps: list[str] = []
+    ledger: list[dict] = []
     sourced = 0
     unsourced = 0
     missing_conf = 0
     missing_date = 0
     undated_load_bearing = 0
+    unnamed_levers = 0
 
     for i, c in enumerate(claims, 1):
         text = str(c["claim"]).strip()
@@ -104,6 +121,8 @@ def main() -> int:
         conf = confidence_str(c.get("confidence"))
         load_bearing = c.get("load_bearing", True) is not False
         tag = "yes" if load_bearing else "no"
+        commercial = c.get("commercial", False) is True
+        lever = str(c.get("lever") or "").strip()
 
         if url and not URL_RE.match(url):
             gaps.append(f"- L{c['_lineno']} claim {i}: url is not http(s): `{esc(url)}`")
@@ -127,13 +146,29 @@ def main() -> int:
                 undated_load_bearing += 1
                 gaps.append(f"- L{c['_lineno']} claim {i}: **NO DATE (load-bearing)** — {esc(text)}")
 
+        if commercial and not load_bearing:
+            unnamed_levers += 1
+            gaps.append(f"- L{c['_lineno']} claim {i}: **COMMERCIAL BUT MARKED "
+                        f"COLOUR** — a claim that moves what the product earns "
+                        f"is load-bearing by definition — {esc(text)}")
+        if commercial and not lever:
+            unnamed_levers += 1
+            gaps.append(f"- L{c['_lineno']} claim {i}: **COMMERCIAL, NO LEVER** "
+                        f"— name the action this claim implies — {esc(text)}")
+        lever_id = ""
+        if commercial and lever:
+            lever_id = f"C{len(ledger) + 1}"
+            ledger.append({"id": lever_id, "lever": lever, "claim": text,
+                           "url": url, "date": date, "confidence": conf})
+
         source = f"[link]({url})" if url else "**missing**"
         rows.append(f"| {i} | {esc(text)} | {source} | {esc(date) or '—'} | "
-                    f"{esc(conf) or '—'} | {tag} |")
+                    f"{esc(conf) or '—'} | {tag} | "
+                    f"{(lever_id + ' ' + esc(lever)).strip() if commercial else '—'} |")
 
     table = [f"## {args.title}", "",
-             "| # | Claim | Source | Date | Confidence | Load-bearing |",
-             "|---|-------|--------|------|------------|--------------|",
+             "| # | Claim | Source | Date | Confidence | Load-bearing | Commercial lever |",
+             "|---|-------|--------|------|------------|--------------|------------------|",
              *rows, ""]
     table_text = "\n".join(table)
 
@@ -142,7 +177,12 @@ def main() -> int:
     else:
         print(table_text)
 
-    failed = unsourced > 0 or undated_load_bearing > 0
+    if args.levers:
+        Path(args.levers).write_text(
+            "".join(json.dumps(entry, ensure_ascii=False) + "\n" for entry in ledger),
+            encoding="utf-8")
+
+    failed = unsourced > 0 or undated_load_bearing > 0 or unnamed_levers > 0
     if gaps:
         report_text = "## Evidence gaps\n\n" + "\n".join(gaps) + "\n"
         if args.report:
@@ -152,7 +192,8 @@ def main() -> int:
 
     print(f"source-table: claims={len(claims)} sourced={sourced} "
           f"unsourced_load_bearing={unsourced} missing_confidence={missing_conf} "
-          f"missing_date={missing_date} -> {args.out or 'stdout'}")
+          f"missing_date={missing_date} commercial={len(ledger)} "
+          f"unnamed_levers={unnamed_levers} -> {args.out or 'stdout'}")
     return 1 if failed else 0
 
 
