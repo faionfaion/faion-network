@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Corpus validation no longer needs the corpus to be inside a binary,
+  and still never needs a login** (AD-018 step 8).
+  `scripts/validate-recipes.py` pinned `FAION_CORPUS_SOURCE=embed` so
+  that `faion workflow validate` would resolve `corpus:` fragment
+  references without an account — this repo IS the corpus, so making its
+  own validation depend on someone's subscription is circular. AD-018
+  step 7 deleted the embedded corpus and that escape hatch with it.
+
+  The successor publishes **this working tree**: `vfs-pack --publish`
+  over `skills/` into a temp directory, once per run, with
+  `FAION_CORPUS_ROOT` pointed at the result. That is strictly better than
+  the crutch it replaces. The embed answered out of whatever corpus the
+  binary happened to be built from, which could be months old or, on a
+  default build, the eight-entry seed tree; the published root is the
+  fragments in the checkout being validated, so a fragment edited here is
+  validated as edited.
+
+  Resolution order for the corpus, in the same shape the `faion` binary
+  already had: `$FAION_CORPUS_ROOT` (a caller who published once for a
+  whole CI job) → `$FAION_VFS_PACK` (a prebuilt packer) → `go run` against
+  a sibling `../faion-cli` checkout. When none is available the compile
+  check is **skipped** with a message naming what to install, exactly as
+  it already was for an absent `faion` binary — the corpus is validated
+  far more often than the CLI is built — and `--strict` makes the skip
+  fatal. The publish is cached for the process and removed at exit: it
+  walks ~26k files, and one walk per recipe would turn a full run into
+  minutes for no new information.
+
+  Measured: 4/4 recipes pass in 10.9 s, logged out, with the API base
+  pointed at a closed port.
+
 - **CR-005 marked executed, with the numbers it actually produced.** Status moves
   `pending-owner-decision` to `executed`; the proposal text is kept verbatim as
   the record of the evidence, behind a banner that says to read it in the past

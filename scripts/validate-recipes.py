@@ -44,6 +44,28 @@ then PATH. When it is absent the compile check is reported as skipped
 (the corpus is validated far more often than the CLI is built);
 --strict makes an absent binary fatal instead.
 
+**The compile check never requires being logged in, and never touches
+the network.** Checking this repo offline is the whole point of it: the
+repo IS the corpus, so making its validation depend on someone's
+subscription would be circular. It used to get that by pinning
+`FAION_CORPUS_SOURCE=embed`, reading the copy of the corpus inside the
+binary; AD-018 step 7 deleted that copy. The successor is
+`FAION_CORPUS_ROOT`: this script publishes THIS repo's own `skills/`
+tree with `vfs-pack --publish` into a temp directory, once per run, and
+points the CLI at it. That is strictly better than the crutch it
+replaces — the fragments a recipe composes are now the ones in the
+working tree, not the ones a binary happened to be built with, so a
+fragment edited in this checkout is validated as edited.
+
+Publishing needs the packer, which is Go source in the faion-cli
+checkout. Resolution: $FAION_CORPUS_ROOT (a caller who published once
+for a whole CI job), then $FAION_VFS_PACK (a prebuilt packer binary),
+then `go run ../faion-cli/tools/vfs-pack`. When none is available the
+compile check is skipped exactly as it is for an absent binary, with a
+message naming what to install; --strict makes that fatal too. Do not
+"fix" a skip by logging in — logging in fixes nothing here, because the
+CLI reads the root and not the backend.
+
 Usage:
     python3 scripts/validate-recipes.py            # all recipes
     python3 scripts/validate-recipes.py <dir>...   # named recipe dirs
@@ -54,6 +76,7 @@ one finding · 2 the validator could not run (no recipes directory,
 unreadable input).
 """
 import argparse
+import atexit
 import importlib.util
 import json
 import os
@@ -61,6 +84,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
@@ -80,6 +104,7 @@ SchemaError, check, load = (schema_check.SchemaError, schema_check.check,
                             schema_check.load)
 
 ROOT = Path(__file__).resolve().parent.parent
+SKILLS = ROOT / "skills"
 RECIPES = ROOT / "skills" / "faion" / "recipes"
 FRAGMENTS = ROOT / "skills" / "faion" / "fragments"
 SCHEMAS = ROOT / "docs" / "schemas"
@@ -128,6 +153,73 @@ DISCIPLINE_ANCHORS = (
     ("faion fact add provenance",
      re.compile(r"faion fact add .*?--source", re.IGNORECASE)),
 )
+
+
+def find_corpus_root(strict: bool) -> tuple[str | None, str | None]:
+    """Publish this repo as a corpus and return (root, reason-it-is-absent).
+
+    Publishing is the whole offline story: the CLI resolves `corpus:`
+    fragment references against a published tree, and the tree we want
+    is the one in this working directory. The result is cached for the
+    process because a publish walks ~26k files, and one walk per recipe
+    would make a full run minutes long for no new information.
+    """
+    global _CORPUS_ROOT, _CORPUS_REASON
+    if _CORPUS_ROOT is not None or _CORPUS_REASON is not None:
+        return _CORPUS_ROOT, _CORPUS_REASON
+
+    preset = os.environ.get("FAION_CORPUS_ROOT")
+    if preset:
+        # A caller who published once for a whole CI job. Trust it: the
+        # CLI will refuse a directory that is not a publish, and it will
+        # say so more precisely than a guess here could.
+        _CORPUS_ROOT = preset
+        return _CORPUS_ROOT, None
+
+    cmd = packer_command()
+    if cmd is None:
+        _CORPUS_REASON = ("no packer: set FAION_VFS_PACK to a built vfs-pack, "
+                          "or make `go` and ../faion-cli available")
+        return None, _CORPUS_REASON
+
+    # The temp tree outlives this call and is cleaned at process exit:
+    # every recipe in the run reads it.
+    out = tempfile.mkdtemp(prefix="faion-corpus-")
+    atexit.register(shutil.rmtree, out, True)
+    proc = subprocess.run(cmd + ["-skills-dir", str(SKILLS),
+                                 "-manifest", str(SKILLS / "tier-manifest.json"),
+                                 "-publish", out],
+                          capture_output=True, text=True, check=False)
+    if proc.returncode != 0:
+        tail = (proc.stderr or proc.stdout).strip().splitlines()
+        _CORPUS_REASON = "vfs-pack --publish failed: " + " / ".join(tail[-2:])
+        return None, _CORPUS_REASON
+
+    versions = [d for d in Path(out).iterdir()
+                if d.is_dir() and d.name.startswith("cv-")]
+    if len(versions) != 1:
+        _CORPUS_REASON = f"the publisher wrote {len(versions)} version dirs under {out}"
+        return None, _CORPUS_REASON
+    _CORPUS_ROOT = str(versions[0])
+    return _CORPUS_ROOT, None
+
+
+def packer_command() -> list[str] | None:
+    """How to run `vfs-pack`, or None when it cannot be run."""
+    prebuilt = os.environ.get("FAION_VFS_PACK")
+    if prebuilt and Path(prebuilt).is_file() and os.access(prebuilt, os.X_OK):
+        return [prebuilt]
+    source = ROOT.parent / "faion-cli" / "tools" / "vfs-pack"
+    if source.is_dir() and shutil.which("go"):
+        # `go run` resolves ./tools/... against the module root, so the
+        # command has to be issued from there.
+        return ["go", "-C", str(ROOT.parent / "faion-cli"),
+                "run", "./tools/vfs-pack"]
+    return None
+
+
+_CORPUS_ROOT: str | None = None
+_CORPUS_REASON: str | None = None
 
 
 def find_faion() -> str | None:
@@ -489,19 +581,23 @@ def check_recipe(directory: Path, faion: str | None, strict: bool,
             fail("faion binary not found and --strict was given")
         return findings
 
+    # The corpus the compile check reads is THIS WORKING TREE, published
+    # into a temp root. Without it `workflow validate` would resolve
+    # against the caller's account — exiting on `auth: not authenticated
+    # (jwt)` for anyone not logged in — and corpus validation must never
+    # require a login. Do not "fix" a failure here by logging in; a
+    # login would validate a corpus that is not this checkout.
+    corpus_root, reason = find_corpus_root(strict)
+    if corpus_root is None:
+        if strict:
+            fail(f"no corpus to validate against and --strict was given ({reason})")
+        return findings
+
     args = [faion, "workflow", "validate", str(recipe_path)]
     for var, spec in (recipe.get("vars") or {}).items():
         if spec.get("required"):
             args += ["--var", f"{var}=validate-recipes-placeholder"]
-    # AD-018 made `cache` the CLI's default corpus source, so an unauthenticated
-    # `workflow validate` now exits on `auth: not authenticated (jwt)` — corpus
-    # validation would depend on whoever runs it being logged in. It must not:
-    # this repo is the corpus, and checking it offline is the whole point.
-    # `embed` keeps the check self-contained today. AD-018 step 7 deletes the
-    # embed, and at that point this must become a published-corpus fixture
-    # (`vfs-pack --publish` into a temp root, `FAION_CORPUS_ROOT` at it) rather
-    # than an auth requirement. Do not "fix" a failure here by logging in.
-    env = dict(os.environ, FAION_CORPUS_SOURCE="embed")
+    env = dict(os.environ, FAION_CORPUS_ROOT=corpus_root)
     proc = subprocess.run(args, capture_output=True, text=True, check=False,
                           env=env)
     if proc.returncode != 0:
