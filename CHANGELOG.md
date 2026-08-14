@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **New tool pack `static-web/` (tier free), first tool `asset-stamp.py`.**
+  Harvested from a working generator in a sibling product rather than
+  written from research, so the rationale is a measured incident and not a
+  hypothesis: on a live Cloudflare-fronted site, hours after a green
+  deploy, `GET /assets/js/main.js` returned a **three-day-old 735-byte
+  file** with `cf-cache-status: HIT` and `age: 280134`, while the origin
+  held the current 10,487-byte file. CI was green throughout, because
+  nothing in a normal pipeline looks at what the edge actually serves.
+
+  Assets are served `immutable, max-age=31536000`, so an edge object
+  outlives any number of deploys, and purging by API needs credentials a
+  build does not have. Page HTML is `cf-cache-status: DYNAMIC` and never
+  edge-cached — so the URL the HTML emits is the one lever a build owns.
+  Appending the file's own content hash makes a changed asset a URL the
+  edge has never seen, while an unchanged asset keeps its URL and stays
+  cached: invalidation without giving up caching.
+
+  Only `href="…"` and `src="…"` are rewritten. An asset path inside a
+  JavaScript string literal is deliberately left alone — rewriting a value
+  the page later compares or keys on turns a cache fix into a data bug.
+  A referenced file that does not exist is reported, never silently
+  stamped, because that is a link defect a query string would hide.
+
+  Tested end to end, not just self-tested: unstamped page exits 1, stamping
+  is idempotent so a second run reports `drifted=0`, changing the asset's
+  bytes produces a different hash, and a missing asset surfaces as a
+  finding. `--check` is the CI gate form.
+
+  This is also the first pack stamped from `docs/templates/` under
+  `docs/tool-authoring.md`, which exercised the checklist end to end:
+  validator clean, card 34 of 40 lines, `regen-fragment-index.py --only
+  tools` and `regen-tier-manifest.py` (3,067 → 3,068 entries).
+
 - **`deploy-scaffold.py` stopped shipping the maintainer's own server as
   the default target.** `--ssh-addr` defaulted to a real production IP,
   `--ssh-user` to `faion`, `--ssh-host` to `faion-net` and `--ssh-port` to
