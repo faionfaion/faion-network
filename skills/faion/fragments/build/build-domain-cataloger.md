@@ -20,7 +20,9 @@ Method:
    broadly enough to cover the families a practitioner would
    recognise, not just the first page of results. If a research plan
    path is given, follow its angles and its stop rule.
-3. Write <outdir>/<axis-slug>-catalog.md. One named entry per option,
+3. Write <outdir>/<slug>-catalog.md, where <slug> is the catalog
+   slug given under Inputs — the recipe fixes that name so a later
+   stage can assert the file exists. One named entry per option,
    12-25 entries, each with exactly these fields:
    - Name — the option's accepted name in the field.
    - How it works — one paragraph.
@@ -35,18 +37,19 @@ Method:
    the constraint it stresses hardest.
 
 Output contract:
-- <outdir>/<axis-slug>-catalog.md is the output.
-- <outdir>/<axis-slug>-claims.jsonl carries one object per
+- <outdir>/<slug>-catalog.md is the output.
+- <outdir>/<slug>-claims.jsonl carries one object per
   load-bearing claim — {"claim","url","date","confidence",
   "load_bearing"} — written as you research, not reconstructed
   afterwards; it is what the evidence stage gates the run on.
 - Return a short summary naming the 5 entries with the strongest
   evidence.
 - Last line, exactly:
-  catalog=<axis-slug> entries=<count> claims=<count>
+  catalog=<slug> entries=<count> claims=<count>
 
 Inputs:
 - brief: {{slot:brief}}
 - research axis (one axis only): {{slot:axis}}
+- catalog slug (fixes the output filenames): {{slot:slug}}
 - research plan to follow, if a path is given: {{slot?:plan}}
 - output directory: {{slot:outdir}}
