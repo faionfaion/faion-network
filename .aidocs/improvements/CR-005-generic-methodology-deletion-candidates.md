@@ -4,12 +4,18 @@ cr_id: CR-005
 title: "Deletion candidates: 40 template-stamped methodologies"
 priority: P2
 created: 2026-08-13
-status: pending-owner-decision
+status: executed
+executed: 2026-08-14
 affected_components: [faion-network/skills/faion/knowledge, skills/tier-manifest.json]
 related_tasks: [P2.2]
 ---
 
 # Change Request: 40 deletion candidates from the generic-signature audit
+
+> **EXECUTED 2026-08-14 — approved by the repo owner.** All 40 directories below have been
+> removed. The proposal text is kept verbatim as the record of the evidence the decision rested
+> on; read it in the past tense. What actually happened, and where the outcome differed from the
+> estimate, is in [Execution record](#execution-record) at the end.
 
 **This document proposes nothing be deleted today.** It is the evidence for a decision the repo
 owner makes. No file listed here has been removed; every one is still on disk and still resolves.
@@ -165,3 +171,68 @@ whose duplicate copy is provably generic. The remaining ~235 duplicated director
 compared pair-by-pair, and some of them are presumably also redundant. Deciding the general policy
 — are cross-domain slug duplicates ever legitimate? — is a bigger call than this CR, and it should
 probably be made before the next content-generation run rather than after.
+
+## Execution record
+
+Executed 2026-08-14. Commits: `aff68a925` (reference repair) · `770c47b2f` (deletion + L2 indexes
++ lexicon) · `54cbf07cb` (tier manifest).
+
+### Re-verification: 40 of 40 survived
+
+Every row was re-checked against disk before anything was removed, on four tests: the directory
+exists; its `content/01-core-rules.xml` carries all five generic rule ids; the other four content
+files carry their generic markers; and `AGENTS.md` carries the stock `## Applies If` lines. For
+the 39 rows naming a survivor, the survivor had to exist, carry no generic rule ids, and hold at
+least three real rules of its own.
+
+**All 40 passed. None was spared, and none needed re-classifying.** The survivors are real: the
+`dev/*` API twins carry 6-10 subject rules each, `ux/core-vui-design-principles` pins
+`fifteen-second-ceiling` and `barge-in-supported`, `research/survey-design` pins
+`twelve-question-cap` and `sample-size-120-per-segment`.
+
+Three survivors — `ux/audience-segmentation`, `research/product-development-trends-market-research`
+and `ux/motion-and-micro-interaction-system` — turned out to be *partially* stamped themselves
+(generic output contract, procedure and failure modes over real, sourced core rules and a real
+decision tree). They are strictly better than the candidates they replace, so the deletions stand,
+but this widens the "20 partially-stamped" set noted above beyond the contiguous `dev/` and
+`frontend/` runs. Worth folding into that separate cleanup.
+
+### Measured impact
+
+| Metric | Predicted | Actual |
+|--------|-----------|--------|
+| Directories | 40 | **40** |
+| Files | 562 | **562** |
+| Bytes | 1,441,400 | **1,441,400** |
+| Manifest entries | 3,107 → 3,067 | **3,107 → 3,067** (`+0 added, -40 removed, ~0 changed`) |
+| Corpus count | 2,638 → 2,598 | **2,638 → 2,598** |
+| Dangling references | 21 → 21 | **21 → 21**, same set: 20 × `[[Related]]` + 1 × `[[bin]]` |
+
+`INDEX.xml` and `domains.xml` counts, both re-derived from disk and now agreeing with it:
+
+| Domain | Removed | count= |
+|--------|---------|--------|
+| `backend` | 10 | 147 → 137 |
+| `frontend` | 21 | 42 → 21 |
+| `research` | 2 | 82 → 80 |
+| `ux` | 7 | 186 → 179 |
+
+### Where the estimate was wrong
+
+- **The motion references were 4, not 1.** `ux/motion-and-micro-interaction-system` linked
+  `[[motion-and-microinteraction-spec]]` twice (`## Assumes Loaded` row *and* `## Related` bullet),
+  and named the dead slug twice more in prose — a skip-rule in `01-core-rules.xml` and a verdict in
+  `06-decision-tree.xml` both routing the caller to it. All four fixed. The links were dropped
+  rather than repointed: the only survivor is the referring file itself, and a self-link is not a
+  reference.
+- **The playbook reference was a `<gap>`, not a `<ref>`.** `<gap>` declares a slug the corpus is
+  *missing* — `design-dev-handoff-package`, its neighbour, genuinely does not exist. So
+  `motion-and-microinteraction-spec` was already wrongly filed as a gap while it sat on disk. It
+  became a `<ref>` to the surviving sibling in stage 7, whose task line already reads
+  "spec: states, tokens, motion". (`design-qa-during-build` is a second spurious gap in the same
+  block — it exists at `ux/design-qa-during-build`. Left alone; out of scope.)
+- **One unpredicted knock-on: the lexicon.** `frontend/spatial-design-tools` was the only place in
+  the corpus tagged `unity`, so after deletion the `юніті` row no longer qualified as `src=title`
+  and `validate-lexicon.py` failed. Provenance is data re-derived from the corpus, so the fix was
+  to record what the corpus now says — `observed`. The validator baseline was **not** widened, and
+  no baseline row pointed at a deleted directory, so none became obsolete.

@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-005 marked executed, with the numbers it actually produced.** Status moves
+  `pending-owner-decision` to `executed`; the proposal text is kept verbatim as
+  the record of the evidence, behind a banner that says to read it in the past
+  tense. The new execution record carries the re-verification result (40 of 40
+  survived — every candidate still carried the full generic signature, and every
+  named survivor still carried real rules), the measured impact against the
+  predicted one, the per-domain `count=` changes, and three places the estimate
+  was wrong: the motion references were 4 not 1, the playbook reference was a
+  `<gap>` not a `<ref>` (and `<gap>` means *missing*, so it had been wrong all
+  along), and the lexicon knock-on nobody predicted. It also records that three
+  survivors are themselves partially stamped, which widens the separate
+  "20 partially-stamped" cleanup beyond the `dev/` and `frontend/` runs.
+  The root `AGENTS.md` corpus counts follow the corpus: 2,638 to 2,598
+  methodology dirs, manifest 3,107 to 3,067 entries.
+
 - **Regenerated `skills/tier-manifest.json` after the CR-005 deletion.** 3,107 to
   3,067 entries — `+0 added, -40 removed, ~0 changed`, the whole diff being the
   40 deleted knowledge dirs (knowledge 2,638 to 2,598; playbooks, fragments,

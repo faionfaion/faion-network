@@ -5,8 +5,8 @@ Methodology corpus and Claude Code skill base for the `faion` CLI. Auto-loaded i
 | Item | Value |
 |------|-------|
 | Repo | `faionfaion/faion-network` |
-| Corpus | 2,638 methodology dirs over 22 domains, 455 playbook dirs, 6 workflows, 6 skill dirs (counted on disk 2026-08-13) |
-| Gating | `skills/tier-manifest.json` **v14, 3,107 entries** — authoritative path-to-tier map; every methodology and playbook dir on disk resolves in it (checked 2026-08-13) |
+| Corpus | 2,598 methodology dirs over 22 domains, 455 playbook dirs, 6 workflows, 6 skill dirs (counted on disk 2026-08-14) |
+| Gating | `skills/tier-manifest.json` **v14, 3,067 entries** — authoritative path-to-tier map; every methodology and playbook dir on disk resolves in it (checked 2026-08-14) |
 | Composable | 25 fragments over 6 packs, 4 recipes, 3 tool packs — all tier **free** since v13 |
 | Tiers | free / solo / pro / geek (cumulative) |
 | Distribution | Read by `faion-cli` at runtime; read by `faion-net-be` on disk via `KNOWLEDGE_ROOT` + `TIER_MANIFEST_PATH`; not bundled into the public `faion` plugin |
@@ -60,7 +60,7 @@ bash init.sh                                         # install skills + agents i
 ## Gotchas
 
 - `skills/tier-manifest.json` is **generated** from `meta.json` files — regenerate with `regen-tier-manifest.py`; hand-edits get overwritten.
-- **`scripts/build-domain-index-v2.py` is BROKEN — never run it.** It reads YAML frontmatter that 0 of 2,637 methodology `AGENTS.md` files carry (F-067 moved that metadata to `meta.json`), so it returns 0 entries for every domain and `--write` silently empties the `INDEX.xml` it targets. Until it is repaired, `INDEX.xml` entries are added **by hand**: one `<methodology slug tier path>` block with a `<summary>`, kept alphabetical, with the `count=` attribute bumped to match.
+- **`scripts/build-domain-index-v2.py` is BROKEN — never run it.** It reads YAML frontmatter that 0 of 2,598 methodology `AGENTS.md` files carry (F-067 moved that metadata to `meta.json`), so it returns 0 entries for every domain and `--write` silently empties the `INDEX.xml` it targets. Until it is repaired, `INDEX.xml` entries are added **by hand**: one `<methodology slug tier path>` block with a `<summary>`, kept alphabetical, with the `count=` attribute bumped to match.
 - The manifest is at `skills/tier-manifest.json`, not the repo root.
 - **The hooks are real now** (`core.hooksPath=.githooks`, installed by `init.sh` or `scripts/install-hooks.sh`). `commit-msg` enforces the title rule; `pre-commit` gates the `## [Unreleased]` CHANGELOG entry, the 20-80 line budget on staged `AGENTS.md` files, and the corpus validators — 9 whole-corpus sweeps in full plus `validate-methodology-v2` scoped to the slugs the commit touches, because the full v2 sweep is ~205 s of the ~4 min total. The gate is on the failure **SET** in `scripts/validator-baseline.txt`, never on counts: a count waves through a swap. Never `--no-verify`.
 - Methodology and playbook dirs already carry their own `AGENTS.md` envelope fixed by the corpus spec. Do not add repo-style `AGENTS.md` / `CLAUDE.md` pairs anywhere under `skills/faion/knowledge/**` or `skills/faion/playbooks/**`.
