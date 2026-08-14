@@ -1,6 +1,7 @@
 {
   "type": "object",
-  "required": ["title", "core", "catalog_entries_used", "rationale", "runner_up"],
+  "required": ["title", "core", "catalog_entries_used", "rationale", "runner_up",
+               "commercial_findings"],
   "properties": {
     "title": { "type": "string" },
     "core": { "type": "string" },
@@ -32,6 +33,26 @@
       "properties": {
         "title": { "type": "string" },
         "why_it_lost": { "type": "string" }
+      }
+    },
+    "commercial_findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "lever", "disposition", "lands_in", "reason",
+                     "decline_class"],
+        "properties": {
+          "id": { "type": "string" },
+          "lever": { "type": "string" },
+          "disposition": { "type": "string", "enum": ["applied", "declined"] },
+          "lands_in": { "type": "string" },
+          "reason": { "type": "string" },
+          "decline_class": {
+            "type": "string",
+            "enum": ["dark-pattern", "envelope", "evidence", "economics",
+                     "dependency", "not-declined"]
+          }
+        }
       }
     },
     "sacrificed": {
