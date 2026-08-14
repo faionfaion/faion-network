@@ -9,7 +9,7 @@ Workflow recipes: platform-neutral F027 pipelines an agent picks from and `faion
 | Recipe | Tier | Stages | Shape |
 |--------|------|--------|-------|
 | `sdd-feature/` | free | 6 | intake → plan → bootstrap gate → per-task fan-out over worktrees → review → gated fix. One written feature, built. |
-| `research-first-build/` | free | 13 | research plan → three sourced catalogs (one a market landscape) → evidence gate → quantified concept pick → design → plan → fan-out → assets → bootstrap gate → review → gated fix. Decides what to build before building it. |
+| `research-first-build/` | free | 14 | research plan → three sourced catalogs (one a market landscape) → evidence gate → quantified concept pick → lever gate → design → plan → fan-out → assets → bootstrap gate → review → gated fix. Decides what to build before building it. |
 | `article-pipeline/` | free | 6 | outline → per-section fan-out → assemble → gated editorial pass → translate → language review. Content only, never code. |
 | `audit-and-fix/` | free | 4 | bootstrap → machine checks → cited review → gated fix. No fan-out; the smallest recipe here. |
 

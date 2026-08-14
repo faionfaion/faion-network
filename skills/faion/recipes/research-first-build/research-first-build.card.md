@@ -1,7 +1,7 @@
 # research-first-build
 
 ## Purpose
-Build something whose shape is not decided yet: plan the research, catalog three axes against live sources, gate the evidence, pick one concept against quantified criteria, design it, plan it, implement the tasks in parallel, produce assets, prove the toolchain, review and fix.
+Build something whose shape is not decided yet: plan the research, catalog three axes against live sources, gate the evidence and tag what could move revenue, pick one concept against quantified criteria and answer every tagged lever, design it, plan it, implement the tasks in parallel, produce assets, prove the toolchain, review and fix.
 
 ## Invoke
 ```
@@ -22,9 +22,10 @@ faion workflow build {recipe.json} --var brief={file} --var repo_path={repo} --v
 
 ## Outputs
 - Files: `.claude/workflows/research-first-build.js`, `research-first-build.codex.sh`, `research-first-build.lock.json`.
-- Thirteen stages: `research_plan` → three `research_*` (the second is the market analyst) → `evidence` → `concept` (JSON pick with runner-up) → `design` → `plan` (JSON task list) → `implement` (fan-out, ≤6 worktrees) → `assets` → `bootstrap` (gated) → `review` (JSON verdict) → `fix` (gated, ≤2 rounds).
-- The run writes `{docs_dir}/research-plan.md`, `*-catalog.md`, `*-claims.jsonl`, `evidence-table.md` + `evidence-gaps.md`, `{feature_folder}/spec.md`, code commits on `default_branch`, and assets under the repo.
+- Fourteen stages: `research_plan` → three `research_*` (the second is the market analyst) → `evidence` → `concept` (JSON pick with runner-up) → `lever_gate` (gated, ≤2 rounds) → `design` → `plan` (JSON task list) → `implement` (fan-out, ≤6 worktrees) → `assets` → `bootstrap` (gated) → `review` (JSON verdict) → `fix` (gated, ≤2 rounds).
+- The run writes `{docs_dir}/research-plan.md`, `*-catalog.md`, `*-claims.jsonl`, `evidence-table.md` + `evidence-gaps.md`, `commercial-levers.jsonl`, `lever-decisions.md`, `{feature_folder}/spec.md`, code commits on `default_branch`, and assets under the repo.
 - Every load-bearing figure carries a URL, an access date and an H/M/L tag; the `evidence` stage runs the `source-table` tool, which fails on an unsourced load-bearing claim.
+- Every finding the research tagged commercially significant is answered by the concept — applied with where it lands, or declined with a classified reason, deferral included. `lever_gate` runs the `lever-check` tool: it fails on a lever nobody answered and prints the declines with their reasons rather than judging them.
 
 ## When NOT to use
 - The what is already decided and written down — that is `sdd-feature`, and paying for three research stages to re-derive a settled answer is waste.

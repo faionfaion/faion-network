@@ -1,9 +1,9 @@
 {
   "recipe": 1,
   "name": "research-first-build",
-  "description": "Greenfield build that researches before it decides: a research plan, three sourced catalogs (one of them a competitor and market landscape), an evidence gate that fails on an unsourced load-bearing claim, one quantified concept pick, a design, an SDD plan, a per-task implementation fan-out, an asset pass, a bootstrap gate, an independent review and a bounded fix loop.",
+  "description": "Greenfield build that researches before it decides: a research plan, three sourced catalogs (one of them a competitor and market landscape), an evidence gate that fails on an unsourced load-bearing claim and tags what could move revenue, one quantified concept pick that answers every tagged lever, a lever gate that counts applied against declined, a design, an SDD plan, a per-task implementation fan-out, an asset pass, a bootstrap gate, an independent review and a bounded fix loop.",
   "pattern": "sequential",
-  "pattern_rationale": "One repository advanced by ordered stages, and the order is the point: the plan precedes the research, the research precedes the concept, the concept precedes the design, the design precedes the plan. The grammar fans out only over an earlier stage's result, so the three research axes run as three sequential stages; the only concurrency is the per-task implementation fan-out. The evidence stage sits between research and concept deliberately — a concept picked from unsourced claims is a guess with a rationale attached.",
+  "pattern_rationale": "One repository advanced by ordered stages, and the order is the point: the plan precedes the research, the research precedes the concept, the concept precedes the design, the design precedes the plan. The grammar fans out only over an earlier stage's result, so the three research axes run as three sequential stages; the only concurrency is the per-task implementation fan-out. The evidence stage sits between research and concept deliberately — a concept picked from unsourced claims is a guess with a rationale attached. The lever gate sits between concept and design for the same reason in the other direction: the design must be derived from a verdict that has already answered every commercially significant finding, so its stage body produces the count and its gate loop repairs an unanswered one before the designer ever reads the verdict.",
 
   "vars": {
     "brief":          { "required": true, "description": "path to the product brief the whole pipeline is grounded in" },
@@ -98,6 +98,23 @@
       "output": { "kind": "json", "schema": "corpus:build-concept-synthesizer.schema" },
       "capability": { "read": true, "write": false, "net": false },
       "retry": 2
+    },
+
+    {
+      "id": "lever_gate",
+      "prompt": "corpus:gate-runner",
+      "slots": {
+        "subject": "{{stage:concept.file}}",
+        "gates": "python3 $(faion tools path lever-check) --ledger {{var:docs_dir}}/commercial-levers.jsonl --concept {file} --report {{var:docs_dir}}/lever-decisions.md"
+      },
+      "output": { "kind": "json", "schema": "corpus:gate-runner.schema" },
+      "capability": { "read": true, "write": true, "net": false },
+      "gate": {
+        "verifier": "corpus:gate-runner",
+        "verifier_schema": "corpus:gate-runner.schema",
+        "fixer": "corpus:gate-fixer",
+        "max_rounds": 2
+      }
     },
 
     {
