@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Tool authoring is now stamped, not reverse-engineered.** The tool layer
+  is about to grow from 3 packs to many, and every new one will be written
+  by a subagent that today has to infer the conventions from prose plus a
+  read of the existing packs — slow, and it produces drift.
+
+  Added `docs/templates/tool-script.py.template`, `tool-card.md.template`
+  and `tool-pack-meta.json.template`. Verified rather than asserted: stamped
+  into a scratch pack and run through `validate-tools.py`, they give **0
+  findings**, the card lands at **34 lines against the 40-line cap** with
+  its guidance comments still in place, and `--self-test` exits 0.
+
+  Added `docs/tool-authoring.md` — a linear 14-step checklist, a
+  failure-mode table mapping each mistake to the exact validator message it
+  produces, and the `.sh` and network-tool deltas. Added
+  `rules/tool-authoring.md` as the trigger stub, mirroring the existing
+  `rules/skill-authoring.md` → `docs/skill-authoring.md` pair.
+
+  The templates live in `docs/`, not under `skills/faion/tools/`, because
+  `validate-tools.py` iterates every directory beneath `tools/` and would
+  fail a template pack, and `regen-fragment-index.py` would index it.
+
+  Three constraints are written down for the first time, all of which will
+  bite the packs coming next: the card schema pins **exactly six sections**
+  and `faion-cli/internal/tools/card.go` hardcodes the same six headings, so
+  a seventh needs a schema and a Go change in lockstep; `meta.json` is
+  `additionalProperties:false`, so it cannot carry a `network` or
+  `credentials` field yet; and a **shared helper module is impossible**
+  because every `.py`/`.sh` in a pack's `scripts/` must have its own card.
+
 - **Corrected three documentation claims that were actively misleading
   authoring agents.** `skills/faion/tools/AGENTS.md` said `vfs-pack` packs
   only `.md` and `.xml`, so `scripts/*.py|sh` "do **not**" ship and F029

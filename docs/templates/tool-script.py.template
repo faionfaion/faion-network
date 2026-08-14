@@ -1,0 +1,135 @@
+#!/usr/bin/env python3
+"""{{tool-name}}.py — {{one line: what it checks, or what it emits}}.
+
+{{Two to five lines: why this tool exists rather than a throwaway script.
+Name the failure it prevents. If it deliberately does NOT check something,
+say so here and say why — a gate that blocks on a judgement gets talked
+past.}}
+
+Input:  --in {{what}} [--out {{what}}]
+Output: one summary line on stdout; findings on stderr.
+
+Exit: 0 {{clean}} · 1 {{the checked thing is wrong}} · 2 {{the tool could
+      not run}}.
+Zero model calls.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+NAME = "{{tool-name}}"
+
+# Fixtures for --self-test. OK must produce no findings, BAD must produce
+# at least one. They are the only regression test this tool has, so make
+# BAD the mistake you actually expect a caller to make.
+OK_FIXTURE = '{"id": "a", "value": 1}\n{"id": "b", "value": 2}\n'
+BAD_FIXTURE = '{"id": "a", "value": 1}\n{"id": "a", "value": 2}\n'
+
+
+def read_records(text: str) -> list[dict] | str:
+    """Parse the input, or return one error string. Blank and `#` lines skipped."""
+    records: list[dict] = []
+    for lineno, line in enumerate(text.splitlines(), 1):
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError as exc:
+            return f"line {lineno}: not JSON: {exc}"
+        if not isinstance(obj, dict):
+            return f"line {lineno}: not a JSON object"
+        records.append(obj)
+    return records
+
+
+def check(records: list[dict]) -> list[str]:
+    """Every finding, one string each. Pure: no I/O, no exits — this is what
+    --self-test exercises and what keeps the tool deterministic.
+
+    {{PLACEHOLDER: the actual rules. One `findings.append(...)` per rule,
+    each naming the offending record so a caller can fix it without
+    re-reading the input.}}"""
+    findings: list[str] = []
+    seen: set[str] = set()
+    for record in records:
+        ident = str(record.get("id") or "").strip()
+        if not ident:
+            findings.append("record with no id")
+            continue
+        if ident in seen:
+            findings.append(f"{ident}: duplicate id")
+        seen.add(ident)
+    return findings
+
+
+def report(records: list[dict], findings: list[str]) -> str:
+    """The written artefact. {{PLACEHOLDER: table, ledger or report body.}}"""
+    lines = [f"# {NAME}", "", f"records: {len(records)}", ""]
+    lines += [f"- {f}" for f in findings] or ["- none"]
+    return "\n".join(lines) + "\n"
+
+
+def self_test() -> list[str]:
+    """Prove the fixtures still behave. Returns failures, empty when green."""
+    failures: list[str] = []
+    ok = read_records(OK_FIXTURE)
+    bad = read_records(BAD_FIXTURE)
+    if isinstance(ok, str) or isinstance(bad, str):
+        return [f"fixture does not parse: {ok if isinstance(ok, str) else bad}"]
+    if check(ok):
+        failures.append(f"OK fixture produced findings: {check(ok)}")
+    if not check(bad):
+        failures.append("BAD fixture produced no finding")
+    return failures
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--in", dest="src", help="{{input}} JSONL, - for stdin")
+    ap.add_argument("--out", help="report destination (default stdout)")
+    ap.add_argument("--self-test", action="store_true",
+                    help="run the built-in fixtures and exit")
+    args = ap.parse_args()
+
+    if args.self_test:
+        failures = self_test()
+        for failure in failures:
+            print(f"{NAME}: self-test: {failure}", file=sys.stderr)
+        print(f"{NAME}: self-test checks=2 failures={len(failures)}")
+        return 1 if failures else 0
+
+    if not args.src:
+        print(f"{NAME}: --in is required", file=sys.stderr)
+        return 2
+    try:
+        text = sys.stdin.read() if args.src == "-" else \
+            Path(args.src).read_text(encoding="utf-8")
+    except OSError as exc:
+        print(f"{NAME}: cannot read input: {exc}", file=sys.stderr)
+        return 2
+    records = read_records(text)
+    if isinstance(records, str):
+        print(f"{NAME}: {records}", file=sys.stderr)
+        return 2
+
+    findings = check(records)
+    text_out = report(records, findings)
+    if args.out:
+        Path(args.out).write_text(text_out, encoding="utf-8")
+    else:
+        print(text_out)
+    for finding in findings:
+        print(f"{NAME}: {finding}", file=sys.stderr)
+    print(f"{NAME}: records={len(records)} findings={len(findings)} "
+          f"-> {args.out or 'stdout'}")
+    return 1 if findings else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

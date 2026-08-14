@@ -55,6 +55,7 @@ bash init.sh                                         # install skills + agents i
 - **No time estimates** — never state hours, days or dates in SDD docs; use qualitative complexity and token estimates.
 - **Linting** — every project must have working pre-commit hooks; on failure fix the cause, never `--no-verify`. Per-project setup: [.agents/linting.md](.agents/linting.md)
 - **Skill authoring** — read `rules/skill-authoring.md` before creating or editing anything under `skills/`.
+- **Tool authoring** — read `rules/tool-authoring.md` before adding or editing anything under `skills/faion/tools/`; stamp from `docs/templates/`, never hand-roll.
 - **Adapters** — packaged for Claude Code and Codex; runtime-specific behavior: [.agents/adapters.md](.agents/adapters.md)
 
 ## Gotchas
