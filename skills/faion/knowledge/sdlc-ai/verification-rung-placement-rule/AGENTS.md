@@ -107,7 +107,7 @@ checks:
     defect: "a content path is ungated, double-gated, or gated to a tier nobody owns"
     answers: bytes
     rung: 1
-    instrument: "scripts/audit-index-coverage.py"
+    instrument: "scripts/regen-tier-manifest.py --dry-run"
     exact: true
     action: block
     cadence: ci

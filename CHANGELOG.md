@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Deleted four validators that validate nothing that exists.**
+  `validate-methodology-xml.py` targets `methodology.xml` and the corpus
+  holds zero of them; `validate-playbook-v2.py` targets `playbook.yaml`,
+  likewise zero. Both "pass" by finding no input, which is worse than
+  failing. `audit-index-coverage.py` audits the pre-F-067 shape
+  (`<tier>/<group>/<skill>/SKILL.md`, `playbook_paths` in the manifest)
+  and reports 41 errors and 97 warnings, every one of them phantom.
+  `check-review-tools.sh` probes for `codex` and `kiro` CLIs on behalf of
+  a review phase no current workflow invokes; it had zero inbound
+  references and was not even listed in `scripts/AGENTS.md`.
+
+  None of the four is in `FAST_IDS`, in `f066-validate-all.sh`, or in
+  `validator-baseline.txt`, so the pre-commit gate is unchanged.
+
+  One shipped methodology named a deleted instrument:
+  `sdlc-ai/verification-rung-placement-rule` used
+  `audit-index-coverage.py` as the rung-1 instrument for the
+  `tier-gate-coverage` defect, in both its `AGENTS.md` and its
+  `rung-placement-record.yaml` template. Repointed to
+  `regen-tier-manifest.py --dry-run`, which answers the same question
+  ("is any content path ungated, double-gated, or gated to a tier nobody
+  owns") against the F-067 source of truth.
+
 - **Deleted six migration one-shots whose migrations are finished.**
   `migrate-f067.py`, `migrate-methodology-to-v2.py`,
   `migrate-playbook-to-v2.py`, `migrate-playbook-yaml-to-xml.py`,
