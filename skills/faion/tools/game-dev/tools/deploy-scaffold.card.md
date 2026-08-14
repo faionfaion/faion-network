@@ -20,7 +20,9 @@ python3 {script} --name {name} --port {port} --domain {host} --root {/opt/dir} [
 - `--regex-route {regex}={file}` — regex `location ~`, always emitted quoted. Repeatable, optional.
 - `--test-labels {labels}` — labels the emitted `deploy.sh` hands its test gate. Optional, default empty.
 - `--workers {n}` / `--rate {r}` / `--burst {n}` — gunicorn worker count, nginx `limit_req` rate and burst. Optional, defaults `4`, `10r/s`, `20`.
-- `--ssh-host {h}` / `--ssh-user {u}` / `--ssh-addr {ip}` / `--ssh-port {n}` — the target `deploy.sh` rsyncs to. Optional, defaults `faion-net`, `faion`, `46.225.58.119`, `22022`.
+- `--ssh-user {u}` / `--ssh-addr {ip}` — the target `deploy.sh` rsyncs to. **Both required**: there is no default, because a wrong one deploys your code to someone else's server.
+- `--ssh-port {n}` — Optional, default `22`.
+- `--ssh-key {path}` — private key for the deploy user. Optional, default `~/.ssh/id_ed25519`; the generated script lets `SSH_KEY` in the environment override it at run time.
 - `--check-local` — refuse if the unit, state dir or vhost already exists on this machine. Optional.
 - `--force` — overwrite existing output files. Optional.
 

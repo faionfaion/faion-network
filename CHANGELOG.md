@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **`deploy-scaffold.py` stopped shipping the maintainer's own server as
+  the default target.** `--ssh-addr` defaulted to a real production IP,
+  `--ssh-user` to `faion`, `--ssh-host` to `faion-net` and `--ssh-port` to
+  a real non-standard port. `game-dev-tools` is tier `solo`, so every
+  paying subscriber received that as a runnable default. `--ssh-user` and
+  `--ssh-addr` are now **required** — there is no safe default for "which
+  machine do I overwrite".
+
+  Two further defects in the same emitted script, both of which made it
+  unrunnable or unsafe on any machine but the maintainer's:
+
+  - It called **`fssh`**, a private `~/bin` dispatcher no customer has, for
+    both the key-cache step and the whole remote install block. A
+    subscriber running the generated `deploy.sh` got `fssh: command not
+    found` after the rsync had already overwritten the target. Replaced
+    with a plain `ssh` invocation built from the new `--ssh-key` flag,
+    overridable by `SSH_KEY` in the environment.
+  - The rsync transport passed `StrictHostKeyChecking=no` together with
+    `UserKnownHostsFile=/dev/null`, which accepts any host key on every
+    run — a shipped man-in-the-middle hole on a channel carrying `sudo
+    rsync`. Now `accept-new`, which pins on first contact and fails on a
+    change.
+
+  Verified by generating a scaffold and grepping the output: no address,
+  no port, no `fssh`, no `StrictHostKeyChecking=no`.
+
 - **Tool authoring is now stamped, not reverse-engineered.** The tool layer
   is about to grow from 3 packs to many, and every new one will be written
   by a subagent that today has to infer the conventions from prose plus a

@@ -113,18 +113,19 @@ DEPLOY_TMPL = """\
 #        && sudo nginx -t && sudo systemctl reload nginx
 set -euo pipefail
 
-HOST="{ssh_host}"
-SSH_KEY="/tmp/fssh-{ssh_host}.key"   # cached by fssh on first use
+SSH_KEY="${{SSH_KEY:-{ssh_key}}}"
 REMOTE="{ssh_user}@{ssh_addr}"
 PORT={ssh_port}
+# accept-new, never `no` with /dev/null: the latter accepts any key every run
+SSH="ssh -i $SSH_KEY -p $PORT -o StrictHostKeyChecking=accept-new"
 APP_DIR="{root}"
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 echo "== local deploy gate"
 (cd "$REPO_ROOT/{backend}" && "$REPO_ROOT/.venv/bin/python" manage.py test {test_labels})
 
-echo "== ensure ssh key cache"
-fssh "$HOST" true
+echo "== check ssh reachability"
+$SSH "$REMOTE" true
 
 echo "== rsync code"
 # plain --delete, never --delete-excluded: the latter wipes .venv/.env on the host
@@ -132,12 +133,12 @@ rsync -a --delete \\
   --exclude .git --exclude .venv --exclude __pycache__ --exclude '*.pyc' \\
   --exclude '*.sqlite3' --exclude '*.sqlite3-wal' --exclude '*.sqlite3-shm' \\
   --exclude .env \\
-  -e "ssh -i $SSH_KEY -p $PORT -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" \\
+  -e "$SSH" \\
   --rsync-path="sudo rsync" \\
   "$REPO_ROOT/" "$REMOTE:$APP_DIR/"
 
 echo "== remote install + gate + restart"
-fssh "$HOST" "
+$SSH "$REMOTE" "
   set -euo pipefail
   sudo chown -R {user}:{group} $APP_DIR
   sudo -u {user} $APP_DIR/.venv/bin/pip install -q -r $APP_DIR/{backend}/requirements.txt
@@ -184,10 +185,13 @@ def main() -> int:
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--rate", default="10r/s")
     ap.add_argument("--burst", type=int, default=20)
-    ap.add_argument("--ssh-host", default="faion-net")
-    ap.add_argument("--ssh-user", default="faion")
-    ap.add_argument("--ssh-addr", default="46.225.58.119")
-    ap.add_argument("--ssh-port", type=int, default=22022)
+    ap.add_argument("--ssh-user", required=True,
+                    help="deploy user on the target host")
+    ap.add_argument("--ssh-addr", required=True,
+                    help="target host address; no default — a wrong one deploys to a stranger")
+    ap.add_argument("--ssh-port", type=int, default=22)
+    ap.add_argument("--ssh-key", default="~/.ssh/id_ed25519",
+                    help="private key for the deploy user; SSH_KEY env overrides at run time")
     ap.add_argument("--page-route", action="append", default=[], metavar="PATH=FILE",
                     help="exact location, e.g. /dashboard=dashboard.html (repeatable)")
     ap.add_argument("--regex-route", action="append", default=[], metavar="REGEX=FILE",
@@ -246,8 +250,8 @@ def main() -> int:
             name=name, domain=args.domain, user=user, group=group, root=args.root,
             backend=args.backend, frontend=args.frontend, webroot=webroot,
             state_dir=state_dir, test_labels=args.test_labels,
-            ssh_host=args.ssh_host, ssh_user=args.ssh_user,
-            ssh_addr=args.ssh_addr, ssh_port=args.ssh_port),
+            ssh_user=args.ssh_user, ssh_addr=args.ssh_addr,
+            ssh_port=args.ssh_port, ssh_key=args.ssh_key),
     }
 
     body = NGINX_HEAD.format(name=name, domain=args.domain, zone=zone, rate=args.rate,
