@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Deleted the three index builders that silently emptied the file they
+  targeted.** `build-domain-index-v2.py` was documented as broken; the
+  audit found `build-methodology-index.py` and `build-methodology-index-c.py`
+  share the identical defect and were never written down. All three parse
+  YAML frontmatter that F-067 moved into `meta.json`, so all three collect
+  zero entries and write `count="0"`.
+
+  `build-methodology-index-c.py` was the worst of the three: writing is its
+  default and only behaviour — no `--write`, no `--check`, no `--dry-run`,
+  and `--domain` required. `--domain dev` would have replaced the live
+  122 KB / 379-entry `dev/INDEX.xml` with 112 bytes, then crashed on an
+  unrelated error afterwards. It destroyed first and reported second.
+  Nothing referenced any of the three except do-not-run warnings.
+
+  The root `AGENTS.md` gotcha is rewritten accordingly. It now also records
+  what the audit turned up about the working generator: `regen-domains-xml.py`
+  reads `meta.json` and reproduces the indexes almost exactly (121 insertions
+  across 23 files, mostly stale `count=` attributes and summaries that had
+  drifted from `meta.json`) — but it filters L2 entries by `status`, so
+  `sdd/templates` (`status: "draft"`) drops out of the index while
+  `tier-manifest.json` still carries it. Two methodologies are affected. Until
+  that is settled it is not a drop-in replacement, and the hand-edit
+  instruction stands.
+
 - **The corpus no longer instructs agents to run a validator that cannot
   work.** `sdd-batch-orchestrator` named `validate-methodology-xml.py` as
   its VERIFY step in three content files, while `workflows/AGENTS.md` said

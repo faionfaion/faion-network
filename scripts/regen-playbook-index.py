@@ -18,9 +18,9 @@ no leaf directory, or a leaf directory with no category, aborts the run
 instead of writing a half-correct index.
 
 Modelled on `regen-fragment-index.py` and `regen-tier-manifest.py`,
-which read `meta.json` — deliberately NOT on
-`scripts/build-domain-index-v2.py`, which reads YAML frontmatter no
-envelope carries and empties the file it targets.
+which read `meta.json` — deliberately NOT on the deleted
+`build-domain-index-v2.py`, which read YAML frontmatter no envelope
+carries and emptied the file it targeted.
 
 `generated=` is only bumped when the body actually changes, so a rerun
 on an unchanged tree is a no-op instead of an eleven-line diff.

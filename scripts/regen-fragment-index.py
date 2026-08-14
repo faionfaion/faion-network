@@ -16,9 +16,9 @@ Every entry is derived from the pack's own `meta.json` (slug, tier,
 summary) plus what is actually on disk (fragment names, card and script
 paths, stage counts), so the index cannot drift from the tree the way a
 hand-kept list does. Modelled on `regen-tier-manifest.py`, which reads
-`meta.json` — deliberately NOT on `scripts/build-domain-index-v2.py`,
-which reads YAML frontmatter no envelope carries and empties the file it
-targets.
+`meta.json` — deliberately NOT on the deleted `build-domain-index-v2.py`,
+which read YAML frontmatter no envelope carries and emptied the file it
+targeted.
 
 `generated=` is only bumped when the body actually changes, so a rerun
 on an unchanged tree is a no-op instead of a one-line diff.
