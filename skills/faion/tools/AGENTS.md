@@ -43,5 +43,5 @@ Fixed section order, nothing added or dropped: `# <tool-name>` · `## Purpose` �
 ## Gotchas
 
 - Tier comes from `<pack>/meta.json` — one entry gates every file beneath it. `scripts/regen-tier-manifest.py` walks `skills/faion/tools/<pack>/meta.json` alongside knowledge, playbooks and fragments.
-- `vfs-pack` packs only `.md` and `.xml`, so cards ship in the CLI blob but `scripts/*.py|sh` do **not**. Materialising a pack (F029) needs the packer's allowlist widened, or a separate delivery path for the executables.
+- **Scripts ship.** `vfs-pack` allowlists `.py`/`.sh` from any `scripts/` path segment (`faion-cli/tools/vfs-pack/pack.go:631`, F029-T01) — location is the declaration of intent, so a `.py` anywhere else is authoring scaffolding and stays out. `faion tools sync` materialises a pack to `~/.faion/tools/<pack>/` with the script `0755` and the card `0444`. That directory is **world-readable**: a tool must never cache a credential there.
 - Adding a pack means: `meta.json`, a row in the table above, and a manifest regeneration. A pack without `meta.json` inherits the skill-level tier silently.

@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Corrected three documentation claims that were actively misleading
+  authoring agents.** `skills/faion/tools/AGENTS.md` said `vfs-pack` packs
+  only `.md` and `.xml`, so `scripts/*.py|sh` "do **not**" ship and F029
+  still needed the allowlist widened. F029-T01 landed 2026-08-11:
+  `pack.go:631` allowlists `.py`/`.sh` from any `scripts/` path segment,
+  2,702 executables already ship, and `faion tools sync` materialises them.
+  The stale line was load-bearing — it is the first thing an agent reads
+  before designing a tool pack, and it says the pack cannot be delivered.
+  Replaced with what the packer actually does, plus the fact that
+  `~/.faion/tools/<pack>/` is world-readable and must never hold a
+  credential.
+
+  The root `AGENTS.md` claimed all composables are tier `free` since v13.
+  Fragments and recipes are; tool packs are not — `game-dev` is `solo` in
+  both its `meta.json` and the manifest.
+
+  `scripts/AGENTS.md` listed ten scripts as "superseded, kept for history"
+  that no longer exist, and documented eleven live ones nowhere: the three
+  index regenerators, `repair-playbook-bridge.py`, `schema_check.py`, the
+  fragment/recipe/tool validators, `test-retrieve-2level.py` and
+  `update.sh`. It also called `slug-rename-map.json` migrator input when it
+  is a runtime dependency, and did not warn that
+  `validate-domain-index.py` and `validate-domains-index.py` are two
+  different gate validators separated by one letter.
+
 - **Deleted four validators that validate nothing that exists.**
   `validate-methodology-xml.py` targets `methodology.xml` and the corpus
   holds zero of them; `validate-playbook-v2.py` targets `playbook.yaml`,
