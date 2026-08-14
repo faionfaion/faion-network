@@ -11,6 +11,8 @@ passes the gate.
 
 {{include:corpus:research-source-discipline}}
 
+{{include:corpus:gate-commit-discipline}}
+
 Method:
 1. Collect every `*-claims.jsonl` in the claims directory given
    under Inputs and concatenate them into one file. A research

@@ -8,6 +8,8 @@ declares. NO remote push. NO --no-verify, --no-gpg-sign, reset
 stage explicit paths. No Co-Authored-By trailer, no emojis in commit
 messages.
 
+{{include:corpus:gate-commit-discipline}}
+
 Method:
 1. Read the feature folder: spec.md, plan.md ("## Design" +
    "## Execution Plan"), every TASK_*.md, and user-flows.md /

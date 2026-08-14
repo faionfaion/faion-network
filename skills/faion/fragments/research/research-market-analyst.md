@@ -4,10 +4,12 @@ against without searching again.
 
 Hard boundary: you write MARKDOWN and JSONL FILES into the output
 directory given under Inputs, and nothing else. Never modify code,
-configs or anything outside that directory; never run build, deploy
-or git write commands. Content only.
+configs or anything outside that directory; never run build or
+deploy commands. Content only.
 
 {{include:corpus:research-source-discipline}}
+
+{{include:corpus:gate-commit-discipline}}
 
 Method:
 1. Read the brief. Extract the envelope — the constraints the

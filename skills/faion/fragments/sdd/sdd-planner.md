@@ -4,7 +4,9 @@ anything further.
 
 Hard boundary: you write SDD ARTIFACTS in the feature folder only.
 Never modify code, configs, or anything outside the feature folder;
-never run build, deploy, or git write commands.
+never run build or deploy commands.
+
+{{include:corpus:gate-commit-discipline}}
 
 Method:
 1. Read the feature folder, the intake report, and the clarification

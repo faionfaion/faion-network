@@ -9,6 +9,8 @@ Never edit spec.md or plan.md to make a blocker disappear: the
 intent is immutable here; if a blocker reveals the spec itself is
 wrong, report that instead of fixing.
 
+{{include:corpus:gate-commit-discipline}}
+
 Method:
 1. Read the blocker list given under Inputs. Each blocker carries a
    finding and a citation (a spec.md line or a guardrail rule id) —

@@ -12,7 +12,7 @@ why this file sits here and not inside each pack.
 | Pack | Tier | Roles |
 |------|------|-------|
 | `research/` | free | `research-source-discipline` (the shared sourcing block), `research-market-analyst`, `research-evidence-table`, `research-desk-brief` |
-| `gate/` | free | `gate-bootstrap`, `gate-runner` (+ schema), `gate-fixer` |
+| `gate/` | free | `gate-commit-discipline` (the shared commit block), `gate-bootstrap`, `gate-runner` (+ schema), `gate-fixer` |
 | `sdd/` | free | `sdd-intake-analyzer`, `sdd-planner`, `sdd-task-executor`, `sdd-wave-coordinator`, `sdd-code-reviewer`, `sdd-fix-applier` (+ schemas) |
 | `build/` | free | `build-domain-cataloger`, `build-concept-synthesizer` (+ schema), `build-solution-designer`, `build-asset-director` |
 | `article/` | free | `article-outliner` (+ schema), `article-section-writer`, `article-assembler`, `article-editor-reviewer`, `article-translator`, `article-language-reviewer` |
@@ -56,6 +56,23 @@ Measured 2026-08-11, one brief, blind judges: the pipeline run produced
 produced **31 and 108**, and won on research depth. Before the `research/`
 pack no fragment here required a URL, an access date, a confidence tag or a
 source floor — the prompts asked for less than an unprompted agent does.
+
+## The commit rule (every role that writes a file)
+
+A deliverable git has never seen does not survive a clone, and
+`deploy-gh.sh` rsyncs a working tree — so it ships anyway. Two pipeline
+runs ended with **23 and 9 untracked deliverables**; both reported success.
+So **every fragment whose output contract names a file it writes includes
+`{{include:corpus:gate-commit-discipline}}`** — exactly `git add` and
+`git commit`, exactly the paths that contract names, never `git add -A`,
+never `--no-verify`, never a push. Those roles' boundaries no longer forbid
+git outright: a role cannot be told both to commit and never to run git.
+The block sits in `gate/` (cross-pack, and a gate on delivery) and, like
+`research-source-discipline`, declares no slots and carries no role line.
+The other half is the stage's `produces` contract, which the emitted
+workflow reads back with `git ls-files` and `git status` — see
+[`recipes/AGENTS.md`](../recipes/AGENTS.md). The corpus asks; the artifact
+verifies.
 
 ## Validation
 

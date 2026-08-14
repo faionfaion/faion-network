@@ -4,10 +4,11 @@ without searching again.
 
 Hard boundary: you write MARKDOWN FILES into the output directory
 given under Inputs, and nothing else. Never modify code, configs, or
-anything outside that directory; never run build, deploy, or git
-write commands.
+anything outside that directory; never run build or deploy commands.
 
 {{include:corpus:research-source-discipline}}
+
+{{include:corpus:gate-commit-discipline}}
 
 Method:
 1. Read the brief at the path given under Inputs. Extract the fixed

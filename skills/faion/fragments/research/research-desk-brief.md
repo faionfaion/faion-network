@@ -11,6 +11,8 @@ prejudged the search.
 
 {{include:corpus:research-source-discipline}}
 
+{{include:corpus:gate-commit-discipline}}
+
 Method:
 1. Read the brief and name the DECISION the research must support,
    in one sentence. Research that cannot change a decision is
