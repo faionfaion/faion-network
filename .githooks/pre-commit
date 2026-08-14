@@ -1,0 +1,147 @@
+#!/usr/bin/env bash
+#
+# pre-commit — the corpus's own gates, run before the commit lands.
+#
+#   1. CHANGELOG guard          instant   every commit adds an entry
+#                                         under `## [Unreleased]`
+#   2. AGENTS.md line budget    instant   20-80 lines, staged files only
+#   3. corpus validators        ~15 s     9 whole-corpus validators plus
+#                                         validate-methodology-v2 SCOPED
+#                                         to the slugs this commit touches
+#
+# The split in step 3 is the scope decision, and it is about one number.
+# `scripts/f066-validate-all.sh` takes ~4 minutes, and ~205 s of that is
+# validator 3 alone: it spawns one python process per slug across 2,639
+# slugs. The other nine validators sweep the whole corpus in about six
+# seconds of CPU between them, so there is no reason to scope those —
+# they run in full on every commit. Validator 3 runs only against the
+# methodology directories the commit actually touched, which is the
+# usual one or two, and in full in the manual sweep
+# (`scripts/check-validators.sh --check-all`) before a release.
+#
+# `validate-playbook-v3.py` runs in neither: it fails 455/455 because
+# the validator demands YAML frontmatter no playbook AGENTS.md has ever
+# carried. A gate that is always red trains people to ignore gates.
+#
+# The corpus has known, pre-existing failures, so the gate is on the
+# failure SET against `scripts/validator-baseline.txt`, never on counts
+# — counts wave through a swap. See scripts/check-validators.sh.
+set -uo pipefail
+
+ROOT=$(git rev-parse --show-toplevel)
+cd "$ROOT" || exit 1
+
+if [[ -e .git/MERGE_HEAD || -d .git/rebase-merge || -d .git/rebase-apply ]]; then
+  exit 0
+fi
+
+FAIL=0
+step() { printf '\033[1mpre-commit:\033[0m %s\n' "$1" >&2; }
+bad()  { printf 'pre-commit: FAIL %s\n' "$1" >&2; FAIL=1; }
+
+# `git commit --amend` re-commits against HEAD's PARENT, so every check
+# below has to diff against that or an amend looks like a commit that
+# changed only the one file being fixed — and the CHANGELOG gate fires
+# on a commit whose CHANGELOG entry is already in HEAD. git exports no
+# flag for this, so the parent process is asked what it was invoked as.
+BASE=HEAD
+if ps -o args= -p "$PPID" 2>/dev/null | grep -qE '(^|[[:space:]])--amend([[:space:]]|$)' \
+   && git rev-parse --verify -q HEAD~1 >/dev/null; then
+  BASE=HEAD~1
+fi
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR "$BASE")
+[[ -z "$STAGED" ]] && exit 0
+
+# --- 1. CHANGELOG ----------------------------------------------------
+unreleased_section() {
+  awk '/^## \[Unreleased\]/{f=1;next} /^## /{f=0} f' 2>/dev/null
+}
+step "CHANGELOG"
+if ! printf '%s\n' "$STAGED" | grep -qx CHANGELOG.md; then
+  bad "no CHANGELOG.md in this commit — every commit adds a '## [Unreleased]' entry"
+else
+  NOW=$(git show :CHANGELOG.md | unreleased_section)
+  WAS=$(git show "$BASE:CHANGELOG.md" 2>/dev/null | unreleased_section)
+  if [[ -z "$NOW" ]]; then
+    bad "CHANGELOG.md has no '## [Unreleased]' section"
+  elif [[ "$NOW" == "$WAS" ]]; then
+    bad "CHANGELOG.md changed, but not under '## [Unreleased]'"
+  fi
+fi
+
+# --- 2. AGENTS.md line budget ----------------------------------------
+#
+# The docs convention gives a repo AGENTS.md 20-80 lines. Checked only
+# on STAGED files: the budget is a rule for the docs you are writing,
+# not a reason an unrelated commit cannot land.
+#
+# Methodology and playbook envelopes are exempt — their shape is fixed
+# by the corpus spec, not by the docs convention.
+step "AGENTS.md line budget"
+while IFS= read -r f; do
+  [[ -n "$f" ]] || continue
+  case "$f" in
+    */AGENTS.md|AGENTS.md) ;;
+    *) continue ;;
+  esac
+  case "$f" in
+    skills/faion/knowledge/*|skills/faion/playbooks/*) continue ;;
+  esac
+  [[ -f "$f" ]] || continue
+  n=$(git show ":$f" | wc -l | tr -d ' ')
+  if (( n > 80 || n < 20 )); then
+    bad "$f is $n lines; the budget is 20-80 (deep content goes in .agents/)"
+  fi
+done <<<"$STAGED"
+
+# --- 3. corpus validators --------------------------------------------
+#
+# Skipped when the commit touches neither the corpus nor the tooling
+# that reads it: a docs-only or .aidocs-only commit cannot change a
+# validator's verdict, and paying 15 s to learn that teaches people to
+# reach for --no-verify.
+if printf '%s\n' "$STAGED" | grep -qE '^(skills|scripts|docs/schemas)/'; then
+  # Which methodology slugs did this commit touch? A slug directory is
+  # the parent of an AGENTS.md under skills/faion/knowledge/.
+  mapfile -t TOUCHED < <(
+    printf '%s\n' "$STAGED" \
+      | grep -E '^skills/faion/knowledge/' \
+      | while IFS= read -r p; do
+          d=$p
+          while [[ "$d" == skills/faion/knowledge/*/* ]]; do
+            d=$(dirname "$d")
+            [[ -f "$d/AGENTS.md" ]] && { printf '%s\n' "$d"; break; }
+          done
+        done \
+      | LC_ALL=C sort -u
+  )
+
+  if (( ${#TOUCHED[@]} )); then
+    step "validators (whole corpus) + validate-methodology-v2 on ${#TOUCHED[@]} touched slug(s)"
+  else
+    step "validators (whole corpus); no methodology slug touched"
+  fi
+
+  if ! ./scripts/check-validators.sh --check-fast "${TOUCHED[@]}"; then
+    bad "corpus validators reported a NEW failure"
+    printf '  full sweep: scripts/check-validators.sh --check-all\n' >&2
+    printf '  if the failure is genuinely pre-existing and newly surfaced,\n' >&2
+    printf '  fix the content — do not widen the baseline to hide it.\n' >&2
+  fi
+else
+  step "validators skipped (this commit touches no corpus or script paths)"
+fi
+
+if (( FAIL )); then
+  cat >&2 <<'EOF'
+
+pre-commit: rejected.
+Fix the cause. `--no-verify` is not an option in this repo — the whole
+point of P4.3 was that the rule had nothing behind it.
+EOF
+  exit 1
+fi
+
+printf 'pre-commit: clean\n' >&2
+exit 0

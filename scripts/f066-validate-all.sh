@@ -5,6 +5,9 @@
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
+# Fresh clone, first dev command: point git at the tracked hooks.
+./scripts/install-hooks.sh --quiet 2>/dev/null || true
+
 REPORT="${1:-/tmp/f066-validate-report.txt}"
 : > "$REPORT"
 

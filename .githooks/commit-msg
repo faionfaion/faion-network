@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+#
+# commit-msg — the repo's commit-message rule, enforced.
+#
+#   type: short description        50-char title, lowercase type
+#   no Co-Authored-By trailer
+#   no emojis, anywhere in the message
+#
+# Until P4.3 this rule was enforced by habit, which is another way of
+# saying it was not enforced. Install with `make hooks`.
+set -uo pipefail
+
+MSG_FILE="$1"
+FAIL=0
+
+say() {
+  printf 'commit-msg: %s\n' "$1" >&2
+  FAIL=1
+}
+
+# Strip comments and everything below the `--- >8 ---` scissors line
+# git adds under `commit --verbose`.
+BODY=$(sed -e '/^# ------------------------ >8 ------------------------$/,$d' \
+           -e '/^#/d' "$MSG_FILE")
+
+TITLE=$(printf '%s\n' "$BODY" | sed -e '/^[[:space:]]*$/d' | head -n 1)
+
+if [[ -z "$TITLE" ]]; then
+  say "empty commit message"
+  exit 1
+fi
+
+# Merges, reverts and the fixup/squash family carry titles git itself
+# generates; the rule is about messages a human writes.
+case "$TITLE" in
+  Merge\ *|Revert\ *|fixup!\ *|squash!\ *|amend!\ *) exit 0 ;;
+esac
+
+# --- title shape -----------------------------------------------------
+
+TITLE_LEN=$(printf '%s' "$TITLE" | wc -m | tr -d ' ')
+if (( TITLE_LEN > 50 )); then
+  say "title is $TITLE_LEN characters, the limit is 50"
+  say "  $TITLE"
+fi
+
+if ! printf '%s' "$TITLE" \
+  | grep -Eq '^(feat|fix|docs|test|chore|refactor|perf|build|ci|style|revert)(\([a-z0-9._/-]+\))?: [^[:space:]].*$'
+then
+  say "title must be 'type: short description'"
+  say "  types: feat fix docs test chore refactor perf build ci style revert"
+  say "  got: $TITLE"
+fi
+
+if [[ "$TITLE" == *. ]]; then
+  say "title must not end with a period"
+fi
+
+# --- trailers and emojis ---------------------------------------------
+
+if printf '%s\n' "$BODY" | grep -Eiq '^[[:space:]]*co-authored-by:'; then
+  say "Co-Authored-By is not used in this repo — remove the trailer"
+fi
+
+# Emoji ranges only. Typographic marks the docs rule allows — arrows,
+# en/em dashes, quotes — are deliberately NOT in this set.
+if printf '%s\n' "$BODY" \
+  | grep -qP '[\x{1F000}-\x{1FAFF}\x{2600}-\x{27BF}\x{FE0F}\x{2B00}-\x{2BFF}\x{1F1E6}-\x{1F1FF}\x{2190}\x{2934}\x{2935}]'
+then
+  say "no emojis in commit messages"
+fi
+
+if (( FAIL )); then
+  printf 'commit-msg: rejected. Fix the message; do not pass --no-verify.\n' >&2
+  exit 1
+fi
+exit 0

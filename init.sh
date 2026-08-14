@@ -4,6 +4,13 @@
 
 set -e
 
+# Running from a clone of the repo? Point git at the tracked hooks.
+# Quiet, idempotent, and a no-op for a consumer install outside a
+# worktree, so this never affects the installer's actual job.
+if [[ -x "$(dirname "$0")/scripts/install-hooks.sh" ]]; then
+    "$(dirname "$0")/scripts/install-hooks.sh" --quiet 2>/dev/null || true
+fi
+
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
