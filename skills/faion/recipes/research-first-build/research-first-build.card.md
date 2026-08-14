@@ -23,8 +23,9 @@ faion workflow build {recipe.json} --var brief={file} --var repo_path={repo} --v
 ## Outputs
 - Files: `.claude/workflows/research-first-build.js`, `research-first-build.codex.sh`, `research-first-build.lock.json`.
 - Fourteen stages: `research_plan` → three `research_*` (the second is the market analyst) → `evidence` → `concept` (JSON pick with runner-up) → `lever_gate` (gated, ≤2 rounds) → `design` → `plan` (JSON task list) → `implement` (fan-out, ≤6 worktrees) → `assets` → `bootstrap` (gated) → `review` (JSON verdict) → `fix` (gated, ≤2 rounds).
-- The run writes `{docs_dir}/research-plan.md`, `*-catalog.md`, `*-claims.jsonl`, `evidence-table.md` + `evidence-gaps.md`, `commercial-levers.jsonl`, `lever-decisions.md`, `{feature_folder}/spec.md`, code commits on `default_branch`, and assets under the repo.
+- The run writes `{docs_dir}/research-plan.md`, `axis-one-` / `market-` / `axis-three-catalog.md` + their `*-claims.jsonl`, `evidence-table.md` + `evidence-gaps.md`, `commercial-levers.jsonl`, `concept.md`, `lever-decisions.md`, `{feature_folder}/spec.md` + `plan.md`, code commits on `default_branch`, and assets under the repo.
 - Every load-bearing figure carries a URL, an access date and an H/M/L tag; the `evidence` stage runs the `source-table` tool, which fails on an unsourced load-bearing claim.
+- Ten stages declare an output contract, so each is checked on disk and in git before the run moves on: a stage that shipped none of its deliverables stops the run instead of passing the gap downstream, and `implement` counts an item done only when the commit it claimed resolves against git — a returned refusal is a refusal. The run ends on a clean working tree or fails saying which paths are untracked.
 - Every finding the research tagged commercially significant is answered by the concept — applied with where it lands, or declined with a classified reason, deferral included. `lever_gate` runs the `lever-check` tool: it fails on a lever nobody answered and prints the declines with their reasons rather than judging them.
 
 ## When NOT to use
@@ -33,4 +34,4 @@ faion workflow build {recipe.json} --var brief={file} --var repo_path={repo} --v
 - Offline or air-gapped runs: the five research stages need the network, and their whole point is that the agent fetches rather than answers from the corpus.
 
 ## Cost
-The most expensive recipe here: thirteen stages, five of them network research, plus one agent per planned task and per gate round. Budget accordingly; `concept` is the stage that decides how much the rest costs.
+The most expensive recipe here: fourteen stages, five of them network research, plus one agent per planned task and per gate round. Budget accordingly; `concept` is the stage that decides how much the rest costs.
