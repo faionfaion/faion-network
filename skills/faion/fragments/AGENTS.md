@@ -36,43 +36,22 @@ plus every `corpus:<name>` beneath it. Generated: never hand-edit, run
   get` prints a body **raw**, so a resolving reference is not proof the
   included block reached the prompt.
 
-## The sourcing rule (research roles)
+## The two shared blocks
 
-**faion never goes to the internet — the calling agent does.** The corpus
-carries the durable half (what to source, what makes a claim load-bearing,
-how to tag confidence, what a finished evidence artifact looks like); URLs,
-figures and dates are fetched live, because they rot.
+Both are mandatory includes, both are asserted by a validator, and both
+exist because a measured run shipped something worse than an unprompted
+agent would have. Full rationale and the measurements:
+[`.agents/fragment-shared-blocks.md`](../../../.agents/fragment-shared-blocks.md).
 
-So: **every research-role fragment includes
-`{{include:corpus:research-source-discipline}}`**, and that block keeps its
-four anchors — URL plus access date, the H/M/L definitions, the "no
-reliable public figure found" path, and `faion fact add` provenance.
-`scripts/validate-recipes.py` asserts both: a fragment whose opening role
-line names a researcher, analyst, market, competitor or evidence role and
-omits the include is a failure, not a style note.
-
-Measured 2026-08-11, one brief, blind judges: the pipeline run produced
-**14 competitors and 0 source URLs**; a plain agent that went to the web
-produced **31 and 108**, and won on research depth. Before the `research/`
-pack no fragment here required a URL, an access date, a confidence tag or a
-source floor — the prompts asked for less than an unprompted agent does.
-
-## The commit rule (every role that writes a file)
-
-A deliverable git has never seen does not survive a clone, and
-`deploy-gh.sh` rsyncs a working tree — so it ships anyway. Two pipeline
-runs ended with **23 and 9 untracked deliverables**; both reported success.
-So **every fragment whose output contract names a file it writes includes
-`{{include:corpus:gate-commit-discipline}}`** — exactly `git add` and
-`git commit`, exactly the paths that contract names, never `git add -A`,
-never `--no-verify`, never a push. Those roles' boundaries no longer forbid
-git outright: a role cannot be told both to commit and never to run git.
-The block sits in `gate/` (cross-pack, and a gate on delivery) and, like
-`research-source-discipline`, declares no slots and carries no role line.
-The other half is the stage's `produces` contract, which the emitted
-workflow reads back with `git ls-files` and `git status` — see
-[`recipes/AGENTS.md`](../recipes/AGENTS.md). The corpus asks; the artifact
-verifies.
+- **Sourcing** — every *research*-role fragment includes
+  `{{include:corpus:research-source-discipline}}`. faion never goes to the
+  internet; the calling agent does, and that block is what makes it bring
+  back a URL, an access date and a confidence tag.
+- **Commit** — every fragment whose output contract names a file it writes
+  includes `{{include:corpus:gate-commit-discipline}}`: exactly `git add`
+  and `git commit`, exactly the paths that contract names, never
+  `git add -A`, never `--no-verify`. A deliverable git has never seen does
+  not survive a clone.
 
 ## Validation
 
