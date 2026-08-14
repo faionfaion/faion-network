@@ -17,3 +17,7 @@ Core Faion docs should use neutral phrases:
 - `platform worktree isolation path` for parallel write isolation.
 
 Do not delete Claude Code metadata from `SKILL.md`; Claude still needs it. Codex should ignore fields it does not understand and follow `codex.md`.
+
+## Gotcha
+
+`workflows/adapters/` is a **second, workflow-scoped** pair of `claude-code.md` / `codex.md` — shorter files covering orchestration dispatch only, not the same bytes as these. The vocabulary above is shared by both; an edit to a primitive's name has to land in all four adapter files.

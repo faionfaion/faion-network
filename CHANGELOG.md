@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Corpus validation no longer requires being logged in.** AD-018 made `cache`
+  the CLI's default corpus source, so `validate-recipes.py` — which shells out
+  to `faion workflow validate` — began failing all four recipes on
+  `auth: not authenticated (jwt)`. Checking this repo offline is the entire
+  point of the validator, so it now pins `FAION_CORPUS_SOURCE=embed` for that
+  subprocess. Step 7 deletes the embed; the comment there names its successor
+  (a `vfs-pack --publish` fixture in a temp root) so nobody "fixes" a future
+  failure by logging in.
+- **Doc-convention cleanup landed from an abandoned session.** `.claude/` and
+  `scripts/lib/` carried repo-style `AGENTS.md`/`CLAUDE.md` pairs the convention
+  does not cover — `.claude/` is the installed-skills target, `scripts/lib/` a
+  helper module; neither is a directory a reader navigates. Removed, with the
+  skill-authoring rule and the adapters envelope brought in line. Also deleted
+  `skills/tier-manifest.json.f067-pre-bak`: a 929 KB backup of a generated file,
+  and the same path-to-tier sitemap AD-018 spent the day removing from the
+  shipped binary. `*.f067-pre-bak` added to `.gitignore`.
+
+- **Doc-convention cleanup landed from an abandoned session.** `.claude/` and
+  `scripts/lib/` carried repo-style `AGENTS.md`/`CLAUDE.md` pairs the convention
+  does not cover — `.claude/` is the installed-skills target, `scripts/lib/` is
+  a helper module, neither is a source directory a reader navigates. Removed,
+  with the skill-authoring rule and the adapters envelope brought in line.
+  Also deleted `skills/tier-manifest.json.f067-pre-bak`: a 929 KB backup of a
+  generated file, and the same path-to-tier sitemap AD-018 spent the day
+  removing from the shipped binary. `*.f067-pre-bak` added to `.gitignore`.
+
 - docs: the root `AGENTS.md` said five things that are no longer true, and one that never was. The gotcha "no git hook is installed here" is deleted — the hooks landed, so the entry now says what they gate (title rule, `## [Unreleased]` entry, the 20-80 budget on staged files, 9 whole-corpus validators plus scoped `validate-methodology-v2`) and that the gate is the failure **SET** in `scripts/validator-baseline.txt`, never a count. `f066-validate-all.sh` runs **10** validators, not 7; the tier manifest is **v14**, not v12; the composable layer is **25** fragments over 6 packs (24 before `gate-commit-discipline`). And the layout table pointed playbook leaves at `playbooks/by-goal/<goal>/<slug>/`, which was never a real path: all 492 leaf dirs live at `playbooks/<goal>/<slug>/` and `by-goal/` holds nothing but the L2 `INDEX.xml` files — a reader following the table found no playbook at all. `scripts/AGENTS.md` gains rows for `check-validators.sh`, `install-hooks.sh` and `validator-baseline.txt`, and the same 7 → 10 correction.
 
 - fix: the validator baseline comparison ignores the baseline's own comment header. `--check-all` reported the four `#` lines of `scripts/validator-baseline.txt` as "baseline failures no longer reproduce" — noise, never a false block (a comment can never appear on the current side), but it buried the one line that matters. `compare` now filters comments and blank lines out of both directions.

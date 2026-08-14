@@ -493,7 +493,17 @@ def check_recipe(directory: Path, faion: str | None, strict: bool,
     for var, spec in (recipe.get("vars") or {}).items():
         if spec.get("required"):
             args += ["--var", f"{var}=validate-recipes-placeholder"]
-    proc = subprocess.run(args, capture_output=True, text=True, check=False)
+    # AD-018 made `cache` the CLI's default corpus source, so an unauthenticated
+    # `workflow validate` now exits on `auth: not authenticated (jwt)` — corpus
+    # validation would depend on whoever runs it being logged in. It must not:
+    # this repo is the corpus, and checking it offline is the whole point.
+    # `embed` keeps the check self-contained today. AD-018 step 7 deletes the
+    # embed, and at that point this must become a published-corpus fixture
+    # (`vfs-pack --publish` into a temp root, `FAION_CORPUS_ROOT` at it) rather
+    # than an auth requirement. Do not "fix" a failure here by logging in.
+    env = dict(os.environ, FAION_CORPUS_SOURCE="embed")
+    proc = subprocess.run(args, capture_output=True, text=True, check=False,
+                          env=env)
     if proc.returncode != 0:
         tail = (proc.stderr or proc.stdout).strip().splitlines()
         fail("faion workflow validate refused the recipe: "
