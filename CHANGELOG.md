@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Deleted the 40 template-stamped methodologies of CR-005.** Each row was
+  re-verified before removal: the directory existed, carried the generic
+  signature in all five content files plus the stock `## Applies If` lines, and
+  — for the 39 with a named survivor — the survivor existed and carried real,
+  subject-specific rules. All 40 passed; none was spared. Removed 40 dirs /
+  562 files / 1,441,400 bytes. `INDEX.xml` entries were removed by hand (never
+  `build-domain-index-v2.py`, which empties the file it targets) and both the
+  `count=` attr and the matching `domains.xml` per-domain count re-derived from
+  disk: backend 147 to 137, frontend 42 to 21, research 82 to 80, ux 186 to 179.
+  One knock-on fix in the lexicon: `frontend/spatial-design-tools` was the only
+  place the tag `unity` appeared, so `юніті` no longer qualifies as `src=title`
+  and is recorded as `observed`, which is what the corpus now says. Provenance
+  is re-derived data, so correcting it is the fix; the validator baseline was
+  not widened, and no baseline row referenced a deleted directory.
+
 - **Repointed the references CR-005's deletion would strand.** Ahead of removing
   `ux/motion-and-microinteraction-spec`, its inbound links were moved to the
   surviving sibling `ux/motion-and-micro-interaction-system`: two `[[wikilinks]]`
