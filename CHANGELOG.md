@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Deleted six migration one-shots whose migrations are finished.**
+  `migrate-f067.py`, `migrate-methodology-to-v2.py`,
+  `migrate-playbook-to-v2.py`, `migrate-playbook-yaml-to-xml.py`,
+  `apply-domain-merge.py`, `fix-methodology-phase-d.py` — F-059, F-060,
+  F-065, F-066 Phase C and F-067 all landed, and nothing outside the
+  do-not-run list referenced any of them.
+
+  **`slug-rename-map.json` and `remap-dangling-wikilinks.py` are kept, and
+  the do-not-run list was wrong about both.** `scripts/AGENTS.md` filed
+  them as migration input; they are live runtime dependencies of
+  `repair-playbook-bridge.py`, which binds the JSON path directly and
+  `ast.literal_eval`s the `REMAP` dict out of the other. Deleting either
+  aborts it on startup. The 234 KB of JSON is not a reason to delete a
+  file something reads. Verified after deletion: `--dry-run` still walks
+  1,020 chains and 5,493 XML files, and still reports 3 files it would
+  change — so that repairer has not converged and is unfinished work, not
+  history.
+
 - **Deleted the three index builders that silently emptied the file they
   targeted.** `build-domain-index-v2.py` was documented as broken; the
   audit found `build-methodology-index.py` and `build-methodology-index-c.py`
