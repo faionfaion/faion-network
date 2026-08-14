@@ -116,8 +116,12 @@ compare() {
     return 1
   fi
 
+  # The baseline is a data file with a comment header; only its rows
+  # take part in the comparison.
+  baseline_rows() { grep -v '^#' "$BASELINE" | grep -v '^[[:space:]]*$' | LC_ALL=C sort -u; }
+
   local new
-  new=$(LC_ALL=C comm -23 <(LC_ALL=C sort -u "$current") <(LC_ALL=C sort -u "$BASELINE"))
+  new=$(LC_ALL=C comm -23 <(LC_ALL=C sort -u "$current") <(baseline_rows))
   if [[ -n "$new" ]]; then
     echo "check-validators: NEW validator failures (not in the baseline):" >&2
     printf '%s\n' "$new" | sed 's/^/    /' >&2
@@ -128,7 +132,7 @@ compare() {
   # content should not have to also curate a baseline file to land.
   if [[ "$scope" == "all" ]]; then
     local fixed
-    fixed=$(LC_ALL=C comm -13 <(LC_ALL=C sort -u "$current") <(LC_ALL=C sort -u "$BASELINE"))
+    fixed=$(LC_ALL=C comm -13 <(LC_ALL=C sort -u "$current") <(baseline_rows))
     if [[ -n "$fixed" ]]; then
       echo "check-validators: baseline failures no longer reproduce:" >&2
       printf '%s\n' "$fixed" | sed 's/^/    /' >&2
