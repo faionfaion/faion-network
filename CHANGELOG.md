@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **The corpus no longer instructs agents to run a validator that cannot
+  work.** `sdd-batch-orchestrator` named `validate-methodology-xml.py` as
+  its VERIFY step in three content files, while `workflows/AGENTS.md` said
+  do not run it — shipped content contradicting itself. That validator
+  targets `methodology.xml`, of which the corpus holds **zero** since
+  F-067; it reports "no methodology.xml files found" and exits clean, so
+  the VERIFY step was passing by finding nothing. Repointed to
+  `validate-methodology-v2.py`, the gate `check-validators.sh` actually
+  runs.
+
+  `workflows/AGENTS.md` also claimed `validate-workflow-v2.py` "is
+  validator 6 of `f066-validate-all.sh`". It is not — validator 6 is
+  `validate-methodology-scripts.py`, and workflow-v2 is wired into neither
+  runner nor the pre-commit gate. The line now says so, because "a
+  validator runs this for you" and "nothing runs this for you" lead to
+  different behaviour.
+
+  `docs/methodology-xml-schema.md` gained a SUPERSEDED banner for the same
+  reason: it specifies the single-file `methodology.xml` shape F-045
+  planned and F-067 abandoned, while `AGENTS.md` still lists it among the
+  live corpus specs. An authoring agent reading it builds the wrong thing.
+
 - **Corpus validation no longer needs the corpus to be inside a binary,
   and still never needs a login** (AD-018 step 8).
   `scripts/validate-recipes.py` pinned `FAION_CORPUS_SOURCE=embed` so

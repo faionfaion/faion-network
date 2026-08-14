@@ -1,5 +1,12 @@
 # Methodology XML Schema
 
+> **SUPERSEDED — this describes a shape the corpus never adopted.** F-045 planned a single
+> self-contained `methodology.xml` per methodology; F-067 went the other way and made
+> `AGENTS.md` + `meta.json` + `content/*.xml` canonical. There are **zero** `methodology.xml`
+> files on disk. Read this only for the tag rules and the migration history — for the live
+> shape read [`docs/skill-authoring.md`](skill-authoring.md), and note that
+> `scripts/validate-methodology-v2.py` validates the F-067 shape, not the one below.
+
 **Goal:** one self-contained `methodology.xml` file per methodology, holding both catalog metadata (stripped before injection) and agent-facing content (returned via the `/faion` skill).
 
 This supersedes:
@@ -307,7 +314,7 @@ A methodology passes validation iff:
 9. **Code blocks** under `<code>` are wrapped in `<![CDATA[...]]>`.
 10. **Length parity** — total text content of `<content>` is ≥80% of the original markdown body length (detects accidental summarization). Skip when migrating from XML-only sources.
 
-The validator script enforces all rules above. See [`scripts/validate-methodology-xml.py`](../scripts/validate-methodology-xml.py).
+The validator script enforces all rules above. See [`scripts/validate-methodology-v2.py`](../scripts/validate-methodology-v2.py).
 
 ## Subagent Contract — `/faion`
 
@@ -396,6 +403,6 @@ A separate validator `scripts/validate-router-xml.py` (added in feature-047) enf
 ## Related
 
 - [`docs/methodology-tag-glossary.xml`](methodology-tag-glossary.xml) — closed tag vocabulary
-- [`scripts/validate-methodology-xml.py`](../scripts/validate-methodology-xml.py) — validator
+- [`scripts/validate-methodology-v2.py`](../scripts/validate-methodology-v2.py) — validator
 - [`docs/skill-authoring.md`](skill-authoring.md) — parent spec (folder structure, routing)
 - `.aidocs/feature-045-methodology-xml-migration/` — migration pool state

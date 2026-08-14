@@ -37,7 +37,7 @@ A workflow is **the orchestration shape**, not a script. The orchestrator is the
 
 1. Create `workflows/<workflow-slug>/` mirroring the methodology folder shape (`AGENTS.md` + `content/` + optional `templates/` and `scripts/`).
 2. Validate every `content/*.xml` against the closed tag glossary at `skills/faion/knowledge/llm-integration/semantic-xml-content/templates/tag-glossary.xml`.
-3. Run `python3 scripts/validate-workflow-v2.py` — it is validator 6 of `f066-validate-all.sh` and covers the workflow shape. **Do not run `validate-methodology-xml.py`**; it is superseded and listed as do-not-run in `scripts/AGENTS.md`.
+3. Run `python3 scripts/validate-workflow-v2.py` — it covers the workflow shape. It is wired into neither `f066-validate-all.sh` nor the pre-commit gate, so nothing runs it for you.
 4. Add a row to the Index table above and to `catalog.json`, with one-line trigger phrasing.
 5. Add a CHANGELOG entry under `## [Unreleased]`.
 
