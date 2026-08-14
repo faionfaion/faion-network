@@ -91,6 +91,9 @@ CARD_SECTIONS = ("Purpose", "Invoke", "Inputs", "Outputs", "When NOT to use", "C
 MAX_CARD_LINES = 40
 
 VAR_REF = re.compile(r"\{\{var:([a-zA-Z0-9_]+)\}\}")
+# Any recipe reference form, so a produced path can be told apart from a
+# path that quietly points into the run dir or an earlier stage's result.
+RECIPE_REF = re.compile(r"\{\{([a-z]+:[A-Za-z0-9_.-]+)\}\}")
 SLOT_REF = re.compile(r"\{\{slot(\??):([A-Za-z0-9_][A-Za-z0-9_.-]*)\}\}")
 INCLUDE_REF = re.compile(r"\{\{include:([^}]+)\}\}")
 
@@ -282,6 +285,53 @@ def check_stage_slots(recipe: dict, fail) -> None:
                  "composes reads")
 
 
+def check_stage_produces(recipe: dict, fail) -> None:
+    """A stage's output contract must be one the run can actually settle.
+
+    The schema already fixes the shape; these are the rules that need the
+    rest of the stage in hand. They mirror the compiler's own refusals so
+    a recipe is rejected here even on a machine with no faion binary —
+    which is the machine a corpus author is usually on.
+    """
+    for i, stage in enumerate(recipe.get("stages") or []):
+        produces = stage.get("produces")
+        if produces is None:
+            continue
+        where = stage.get("id") or f"stages[{i}]"
+        files = produces.get("files") or []
+        writes = (stage.get("capability") or {}).get("write", False)
+
+        if not files and not produces.get("item_commit"):
+            fail(f"stage '{where}': produces declares neither files nor "
+                 "item_commit — an output contract that asserts nothing is a "
+                 "typo, not a contract")
+        if len(set(files)) != len(files):
+            fail(f"stage '{where}': produces.files repeats a path")
+        for path in files:
+            if ".." in path.split("/"):
+                fail(f"stage '{where}': produced path {path!r} climbs out of "
+                     "the project directory")
+            for ref in RECIPE_REF.findall(path):
+                if not ref.startswith("var:"):
+                    fail(f"stage '{where}': produced path {path!r} embeds "
+                         f"{{{{{ref}}}}} — only {{{{var:NAME}}}} is allowed, "
+                         "because a path derived from a stage RESULT is an "
+                         "assertion the run could argue with")
+        if produces.get("committed") and not files:
+            fail(f"stage '{where}': produces.committed with no files — there "
+                 "is nothing whose tracked state could be checked")
+        if produces.get("committed") and not writes:
+            fail(f"stage '{where}': must commit its output but its capability "
+                 "is read-only; a stage that cannot write cannot commit")
+        if produces.get("item_commit"):
+            if "fanout" not in stage:
+                fail(f"stage '{where}': produces.item_commit without a fanout "
+                     "— there are no items whose commits could be counted")
+            if not writes:
+                fail(f"stage '{where}': must land commits but its capability "
+                     "is read-only")
+
+
 def check_tier_monotonicity(recipe_tier: str, refs: list[tuple[str, str]],
                             fail) -> None:
     """Every fragment a recipe composes is gated at or below the recipe."""
@@ -432,6 +482,7 @@ def check_recipe(directory: Path, faion: str | None, strict: bool,
 
     check_tier_monotonicity(meta.get("tier"), resolvable, fail)
     check_stage_slots(recipe, fail)
+    check_stage_produces(recipe, fail)
 
     if faion is None:
         if strict:
