@@ -10,7 +10,7 @@ Tool packs: real, reusable scripts an agent runs instead of writing a throwaway 
 |------|------|-------|
 | `python-web/` | free | `venv-bootstrap.sh` — idempotent `.venv` create + requirements install + import proof; `django-test-gate.py` — run a Django suite through the project venv, emit one JSON verdict line |
 | `game-dev/` | solo | `hmac-rng-golden.py` — emit/verify golden vectors for HMAC-SHA256 rejection-sampling randomness; `deploy-scaffold.py` — systemd unit + nginx vhost + `deploy.sh`, identities namespaced by `--name` |
-| `research/` | free | `source-table.py` — claims JSONL → markdown evidence table + gaps report + commercial-lever ledger, fails on an unsourced load-bearing claim or a commercial claim with no lever |
+| `research/` | free | `source-table.py` — claims JSONL → markdown evidence table + gaps report + commercial-lever ledger, fails on an unsourced load-bearing claim or a commercial claim with no lever; `lever-check.py` — ledger × concept verdict → applied/declined counts with every decline printed, fails on a lever the concept never answered |
 
 ## Layout
 
