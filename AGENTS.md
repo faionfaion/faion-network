@@ -5,8 +5,9 @@ Methodology corpus and Claude Code skill base for the `faion` CLI. Auto-loaded i
 | Item | Value |
 |------|-------|
 | Repo | `faionfaion/faion-network` |
-| Corpus | 2,637 methodologies over 22 domains, 455 playbooks, 6 workflows, 6 skill dirs |
-| Gating | `skills/tier-manifest.json` v11, 3,099 entries — authoritative path-to-tier map |
+| Corpus | 2,638 methodology dirs over 22 domains, 455 playbook dirs, 6 workflows, 6 skill dirs (counted on disk 2026-08-13) |
+| Gating | `skills/tier-manifest.json` **v14, 3,107 entries** — authoritative path-to-tier map; every methodology and playbook dir on disk resolves in it (checked 2026-08-13) |
+| Composable | 25 fragments over 6 packs, 4 recipes, 3 tool packs — all tier **free** since v13 |
 | Tiers | free / solo / pro / geek (cumulative) |
 | Distribution | Read by `faion-cli` at runtime; read by `faion-net-be` on disk via `KNOWLEDGE_ROOT` + `TIER_MANIFEST_PATH`; not bundled into the public `faion` plugin |
 | Ecosystem | `../AGENTS.md` — full stack and runtime data flow |
@@ -16,7 +17,8 @@ Methodology corpus and Claude Code skill base for the `faion` CLI. Auto-loaded i
 | Path | What |
 |------|------|
 | `skills/faion/knowledge/<domain>/<slug>/` | Methodology: `AGENTS.md` + `meta.json` + `content/*.xml` (+ `templates/`, `scripts/`) |
-| `skills/faion/playbooks/by-goal/<goal>/<slug>/` | Playbook: `AGENTS.md` + `content/01-playbook.xml` |
+| `skills/faion/playbooks/<goal>/<slug>/` | Playbook: `AGENTS.md` + `content/01-playbook.xml`. `playbooks/by-goal/<goal>/` holds only the L2 `INDEX.xml` — no leaf has ever lived under it |
+| `skills/faion/fragments/<pack>/` · `skills/faion/recipes/<name>/` | Role prompts composed into pipelines · the recipes that compose them; both carry an `INDEX.xml` |
 | `skills/faion/workflows/` | 6 orchestration workflows (brainstorm, idea-to-prod, improver, media-ops, poll-agents, sdd-batch-orchestrator) |
 | `skills/faion/tools/<pack>/` | Tool pack: `meta.json` + `scripts/<name>.py\|sh` + `tools/<name>.card.md` — runnable tools an agent uses instead of writing a throwaway script |
 | `skills/faion/lexicon/` | UA→EN query lexicon: `meta.json` (tier **free**) + `ua-en.tsv` + `ua-stopwords.txt` — a Ukrainian query scores zero against an English corpus without it |
@@ -31,7 +33,9 @@ Methodology corpus and Claude Code skill base for the `faion` CLI. Auto-loaded i
 ## Commands
 
 ```bash
-bash scripts/f066-validate-all.sh                    # all 7 corpus validators, summary report
+bash scripts/f066-validate-all.sh                    # all 10 corpus validators, summary report (~4 min)
+bash scripts/check-validators.sh --check-fast        # the gate the hook runs: failure SET vs baseline
+bash scripts/install-hooks.sh                        # point core.hooksPath at .githooks (init.sh does it too)
 python3 scripts/validate-methodology-v2.py <dir>     # one methodology dir
 python3 scripts/validate-playbook-v3.py --all        # all playbooks
 python3 scripts/validate-domains-index.py            # L1 domains.xml
@@ -58,7 +62,11 @@ bash init.sh                                         # install skills + agents i
 - `skills/tier-manifest.json` is **generated** from `meta.json` files — regenerate with `regen-tier-manifest.py`; hand-edits get overwritten.
 - **`scripts/build-domain-index-v2.py` is BROKEN — never run it.** It reads YAML frontmatter that 0 of 2,637 methodology `AGENTS.md` files carry (F-067 moved that metadata to `meta.json`), so it returns 0 entries for every domain and `--write` silently empties the `INDEX.xml` it targets. Until it is repaired, `INDEX.xml` entries are added **by hand**: one `<methodology slug tier path>` block with a `<summary>`, kept alphabetical, with the `count=` attribute bumped to match.
 - The manifest is at `skills/tier-manifest.json`, not the repo root.
-- No git hook is installed here — the `CHANGELOG.md` rule is enforced by review, not automatically.
+- **The hooks are real now** (`core.hooksPath=.githooks`, installed by `init.sh` or `scripts/install-hooks.sh`). `commit-msg` enforces the title rule; `pre-commit` gates the `## [Unreleased]` CHANGELOG entry, the 20-80 line budget on staged `AGENTS.md` files, and the corpus validators — 9 whole-corpus sweeps in full plus `validate-methodology-v2` scoped to the slugs the commit touches, because the full v2 sweep is ~205 s of the ~4 min total. The gate is on the failure **SET** in `scripts/validator-baseline.txt`, never on counts: a count waves through a swap. Never `--no-verify`.
 - Methodology and playbook dirs already carry their own `AGENTS.md` envelope fixed by the corpus spec. Do not add repo-style `AGENTS.md` / `CLAUDE.md` pairs anywhere under `skills/faion/knowledge/**` or `skills/faion/playbooks/**`.
 - Retrieval is two-level: read `skills/faion/knowledge/domains.xml` (L1), pick at most 3 domains, then their `INDEX.xml` (L2) before opening any leaf. Never enumerate the corpus.
-- `docs/catalog.json`, `README.md` and `skills/CLAUDE.md` still quote pre-F-067 counts (52 knowledge bases, 1,300+ methodologies). The manifest is the source of truth.
+- `README.md` still quotes pre-F-067 counts (52 knowledge bases, 1,300+ methodologies). The manifest is the source of truth. (`skills/CLAUDE.md` and `skills/faion/CLAUDE.md` carried the same stale counts and were deleted 2026-08-13 — they were orphan `CLAUDE.md` files with no `AGENTS.md` to point at.)
+
+## Agent memory
+
+Project knowledge carried over from the Claude auto-memory store on 2026-08-12 (decisions, gotchas, incident post-mortems): [.agents/nero-memory.md](.agents/nero-memory.md). Verbatim as written at the time — verify against code before relying on a specific path or number.

@@ -6,7 +6,10 @@ Corpus validators and generators. Run from the repo root; every script resolves 
 
 | Script | Use |
 |--------|-----|
-| `f066-validate-all.sh [report]` | Runs the 7 corpus validators, writes a pass/fail summary (default `/tmp/f066-validate-report.txt`) |
+| `f066-validate-all.sh [report]` | Runs the 10 corpus validators, writes a pass/fail summary (default `/tmp/f066-validate-report.txt`). ~4 min, ~205 s of it validator 3 |
+| `check-validators.sh --fast\|--check-fast\|--check-all\|--write-baseline` | The same validators in gateable form: `FAIL` lines normalised to `<id>\t<path>` and diffed against `validator-baseline.txt`. New line blocks, disappeared line is reported as a fix. What `pre-commit` runs |
+| `validator-baseline.txt` | The committed failure SET (21 lines). The gate is the set, never a count — a count waves through a swap. Refresh with `check-validators.sh --write-baseline` |
+| `install-hooks.sh [--quiet]` | Points `core.hooksPath` at `.githooks`. Idempotent; refuses to overwrite a foreign `hooksPath`. Called by `init.sh` and by `check-validators.sh` |
 | `validate-methodology-v2.py <dir>` | One methodology dir (positional, no `--all`) |
 | `validate-methodology-decision-tree.py --all` | Mandatory `06-decision-tree.xml` |
 | `validate-methodology-templates.py --all` · `validate-methodology-scripts.py --all` | `templates/` and `scripts/` per methodology |
@@ -15,7 +18,7 @@ Corpus validators and generators. Run from the repo root; every script resolves 
 | `validate-playbook-taxonomy.py` · `validate-workflow-v2.py` | Goal taxonomy, workflow shape |
 | `validate-lexicon.py [dir]` | UA→EN lexicon: file hygiene, row shape, byte order, every `en` term attested in the corpus, `src` re-derived and compared to the declared value, the 20% `observed` cap, stopwords disjoint from the prefixes |
 | `regen-tier-manifest.py [--dry-run]` | Rebuilds `skills/tier-manifest.json` from `meta.json` under `knowledge/`, `playbooks/`, `fragments/<library>/`, `tools/<pack>/` and `lexicon/`. `--dry-run` first, always. Keeps the previous `notes` verbatim behind a `Prior notes, verbatim:` prefix; re-running at the same version leaves `notes` untouched |
-| `lib/snapshot.sh` · `lib/integrity-check.sh` | Installer helpers, unit-tested by `tests/test_snapshot.sh` |
+| `lib/snapshot.sh` · `lib/integrity-check.sh` | Installer helpers sourced by `update.sh`, not standalone — the caller must already define `log_info` / `log_success` / `log_warning` / `log_error` / `log_file`. Unit-tested by `tests/test_snapshot.sh` |
 
 ## Gotchas
 
