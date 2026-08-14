@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Regenerated `skills/tier-manifest.json` after the CR-005 deletion.** 3,107 to
+  3,067 entries — `+0 added, -40 removed, ~0 changed`, the whole diff being the
+  40 deleted knowledge dirs (knowledge 2,638 to 2,598; playbooks, fragments,
+  tools, recipes and lexicon untouched). Version stays 14: the schema did not
+  change, only the inventory. `regen-fragment-index.py` reports fragments,
+  recipes and tools all up to date — the composable layer shares no path with
+  the deleted set, so it is a no-op rather than a skipped step.
+
 - **Deleted the 40 template-stamped methodologies of CR-005.** Each row was
   re-verified before removal: the directory existed, carried the generic
   signature in all five content files plus the stock `## Applies If` lines, and
