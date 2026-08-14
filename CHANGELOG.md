@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Repointed the references CR-005's deletion would strand.** Ahead of removing
+  `ux/motion-and-microinteraction-spec`, its inbound links were moved to the
+  surviving sibling `ux/motion-and-micro-interaction-system`: two `[[wikilinks]]`
+  (`## Assumes Loaded` row and `## Related` bullet) dropped, since the only
+  successor is the referring file itself and a self-link is not a reference; two
+  prose routes in `01-core-rules.xml` and `06-decision-tree.xml` that sent the
+  caller to the dead slug rewritten to describe the action instead of naming a
+  methodology. In the `zero-to-one-product-design-brief-to-dev-handoff-8-weeks`
+  playbook the stale `<gap>` — `<gap>` declares a slug the corpus is *missing*,
+  and this one existed on disk — became a `<ref>` to the surviving sibling in
+  stage 7, whose own task line already reads "spec: states, tokens, motion".
+  The four `[[voice-ui-patterns]]` links need no edit: both referring files are
+  themselves in the deletion set.
+
 - **Corpus validation no longer requires being logged in.** AD-018 made `cache`
   the CLI's default corpus source, so `validate-recipes.py` — which shells out
   to `faion workflow validate` — began failing all four recipes on

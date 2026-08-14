@@ -40,7 +40,6 @@
 | Methodology | Why |
 |-------------|-----|
 | `pro/ux/` parent skill context | vocabulary, neighbouring methodologies |
-| [[motion-and-microinteraction-spec]] | upstream context this methodology builds on |
 | [[design-system-governance]] | upstream context this methodology builds on |
 
 ## Content (load on demand)
@@ -81,7 +80,6 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
-- [[motion-and-microinteraction-spec]]
 - [[design-system-governance]]
 - [[semantic-tokens-and-modes]]
 
