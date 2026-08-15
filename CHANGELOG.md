@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Corrective: added 65 merged files that the CR-009 commits omitted.** New
+  canonical parts (three `05-examples.xml`, two `04-procedure.xml`) and 60
+  templates and scripts authored during the merges were never `git add`ed, so
+  they existed on disk but not in HEAD. The validators read disk and passed
+  throughout, which is exactly why this was invisible: **a fresh clone would not
+  have validated.** Same root cause as the incomplete archive moves — untracked
+  files are silently outside a `--only` path list.
+
+  Six of the 65 are **non-canonical part names** copied whole from a loser
+  (`01-frameworks`, `02-decision-matrix`, `01-feedback-pipeline`,
+  `02-feedback-patterns`, `01-framework`, `02-process`), each colliding on
+  numeric prefix with a canonical part. Checked before committing: **all six are
+  listed in their Content table**, so they add to CR-008's naming population but
+  not to CR-010's delivery gap. That distinction is the one that matters — an
+  ugly name that ships beats a clean name that does not.
+
 - **Corrective: completed 52 archive moves that had been committed as copies.**
   `git mv` stages a deletion *and* an addition. The CR-009 batches were committed
   with `git commit --only <paths>` to avoid sweeping other agents' concurrent

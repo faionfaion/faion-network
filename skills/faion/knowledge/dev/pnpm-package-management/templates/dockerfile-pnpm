@@ -1,0 +1,26 @@
+# purpose: Multi-stage Dockerfile using `pnpm fetch` so the dependency layer caches on the lockfile alone.
+# consumes: committed pnpm-lock.yaml + packageManager pin.
+# produces: runtime image with an offline, frozen-lockfile install.
+# depends-on: content/01-core-rules.xml#r4.
+# token-budget-impact: 0 — Dockerfile.
+
+FROM node:20-alpine AS base
+RUN corepack enable
+WORKDIR /app
+
+# `pnpm fetch` reads ONLY the lockfile, so this layer survives every source
+# change — copying package.json here instead would bust the cache on any
+# version bump anywhere in the workspace.
+FROM base AS deps
+COPY pnpm-lock.yaml ./
+RUN pnpm fetch
+
+FROM deps AS build
+COPY . .
+RUN pnpm install --frozen-lockfile --offline
+RUN pnpm -r build
+
+FROM base AS runtime
+COPY --from=build /app/dist /app/dist
+COPY --from=build /app/node_modules /app/node_modules
+CMD ["node", "dist/main.js"]

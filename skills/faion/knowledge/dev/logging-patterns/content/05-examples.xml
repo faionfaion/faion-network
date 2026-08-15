@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Structured Logging Patterns Worked Example" version="1.1.0" est_tokens="700" depth="reference">
+  <summary>One end-to-end trace: a service with printf logs, no correlation and an unsampled hot loop, walked gate by gate to the artefact matching the output contract.</summary>
+
+  <section title="Trace">
+    <p>Audit of a Python backend finds 90 printf-style log calls (`logger.info(f"user {user.email} did {action}")`), no correlation id anywhere, four ad-hoc masking helpers, and one worker loop logging per iteration.</p>
+    <p>Gates in decision-tree order: plain-text logs block first, so step 1 installs the JSON renderer. Step 2 wires the middleware and the `contextvars` binding, and the Celery task base class is patched so child contexts inherit rather than starting a fresh id. Step 3 collapses the four masking helpers into one processor and adds the value-level regexes — the email inside the f-string was invisible to field-name masking, which is why the leak survived three reviews. Step 4 reclassifies 12 calls from ERROR to WARN. Step 5 adds the three perf fields at egress. Step 6 finds the worker loop at 4,000 lines/s against a 200 lines/s budget and replaces it with a per-batch aggregate.</p>
+  </section>
+
+  <section title="Before and after">
+    <example type="bad">
+      <code lang="python"><![CDATA[
+logger.info(f"user {user.email} did {action}")   # PII in the message, nothing queryable
+print("here")                                     # escapes redaction and correlation entirely
+]]></code>
+      <note>Neither line carries a correlation id, and the first one puts an email address in the sink for its whole retention period.</note>
+    </example>
+    <example type="good">
+      <code lang="python"><![CDATA[
+logger.info("user.action", user_id=user.id, action=action)
+# -> {"ts":"2026-05-23T10:00:00Z","level":"info","event":"user.action",
+#     "request_id":"01HZ...","service":"api","user_id":8812,"action":"checkout"}
+]]></code>
+      <note>The email is absent by construction rather than by masking, and every field is queryable in the aggregator.</note>
+    </example>
+  </section>
+
+  <section title="Resulting artefact">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "logger_module": "app.observability.logger",
+  "json_output": true,
+  "correlation_id_middleware": true,
+  "redaction_pipeline_count": 1,
+  "pii_field_count": 8,
+  "print_calls": 0,
+  "validated_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+      <note>`redaction_pipeline_count` is exactly 1 — the schema caps it at 1 deliberately, because two pipelines is the shape that drifts.</note>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

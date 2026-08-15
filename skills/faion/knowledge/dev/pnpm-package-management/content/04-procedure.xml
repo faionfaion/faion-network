@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="pnpm-package-management Procedure" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Six-step procedure taking a repo from whatever package manager it has today to a pinned, guarded, reproducible pnpm setup.</summary>
+
+  <section title="Procedure">
+    <step n="1" name="audit-current-state">
+      <input>Existing repo (or an empty directory)</input>
+      <action>Record what is there: `package-lock.json`, `yarn.lock`, existing `.npmrc` settings, current `packageManager` field, and any native add-ons (`sharp`, `node-canvas`, `better-sqlite3`) that historically forced hoisting.</action>
+      <output>Audit note listing what to remove and what to add</output>
+    </step>
+    <step n="2" name="pin-package-manager">
+      <input>Target pnpm version</input>
+      <action>Add `"packageManager": "pnpm@x.y.z"` to the root package.json, then `corepack enable &amp;&amp; corepack prepare pnpm@x.y.z --activate`.</action>
+      <output>Pinned root package.json</output>
+      <reference path="templates/pnpm-bootstrap.sh">Bootstrap script doing the pin plus the initial install.</reference>
+    </step>
+    <step n="3" name="emit-npmrc">
+      <input>Audit note + native add-on list</input>
+      <action>Write `.npmrc` with `strict-peer-dependencies=true`, `auto-install-peers=true`, `prefer-frozen-lockfile=true`, `engine-strict=true`. Leave `shamefully-hoist` unset so it stays false.</action>
+      <output>.npmrc</output>
+      <decision-gate>If a native add-on genuinely cannot resolve, use `node-linker=hoisted` with an inline comment naming the add-on and linking the upstream issue — never `shamefully-hoist=true`.</decision-gate>
+    </step>
+    <step n="4" name="block-other-managers">
+      <input>Root package.json</input>
+      <action>Add `"preinstall": "npx -y only-allow pnpm"` to scripts. Delete `package-lock.json` and `yarn.lock`. Commit `pnpm-lock.yaml`.</action>
+      <output>Guarded root package.json and a single lockfile</output>
+    </step>
+    <step n="5" name="wire-ci">
+      <input>CI workflow file</input>
+      <action>Use `pnpm/action-setup` at the version matching the `packageManager` pin, run `pnpm install --frozen-lockfile`, and cache the pnpm store keyed on the lockfile hash. In a monorepo, scope build and test with `--filter '...[origin/main]'`.</action>
+      <output>CI workflow</output>
+      <reference path="templates/gh-actions-ci.yml">Workflow with corepack, store cache and the frozen-lockfile gate.</reference>
+    </step>
+    <step n="6" name="validate">
+      <input>Artefact metadata describing the resulting setup</input>
+      <action>Run the validator against it and fix every violation before committing. Land the lockfile change as its own commit, separate from application code.</action>
+      <output>Green validator; bisectable history</output>
+      <decision-gate>If the validator returns non-zero, halt and fix — do not commit a partially converted setup, which is the state that produces two lockfiles.</decision-gate>
+    </step>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>
