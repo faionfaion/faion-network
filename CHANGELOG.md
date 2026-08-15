@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-009, research/ux: 5 collisions resolved, and the last duplicate-summary
+  group in the corpus is closed.** `research/ai-assisted-persona-building` ↔
+  `research/ai-persona-building` were the same document under two slugs — every
+  difference was slug substitution into a title, a summary, a `$id` and a script
+  path.
+
+  **The tiebreak came from the `ux/` side, and that is the interesting part.**
+  The two `ux/` twins are *not* duplicates: they are an authored pair, where
+  `ux/ai-persona-building` is a deliberately lightweight single-pass variant that
+  stamps `validated=false` and names `[[ai-assisted-persona-building]]` as its
+  upgrade path in four places — including inside its own output contract's
+  `next_step`. Archiving the other research copy would have pointed the surviving
+  slug at the explicitly **not-validated** document, and a playbook executes
+  `<ref slug="ai-persona-building"/>` as a pipeline step. That is not a broken
+  link, it is **broken execution** — the wrong twin would have run.
+
+  For the other four, the discriminator was not the partial stamp but what the
+  documents cite: every `ux/` copy sourced its rationale to `"F-066 wave-31
+  chunk-03 grounding"` — a generation-batch marker, not a source — and shipped a
+  subject-free procedure, decision tree and example. The `research/` copies cite
+  Osterwalder, Cockburn, McClure, Dunford and Fitzpatrick, and their schemas
+  model the actual artefact. **The `ux/` rules and antipatterns were real
+  regardless**, so those were folded in rather than discarded.
+
+  **8 research↔ux slugs are deliberately left ambiguous.** All eight are two
+  genuinely different documents — `user-interviews` is Mom-Test discovery
+  interviewing on one side and moderated UX interview craft on the other — so the
+  fix is a rename, which is out of scope. Two of the eight
+  (`pain-point-research`, `problem-validation`) could not be settled by content
+  at all: they are two instruments for the same job, and the documents do not say
+  which was intended.
+
 - **CR-009, C#/.NET: 5 slug collisions resolved merge-then-archive, survivor
   `backend/` in all five.** `csharp-dotnet-patterns` was briefed as a strict
   subset and was not — 11 rules' worth of unique material, most of it in

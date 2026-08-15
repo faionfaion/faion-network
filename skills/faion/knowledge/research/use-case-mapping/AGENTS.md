@@ -14,12 +14,18 @@
 - Engineering and QA disagree on what 'happy path' means.
 - Specification will drive test cases or acceptance criteria.
 - Multiple actors interact with the same workflow.
+- QA needs a test plan: the use-cases become the test cases.
+- The requirements doc reads as a feature list rather than a usage map.
+- A new engineer needs the canonical actor and flow map to onboard against.
 
 ## Skip If (ANY kills it)
 
 - Pure-content changes (copy, image) with no behaviour.
 - Backend-only refactors invisible to users.
 - Single-step workflows where one acceptance criterion suffices.
+- UI polish or a visual refresh — the use-cases do not change.
+- An existing use-case spec under 6 months old already covers the actor set.
+- Pure discovery where the actors are not yet known — run audience segmentation first.
 
 ## Prerequisites
 
@@ -41,9 +47,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 6 testable rules with rationale + source, plus a skip-this-methodology fallback | ~1200 |
 | `content/02-output-contract.xml` | essential | JSON Schema fields + forbidden patterns + transformations + valid/invalid examples | ~800 |
-| `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
+| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~1000 |
 | `content/04-procedure.xml` | essential | 4 step procedure | ~700 |
 | `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
 | `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |

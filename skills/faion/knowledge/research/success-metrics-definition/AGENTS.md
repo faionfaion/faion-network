@@ -14,12 +14,17 @@
 - Existing dashboards are crowded with metrics nobody acts on.
 - Team disagrees on which metric should drive prioritisation.
 - Quarterly OKR cycle needs measurable key results.
+- Post-pivot reset: the previous metric set no longer matches the product hypothesis.
+- A new growth or product hire needs the canonical metric set on day one.
 
 ## Skip If (ANY kills it)
 
 - Pre-product: no traffic to measure.
 - Compliance-only metrics (uptime SLA, regulatory) — outside AARRR scope.
 - Team smaller than one — no need for shared dashboards.
+- A current metrics spec under 90 days old exists and the product hypothesis has not changed.
+- No baseline data at all (cold start) — run an instrumentation sprint first, then return.
+- The change in front of the team is a single experiment, not the strategic metric set.
 
 ## Prerequisites
 
@@ -41,9 +46,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source, plus a skip-this-methodology fallback | ~1100 |
 | `content/02-output-contract.xml` | essential | JSON Schema fields + forbidden patterns + transformations + valid/invalid examples | ~800 |
-| `content/03-failure-modes.xml` | essential | 4 failure modes with detector + repair | ~800 |
+| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~950 |
 | `content/04-procedure.xml` | essential | 4 step procedure | ~700 |
 | `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
 | `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
@@ -78,6 +83,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 - [[okr-setting]] — related methodology.
 - [[outcome-based-roadmaps]] — related methodology.
 - [[use-case-mapping]] — related methodology.
+- [[feature-discovery]] — consumes the metric set to score feature impact.
 
 ## Decision tree
 

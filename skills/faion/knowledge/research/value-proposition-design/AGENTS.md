@@ -14,12 +14,14 @@
 - Pivoting positioning after low conversion or message rejection.
 - Adjacent-segment expansion needs a fresh value map.
 - Pitch deck or landing page draft missing customer-job anchor.
+- One primary segment is named — a canvas covering several segments is split before it is run.
 
 ## Skip If (ANY kills it)
 
 - When no customer interviews are accessible — canvas without evidence is fiction.
 - Commodity products competing on price only.
 - Internal tools with one captive user base.
+- Only one side of the canvas can be sourced — a customer profile with no offer, or an offer with no interviews, is not a canvas.
 
 ## Prerequisites
 
@@ -41,9 +43,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source, plus a skip-this-methodology fallback | ~1200 |
 | `content/02-output-contract.xml` | essential | JSON Schema fields + forbidden patterns + transformations + valid/invalid examples | ~800 |
-| `content/03-failure-modes.xml` | essential | 3 failure modes with detector + repair | ~800 |
+| `content/03-failure-modes.xml` | essential | 6 failure modes with detector + repair | ~1000 |
 | `content/04-procedure.xml` | essential | 4 step procedure | ~700 |
 | `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
 | `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
