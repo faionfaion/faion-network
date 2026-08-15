@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="WebSocket Design Decision Tree" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from content/01-core-rules.xml. The skip-this-methodology branch is always reachable.</summary>
+<text id="06-decision-tree" title="WebSocket Design Decision Tree" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from content/01-core-rules.xml: first the protocol choice, then the protocol-hygiene gates walked in order. The skip-this-methodology branch is always reachable.</summary>
   <decision-tree>
     <root-question id="q-root">Does the workload require sub-second server push AND client→server traffic?</root-question>
     <branch when="client_to_server == false">
@@ -12,11 +12,49 @@
     <branch when="serverless_only == true AND adapter_available == false">
       <conclusion ref="skip-this-methodology" verdict="use HTTP long-poll or move to a stateful tier"/>
     </branch>
+    <branch when="connection_lifetime_s &lt; 30 AND concurrent_connections &lt; 1000">
+      <conclusion ref="skip-this-methodology" verdict="short-lived and small; SSE or polling fits and the protocol ceremony does not pay back"/>
+    </branch>
     <branch when="client_to_server == true AND latency_budget_ms &lt; 1000">
       <conclusion ref="versioned-envelope" verdict="use WebSocket with envelope, heartbeat, reconnect-jitter, pubsub fan-out"/>
     </branch>
   </decision-tree>
+
+  <section title="Protocol hygiene gates">
+    <p>Walked in order once the tree above chose WebSocket. Each is blocking.</p>
+    <decision-tree>
+      <root-question id="q-hygiene">Which protocol invariant is missing?</root-question>
+      <branch when="envelope == freeform">
+        <conclusion ref="versioned-envelope" verdict="BLOCK — adopt {v, type, channel, id, seq, ts, payload}"/>
+      </branch>
+      <branch when="message_type_without_schema &gt; 0">
+        <conclusion ref="schema-validated-per-type" verdict="BLOCK — attach a JSON schema per type and validate on both ends"/>
+      </branch>
+      <branch when="heartbeat == missing OR heartbeat == tcp_keepalive_only">
+        <conclusion ref="heartbeat-required" verdict="BLOCK — wire application ping/pong at 25–30 s with a ~90 s timeout"/>
+      </branch>
+      <branch when="reconnect_strategy != full_jitter_exponential">
+        <conclusion ref="reconnect-with-jitter" verdict="BLOCK — full-jitter exponential backoff capped at 30 s"/>
+      </branch>
+      <branch when="send_queue_unbounded == true OR shed_policy == undeclared">
+        <conclusion ref="bounded-send-queue" verdict="BLOCK — bound the queue and name the shed policy"/>
+      </branch>
+      <branch when="auth_ttl_seconds &gt; 300 OR auth == cookie_only">
+        <conclusion ref="short-lived-token-auth" verdict="BLOCK — single-use signed token with TTL &lt;= 5 minutes"/>
+      </branch>
+      <branch when="close_without_code == true">
+        <conclusion ref="close-code-truthful" verdict="BLOCK — emit a truthful RFC 6455 code so the client can decide reconnect vs give up"/>
+      </branch>
+      <branch when="all_gates_green == true AND nodes &gt; 1">
+        <conclusion ref="redis-pubsub-fanout" verdict="APPROVE — wire the fan-out bus and run the reconnect-storm load test"/>
+      </branch>
+    </decision-tree>
+  </section>
+
   <example trace="websocket-design-typical">
     Multi-client live cursor product → versioned envelope v=1 → heartbeat 25s — disconnect after 2 misses → reconnect full-jitter capped 30s → Redis Pub/Sub for fan-out → bounded queue 100 msgs.
+  </example>
+  <example trace="websocket-design-hygiene-gates">
+    Long-lived, 100k concurrent → envelope versioned → every type carries a schema → heartbeat present → jitter present → queue bounded at 1000 with drop_oldest → ticket TTL 300 s → close codes 1000/1001/1008/1009 emitted → APPROVE.
   </example>
 </text>

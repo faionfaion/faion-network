@@ -43,12 +43,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
-| `content/04-procedure.xml` | essential | 5-step end-to-end procedure with input/action/output per step | 900 |
-| `content/05-examples.xml` | reference | One full worked example end-to-end with the trace and the resulting artefact | 700 |
-| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
+| `content/01-core-rules.xml` | essential | 10 testable rules (envelope, heartbeat, per-type schema, close codes, jitter, fan-out, bounded queue, short-lived token, skip) | 1700 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden patterns | 1200 |
+| `content/03-failure-modes.xml` | essential | 9 antipatterns with symptom + root-cause + fix | 1400 |
+| `content/04-procedure.xml` | essential | 7-step end-to-end procedure incl. per-type schemas, shed policy and token TTL | 1300 |
+| `content/05-examples.xml` | reference | Two full worked examples end-to-end with the trace and the resulting artefact | 1200 |
+| `content/06-decision-tree.xml` | essential | Protocol-choice tree + 8 protocol-hygiene gates → conclusion(ref=rule-id); skip leaf always reachable | 1000 |
 
 ## Task Routing
 
@@ -62,7 +62,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/connection_manager.py` | FastAPI ConnectionManager with channel subscriptions and graceful disconnect |
+| `templates/connection_manager.py` | FastAPI ConnectionManager: channel subscriptions, presence map, graceful disconnect with truthful close codes |
+| `templates/envelope.schema.json` | JSON Schema for the envelope plus one example message type |
 | `templates/ws_client.ts` | TypeScript WebSocketClient: reconnect with exponential jitter, offline queue, heartbeat |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
@@ -90,27 +91,111 @@ Bodies of the templates above that the packer does not ship as standalone files,
 ### `templates/connection_manager.py`
 
 ```python
-# faion_header_json: {"__faion_header__":{"purpose":"FastAPI ConnectionManager with channel subscriptions and graceful disconnect","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#versioned-envelope","token_budget_impact":"~150 tokens when loaded"}}
+# faion_header_json: {"__faion_header__":{"purpose":"FastAPI ConnectionManager with channel subscriptions, presence map and graceful disconnect","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#versioned-envelope + content/01-core-rules.xml#close-code-truthful","token_budget_impact":"~400 tokens when loaded as context"}}
+import asyncio
+import logging
+
 from fastapi import WebSocket
+from fastapi.websockets import WebSocketState
+
+# RFC 6455 close codes this manager emits (rule close-code-truthful).
+CLOSE_NORMAL = 1000
+CLOSE_GOING_AWAY = 1001
+CLOSE_POLICY_VIOLATION = 1008
 
 
 class ConnectionManager:
-    def __init__(self):
-        self.active: dict[str, list[WebSocket]] = {}
+    """Per-process. Cross-node fan-out belongs on Redis Pub/Sub, not here."""
 
-    async def connect(self, channel: str, ws: WebSocket) -> None:
+    def __init__(self) -> None:
+        self.connections: dict[str, WebSocket] = {}          # user_id -> socket
+        self.subscribers: dict[str, set[str]] = {}           # channel -> user_ids
+        self.user_channels: dict[str, set[str]] = {}         # user_id -> channels
+
+    async def connect(self, user_id: str, ws: WebSocket) -> None:
         await ws.accept()
-        self.active.setdefault(channel, []).append(ws)
+        if user_id in self.connections:
+            await self.disconnect(user_id, code=CLOSE_GOING_AWAY)
+        self.connections[user_id] = ws
+        self.user_channels[user_id] = set()
+        logging.info("ws connect user=%s", user_id)
 
-    async def disconnect(self, channel: str, ws: WebSocket) -> None:
-        self.active.get(channel, []).remove(ws)
+    async def disconnect(self, user_id: str, code: int = CLOSE_NORMAL) -> None:
+        for channel in list(self.user_channels.get(user_id, ())):
+            self.unsubscribe(user_id, channel)
+        ws = self.connections.pop(user_id, None)
+        self.user_channels.pop(user_id, None)
+        if ws and ws.client_state == WebSocketState.CONNECTED:
+            await ws.close(code=code)
+        logging.info("ws disconnect user=%s code=%s", user_id, code)
 
-    async def broadcast(self, channel: str, message: dict) -> None:
-        for ws in list(self.active.get(channel, [])):
-            try:
-                await ws.send_json(message)
-            except Exception:
-                self.active[channel].remove(ws)
+    def subscribe(self, user_id: str, channel: str) -> None:
+        self.subscribers.setdefault(channel, set()).add(user_id)
+        self.user_channels.setdefault(user_id, set()).add(channel)
+
+    def unsubscribe(self, user_id: str, channel: str) -> None:
+        subs = self.subscribers.get(channel)
+        if subs:
+            subs.discard(user_id)
+            if not subs:
+                del self.subscribers[channel]
+        self.user_channels.get(user_id, set()).discard(channel)
+
+    async def send_to_user(self, user_id: str, envelope: dict) -> None:
+        ws = self.connections.get(user_id)
+        if not ws or ws.client_state != WebSocketState.CONNECTED:
+            return
+        try:
+            await ws.send_json(envelope)
+        except Exception as exc:  # noqa: BLE001 — a dead socket must not kill the loop
+            logging.error("ws send failed user=%s: %s", user_id, exc)
+            await self.disconnect(user_id, code=CLOSE_POLICY_VIOLATION)
+
+    async def broadcast(self, channel: str, envelope: dict) -> None:
+        targets = list(self.subscribers.get(channel, ()))
+        await asyncio.gather(
+            *(self.send_to_user(uid, envelope) for uid in targets),
+            return_exceptions=True,
+        )
+```
+
+### `templates/envelope.schema.json`
+
+```json
+{
+  "__faion_header__": {
+    "purpose": "JSON Schema for the WS envelope plus one example message type.",
+    "consumes": "see content/02-output-contract.xml",
+    "produces": "spec",
+    "depends_on": "content/01-core-rules.xml#versioned-envelope + content/01-core-rules.xml#schema-validated-per-type",
+    "token_budget_impact": "~300 tokens when loaded as context"
+  },
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/ws-envelope.json",
+  "title": "envelope",
+  "type": "object",
+  "required": ["v", "type", "channel", "id", "seq", "ts", "payload"],
+  "additionalProperties": false,
+  "properties": {
+    "v": { "type": "integer", "enum": [1] },
+    "type": { "type": "string", "pattern": "^[a-z][a-z0-9]*(\\.[a-z][a-z0-9]*)+$" },
+    "channel": { "type": "string", "minLength": 1 },
+    "id": { "type": "string", "description": "Per-message idempotency key for retries." },
+    "seq": { "type": "integer", "minimum": 0, "description": "Monotonic per-channel; clients dedupe on it across reconnects." },
+    "ts": { "type": "integer", "description": "Unix milliseconds at send time." },
+    "payload": { "type": "object" }
+  },
+  "$defs": {
+    "chat.message": {
+      "type": "object",
+      "required": ["text", "from"],
+      "properties": {
+        "text": { "type": "string", "maxLength": 4000 },
+        "from": { "type": "string" }
+      }
+    }
+  }
+}
 ```
 
 ### `templates/ws_client.ts`

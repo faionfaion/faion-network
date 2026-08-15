@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Rust Error Handling Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+<text id="02-output-contract" title="Rust Error Handling Output Contract" version="1.2.0" est_tokens="1000" depth="essential">
   <summary>JSON Schema for the error-design spec capturing crate type, error-library choice, and clippy gate config.</summary>
 
   <section title="Spec schema">
@@ -33,6 +33,14 @@
         "expect_used": {"const": "deny"}
       }
     },
+    "box_dyn_error_in_public_api": {
+      "type": "integer", "minimum": 0, "maximum": 0,
+      "description": "Public signatures returning Box<dyn Error> (rule thiserror-for-lib)."
+    },
+    "ci_gate_command": {
+      "type": "string",
+      "description": "The committed command CI runs, e.g. bash scripts/check-errors.sh (rule ci-denies-panic-primitives)."
+    },
     "version":       {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
     "last_reviewed": {"type": "string", "format": "date"}
   },
@@ -54,6 +62,8 @@
     {"name": "NotFound", "display": "resource not found"}
   ],
   "clippy_gate": {"unwrap_used": "deny", "expect_used": "deny"},
+  "box_dyn_error_in_public_api": 0,
+  "ci_gate_command": "bash scripts/check-errors.sh",
   "version": "1.0.0",
   "last_reviewed": "2026-05-22"
 }
@@ -65,13 +75,25 @@
 {
   "crate_type": "library",
   "error_library": "anyhow",
-  "clippy_gate": {"unwrap_used": "warn"}
+  "clippy_gate": {"unwrap_used": "warn"},
+  "box_dyn_error_in_public_api": 3
 }
 ]]></code>
-    <note>Library crate must use thiserror, not anyhow. Clippy gate must be "deny" not "warn". Missing version + last_reviewed.</note>
+    <note>Library crate must use thiserror, not anyhow. Clippy gate must be "deny" not "warn". Three public signatures still return Box&lt;dyn Error&gt;. Missing version + last_reviewed + ci_gate_command.</note>
   </example>
+
+  <section title="Forbidden patterns">
+    <list>
+      <item>`Box&lt;dyn Error&gt;` in any public signature crossing a crate API boundary.</item>
+      <item>`anyhow::Result` returned from a published library function.</item>
+      <item>An error variant carrying its source as a `String` instead of `#[source]` / `#[from]`.</item>
+      <item>`clippy_gate` set to "warn" — a warning is not a gate.</item>
+      <item>A gate that exists only in prose, with no committed command CI actually runs.</item>
+    </list>
+  </section>
 
   <reference path="templates/error.rs.thiserror.tmpl">Error enum scaffold</reference>
   <reference path="templates/clippy.toml">Clippy gate config</reference>
+  <reference path="templates/check-errors.sh">CI script: clippy denies + Box&lt;dyn Error&gt; grep</reference>
   <reference path="scripts/validate-rust-error-handling.py">Validator</reference>
 </text>

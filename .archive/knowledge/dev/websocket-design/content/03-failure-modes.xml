@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="WebSocket Design Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Antipatterns observed in real deployments of WebSocket Design. Each ties a symptom to a root cause and a concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="freeform-payload" severity="high">
+      <symptom>Client crashes when server adds a new field to payload.</symptom>
+      <root-cause source="WS-protocol retro">No envelope; no version.</root-cause>
+      <fix>Adopt envelope `{v, type, id, ts, payload}`; clients ignore unknown fields under same `v`.</fix>
+    </antipattern>
+    <antipattern id="no-heartbeat" severity="high">
+      <symptom>Connection appears alive client-side; server has dropped it 4 minutes ago via NAT timeout.</symptom>
+      <root-cause source="NAT-timeout retro">No application heartbeat.</root-cause>
+      <fix>Send ping every 30s; close after 90s no pong; client reconnects.</fix>
+    </antipattern>
+    <antipattern id="reconnect-storm" severity="critical">
+      <symptom>After server restart, 100k clients reconnect within 200ms; server crashes again.</symptom>
+      <root-cause source="Reconnect-storm retro">Fixed-interval reconnect.</root-cause>
+      <fix>Exponential backoff base 1s max 60s + full jitter; reconnects spread over 60s.</fix>
+    </antipattern>
+    <antipattern id="unbounded-send-oom" severity="high">
+      <symptom>Server OOM after one client stopped reading; metrics showed 50M messages queued.</symptom>
+      <root-cause source="WebSocket OOM retro">Per-connection outgoing queue unbounded.</root-cause>
+      <fix>Bound queue at 1000; shed_policy=drop_oldest; emit close code 1008 if shed exceeds threshold.</fix>
+    </antipattern>
+  </section>
+</text>

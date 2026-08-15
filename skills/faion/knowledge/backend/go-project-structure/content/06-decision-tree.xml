@@ -1,10 +1,44 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Go Project Structure Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from content/01-core-rules.xml for go-project-structure.</summary>
+<text id="06-decision-tree" title="Go Project Structure Decision Tree" version="1.2.0" est_tokens="900" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from content/01-core-rules.xml for go-project-structure. The first two branches route non-applicable inputs out; the remaining branches are blocking gates walked in order.</summary>
   <decision-tree>
-    <root-question id="q-root">Greenfield Go service or migration?</root-question>
-    <branch when="scope == library_only"><conclusion ref="skip-this-methodology"/></branch>
-    <branch when="scope == service_with_http"><conclusion ref="cmd-internal-default"/></branch>
-    <branch when="scope == cli_only"><conclusion ref="cmd-internal-default"/></branch>
+    <root-question id="q-root">Is this a Go module that ships at least one binary and warrants the layout?</root-question>
+    <branch when="scope == library_only OR scope == single_file_experiment">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — layout overhead exceeds payoff"/>
+    </branch>
+    <branch when="project_size &lt; 1kloc AND author_count == 1">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — flat layout is fine at this scale"/>
+    </branch>
+    <branch when="scope == service_with_http OR scope == cli_only">
+      <conclusion ref="cmd-internal-default" verdict="APPLY — cmd/ + internal/, pkg/ only for a named external importer"/>
+    </branch>
+    <branch when="main_contains_business_logic == true">
+      <conclusion ref="cmd-thin-entry-point" verdict="BLOCK — move handlers and queries into internal/"/>
+    </branch>
+    <branch when="internal_only_package_in_pkg_dir == true">
+      <conclusion ref="cmd-internal-default" verdict="BLOCK — move it to internal/ before anyone outside can import it"/>
+    </branch>
+    <branch when="cycles_detected &gt; 0">
+      <conclusion ref="no-cyclic-dependencies" verdict="BLOCK — invert one side via an interface declared at the consumer"/>
+    </branch>
+    <branch when="top_level_loose_files &gt; 0">
+      <conclusion ref="no-top-level-loose-files" verdict="BLOCK — move into cmd/ or internal/, or delete"/>
+    </branch>
+    <branch when="ad_hoc_scripts_outside_makefile == true">
+      <conclusion ref="makefile-orchestrates" verdict="BLOCK — add a Make target instead of another loose script"/>
+    </branch>
+    <branch when="background_goroutine_without_quit_signal == true">
+      <conclusion ref="graceful-shutdown-complete" verdict="BLOCK — select on ctx.Done or a quit channel in every long-running goroutine"/>
+    </branch>
+    <branch when="all_gates_green == true">
+      <conclusion ref="run-the-checklist" verdict="APPROVE — layout ready; run the vertical slice and the validator"/>
+    </branch>
+    <branch when="preconditions_unmet == true">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — preconditions in Applies-If not met"/>
+    </branch>
   </decision-tree>
+
+  <example trace="go-project-structure-happy-path">
+    Module + 2 binaries + 11 internal packages → neither skip branch matches → main is thin → nothing internal-only sits in pkg/ → no cycles → clean top level → every workflow has a Make target → workers select on ctx.Done → APPROVE.
+  </example>
 </text>

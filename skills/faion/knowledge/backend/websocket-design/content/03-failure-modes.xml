@@ -1,7 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="WebSocket Design Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+<text id="03-failure-modes" title="WebSocket Design Failure Modes" version="1.1.0" est_tokens="1400" depth="essential">
+  <summary>8 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
   <section title="Antipatterns">
+    <antipattern id="freeform-payload" severity="high">
+      <symptom>The client crashes as soon as the server adds a field to a payload; every additive protocol change becomes a coordinated release.</symptom>
+      <root-cause source="WS-protocol retro">Messages are raw JSON with no envelope and no version, so there is nothing to negotiate against and no rule that unknown fields are ignorable.</root-cause>
+      <fix>Adopt the {v, type, channel, id, seq, ts, payload} envelope; clients ignore unknown fields within the same v, and v is bumped only for genuinely breaking changes. See rule versioned-envelope.</fix>
+    </antipattern>
+    <antipattern id="no-heartbeat" severity="high">
+      <symptom>The connection looks alive on the client while the server dropped it four minutes ago; messages vanish with no error.</symptom>
+      <root-cause source="NAT-timeout retro">No application-level heartbeat — the design relied on TCP keep-alive, whose defaults fire far too late.</root-cause>
+      <fix>Ping every 25–30 s, close after 2 missed pongs, let the client reconnect on the close. See rule heartbeat-required.</fix>
+    </antipattern>
+    <antipattern id="unbounded-send-oom" severity="high">
+      <symptom>Server OOMs after one client stopped reading; metrics show 50M messages queued on a single connection.</symptom>
+      <root-cause source="WebSocket OOM retro">The per-connection outgoing queue was unbounded, so one slow reader consumed the whole process heap.</root-cause>
+      <fix>Bound the queue, declare shed_policy=drop_oldest, and close with code 1008 once shedding crosses a threshold. See rule bounded-send-queue.</fix>
+    </antipattern>
+    <antipattern id="schema-less-handler-crash" severity="high">
+      <symptom>A malformed payload from one client raises inside the handler and takes down the whole connection loop.</symptom>
+      <root-cause source="Production fuzz retro">Message types had no JSON schema, so handlers indexed fields that the sender never had to provide.</root-cause>
+      <fix>Attach a JSON schema to every message type and validate on both ends; reject with close code 1008 or an error envelope rather than raising. See rule schema-validated-per-type.</fix>
+    </antipattern>
+    <antipattern id="bare-close-no-code" severity="medium">
+      <symptom>The client cannot tell a deploy from a ban: every disconnect arrives as a bare close, so it reconnects into a rejection loop.</symptom>
+      <root-cause source="Client-debug retro">Server closed the socket without an RFC 6455 code, or sent 1000 for every case including policy violations.</root-cause>
+      <fix>Emit a truthful code — 1001 on shutdown, 1008 on policy violation, 1009 on oversize, 4xxx for app reasons — and branch the client's reconnect on it. See rule close-code-truthful.</fix>
+    </antipattern>
     <antipattern id="jwt-in-query-string" severity="high">
       <symptom>WebSocket URL contains ?token=eyJ... appearing in access logs.</symptom>
       <root-cause source="OWASP">Browsers cannot send custom headers on WebSocket upgrade; author chose the easy path.</root-cause>

@@ -1,7 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Go Project Structure Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+<text id="03-failure-modes" title="Go Project Structure Failure Modes" version="1.2.0" est_tokens="1500" depth="essential">
   <summary>Antipatterns observed in real go-project-structure deployments. Each pairs symptom + root-cause + fix.</summary>
   <section title="Antipatterns">
+    <antipattern id="logic-in-main" severity="high">
+      <symptom>cmd/api/main.go grows past 500 lines and holds HTTP handlers and SQL queries alongside the wiring.</symptom>
+      <root-cause source="Practitioner experience">Author kept adding "just one more thing" to main.go until it became the whole application; nothing forced the split.</root-cause>
+      <fix>Extract handler + service + repository into internal/. Reduce main.go to config load, dependency wiring and app.Run(ctx). See rule cmd-thin-entry-point.</fix>
+    </antipattern>
+    <antipattern id="cyclic-imports" severity="high">
+      <symptom>Build fails with "import cycle not allowed" after internal/orders and internal/payments grew to import each other.</symptom>
+      <root-cause source="Practitioner experience">Cross-feature dependencies grew bidirectional, and the reflexive fix was to export more symbols upward instead of inverting one side.</root-cause>
+      <fix>Invert one direction via an interface declared at the consumer, or extract a third package owning the shared types. Document the boundary. See rule no-cyclic-dependencies.</fix>
+    </antipattern>
+    <antipattern id="top-level-rot" severity="medium">
+      <symptom>Project root accumulates scripts/, tools/, helpers/ and scratch/ with overlapping contents.</symptom>
+      <root-cause source="Practitioner experience">No top-level discipline; every helper added its own directory rather than a Make target.</root-cause>
+      <fix>Consolidate into Makefile orchestration; move runnable helpers to cmd/&lt;helper&gt;/; delete one-off scripts once the intent is captured in a target. See rules makefile-orchestrates + no-top-level-loose-files.</fix>
+    </antipattern>
+    <antipattern id="premature-di-framework" severity="medium">
+      <symptom>wire or fx appears in go.mod on day one, on a service whose hand-wiring would be 20 lines.</symptom>
+      <root-cause source="Practitioner experience — agent gotchas">Generators reach for a DI framework by reflex. The trigger should be evidence, not taste.</root-cause>
+      <fix>Hand-wire constructors in main.go until that wiring passes ~100 lines; only then adopt wire. See rule cmd-thin-entry-point.</fix>
+    </antipattern>
+    <antipattern id="missing-context-plumbing" severity="medium">
+      <symptom>Repository methods take no context.Context, so nothing downstream of a cancelled request actually stops.</symptom>
+      <root-cause source="Practitioner experience — agent gotchas">Generated repository signatures omit ctx because the tutorial they imitate predates context plumbing.</root-cause>
+      <fix>Thread context.Context as the first parameter through handler → service → repository; enable the contextcheck linter in .golangci.yml. See rule graceful-shutdown-complete.</fix>
+    </antipattern>
+    <antipattern id="layout-cargo-culted-at-small-scale" severity="medium">
+      <symptom>A 300-line tool ships with cmd/, internal/, pkg/, api/, deployments/ and docs/ — most of them empty.</symptom>
+      <root-cause source="golang-standards/project-layout is community-curated, not official">The community layout gets quoted as canon, so the full tree is materialised before there is anything to put in it.</root-cause>
+      <fix>Require the size threshold in Applies-If (~1kloc or ≥2 binaries) before adopting the layout; otherwise keep main.go next to go.mod. See rule skip-this-methodology.</fix>
+    </antipattern>
     <antipattern id="interface-at-producer" severity="medium">
       <symptom>Interface UserRepository defined inside internal/repository; service must import repository just to depend on it.</symptom>
       <root-cause source="v1-source + faion-net curation">Author inverted Go idiom — interface lives at producer, not consumer.</root-cause>

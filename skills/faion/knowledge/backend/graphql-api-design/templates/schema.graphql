@@ -1,48 +1,70 @@
 <!-- __faion_header_v1__ -->
-<!-- purpose: SDL skeleton: Node/Timestamped interfaces, Relay Connection/Edge/PageInfo, payload with error union -->
+<!-- purpose: SDL skeleton: Node/Timestamped interfaces, Relay Connection/Edge/PageInfo, Payload with userErrors, @auth directive -->
 <!-- consumes: see content/02-output-contract.xml -->
 <!-- produces: spec -->
-<!-- depends-on: content/01-core-rules.xml#relay-cursor-pagination + content/01-core-rules.xml#mutation-error-union -->
-<!-- token-budget-impact: ~400 tokens when loaded as context -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"SDL skeleton: Node/Timestamped interfaces, Relay Connection/Edge/PageInfo, payload with error union","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#relay-cursor-pagination + content/01-core-rules.xml#mutation-error-union","token_budget_impact":"~400 tokens when loaded as context"}} -->
+<!-- depends-on: content/01-core-rules.xml#relay-cursor-pagination + content/01-core-rules.xml#mutation-error-union + content/01-core-rules.xml#naming-conventions-enforced -->
+<!-- token-budget-impact: ~520 tokens when loaded as context -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"SDL skeleton: Node/Timestamped interfaces, Relay Connection/Edge/PageInfo, Payload with userErrors, @auth directive","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#relay-cursor-pagination + content/01-core-rules.xml#mutation-error-union + content/01-core-rules.xml#naming-conventions-enforced","token_budget_impact":"~520 tokens when loaded as context"}} -->
 scalar DateTime
-scalar UUID
 scalar Email
+
+enum AuthScope { ADMIN ORDERS_WRITE PAYMENTS_WRITE }
+directive @auth(scope: AuthScope!) on FIELD_DEFINITION
 
 interface Node { id: ID! }
 interface Timestamped { createdAt: DateTime!; updatedAt: DateTime! }
 
 enum UserRole { ADMIN MODERATOR MEMBER }
+enum OrderStatus { DRAFT PLACED PAID SHIPPED DELIVERED CANCELLED }
 
 type User implements Node & Timestamped {
   id: ID!
-  email: Email!
+  email: Email! @auth(scope: ADMIN)
   name: String!
   role: UserRole!
   isActive: Boolean!
   createdAt: DateTime!
   updatedAt: DateTime!
-  orders(first: Int, after: String): OrderConnection!
+  orders(first: Int, after: String, status: OrderStatus): OrderConnection!
+}
+
+type Order implements Node & Timestamped {
+  id: ID!
+  status: OrderStatus!
+  totalAmount: Float!
+  createdAt: DateTime!
+  updatedAt: DateTime!
 }
 
 type OrderConnection {
   edges: [OrderEdge!]!
   pageInfo: PageInfo!
+  totalCount: Int!
 }
 type OrderEdge { cursor: String!; node: Order! }
-type PageInfo { endCursor: String; hasNextPage: Boolean! }
-
-type Order implements Node { id: ID!; total: Float! }
+type PageInfo {
+  hasNextPage: Boolean!
+  hasPreviousPage: Boolean!
+  startCursor: String
+  endCursor: String
+}
 
 type UserError { field: String; message: String!; code: String! }
 
 input CreateUserInput { email: Email!; name: String!; role: UserRole }
-type CreateUserPayload { user: User; errors: [UserError!] }
+input UpdateUserInput { email: Email; name: String; role: UserRole }
 
-type Mutation {
-  createUser(input: CreateUserInput!): CreateUserPayload!
-}
+type CreateUserPayload { user: User; userErrors: [UserError!]! }
+type UpdateUserPayload { user: User; userErrors: [UserError!]! }
+type DeleteUserPayload { deletedId: ID; userErrors: [UserError!]! }
 
 type Query {
   user(id: ID!): User
+  me: User
+}
+
+type Mutation {
+  createUser(input: CreateUserInput!): CreateUserPayload! @auth(scope: ADMIN)
+  updateUser(id: ID!, input: UpdateUserInput!): UpdateUserPayload! @auth(scope: ADMIN)
+  deleteUser(id: ID!): DeleteUserPayload! @auth(scope: ADMIN)
 }

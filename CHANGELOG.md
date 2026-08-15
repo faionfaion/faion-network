@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-009, Go/Rust/API-transport: 6 collisions resolved merge-then-archive.**
+  `api-versioning`, `go-project-structure`, `graphql-api-design` and
+  `websocket-design` survive in `backend/`; **`rust-error-handling` and
+  `rust-ownership` survive in `dev/`** — error idiom and ownership are
+  language-level craft. `backend/rust-backend` does exist, so the genuinely
+  server-scoped rule `one-app-error-per-service` went *there* rather than into
+  the survivor, where it now makes `app-error-into-response` exhaustive by
+  construction.
+
+  Both Rust survivors turned out to have **no `skip-this-methodology` leaf at
+  all** — a methodology with no stated non-applicability applies to everything,
+  which is how a corpus starts returning confident answers to questions it has
+  no business answering. Both gained one.
+
+  **A tier consequence nobody had measured, surfaced by this batch and then
+  checked across all 67 archives: 5 merges fold higher-tier material into a
+  lower-tier survivor**, two of them `pro` → `free` (`rust-error-handling`,
+  `rust-ownership`), three `solo` → lower (`api-gateway-patterns`,
+  `best-practices-2026`, `pnpm-package-management`). Because links resolve by
+  slug and the survivor keeps it, that material is now served at the survivor's
+  tier.
+
+  **CR-009 measured content and links and never measured tier, and the
+  domain-boundary policy picks a survivor by execution surface, which does not
+  take tier as an input** — so the two systems can disagree without either one
+  noticing. Recorded as an owner decision rather than resolved here, because
+  every fix costs something: raising the survivor's tier removes content free
+  users already had, and stripping the merged material back out defeats the
+  point of merging first.
+
 - **CR-009, research/ux: 5 collisions resolved, and the last duplicate-summary
   group in the corpus is closed.** `research/ai-assisted-persona-building` ↔
   `research/ai-persona-building` were the same document under two slugs — every

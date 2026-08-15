@@ -46,7 +46,7 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | ~1100 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (incl. one-app-error-per-service) with rationale + source + skip rule | ~1300 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
 | `content/03-failure-modes.xml` | essential | Antipatterns (symptom / root-cause / fix) | ~900 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | ~900 |

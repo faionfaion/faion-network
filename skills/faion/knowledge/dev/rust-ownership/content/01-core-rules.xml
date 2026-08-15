@@ -1,8 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Rust Ownership Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules for signature design — questions to answer, defaults to prefer, escape hatches to avoid.</summary>
+<text id="01-core-rules" title="Rust Ownership Core Rules" version="1.2.0" est_tokens="1700" depth="essential">
+  <summary>11 testable rules for signature design — questions to answer, defaults to prefer, escape hatches to avoid, plus the terminal skip guard.</summary>
 
   <section title="Rule set">
+
+    <rule id="single-owner-clear" testable="true" depth="essential">
+      <statement>Each value has exactly one owner at a time. Transfer ownership with a move; never with `.clone()`.</statement>
+      <rationale source="Rust Book ch.4; v1-source + faion-net curation">Cloning to hand a value onward copies the data and obscures who is responsible for the drop — the reader can no longer tell which copy is the live one.</rationale>
+    </rule>
+
+    <rule id="borrow-rules-shared-or-exclusive" testable="true" depth="essential">
+      <statement>At any point a value has either many shared borrows (`&amp;T`) or exactly one exclusive borrow (`&amp;mut T`) — never both. Design scopes so the two never overlap.</statement>
+      <rationale source="Rust Book ch.4; v1-source + faion-net curation">This is the aliasing guarantee the whole model rests on; the borrow checker rejects the overlap precisely because it would be undefined behaviour in C.</rationale>
+    </rule>
 
     <rule id="answer-3-questions" testable="true" depth="essential">
       <statement>Before writing any function body, document the answers to three questions in a comment above the signature: (1) does this function need to keep the value after returning? (2) does it modify the value? (3) does it need to share the value across threads or with another scope? Skipping the audit is forbidden.</statement>
@@ -29,9 +39,29 @@
       <rationale source="std::sync::Arc docs">`Arc` uses atomic refcount ops; `Rc` uses non-atomic. Wrapping single-threaded data in `Arc` pays the atomic cost on every clone for no safety benefit.</rationale>
     </rule>
 
+    <rule id="arc-mutex-across-threads" testable="true" depth="essential">
+      <statement>`Rc&lt;T&gt;` and `Rc&lt;RefCell&lt;T&gt;&gt;` MUST NOT cross a thread boundary — no `std::thread::spawn`, no `tokio::spawn`, no `rayon` closure. Shared mutable state that crosses threads uses `Arc&lt;Mutex&lt;T&gt;&gt;` or `Arc&lt;RwLock&lt;T&gt;&gt;`.</statement>
+      <rationale source="v1-source + faion-net curation; std::rc docs">`Rc` and `RefCell` are `!Send` and `!Sync` — their refcount and borrow flag are non-atomic, so sharing them across threads is a data race. The compiler catches the direct case, but the reflexive workaround (wrapping in `unsafe impl Send`, or restructuring until the bound disappears) breaks soundness silently.</rationale>
+    </rule>
+
+    <rule id="no-clone-as-shortcut" testable="true" depth="essential">
+      <statement>Calling `.clone()` purely to silence the borrow checker is forbidden. Fix the signature instead: lift the value into a longer-lived scope, take a borrow, or split the call site so two mutable borrows do not overlap. A clone that survives review carries a comment stating why.</statement>
+      <rationale source="v1-source + faion-net curation">`.clone()` compiles, so it feels like a fix; what it actually does is convert a design question into an allocation on a hot path and leave the ownership story unreadable for the next person.</rationale>
+    </rule>
+
     <rule id="lifetime-elision-or-explicit" testable="true" depth="essential">
       <statement>If lifetime elision rules (Rust Reference ch.10) apply, omit lifetimes. If they don't, write the explicit lifetime AND a comment naming what outlives what. Never just add `'static` to silence the compiler.</statement>
       <rationale source="Rust Book ch.10 — Lifetime Elision">`'static` is rarely what you mean. The compiler suggests it as the safest fallback; accepting silently forces all callers to also pin `'static`, propagating the wrong constraint.</rationale>
+    </rule>
+
+    <rule id="clone-audit-in-ci" testable="true" depth="essential">
+      <statement>A crate whose hot paths matter runs `templates/audit-clones.sh` in CI: clippy with `redundant_clone`, `needless_clone`, `clone_on_copy` and `implicit_clone` warned, plus a clone-count baseline that a PR may not regress without a stated reason.</statement>
+      <rationale source="v1-source + faion-net curation">Per-signature discipline decays between reviews. A counted baseline turns "we prefer borrows" from a shared intention into a number a diff either holds or explains.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>If the preconditions in `Applies If` fail or any `Skip If` condition holds — a throwaway script, a proc macro, an FFI wrapper, generated code, or embedded code with no heap — return `skipped` and apply no further rules.</statement>
+      <rationale source="v1-source + faion-net curation">Methodologies are not universal; enforcing signature-first ownership on generated `prost` code or a token-stream macro fights the ecosystem and produces churn instead of safety.</rationale>
     </rule>
 
   </section>

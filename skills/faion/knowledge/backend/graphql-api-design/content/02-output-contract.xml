@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="GraphQL API Design Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+<text id="02-output-contract" title="GraphQL API Design Output Contract" version="1.1.0" est_tokens="1200" depth="essential">
   <summary>JSON Schema (draft-07) for the spec artefact this methodology produces. Validator in scripts/validate-graphql-api-design.py enforces required keys, enum bounds, and pattern constraints.</summary>
   <section title="Schema">
     <code lang="json"><![CDATA[
@@ -54,6 +54,34 @@
     "dataloader_per_request": {
       "type": "boolean",
       "const": true
+    },
+    "payload_types_present": {
+      "type": "boolean",
+      "const": true,
+      "description": "Every mutation returns a <Name>Payload (rule mutation-error-union)."
+    },
+    "non_payload_mutations": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 0,
+      "description": "Mutations returning a scalar instead of a payload (rule mutation-error-union)."
+    },
+    "user_errors_array_present": {
+      "type": "boolean",
+      "const": true,
+      "description": "Payloads carry userErrors[] (rule user-errors-array)."
+    },
+    "scalar_id_relations": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 0,
+      "description": "Relations exposing a raw int/uuid instead of an opaque ID (rule opaque-ids-for-relations)."
+    },
+    "naming_deviations": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 0,
+      "description": "Types breaking the Connection/Input/Payload conventions (rule naming-conventions-enforced)."
     }
   }
 }
@@ -69,10 +97,15 @@
     "max_depth": 10,
     "max_complexity": 200
   },
-  "dataloader_per_request": true
+  "dataloader_per_request": true,
+  "payload_types_present": true,
+  "non_payload_mutations": 0,
+  "user_errors_array_present": true,
+  "scalar_id_relations": 0,
+  "naming_deviations": 0
 }
 ]]></code>
-    <note>All required keys present; enums and patterns satisfied.</note>
+    <note>All required keys present; enums and patterns satisfied; every shape counter sits at its hard maximum of 0.</note>
   </example>
   <example valid="false">
     <code lang="json"><![CDATA[
@@ -81,10 +114,28 @@
   "pagination_style": "offset",
   "limits": {
     "max_depth": 20
-  }
+  },
+  "non_payload_mutations": 5,
+  "scalar_id_relations": 7
 }
 ]]></code>
-    <note>Forbidden traits: Missing required auth_strategy; pagination_style enum violation; max_depth above 12.</note>
+    <note>Forbidden traits: Missing required auth_strategy; pagination_style enum violation; max_depth above 12; non_payload_mutations and scalar_id_relations above the hard maximum of 0.</note>
   </example>
+  <section title="Forbidden patterns">
+    <list>
+      <item>A mutation returning a scalar (Boolean, ID) instead of a &lt;Name&gt;Payload type.</item>
+      <item>A validation or business-rule failure surfaced through the transport errors[] rather than userErrors[].</item>
+      <item>An authorization check embedded in a resolver body instead of declared as a directive or permission class.</item>
+      <item>A paginated list without the Connection/Edge/PageInfo wrapper.</item>
+      <item>A relation exposing a raw scalar id instead of a Relay opaque global ID.</item>
+      <item>A DataLoader instantiated at module scope rather than per request.</item>
+    </list>
+  </section>
+  <section title="Allowed transformations">
+    <list>
+      <item>Sort SDL types alphabetically for diff hygiene.</item>
+      <item>Normalise directive arguments to camelCase.</item>
+    </list>
+  </section>
   <reference path="scripts/validate-graphql-api-design.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

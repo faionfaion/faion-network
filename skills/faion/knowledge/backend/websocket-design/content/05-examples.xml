@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="WebSocket Design Worked Example" version="1.0.0" est_tokens="700" depth="reference">
-  <summary>End-to-end worked example applying the methodology to a representative input. Output matches the schema in content/02-output-contract.xml.</summary>
+<text id="05-examples" title="WebSocket Design Worked Examples" version="1.1.0" est_tokens="1200" depth="reference">
+  <summary>Two worked examples — a live-cursor product designed correctly from the start, and a chat service rebuilt after the tree caught every rule at once. Output matches the schema in content/02-output-contract.xml.</summary>
   <section title="Trace">
     <paragraph>Multi-client live cursor product → versioned envelope v=1 → heartbeat 25s — disconnect after 2 misses → reconnect full-jitter capped 30s → Redis Pub/Sub for fan-out → bounded queue 100 msgs.</paragraph>
   </section>
@@ -17,6 +17,52 @@
   "fanout": "redis_pubsub",
   "auth_method": "ticket",
   "send_queue_cap": 100
+}
+]]></code>
+  </section>
+  <section title="Second example — chat service rebuilt after the gates caught it">
+    <paragraph>Original shape: payload was raw JSON with no envelope, reconnect fired on a fixed 100 ms interval, auth was a long-lived cookie, and the per-connection send queue was unbounded. The server crashed on every outage — the restart triggered a reconnect storm, and one slow reader had already been consuming the heap. Walking the hygiene gates flagged all four in one pass. The rebuild adopted the {v, type, channel, id, seq, ts, payload} envelope with a schema per message type, ping/pong at 30 s with a 90 s timeout, exponential backoff base 1 s capped at 60 s with full jitter, a queue bounded at 1000 with shed_policy=drop_oldest, and a signed token with ttl 300 s. After it, a server restart spread 100k reconnects over 60 seconds, NAT timeouts surfaced in under 90 s, and the one slow client was shed at 1000 backlog and reconnected with fresh state rather than taking the process down.</paragraph>
+  </section>
+  <section title="Second example — resulting artefact">
+    <code lang="json"><![CDATA[
+{
+  "envelope_version": 1,
+  "heartbeat_seconds": 30,
+  "reconnect": {
+    "strategy": "full_jitter_exponential",
+    "cap_ms": 60000,
+    "max_attempts": 10
+  },
+  "fanout": "redis_pubsub",
+  "auth_method": "ticket",
+  "auth_ttl_seconds": 300,
+  "send_queue_cap": 1000,
+  "send_queue_shed_policy": "drop_oldest",
+  "message_schemas": {
+    "chat.message": {
+      "required": [
+        "text",
+        "from"
+      ]
+    },
+    "chat.typing": {
+      "required": [
+        "from"
+      ]
+    },
+    "presence.update": {
+      "required": [
+        "user",
+        "state"
+      ]
+    }
+  },
+  "close_codes": [
+    1000,
+    1001,
+    1008,
+    1009
+  ]
 }
 ]]></code>
   </section>

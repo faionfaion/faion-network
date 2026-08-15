@@ -45,12 +45,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 rules: thiserror-for-lib, anyhow-for-app, no-unwrap-non-test, question-mark-over-match, source-chains-required, context-on-conversion | 1100 |
-| `content/02-output-contract.xml` | essential | JSON Schema for error-design spec + clippy lint config | 800 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns: anyhow-in-library, untyped-string-error, swallowing-source, unwrap-in-production | 700 |
-| `content/04-procedure.xml` | essential | 5-step procedure: classify crate → pick crate → write enum/anyhow → swap unwraps → gate clippy | 700 |
+| `content/01-core-rules.xml` | essential | 8 rules: thiserror-for-lib (no `Box<dyn Error>` at crate boundaries), anyhow-for-app, no-unwrap-non-test, question-mark-over-match, source-chains-required, context-on-conversion, ci-denies-panic-primitives, skip-this-methodology | 1500 |
+| `content/02-output-contract.xml` | essential | JSON Schema for error-design spec + clippy lint config + forbidden patterns | 1000 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: box-dyn-error-at-boundary, fragmented-error-types, anyhow-in-library, untyped-string-error, swallowing-source, unwrap-in-production | 1000 |
+| `content/04-procedure.xml` | essential | 6-step procedure: classify crate → pick crate → write enum/anyhow → swap unwraps → gate clippy → commit the CI script | 900 |
 | `content/05-examples.xml` | optional | Worked example: library Error enum with `#[from]` chains | 600 |
-| `content/06-decision-tree.xml` | essential | Routing: crate type → error library → variant strategy | 500 |
+| `content/06-decision-tree.xml` | essential | Routing: skip leaves → crate type → error library → variant strategy | 800 |
 
 ## Task Routing
 
@@ -67,6 +67,7 @@
 |------|---------|
 | `templates/error.rs.thiserror.tmpl` | `thiserror`-based Error enum scaffold for libraries |
 | `templates/clippy.toml` | Clippy lint block forbidding `unwrap_used`, `expect_used` outside tests |
+| `templates/check-errors.sh` | CI script: clippy denies for unwrap/expect/panic/todo + grep gate on `Box<dyn Error>` in public signatures |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -118,4 +119,28 @@ pub type Result<T, E = CrateError> = std::result::Result<T, E>;
 # Place at crate root. Override per-file with #[allow(clippy::unwrap_used)] in tests.
 
 avoid-breaking-exported-api = false
+```
+
+### `templates/check-errors.sh`
+
+```bash
+#!/usr/bin/env bash
+# Usage: bash scripts/check-errors.sh
+set -euo pipefail
+
+cargo clippy --all-targets --all-features -- \
+  -D clippy::unwrap_used \
+  -D clippy::expect_used \
+  -D clippy::panic \
+  -D clippy::todo \
+  -D clippy::unimplemented \
+  -W clippy::missing_errors_doc
+
+# Forbid Box<dyn Error> in public function signatures (rule thiserror-for-lib).
+if grep -rn 'pub\s\+fn\b.*Box<dyn\s\+\(std::error::\)\?Error' src/; then
+  echo "ERROR: Box<dyn Error> in public API — use a typed error enum"
+  exit 1
+fi
+
+echo "Error handling checks passed."
 ```

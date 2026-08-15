@@ -1,7 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="GraphQL API Design Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+<text id="03-failure-modes" title="GraphQL API Design Failure Modes" version="1.1.0" est_tokens="1300" depth="essential">
+  <summary>7 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
   <section title="Antipatterns">
+    <antipattern id="scalar-mutation-return" severity="high">
+      <symptom>createOrder returns Boolean. Six months later the schema has no way to say which field failed validation, and adding one is a breaking change.</symptom>
+      <root-cause source="Practitioner experience">Author took the payload-type shortcut on the first mutation; every later mutation copied it.</root-cause>
+      <fix>Add CreateOrderPayload { order, userErrors }. Migrate clients, @deprecate the scalar return, remove it after the grace window. See rules mutation-error-union + user-errors-array.</fix>
+    </antipattern>
+    <antipattern id="business-errors-as-transport-errors" severity="high">
+      <symptom>"Insufficient balance" arrives in the top-level errors[] alongside a nil data field; the client has to parse error strings to tell a business rule from an outage.</symptom>
+      <root-cause source="Shopify + relay-style mutation conventions">The resolver raised an exception for an expected outcome, so the transport layer reported it.</root-cause>
+      <fix>Return the payload with userErrors populated and data null; reserve raised errors for genuinely unexpected failures. See rule user-errors-array.</fix>
+    </antipattern>
+    <antipattern id="inline-auth-drift" severity="high">
+      <symptom>Each resolver performs its own scope check; an audit finds two resolvers with no check at all.</symptom>
+      <root-cause source="Practitioner experience">No centralised authorization model — the policy lived in whichever resolver the author remembered to edit.</root-cause>
+      <fix>Move the policy to an @auth directive in the SDL. Run a coverage script listing every protected field; a reviewer signs off on directive coverage before merge. See rule authorization-via-directives.</fix>
+    </antipattern>
+    <antipattern id="raw-scalar-id" severity="medium">
+      <symptom>Relation author: User resolves against an int id leaked from Postgres; the later migration to UUID breaks every client.</symptom>
+      <root-cause source="Practitioner experience">Storage detail leaked into the schema because the resolver returned the column verbatim.</root-cause>
+      <fix>Wrap in a Relay opaque global ID; the server decodes it and the storage type stays invisible. See rule opaque-ids-for-relations.</fix>
+    </antipattern>
     <antipattern id="missing-permission-classes" severity="high">
       <symptom>New Query/Mutation field ships without permission_classes; data silently exposed.</symptom>
       <root-cause source="Internal — permission audit">Author forgot to declare permission; no enforced gate.</root-cause>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Rust Ownership Output Contract" version="1.1.0" est_tokens="800" depth="essential">
+<text id="02-output-contract" title="Rust Ownership Output Contract" version="1.2.0" est_tokens="1000" depth="essential">
   <summary>JSON Schema for per-function ownership decision records.</summary>
 
   <section title="Decision-record schema">
@@ -28,6 +28,16 @@
         "lifetime":   {"type": "string", "pattern": "^('[a-z_]+|elided)$"}
       }
     },
+    "crate_audit": {
+      "type": "object",
+      "description": "Crate-level result of templates/audit-clones.sh.",
+      "required": ["audited", "clone_count", "rc_refcell_in_multi_thread"],
+      "properties": {
+        "audited":                    {"type": "boolean", "const": true},
+        "clone_count":                {"type": "integer", "minimum": 0},
+        "rc_refcell_in_multi_thread": {"type": "boolean", "const": false}
+      }
+    },
     "version":       {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
     "last_reviewed": {"type": "string", "format": "date"}
   }
@@ -41,6 +51,7 @@
   "function": "src::store::Store::load",
   "answers": {"keeps_value": false, "modifies_value": false, "shares_across_threads": false},
   "signature": {"param_kind": "shared-ref", "lifetime": "elided"},
+  "crate_audit": {"audited": true, "clone_count": 14, "rc_refcell_in_multi_thread": false},
   "version": "1.0.0",
   "last_reviewed": "2026-05-22"
 }
@@ -52,12 +63,24 @@
 {
   "function": "load",
   "answers": {"keeps_value": "yes"},
-  "signature": {"param_kind": "rc-refcell-deep"}
+  "signature": {"param_kind": "rc-refcell-deep"},
+  "crate_audit": {"audited": false, "rc_refcell_in_multi_thread": true}
 }
 ]]></code>
-    <note>answers.keeps_value must be boolean; param_kind must be in enum; missing modifies_value, shares_across_threads, version, last_reviewed.</note>
+    <note>answers.keeps_value must be boolean; param_kind must be in enum; crate_audit.audited must be true and rc_refcell_in_multi_thread must be false, with clone_count present; missing modifies_value, shares_across_threads, version, last_reviewed.</note>
   </example>
 
+  <section title="Forbidden patterns">
+    <list>
+      <item>`Rc&lt;T&gt;` or `Rc&lt;RefCell&lt;T&gt;&gt;` captured across a thread or task boundary.</item>
+      <item>A `.clone()` present only to satisfy the borrow checker, with no stated justification.</item>
+      <item>Ownership handed onward by cloning instead of moving.</item>
+      <item>`'static` added to a signature purely to silence a lifetime error.</item>
+      <item>A crate_audit block with `audited: false` — an unrun audit is not a result.</item>
+    </list>
+  </section>
+
   <reference path="templates/ownership-audit-comment.tmpl.rs">Comment template above signatures</reference>
+  <reference path="templates/audit-clones.sh">Crate-level clone audit script</reference>
   <reference path="scripts/validate-rust-ownership.py">Validator</reference>
 </text>

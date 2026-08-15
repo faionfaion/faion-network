@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="05-examples" title="GraphQL API Design Worked Example" version="1.0.0" est_tokens="700" depth="reference">
-  <summary>End-to-end worked example applying the methodology to a representative input. Output matches the schema in content/02-output-contract.xml.</summary>
+<text id="05-examples" title="GraphQL API Design Worked Examples" version="1.1.0" est_tokens="1200" depth="reference">
+  <summary>Two end-to-end worked examples applying the methodology — a multi-client dashboard and a payment mutation with userErrors and @auth. Output matches the schema in content/02-output-contract.xml.</summary>
   <section title="Trace">
     <paragraph>Need: dashboard with org/user/orders, web+mobile clients. → New GraphQL service. → Design SDL with Relay pagination on orders. → Add OrganizationLoader and OrdersByUserLoader, per-request in context. → permission_classes=[IsOrgMember] on every org-scoped resolver. → QueryDepthLimiter(10) + QueryComplexityExtension(200).</paragraph>
   </section>
@@ -18,7 +18,29 @@
 }
 ]]></code>
   </section>
+  <section title="Second example — payment mutation with userErrors and @auth">
+    <paragraph>The payments aggregate ships createPayment(input: CreatePaymentInput!): CreatePaymentPayload @auth(scope: PAYMENTS_WRITE). CreatePaymentPayload carries { payment: Payment, userErrors: [UserError!]! }, and UserError carries { field, message, code } — so "insufficient balance" arrives as a userError, not as a transport error. Payment.author resolves to User through an opaque global ID (gid://app/User/abc) rather than the Postgres integer. Paginated lists use PaymentConnection. The schema diff gate is green and the @auth coverage report shows 100% on mutations and sensitive fields. The legacy Boolean-returning createPayment is migrated by field deprecation with removal targeted at v2.0.</paragraph>
+  </section>
+  <section title="Second example — resulting artefact">
+    <code lang="json"><![CDATA[
+{
+  "schema_file": "schema/payments.graphql",
+  "pagination_style": "relay_cursor",
+  "auth_strategy": "directives",
+  "limits": {
+    "max_depth": 10,
+    "max_complexity": 200
+  },
+  "dataloader_per_request": true,
+  "payload_types_present": true,
+  "non_payload_mutations": 0,
+  "user_errors_array_present": true,
+  "scalar_id_relations": 0,
+  "naming_deviations": 0
+}
+]]></code>
+  </section>
   <section title="Decision path applied">
-    <paragraph>The decision tree in content/06-decision-tree.xml routed this input to the recommended action. Each rule referenced by the conclusion is listed in content/01-core-rules.xml.</paragraph>
+    <paragraph>The decision tree in content/06-decision-tree.xml routed both inputs to the recommended action: the shape gates checked mutation payloads, userErrors, directive-declared auth, Connection naming and opaque IDs in that order before reaching the approve leaf. Each rule referenced by the conclusions is listed in content/01-core-rules.xml.</paragraph>
   </section>
 </text>

@@ -1,32 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="GraphQL API Design Procedure" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>5-step procedure applying the graphql-api-design methodology end-to-end. Each step lists inputs, action, output, and optional decision gate.</summary>
+<text id="04-procedure" title="GraphQL API Design Procedure" version="1.1.0" est_tokens="1300" depth="essential">
+  <summary>8-step procedure applying the graphql-api-design methodology end-to-end. Each step lists inputs, action, output, and optional decision gate.</summary>
   <section title="Procedure">
-    <step n="1" name="design-sdl">
-      <input>Domain entity model + client query mock list</input>
-      <action>Write SDL: types, interfaces (Node, Timestamped), Relay connections, payload+errors. Run graphql-schema-linter.</action>
-      <output>schema.graphql draft</output>
+    <step n="1" name="model-aggregates-and-types">
+      <input>Domain entity model</input>
+      <action>Map each aggregate to a type using singular nouns (User, Order). Add the Node interface wherever federation or polymorphism applies.</action>
+      <output>Type list</output>
     </step>
-    <step n="2" name="breaking-change-check">
+    <step n="2" name="design-sdl">
+      <input>Type list + client query mock list</input>
+      <action>Write SDL: types, interfaces (Node, Timestamped), Relay connections, payload+errors. For every mutation define &lt;Name&gt;Input and &lt;Name&gt;Payload { entity, userErrors } and document the partial-success cases. Run graphql-schema-linter.</action>
+      <output>schema.graphql draft</output>
+      <decision-gate>Any mutation returning a scalar blocks the step — rule mutation-error-union.</decision-gate>
+    </step>
+    <step n="3" name="author-auth-directives">
+      <input>Authorization policy (roles → fields)</input>
+      <action>Define the @auth(scope: ENUM_VALUE) directive (or the equivalent permission class) and apply it to every field and mutation touching auth-scoped data. Record which scope guards which resource.</action>
+      <output>Auth directive map</output>
+      <decision-gate>If a scope does not apply uniformly to every field of a type, split the type — one scope per field is the only reviewable shape.</decision-gate>
+    </step>
+    <step n="4" name="breaking-change-check">
       <input>schema.graphql draft + origin/main schema</input>
       <action>Run graphql-inspector diff with --fail-on-breaking. If breaking, justify or use @deprecated instead.</action>
       <output>non-breaking diff or justified breaking change</output>
       <decision-gate>Reject if breaking without explicit override.</decision-gate>
     </step>
-    <step n="3" name="scaffold-resolvers">
+    <step n="5" name="scaffold-resolvers">
       <input>schema.graphql + repository layer</input>
       <action>Generate resolvers + DataLoaders + permission_classes. Loaders live in get_context(), never at module scope.</action>
       <output>resolvers/*.py with DataLoader wiring</output>
     </step>
-    <step n="4" name="apply-limits">
+    <step n="6" name="apply-limits">
       <input>schema + traffic histograms (if available)</input>
       <action>Wire QueryDepthLimiter(max=10) + QueryComplexityExtension(max=200). Tune from histograms post-launch.</action>
       <output>schema.py with extensions</output>
     </step>
-    <step n="5" name="contract-test">
+    <step n="7" name="audit-naming">
+      <input>Schema draft + naming policy</input>
+      <action>Walk every type. Verify Connection/Edge/PageInfo on paginated lists, &lt;Name&gt;Input on mutation arguments, &lt;Name&gt;Payload on mutation results, and opaque IDs on every relation.</action>
+      <output>naming-audit.json with zero deviations</output>
+      <decision-gate>Any deviation blocks — rules naming-conventions-enforced + opaque-ids-for-relations.</decision-gate>
+    </step>
+    <step n="8" name="contract-test">
       <input>Schema + permission audit list</input>
-      <action>Add a permission audit test (grep for Mutation/Query without permission_classes) + N+1 integration test.</action>
-      <output>Test suite green</output>
+      <action>Add a permission audit test (every Mutation/Query field carries a directive or permission_classes) + an N+1 integration test. Run validate-graphql-api-design.py and open the PR with the schema, the auth map and the naming audit.</action>
+      <output>Test suite green + approved design spec</output>
     </step>
   </section>
 </text>

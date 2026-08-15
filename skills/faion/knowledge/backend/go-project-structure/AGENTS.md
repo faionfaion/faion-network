@@ -45,11 +45,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + skip rule | ~1100 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | Antipatterns (symptom / root-cause / fix) | ~900 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | ~900 |
-| `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~700 |
+| `content/01-core-rules.xml` | essential | 12 testable rules (layout, thin cmd, no cycles, Makefile orchestration, clean top level, shutdown, run + skip leaves) | ~1600 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns + allowed transformations | ~1100 |
+| `content/03-failure-modes.xml` | essential | 11 antipatterns (symptom / root-cause / fix), incl. the agent-specific ones | ~1500 |
+| `content/04-procedure.xml` | essential | 8-step procedure end-to-end incl. Makefile authoring + import-boundary enforcement | ~1200 |
+| `content/06-decision-tree.xml` | essential | Root question + 11 blocking-gate branches → conclusion(ref=rule-id) | ~900 |
 
 ## Task Routing
 
@@ -66,6 +66,7 @@
 | `templates/Dockerfile` | Multi-stage distroless Dockerfile for Go services |
 | `templates/Makefile` | Build / run / test / lint / tidy targets |
 | `templates/new-resource.sh` | Scaffold handler/service/repository/model for a new resource |
+| `templates/scaffold-go.sh` | Bootstrap the whole tree: cmd/, internal/, pkg/, migrations/, go.mod |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -244,4 +245,44 @@ func (s *${T}Service) Create(ctx context.Context, x *m.${T}) error {
 EOF
 
 echo "Scaffolded ${N} across model/repository/service. Add handler + routes manually."
+```
+
+### `templates/scaffold-go.sh`
+
+```bash
+# faion_header_json: {"__faion_header__":{"purpose":"Bootstrap the standard Go tree — cmd/, internal/, pkg/, migrations/, Makefile, go.mod","consumes":"module path + binary names","produces":"code","depends_on":"content/04-procedure.xml + content/01-core-rules.xml#cmd-internal-default","token_budget_impact":"~340 tokens when loaded as context"}}
+# Usage: ./scaffold-go.sh github.com/org/name api worker
+set -euo pipefail
+
+MOD="${1:?module path required (e.g. github.com/org/name)}"
+shift
+BINS=("$@")
+if [[ ${#BINS[@]} -eq 0 ]]; then
+  BINS=("api")
+fi
+
+mkdir -p api deployments docs migrations pkg
+
+for bin in "${BINS[@]}"; do
+  mkdir -p "cmd/$bin"
+  cat > "cmd/$bin/main.go" <<GOEOF
+package main
+
+import "log"
+
+// Keep this thin: flags, config, wiring, app.Run(ctx). No business logic.
+func main() {
+	log.Println("$bin: starting")
+}
+GOEOF
+done
+
+for pkg in config database handler middleware model repository service shared; do
+  mkdir -p "internal/$pkg"
+done
+
+go mod init "$MOD"
+gofmt -w . 2>/dev/null || true
+
+echo "scaffold ready: $MOD | binaries: ${BINS[*]}"
 ```

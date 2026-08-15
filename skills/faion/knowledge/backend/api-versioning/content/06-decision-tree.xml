@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="API Versioning Decision Tree" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from content/01-core-rules.xml. The skip-this-methodology branch is always reachable.</summary>
+<text id="06-decision-tree" title="API Versioning Decision Tree" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>Two routing trees mapping observable signals to a rule from content/01-core-rules.xml: the breaking/additive classifier that decides whether to version at all, and the scheme classifier that decides how the version is carried. The skip-this-methodology branch is always reachable.</summary>
   <decision-tree>
     <root-question id="q-root">Is the pending change a breaking semantic change?</root-question>
     <branch when="change_kind == additive">
@@ -16,7 +16,71 @@
       <conclusion ref="url-path-default" verdict="create vN+1 in a separate module; mark vN deprecated"/>
     </branch>
   </decision-tree>
+
+  <section title="Breaking-vs-additive classifier">
+    <p>Run this before the root question above; it is what produces change_kind. Any single breaking signal makes the whole change breaking — signals do not average out.</p>
+    <decision-tree>
+      <root-question id="q-classify">Which signals does the spec diff carry?</root-question>
+      <branch when="field_removed OR field_renamed">
+        <conclusion ref="breaking-change-classifier" verdict="change_kind=breaking; major bump"/>
+      </branch>
+      <branch when="optional_field_became_required OR validation_tightened">
+        <conclusion ref="breaking-change-classifier" verdict="change_kind=breaking; major bump — this is the case most often misread as additive"/>
+      </branch>
+      <branch when="status_code_removed OR status_code_renamed OR response_shape_changed">
+        <conclusion ref="breaking-change-classifier" verdict="change_kind=breaking; major bump"/>
+      </branch>
+      <branch when="optional_field_added OR endpoint_added">
+        <conclusion ref="additive-first" verdict="change_kind=additive; minor bump, no deprecation window"/>
+      </branch>
+      <branch when="description_or_example_only">
+        <conclusion ref="additive-first" verdict="change_kind=docs-only; patch bump"/>
+      </branch>
+    </decision-tree>
+  </section>
+
+  <section title="Version-scheme classifier">
+    <p>Runs once per API, not once per change. Once the scheme is chosen it is recorded in info.x-versioning and never mixed with another.</p>
+    <decision-tree>
+      <root-question id="q-scheme">Who consumes the API and how strictly do they negotiate content?</root-question>
+      <branch when="version_carried_in_request_body">
+        <conclusion ref="no-version-in-payload" verdict="verdict=fail; move the version out of the body before choosing a scheme"/>
+      </branch>
+      <branch when="scheme_varies_across_endpoints">
+        <conclusion ref="one-scheme-per-api" verdict="verdict=fail; pick one scheme and enforce it with a Spectral rule"/>
+      </branch>
+      <branch when="audience == public_or_b2c">
+        <conclusion ref="url-path-default" verdict="scheme=url-path; cache-friendly and debuggable in the address bar"/>
+      </branch>
+      <branch when="audience == b2b AND content_negotiation == strict">
+        <conclusion ref="one-scheme-per-api" verdict="scheme=accept-header (application/vnd.example.vN+json)"/>
+      </branch>
+      <branch when="audience == internal_control_plane">
+        <conclusion ref="one-scheme-per-api" verdict="scheme=header-key; keeps the public URL surface stable"/>
+      </branch>
+    </decision-tree>
+  </section>
+
+  <section title="Deprecation-window gate">
+    <p>Applies only after the classifier returned change_kind=breaking and a vN+1 was decided.</p>
+    <decision-tree>
+      <root-question id="q-window">Is the declared deprecation window long enough for this audience?</root-question>
+      <branch when="audience == public AND window_days &lt; 90">
+        <conclusion ref="deprecation-window-declared" verdict="verdict=fail; extend the window to &gt;= 90 days"/>
+      </branch>
+      <branch when="audience == internal AND window_days &lt; 30">
+        <conclusion ref="deprecation-window-declared" verdict="verdict=fail; extend the window to &gt;= 30 days"/>
+      </branch>
+      <branch when="window_ok">
+        <conclusion ref="deprecation-headers" verdict="verdict=pass; emit Deprecation/Sunset/Link and ship the plan"/>
+      </branch>
+    </decision-tree>
+  </section>
+
   <example trace="api-versioning-typical">
     openapi diff shows 1 BREAKING (removed field email_verified) → decision=vN+1 → copy /api/v1/users handler to /api/v2/users with the field removed → mark v1 route deprecated in ops/sunset.yaml → measure traffic → 410 Gone on sunset date → delete handler after 30d zero traffic.
+  </example>
+  <example trace="api-versioning-required-field">
+    POST /charges gains a required amount field → classifier branch optional_field_became_required → change_kind=breaking → scheme classifier: public audience → url-path → v1→v2 → window 180 days &gt;= 90 → pass; sunset_date = today + 180.
   </example>
 </text>

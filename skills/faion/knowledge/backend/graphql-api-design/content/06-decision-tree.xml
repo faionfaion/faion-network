@@ -1,13 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="GraphQL API Design Decision Tree" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from content/01-core-rules.xml. The skip-this-methodology branch is always reachable.</summary>
+<text id="06-decision-tree" title="GraphQL API Design Decision Tree" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from content/01-core-rules.xml. The first branches route the protocol choice; the rest are blocking schema-shape gates walked in order. The skip-this-methodology branch is always reachable.</summary>
   <decision-tree>
     <root-question id="q-root">Is the use case multi-client with nested reads or single-client CRUD?</root-question>
+    <branch when="protocol != graphql">
+      <conclusion ref="skip-this-methodology" verdict="not GraphQL; this methodology does not apply"/>
+    </branch>
     <branch when="use_case == cacheable_public_read">
       <conclusion ref="skip-this-methodology" verdict="use REST + CDN; load api-rest-design"/>
     </branch>
     <branch when="use_case == single_client_crud">
       <conclusion ref="skip-this-methodology" verdict="use REST; GraphQL overhead not paid back"/>
+    </branch>
+    <branch when="types_count &lt; 5 AND auth_model == flat">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — convention overhead exceeds the value on a thin single-aggregate facade"/>
     </branch>
     <branch when="use_case == multi_client_nested">
       <conclusion ref="schema-first" verdict="design SDL first, then resolvers"/>
@@ -15,8 +21,32 @@
     <branch when="use_case == federation_supergraph">
       <conclusion ref="schema-first" verdict="design subgraph SDL, run rover subgraph check before merge"/>
     </branch>
+    <branch when="mutation_returns_scalar == true">
+      <conclusion ref="mutation-error-union" verdict="BLOCK — emit a &lt;MutationName&gt;Payload instead of a Boolean or ID"/>
+    </branch>
+    <branch when="business_failures_raised_as_graphql_errors == true">
+      <conclusion ref="user-errors-array" verdict="BLOCK — move validation and business-rule failures into userErrors[]"/>
+    </branch>
+    <branch when="resolver_has_inline_auth == true">
+      <conclusion ref="authorization-via-directives" verdict="BLOCK — declare the policy as an @auth directive or permission class"/>
+    </branch>
+    <branch when="paginated_list_not_connection == true">
+      <conclusion ref="naming-conventions-enforced" verdict="BLOCK — wrap the list in Connection/Edge/PageInfo"/>
+    </branch>
+    <branch when="relation_uses_scalar_id == true">
+      <conclusion ref="opaque-ids-for-relations" verdict="BLOCK — expose a Relay opaque global ID"/>
+    </branch>
+    <branch when="all_gates_green == true">
+      <conclusion ref="run-the-checklist" verdict="APPROVE — design spec ready; run the validator and open the PR"/>
+    </branch>
+    <branch when="preconditions_unmet == true">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — preconditions in Applies-If not met"/>
+    </branch>
   </decision-tree>
   <example trace="graphql-api-design-typical">
     Need: dashboard with org/user/orders, web+mobile clients. → New GraphQL service. → Design SDL with Relay pagination on orders. → Add OrganizationLoader and OrdersByUserLoader, per-request in context. → permission_classes=[IsOrgMember] on every org-scoped resolver. → QueryDepthLimiter(10) + QueryComplexityExtension(200).
+  </example>
+  <example trace="graphql-api-design-shape-gates">
+    18 types + 12 mutations → not a thin facade → no scalar mutation returns → business failures land in userErrors → @auth declared in SDL → every list is a Connection → relations use opaque IDs → APPROVE.
   </example>
 </text>

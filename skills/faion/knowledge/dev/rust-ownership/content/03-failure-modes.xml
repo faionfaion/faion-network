@@ -1,8 +1,20 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Rust Ownership Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
-  <summary>4 antipatterns: cloning to silence the checker, RefCell-as-default, str/String confusion, missing lifetimes on trait returns.</summary>
+<text id="03-failure-modes" title="Rust Ownership Failure Modes" version="1.2.0" est_tokens="1000" depth="essential">
+  <summary>6 antipatterns: cloning to silence the checker, RefCell-as-default, Rc across a spawn boundary, str/String confusion, missing lifetimes on trait returns, elided lifetimes on returned refs.</summary>
 
   <section title="Antipatterns">
+
+    <antipattern id="rc-refcell-across-spawn" severity="high">
+      <symptom>`Rc&lt;RefCell&lt;State&gt;&gt;` is moved into `tokio::spawn`; the compiler rejects it with "`Rc&lt;RefCell&lt;State&gt;&gt;` cannot be sent between threads safely", and the author starts restructuring until the bound disappears.</symptom>
+      <root-cause source="v1-source + faion-net curation">`Rc` and `RefCell` are `!Send` + `!Sync` — the refcount and the borrow flag are non-atomic. The type was chosen for single-threaded sharing and then the code grew an async task.</root-cause>
+      <fix>Switch to `Arc&lt;Mutex&lt;T&gt;&gt;` or `Arc&lt;RwLock&lt;T&gt;&gt;` at the point the value crosses the boundary — never paper over the bound with an `unsafe impl Send`. See rule arc-mutex-across-threads.</fix>
+    </antipattern>
+
+    <antipattern id="elided-lifetime-on-returned-ref" severity="medium">
+      <symptom>`fn get(&amp;self) -&gt; &amp;T` compiles for the author but every consumer fights lifetime errors at the call site, because elision tied the return to the wrong input.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author relied on elision for a signature with more than one candidate input lifetime; the rule picked `&amp;self`, which is not what the data actually borrows from.</root-cause>
+      <fix>Write the lifetime explicitly and comment which value outlives which. See rule lifetime-elision-or-explicit.</fix>
+    </antipattern>
 
     <antipattern id="clone-everywhere" severity="high">
       <symptom>`.clone()` appears on every line of a function. Profiler shows the function spends 40% of CPU in `String::clone`.</symptom>

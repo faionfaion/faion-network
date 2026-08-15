@@ -22,7 +22,8 @@ import sys
 from pathlib import Path
 
 REQUIRED: tuple[str, ...] = ('envelope_version', 'heartbeat_seconds', 'reconnect', 'fanout',)
-ENUMS: dict[str, list] = {'fanout': ['redis_pubsub', 'nats', 'kafka'], 'auth_method': ['ticket', 'signed_cookie']}
+ENUMS: dict[str, list] = {'fanout': ['redis_pubsub', 'nats', 'kafka'], 'auth_method': ['ticket', 'signed_cookie'], 'send_queue_shed_policy': ['drop_oldest', 'drop_newest', 'close_1008']}
+MAX_AUTH_TTL_SECONDS = 300
 
 
 def validate(obj: object) -> list[str]:
@@ -35,11 +36,23 @@ def validate(obj: object) -> list[str]:
     for k, allowed in ENUMS.items():
         if k in obj and obj[k] not in allowed:
             errs.append(f"field {k!r} not in allowed values {allowed!r}; got {obj[k]!r}")
+
+    ttl = obj.get("auth_ttl_seconds")
+    if isinstance(ttl, int) and ttl > MAX_AUTH_TTL_SECONDS:
+        errs.append(
+            f"auth_ttl_seconds must be <= {MAX_AUTH_TTL_SECONDS} (short-lived-token-auth); got {ttl}"
+        )
+    # A bounded queue with no declared shed policy is the unbounded case in disguise.
+    if "send_queue_cap" in obj and "send_queue_shed_policy" not in obj:
+        errs.append("send_queue_cap without send_queue_shed_policy (bounded-send-queue)")
+    schemas = obj.get("message_schemas")
+    if isinstance(schemas, dict) and not schemas:
+        errs.append("message_schemas is empty; every message type needs one (schema-validated-per-type)")
     return errs
 
 
-OK = {'envelope_version': 1, 'heartbeat_seconds': 25, 'reconnect': {'strategy': 'full_jitter_exponential', 'cap_ms': 30000, 'max_attempts': 8}, 'fanout': 'redis_pubsub', 'auth_method': 'ticket', 'send_queue_cap': 100}
-BAD = {'heartbeat_seconds': 300, 'reconnect': {'strategy': 'linear'}}
+OK = {'envelope_version': 1, 'heartbeat_seconds': 25, 'reconnect': {'strategy': 'full_jitter_exponential', 'cap_ms': 30000, 'max_attempts': 8}, 'fanout': 'redis_pubsub', 'auth_method': 'ticket', 'auth_ttl_seconds': 300, 'send_queue_cap': 100, 'send_queue_shed_policy': 'drop_oldest', 'message_schemas': {'chat.message': {'required': ['text', 'from']}}, 'close_codes': [1000, 1001, 1008, 1009]}
+BAD = {'heartbeat_seconds': 300, 'reconnect': {'strategy': 'linear'}, 'auth_ttl_seconds': 86400, 'send_queue_cap': 100}
 
 
 def self_test() -> int:

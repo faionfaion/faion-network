@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="GraphQL API Design Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the graphql-api-design methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
+<text id="01-core-rules" title="GraphQL API Design Core Rules" version="1.1.0" est_tokens="1800" depth="essential">
+  <summary>12 testable rules grounding the graphql-api-design methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
     <rule id="schema-first" testable="true" depth="essential">
       <statement>Edit the SDL before resolver code; the SDL diff is what humans review.</statement>
@@ -23,12 +23,32 @@
       <rationale source="Strawberry docs + escape.tech checklist">Auth checks scattered in business logic are forgotten on new fields; a per-resolver gate catches missing auth before merge.</rationale>
     </rule>
     <rule id="mutation-error-union" testable="true" depth="essential">
-      <statement>Mutations return a typed payload with a union of success type and typed error types; errors[] is reserved for unexpected failures.</statement>
-      <rationale source="GraphQL best practices + Shopify schema design">Union types make expected failures explicit and force clients to handle them; untyped errors[] signals a bug, not a business rule.</rationale>
+      <statement>Every mutation returns a typed &lt;MutationName&gt;Payload carrying the result entity plus a union of typed error types; errors[] is reserved for unexpected failures. Scalar returns (Boolean, ID) from a mutation are forbidden.</statement>
+      <rationale source="GraphQL best practices + Shopify + GitHub schema design">Union types make expected failures explicit and force clients to handle them; untyped errors[] signals a bug, not a business rule. A payload type also lets you add fields later, which a scalar return can never do without breaking every client.</rationale>
+    </rule>
+    <rule id="user-errors-array" testable="true" depth="essential">
+      <statement>Validation and business-rule failures are reported in a userErrors array on the payload; only system failures raise GraphQL errors. UserError carries at least field + message, plus an optional machine-readable code.</statement>
+      <rationale source="Shopify + relay-style mutation conventions">Mixing expected user errors into the transport-level errors[] forces every client to write two parallel error paths; one array with one shape collapses them into one.</rationale>
+    </rule>
+    <rule id="authorization-via-directives" testable="true" depth="essential">
+      <statement>Authorization is declared in the SDL — a directive such as @auth(scope: ADMIN) on fields and mutations, or an equivalent per-resolver permission class. Resolvers never inline ad-hoc authorization checks.</statement>
+      <rationale source="GraphQL community + Strawberry docs + practitioner experience">Inline checks drift across resolvers and are silently omitted on new fields; a declared policy is auditable from the schema alone and a coverage report can prove it.</rationale>
+    </rule>
+    <rule id="naming-conventions-enforced" testable="true" depth="essential">
+      <statement>Paginated lists return &lt;Type&gt;Connection { edges { node, cursor }, pageInfo }; mutation arguments are &lt;MutationName&gt;Input; mutation results are &lt;MutationName&gt;Payload. No deviations anywhere in the schema.</statement>
+      <rationale source="Relay spec">Predictable naming is what lets client codegen and downstream tooling work without a per-schema patch; a single deviation forces every consumer to special-case it.</rationale>
+    </rule>
+    <rule id="opaque-ids-for-relations" testable="true" depth="essential">
+      <statement>Relations expose id: ID! as a Relay opaque global ID (gid://app/Type/123), never a raw integer or database UUID. The server decodes; storage detail stays server-side.</statement>
+      <rationale source="Relay spec + GitHub conventions">Raw scalars leak the storage layer into the contract, so a later migration from int to UUID becomes a breaking schema change for every client.</rationale>
+    </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When the Applies-If preconditions hold and no Skip-If trigger fires, walk content/04-procedure.xml end-to-end and run the validator before declaring the design done.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory run leaf">Decision-tree leaves must reference a rule id; the run leaf maps "all gates green" onto the canonical execution path instead of an unnamed verdict.</rationale>
     </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>If the API is a cacheable public read API OR single-client CRUD OR file-upload-heavy, skip this methodology.</statement>
-      <rationale source="Skip-rule for B5.6 decision tree.">GraphQL overhead (DataLoader, depth/complexity, persisted queries) is not paid back outside multi-client, nested-read use cases.</rationale>
+      <statement>If the API is a cacheable public read API OR single-client CRUD OR file-upload-heavy OR the schema is a thin facade over one resource with a single flat auth flag, skip this methodology.</statement>
+      <rationale source="Skip-rule for B5.6 decision tree.">GraphQL overhead (DataLoader, depth/complexity, persisted queries, directive-based auth) is not paid back outside multi-client, multi-aggregate, nested-read use cases.</rationale>
     </rule>
   </section>
   <see-also>

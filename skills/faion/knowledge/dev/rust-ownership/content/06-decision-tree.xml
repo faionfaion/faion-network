@@ -1,9 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Rust Ownership Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
-  <summary>Routes 3-question answers to canonical parameter kind. Leaves reference rules from 01-core-rules.xml.</summary>
+<text id="06-decision-tree" title="Rust Ownership Decision Tree" version="1.2.0" est_tokens="900" depth="essential">
+  <summary>Routes 3-question answers to a canonical parameter kind, then walks the crate-level audit gates. Leaves reference rules from 01-core-rules.xml; the skip leaf is always reachable.</summary>
 
   <decision-tree>
     <root-question id="q-keeps">Does the function keep the value after returning (store / return / drop later)?</root-question>
+
+    <branch when="scope == throwaway_script OR scope == proc_macro OR scope == ffi_wrapper OR scope == generated_code OR scope == embedded_no_heap">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — signature-first ownership fights the ecosystem here"/>
+    </branch>
 
     <branch when="keeps_value == true">
       <question id="q-shared-owned">Does another scope also keep the value?</question>
@@ -31,6 +35,31 @@
       </branch>
     </branch>
   </decision-tree>
+
+  <section title="Crate-level audit gates">
+    <p>Walked once per crate, not once per signature — this is what the CI script checks.</p>
+    <decision-tree>
+      <root-question id="q-audit">What does the crate-wide audit surface?</root-question>
+      <branch when="rc_or_refcell_crosses_spawn == true">
+        <conclusion ref="arc-mutex-across-threads" verdict="BLOCK — replace with Arc&lt;Mutex&gt; / Arc&lt;RwLock&gt; at the boundary"/>
+      </branch>
+      <branch when="gratuitous_clone_present == true">
+        <conclusion ref="no-clone-as-shortcut" verdict="BLOCK — re-audit the signature; borrow or lift the value instead"/>
+      </branch>
+      <branch when="shared_and_exclusive_borrow_overlap == true">
+        <conclusion ref="borrow-rules-shared-or-exclusive" verdict="BLOCK — split the scope so the borrows do not overlap"/>
+      </branch>
+      <branch when="ownership_transferred_by_clone == true">
+        <conclusion ref="single-owner-clear" verdict="BLOCK — move the value instead of copying it"/>
+      </branch>
+      <branch when="missing_lifetime_param == true">
+        <conclusion ref="lifetime-elision-or-explicit" verdict="BLOCK — write the lifetime and name what outlives what"/>
+      </branch>
+      <branch when="all_gates_green == true">
+        <conclusion ref="clone-audit-in-ci" verdict="APPROVE — record the clone baseline and gate regressions on it"/>
+      </branch>
+    </decision-tree>
+  </section>
 
   <example trace="read-only-load">
     keeps_value=false (function reads file, returns parsed struct, drops input path) → modifies=false → `&amp;Path` parameter. Compare to `fn load(path: PathBuf)` antipattern in 03-failure-modes.xml str-vs-string-confusion.

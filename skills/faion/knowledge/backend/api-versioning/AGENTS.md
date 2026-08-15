@@ -43,12 +43,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules (incl. skip-this-methodology) with rationale + source | 1100 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden traits | 900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | 800 |
-| `content/04-procedure.xml` | essential | 5-step end-to-end procedure with input/action/output per step | 900 |
-| `content/05-examples.xml` | reference | One full worked example end-to-end with the trace and the resulting artefact | 700 |
-| `content/06-decision-tree.xml` | essential | Root question + observable branches → conclusion(ref=rule-id); skip leaf always reachable | 600 |
+| `content/01-core-rules.xml` | essential | 11 testable rules (incl. the breaking/additive classifier, the scheme rules and skip-this-methodology) with rationale + source | 1700 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid example + invalid example + forbidden patterns | 1000 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns with symptom + root-cause + fix | 1300 |
+| `content/04-procedure.xml` | essential | 6-step end-to-end procedure with input/action/output per step | 1100 |
+| `content/05-examples.xml` | reference | Two full worked examples end-to-end with the trace and the resulting artefact | 1100 |
+| `content/06-decision-tree.xml` | essential | Root tree + breaking/additive classifier + version-scheme classifier + window gate, each branch → conclusion(ref=rule-id); skip leaf always reachable | 1000 |
 
 ## Task Routing
 
@@ -62,8 +62,9 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/versioned_router.py` | FastAPI v1/v2 router scaffold with frozen v1 module |
+| `templates/versioned_router.py` | FastAPI v1/v2 router scaffold with frozen v1 module + Deprecation/Sunset/Link middleware |
 | `templates/oasdiff-ci.sh` | CI breaking-change gate: oasdiff diff + .changelog-pending enforcement |
+| `templates/spectral-rules.yaml` | Spectral ruleset: one scheme per API, /api/vN paths, no version in query or body |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -91,11 +92,27 @@ Bodies of the templates above that the packer does not ship as standalone files,
 
 ```python
 # faion_header_json: {"__faion_header__":{"purpose":"FastAPI v1/v2 router scaffold with frozen v1 module","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#additive-first","token_budget_impact":"~150 tokens when loaded"}}
-from fastapi import FastAPI, APIRouter
+from fastapi import APIRouter, FastAPI, Request, Response
+from starlette.middleware.base import BaseHTTPMiddleware
+
+DEPRECATED_AT = "Wed, 01 Jan 2026 00:00:00 GMT"
+SUNSET_AT = "Wed, 01 Jul 2026 00:00:00 GMT"  # >= 90 days after DEPRECATED_AT
 
 app = FastAPI()
 v1_router = APIRouter(prefix="/api/v1")
 v2_router = APIRouter(prefix="/api/v2")
+
+
+class V1DeprecationMiddleware(BaseHTTPMiddleware):
+    """Inject RFC 8594 deprecation headers on every /api/v1/* response."""
+
+    async def dispatch(self, request: Request, call_next):
+        response: Response = await call_next(request)
+        if request.url.path.startswith("/api/v1/"):
+            response.headers["Deprecation"] = DEPRECATED_AT
+            response.headers["Sunset"] = SUNSET_AT
+            response.headers["Link"] = '</api/v2>; rel="successor-version"'
+        return response
 
 
 @v1_router.get("/users", tags=["Users v1"])
@@ -108,8 +125,52 @@ async def get_users_v2():
     return {"data": {"users": []}, "meta": {}}
 
 
+app.add_middleware(V1DeprecationMiddleware)
 app.include_router(v1_router)
 app.include_router(v2_router)
+```
+
+### `templates/spectral-rules.yaml`
+
+```yaml
+# faion_header_json: {"__faion_header__":{"purpose":"Spectral ruleset enforcing one-scheme-per-api, url-path default and no body-carried version","consumes":"openapi.yaml","produces":"spec","depends_on":"content/01-core-rules.xml#one-scheme-per-api","token_budget_impact":"~330 tokens when loaded as context"}}
+extends: ["spectral:oas"]
+
+rules:
+  url-version-prefix:
+    description: All paths must start with /api/vN/ (rule url-path-default)
+    severity: error
+    given: "$.paths.*~"
+    then:
+      function: pattern
+      functionOptions:
+        match: "^/api/v[0-9]+/"
+
+  no-query-param-versioning:
+    description: Never carry the version in a query parameter (rule url-path-default)
+    severity: error
+    given: "$.paths.*.*.parameters[?(@.in == 'query')]"
+    then:
+      field: "name"
+      function: pattern
+      functionOptions:
+        notMatch: "^(version|v|api_version)$"
+
+  no-version-in-payload:
+    description: Never carry the version in the request body (rule no-version-in-payload)
+    severity: error
+    given: "$.paths.*.*.requestBody.content.*.schema.properties"
+    then:
+      field: "version"
+      function: falsy
+
+  scheme-declared-once:
+    description: The chosen scheme must be recorded in info.x-versioning (rule one-scheme-per-api)
+    severity: error
+    given: "$.info"
+    then:
+      field: "x-versioning"
+      function: truthy
 ```
 
 ### `templates/oasdiff-ci.sh`

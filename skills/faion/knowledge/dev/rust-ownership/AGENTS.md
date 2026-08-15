@@ -45,11 +45,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 rules: answer-3-questions, prefer-borrow, mut-only-if-needed, no-rc-refcell-default, arc-only-for-thread-share, lifetime-elision-or-explicit | 1100 |
-| `content/02-output-contract.xml` | essential | JSON Schema for per-function ownership decision record | 800 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns: clone-everywhere, rc-refcell-as-default, str-vs-string-confusion, missing-lifetime-on-trait-return | 700 |
-| `content/04-procedure.xml` | essential | 5-step procedure per function: list callers → answer 3Q → write signature → check → commit | 700 |
-| `content/06-decision-tree.xml` | essential | Routing: consumed? → shared? → mutated? → owned vs &T vs &mut T vs Arc | 500 |
+| `content/01-core-rules.xml` | essential | 11 rules: single-owner-clear, borrow-rules-shared-or-exclusive, answer-3-questions, prefer-borrow, mut-only-if-needed, no-rc-refcell-default, arc-only-for-thread-share, arc-mutex-across-threads, no-clone-as-shortcut, lifetime-elision-or-explicit, clone-audit-in-ci (+ skip leaf) | 1700 |
+| `content/02-output-contract.xml` | essential | JSON Schema for per-function ownership decision record + crate_audit block + forbidden patterns | 1000 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: rc-refcell-across-spawn, elided-lifetime-on-returned-ref, clone-everywhere, rc-refcell-as-default, str-vs-string-confusion, missing-lifetime-on-trait-return | 1000 |
+| `content/04-procedure.xml` | essential | 5-step per-function procedure (list callers → answer 3Q → signature → check → record) + 3 crate-level steps (clone audit → Rc-across-threads sweep → CI gate) | 1000 |
+| `content/06-decision-tree.xml` | essential | Routing: skip leaf → consumed? → shared? → mutated? → owned vs &T vs &mut T vs Arc, plus 6 crate-level audit gates | 900 |
 
 ## Task Routing
 
@@ -65,6 +65,7 @@
 | File | Purpose |
 |------|---------|
 | `templates/ownership-audit-comment.tmpl.rs` | 3-line comment template documenting the audit answers above each pub fn |
+| `templates/audit-clones.sh` | Crate-level audit: clippy clone lints, clone-count baseline, Rc/RefCell-across-spawn scan |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -98,4 +99,31 @@ Bodies of the templates above that the packer does not ship as standalone files,
 pub fn example(input: &str) -> usize {
     input.len()
 }
+```
+
+### `templates/audit-clones.sh`
+
+```bash
+#!/usr/bin/env bash
+# Usage: bash scripts/audit-clones.sh
+set -euo pipefail
+
+cargo clippy --all-targets -- \
+  -W clippy::needless_clone \
+  -W clippy::redundant_clone \
+  -W clippy::clone_on_copy \
+  -W clippy::implicit_clone 2>&1 | tee target/clippy-clones.txt
+
+echo "--- Clone call count in src/ ---"
+grep -rn '\.clone()\|\.to_string()\|\.to_owned()' src/ | wc -l
+
+# Rc / RefCell are !Send + !Sync — flag any file that both uses them and spawns.
+echo "--- Files using Rc/RefCell that also spawn ---"
+for f in $(grep -rl 'Rc<\|RefCell<' src/ || true); do
+  if grep -q 'thread::spawn\|tokio::spawn\|rayon::' "$f"; then
+    echo "  $f  (see rule arc-mutex-across-threads)"
+  fi
+done
+
+echo "--- clippy-clones.txt written to target/ ---"
 ```

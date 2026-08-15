@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="WebSocket Design Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+<text id="02-output-contract" title="WebSocket Design Output Contract" version="1.1.0" est_tokens="1200" depth="essential">
   <summary>JSON Schema (draft-07) for the spec artefact this methodology produces. Validator in scripts/validate-websocket-design.py enforces required keys, enum bounds, and pattern constraints.</summary>
   <section title="Schema">
     <code lang="json"><![CDATA[
@@ -61,10 +61,33 @@
         "signed_cookie"
       ]
     },
+    "auth_ttl_seconds": {
+      "type": "integer",
+      "minimum": 30,
+      "maximum": 300
+    },
     "send_queue_cap": {
       "type": "integer",
       "minimum": 1,
       "maximum": 1000
+    },
+    "send_queue_shed_policy": {
+      "enum": [
+        "drop_oldest",
+        "drop_newest",
+        "close_1008"
+      ]
+    },
+    "message_schemas": {
+      "type": "object",
+      "description": "One JSON schema per message type (rule schema-validated-per-type)."
+    },
+    "close_codes": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      },
+      "description": "RFC 6455 codes this service emits (rule close-code-truthful)."
     }
   }
 }
@@ -82,10 +105,26 @@
   },
   "fanout": "redis_pubsub",
   "auth_method": "ticket",
-  "send_queue_cap": 100
+  "auth_ttl_seconds": 300,
+  "send_queue_cap": 100,
+  "send_queue_shed_policy": "drop_oldest",
+  "message_schemas": {
+    "chat.message": {
+      "required": [
+        "text",
+        "from"
+      ]
+    }
+  },
+  "close_codes": [
+    1000,
+    1001,
+    1008,
+    1009
+  ]
 }
 ]]></code>
-    <note>All required keys present; enums and patterns satisfied.</note>
+    <note>All required keys present; enums and patterns satisfied; the ticket TTL is inside the 5-minute ceiling and every message type carries a schema.</note>
   </example>
   <example valid="false">
     <code lang="json"><![CDATA[
@@ -93,10 +132,24 @@
   "heartbeat_seconds": 300,
   "reconnect": {
     "strategy": "linear"
-  }
+  },
+  "auth_method": "signed_cookie",
+  "auth_ttl_seconds": 86400
 }
 ]]></code>
-    <note>Forbidden traits: Missing fanout; heartbeat_seconds out of range; reconnect.strategy not const full_jitter_exponential.</note>
+    <note>Forbidden traits: Missing fanout; heartbeat_seconds out of range; reconnect.strategy not const full_jitter_exponential; auth_ttl_seconds far beyond the 5-minute ceiling; no shed policy and no message schemas.</note>
   </example>
+  <section title="Forbidden patterns">
+    <list>
+      <item>A raw JSON payload with no envelope — the client breaks on the first added field.</item>
+      <item>No application-level heartbeat — the connection looks alive client-side minutes after a NAT timeout dropped it.</item>
+      <item>Fixed-interval reconnect — after a restart every client returns inside the same window and takes the server down again.</item>
+      <item>An unbounded per-connection send queue, or a bounded one with no declared shed policy.</item>
+      <item>A message type with no JSON schema, or validation on only one side of the connection.</item>
+      <item>A close with no RFC 6455 code, or 1000 used for a policy violation.</item>
+      <item>A long-lived cookie or JWT as the sole handshake credential.</item>
+    </list>
+  </section>
   <reference path="scripts/validate-websocket-design.py">Validator script (stdlib-only, --help + --self-test).</reference>
+  <reference path="templates/envelope.schema.json">JSON Schema for the envelope plus one example message type.</reference>
 </text>

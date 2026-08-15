@@ -1,8 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Rust Error Handling Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
-  <summary>4 antipatterns: library/app confusion, untyped strings, lost source chains, prod-panic patterns.</summary>
+<text id="03-failure-modes" title="Rust Error Handling Failure Modes" version="1.2.0" est_tokens="1000" depth="essential">
+  <summary>6 antipatterns: library/app confusion, dynamic errors at crate boundaries, untyped strings, lost source chains, fragmented error types, prod-panic patterns.</summary>
 
   <section title="Antipatterns">
+
+    <antipattern id="box-dyn-error-at-boundary" severity="high">
+      <symptom>A library function returns `Result&lt;T, Box&lt;dyn Error&gt;&gt;`; downstream cannot match variants, and the service above it cannot map failures onto consistent HTTP statuses.</symptom>
+      <root-cause source="v1-source + faion-net curation">Author defaulted to the dynamic error type at the crate boundary because it compiles first and needs no enum.</root-cause>
+      <fix>Define a `thiserror` enum at the crate boundary and keep dynamic errors inside the binary only. Gate it: `grep -rn 'pub\s\+fn\b.*Box&lt;dyn\s\+\(std::error::\)\?Error' src/` fails the PR. See rule thiserror-for-lib and templates/check-errors.sh.</fix>
+    </antipattern>
+
+    <antipattern id="fragmented-error-types" severity="medium">
+      <symptom>One service carries four ad-hoc error types, each with its own conversions; the HTTP layer needs a separate mapping arm per type and forgets one.</symptom>
+      <root-cause source="v1-source + faion-net curation">Each module grew its own error enum as it was written, and nothing ever consolidated them.</root-cause>
+      <fix>Collapse to one error enum per crate covering the domain and infrastructure variants, with module-level enums nested as `#[from]` variants where a real boundary exists. For a running service, see the `one-app-error-per-service` rule in `backend/rust-backend`.</fix>
+    </antipattern>
+
 
     <antipattern id="anyhow-in-library" severity="high">
       <symptom>A published library returns `anyhow::Result&lt;T&gt;`; downstream tries to match on a specific failure but cannot because `anyhow::Error` is opaque `Box&lt;dyn Error&gt;` under the hood.</symptom>
@@ -18,7 +31,7 @@
 
     <antipattern id="swallowing-source" severity="medium">
       <symptom>Error variant captures source as `String` (`Variant(String)`) instead of typed (`Variant(#[source] io::Error)`). `tracing` log shows the error but cannot walk causes.</symptom>
-      <root-cause source="std::error::Error::source docs">`#[source]` keeps the original type and lets `.source()` walk the chain. Stringifying flattens the chain to a single line.&lt;/rationale&gt;</root-cause>
+      <root-cause source="std::error::Error::source docs">`#[source]` keeps the original type and lets `.source()` walk the chain. Stringifying flattens the chain to a single line.</root-cause>
       <fix>Change variant to `Variant(#[from] io::Error)` (or `#[source]` if you also need data). Update log instrumentation: `tracing::error!(error = ?e)` walks the chain when present.</fix>
     </antipattern>
 

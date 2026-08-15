@@ -22,7 +22,9 @@ import sys
 from pathlib import Path
 
 REQUIRED: tuple[str, ...] = ('schema_file', 'pagination_style', 'auth_strategy', 'limits',)
-ENUMS: dict[str, list] = {'pagination_style': ['relay_cursor', 'offset_forbidden'], 'auth_strategy': ['permission_classes', 'directives'], 'dataloader_per_request': [True]}
+ENUMS: dict[str, list] = {'pagination_style': ['relay_cursor', 'offset_forbidden'], 'auth_strategy': ['permission_classes', 'directives'], 'dataloader_per_request': [True], 'payload_types_present': [True], 'user_errors_array_present': [True]}
+# Shape counters that must be exactly zero when present.
+MUST_BE_ZERO: tuple[str, ...] = ('non_payload_mutations', 'scalar_id_relations', 'naming_deviations',)
 
 
 def validate(obj: object) -> list[str]:
@@ -35,11 +37,14 @@ def validate(obj: object) -> list[str]:
     for k, allowed in ENUMS.items():
         if k in obj and obj[k] not in allowed:
             errs.append(f"field {k!r} not in allowed values {allowed!r}; got {obj[k]!r}")
+    for k in MUST_BE_ZERO:
+        if k in obj and obj[k] != 0:
+            errs.append(f"field {k!r} must be 0; got {obj[k]!r}")
     return errs
 
 
-OK = {'schema_file': 'schema/users.graphql', 'pagination_style': 'relay_cursor', 'auth_strategy': 'permission_classes', 'limits': {'max_depth': 10, 'max_complexity': 200}, 'dataloader_per_request': True}
-BAD = {'schema_file': 'schema.graphql', 'pagination_style': 'offset', 'limits': {'max_depth': 20}}
+OK = {'schema_file': 'schema/users.graphql', 'pagination_style': 'relay_cursor', 'auth_strategy': 'permission_classes', 'limits': {'max_depth': 10, 'max_complexity': 200}, 'dataloader_per_request': True, 'payload_types_present': True, 'non_payload_mutations': 0, 'user_errors_array_present': True, 'scalar_id_relations': 0, 'naming_deviations': 0}
+BAD = {'schema_file': 'schema.graphql', 'pagination_style': 'offset', 'limits': {'max_depth': 20}, 'non_payload_mutations': 5, 'scalar_id_relations': 7}
 
 
 def self_test() -> int:

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Rust Ownership Procedure" version="1.1.0" est_tokens="700" depth="essential">
-  <summary>5-step audit applied per function before writing the body.</summary>
+<text id="04-procedure" title="Rust Ownership Procedure" version="1.2.0" est_tokens="1000" depth="essential">
+  <summary>5-step audit applied per function before writing the body, followed by three crate-level steps that keep the result from decaying.</summary>
 
   <section title="Procedure">
 
@@ -33,6 +33,25 @@
       <input>final signature + answers</input>
       <action>Emit decision-record JSON per 02-output-contract.xml schema. Append to crate-level `ownership-decisions.json`.</action>
       <output>decision-record entry</output>
+    </step>
+
+    <step n="6" name="run-clone-audit">
+      <input>Crate source</input>
+      <action>Run `templates/audit-clones.sh` over the whole crate and categorise every surviving `.clone()` as required, removable, or a signature bug. Rewrite the removable ones to `&amp;T` / `&amp;mut T`; annotate the required ones with the reason.</action>
+      <output>Clone audit report + clone-count baseline</output>
+    </step>
+
+    <step n="7" name="replace-rc-refcell-across-threads">
+      <input>Every `spawn` / `tokio::spawn` / rayon closure site</input>
+      <action>Grep the values captured at each spawn boundary. Any `Rc&lt;T&gt;` or `Rc&lt;RefCell&lt;T&gt;&gt;` becomes `Arc&lt;Mutex&lt;T&gt;&gt;` or `Arc&lt;RwLock&lt;T&gt;&gt;` — pick RwLock only when reads genuinely dominate.</action>
+      <output>Thread-safe shared state</output>
+      <decision-gate>Never reach for `unsafe impl Send` to make the bound go away. Rule arc-mutex-across-threads.</decision-gate>
+    </step>
+
+    <step n="8" name="install-ci-gate">
+      <input>CI runner + the clone baseline</input>
+      <action>Run `audit-clones.sh` on every PR and fail or warn when the clone count regresses without a stated reason. Emit the crate-level audit block alongside the per-function decision records.</action>
+      <output>Live gate + validated artefact</output>
     </step>
 
   </section>

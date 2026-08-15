@@ -1,30 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="API Versioning Procedure" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>5-step procedure applying the api-versioning methodology end-to-end. Each step lists inputs, action, output, and optional decision gate.</summary>
+<text id="04-procedure" title="API Versioning Procedure" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>6-step procedure applying the api-versioning methodology end-to-end. Each step lists inputs, action, output, and optional decision gate.</summary>
   <section title="Procedure">
-    <step n="1" name="detect-breaking-change">
-      <input>openapi.yaml@HEAD + openapi.yaml@main</input>
-      <action>Run oasdiff breaking with --fail-on ERR. Classify each diff as additive vs breaking.</action>
-      <output>diff.json with breaking changes (may be empty)</output>
-      <decision-gate>If no breaking changes, STOP — no version bump needed.</decision-gate>
+    <step n="1" name="pick-scheme">
+      <input>Audience (public / B2B / internal) + existing info.x-versioning block + tooling</input>
+      <action>Choose exactly one scheme: url-path for public and B2C; accept-header for B2B with strict content negotiation; header-key for an internal control plane. Record it in info.x-versioning. If a scheme is already recorded, keep it — do not re-open the choice per change.</action>
+      <output>scheme tag (url-path | accept-header | header-key) recorded in the spec</output>
+      <decision-gate>If the version currently travels in the request body, or schemes differ across endpoints, fix that first — rules no-version-in-payload and one-scheme-per-api.</decision-gate>
     </step>
-    <step n="2" name="decide-version-strategy">
+    <step n="2" name="detect-breaking-change">
+      <input>openapi.yaml@HEAD + openapi.yaml@main</input>
+      <action>Run oasdiff breaking with --fail-on ERR. Classify each diff with the breaking-change-classifier: removed/renamed field, tightened validation, removed/renamed status code, changed response shape, or optional-became-required are breaking; added optional fields and new endpoints are additive; description-only edits are docs-only. Collect the breaking signals verbatim.</action>
+      <output>diff.json with breaking changes (may be empty) + change_kind (breaking | additive | docs-only) + breaking signal list</output>
+      <decision-gate>If no breaking changes, STOP — minor bump for additive, patch for docs-only, no version ceremony.</decision-gate>
+    </step>
+    <step n="3" name="decide-version-strategy">
       <input>diff.json + scope (public/internal) + stack (REST/GraphQL)</input>
       <action>Apply rule additive-first + url-path-default. Decide: revert change, add nullable field, or create vN+1.</action>
       <output>Decision record (revert | additive | vN+1)</output>
       <decision-gate>If decision != vN+1, apply the additive alternative and STOP.</decision-gate>
     </step>
-    <step n="3" name="scaffold-vN+1">
+    <step n="4" name="scaffold-vN+1">
       <input>Frozen vN module + breaking diff</input>
       <action>Copy the affected handlers into v(N+1) module. Edit response shape. Mount the new router in the application factory.</action>
       <output>v(N+1) router file + updated router registration</output>
     </step>
-    <step n="4" name="wire-deprecation-middleware">
-      <input>ops/sunset.yaml entry for vN route + middleware</input>
-      <action>Mark the vN route as deprecated in ops/sunset.yaml; ensure middleware injects Deprecation/Sunset/Link headers.</action>
-      <output>Updated sunset.yaml + middleware test</output>
+    <step n="5" name="wire-deprecation-middleware">
+      <input>ops/sunset.yaml entry for vN route + middleware + audience</input>
+      <action>Size the deprecation window first: &gt;= 90 days for a public API, &gt;= 30 for an internal one; sunset_date = today + window. Mark the vN route as deprecated in ops/sunset.yaml with that ISO date; ensure middleware injects Deprecation/Sunset/Link headers on every vN response.</action>
+      <output>Updated sunset.yaml with deprecation_window_days + sunset_date + middleware test</output>
+      <decision-gate>change_kind=breaking with a minor or patch bump, or a public window under 90 days → verdict=fail, do not ship.</decision-gate>
     </step>
-    <step n="5" name="ship-and-measure">
+    <step n="6" name="ship-and-measure">
       <input>Prometheus version label + dashboards</input>
       <action>Deploy; verify per-version traffic split visible. Announce deprecation 6 months in advance.</action>
       <output>Dashboard URL + announcement record</output>

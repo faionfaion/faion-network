@@ -1,30 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="WebSocket Design Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the websocket-design methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
+<text id="01-core-rules" title="WebSocket Design Core Rules" version="1.1.0" est_tokens="1700" depth="essential">
+  <summary>10 testable rules grounding the websocket-design methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
     <rule id="versioned-envelope" testable="true" depth="essential">
-      <statement>Every WebSocket message uses a versioned envelope {v, type, channel, seq, ts, payload}. Bump v for breaking protocol changes; clients dedupe by seq across reconnects.</statement>
-      <rationale source="Internal — WS protocol audits">Without a versioned envelope you cannot roll out protocol changes gradually; without seq, clients cannot detect duplicates after reconnect.</rationale>
+      <statement>Every WebSocket message uses a versioned envelope {v, type, channel, id, seq, ts, payload}. Bump v for breaking protocol changes; clients dedupe by seq across reconnects and retry idempotently by id. Raw payloads with no envelope are forbidden.</statement>
+      <rationale source="Internal — WS protocol audits + WS-protocol retros">Without a versioned envelope you cannot roll out protocol changes gradually; without seq, clients cannot detect duplicates after reconnect; without a per-message id, a retry after an unacknowledged send is indistinguishable from a new message.</rationale>
     </rule>
     <rule id="heartbeat-required" testable="true" depth="essential">
-      <statement>Server disconnects after 2 missed pong replies; client sends ping every 25–30 seconds.</statement>
-      <rationale source="MDN WebSocket docs + production NAT incidents">Without heartbeats, stale connections accumulate silently; NAT gateways and load balancers close idle TCP connections without RST, leaving the server with zombie sockets.</rationale>
+      <statement>Client sends ping every 25–30 seconds; the server disconnects after 2 missed pongs (≈90 s). Application-layer ping/pong is mandatory — TCP keep-alive alone does not satisfy this rule.</statement>
+      <rationale source="MDN WebSocket docs + RFC 6455 + production NAT incidents">Without heartbeats, stale connections accumulate silently; NAT gateways, corporate firewalls and load balancers close idle TCP connections without RST after 1–5 minutes, leaving the server with zombie sockets and the client believing it is connected. TCP keep-alive defaults are far too slow to catch it.</rationale>
+    </rule>
+    <rule id="schema-validated-per-type" testable="true" depth="essential">
+      <statement>Every message type has a JSON schema, and the payload is validated against that schema on both the server and the client. Lax or absent validation is forbidden.</statement>
+      <rationale source="JSON Schema usage + production fuzz retros">Without per-type validation a malformed or hostile payload reaches the handler directly; agents and malicious clients crash handlers with fields the code never anticipated.</rationale>
+    </rule>
+    <rule id="close-code-truthful" testable="true" depth="essential">
+      <statement>Every close emits an RFC 6455 code that truthfully describes the reason: 1000 normal, 1001 going away, 1008 policy violation, 1009 message too big, 4xxx for application-specific reasons. A bare close with no code is forbidden.</statement>
+      <rationale source="RFC 6455 + client-debug retros">The close code is the only signal the client has to decide reconnect versus give up; without it every disconnect looks identical and the failure cannot be debugged from the client side.</rationale>
     </rule>
     <rule id="reconnect-with-jitter" testable="true" depth="essential">
       <statement>Reconnect with exponential backoff and full jitter: delay = random(0, min(cap, base * 2^n)); cap the maximum attempt count.</statement>
       <rationale source="AWS — Exponential Backoff and Jitter (Marc Brooker)">Reconnect without jitter causes thundering herds: all clients reconnect simultaneously after a deploy, DoSing the auth endpoint.</rationale>
     </rule>
     <rule id="auth-on-upgrade" testable="true" depth="essential">
-      <statement>Authenticate at HTTP upgrade via a short-lived ticket or signed cookie. Never put JWTs in query strings.</statement>
-      <rationale source="OWASP — Credentials in URL">Query strings appear in server and proxy access logs; JWTs in logs are an immediate credential leak.</rationale>
+      <statement>Authenticate at HTTP upgrade via a short-lived ticket or signed cookie. Never put a long-lived JWT in a query string.</statement>
+      <rationale source="OWASP — Credentials in URL">Query strings appear in server and proxy access logs; a session JWT in logs is an immediate credential leak.</rationale>
+    </rule>
+    <rule id="short-lived-token-auth" testable="true" depth="essential">
+      <statement>The handshake credential is a signed token with a TTL of at most 5 minutes, single-use, carried in the Sec-WebSocket-Protocol header where the client can set it and in the query string only when it cannot. A long-lived cookie as the sole credential is forbidden.</statement>
+      <rationale source="OWASP WS guidance + token-theft retros">This bounds what auth-on-upgrade permits: a long-lived cookie cannot be revoked promptly and a stolen one grants indefinite access, while a 5-minute single-use ticket collapses the replay window even if it does reach an access log.</rationale>
     </rule>
     <rule id="redis-pubsub-fanout" testable="true" depth="essential">
       <statement>Horizontal scaling requires a Redis Pub/Sub (or NATS) fan-out bus. Each server node subscribes and delivers to its locally connected clients.</statement>
       <rationale source="Redis Pub/Sub docs + Centrifugo architecture">Sockets are pinned to one process; without a shared pubsub bus, a message published on node A never reaches clients connected to node B.</rationale>
     </rule>
     <rule id="bounded-send-queue" testable="true" depth="essential">
-      <statement>Buffer outbound messages in a bounded per-connection queue (≤100 messages); drop oldest on overflow.</statement>
-      <rationale source="Internal — backpressure incidents">Unbounded queues accumulate during outages; on reconnect the client floods the server with stale messages and the event loop blocks.</rationale>
+      <statement>Buffer outbound messages in a bounded per-connection queue with an explicitly declared shed policy — drop_oldest, drop_newest, or close with code 1008. Size it to the memory budget (≈100 for an interactive client, up to ~1000 for a server fan-out queue). Unbounded queues are forbidden.</statement>
+      <rationale source="Internal — backpressure incidents + WebSocket OOM retros">Unbounded queues accumulate during outages and behind one slow reader; the server OOMs while every health check still reports green, and on reconnect the client floods the server with stale messages. Naming the shed policy is what makes the data loss a decision rather than an accident.</rationale>
     </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
       <statement>If the workload is one-shot CRUD or server-only push or runs in pure serverless without a stateful tier, skip this methodology and use REST or SSE.</statement>

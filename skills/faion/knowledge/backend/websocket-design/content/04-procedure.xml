@@ -1,28 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="WebSocket Design Procedure" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>5-step procedure applying the websocket-design methodology end-to-end. Each step lists inputs, action, output, and optional decision gate.</summary>
+<text id="04-procedure" title="WebSocket Design Procedure" version="1.1.0" est_tokens="1300" depth="essential">
+  <summary>7-step procedure applying the websocket-design methodology end-to-end. Each step lists inputs, action, output, and optional decision gate.</summary>
   <section title="Procedure">
     <step n="1" name="define-envelope">
       <input>Message catalog</input>
-      <action>Write the shared {v, type, channel, seq, ts, payload} schema in Zod/Pydantic/protobuf. Bump v for breaking changes.</action>
-      <output>ws/protocol.ts + ws/protocol.py</output>
+      <action>Write the shared {v, type, channel, id, seq, ts, payload} schema in Zod/Pydantic/protobuf. Bump v for breaking changes; id carries idempotency across retries, seq carries dedup across reconnects.</action>
+      <output>ws/protocol.ts + ws/protocol.py + templates/envelope.schema.json</output>
+      <decision-gate>Reject any freeform payload that bypasses the envelope.</decision-gate>
     </step>
-    <step n="2" name="wire-heartbeat">
+    <step n="2" name="schema-per-message-type">
+      <input>Message catalog + envelope</input>
+      <action>Attach a JSON schema to every message type and wire validation on both the server and the client. Decide the rejection path: an error envelope for recoverable input, close code 1008 for a policy violation and 1009 for an oversize frame.</action>
+      <output>message_schemas block + the close-code table this service emits</output>
+      <decision-gate>Reject any message type shipping without a schema, and any close path that emits a bare close. Rules schema-validated-per-type + close-code-truthful.</decision-gate>
+    </step>
+    <step n="3" name="wire-heartbeat">
       <input>Server framework + client SDK</input>
-      <action>Add server-side ping/pong: disconnect after 2 missed pongs. Client pings every 25s.</action>
+      <action>Add server-side ping/pong: disconnect after 2 missed pongs (≈90 s). Client pings every 25 s. Do not rely on TCP keep-alive.</action>
       <output>Heartbeat integration test</output>
     </step>
-    <step n="3" name="implement-reconnect">
+    <step n="4" name="implement-reconnect">
       <input>WSClient skeleton</input>
       <action>Add full-jitter exponential backoff capped at 30s + maxAttempts. Reject PRs without random() in the diff.</action>
       <output>ws_client.ts with reconnect logic</output>
     </step>
-    <step n="4" name="horizontal-scale">
+    <step n="5" name="horizontal-scale">
       <input>Redis cluster or NATS</input>
       <action>Replace in-process fan-out with Redis Pub/Sub channel subscriptions (one channel per logical topic).</action>
       <output>DistributedConnectionManager</output>
     </step>
-    <step n="5" name="smoke-load-test">
+    <step n="6" name="size-send-queue-and-auth">
+      <input>Memory budget + auth model</input>
+      <action>Bound the per-connection outbound queue and declare shed_policy explicitly (drop_oldest / drop_newest / close_1008). Issue the handshake credential as a single-use signed token with TTL &lt;= 5 minutes, carried in Sec-WebSocket-Protocol where the client can set it.</action>
+      <output>send_queue block + auth block with ttl_seconds</output>
+      <decision-gate>Reject unbounded queues, queues with no named shed policy, and cookie-only auth. Rules bounded-send-queue + short-lived-token-auth.</decision-gate>
+    </step>
+    <step n="7" name="smoke-load-test">
       <input>k6 ws-smoke.js + 200 VUs</input>
       <action>Run k6 for 60s; assert status 101 + heartbeat success + reconnect after node restart.</action>
       <output>k6 report green</output>

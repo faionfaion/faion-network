@@ -1,14 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="API Versioning Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the api-versioning methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
+<text id="01-core-rules" title="API Versioning Core Rules" version="1.1.0" est_tokens="1700" depth="essential">
+  <summary>11 testable rules grounding the api-versioning methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
   <section title="Rule set">
     <rule id="additive-first" testable="true" depth="essential">
-      <statement>Additive changes (new field, new optional input, new endpoint) NEVER trigger a new major version. Bump only on breaking semantic changes.</statement>
-      <rationale source="Stripe + GitHub API versioning postmortems">About 90% of API changes are additive; version ceremony for them wastes cycles and confuses consumers.</rationale>
+      <statement>Additive changes (new field, new optional input, new endpoint) NEVER trigger a new major version. Bump only on breaking semantic changes: breaking → major, additive → minor, docs-only → patch.</statement>
+      <rationale source="Stripe + GitHub API versioning postmortems + Semantic Versioning 2.0">About 90% of API changes are additive; version ceremony for them wastes cycles and confuses consumers. Without the bump on the remaining 10%, clients break silently instead of opting in.</rationale>
+    </rule>
+    <rule id="breaking-change-classifier" testable="true" depth="essential">
+      <statement>A change is breaking if it removes or renames a field, tightens validation, removes or renames a status code, changes a response shape, or makes an optional field required. Adding optional fields or new endpoints is additive.</statement>
+      <rationale source="OpenAPI evolution guidance + oasdiff classifier">Without one written classifier every author invents their own; tooling cannot enforce a rule that is not stated, and "new required field" is the case teams misread as additive.</rationale>
     </rule>
     <rule id="url-path-default" testable="true" depth="essential">
       <statement>Default to URL path versioning (/api/vN/). Never use query-param versioning for cacheable endpoints.</statement>
       <rationale source="Microsoft API Guidelines §12">URL path is cache-friendly (CDN), debuggable (browser address bar), and is what Stripe/Twilio/GitHub all use.</rationale>
+    </rule>
+    <rule id="one-scheme-per-api" testable="true" depth="essential">
+      <statement>An API MUST carry exactly one versioning scheme — url-path OR accept-header OR header-key. Mixing schemes across endpoints is forbidden; declare the chosen scheme in info.x-versioning.</statement>
+      <rationale source="Stripe / GitHub versioning guidance + Internal — versioning audit">Mixed schemes force consumers to negotiate the version twice, and tooling cannot infer which one is canonical.</rationale>
+    </rule>
+    <rule id="no-version-in-payload" testable="true" depth="essential">
+      <statement>The version travels in the URL path, the Accept header, or a dedicated header key — NEVER in the request body. Body-level version flags are forbidden.</statement>
+      <rationale source="Internal — versioning audit + REST design conventions">A body flag is invisible to CDNs and proxies, so nothing can route or cache by version, and one client can silently mix versions call by call.</rationale>
+    </rule>
+    <rule id="deprecation-window-declared" testable="true" depth="essential">
+      <statement>Every deprecated version MUST declare a Sunset date (ISO 8601) with a deprecation window of at least 90 days for public APIs and at least 30 days for internal ones.</statement>
+      <rationale source="RFC 8594 Sunset Header + RFC 8288 Web Linking">Partners need a concrete date to schedule migration against; "we'll sunset soon" is not actionable and reliably slips.</rationale>
     </rule>
     <rule id="deprecation-headers" testable="true" depth="essential">
       <statement>From the day a route is deprecated, emit Deprecation, Sunset, and Link: rel=successor-version headers on every response.</statement>

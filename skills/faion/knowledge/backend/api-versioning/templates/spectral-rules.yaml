@@ -1,0 +1,55 @@
+# __faion_header_v1__
+# purpose: Spectral ruleset enforcing one-scheme-per-api, url-path default and no body-carried version
+# consumes: openapi.yaml
+# produces: spec
+# depends-on: content/01-core-rules.xml#one-scheme-per-api
+# token-budget-impact: ~330 tokens when loaded as context
+# faion_header_json: {"__faion_header__":{"purpose":"Spectral ruleset enforcing one-scheme-per-api, url-path default and no body-carried version","consumes":"openapi.yaml","produces":"spec","depends_on":"content/01-core-rules.xml#one-scheme-per-api","token_budget_impact":"~330 tokens when loaded as context"}}
+# .spectral.yaml — enforce API versioning conventions in CI.
+# Run: npx @stoplight/spectral-cli lint openapi.yaml --ruleset .spectral.yaml
+
+extends: ["spectral:oas"]
+
+rules:
+  url-version-prefix:
+    description: All paths must start with /api/vN/ (rule url-path-default)
+    severity: error
+    given: "$.paths.*~"
+    then:
+      function: pattern
+      functionOptions:
+        match: "^/api/v[0-9]+/"
+
+  deprecation-header-on-legacy:
+    description: Deprecated versions must declare a Deprecation header (rule deprecation-headers)
+    severity: warn
+    given: "$.paths['/api/v1/{*}'].*.responses.*.headers"
+    then:
+      field: "Deprecation"
+      function: truthy
+
+  no-query-param-versioning:
+    description: Never carry the version in a query parameter (rule url-path-default)
+    severity: error
+    given: "$.paths.*.*.parameters[?(@.in == 'query')]"
+    then:
+      field: "name"
+      function: pattern
+      functionOptions:
+        notMatch: "^(version|v|api_version)$"
+
+  no-version-in-payload:
+    description: Never carry the version in the request body (rule no-version-in-payload)
+    severity: error
+    given: "$.paths.*.*.requestBody.content.*.schema.properties"
+    then:
+      field: "version"
+      function: falsy
+
+  scheme-declared-once:
+    description: The chosen scheme must be recorded in info.x-versioning (rule one-scheme-per-api)
+    severity: error
+    given: "$.info"
+    then:
+      field: "x-versioning"
+      function: truthy
