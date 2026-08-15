@@ -168,7 +168,18 @@ def non_stdlib_imports(body: str) -> set[str]:
 # hosts is a credential with nowhere it is forbidden to go.
 NETWORK_MODULES = {"urllib", "http", "socket", "ftplib", "smtplib",
                    "telnetlib", "poplib", "imaplib", "xmlrpc", "asyncio"}
-URL_HOST = re.compile(r"https?://([A-Za-z0-9.\-]+)")
+# Skip any `user:pw@` userinfo before the host, or the scan reads the username
+# as the hostname and a perfectly ordinary fixture fails for the wrong reason.
+URL_HOST = re.compile(r"https?://(?:[^/@\s\"']*@)?([A-Za-z0-9.\-]+)")
+# RFC 2606 / RFC 6761 reserved names, plus loopback. A fixture needs a host that
+# is not the vendor's, and the first author to hit that wall worked around it by
+# concatenating "https://" + "example.com" — which passes the scan while hiding
+# a real hostname just as well. An allowlist nobody can satisfy honestly teaches
+# obfuscation, so these are always permitted and the scan stays worth running.
+RESERVED_HOSTS = {"example.com", "example.net", "example.org", "example.edu",
+                  "localhost", "127.0.0.1", "::1"}
+RESERVED_SUFFIXES = (".example", ".invalid", ".test", ".localhost",
+                     ".example.com", ".example.net", ".example.org")
 # A flag whose value would be a secret. Tokens belong in the environment: argv
 # is visible in `ps` and lands in shell history and in agent transcripts.
 SECRET_FLAG = re.compile(r"--[a-z0-9-]*(token|secret|password|passwd|api-key|apikey)")
@@ -198,16 +209,24 @@ def network_findings(script: Path, body: str, meta: dict) -> list[str]:
                    "declares no 'network' — declare the hosts it may contact")
     if net:
         allowed = set(net.get("hosts", []))
+        # "*" means the pack contacts hosts it cannot know in advance — a
+        # crawler pointed at a user's URL list. Without this the declaration
+        # would be decorative: the scan would still reject every literal, and
+        # the pack would pass only by accident of using reserved names.
+        if "*" in allowed:
+            return out
         for host in sorted(set(URL_HOST.findall(body))):
+            if host in RESERVED_HOSTS or host.endswith(RESERVED_SUFFIXES):
+                continue
             if host not in allowed and not any(
                     host.endswith("." + a) for a in allowed):
                 out.append(f"{script.name}: contacts {host!r}, which is not in "
                            "meta.json network.hosts")
     if creds:
-        env_var = creds.get("env_var", "")
-        if env_var and env_var not in body:
-            out.append(f"{script.name}: meta.json names credential {env_var} "
-                       "and the script never reads it")
+        # Whether the credential is READ is a pack-level question, checked once
+        # in check_pack: a pack may legitimately mix a tool that needs the token
+        # with one that does not, and failing the credential-free tool would
+        # push its author into naming the variable just to satisfy the scan.
         if "subprocess" in imported:
             out.append(f"{script.name}: imports subprocess in a pack holding a "
                        "credential — a token in a command string is a token in "
@@ -318,6 +337,8 @@ def check_pack(pack: Path, meta_schema: dict, card_schema: dict) -> tuple[list[s
     if not cards:
         fail("holds no card — a pack an agent cannot read is not a pack")
 
+    scripts_text = "".join(
+        p.read_text(encoding="utf-8", errors="replace") for p in scripts)
     by_name = {p.stem: p for p in scripts}
     for card in cards:
         name = card.name[: -len(CARD_SUFFIX)]
@@ -331,6 +352,15 @@ def check_pack(pack: Path, meta_schema: dict, card_schema: dict) -> tuple[list[s
         fail(f"scripts/{by_name[orphan].name}: no tools/{orphan}{CARD_SUFFIX} — "
              "an agent may never open a script to work out its arguments, so a "
              "carded tool is the only kind that exists")
+
+    # Pack-level: a declared credential must be read by SOME tool in the pack.
+    # Per-script this was wrong — a pack may mix a tool that needs the token
+    # with one that does not, and failing the credential-free tool only teaches
+    # its author to name the variable in a comment to satisfy the scan.
+    env_var = (meta.get("credentials") or {}).get("env_var")
+    if env_var and scripts_text and env_var not in scripts_text:
+        fail(f"meta.json names credential {env_var} and no script in the pack "
+             "reads it")
 
     return findings, meta.get("slug"), names
 

@@ -4,6 +4,50 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Four new tool packs: `cloudflare/` (solo), `github-ci/` (pro),
+  `web-parse/` (solo), `browser/` (free).** Nine tools, all stdlib, all
+  carded, all self-tested — 146 self-test checks across the pack, `0`
+  validator findings, manifest 3,068 → 3,072.
+
+  The design rule they were built to is **output compression, not API
+  access**. A vendor MCP server hands the model raw JSON and the model pays
+  for every byte; these make the calls, parse, and print one summary line.
+  `zone-audit` fans out over the per-setting endpoints that replaced
+  Cloudflare's deprecated batch settings API (EOL 2027-03-31) and returns a
+  verdict, not a settings dump.
+
+  Three bugs the authors found by testing rather than by inspection, each
+  the kind a card cannot catch:
+
+  - `polite-fetch` asked the **wrong port** for permission.
+    `urlsplit().hostname` drops it, so a target on `127.0.0.1:8931` fetched
+    robots.txt from port 80, got HTML, parsed zero rules — an accidental
+    allow-all — and then fetched a path under an explicit `Disallow`. Keyed
+    on `netloc` now, with the port case as a self-test.
+  - `polite-fetch`'s `is_html` had `""` in its prefix tuple, and every
+    string starts with the empty string, so a PDF was parsed as markup.
+  - `png-diff`'s decoder returns a value-or-error union, and three fixtures
+    inside `self_test()` fed it straight to `compare()`. A decoder
+    regression would have killed **the test that exists to catch it** with a
+    traceback instead of printing a failure. The exit contract is now
+    exercised end to end through a `run_cli()` helper.
+
+  Four defects in `validate-tools.py` itself, all surfaced by an author
+  hitting them honestly:
+
+  - the `credentials.env_var` check ran **per script**, so a pack mixing a
+    credentialed tool with a credential-free one failed the innocent
+    one. Now per pack.
+  - the host allowlist rejected any fixture URL, and the first author to hit
+    that wrote `"https://" + "example.com"` to slip past the scan. A rule
+    nobody can satisfy honestly teaches obfuscation, so RFC 2606 / 6761
+    reserved names are now always permitted and the fixture is written
+    plainly.
+  - `"*"` in `network.hosts` was decorative — the scan did not treat it as a
+    wildcard, so `web-parse`, which by definition contacts hosts it cannot
+    know in advance, passed only by accident of using `.invalid` literals.
+  - the host regex read the `user` in `user:pw@host` as the hostname.
+
 - **`INDEX.xml` is generated again, and the reason it wasn't was a name
   collision.** `regen-domains-xml.py` skipped any leaf whose path contained
   `templates`, `scripts`, `content` or `__pycache__` — a filter meant for a

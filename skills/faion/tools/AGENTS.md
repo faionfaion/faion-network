@@ -12,6 +12,10 @@ Tool packs: real, reusable scripts an agent runs instead of writing a throwaway 
 | `game-dev/` | solo | `hmac-rng-golden.py` — emit/verify golden vectors for HMAC-SHA256 rejection-sampling randomness; `deploy-scaffold.py` — systemd unit + nginx vhost + `deploy.sh`, identities namespaced by `--name` |
 | `research/` | free | `source-table.py` — claims JSONL → markdown evidence table + gaps report + commercial-lever ledger, fails on an unsourced load-bearing claim or a commercial claim with no lever; `lever-check.py` — ledger × concept verdict → applied/declined counts with every decline printed, fails on a lever the concept never answered |
 | `static-web/` | free | `asset-stamp.py` — appends each asset's content hash to the URL the HTML emits so a CDN edge holding an `immutable` copy must refetch, unchanged assets keep their URL, and `--check` fails a build still pointing at stale bytes |
+| `browser/` | free | `playwright-scaffold.py` — writes a determinism-hardened Playwright harness into the caller's own repo (pinned container, frozen clock, killed animations, fixed viewport); `png-diff.py` — stdlib PNG codec plus a two-gate verdict, changed-pixel ratio **and** largest connected cluster, so a small structural shift a ratio hides still fails |
+| `cloudflare/` | solo | `zone-audit.py` — fans out over the per-setting endpoints that replaced the deprecated batch settings API and exits 1 on a policy violation; `dns-snapshot.py` — canonical JSONL plus baseline diff; `cache-purge.py` — chunked, rate-paced, dry-run until `--yes` |
+| `github-ci/` | pro | `gha-audit.py` — 14 static workflow-security rules (unpinned actions, expression injection, `pull_request_target` pwn requests, secrets in argv), no token and no network; `gha-pin.py` — resolves and enforces 40-char SHA pins |
+| `web-parse/` | solo | `polite-fetch.py` — robots-aware, rate-limited, resumable cache every other parser reads from; `page-extract.py` — readable text/markdown plus JSON-LD/OpenGraph/microdata in one pass, with the implied-end-tag repair `html.parser` needs to nest correctly |
 
 ## Layout
 

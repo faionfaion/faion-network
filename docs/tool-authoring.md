@@ -148,7 +148,10 @@ honour that literally. The amendment:
 
 What fails, and why: importing `urllib`/`http`/`socket` with no `network` block (a credential
 with nowhere it is forbidden to go); a URL literal naming a host outside `network.hosts`
-(subdomains of a declared host are allowed); declaring `credentials` and never reading the named
+(subdomains of a declared host are allowed, and so are the RFC 2606 reserved names —
+`example.com`/`.net`/`.org`, `.test`, `.invalid`, `.example`, `localhost` — **use one of those in
+a fixture**, never `"https://" + "host"` string-splitting, which passes the scan and would hide a
+real exfiltration host just as well); declaring `credentials` and never reading the named
 variable; importing `subprocess` in a pack holding a credential (a token in a command string is a
 token in the process table); and defining any `--*token*` / `--*secret*` / `--*password*` /
 `--*api-key*` flag at all. `class: "mutate"` obliges every writing tool to be dry-run until
