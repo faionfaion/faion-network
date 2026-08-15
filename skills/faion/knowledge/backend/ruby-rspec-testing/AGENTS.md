@@ -48,11 +48,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~900 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix | ~800 |
-| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
-| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/01-core-rules.xml` | essential | 9 testable rules with rationale + source | ~1200 |
+| `content/02-output-contract.xml` | essential | artefact JSON Schema + spec-file contract + forbidden spec shapes | ~1400 |
+| `content/03-failure-modes.xml` | essential | 9 antipatterns with symptom / root-cause / fix | ~1400 |
+| `content/04-procedure.xml` | essential | 5-step artefact procedure + 5-step spec-authoring sub-procedure | ~1400 |
+| `content/05-examples.xml` | recommended | two end-to-end worked examples | ~1000 |
 | `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
 
 ## Task Routing
@@ -70,6 +70,11 @@
 | `templates/ruby-rspec-testing.json` | JSON Schema for the RSpec Testing for Rails Applications output contract |
 | `templates/ruby-rspec-testing.md` | Markdown skeleton with the required fields |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a ruby-rspec-testing record |
+| `templates/model-spec.rb` | Model spec skeleton: validations, scopes, shoulda-matchers one-liners |
+| `templates/service-spec.rb` | Service spec skeleton with named subject and instance_double collaborators |
+| `templates/place_order_service_spec.rb` | Fully worked isolated service spec (spec_helper only, three contexts) |
+| `templates/shared_examples_auditable.rb` | `shared_examples_for "auditable"` — the cross-class invariant pattern |
+| `templates/rspec-gate.sh` | CI gate: runs the suite with SimpleCov thresholds and `--profile` |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

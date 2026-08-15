@@ -45,10 +45,10 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~900 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | ~800 |
-| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/01-core-rules.xml` | essential | 14 testable rules with rationale + source | ~1500 |
+| `content/02-output-contract.xml` | essential | artefact JSON Schema + repo-shape contract + valid / invalid examples | ~1200 |
+| `content/03-failure-modes.xml` | essential | 9 antipatterns with symptom / root-cause / fix | ~1400 |
+| `content/04-procedure.xml` | essential | 5-step artefact procedure + 6-step scaffold sub-procedure | ~1500 |
 | `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
 | `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
 
@@ -67,6 +67,8 @@
 | `templates/go-backend.json` | JSON Schema for the Go Backend Development Patterns output contract |
 | `templates/go-backend.md` | Markdown skeleton with the required fields |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a go-backend record |
+| `templates/app-error.go` | AppError struct, sentinel errors and constructors the ErrorHandler middleware maps from |
+| `templates/check-layout.sh` | CI script verifying `internal/` dirs exist and `internal/` is not imported externally |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -75,6 +77,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | File | Purpose | When to call |
 |------|---------|--------------|
 | `scripts/validate-go-backend.py` | Enforce the Go Backend Development Patterns output contract | After subagent returns, before downstream consumer reads |
+| `scripts/check-go-layout.py` | Scan a real Go repo for layout invariants: cmd/api/main.go, internal/ subdirs, thin main, interfaces out of `repository/`, forbidden `BindJSON` / `c.JSON(4xx)` / gin.Context-in-goroutine | Pre-commit gate; CI before `go build` |
 
 ## Related
 

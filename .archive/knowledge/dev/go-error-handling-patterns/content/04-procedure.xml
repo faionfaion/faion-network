@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Go Error Handling Patterns Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure to apply go-error-handling-patterns end-to-end.</summary>
+  <section title="Procedure">
+    <step n="1" name="inventory-error-classes">
+      <input>Domain operations + observed errors</input>
+      <action>List sentinel needs: not-found, conflict, unauthorised, validation, system, throttle. Map each to an HTTP/gRPC code.</action>
+      <output>Sentinel inventory</output>
+    </step>
+    <step n="2" name="declare-sentinels">
+      <input>Sentinel inventory</input>
+      <action>Create internal/apperror package. Declare `var ErrNotFound = errors.New("not found")` etc. Add helpers like `NewConflict("resource already exists")`.</action>
+      <output>apperror package</output>
+    </step>
+    <step n="3" name="wrap-at-boundaries">
+      <input>Existing code + apperror</input>
+      <action>At each layer boundary, replace `return err` with `return fmt.Errorf("&lt;context&gt;: %w", err)` when adding context. Update internal usage to errors.Is/As.</action>
+      <output>Wrapped error chain</output>
+    </step>
+    <step n="4" name="translate-at-edge">
+      <input>apperror + handler layer</input>
+      <action>Build one middleware (HTTP) or interceptor (gRPC) that calls errors.Is(err, apperror.Err...) and maps to status. Handlers stop translating.</action>
+      <output>Edge translator</output>
+      <decision-gate>If two translators exist, merge them. Per-handler status mapping is forbidden.</decision-gate>
+    </step>
+    <step n="5" name="enforce-with-lint">
+      <input>golangci.yml</input>
+      <action>Enable errorlint + wrapcheck. Run linter in CI. Add allowlist for adapter code that legitimately bridges legacy error models.</action>
+      <output>Lint-clean codebase</output>
+    </step>
+  </section>
+</text>

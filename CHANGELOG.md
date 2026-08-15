@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-009, Go/Rust/Ruby stamp-signal set: 9 collisions resolved
+  merge-then-archive, survivor `backend/` in all nine.**
+
+  **The partial generation stamp held as evidence of generation and not of
+  weakness, on all four where it was tested** (`database-design`,
+  `go-concurrency-patterns`, `go-error-handling-patterns`, `ruby-rspec-testing`):
+  in each, the stamped side was the *richer* one. No pair needed merging in the
+  reverse direction. That closes the stamp as a survivor-picking signal — it
+  marks how a document was made, not how good it is.
+
+  **`python-poetry-setup` went to `backend/`, against the brief and against
+  §2's own prose.** §2 names package managers in `dev` explicitly; Rule 1 does
+  not fire (neither copy has a server framework as its *subject* — the
+  fastapi/sqlalchemy strings are entries inside a template's dependency list), so
+  it falls to the Rule 5 family tie-break, and the counts say `backend`:
+  `python`-tagged siblings are 7-7, an exact tie, but `python-*` slugs are
+  **12 in backend against 6 in dev**, and the backend copy's own decision tree
+  hands off to `[[python-modern-2026]]` while its "Assumes Loaded" names
+  `python-code-quality` — both resident in `backend/`. Sending it to `dev` would
+  split a document from the sibling its own tree routes to. Flagged as an
+  owner's-eye item, because the policy's prose and its ordering rule genuinely
+  disagree here and the ordering rule is the one §3 makes authoritative.
+
+  **Two pre-existing defects in the survivors, found while merging and fixed:**
+  `backend/go-error-handling/templates/apperror.go` exported **mutable
+  package-level `*AppError` sentinels** — exactly what the rule being merged into
+  it forbids — and its `Wrap` demoted every wrapped 404 to a 500. And
+  `backend/python-poetry-setup/content/02-output-contract.xml` carried a JSON
+  schema with **single-quoted keys in `required`**: valid XML, invalid JSON, so
+  the contract could never have been parsed by anything that consumed it.
+
+  Flagged, not acted on: after the merges, `go-error-handling-patterns` is ~60%
+  redundant against `go-error-handling`. Collapsing them is a rename.
+
 - **CR-009, dev↔sdd and dev↔frontend: 10 collisions resolved, 1 left dual.**
 
   The `sdd/` boundary needed stating and now is: **`sdd/` holds the

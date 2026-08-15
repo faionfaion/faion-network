@@ -45,10 +45,10 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~900 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | ~800 |
-| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/01-core-rules.xml` | essential | 10 testable rules with rationale + source | ~1300 |
+| `content/02-output-contract.xml` | essential | artefact JSON Schema + error-module code-shape contract + forbidden code shapes | ~1400 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns with symptom / root-cause / fix | ~1200 |
+| `content/04-procedure.xml` | essential | 5-step artefact procedure + 5-step implementation sub-procedure | ~1400 |
 | `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
 | `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
 
@@ -67,6 +67,9 @@
 | `templates/go-error-handling-patterns.json` | JSON Schema for the Go Error Handling Patterns (Wrap, Translate, Sentinel, Log-Once) output contract |
 | `templates/go-error-handling-patterns.md` | Markdown skeleton with the required fields |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a go-error-handling-patterns record |
+| `templates/check-errors.sh` | Grep gate for string-equality error checks, `%v` wraps and unhandled returns |
+| `templates/apperror.go` | Canonical sentinel set + AppError with Unwrap + constructors + `AsAppError` extractor |
+| `templates/golangci.yml` | golangci-lint config: errorlint (errorf/asserts/comparison), wrapcheck, errcheck, nilerr |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

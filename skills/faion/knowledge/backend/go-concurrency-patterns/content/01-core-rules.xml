@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="Go Concurrency Patterns (Worker Pool, Fan-Out/Fan-In, errgroup, Pipeline) Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>7 testable rules every Go Concurrency Patterns (Worker Pool, Fan-Out/Fan-In, errgroup, Pipeline) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+  <summary>10 testable rules every Go Concurrency Patterns (Worker Pool, Fan-Out/Fan-In, errgroup, Pipeline) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
 
@@ -37,6 +37,21 @@
     <rule id="r-goleak-test-required" testable="true" depth="essential">
       <statement>Every pattern MUST ship a `TestNoLeak` using `goleak.VerifyNone(t)`.</statement>
       <rationale source="goleak docs">Rule rooted in source: goleak docs. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-channel-closed-by-sender" testable="true" depth="essential">
+      <statement>Channels are closed ONLY by the sender (or by the last sender via `sync.Once` / a coordinator that owns the close). Receivers never close, and there is no &apos;close from outside&apos; cleanup path.</statement>
+      <rationale source="Go specification + community convention">Closing a channel from the receiving side panics any live sender with &apos;send on closed channel&apos;. Sender-owns-close is the only convention that is safe by construction. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-goroutine-exit-signal" testable="true" depth="essential">
+      <statement>Every spawned goroutine MUST have a deterministic exit path — `ctx.Done()`, an input channel that gets drained and closed, or `wg.Done()`-tracked completion. &apos;Eventually it returns&apos; is not an exit path.</statement>
+      <rationale source="Practitioner experience">Hand-wavy exit paths are exactly how leaks are born; an explicit signal is what makes a goroutine lifecycle reviewable and what `goleak` can actually assert on. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-fanout-fanin-canonical-shape" testable="true" depth="essential">
+      <statement>An N-stage pipeline uses the canonical fan-out/fan-in shape: bounded pool per stage, channels between stages, a single output channel. A bespoke pipeline shape requires an ADR.</statement>
+      <rationale source="Go concurrency patterns literature">Fan-out/fan-in is the shape every Go reviewer already knows and the one where backpressure is visible. Bespoke shapes accrue maintenance cost and hide where the queue actually builds up.</rationale>
     </rule>
 
   </section>

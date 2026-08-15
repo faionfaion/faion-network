@@ -34,6 +34,41 @@
     <output>final artefact + status flag for owner review</output>
   </step>
 
+  <section title="Schema-authoring sub-procedure (expands steps 2 and 3 when the artefact ships real DDL)">
+    <step n="s1" name="model-entities-and-relationships">
+      <input>Domain entity list + relationships.</input>
+      <action>Translate entities to tables; identify FKs, lookup tables and junction tables; pick PKs (UUID v7 or BIGINT identity — globally, per r-pk-type-global).</action>
+      <output>Entity-to-table map + ERD draft.</output>
+    </step>
+    <step n="s2" name="author-ddl-with-constraints">
+      <input>Entity-to-table map.</input>
+      <action>Emit CREATE TABLE statements with every FK, UNIQUE, NOT NULL and CHECK declared in DDL and explicitly named. See templates/ecommerce_schema.sql.</action>
+      <output>DDL file.</output>
+    </step>
+    <step n="s3" name="validate-3nf-and-justify-denormalization">
+      <input>DDL file.</input>
+      <action>Walk each table: is every non-key column dependent on the whole PK? Where denormalized, write down the query and latency target that justifies it, plus the view or trigger keeping the redundant copy consistent.</action>
+      <output>Normalization audit.</output>
+    </step>
+    <step n="s4" name="plan-indexes-from-workload">
+      <input>DDL + workload (top reads and writes).</input>
+      <action>Run EXPLAIN against representative queries. Add only the indexes the plan demands, and record the index → query mapping.</action>
+      <output>Index plan.</output>
+      <decision-gate>More than ~2 indexes per table on average - re-examine the workload; the schema is probably over-indexed.</decision-gate>
+    </step>
+    <step n="s5" name="author-migration-plan">
+      <input>Existing schema + new schema.</input>
+      <action>Pick expand-only / expand-then-contract / new-schema. Sequence the DDL statements and write the rollback for each. See templates/alembic_migration.py.</action>
+      <output>Migration plan file.</output>
+      <decision-gate>Any release containing both an ADD and a DROP - split it before continuing.</decision-gate>
+    </step>
+    <step n="s6" name="review-and-sign-off">
+      <input>All artefacts.</input>
+      <action>Open a PR carrying schema spec + ERD + migration plan; DB owner and tech lead review together.</action>
+      <output>Approved schema spec.</output>
+    </step>
+  </section>
+
   <section title="Exit criteria">
     <list>
       <item>Artefact validates against templates/database-design.json</item>

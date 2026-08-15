@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="Database Design (PostgreSQL) Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns specific to Database Design (PostgreSQL). Each has a symptom, root cause, and concrete fix.</summary>
+  <summary>6 antipatterns specific to Database Design (PostgreSQL). Each has a symptom, root cause, and concrete fix.</summary>
 
   <section title="Failure modes">
 
@@ -26,6 +26,18 @@
       <symptom>Server moved between data centres; old rows mis-render times.</symptom>
       <root-cause>Used `TIMESTAMP` (no tz) for wall-clock timestamps.</root-cause>
       <fix>Migrate to `TIMESTAMPTZ`; rewrite app to set TZ explicitly.</fix>
+    </antipattern>
+
+    <antipattern id="fm-destructive-migration-coupled-to-release" severity="high">
+      <symptom>A `DROP COLUMN` and the code change that stops using it ship in one release; rolling back needs both reverted, in order, during the incident.</symptom>
+      <root-cause>The migration was treated as part of the feature rather than as infrastructure with its own release cadence.</root-cause>
+      <fix>Split into two releases: release N deploys the additive migration plus code tolerating both shapes; release N+2 deploys the destructive one. Rehearse the rollback before shipping either.</fix>
+    </antipattern>
+
+    <antipattern id="fm-trigger-as-business-logic" severity="medium">
+      <symptom>A critical business rule turns out to live in a database trigger; nobody finds it during code review because it is not in the repo diff.</symptom>
+      <root-cause>The author wanted an always-on guarantee, and a trigger felt closer to the data than the service layer.</root-cause>
+      <fix>Move the rule into the application service layer. Leave triggers only for structural invariants — audit log, `updated_at`. Record the move in an ADR.</fix>
     </antipattern>
 
   </section>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="Go HTTP Handlers (Gin / Echo / Chi / stdlib) Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns specific to Go HTTP Handlers (Gin / Echo / Chi / stdlib). Each has a symptom, root cause, and concrete fix.</summary>
+  <summary>8 antipatterns specific to Go HTTP Handlers (Gin / Echo / Chi / stdlib). Each has a symptom, root cause, and concrete fix.</summary>
 
   <section title="Failure modes">
 
@@ -26,6 +26,30 @@
       <symptom>One file uses Gin; another uses stdlib; middleware split breaks tracing.</symptom>
       <root-cause>Author copied stdlib snippet into Gin service.</root-cause>
       <fix>Pick one framework per service; rewrite the outlier.</fix>
+    </antipattern>
+
+    <antipattern id="fm-gin-default" severity="medium">
+      <symptom>Log format does not match team conventions; trace ids missing from access logs; two Recovery middlewares run because the team added their own on top.</symptom>
+      <root-cause>`gin.Default()` silently bundles a generic Logger + Recovery.</root-cause>
+      <fix>Replace with `gin.New()` + explicit `r.Use(mw.Recovery(), mw.RequestID(), mw.Logger(), ...)` in the documented order.</fix>
+    </antipattern>
+
+    <antipattern id="fm-goroutine-captures-request-ctx" severity="high">
+      <symptom>Sporadic `context canceled` errors in background work; the race detector flags data races on `gin.Context`.</symptom>
+      <root-cause>A goroutine spawned inside the handler captured `c` (or its request context), which dies when the handler returns.</root-cause>
+      <fix>Extract the values you need before `go func`; derive `context.WithoutCancel(c.Request.Context())` with an explicit timeout; pass context and values as arguments.</fix>
+    </antipattern>
+
+    <antipattern id="fm-logic-in-handler" severity="medium">
+      <symptom>Handler files grow past 100 lines; unit tests must spin the HTTP stack to exercise a business rule.</symptom>
+      <root-cause>No enforced thinness rule — agents add logic where the test feeds the input.</root-cause>
+      <fix>Move the logic into a service method. The handler reduces to bind → validate-binding → service-call → translate-to-http, under 40 lines.</fix>
+    </antipattern>
+
+    <antipattern id="fm-no-server-timeouts" severity="high">
+      <symptom>Slow-client connections hold file descriptors; fd exhaustion under sustained load (Slowloris).</symptom>
+      <root-cause>`http.Server` timeouts default to zero — unbounded — and the one-line `r.Run(&quot;:8080&quot;)` sets none of them.</root-cause>
+      <fix>Build the server from `templates/server.go`: set ReadHeaderTimeout, ReadTimeout, WriteTimeout, IdleTimeout, then `srv.ListenAndServe`.</fix>
     </antipattern>
 
   </section>

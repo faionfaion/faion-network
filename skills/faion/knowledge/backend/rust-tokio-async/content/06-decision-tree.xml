@@ -3,7 +3,19 @@
   <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
 
   <decision-tree>
-      <root-question id="q-root">Is the workload CPU-heavy?</root-question>
+      <root-question id="q-root">Runtime gates first: default runtime in production? unbounded mpsc on a production path? blocking syscall on an async path? no coordinated shutdown? If all four are clear, is the workload CPU-heavy?</root-question>
+      <branch when="runtime_flavour_is_default == true">
+        <conclusion ref="r9" verdict="declare rt flavour + worker_threads before anything else"/>
+      </branch>
+      <branch when="uses_unbounded_mpsc == true">
+        <conclusion ref="r10" verdict="switch to bounded mpsc::channel(capacity)"/>
+      </branch>
+      <branch when="blocking_call_on_async_path == true">
+        <conclusion ref="r3" verdict="offload via spawn_blocking or tokio::fs"/>
+      </branch>
+      <branch when="no_coordinated_shutdown == true">
+        <conclusion ref="r11" verdict="wire ctrl_c + CancellationToken before shipping"/>
+      </branch>
       <branch when="is_cpu_heavy == true">
         <conclusion ref="r3" verdict="tokio::task::spawn_blocking + .await??"/>
       </branch>

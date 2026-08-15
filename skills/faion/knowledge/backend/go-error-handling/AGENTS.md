@@ -46,10 +46,10 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~900 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | ~800 |
-| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/01-core-rules.xml` | essential | 13 testable rules with rationale + source | ~1600 |
+| `content/02-output-contract.xml` | essential | artefact JSON Schema + apperror/middleware/lint code-shape contract + valid / invalid examples | ~1500 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns with symptom / root-cause / fix | ~1300 |
+| `content/04-procedure.xml` | essential | 5-step artefact procedure + 5-step implementation sub-procedure | ~1500 |
 | `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
 | `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
 
@@ -68,6 +68,10 @@
 | `templates/go-error-handling.json` | JSON Schema for the Go Error Handling (AppError + Centralised Mapper) output contract |
 | `templates/go-error-handling.md` | Markdown skeleton with the required fields |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a go-error-handling record |
+| `templates/apperror.go` | AppError type, immutable sentinels, fresh-instance constructors, status-preserving `Wrap`, `IsCode` |
+| `templates/error_middleware.go` | Gin ErrorHandler middleware rendering AppError to the JSON envelope |
+| `templates/error-middleware-stdlib.go` | net/http variant: `Handler func(w,r) error` + `Wrap` adapter, 4xx→slog.Info / 5xx→slog.Error |
+| `templates/prompt-error-scaffold.txt` | Sub-agent prompt generating the apperror package + middleware + table-driven tests |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="RSpec Testing for Rails Applications Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>5 antipatterns specific to RSpec Testing for Rails Applications. Each has a symptom, root cause, and concrete fix.</summary>
+  <summary>9 antipatterns specific to RSpec Testing for Rails Applications. Each has a symptom, root cause, and concrete fix.</summary>
 
   <section title="Failure modes">
 
@@ -32,6 +32,30 @@
       <symptom>VCR replays stale cassettes; API contract changed but tests still pass.</symptom>
       <root-cause>Cassettes recorded once and never re-played against staging.</root-cause>
       <fix>Quarterly `VCR_RECORD_MODE=all`; review diffs in PR.</fix>
+    </antipattern>
+
+    <antipattern id="fm-create-everywhere-slow-suite" severity="high">
+      <symptom>Suite takes 8 minutes; a profile shows 90% of specs hitting the DB through `create(:resource)`.</symptom>
+      <root-cause>Spec authors reach for `create` by default because it always works, and nothing flags the ones that never assert on persistence.</root-cause>
+      <fix>Audit every spec: where DB persistence is not asserted, switch to `build_stubbed`. Typical result is 8 min down to 1-2 min.</fix>
+    </antipattern>
+
+    <antipattern id="fm-rails-helper-everywhere" severity="medium">
+      <symptom>Service specs require a full Rails boot; CI cold start is ~30s per worker and suite distribution stops paying off.</symptom>
+      <root-cause>Every spec requires `rails_helper`, including pure-Ruby tests that touch nothing Rails provides.</root-cause>
+      <fix>Pure-logic specs `require &quot;spec_helper&quot;`; only request / feature / system specs need `rails_helper`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-no-context-mess" severity="medium">
+      <symptom>A spec file is a flat list of 30 `it` blocks; a reviewer cannot tell which precondition each one covers.</symptom>
+      <root-cause>No grouping by state — contexts were never introduced.</root-cause>
+      <fix>Group by precondition: `context &quot;when order is paid&quot; do it &quot;returns paid status&quot; ... end`. Failure output then reads as a sentence.</fix>
+    </antipattern>
+
+    <antipattern id="fm-let-bang-overuse" severity="low">
+      <symptom>Every spec eagerly creates five records via `let!`; the examples that never reference them still pay the setup cost.</symptom>
+      <root-cause>`let!` used defensively, because lazy `let` once produced a confusing nil.</root-cause>
+      <fix>Audit each `let!` and downgrade to lazy `let` unless the side effect is strictly required regardless of what is being tested.</fix>
     </antipattern>
 
   </section>

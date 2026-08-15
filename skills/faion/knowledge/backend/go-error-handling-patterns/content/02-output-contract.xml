@@ -65,10 +65,75 @@
 ]]></example>
   </output-contract>
 
+  <section title="Code-shape contract (what the artefact describes)">
+    <p>The artefact above records the DECISION. This section pins the measurable shape of the error module that decision produces — every bound here is a hard zero or a hard one.</p>
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/go-error-module.json",
+  "type": "object",
+  "required": ["apperror_package", "sentinel_count", "unwrapped_boundaries", "type_assertion_count", "edge_translator_count", "control_flow_panics"],
+  "properties": {
+    "apperror_package": {"type": "string", "minLength": 3},
+    "sentinel_count": {"type": "integer", "minimum": 1},
+    "unwrapped_boundaries": {"type": "integer", "minimum": 0, "maximum": 0},
+    "type_assertion_count": {"type": "integer", "minimum": 0, "maximum": 0},
+    "edge_translator_count": {"type": "integer", "minimum": 1, "maximum": 1},
+    "control_flow_panics": {"type": "integer", "minimum": 0, "maximum": 0},
+    "validated_at": {"type": "string", "format": "date-time"}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Valid module report">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "apperror_package": "internal/apperror",
+  "sentinel_count": 5,
+  "unwrapped_boundaries": 0,
+  "type_assertion_count": 0,
+  "edge_translator_count": 1,
+  "control_flow_panics": 0,
+  "validated_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid module report">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "apperror_package": "x",
+  "sentinel_count": 0,
+  "unwrapped_boundaries": 4,
+  "type_assertion_count": 7,
+  "edge_translator_count": 3
+}
+]]></code>
+      <note>apperror_package too short, sentinel_count below minimum, unwrapped_boundaries and type_assertion_count above zero (both are hard zeros), edge_translator_count above its maximum of one.</note>
+    </example>
+  </section>
+
+  <section title="Forbidden code shapes">
+    <list>
+      <item>`errors.New(&quot;prefix: &quot; + err.Error())` instead of `fmt.Errorf(&quot;prefix: %w&quot;, err)` — the chain is lost.</item>
+      <item>Type assertion `err.(*MyError)` instead of `errors.As`.</item>
+      <item>`panic` used to signal a domain error (not-found, conflict, validation).</item>
+      <item>Two or more places translating domain errors to HTTP status codes.</item>
+    </list>
+  </section>
+
   <section title="Self-check checklist">
     <list>
       <item>Every required field populated with a typed value</item>
       <item>No forbidden pattern matches the output</item>
+      <item>Exactly one apperror package holds the canonical sentinel set</item>
+      <item>Zero unwrapped layer boundaries; zero type assertions on errors</item>
+      <item>Exactly one edge translator; zero control-flow panics</item>
+      <item>golangci-lint enables errorlint (errorf/asserts/comparison) and wrapcheck</item>
       <item>Output validates against templates/go-error-handling-patterns.json</item>
     </list>
   </section>

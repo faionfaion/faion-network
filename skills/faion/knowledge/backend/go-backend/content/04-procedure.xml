@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="04-procedure" title="Go Backend Development Patterns Procedure" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5-step procedure to produce a Go Backend Development Patterns artefact from typed inputs.</summary>
+  <summary>5-step procedure to produce a Go Backend Development Patterns artefact from typed inputs, plus a 6-step scaffold sub-procedure for when the artefact is a new service.</summary>
 
   <step n="1" name="gather">
     <input>Prerequisites table from AGENTS.md</input>
@@ -33,6 +33,45 @@
     <action>Set artefact_id with prefix `gobe-`, version=1.0.0 (or bump if updating an existing record), last_reviewed=today. Validate against templates/go-backend.json. Emit.</action>
     <output>final artefact + status flag for owner review</output>
   </step>
+
+  <section title="Scaffold sub-procedure (expands steps 3 and 5 when the artefact is a new service)">
+    <step n="s1" name="bootstrap-module">
+      <input>Module path, Go version &gt;= 1.21.</input>
+      <action>Create `go.mod`; scaffold `cmd/api/main.go` + `internal/{handler,service,repository,model,middleware,config}`.</action>
+      <output>Empty layout passing `go build ./...`.</output>
+      <decision-gate>If the module path collides with internal/ imports from another repo (monorepo path), stop and reconsider layout.</decision-gate>
+    </step>
+    <step n="s2" name="declare-errors-and-middleware">
+      <input>List of error classes (NotFound, BadRequest, Conflict, Internal).</input>
+      <action>Drop in `templates/app-error.go`; wire the ErrorHandler middleware in `internal/middleware/error.go`.</action>
+      <output>`internal/{model/errors.go, middleware/error.go}`.</output>
+      <decision-gate>If the team already uses a different error type, adapt the middleware to its sentinel/wrapper but keep exactly ONE mapping point.</decision-gate>
+    </step>
+    <step n="s3" name="wire-router-and-server">
+      <input>Framework choice (Gin / Echo / net-http).</input>
+      <action>Create `internal/server/server.go` with `Wire(cfg) *http.Server`; main.go only calls Wire + ListenAndServe with graceful shutdown.</action>
+      <output>Thin main.go (&lt;40 lines); internal/server isolated.</output>
+      <decision-gate>Run `wc -l cmd/api/main.go`; if over 50 lines, refactor before continuing.</decision-gate>
+    </step>
+    <step n="s4" name="define-consumer-interfaces">
+      <input>Domain entities + persistence requirements.</input>
+      <action>Declare interfaces (UserRepository, OrderRepository) inside `internal/service/`; implement them in `internal/repository/`. service MUST NOT import repository.</action>
+      <output>All interface declarations live in `internal/service/*.go`; `repository/*.go` imports `model` only.</output>
+      <decision-gate>`go vet ./...` plus a grep for `type \w+ interface` under `repository/`.</decision-gate>
+    </step>
+    <step n="s5" name="add-worker-pool-if-needed">
+      <input>Concurrency target (default `runtime.NumCPU()`).</input>
+      <action>Create `internal/concurrency/pool.go` with a Pool struct, jobs buffer = `runtime.NumCPU()*2`, and Submit selecting on `ctx.Done()`.</action>
+      <output>One Pool, fully cancellable.</output>
+      <decision-gate>`go test -race ./internal/concurrency/...` must be green.</decision-gate>
+    </step>
+    <step n="s6" name="audit">
+      <input>Repo state.</input>
+      <action>Run `templates/check-layout.sh` and `scripts/check-go-layout.py --root .`.</action>
+      <output>Layout report; zero violations means the checklist passed.</output>
+      <decision-gate>Block the commit if external-internal imports are found or any forbidden pattern is detected.</decision-gate>
+    </step>
+  </section>
 
   <section title="Exit criteria">
     <list>

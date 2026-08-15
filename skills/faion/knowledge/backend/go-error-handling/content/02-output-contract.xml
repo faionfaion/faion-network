@@ -65,10 +65,117 @@
 ]]></example>
   </output-contract>
 
+  <section title="Code-shape contract (what the artefact describes)">
+    <p>The artefact above records the DECISION. This section pins the apperror package shape, the middleware order and the lint config that decision must produce.</p>
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/go-error-handling-shape",
+  "type": "object",
+  "required": ["apperrorPackage", "middlewareOrder", "lintConfig"],
+  "properties": {
+    "apperrorPackage": {
+      "type": "object",
+      "required": ["type", "constructors", "wrap"],
+      "properties": {
+        "type": {"const": "AppError"},
+        "constructors": {"type": "array", "items": {"type": "string"}, "minItems": 3},
+        "wrap": {"const": "Wrap(err error, msg string) *AppError"}
+      }
+    },
+    "middlewareOrder": {
+      "type": "array",
+      "description": "Recovery FIRST, then ErrorMapper.",
+      "items": {"enum": ["RequestID", "Recovery", "Logger", "ErrorMapper", "Auth", "..."]}
+    },
+    "lintConfig": {
+      "type": "object",
+      "required": ["enabled"],
+      "properties": {
+        "enabled": {
+          "type": "array",
+          "items": {"enum": ["errorlint", "wrapcheck", "errcheck", "nilnil"]},
+          "minItems": 4
+        }
+      }
+    }
+  }
+}]]></code>
+  </section>
+
+  <section title="Valid code shape">
+    <example type="good">
+      <code lang="go"><![CDATA[// pkg/apperror/apperror.go
+type AppError struct {
+    Code       string
+    Message    string
+    HTTPStatus int
+    Err        error
+}
+func (e *AppError) Error() string { return e.Message }
+func (e *AppError) Unwrap() error  { return e.Err }
+func NewNotFound(name string) *AppError {
+    return &AppError{Code: "not_found", Message: name + " not found", HTTPStatus: 404}
+}
+func Wrap(err error, msg string) *AppError {
+    var ae *AppError
+    if errors.As(err, &ae) {
+        return &AppError{Code: ae.Code, Message: msg + ": " + ae.Message,
+                          HTTPStatus: ae.HTTPStatus, Err: err}  // r-preserve-status-on-rewrap
+    }
+    return &AppError{Code: "internal", Message: msg, HTTPStatus: 500, Err: err}
+}
+
+// internal/repository/user.go
+func (r *userRepo) Get(ctx context.Context, id string) (*model.User, error) {
+    var u model.User
+    err := r.db.QueryRow(ctx, "...").Scan(...)
+    if errors.Is(err, pgx.ErrNoRows) {
+        return nil, apperror.NewNotFound("user")        // r-translate-at-boundary
+    }
+    if err != nil {
+        return nil, fmt.Errorf("user repo get %s: %w", id, err)  // r-wrap-with-percent-w
+    }
+    return &u, nil
+}]]></code>
+      <note>%w wrapping, errors.As with status preservation, repository-boundary mapping.</note>
+    </example>
+  </section>
+
+  <section title="Invalid code shape">
+    <example type="bad">
+      <code lang="go"><![CDATA[// REJECTED — multiple violations
+var ErrNotFound = &AppError{Message: "not found", HTTPStatus: 404}   // mutable global
+
+func (r *userRepo) Get(id string) (*model.User, error) {
+    err := r.db.QueryRow(...).Scan(...)
+    if err == sql.ErrNoRows {                             // equality, not errors.Is
+        return nil, fmt.Errorf("user not found: %v", err) // %v strips the chain
+    }
+    return nil, err                                       // driver error leaks upward
+}
+
+func handler(c *gin.Context) {
+    u, err := repo.Get(c.Param("id"))
+    if ae, ok := err.(*AppError); ok {                    // type assertion misses wraps
+        c.JSON(500, ae)                                   // status demotion
+    }
+}]]></code>
+      <note>Five violations: mutable global, %v wrap, equality compare, driver leak, status demotion.</note>
+    </example>
+  </section>
+
   <section title="Self-check checklist">
     <list>
       <item>Every required field populated with a typed value</item>
       <item>No forbidden pattern matches the output</item>
+      <item>AppError has Code, Message, HTTPStatus, Err and implements Error() + Unwrap()</item>
+      <item>Every wrap uses %w; no %v or %s at any error-wrapping site</item>
+      <item>Driver-specific errors (pgx.*, sql.*, redis.Nil) appear only inside repository/</item>
+      <item>Handlers return error; exactly one ErrorMapper middleware translates</item>
+      <item>Middleware order is RequestID, Recovery, Logger, ErrorMapper, Auth</item>
+      <item>golangci-lint enables errorlint, wrapcheck, errcheck, nilnil</item>
+      <item>Constructors only — no exported mutable *AppError package vars</item>
+      <item>Wrap preserves the inner AppError&apos;s HTTPStatus and Code</item>
       <item>Output validates against templates/go-error-handling.json</item>
     </list>
   </section>

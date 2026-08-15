@@ -1,27 +1,32 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Poetry Project Setup — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+<text id="06-decision-tree" title="Poetry Project Setup — Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
+  <summary>Routes on the two questions that actually decide this methodology: is Poetry mandated at all (versus uv), and can CI carry it. Every conclusion references a rule id from 01-core-rules.xml.</summary>
+
   <decision-tree>
-    <root-question id="q-applies">Do the Applies-If preconditions ALL hold for this task?</root-question>
-    <branch when="applies_if_all_hold == true">
-      <question id="q-primary">Is the primary trigger (first Applies-If item) present in the input artefact?</question>
-      <branch when="primary_trigger_present == true">
-        <question id="q-secondary">Is the secondary constraint (second Applies-If item) also met?</question>
-        <branch when="secondary_constraint_met == true">
-          <conclusion ref="r1-pep621-layout">Apply the full methodology starting from r1-pep621-layout; load content/01-core-rules.xml and follow content/04-procedure.xml (if present).</conclusion>
-        </branch>
-        <branch when="secondary_constraint_met == false">
-          <conclusion ref="r2-lockfile-committed">Partial application: apply r2-lockfile-committed only; do not enforce later-stage rules.</conclusion>
-        </branch>
+    <root-question id="q-poetry-mandated">Is Poetry mandated for this project — corporate standard, legacy infrastructure, or an existing Poetry 1.x repo being migrated — rather than freely chosen?</root-question>
+
+    <branch when="poetry_mandated == true">
+      <question id="q-ci-and-shape">Can CI install Poetry and cache `.venv`, and is the project already on PEP 621 with a committed lockfile?</question>
+
+      <branch when="ci_supports_poetry == true AND pep621_and_lockfile == true">
+        <conclusion ref="r1-pep621-layout">Apply the full methodology: PEP 621 as the source of truth, then walk content/04-procedure.xml end to end.</conclusion>
       </branch>
-      <branch when="primary_trigger_present == false">
-        <conclusion ref="r3-dev-group-separate">Pre-conditions not met; revisit Applies-If list before applying any rule. Pause and clarify.</conclusion>
+
+      <branch when="ci_supports_poetry == true AND pep621_and_lockfile == false">
+        <conclusion ref="r2-lockfile-committed">Fix the foundation first — commit `poetry.lock` and migrate metadata into the `[project]` table. The CI and Docker rules are unenforceable until the lockfile is authoritative.</conclusion>
+      </branch>
+
+      <branch when="ci_supports_poetry == false">
+        <conclusion ref="r11-ci-cache-venv">Partial application: get `snok/install-poetry` plus a `.venv` cache keyed on the lockfile hash into CI before adopting the rest, otherwise every rule here is enforced only on developer machines.</conclusion>
       </branch>
     </branch>
-    <branch when="applies_if_all_hold == false">
-      <conclusion ref="r5-venv-in-project">Skip this methodology; route to the sibling methodology indicated by the Skip-If reason.</conclusion>
+
+    <branch when="poetry_mandated == false">
+      <conclusion ref="skip-this-methodology">Skip: a greenfield project with a free choice should use uv — route to `[[python-modern-2026]]`. A single-file script needs no dep manager at all.</conclusion>
     </branch>
-    <example trace="canonical-path">
-      <p>Typical happy path: applies-if holds, primary trigger present, secondary met → run the full methodology against r1-pep621-layout.</p>
+
+    <example trace="mandated-poetry-with-ci">
+      <p>Legacy corporate repo on Poetry 1.x, GitHub Actions available, no lockfile committed - poetry_mandated=true, ci_supports_poetry=true, pep621_and_lockfile=false - commit the lockfile and migrate to PEP 621 before anything else.</p>
     </example>
   </decision-tree>
 </text>

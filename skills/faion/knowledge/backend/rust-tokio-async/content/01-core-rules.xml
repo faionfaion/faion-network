@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="rust-tokio-async Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>9 testable rules grounding the rust-tokio-async methodology. Each rule pairs a binary check with a sourced rationale.</summary>
+  <summary>12 testable rules grounding the rust-tokio-async methodology. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
@@ -12,16 +12,16 @@
       <rationale source="v1-source">try_join! resolves all futures simultaneously; large N overloads pools.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
-      <statement>Wrap CPU-heavy work (Argon2, bcrypt, regex compile, image, zip) in tokio::task::spawn_blocking; await with .await?? to propagate both join error and inner Result.</statement>
-      <rationale source="v1-source">CPU futures starve the executor thread, blocking other tasks.</rationale>
+      <statement>Wrap CPU-heavy work (Argon2, bcrypt, regex compile, image, zip) in tokio::task::spawn_blocking; await with .await?? to propagate both join error and inner Result. The same applies to any blocking syscall on an async path: `std::fs`, `std::thread::sleep`, a blocking sync mutex, or any CPU loop over ~1ms.</statement>
+      <rationale source="v1-source; Tokio docs; runtime-stall retros">CPU futures starve the executor thread, blocking every other task scheduled on it. A blocking call is indistinguishable from a slow one to the scheduler — it simply freezes the worker until it returns; `spawn_blocking` (or `tokio::fs`) moves it onto the dedicated blocking pool.</rationale>
     </rule>
     <rule id="r4" testable="true" depth="essential">
       <statement>Process large collections with futures::stream::buffer_unordered(N) + tokio::sync::Semaphore::acquire_owned for explicit concurrency control.</statement>
       <rationale source="v1-source">Semaphore adds an explicit capacity token visible to logging/metrics.</rationale>
     </rule>
     <rule id="r5" testable="true" depth="essential">
-      <statement>Use tokio::task::JoinSet instead of Vec&lt;JoinHandle&lt;T&gt;&gt;. JoinSet cancels remaining tasks on drop, preventing leaks.</statement>
-      <rationale source="v1-source">Vec&lt;JoinHandle&gt; requires explicit abort() loops; forgetting them leaves tasks running.</rationale>
+      <statement>Use tokio::task::JoinSet instead of Vec&lt;JoinHandle&lt;T&gt;&gt;. JoinSet cancels remaining tasks on drop, preventing leaks. A bare `tokio::spawn(...)` whose JoinHandle is dropped is FORBIDDEN.</statement>
+      <rationale source="v1-source; cancel-safety blog series">Vec&lt;JoinHandle&gt; requires explicit abort() loops; forgetting them leaves tasks running. A dropped handle is worse still — the task leaks AND its panic is swallowed, so the failure never reaches a log. JoinSet propagates the panic through the `Result` returned by `join_next`.</rationale>
     </rule>
     <rule id="r6" testable="true" depth="essential">
       <statement>Wrap every external I/O call in tokio::time::timeout — no safe default for a missing timeout.</statement>
@@ -34,6 +34,18 @@
     <rule id="r8" testable="true" depth="essential">
       <statement>Never hold std::sync::MutexGuard across .await. Prefer mpsc, or use tokio::sync::Mutex when async-aware locks are required.</statement>
       <rationale source="v1-source">std::sync::MutexGuard is !Send; holding it across .await compile-errors or deadlocks.</rationale>
+    </rule>
+    <rule id="r9" testable="true" depth="essential">
+      <statement>Cargo features MUST declare the runtime flavour explicitly (`tokio = { version = &quot;1&quot;, features = [&quot;rt-multi-thread&quot;, ...] }`) and the runtime build MUST set `worker_threads`. A default-runtime build in production is FORBIDDEN.</statement>
+      <rationale source="Tokio docs; runtime-tuning postmortems">The default `multi_thread` flavour picks worker_count = CPU cores, which is frequently wrong for the workload (and wrong twice over inside a cgroup-limited container). Writing the number down surfaces the decision and makes it reviewable.</rationale>
+    </rule>
+    <rule id="r10" testable="true" depth="essential">
+      <statement>`mpsc::channel(capacity)` MUST use a bounded capacity sized to the measured load. `mpsc::unbounded_channel` is FORBIDDEN on a production path.</statement>
+      <rationale source="Tokio sync docs; OOM retros">An unbounded channel accumulates without limit whenever the consumer is slower than the producer, and the failure mode is an overnight OOMKill rather than a visible slowdown. A bounded channel back-pressures the producer instead. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+    <rule id="r11" testable="true" depth="essential">
+      <statement>The service MUST listen for `ctrl_c` (or a signal stream) and propagate cancellation through a `CancellationToken` or a shutdown channel. An abrupt drop with no cleanup is FORBIDDEN.</statement>
+      <rationale source="Tokio shutdown patterns">Without coordinated shutdown, in-flight requests are dropped mid-write: clients see TCP resets and partially written bodies, and a rolling deploy turns into an error spike.</rationale>
     </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
       <statement>Skip when the input does not satisfy the Applies-If preconditions or another methodology owns this output shape.</statement>

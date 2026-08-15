@@ -34,6 +34,35 @@
     <output>final artefact + status flag for owner review</output>
   </step>
 
+  <section title="Implementation sub-procedure (expands steps 3 and 5 when the artefact ships real code)">
+    <step n="s1" name="inventory-error-classes">
+      <input>Domain operations + the errors actually observed.</input>
+      <action>List the sentinel needs — not-found, conflict, unauthorised, validation, system, throttle — and map each to an HTTP / gRPC code.</action>
+      <output>Sentinel inventory.</output>
+    </step>
+    <step n="s2" name="declare-sentinels">
+      <input>Sentinel inventory.</input>
+      <action>Create the `internal/apperror` package. Declare `var ErrNotFound = errors.New(&quot;not found&quot;)` etc. plus helpers like `NewConflict(&quot;resource already exists&quot;)`.</action>
+      <output>apperror package (see templates/apperror.go).</output>
+    </step>
+    <step n="s3" name="wrap-at-boundaries">
+      <input>Existing code + apperror.</input>
+      <action>At each layer boundary replace `return err` with `return fmt.Errorf(&quot;&lt;context&gt;: %w&quot;, err)` where context is worth adding; convert internal comparisons to `errors.Is` / `errors.As`.</action>
+      <output>Wrapped error chain.</output>
+    </step>
+    <step n="s4" name="translate-at-edge">
+      <input>apperror + handler layer.</input>
+      <action>Build ONE middleware (HTTP) or interceptor (gRPC) that calls `errors.Is(err, apperror.Err...)` and maps to status. Handlers stop translating.</action>
+      <output>Edge translator.</output>
+      <decision-gate>If two translators exist, merge them. Per-handler status mapping is forbidden.</decision-gate>
+    </step>
+    <step n="s5" name="enforce-with-lint">
+      <input>`.golangci.yml` (see templates/golangci.yml).</input>
+      <action>Enable errorlint + wrapcheck + errcheck; run in CI. Allowlist only adapter code that legitimately bridges a legacy error model.</action>
+      <output>Lint-clean codebase.</output>
+    </step>
+  </section>
+
   <section title="Exit criteria">
     <list>
       <item>Artefact validates against templates/go-error-handling-patterns.json</item>

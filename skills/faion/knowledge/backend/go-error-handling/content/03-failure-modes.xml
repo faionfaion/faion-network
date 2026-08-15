@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="Go Error Handling (AppError + Centralised Mapper) Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns specific to Go Error Handling (AppError + Centralised Mapper). Each has a symptom, root cause, and concrete fix.</summary>
+  <summary>8 antipatterns specific to Go Error Handling (AppError + Centralised Mapper). Each has a symptom, root cause, and concrete fix.</summary>
 
   <section title="Failure modes">
 
@@ -26,6 +26,30 @@
       <symptom>Handler writes JSON envelope directly, bypassing middleware; inconsistent shape.</symptom>
       <root-cause>Author shortcut for 'easy 404'.</root-cause>
       <fix>Always `c.Error(apperror.New(...))`; let middleware render.</fix>
+    </antipattern>
+
+    <antipattern id="fm-type-assertion-at-boundary" severity="high">
+      <symptom>After any `fmt.Errorf(&quot;...: %w&quot;, appErr)` the check `if ae, ok := err.(*AppError); ok` fails and the handler emits a generic 500.</symptom>
+      <root-cause>A type assertion does not traverse the `Unwrap` chain — it only sees the outermost type.</root-cause>
+      <fix>`var ae *AppError; if errors.As(err, &amp;ae) { ... }`. `errorlint` catches every future occurrence.</fix>
+    </antipattern>
+
+    <antipattern id="fm-driver-error-leak" severity="high">
+      <symptom>A handler matches on `pgx.ErrNoRows`; the HTTP layer is now coupled to the database driver and breaks the day the driver is swapped.</symptom>
+      <root-cause>The repository never mapped driver errors to domain errors.</root-cause>
+      <fix>At every repository exit: `if errors.Is(err, pgx.ErrNoRows) { return apperror.NewNotFound(&quot;user&quot;) }`. Keep `pgx.*` / `sql.*` imports confined to `internal/repository/`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-mutable-apperror-global" severity="high">
+      <symptom>Tests pass in isolation and flake under load; one request&apos;s error message shows up in another request&apos;s response.</symptom>
+      <root-cause>`var ErrNotFound = &amp;AppError{...}` is a shared mutable global; a single handler assigning `.Message` changes it for every subsequent caller.</root-cause>
+      <fix>Replace each exported `*AppError` var with a `NewXxx()` constructor returning a fresh instance. Keep only `errors.New` sentinels as exported values.</fix>
+    </antipattern>
+
+    <antipattern id="fm-status-demotion-on-rewrap" severity="high">
+      <symptom>404s land in SLO dashboards as 500s; on-call is paged for client errors.</symptom>
+      <root-cause>`Wrap` defaults `HTTPStatus` to 500 without inspecting the inner chain.</root-cause>
+      <fix>In `Wrap`, `errors.As` the input; if it already carries an `*AppError`, preserve its `HTTPStatus` and `Code`.</fix>
     </antipattern>
 
   </section>

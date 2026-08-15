@@ -7,12 +7,28 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "type": "object",
-  "required": ['pep621_present', 'lockfile_committed', 'dev_group_separate', 'venv_in_project'],
+  "required": ["pep621_present", "lockfile_committed", "dev_group_separate", "venv_in_project",
+               "python_constraint", "ci_install", "deps_groups"],
   "properties": {
     "pep621_present": { "type": "boolean" },
     "lockfile_committed": { "type": "boolean" },
     "dev_group_separate": { "type": "boolean" },
-    "venv_in_project": { "type": "boolean" }
+    "venv_in_project": { "type": "boolean" },
+    "python_constraint": { "type": "string", "pattern": "^\\^?3\\.(1[1-9]|[2-9][0-9])" },
+    "ci_install": { "type": "string", "pattern": "poetry install .*--sync" },
+    "deps_groups": {
+      "type": "array",
+      "items": { "enum": ["main", "dev", "test", "docs"] },
+      "minItems": 3
+    },
+    "docker_multi_stage": {
+      "type": "object",
+      "properties": {
+        "builder_uses": { "enum": ["poetry export"] },
+        "final_uses": { "enum": ["pip install -r requirements.txt"] }
+      }
+    },
+    "ci_caches_venv": { "type": "boolean" }
   },
   "additionalProperties": false
 }
@@ -25,6 +41,9 @@
       <item>lockfile_committed</item>
       <item>dev_group_separate</item>
       <item>venv_in_project</item>
+      <item>python_constraint</item>
+      <item>ci_install</item>
+      <item>deps_groups</item>
     </list>
   </section>
 
@@ -35,10 +54,70 @@
   "pep621_present": true,
   "lockfile_committed": true,
   "dev_group_separate": true,
-  "venv_in_project": true
+  "venv_in_project": true,
+  "python_constraint": "^3.11",
+  "ci_install": "poetry install --sync --no-interaction",
+  "deps_groups": ["main", "dev", "test", "docs"],
+  "docker_multi_stage": {
+    "builder_uses": "poetry export",
+    "final_uses": "pip install -r requirements.txt"
+  },
+  "ci_caches_venv": true
 }
 ]]></code>
       <note>All gates green; methodology applied.</note>
+    </example>
+  </section>
+
+  <section title="Valid project shape">
+    <example type="good">
+      <code lang="toml"><![CDATA[# pyproject.toml
+[project]
+name = "acme"
+version = "0.1.0"
+requires-python = ">=3.11"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.4"
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8"
+
+[tool.poetry.group.docs]
+optional = true
+[tool.poetry.group.docs.dependencies]
+mkdocs = "^1.5"
+
+# CI step
+- run: poetry install --sync --no-interaction
+
+# Dockerfile
+FROM python:3.11-slim AS builder
+RUN pip install poetry
+COPY pyproject.toml poetry.lock ./
+RUN poetry export -f requirements.txt -o /tmp/req.txt --without-hashes
+
+FROM python:3.11-slim
+COPY --from=builder /tmp/req.txt .
+RUN pip install -r req.txt]]></code>
+      <note>PEP 621 metadata, four dep groups with docs optional, --sync in CI, Poetry confined to the builder stage.</note>
+    </example>
+  </section>
+
+  <section title="Invalid project shape">
+    <example type="bad">
+      <code lang="text"><![CDATA[# pyproject.toml — REJECTED
+python = ">=3.8"                              # broad constraint (r8)
+# poetry.lock in .gitignore                    # lockfile not committed (r2)
+
+# Dockerfile
+FROM python:3.11
+COPY . .
+RUN pip install poetry && poetry install       # Poetry in the final stage (r10)]]></code>
+      <note>Three violations: broad Python range, uncommitted lockfile, Poetry shipped to production.</note>
     </example>
   </section>
 
@@ -49,7 +128,10 @@
   "pep621_present": false,
   "lockfile_committed": false,
   "dev_group_separate": false,
-  "venv_in_project": false
+  "venv_in_project": false,
+  "python_constraint": ">=3.8",
+  "ci_install": "poetry install",
+  "deps_groups": ["main"]
 }
 ]]></code>
       <note>All gates red; methodology not applied — fix the violations before claiming completion.</note>
@@ -58,9 +140,15 @@
 
   <section title="Self-check checklist">
     <list>
-      <item>Every required field is present and boolean true.</item>
+      <item>Every required boolean field is present and true.</item>
       <item>Artefact references the rule id from 01-core-rules.xml (e.g., r1-pep621-layout).</item>
       <item>No extra properties outside the schema.</item>
+      <item>poetry.lock is committed, not in .gitignore.</item>
+      <item>Python constraint is `^3.11` or newer, never a broad `&gt;=` range.</item>
+      <item>CI install line carries `--sync --no-interaction`.</item>
+      <item>Dep groups main/dev/test declared, with docs marked optional.</item>
+      <item>Dockerfile is multi-stage; the final stage uses pip + requirements.txt, never `poetry install`.</item>
+      <item>CI caches .venv keyed by OS + Python version + poetry.lock hash.</item>
     </list>
   </section>
 </text>

@@ -45,10 +45,10 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 9 testable rules with rationale + source | ~1100 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom + root-cause + fix | ~900 |
-| `content/04-procedure.xml` | essential | 5-step end-to-end procedure | ~800 |
+| `content/01-core-rules.xml` | essential | 12 testable rules with rationale + source | ~1600 |
+| `content/02-output-contract.xml` | essential | per-pattern JSON Schema + runtime-level companion contract + valid/invalid examples + 9 forbidden patterns | ~1700 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns with symptom + root-cause + fix | ~1400 |
+| `content/04-procedure.xml` | essential | 5-step end-to-end procedure + runtime-level spec step | ~1100 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
 
 ## Task Routing
@@ -66,6 +66,11 @@
 |------|---------|
 | `templates/buffer_unordered_with_semaphore.rs` | buffer_unordered + Semaphore bounded-concurrency stream. |
 | `templates/joinset_dynamic.rs` | JoinSet for dynamic task groups with cancellation on drop. |
+| `templates/main.rs` | Tokio service skeleton: explicit multi_thread runtime, JoinSet, timeout, CancellationToken shutdown. |
+| `templates/Cargo.toml` | Cargo manifest snippet declaring the Tokio feature set explicitly. |
+| `templates/batch-processor.rs` | Semaphore-bounded concurrent batch processor over a Vec input. |
+| `templates/user-service.rs` | Reference service: try_join! for parallel queries, spawn_blocking for Argon2. |
+| `templates/runtime-spec-example.json` | Filled-in runtime-level record (flavour, workers, offload, channel policy, timeout, shutdown). |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="Go Error Handling Patterns (Wrap, Translate, Sentinel, Log-Once) Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>7 testable rules every Go Error Handling Patterns (Wrap, Translate, Sentinel, Log-Once) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+  <summary>10 testable rules every Go Error Handling Patterns (Wrap, Translate, Sentinel, Log-Once) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
 
@@ -15,13 +15,13 @@
     </rule>
 
     <rule id="r-one-apperror-package" testable="true" depth="essential">
-      <statement>ONE shared `apperror` package; sentinel vars per feature live in feature package but import from apperror.</statement>
-      <rationale source="Internal reviews">Rule rooted in source: Internal reviews. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+      <statement>ONE shared `apperror` package holds the canonical sentinel set (`ErrNotFound`, `ErrConflict`, `ErrUnauthorized`, `ErrValidation`, `ErrSystem`); sentinel vars per feature live in the feature package but import from apperror.</statement>
+      <rationale source="Internal reviews + Go community convention">Rule rooted in source: Internal reviews. Sentinels scattered across packages duplicate each other, and the edge translator needs exactly one canonical set to switch on. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
 
     <rule id="r-errors-is-not-equality" testable="true" depth="essential">
-      <statement>Compare errors with `errors.Is` / `errors.As`, never `err == ErrX` after wrapping.</statement>
-      <rationale source="Go 1.13 release notes">Rule rooted in source: Go 1.13 release notes. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+      <statement>Compare errors with `errors.Is` (sentinels) / `errors.As` (typed errors carrying data), never `err == ErrX` after wrapping and never a type assertion `err.(*SomeError)`.</statement>
+      <rationale source="Go 1.13 release notes">Rule rooted in source: Go 1.13 release notes. `errors.Is`/`As` walk the wrap chain; equality and type assertion match only the outermost value and silently miss everything wrapped beneath it. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
 
     <rule id="r-log-once-handler" testable="true" depth="essential">
@@ -37,6 +37,21 @@
     <rule id="r-no-sentinel-strings" testable="true" depth="essential">
       <statement>Sentinels MUST be typed (`var ErrNotFound = errors.New(...)`), never compared by `err.Error() == &quot;...&quot;`.</statement>
       <rationale source="Go anti-patterns">Rule rooted in source: Go anti-patterns. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-no-panic-for-control-flow" testable="true" depth="essential">
+      <statement>`panic` is reserved for unrecoverable programmer error — an invariant violation, or a must-have config missing at startup. It MUST NEVER signal a recoverable domain error (not-found, conflict, validation).</statement>
+      <rationale source="Go community convention">Panic-as-control-flow makes the error path invisible to compiler analysis and to every reader of the function signature; it then surfaces unpredictably in production as a recovered blank 500. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-translate-at-edge-once" testable="true" depth="essential">
+      <statement>Translation from domain error to HTTP status / gRPC code happens in EXACTLY ONE place — one middleware or one interceptor. Handlers return Go errors; per-handler status mapping is forbidden.</statement>
+      <rationale source="Practitioner experience">Per-handler translation accumulates inconsistencies that customers see as an incoherent API (one endpoint 404, another 410 for the same condition). A single translator is auditable and changeable in one edit. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-lint-errorlint-wrapcheck" testable="true" depth="essential">
+      <statement>`golangci-lint` MUST enable `errorlint` (errorf / asserts / comparison) and `wrapcheck`, alongside `errcheck`. Adapter code bridging a legacy error model goes on an explicit allowlist, never a blanket disable.</statement>
+      <rationale source="golangci-lint">These rules are only enforceable in CI — a convention document alone regresses within a sprint. `errorlint` is what catches `%v`-instead-of-`%w`, type assertions on errors, and `==` comparison of wrapped errors.</rationale>
     </rule>
 
   </section>

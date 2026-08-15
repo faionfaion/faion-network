@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="Database Design (PostgreSQL) Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>7 testable rules every Database Design (PostgreSQL) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+  <summary>10 testable rules every Database Design (PostgreSQL) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
 
@@ -37,6 +37,21 @@
     <rule id="r-on-delete-explicit" testable="true" depth="essential">
       <statement>Every FK MUST set ON DELETE explicitly (CASCADE / RESTRICT / SET NULL); never rely on default NO ACTION silently.</statement>
       <rationale source="PostgreSQL docs">Rule rooted in source: PostgreSQL docs. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-expand-then-contract" testable="true" depth="essential">
+      <statement>Schema changes follow expand-then-contract: release N deploys the additive migration and code handling BOTH shapes; release N+2 deploys the destructive one. Combining an ADD and a DROP in a single release is FORBIDDEN.</statement>
+      <rationale source="Industry consensus on zero-downtime migrations">A single-shot destructive migration couples deploy timing to code timing — a rollback then needs both reverted at once, in the right order, under incident pressure. Expand-contract decouples them and makes every step independently reversible. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-naming-convention" testable="true" depth="essential">
+      <statement>Tables are plural snake_case; columns are snake_case; a foreign key is `&lt;other_table_singular&gt;_id`; every constraint and index carries a meaningful explicit name — auto-generated names like `idx_xyz_abc1` are FORBIDDEN.</statement>
+      <rationale source="PostgreSQL convention">Predictable naming makes migrations greppable and schema review mechanical. An auto-generated constraint name is an opaque debugging tax the first time a production insert fails against it.</rationale>
+    </rule>
+
+    <rule id="r-no-business-logic-in-db" testable="true" depth="essential">
+      <statement>Business logic lives in application code, not stored procedures, triggers or rule rewrites. The database enforces STRUCTURAL invariants only; a trigger is acceptable for an audit log or `updated_at`, never for a domain rule.</statement>
+      <rationale source="Modern application architecture">Logic in the database escapes source control, code review and language tooling, and a cascade of triggers is close to undebuggable. Moving a rule out of a trigger should be recorded in an ADR. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
 
   </section>

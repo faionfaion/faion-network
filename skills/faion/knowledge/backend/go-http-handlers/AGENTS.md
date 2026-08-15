@@ -46,10 +46,13 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~900 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | ~800 |
-| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/01-core-rules.xml` | essential | 11 testable rules with rationale + source | ~1500 |
+| `content/02-output-contract.xml` | essential | artefact JSON Schema + server/handler shape contract + valid / invalid examples | ~1600 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns with symptom / root-cause / fix | ~1300 |
+| `content/04-procedure.xml` | essential | 5-step artefact procedure + 5-step scaffold sub-procedure | ~1500 |
+| `content/01-router-setup.xml` | recommended | Middleware order + stdlib 1.22 muxer as the zero-dependency default | ~500 |
+| `content/02-handler-pattern.xml` | recommended | Handler struct DI, ShouldBindJSON, context propagation | ~600 |
+| `content/03-rules.xml` | recommended | Framework consistency, server timeouts, httptest discipline, agent gotchas | ~600 |
 | `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
 | `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
 
@@ -68,6 +71,9 @@
 | `templates/go-http-handlers.json` | JSON Schema for the Go HTTP Handlers (Gin / Echo / Chi / stdlib) output contract |
 | `templates/go-http-handlers.md` | Markdown skeleton with the required fields |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a go-http-handlers record |
+| `templates/gin_router.go` | Gin router with the documented middleware order and route groups |
+| `templates/stdlib_handler.go` | stdlib 1.22 App struct with `routes()`, `writeJSON`, `writeProblem` |
+| `templates/server.go` | `Wire(cfg) *http.Server` with all four timeouts + `Run()` graceful shutdown on SIGINT/SIGTERM |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

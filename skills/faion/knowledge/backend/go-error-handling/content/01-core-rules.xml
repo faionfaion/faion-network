@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="Go Error Handling (AppError + Centralised Mapper) Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>7 testable rules every Go Error Handling (AppError + Centralised Mapper) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+  <summary>13 testable rules every Go Error Handling (AppError + Centralised Mapper) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
 
     <rule id="r-apperror-struct" testable="true" depth="essential">
-      <statement>Project MUST define one `apperror.AppError` struct {Code, Message, HTTPStatus, Cause, Stack}; never multiple.</statement>
-      <rationale source="Internal Go review patterns">Rule rooted in source: Internal Go review patterns. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+      <statement>Project MUST define one `apperror.AppError` struct {Code, Message, HTTPStatus, Cause, Stack}; never multiple. It MUST implement both `Error() string` and `Unwrap() error`.</statement>
+      <rationale source="Internal Go review patterns">Rule rooted in source: Internal Go review patterns. Without `Unwrap()`, `errors.As` cannot traverse the chain and every type check breaks at the first wrap. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
 
     <rule id="r-wrap-with-percent-w" testable="true" depth="essential">
-      <statement>Errors crossing layers MUST be wrapped with `fmt.Errorf(&quot;verb: %w&quot;, err)` to preserve the chain.</statement>
-      <rationale source="Go 1.13 error wrapping">Rule rooted in source: Go 1.13 error wrapping. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+      <statement>Errors crossing layers MUST be wrapped with `fmt.Errorf(&quot;verb: %w&quot;, err)` to preserve the chain. At the HTTP boundary classify with `errors.As` / `errors.Is` — a type assertion `err.(*AppError)` is FORBIDDEN.</statement>
+      <rationale source="Go 1.13 error wrapping">Rule rooted in source: Go 1.13 error wrapping. `%v` stringifies and drops the chain; a type assertion matches only the outermost type and silently misses every wrapped error. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
 
     <rule id="r-sentinel-per-package" testable="true" depth="essential">
@@ -20,8 +20,8 @@
     </rule>
 
     <rule id="r-translate-at-boundary" testable="true" depth="essential">
-      <statement>Storage-layer sentinels (`sql.ErrNoRows`) MUST be translated to domain sentinels at the repository boundary.</statement>
-      <rationale source="Internal reviews">Rule rooted in source: Internal reviews. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+      <statement>Storage-layer sentinels (`sql.ErrNoRows`, `pgx.ErrNoRows`, `redis.Nil`, driver uniqueness violations) MUST be translated to domain sentinels at the repository boundary. A driver error MUST NEVER reach a handler.</statement>
+      <rationale source="Internal reviews">Rule rooted in source: Internal reviews. Driver-specific types create implicit coupling at the wrong layer — the handler cannot know which driver sits below it, so the coupling only surfaces when the driver is swapped. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
 
     <rule id="r-log-once-at-handler" testable="true" depth="essential">
@@ -37,6 +37,36 @@
     <rule id="r-never-fmt-errorf-with-string" testable="true" depth="essential">
       <statement>`fmt.Errorf(&quot;...%s&quot;, err)` is FORBIDDEN — always `%w` to preserve chain.</statement>
       <rationale source="Go vet checks">Rule rooted in source: Go vet checks. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-handler-returns-error" testable="true" depth="essential">
+      <statement>Handlers are declared as a `Handler` type that RETURNS an error (`func(w, r) error`) and are adapted by a single `Wrap` function. A handler MUST NOT write the error response inline.</statement>
+      <rationale source="v1-source">An inline response write duplicates the translation logic at every call site, and duplicated translation always drifts. Returning the error puts the mapping in one adapter that a reviewer can read in full.</rationale>
+    </rule>
+
+    <rule id="r-recovery-before-mapper" testable="true" depth="essential">
+      <statement>Panic-recovery middleware MUST be registered BEFORE the error-mapping middleware. Canonical order: RequestID, Recovery, Logger, ErrorMapper, Auth.</statement>
+      <rationale source="v1-source">Recovery has to convert the panic into an error before anything can map it. If mapping runs first, a panic bypasses it entirely and the client gets a blank 500 with no body and no code. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-writeheader-before-encode" testable="true" depth="essential">
+      <statement>Always call `w.WriteHeader(status)` BEFORE `json.NewEncoder(w).Encode(...)`.</statement>
+      <rationale source="net/http">`http.ResponseWriter` flushes the status on the first body byte; a status set after the body has started is silently discarded and the client sees 200 for a 500.</rationale>
+    </rule>
+
+    <rule id="r-lint-error-set" testable="true" depth="essential">
+      <statement>`golangci-lint` MUST enable `errorlint`, `wrapcheck`, `errcheck` and `nilnil`. The default config is not sufficient.</statement>
+      <rationale source="golangci-lint">Defaults catch neither `%v` wrapping nor unwrapped returns. This explicit set is how the rules above become enforceable rather than aspirational; block the merge on any finding from it.</rationale>
+    </rule>
+
+    <rule id="r-constructors-not-mutable-globals" testable="true" depth="essential">
+      <statement>NEVER export a package-level mutable `*AppError` var. Expose constructor functions (`NewNotFound`, `NewBadRequest`, `NewConflict`, `NewInternal`) that return a fresh instance; immutable sentinels declared with `errors.New` are the only exported error values.</statement>
+      <rationale source="v1-source">`ErrNotFound.Message = &quot;X&quot;` mutates a global — one request corrupts state for every subsequent request. It passes in isolation and flakes under load. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-preserve-status-on-rewrap" testable="true" depth="essential">
+      <statement>When wrapping at a higher layer, `Wrap` MUST `errors.As` the input and preserve the inner `*AppError`&apos;s `HTTPStatus` and `Code` when one is present. A 404 MUST NOT become a 500 on rewrap.</statement>
+      <rationale source="v1-source">Status demotion on rewrap reports client errors as server errors: it corrupts SLO accounting and pages on-call for a 404. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
 
   </section>

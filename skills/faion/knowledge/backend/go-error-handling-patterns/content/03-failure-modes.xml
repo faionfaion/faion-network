@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="Go Error Handling Patterns (Wrap, Translate, Sentinel, Log-Once) Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns specific to Go Error Handling Patterns (Wrap, Translate, Sentinel, Log-Once). Each has a symptom, root cause, and concrete fix.</summary>
+  <summary>7 antipatterns specific to Go Error Handling Patterns (Wrap, Translate, Sentinel, Log-Once). Each has a symptom, root cause, and concrete fix.</summary>
 
   <section title="Failure modes">
 
@@ -26,6 +26,24 @@
       <symptom>Error logged in 3 layers; on-call sees three matching lines per incident.</symptom>
       <root-cause>No log-ownership policy.</root-cause>
       <fix>Log only at handler; document policy in CONTRIBUTING.</fix>
+    </antipattern>
+
+    <antipattern id="fm-type-assertion-misses-wrap" severity="high">
+      <symptom>Middleware fails to recognise a wrapped domain error and returns 500 where it should return 409.</symptom>
+      <root-cause>Author used `err.(*ConflictError)` instead of `errors.As` — the assertion only sees the outermost value.</root-cause>
+      <fix>`var e *ConflictError; if errors.As(err, &amp;e) { ... }`. Enable `errorlint` with `asserts: true` so the next one is caught in CI.</fix>
+    </antipattern>
+
+    <antipattern id="fm-panic-for-control-flow" severity="medium">
+      <symptom>A handler panics on invalid input; the recovery middleware logs it as a 500 and the client gets no usable error.</symptom>
+      <root-cause>Author treated `panic` as a quick failure exit for a perfectly recoverable domain condition.</root-cause>
+      <fix>Return `apperror.ErrValidation` (or the matching sentinel) instead. The handler returns, the edge translator maps it to 400.</fix>
+    </antipattern>
+
+    <antipattern id="fm-edge-translator-drift" severity="medium">
+      <symptom>One handler answers 404 for not-found, another answers 410. Customers report the API as inconsistent.</symptom>
+      <root-cause>Each handler translated errors independently and the conventions drifted apart.</root-cause>
+      <fix>Centralise translation in a single middleware / interceptor and delete every per-handler status mapping. `edge_translator_count` must be exactly 1.</fix>
     </antipattern>
 
   </section>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="Go Concurrency Patterns (Worker Pool, Fan-Out/Fan-In, errgroup, Pipeline) Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns specific to Go Concurrency Patterns (Worker Pool, Fan-Out/Fan-In, errgroup, Pipeline). Each has a symptom, root cause, and concrete fix.</summary>
+  <summary>6 antipatterns specific to Go Concurrency Patterns (Worker Pool, Fan-Out/Fan-In, errgroup, Pipeline). Each has a symptom, root cause, and concrete fix.</summary>
 
   <section title="Failure modes">
 
@@ -26,6 +26,18 @@
       <symptom>`errgroup.Group` instead of `WithContext`; sibling tasks keep running after first error.</symptom>
       <root-cause>Author used the wrong constructor.</root-cause>
       <fix>Always use `errgroup.WithContext(ctx)`; pass returned ctx to tasks.</fix>
+    </antipattern>
+
+    <antipattern id="fm-close-from-receiver" severity="high">
+      <symptom>Pipeline goroutine panics with &apos;send on closed channel&apos; during flush or shutdown.</symptom>
+      <root-cause>A cleanup / receiver-side goroutine called `close()` on the work channel it does not own.</root-cause>
+      <fix>Move `close()` to the sender. With multiple senders, gate it behind `sync.Once` or a coordinator goroutine that owns the close after `wg.Wait()`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-manual-error-channel" severity="medium">
+      <symptom>The first worker error is logged, the remaining workers keep running and write conflicting results.</symptom>
+      <root-cause>Hand-rolled `errC := make(chan error)` instead of errgroup — the cancellation half of the pattern was never written.</root-cause>
+      <fix>Replace with `errgroup.WithContext`. Workers return the error directly; errgroup records the first and cancels the rest.</fix>
     </antipattern>
 
   </section>

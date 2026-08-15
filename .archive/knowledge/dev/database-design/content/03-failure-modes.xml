@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="Database Design Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>4 antipatterns observed when applying database-design. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <section title="Antipatterns">
+    <antipattern id="fm-app-only-constraints" severity="high">
+      <symptom>Service code enforces uniqueness or referential integrity that the DB schema does not.</symptom>
+      <root-cause source="Practitioner experience">Developer relied on ORM validations instead of DDL constraints; bulk import or admin tool bypasses ORM and corrupts data.</root-cause>
+      <fix>Add the constraint at DB layer (UNIQUE, FK, CHECK). Re-run the failing import to confirm rejection.</fix>
+    </antipattern>
+    <antipattern id="fm-speculative-index-bloat" severity="medium">
+      <symptom>Tables carry many indexes that no current query plan references.</symptom>
+      <root-cause source="Practitioner experience">Indexes added 'just in case' or by ORM auto-migration without measurement.</root-cause>
+      <fix>Drop unused indexes (pg_stat_user_indexes shows zero scans). Add a CI check that flags new indexes without a paired query in the workload list.</fix>
+    </antipattern>
+    <antipattern id="fm-destructive-migration-coupled-to-release" severity="high">
+      <symptom>DROP COLUMN and code change ship in one release; rollback requires both.</symptom>
+      <root-cause source="Practitioner experience">Author treats migration as part of feature, not infra.</root-cause>
+      <fix>Split into two releases: release N deploys additive migration + code that handles both shapes; release N+2 deploys destructive migration. Verify with rollback drill.</fix>
+    </antipattern>
+    <antipattern id="fm-trigger-as-business-logic" severity="medium">
+      <symptom>Critical business rule lives in a database trigger.</symptom>
+      <root-cause source="Practitioner experience">Author wanted an 'always-on' guarantee; trigger felt closer to data than service code.</root-cause>
+      <fix>Move logic to application service layer; trigger remains only for structural invariants (audit log, updated_at). Document the move in an ADR.</fix>
+    </antipattern>
+  </section>
+</text>

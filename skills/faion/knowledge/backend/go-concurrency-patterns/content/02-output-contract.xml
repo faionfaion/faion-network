@@ -65,6 +65,66 @@
 ]]></example>
   </output-contract>
 
+  <section title="Code-shape contract (what the artefact describes)">
+    <p>The artefact above records the DECISION. This section pins the shape of the concurrent module that decision produces — the machine-checkable half, enforced by scripts/validate-go-concurrency-patterns.py against the emitted module report.</p>
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/go-concurrency-module.json",
+  "type": "object",
+  "required": ["package_path", "pool_size", "context_used", "errgroup_used", "unbounded_spawns", "closed_by_receiver"],
+  "properties": {
+    "package_path": {"type": "string", "minLength": 3},
+    "pool_size": {"type": "integer", "minimum": 1},
+    "context_used": {"type": "boolean"},
+    "errgroup_used": {"type": "boolean"},
+    "unbounded_spawns": {"type": "integer", "minimum": 0, "maximum": 0},
+    "closed_by_receiver": {"type": "integer", "minimum": 0, "maximum": 0},
+    "validated_at": {"type": "string", "format": "date-time"}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Valid module report">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "package_path": "internal/worker",
+  "pool_size": 8,
+  "context_used": true,
+  "errgroup_used": true,
+  "unbounded_spawns": 0,
+  "closed_by_receiver": 0,
+  "validated_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid module report">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "package_path": "x",
+  "pool_size": 0,
+  "unbounded_spawns": 3,
+  "closed_by_receiver": 1
+}
+]]></code>
+      <note>package_path too short, pool_size below minimum, unbounded_spawns and closed_by_receiver above zero — both are hard zeros.</note>
+    </example>
+  </section>
+
+  <section title="Forbidden code shapes">
+    <list>
+      <item>Bare `go func()` spawn with no bound and no wg/ctx tracking.</item>
+      <item>A goroutine with no `context.Context` parameter.</item>
+      <item>A channel `close()` performed by receiver-side code.</item>
+      <item>Multi-worker fan-out without `errgroup.WithContext`.</item>
+    </list>
+  </section>
+
   <section title="Self-check checklist">
     <list>
       <item>Every required field populated with a typed value</item>

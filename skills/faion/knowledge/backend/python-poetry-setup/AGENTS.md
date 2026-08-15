@@ -38,11 +38,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: PEP 621 layout, lockfile committed, separate dev group, no caret on libs, poetry env via virtualenvs.in-project. | ~900 |
-| `content/02-output-contract.xml` | essential | Shape: pyproject.toml [project] + [tool.poetry] + poetry.lock + .venv/. Forbidden: requirements.txt + poetry.lock both, untracked lockfile. | ~800 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns: caret in libraries, missing lockfile, parallel pip + poetry, no dev group. | ~700 |
-| `content/04-procedure.xml` | medium | Steps: poetry init → migrate to PEP 621 → add dev group → lock → install hooks → publish. | ~700 |
-| `content/06-decision-tree.xml` | essential | Tree: library? → no caret. App? → caret. Need uv speed? → migrate. Else: stay Poetry. | ~400 |
+| `content/01-core-rules.xml` | essential | 11 rules: PEP 621 layout, lockfile committed, dep groups (main/dev/test/docs), no caret on libs, in-project .venv, `--sync` in CI, no bare `poetry update`, tight Python constraint, `check --lock` before add, Docker builder export, CI `.venv` cache. | ~1600 |
+| `content/02-output-contract.xml` | essential | Gate schema (pyproject + CI + Dockerfile invariants) + valid / invalid project shapes. | ~1400 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns: caret in libraries, missing lockfile, parallel pip + poetry, no dev group, bare `poetry update`, Poetry in the final Docker stage, broad Python constraint. | ~1200 |
+| `content/04-procedure.xml` | medium | Steps: poetry init → PEP 621 → dev group → test/docs groups → lock → CI wiring → multi-stage Docker → hooks → publish. | ~1200 |
+| `content/06-decision-tree.xml` | essential | Tree: Poetry mandated (vs uv)? → CI able to carry it? → PEP 621 + lockfile present? Routes to full / partial / skip. | ~400 |
 
 ## Task Routing
 
@@ -56,6 +56,7 @@
 | File | Purpose |
 |------|---------|
 | `templates/pyproject.toml` | PEP 621 + [tool.poetry] config: dependencies, dev-group, build-system. |
+| `templates/Dockerfile` | Multi-stage build — builder runs `poetry export`, final stage runs `pip install`; no Poetry in production. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -63,7 +64,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 | File | Purpose | When to call |
 |------|---------|--------------|
-| `scripts/validate-python-poetry-setup.py` | Check pyproject has [project] (PEP 621), lockfile committed, dev group separate, virtualenvs.in-project=true. | Pre-commit and on lockfile change. |
+| `scripts/validate-python-poetry-setup.py` | Check pyproject has [project] (PEP 621), lockfile committed, dev group separate, virtualenvs.in-project=true, tight Python pin, `--sync` in CI, no `poetry install` in the final Dockerfile stage. | Pre-commit and on lockfile change. |
 
 ## Related
 

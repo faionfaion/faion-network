@@ -46,10 +46,10 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~900 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | ~800 |
-| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
+| `content/01-core-rules.xml` | essential | 10 testable rules with rationale + source | ~1300 |
+| `content/02-output-contract.xml` | essential | artefact JSON Schema + code-shape contract + valid / invalid examples + forbidden code shapes | ~1300 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom / root-cause / fix | ~1100 |
+| `content/04-procedure.xml` | essential | 5-step artefact procedure + 5-step implementation sub-procedure | ~1400 |
 | `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
 | `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
 
@@ -68,6 +68,7 @@
 | `templates/go-concurrency-patterns.json` | JSON Schema for the Go Concurrency Patterns (Worker Pool, Fan-Out/Fan-In, errgroup, Pipeline) output contract |
 | `templates/go-concurrency-patterns.md` | Markdown skeleton with the required fields |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a go-concurrency-patterns record |
+| `templates/pool.go` | Leak-safe bounded worker pool: context cancellation, panic recovery, error collection, sender-owned close |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

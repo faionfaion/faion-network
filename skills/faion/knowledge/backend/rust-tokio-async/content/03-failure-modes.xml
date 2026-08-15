@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="rust-tokio-async Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>Failure modes observed when applying the rust-tokio-async methodology. Each pairs symptom + root-cause + concrete fix.</summary>
+  <summary>8 failure modes observed when applying the rust-tokio-async methodology. Each pairs symptom + root-cause + concrete fix.</summary>
 
   <section title="Antipatterns">
     <antipattern id="fm-try-join-large-n" severity="high">
@@ -31,6 +31,24 @@
       <symptom>select! between an HTTP read and shutdown drops the read mid-buffer.</symptom>
       <root-cause source="v1-source">Read future is not cancellation-safe.</root-cause>
       <fix>Document the unsafe branch + structure as a loop with biased select, OR move the read into a JoinSet.</fix>
+    </antipattern>
+
+    <antipattern id="fm-blocking-fs-stall" severity="critical">
+      <symptom>Latency spikes with no obvious cause; a flamegraph shows one worker thread frozen for 200ms inside `std::fs::read`.</symptom>
+      <root-cause source="Runtime-stall retro">A synchronous filesystem call sits directly inside an async handler.</root-cause>
+      <fix>`tokio::task::spawn_blocking(|| std::fs::read(path))`, or switch the call site to `tokio::fs`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-unbounded-mpsc-oom" severity="high">
+      <symptom>OOMKilled overnight with no traffic anomaly; metrics show 10M messages queued.</symptom>
+      <root-cause source="OOM retro">`mpsc::unbounded_channel` in front of a consumer that is slower than the producer.</root-cause>
+      <fix>Switch to bounded `mpsc::channel(1024)` sized to measured load; the producer then experiences back-pressure instead of the heap doing so.</fix>
+    </antipattern>
+
+    <antipattern id="fm-dropped-joinhandle" severity="medium">
+      <symptom>Spawned tasks panic silently — the work simply never happens and the logs show nothing at all.</symptom>
+      <root-cause source="Async-leak retro">`tokio::spawn(...)` called without retaining the JoinHandle; the panic is captured into a handle nobody awaits.</root-cause>
+      <fix>Use `JoinSet` and await the results; panics propagate through the `Result` returned by `join_next`.</fix>
     </antipattern>
 
   </section>

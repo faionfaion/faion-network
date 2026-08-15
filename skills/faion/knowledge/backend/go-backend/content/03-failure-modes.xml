@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="Go Backend Development Patterns Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns specific to Go Backend Development Patterns. Each has a symptom, root cause, and concrete fix.</summary>
+  <summary>9 antipatterns specific to Go Backend Development Patterns. Each has a symptom, root cause, and concrete fix.</summary>
 
   <section title="Failure modes">
 
@@ -26,6 +26,36 @@
       <symptom>k8s SIGTERM → in-flight requests dropped → 502s during rolling deploy.</symptom>
       <root-cause>main() never registered signal handler.</root-cause>
       <fix>Wire `signal.NotifyContext`; call `http.Server.Shutdown`; wait for WG.</fix>
+    </antipattern>
+
+    <antipattern id="fm-interface-in-impl" severity="high">
+      <symptom>Build fails with &apos;import cycle not allowed&apos;, or authors add `interface` files under `internal/repository/` to dodge the cycle.</symptom>
+      <root-cause>Interface ownership read backwards — the interface was declared in the package that PROVIDES the implementation instead of the one that consumes it.</root-cause>
+      <fix>Move the interface declaration into `internal/service/`. `internal/repository/` keeps concrete types only and imports `model` only. Grep-gate `type \w+ interface` under `repository/`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-gin-context-in-goroutine" severity="high">
+      <symptom>Sporadic races under `go test -race`; request context outlives the request; trace ids surface on the wrong goroutine.</symptom>
+      <root-cause>`gin.Context` captured directly: `go func() { h.svc.Process(c) }()`. It is request-scoped and not thread-safe.</root-cause>
+      <fix>Derive `ctx := c.Request.Context()` and copy out params/headers before spawning; pass `ctx` plus the extracted values into the goroutine.</fix>
+    </antipattern>
+
+    <antipattern id="fm-direct-json-error" severity="high">
+      <symptom>Error shapes differ per endpoint; ErrorHandler logs miss real failures; error metrics undercount.</symptom>
+      <root-cause>`c.JSON(...)` called directly on the error path, bypassing the ErrorHandler middleware — habit carried over from framework-less net/http code.</root-cause>
+      <fix>Handler calls `c.Error(err)` and returns; ErrorHandler reads `c.Errors` and writes the canonical body. CI greps for `c.JSON(http.Status[45]` and `c.JSON(4`/`c.JSON(5`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-bloated-main" severity="medium">
+      <symptom>`cmd/api/main.go` past 200 lines with DB setup, service init and business logic; startup logic untestable.</symptom>
+      <root-cause>No explicit thin-main rule, so agents append glue where the program visibly runs.</root-cause>
+      <fix>Move config load, DB connect and service init into `internal/config` + `internal/server`. main.go reduces to `cfg := config.Load(); deps := server.Wire(cfg); server.Run(deps)`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-blocking-pool-submit" severity="high">
+      <symptom>Pool deadlocks under cancellation; goroutines parked on send; graceful shutdown never completes.</symptom>
+      <root-cause>Naive `jobs &lt;- job` on a full buffered channel with no `ctx.Done()` arm.</root-cause>
+      <fix>`select { case p.jobs &lt;- job: case &lt;-ctx.Done(): return ctx.Err() }`. Close the jobs channel only after the sender has finished.</fix>
     </antipattern>
 
   </section>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="Poetry Project Setup — Core Rules" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>Testable rules every python-poetry-setup application must obey.</summary>
+  <summary>11 testable rules every python-poetry-setup application must obey — five on project shape, six on reproducibility in CI and Docker.</summary>
 
   <section title="Rule set">
     <rule id="r1-pep621-layout" testable="true" depth="essential">
@@ -12,8 +12,8 @@
       <rationale source="faion-network">Without a committed lockfile every install resolves differently; reproducibility is gone.</rationale>
     </rule>
     <rule id="r3-dev-group-separate" testable="true" depth="essential">
-      <statement>Use [tool.poetry.group.dev.dependencies] for dev-only deps. Never mix dev tools (pytest, ruff) into runtime dependencies.</statement>
-      <rationale source="faion-network">Runtime install must stay slim; mixing groups bloats production containers.</rationale>
+      <statement>Split dependencies into groups — main, dev, test, docs — with docs marked `optional = true`. Never mix dev tools (pytest, ruff, mypy) into runtime dependencies.</statement>
+      <rationale source="faion-network + poetry-doc">Runtime install must stay slim; mixing groups bloats production containers and drags every deploy. An optional docs group keeps mkdocs out of both the runtime and the test install.</rationale>
     </rule>
     <rule id="r4-no-caret-on-libraries" testable="true" depth="essential">
       <statement>For libraries (publishable to PyPI): use lower-bound only constraints (&gt;=2.0,&lt;3) instead of caret (^2.0). For applications: caret is acceptable.</statement>
@@ -22,6 +22,30 @@
     <rule id="r5-venv-in-project" testable="true" depth="essential">
       <statement>Set virtualenvs.in-project = true so .venv lives next to pyproject. IDEs and CI both discover it.</statement>
       <rationale source="faion-network">Hidden venvs in ~/.cache/pypoetry break IDE auto-detection and confuse new contributors.</rationale>
+    </rule>
+    <rule id="r6-sync-install-in-ci" testable="true" depth="essential">
+      <statement>CI installs with `poetry install --sync --no-interaction`. A bare `poetry install` in CI is FORBIDDEN.</statement>
+      <rationale source="poetry-doc">`--sync` removes packages that have left the lockfile. Without it a removed dependency stays resident in the cached venv and code importing it keeps passing CI — the build is green on a dependency that no longer exists in the manifest.</rationale>
+    </rule>
+    <rule id="r7-no-bare-poetry-update" testable="true" depth="essential">
+      <statement>Never run `poetry update` with no arguments in a shared repo. Bump one package at a time: `poetry update &lt;package&gt;`.</statement>
+      <rationale source="faion-network">A bare update rewrites the whole lockfile, silently overwriting the resolution another developer or agent has staged, and produces a diff nobody can review. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+    <rule id="r8-tight-python-constraint" testable="true" depth="essential">
+      <statement>Use a tight Python constraint (`python = &quot;^3.11&quot;` or newer), never a broad range like `&gt;=3.8`.</statement>
+      <rationale source="faion-network">A broad range makes the solver explore versions nobody will ever run — roughly an order of magnitude slower — and turns any conflict into a cryptic message about a Python version the project never targeted. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+    <rule id="r9-check-lock-before-add" testable="true" depth="essential">
+      <statement>Run `poetry check --lock` BEFORE any `poetry add` or `poetry remove`; resolve lockfile drift first.</statement>
+      <rationale source="faion-network">Adding a dependency on top of an already-drifted lockfile compounds the drift and buries the original cause inside a much larger diff.</rationale>
+    </rule>
+    <rule id="r10-docker-builder-export" testable="true" depth="essential">
+      <statement>In Docker, the builder stage runs `poetry export` and the final stage runs `pip install -r requirements.txt`. `poetry install` in the FINAL stage is FORBIDDEN.</statement>
+      <rationale source="faion-network">Shipping the Poetry runtime into production adds 100-150MB and a dependency resolver to an image that only needs to run the app. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+    <rule id="r11-ci-cache-venv" testable="true" depth="essential">
+      <statement>CI uses `snok/install-poetry@v1` (or an equivalent pinned installer) and caches `.venv` keyed by OS + Python version + `poetry.lock` hash.</statement>
+      <rationale source="snok/install-poetry">The lockfile hash is the correct cache key because it changes exactly when the resolved set changes. On a hit this turns a multi-minute install into seconds; keyed on anything looser it silently serves a stale environment.</rationale>
     </rule>
   </section>
 </text>

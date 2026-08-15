@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="Go HTTP Handlers (Gin / Echo / Chi / stdlib) Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>7 testable rules every Go HTTP Handlers (Gin / Echo / Chi / stdlib) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+  <summary>11 testable rules every Go HTTP Handlers (Gin / Echo / Chi / stdlib) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
 
@@ -35,8 +35,28 @@
     </rule>
 
     <rule id="r-ctx-from-request" testable="true" depth="essential">
-      <statement>Handlers MUST pass `r.Context()` / `c.Request.Context()` to service calls; never `context.Background()`.</statement>
-      <rationale source="Go context docs">Rule rooted in source: Go context docs. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+      <statement>Handlers MUST pass `r.Context()` / `c.Request.Context()` to service calls; never `context.Background()`. `context.Background()` belongs to `main()` and test setup only.</statement>
+      <rationale source="Go context docs">Rule rooted in source: Go context docs. `Background()` detaches from the request, so cancellation never propagates and a long downstream call keeps burning resources after the client has gone. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-explicit-middleware-composition" testable="true" depth="essential">
+      <statement>Use `gin.New()` / `echo.New()` and register every middleware explicitly. `gin.Default()` is FORBIDDEN.</statement>
+      <rationale source="gin-doc">`gin.Default()` bundles its own Logger + Recovery with opinionated formats; teams then add their own and end up running two Recoverys and logging in a format that carries no trace id. Explicit composition is the only way the order in 01-router-setup.xml is auditable. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-no-goroutine-with-request-ctx" testable="true" depth="essential">
+      <statement>Do NOT spawn a goroutine inside a handler that captures `c` or uses `c.Request.Context()` after the handler returns. For genuine background work derive `context.WithoutCancel(c.Request.Context())` plus an explicit timeout, and pass extracted values by argument.</statement>
+      <rationale source="Go context docs + gin internals">The request context is cancelled the moment the handler returns, so the background goroutine dies with `context canceled`; and `gin.Context` itself is request-scoped and not thread-safe, so the race detector flags it. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-thin-handler" testable="true" depth="essential">
+      <statement>A handler does exactly four things: bind request → validate via binding tags → call ONE service method → translate to HTTP. No business logic, and under 40 lines.</statement>
+      <rationale source="v1-source">A thin handler is testable as a transport adapter; logic inside one can only be exercised by standing up the whole HTTP stack. The 40-line bound is what makes the rule greppable rather than aspirational. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-server-timeouts" testable="true" depth="essential">
+      <statement>`http.Server` MUST set all four timeouts explicitly — `ReadHeaderTimeout`, `ReadTimeout`, `WriteTimeout`, `IdleTimeout`. Never leave the zero defaults. Reasonable starting values: 5s / 30s / 30s / 120s.</statement>
+      <rationale source="net/http">Zero means unbounded: a client that never finishes sending headers holds a goroutine and a file descriptor forever (Slowloris), and `r.Run(&quot;:8080&quot;)` configures none of them. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
 
   </section>

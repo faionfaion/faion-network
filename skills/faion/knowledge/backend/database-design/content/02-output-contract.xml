@@ -65,10 +65,75 @@
 ]]></example>
   </output-contract>
 
+  <section title="Schema-spec contract (what the artefact describes)">
+    <p>The artefact above records the DECISION. This section pins the schema spec that decision produces — countable facts about the schema plus the migration strategy actually chosen.</p>
+    <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/database-schema-spec.json",
+  "type": "object",
+  "required": ["schema_id", "version", "tables_count", "foreign_keys_count", "indexes_count", "migration_plan"],
+  "properties": {
+    "schema_id": {"type": "string", "minLength": 3},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "tables_count": {"type": "integer", "minimum": 1},
+    "foreign_keys_count": {"type": "integer", "minimum": 0},
+    "indexes_count": {"type": "integer", "minimum": 0},
+    "migration_plan": {"type": "string", "enum": ["expand-only", "expand-then-contract", "new-schema"]},
+    "validated_at": {"type": "string", "format": "date-time"}
+  }
+}
+]]></code>
+  </section>
+
+  <section title="Valid schema-spec record">
+    <example type="good">
+      <code lang="json"><![CDATA[
+{
+  "schema_id": "orders-v2",
+  "version": "2.0.0",
+  "tables_count": 6,
+  "foreign_keys_count": 8,
+  "indexes_count": 5,
+  "migration_plan": "expand-then-contract",
+  "validated_at": "2026-05-23T10:00:00Z"
+}
+]]></code>
+    </example>
+  </section>
+
+  <section title="Invalid schema-spec record">
+    <example type="bad">
+      <code lang="json"><![CDATA[
+{
+  "schema_id": "x",
+  "version": "2.0",
+  "tables_count": 0,
+  "migration_plan": "adhoc"
+}
+]]></code>
+      <note>schema_id below minLength; version is not semver; tables_count below minimum; migration_plan not in the enum; required fields missing.</note>
+    </example>
+  </section>
+
+  <section title="Forbidden schema shapes">
+    <list>
+      <item>A schema artefact missing `foreign_keys_count` or `migration_plan`.</item>
+      <item>A single-shot destructive migration (drop + recreate in one step).</item>
+      <item>Business logic stored as a trigger or stored procedure.</item>
+      <item>An index defined with no paired query in the workload list.</item>
+    </list>
+  </section>
+
   <section title="Self-check checklist">
     <list>
       <item>Every required field populated with a typed value</item>
       <item>No forbidden pattern matches the output</item>
+      <item>Every FK, UNIQUE, NOT NULL and CHECK is declared in DDL, not only in the ORM</item>
+      <item>Every index traces to a query in the workload sample</item>
+      <item>Migration plan is expand-only / expand-then-contract / new-schema — never add-and-drop in one release</item>
+      <item>Tables plural snake_case, columns snake_case, FKs `&lt;singular&gt;_id`, all constraints explicitly named</item>
+      <item>No business rule lives in a trigger or stored procedure</item>
       <item>Output validates against templates/database-design.json</item>
     </list>
   </section>

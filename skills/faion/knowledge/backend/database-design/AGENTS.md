@@ -39,11 +39,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~900 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | ~800 |
-| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
-| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
+| `content/01-core-rules.xml` | essential | 10 testable rules with rationale + source | ~1300 |
+| `content/02-output-contract.xml` | essential | artefact JSON Schema + schema-spec contract + forbidden schema shapes | ~1400 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom / root-cause / fix | ~1100 |
+| `content/04-procedure.xml` | essential | 5-step artefact procedure + 6-step schema-authoring sub-procedure | ~1500 |
+| `content/05-examples.xml` | recommended | two end-to-end worked examples | ~1000 |
 | `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
 
 ## Task Routing
@@ -61,6 +61,9 @@
 | `templates/database-design.json` | JSON Schema for the Database Design (PostgreSQL) output contract |
 | `templates/database-design.md` | Markdown skeleton with the required fields |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a database-design record |
+| `templates/ecommerce_schema.sql` | Reference PostgreSQL schema: UUID PKs, TIMESTAMPTZ, named constraints, partial indexes, soft-delete view, audit trigger |
+| `templates/audit_trigger.sql` | Audit-log table + trigger function — the one legitimate use of a trigger |
+| `templates/alembic_migration.py` | Alembic expand-then-contract migration with explicit revision ids and a real `downgrade` |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -69,6 +72,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | File | Purpose | When to call |
 |------|---------|--------------|
 | `scripts/validate-database-design.py` | Enforce the Database Design (PostgreSQL) output contract | After subagent returns, before downstream consumer reads |
+| `scripts/schema_diff.sh` | Diff two schema dumps to see exactly what a migration changes | Before approving any migration PR |
 
 ## Related
 

@@ -34,6 +34,39 @@
     <output>final artefact + status flag for owner review</output>
   </step>
 
+  <section title="Scaffold sub-procedure (expands steps 3 and 5 when the artefact ships real code)">
+    <step n="s1" name="server-skeleton">
+      <input>Framework choice + timeout budget.</input>
+      <action>Copy `templates/server.go`: `Wire(cfg, deps)` returns `*http.Server` with all four timeouts; `Run(ctx, srv)` does ListenAndServe under an errgroup.</action>
+      <output>`internal/server/server.go`.</output>
+      <decision-gate>If the chosen framework is net/http, drop the Gin imports; otherwise adjust the middleware constructors.</decision-gate>
+    </step>
+    <step n="s2" name="middleware-order">
+      <input>Auth scheme + logger choice.</input>
+      <action>Register: Recovery, RequestID, Logger, ErrorMapper (from `[[go-error-handling]]`), Auth, then domain middleware.</action>
+      <output>`internal/middleware/*.go` + wiring in server.go.</output>
+      <decision-gate>If Recovery is not outermost, panics produce blank 500s — CI grep rejects the misorder.</decision-gate>
+    </step>
+    <step n="s3" name="request-dto">
+      <input>One endpoint spec.</input>
+      <action>Create `type XxxRequest struct { ... }` with `json` + `binding` tags, plus a `ToDomain()` method mapping to the model.</action>
+      <output>`internal/handler/dto.go` + `ToDomain()`.</output>
+      <decision-gate>A field the client must never set (ID, timestamps, internal flags) does not belong in the `*Request` struct at all.</decision-gate>
+    </step>
+    <step n="s4" name="thin-handler">
+      <input>DTO + service method.</input>
+      <action>Handler does ShouldBindJSON → validate → `svc.X(c.Request.Context(), req.ToDomain())` → `c.JSON(status, result)`.</action>
+      <output>`internal/handler/x.go`, under 40 lines.</output>
+      <decision-gate>If the handler exceeds 40 lines, move the logic into the service before continuing.</decision-gate>
+    </step>
+    <step n="s5" name="graceful-shutdown">
+      <input>Server instance + parent context.</input>
+      <action>Listen for SIGINT/SIGTERM with `signal.NotifyContext`; on signal call `srv.Shutdown(ctx)` with a 10-15s drain, then cancel the root context.</action>
+      <output>main.go wires `Run(ctx, srv)` and exits cleanly.</output>
+      <decision-gate>If `srv.Shutdown` returns `context.DeadlineExceeded`, raise the drain window or find the hanging handler.</decision-gate>
+    </step>
+  </section>
+
   <section title="Exit criteria">
     <list>
       <item>Artefact validates against templates/go-http-handlers.json</item>

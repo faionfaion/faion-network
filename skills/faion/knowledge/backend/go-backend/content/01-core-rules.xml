@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="Go Backend Development Patterns Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>7 testable rules every Go Backend Development Patterns application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+  <summary>14 testable rules every Go Backend Development Patterns application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
 
@@ -15,8 +15,8 @@
     </rule>
 
     <rule id="r-context-propagation" testable="true" depth="essential">
-      <statement>Every public function that crosses a layer or does I/O takes `context.Context` as first arg.</statement>
-      <rationale source="Go blog + context docs">Rule rooted in source: Go blog + context docs. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+      <statement>Every public function that crosses a layer or does I/O takes `context.Context` as first arg. Never capture `gin.Context` inside a goroutine — derive `ctx := c.Request.Context()` and extract params/headers BEFORE spawning.</statement>
+      <rationale source="Go blog + context docs">Rule rooted in source: Go blog + context docs. Context carries cancellation, deadlines and trace ids; `gin.Context` is request-scoped and not thread-safe, so capturing it in a goroutine is a data race plus a request-context leak. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
 
     <rule id="r-typed-errors-only" testable="true" depth="essential">
@@ -30,13 +30,48 @@
     </rule>
 
     <rule id="r-interface-consumer-side" testable="true" depth="essential">
-      <statement>Interfaces MUST be defined where consumed (handler defines `UserService`), never at the producer.</statement>
-      <rationale source="Go proverb 'accept interfaces, return structs'">Rule rooted in source: Go proverb 'accept interfaces, return structs'. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+      <statement>Interfaces MUST be defined where consumed (handler defines `UserService`, `internal/service` defines `UserRepository`), never at the producer. `internal/repository` ships concrete types only and MUST NOT declare `type X interface`.</statement>
+      <rationale source="Go proverb 'accept interfaces, return structs' + effective-go">Rule rooted in source: Go proverb 'accept interfaces, return structs'. Consumer-side interfaces break import cycles and make mocking straightforward — the test supplies a mock satisfying the interface without importing the real implementation. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
     </rule>
 
     <rule id="r-no-goroutine-leak" testable="true" depth="essential">
       <statement>Background goroutines MUST be scoped to a `context.Context` and tracked in a `WaitGroup`.</statement>
       <rationale source="go-goroutines + goleak docs">Rule rooted in source: go-goroutines + goleak docs. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-request-dto" testable="true" depth="essential">
+      <statement>Bind HTTP input into separate `*Request` structs. NEVER bind directly into a domain model struct.</statement>
+      <rationale source="v1-source">Domain models carry fields external input must never set — ids, timestamps, internal flags. DTO separation is what enforces that boundary. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-thin-main" testable="true" depth="essential">
+      <statement>`cmd/api/main.go` MUST stay wiring-only (config → deps → router → server); no business logic, and under 50 lines.</statement>
+      <rationale source="v1-source">Agents bloat main.go when unconstrained because that is where the program visibly runs. A thin main keeps every layer independently testable. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-small-middleware" testable="true" depth="essential">
+      <statement>Use small, single-purpose middlewares (Gin/Echo/chi). Business logic MUST NOT live in middleware.</statement>
+      <rationale source="v1-source">Small middlewares compose cleanly and are easier for agents to read and extend; business logic hidden in a middleware is invisible to the handler that owns the endpoint.</rationale>
+    </rule>
+
+    <rule id="r-shouldbind-json" testable="true" depth="essential">
+      <statement>Use `ShouldBindJSON` (returns error), never `BindJSON` (writes 400 and aborts). Declare validation with `binding` struct tags.</statement>
+      <rationale source="gin-doc">`ShouldBind*` lets the handler return the canonical error response; `BindJSON` aborts the chain and bypasses the ErrorHandler middleware, so the error never reaches central mapping or metrics. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-central-error-middleware" testable="true" depth="essential">
+      <statement>Exactly ONE ErrorHandler middleware maps `AppError` to HTTP status. Handlers call `c.Error(err)` and return — never `c.JSON` for an error path.</statement>
+      <rationale source="v1-source + go-error-handling methodology">Centralised mapping is what makes the error shape consistent across endpoints and stops HTTP status logic being duplicated in every handler; it is also the only place error logging and metrics can be complete. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-pool-ctx-aware-submit" testable="true" depth="essential">
+      <statement>A worker `Pool` uses a buffered jobs channel and context-aware workers; `Pool.Submit` MUST `select` on both the jobs channel and `ctx.Done()`.</statement>
+      <rationale source="v1-source">A blocking send into a full buffer with no ctx awareness deadlocks the moment the caller is cancelled, and graceful shutdown then hangs. The select pattern drains cleanly. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-worker-count-and-close" testable="true" depth="essential">
+      <statement>Default worker count is `runtime.NumCPU()`. Close the jobs channel once all jobs are sent and let workers drain their `range` loop.</statement>
+      <rationale source="v1-source">Closing the channel is the exit signal — it removes the need for a second stop channel and guarantees every queued job is processed before the worker returns.</rationale>
     </rule>
 
   </section>
