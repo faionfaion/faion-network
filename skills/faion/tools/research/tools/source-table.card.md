@@ -5,11 +5,11 @@ Turn a JSONL of research claims into a markdown evidence table, a gaps report an
 
 ## Invoke
 ```
-python3 {script} --in {claims.jsonl} [--out {table.md}] [--report {gaps.md}] [--levers {levers.jsonl}] [--title {heading}] [--require-date]
+python3 {script} --in {claims.jsonl} [--out {table.md}] [--report {gaps.md}] [--levers {levers.jsonl}] [--title {heading}] [--require-date] [--self-test]
 ```
 
 ## Inputs
-- `--in {claims.jsonl}` — one JSON object per line, `-` for stdin. Required. Blank lines and `#` comments ignored. Per object:
+- `--in {claims.jsonl}` — one JSON object per line, `-` for stdin. Required unless self-testing. Blank lines and `#` comments ignored. Per object:
   - `claim` — string, required, non-empty.
   - `url` — `http(s)` string; optional in the schema, **required** for a load-bearing claim.
   - `date` — `YYYY-MM-DD`; optional, any other form is reported as a gap.
@@ -22,11 +22,12 @@ python3 {script} --in {claims.jsonl} [--out {table.md}] [--report {gaps.md}] [--
 - `--levers {levers.jsonl}` — ledger destination. Optional; written whenever given, empty when nothing is tagged.
 - `--title {heading}` — H2 above the table. Optional, default `Evidence table`.
 - `--require-date` — also fail when a load-bearing claim carries no valid date. Optional.
+- `--self-test` — run the built-in fixtures and exit. Needs no other flag; writes only inside a temporary directory. Optional.
 
 ## Outputs
 - Files: `{out}` — `# | Claim | Source | Date | Confidence | Load-bearing | Commercial lever`, unsourced rows marked `**missing**`; `{report}` — one bullet per gap, prefixed with the input line number; `{levers}` — one JSON object per tagged claim, `{"id","lever","claim","url","date","confidence"}`, ids `C1..Cn` in input order.
 - stdout: `source-table: claims=N sourced=M unsourced_load_bearing=K missing_confidence=J missing_date=D commercial=C unnamed_levers=U -> path`
-- Exit: `0` every load-bearing claim sourced and every commercial claim levered · `1` at least one unsourced (or undated under `--require-date`, or commercial without a lever) · `2` unreadable input, invalid JSON, non-object line, a non-bool `commercial`, or an empty/missing `claim`.
+- Exit: `0` every load-bearing claim sourced and every commercial claim levered · `1` at least one unsourced (or undated under `--require-date`, or commercial without a lever), or a failed self-test · `2` no `--in`, unreadable input, invalid JSON, non-object line, a non-bool `commercial`, or an empty/missing `claim`.
 
 ## When NOT to use
 - To fetch, resolve or check that a URL is live — it validates the shape of the field, never the endpoint.

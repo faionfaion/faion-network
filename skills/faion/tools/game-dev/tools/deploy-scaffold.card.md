@@ -5,11 +5,11 @@ Emit a systemd unit, an nginx vhost and a `deploy.sh` for one gunicorn app, with
 
 ## Invoke
 ```
-python3 {script} --name {name} --port {port} --domain {host} --root {/opt/dir} [--out-dir {dir}] [--wsgi {pkg.wsgi:application}] [--user {u}] [--group {g}] [--state-dir {path}] [--webroot {path}] [--zone {z}] [--backend {dir}] [--frontend {dir}] [--test-labels {labels}] [--page-route {/path}={file}] [--regex-route {regex}={file}] [--check-local] [--force]
+python3 {script} --name {name} --port {port} --domain {host} --root {/opt/dir} [--out-dir {dir}] [--wsgi {pkg.wsgi:application}] [--user {u}] [--group {g}] [--state-dir {path}] [--webroot {path}] [--zone {z}] [--backend {dir}] [--frontend {dir}] [--test-labels {labels}] [--page-route {/path}={file}] [--regex-route {regex}={file}] [--check-local] [--force] [--self-test]
 ```
 
 ## Inputs
-- `--name {name}` — service identity, `^[a-z][a-z0-9-]{1,30}$`. Required. Drives unit name, unix user/group, `/var/lib/{name}`, nginx zone `{name}api`.
+- `--name {name}` — service identity, `^[a-z][a-z0-9-]{1,30}$`. Required unless self-testing. Drives unit name, unix user/group, `/var/lib/{name}`, nginx zone `{name}api`.
 - `--port {port}` — loopback gunicorn port, 1024-65535. Required.
 - `--domain {host}` — public hostname. Required.
 - `--root {/opt/dir}` — app directory on the host. Required.
@@ -20,16 +20,16 @@ python3 {script} --name {name} --port {port} --domain {host} --root {/opt/dir} [
 - `--regex-route {regex}={file}` — regex `location ~`, always emitted quoted. Repeatable, optional.
 - `--test-labels {labels}` — labels the emitted `deploy.sh` hands its test gate. Optional, default empty.
 - `--workers {n}` / `--rate {r}` / `--burst {n}` — gunicorn worker count, nginx `limit_req` rate and burst. Optional, defaults `4`, `10r/s`, `20`.
-- `--ssh-user {u}` / `--ssh-addr {ip}` — the target `deploy.sh` rsyncs to. **Both required**: there is no default, because a wrong one deploys your code to someone else's server.
-- `--ssh-port {n}` — Optional, default `22`.
+- `--ssh-user {u}` / `--ssh-addr {ip}` — the target `deploy.sh` rsyncs to. **Both required**: there is no default, because a wrong one deploys your code to someone else's server. `--ssh-port {n}` optional, default `22`.
 - `--ssh-key {path}` — private key for the deploy user. Optional, default `~/.ssh/id_ed25519`; the generated script lets `SSH_KEY` in the environment override it at run time.
 - `--check-local` — refuse if the unit, state dir or vhost already exists on this machine. Optional.
 - `--force` — overwrite existing output files. Optional.
+- `--self-test` — run the built-in fixtures and exit. Writes only inside a temporary directory. Optional.
 
 ## Outputs
 - Files: `{out-dir}/{name}.service`, `{out-dir}/nginx.conf`, `{out-dir}/deploy.sh` (mode 755).
 - stdout: `deploy-scaffold: name=… service=… user=…:… port=… zone=… state=… webroot=… -> …` — the identity line to diff against a sibling deploy.
-- Exit: `0` written · `1` output files exist and `--force` was not passed · `2` invalid name, domain or port, or a malformed route spec · `3` `--check-local` found the identity taken.
+- Exit: `0` written · `1` output files exist and `--force` was not passed, or a failed self-test · `2` a missing required flag, an invalid name, domain or port, or a malformed route spec · `3` `--check-local` found the identity taken.
 
 ## When NOT to use
 - Containerised or PaaS deploys — this targets a single host with systemd and nginx.

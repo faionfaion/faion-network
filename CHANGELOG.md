@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Every tool now has a `--self-test`, and backfilling the six that did not
+  found two real bugs.** 24 of 24 pass; the count was 18 of 24 before, and
+  the six without one were the original three packs — the ones already
+  shipping to subscribers, with zero regression tests between them.
+  `validate-methodology-scripts.py` treats `--self-test` as a SHOULD and
+  never actually checks for it, which is why nothing caught this.
+
+  - **`lever-check.py` announced its own failure and passed anyway.** Two
+    ledger rows sharing an id — two research passes concatenated is the
+    obvious way in — let one answer cover both. The tool printed
+    `levers=2 applied=1 declined=0 unanswered=1 findings=0` and **exited
+    0**, because `unanswered` is derived from `len(ledger) - len(answers)`
+    while the exit code comes from a separate problem list that stayed
+    empty. A quality gate that reports an unanswered lever and returns
+    success is worse than no gate. A repeated ledger id is now a finding, so
+    the count and the verdict cannot disagree.
+  - **`hmac-rng-golden.py` reported a corrupt golden file as RNG drift.** A
+    malformed `cases` reached `draw()` as a string or an int, died with a
+    `TypeError` traceback, and exited **1** — the code meaning "the vectors
+    disagree". A caller branching on the exit code read a hand-edited file
+    as genuine non-determinism in its simulation. Now exit 2, the documented
+    malformed-input code.
+
+  The `hmac-rng-golden` self-test pins known-answer vectors computed
+  **outside** the file and cross-checks them against a second implementation
+  written from the docstring — a golden-vector tool whose test regenerates
+  its own goldens proves nothing. `django-test-gate` gained two pure
+  functions so its verdict logic is testable without spawning a process,
+  proven behaviour-identical over 40 stdout×returncode combinations. Every
+  new self-test was mutation-tested: unquoting the nginx regex location,
+  folding instead of rejecting an out-of-range RNG draw, dropping the
+  unsourced-claim gate — each mutation is caught.
+
 - **CR-006 filed: the `sdd/templates` pair, and it is not the duplicate it
   looked like.** Both directories carry `content_id 180a580e913ae900` and
   two of their three content files are byte-identical — but their template

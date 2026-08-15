@@ -20,10 +20,14 @@ Zero model calls. Templates only — nothing is installed or restarted.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import re
 import sys
+import tempfile
 from pathlib import Path
 
+NAME = "deploy-scaffold"
 NAME_RE = re.compile(r"^[a-z][a-z0-9-]{1,30}$")
 DOMAIN_RE = re.compile(r"^[a-z0-9.-]+$")
 
@@ -165,13 +169,202 @@ def parse_route(spec: str, kind: str) -> tuple[str, str]:
     return pattern, target
 
 
+def run_cli(argv: list[str]) -> int:
+    """Call main() with a fixed argv and swallow its output. --self-test uses
+    this to prove the exit contract end to end rather than by inspection: the
+    refusal to overwrite, the three input rejections and the taken-identity
+    code all have to reach the caller as the number the card promises."""
+    saved = sys.argv
+    sys.argv = [NAME] + argv
+    try:
+        with contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()):
+            return main()
+    finally:
+        sys.argv = saved
+
+
+def self_test() -> list[str]:
+    """Prove the generator against fixtures written to a temporary directory.
+
+    What is checked is what a wrong scaffold costs: two apps that collide on a
+    host identity, an nginx regex that fails `nginx -t`, a deploy script that
+    wipes the host's .env, and a rerun that silently overwrites a hand-edited
+    unit. Nothing here installs, restarts or leaves the temporary directory.
+    """
+    failures: list[str] = []
+
+    def read(directory: Path) -> dict[str, str]:
+        return {p.name: p.read_text(encoding="utf-8")
+                for p in sorted(directory.iterdir())}
+
+    with tempfile.TemporaryDirectory() as tmp:
+        home = Path(tmp)
+        alpha_dir = home / "alpha"
+        alpha_args = [
+            "--name", "alpha", "--port", "8000",
+            "--domain", "alpha.example.com", "--root", "/opt/alpha",
+            "--ssh-user", "deploy", "--ssh-addr", "192.0.2.10",
+            "--regex-route", "^/p/[a-z]{2,8}$=p.html",
+            "--page-route", "/dash=dash.html",
+        ]
+
+        # 1: a clean run writes the trio and exits 0.
+        code = run_cli(alpha_args + ["--out-dir", str(alpha_dir)])
+        if code != 0:
+            return failures + [f"clean run exited {code}, want 0"]
+        first = read(alpha_dir)
+        if set(first) != {"alpha.service", "nginx.conf", "deploy.sh"}:
+            failures.append(f"clean run wrote {sorted(first)}")
+
+        # 2: same flags, same bytes. A scaffold that is not reproducible cannot
+        # be diffed against the unit already installed on the host.
+        twin = home / "alpha-twin"
+        if run_cli(alpha_args + ["--out-dir", str(twin)]) != 0:
+            failures.append("second identical run did not exit 0")
+        elif read(twin) != first:
+            failures.append("identical flags produced different bytes")
+
+        # 3: a rerun over existing files is refused, and refuses without
+        # touching them — the unit on disk may already be hand-edited.
+        (alpha_dir / "alpha.service").write_text("EDITED\n", encoding="utf-8")
+        if run_cli(alpha_args + ["--out-dir", str(alpha_dir)]) != 1:
+            failures.append("overwriting without --force did not exit 1")
+        if (alpha_dir / "alpha.service").read_text(encoding="utf-8") != "EDITED\n":
+            failures.append("a refused run still rewrote the unit")
+
+        # 4: --force is the only way through, and restores the same bytes.
+        if run_cli(alpha_args + ["--out-dir", str(alpha_dir), "--force"]) != 0:
+            failures.append("--force did not exit 0")
+        elif read(alpha_dir) != first:
+            failures.append("--force wrote different bytes")
+
+        nginx = first["nginx.conf"]
+        service = first["alpha.service"]
+        deploy = first["deploy.sh"]
+
+        # 5: the trap this tool exists to encode. An unquoted regex containing
+        # '{' makes nginx read a block open and `nginx -t` fails outright.
+        if 'location ~ "^/p/[a-z]{2,8}$"' not in nginx:
+            failures.append("the regex location is not emitted quoted")
+        if re.search(r"location\s+~\s+[^\"]", nginx):
+            failures.append("an unquoted regex location was emitted")
+
+        # 6: an exact page route stays an exact match, not a prefix.
+        if "location = /dash { try_files /dash.html =404; }" not in nginx:
+            failures.append("the page route is not an exact location")
+
+        # 7: the rsync flag that wipes the host's .env and .venv. Read the
+        # runnable lines only — the template carries a comment naming the flag
+        # precisely so a reader does not reintroduce it.
+        runnable = "\n".join(line for line in deploy.splitlines()
+                             if not line.lstrip().startswith("#"))
+        if "--delete-excluded" in runnable:
+            failures.append("deploy.sh uses --delete-excluded, which wipes "
+                            "excluded paths on the host")
+        if "--delete " not in runnable:
+            failures.append("deploy.sh does not prune with --delete")
+
+        # 8: the generated script has to be runnable.
+        if (alpha_dir / "deploy.sh").stat().st_mode & 0o777 != 0o755:
+            failures.append("deploy.sh is not mode 755")
+
+        # 9: every collidable identity is namespaced by --name. Scaffold a
+        # sibling and prove no token of one leaks into the other.
+        beta_dir = home / "beta"
+        beta_args = ["--name", "beta", "--port", "8001",
+                     "--domain", "beta.example.com", "--root", "/opt/beta",
+                     "--ssh-user", "deploy", "--ssh-addr", "192.0.2.10",
+                     "--out-dir", str(beta_dir)]
+        if run_cli(beta_args) != 0:
+            failures.append("the sibling scaffold did not exit 0")
+        else:
+            beta = read(beta_dir)
+            if "beta.service" not in beta:
+                failures.append("the sibling unit is not named after --name")
+            for marker in ("User=alpha", "Group=alpha", "ReadWritePaths=/var/lib/alpha",
+                           "alpha.wsgi:application"):
+                if marker not in service:
+                    failures.append(f"{marker!r} missing from the unit")
+                if marker.replace("alpha", "beta") not in beta["beta.service"]:
+                    failures.append(f"the sibling unit does not namespace {marker!r}")
+            if "zone=alphaapi" not in nginx or "zone=betaapi" not in beta["nginx.conf"]:
+                failures.append("the limit_req zone is not namespaced by --name")
+            for label, blob in (("unit", beta["beta.service"]),
+                                ("vhost", beta["nginx.conf"]),
+                                ("deploy.sh", beta["deploy.sh"])):
+                if "alpha" in blob:
+                    failures.append(f"the sibling {label} carries the other "
+                                    "app's identity")
+
+        # 10: an explicit override replaces the derived identity everywhere.
+        over_dir = home / "over"
+        if run_cli(["--name", "gamma", "--port", "9000",
+                    "--domain", "gamma.example.com", "--root", "/opt/gamma",
+                    "--ssh-user", "deploy", "--ssh-addr", "192.0.2.10",
+                    "--user", "www-run", "--group", "www-grp",
+                    "--state-dir", "/srv/state/gamma", "--zone", "gzone",
+                    "--webroot", "/srv/www/gamma",
+                    "--out-dir", str(over_dir)]) != 0:
+            failures.append("the override run did not exit 0")
+        else:
+            over = read(over_dir)
+            for marker, where in (("User=www-run", "gamma.service"),
+                                  ("Group=www-grp", "gamma.service"),
+                                  ("ReadWritePaths=/srv/state/gamma", "gamma.service"),
+                                  ("zone=gzone", "nginx.conf"),
+                                  ("root /srv/www/gamma;", "nginx.conf")):
+                if marker not in over[where]:
+                    failures.append(f"override {marker!r} not honoured in {where}")
+
+        # 11-14: input the tool must refuse rather than scaffold.
+        bad = home / "bad"
+        rejects = [
+            (["--name", "Alpha"], "an uppercase --name"),
+            (["--name", "alpha", "--port", "80"], "a privileged --port"),
+            (["--name", "alpha", "--domain", "alpha_example.com"], "an invalid --domain"),
+            (["--name", "alpha", "--page-route", "/dash"], "a route with no '='"),
+        ]
+        for extra, label in rejects:
+            argv = ["--name", "alpha", "--port", "8000",
+                    "--domain", "alpha.example.com", "--root", "/opt/alpha",
+                    "--ssh-user", "deploy", "--ssh-addr", "192.0.2.10",
+                    "--out-dir", str(bad)] + extra
+            code = run_cli(argv)
+            if code != 2:
+                failures.append(f"{label}: exit {code}, want 2")
+
+        # 15: a missing required flag is refused, not defaulted. --ssh-addr in
+        # particular has no default because a wrong one deploys to a stranger.
+        if run_cli(["--name", "alpha", "--port", "8000",
+                    "--domain", "alpha.example.com", "--root", "/opt/alpha",
+                    "--out-dir", str(bad)]) != 2:
+            failures.append("a missing --ssh-user/--ssh-addr did not exit 2")
+
+        # 16: --check-local refuses an identity already present. The state dir
+        # is pointed at the fixture tree, so this reads nothing outside it that
+        # it does not already read on every run.
+        taken = home / "taken"
+        taken.mkdir()
+        code = run_cli(["--name", "alpha", "--port", "8000",
+                        "--domain", "alpha.example.com", "--root", "/opt/alpha",
+                        "--ssh-user", "deploy", "--ssh-addr", "192.0.2.10",
+                        "--state-dir", str(taken), "--check-local",
+                        "--out-dir", str(home / "unused")])
+        if code != 3:
+            failures.append(f"--check-local over a taken state dir: exit {code}, want 3")
+        if (home / "unused").exists():
+            failures.append("--check-local wrote output before refusing")
+    return failures
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--name", required=True, help="service identity, [a-z][a-z0-9-]+")
-    ap.add_argument("--port", required=True, type=int, help="gunicorn loopback port")
-    ap.add_argument("--domain", required=True, help="public hostname")
-    ap.add_argument("--root", required=True, help="app dir on the host, e.g. /opt/<name>")
+    ap.add_argument("--name", help="service identity, [a-z][a-z0-9-]+")
+    ap.add_argument("--port", type=int, help="gunicorn loopback port")
+    ap.add_argument("--domain", help="public hostname")
+    ap.add_argument("--root", help="app dir on the host, e.g. /opt/<name>")
     ap.add_argument("--out-dir", default="deploy", help="where to write the trio (default deploy/)")
     ap.add_argument("--wsgi", help="wsgi target (default <name>.wsgi:application)")
     ap.add_argument("--user", help="unix user (default <name>)")
@@ -185,9 +378,8 @@ def main() -> int:
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--rate", default="10r/s")
     ap.add_argument("--burst", type=int, default=20)
-    ap.add_argument("--ssh-user", required=True,
-                    help="deploy user on the target host")
-    ap.add_argument("--ssh-addr", required=True,
+    ap.add_argument("--ssh-user", help="deploy user on the target host")
+    ap.add_argument("--ssh-addr",
                     help="target host address; no default — a wrong one deploys to a stranger")
     ap.add_argument("--ssh-port", type=int, default=22)
     ap.add_argument("--ssh-key", default="~/.ssh/id_ed25519",
@@ -199,7 +391,27 @@ def main() -> int:
     ap.add_argument("--check-local", action="store_true",
                     help="fail with exit 3 if this identity already exists on this machine")
     ap.add_argument("--force", action="store_true", help="overwrite existing output files")
+    ap.add_argument("--self-test", action="store_true",
+                    help="run the built-in fixtures and exit")
     args = ap.parse_args()
+
+    if args.self_test:
+        failures = self_test()
+        for failure in failures:
+            print(f"{NAME}: self-test: {failure}", file=sys.stderr)
+        print(f"{NAME}: self-test checks=16 failures={len(failures)}")
+        return 1 if failures else 0
+
+    # The six identities with no safe default. Checked here rather than by
+    # argparse's required=True so --self-test needs no other flag.
+    missing = [flag for flag, value in (
+        ("--name", args.name), ("--port", args.port), ("--domain", args.domain),
+        ("--root", args.root), ("--ssh-user", args.ssh_user),
+        ("--ssh-addr", args.ssh_addr)) if value is None]
+    if missing:
+        print(f"{NAME}: the following arguments are required: "
+              f"{', '.join(missing)}", file=sys.stderr)
+        return 2
 
     if not NAME_RE.match(args.name):
         print(f"deploy-scaffold: --name must match {NAME_RE.pattern}", file=sys.stderr)

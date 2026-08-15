@@ -7,6 +7,7 @@ Emit and re-verify golden vectors for an HMAC-SHA256 rejection-sampling RNG, so 
 ```
 python3 {script} --emit --key {str}|--key-hex {hex} --case {n}:{msg} [--case ...] [--cases-file {path}] [--word-bits 32|64] [--counter-encoding text|be32] [--counter-sep {sep}] --out {golden.json}
 python3 {script} --verify {golden.json}
+python3 {script} --self-test
 ```
 
 ## Inputs
@@ -18,12 +19,13 @@ python3 {script} --verify {golden.json}
 - `--counter-encoding text|be32` — `text` appends `sep + str(counter)`; `be32` appends `struct.pack(">I", counter)`. Optional, default `text`.
 - `--counter-sep {sep}` — separator before the counter in `text` mode. Optional, default `|`.
 - `--out {path}` — golden file; `-` writes JSON to stderr. Required for `--emit`.
+- `--self-test` — check the sampler against pinned known-answer vectors, computed outside this tool, and exit. Needs no other flag. Optional.
 
 ## Outputs
 - Files: `{out}` — `{algorithm, key_hex, word_bits, counter_encoding, counter_sep, cases:[{msg,n,value,blocks}]}`.
 - stdout: `hmac-rng-golden: emit cases=N word_bits=B encoding=E -> path` or `hmac-rng-golden: verify path cases=N ok=M mismatch=K`.
 - stderr on verify: one line per mismatching case with golden vs recomputed value.
-- Exit: `0` emitted / all vectors match · `1` at least one mismatch · `2` bad key, bad case syntax, missing or malformed golden file.
+- Exit: `0` emitted / all vectors match · `1` at least one mismatch, or a failed self-test · `2` bad key, bad case syntax, missing or malformed golden file — including a `cases` that is not a list of objects.
 
 ## When NOT to use
 - Cryptographic key or nonce generation — this is reproducible game randomness, not a CSPRNG.

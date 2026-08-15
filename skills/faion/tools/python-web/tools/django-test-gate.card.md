@@ -5,11 +5,11 @@ Run a Django suite through the project's own venv and return the verdict as one 
 
 ## Invoke
 ```
-python3 {script} --project {backend-dir} [--venv {dir}] [--label {app.tests}] [--tag {t}] [--exclude-tag {t}] [--settings {module}] [--env-file {path}] [--keepdb] [--timeout {seconds}]
+python3 {script} --project {backend-dir} [--venv {dir}] [--label {app.tests}] [--tag {t}] [--exclude-tag {t}] [--settings {module}] [--env-file {path}] [--keepdb] [--timeout {seconds}] [--self-test]
 ```
 
 ## Inputs
-- `--project {backend-dir}` — directory containing `manage.py`. Required.
+- `--project {backend-dir}` — directory containing `manage.py`. Required unless self-testing.
 - `--venv {dir}` — venv root. Optional; default probes `{project}/.venv` then `{project}/../.venv`.
 - `--label {app.tests}` — test label, repeatable. Optional, default = whole suite.
 - `--tag` / `--exclude-tag {t}` — passed through to `manage.py test`, repeatable. Optional.
@@ -17,11 +17,12 @@ python3 {script} --project {backend-dir} [--venv {dir}] [--label {app.tests}] [-
 - `--env-file {path}` — `KEY=VALUE` file merged into the child environment. Optional.
 - `--keepdb` — reuse the test database. Optional.
 - `--timeout {seconds}` — abort the run. Optional, default `900`.
+- `--self-test` — run the built-in fixtures and exit. Runs no suite and starts no child process. Optional.
 
 ## Outputs
 - Files: none.
 - stdout: exactly one JSON line `{"ok": bool, "ran": int, "failures": [str]}`; an `"error"` key is added only when the harness could not run the suite.
-- Exit: `0` suite green · `1` suite red (`failures` names each `FAIL:`/`ERROR:` test) · `2` harness failure — no `manage.py`, no venv interpreter, missing env file, timeout, or the runner never reached its `Ran N tests` line.
+- Exit: `0` suite green · `1` suite red (`failures` names each `FAIL:`/`ERROR:` test), or a failed self-test · `2` harness failure — no `--project`, no `manage.py`, no venv interpreter, missing env file, timeout, or the runner never reached its `Ran N tests` line.
 
 ## When NOT to use
 - pytest-only projects — it parses the `unittest`/Django runner summary.

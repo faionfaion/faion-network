@@ -24,9 +24,78 @@ FORCE=0
 usage() {
     echo "usage: venv-bootstrap.sh --dir <project> [--venv <path>]" >&2
     echo "       [--requirements <path>] [--verify-import <mod[,mod...]>]" >&2
-    echo "       [--python <exe>] [--force]" >&2
+    echo "       [--python <exe>] [--force] [--self-test]" >&2
     exit 2
 }
+
+# --- self-test -------------------------------------------------------------
+# Drives this script's own CLI in a temp tree and asserts exit codes and
+# summary fields. It never installs from a network index: the only pip call is
+# against an empty requirements file, which resolves nothing.
+CHECKS=0
+FAILURES=0
+
+st_expect() { # <label> <want-exit> <command...>
+    label=$1; want=$2; shift 2
+    CHECKS=$((CHECKS + 1))
+    got=0
+    ST_OUT=$("$@" 2>/dev/null) || got=$?
+    [ "$got" -eq "$want" ] || {
+        echo "venv-bootstrap: self-test: $label: exit $got, wanted $want" >&2
+        FAILURES=$((FAILURES + 1))
+    }
+}
+
+st_contains() { # <label> <needle>  (against the last st_expect stdout)
+    CHECKS=$((CHECKS + 1))
+    case "$ST_OUT" in
+        *"$2"*) ;;
+        *) echo "venv-bootstrap: self-test: $1: output lacks '$2'" >&2
+           FAILURES=$((FAILURES + 1)) ;;
+    esac
+}
+
+self_test() {
+    T=$(mktemp -d) || { echo "venv-bootstrap: self-test: no tempdir" >&2; return 1; }
+    trap 'rm -rf "$T"' EXIT
+    mkdir -p "$T/proj"
+
+    st_expect "no --dir"          2 "$0"
+    st_expect "unknown argument"  2 "$0" --dir "$T/proj" --nope
+    st_expect "--dir missing"     2 "$0" --dir "$T/absent"
+    st_expect "--requirements missing" 2 "$0" --dir "$T/proj" --requirements "$T/absent.txt"
+    st_expect "--python missing"  2 "$0" --dir "$T/proj" --python "no-such-interpreter-xyz"
+
+    st_expect "first run creates" 0 "$0" --dir "$T/proj"
+    st_contains "first run creates" "created=yes"
+    st_expect "second run reuses" 0 "$0" --dir "$T/proj"
+    st_contains "second run reuses" "created=no"
+
+    st_expect "stdlib import ok"  0 "$0" --dir "$T/proj" --verify-import json,os
+    st_contains "stdlib import ok" "imports=ok(2)"
+    st_expect "bogus import fails" 1 "$0" --dir "$T/proj" --verify-import no_such_module_xyz
+
+    # A relative --venv resolves under the project, not the caller's cwd.
+    st_expect "relative --venv"   0 "$0" --dir "$T/proj" --venv subenv
+    st_contains "relative --venv" "$T/proj/subenv"
+
+    # An empty requirements file exercises the stamp without reaching an index.
+    : > "$T/proj/empty.txt"
+    st_expect "requirements install" 0 "$0" --dir "$T/proj" --requirements "$T/proj/empty.txt"
+    st_contains "requirements install" "installed=yes"
+    st_expect "requirements stamped" 0 "$0" --dir "$T/proj" --requirements "$T/proj/empty.txt"
+    st_contains "requirements stamped" "installed=skipped"
+    st_expect "--force reinstalls" 0 "$0" --dir "$T/proj" --requirements "$T/proj/empty.txt" --force
+    st_contains "--force reinstalls" "installed=yes"
+
+    echo "venv-bootstrap: self-test checks=$CHECKS failures=$FAILURES"
+    [ "$FAILURES" -eq 0 ] || return 1
+    return 0
+}
+
+case "${1:-}" in
+    --self-test) self_test; exit $? ;;
+esac
 
 while [ $# -gt 0 ]; do
     case "$1" in
