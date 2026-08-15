@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Eleven truncated summaries repaired, and the generator that cut them is
+  gone rather than fixed.** Five ended mid-abbreviation — `…(e.g.`,
+  `…utilization vs.`, `…vendor lock, etc.` — and six more were cut
+  mid-phrase, the worst being `Produces Rust unit tests in`.
+
+  The mechanism is confirmed, not guessed: `build-a-defensible-kpi-tree`'s
+  summary is **byte-for-byte a prefix** of its own `<scope>`, and splitting
+  that scope on `'. '` reproduces the truncation exactly, because the split
+  lands inside `(e.g.` — the classic naive first-sentence cut.
+
+  **No live generator does this.** `regen-domains-xml.py` only reads
+  `summary` and copies it into `INDEX.xml`; nothing in `scripts/` writes one.
+  The damage is residue from the same bulk run that stamped the boilerplate
+  `<intent>` CR-007 documents, so these repairs will not be overwritten —
+  but nothing prevents the next generator from repeating it, which is an
+  argument for a validator check rather than for trusting the absence of a
+  culprit.
+
+  Each rewrite is drawn from that document's own core rules rather than
+  padded, and none leads with the deliverable, because `produces` already
+  carries it: `rust-http-handlers` now names typed DTOs, `Arc<AppState>` and
+  one `AppError` implementing `IntoResponse`; `reference-program-playbook`
+  names asking at peak satisfaction and double-opt-in intros.
+
+  Strict truncations 5 → **0**. Summaries with no terminal punctuation 40 →
+  **28**, and the 28 that remain are a different defect: deliberate
+  noun-phrase labels, plus six carrying a `<TitleCase slug> delivers a
+  concrete, testable methodology…` opener — boilerplate, but each names a
+  different task, so unique rather than duplicated. §12.2 requires a
+  complete sentence, so they are still owed; they are style work on 28
+  documents, not corruption, and the blocker table does not list them.
+
 - **The `Nielsen Heuristic` group is gone — six summaries written, five of
   them from the corpus's shortest.** `ux/flexibility-efficiency-a11y`,
   `help-documentation-a11y`, `match-real-world-a11y`,
