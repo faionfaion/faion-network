@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **22 playbooks say what they are for instead of reciting a template — and
+  a second stamp surfaced while fixing the first.** These carried
+  *"From the initial trigger to the closed outcome described in scope,
+  deliver every artefact named in success_criteria…"* as their `<intent>`,
+  which describes the shape of a playbook rather than this playbook. They
+  are the analogue of the 60 methodologies CR-005 rewrote rather than
+  deleted: a real subject under generic scaffolding.
+
+  Each new intent names a **trigger and a done state**, which is the shape
+  the good ones already have. `client-demo-prep-run` now opens on the sprint
+  ending and the senior developer, not the PM, having to show work to
+  non-technical stakeholders, and closes when every acceptance criterion has
+  been explicitly accepted or rejected on the call.
+
+  The stages turned out to be no help: all 22 carry an identical generic
+  chain (`Scope → Discovery → Plan → Execute → Verify → Communicate`) with
+  tasks like *"Restate the scope outcome in one sentence"*. Scope, persona
+  and success-criteria were the only usable grounding — worth knowing, since
+  it means the stamp reaches further than the intent line.
+
+  **A second boilerplate intent exists and is not fixed here**: *"Take an
+  software architect / software developer from the trigger condition
+  described in this playbook to the…"* — **31 playbooks in two groups of 16
+  and 15**, with the same grammatical error (`an software`) baked into both
+  variants, which is itself the signature of one generation run. Those 31
+  are the only remaining intent collisions: 414 of 443 intents are distinct
+  today, and fixing them makes it 443.
+
+  Also recorded, not acted on: **167 playbooks have `intent` identical to
+  `scope` verbatim**, including the exemplar the good ones were measured
+  against. An intent that restates scope adds nothing, but it is a weaker
+  defect than a stamp and it is 167 documents.
+
 - **CR-009 filed: 99 slugs exist in two domains, and 1,266 links cannot say
   which one they mean.** CR-005 relied on wikilinks resolving **by slug, not
   by path** — that is what made its 40 deletions safe, since a same-slug twin
