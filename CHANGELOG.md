@@ -4,6 +4,11 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-009 closed: 97 ambiguous slugs down to 19, and the 19 are decisions, not
+  leftovers.** 77 resolved merge-then-archive, 0 undecided. Corpus 2,601 to
+  2,520. Execution record appended to the CR itself, including the four claims
+  the CR made that execution proved wrong.
+
 - **Regenerated L1 `domains.xml` and all 22 L2 `INDEX.xml` from `meta.json`.**
   22 domains, **2,520 methodologies** (from 2,601). `validate-domains-index.py`
   PASS, `validate-domain-index.py --all` 22 pass / 0 fail — so every `count=`

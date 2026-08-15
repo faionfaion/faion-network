@@ -4,7 +4,7 @@ cr_id: CR-009
 title: "99 slugs exist in two domains, and 1,266 links cannot say which one they mean"
 priority: P1
 created: 2026-08-15
-status: proposed
+status: executed 2026-08-15 — 77 archived, 19 deliberately left, renames deferred
 affected_components: [faion-network/skills/faion/knowledge]
 blocks: "publication — a link that resolves arbitrarily is a retrieval defect, not a cosmetic one"
 ---
@@ -171,3 +171,86 @@ isolation would silently redirect its links to the `ux/` copy of the same slug, 
 resolution change nobody decided. It belongs in this triage.
 
 **Do not execute without the owner's approval.**
+
+---
+
+# Execution record, 2026-08-15
+
+Owner approved. Executed under
+[`.aidocs/conventions/domain-boundaries.md`](../conventions/domain-boundaries.md), which was
+written for this CR and is the first stated rule for which domain a methodology belongs to.
+
+| | Slugs |
+|---|--:|
+| Ambiguous at triage | **97** |
+| Resolved merge-then-archive | **77** |
+| **Deliberately left ambiguous** — both copies are real documents | **19** |
+| Remaining undecided | **0** |
+
+Corpus 2,601 → **2,520** methodologies; 81 directories archived to `.archive/knowledge/`.
+
+## What the execution proved wrong about this CR
+
+**1. Its per-pair content claims are unreliable; only its bucket assignment is.** Four pairs were
+briefed as "nothing unique on the loser" — `php-laravel-patterns`, `ruby-rails-patterns`,
+`java-spring`, `csharp-dotnet-patterns`. **All four were false on reading.** `java-spring`'s loser
+held four rules and five templates, one of which (`maven-annotation-processors.xml`) was the only
+file backing a rule the *survivor* already had. `csharp-dotnet-patterns`'s loser held eleven rules'
+worth, most of it in an `agent-integration.md` the brief never mentioned.
+
+This is why the method is **merge-then-archive** and not archive-then-regret. The ordering is the
+safeguard, and it earned its keep four times.
+
+**2. The stance hypothesis is not the boundary.** "Operating policy vs craft/idiom" was tested
+against all 28 undecided `backend`↔`dev` pairs: it explains 6, **reverses on 3**, and leaves 18
+that are simply the same document written twice. The boundary that fits the corpus is *execution
+surface*, evidenced by what each domain already produces — `backend` has written **one checklist
+and zero rubrics in 137 documents** while `dev` writes judgement instruments in 21% of 378.
+
+**3. The partial generation stamp does not name a loser.** Tested on the four pairs where it was
+the only signal (`database-design`, `go-concurrency-patterns`, `go-error-handling-patterns`,
+`ruby-rspec-testing`): in every one the stamped side was the *richer* one. The stamp records how a
+document was made, not how good it is.
+
+**4. `content_id` is derived from slug identity.** Confirmed from the other direction during
+execution: one id covers three unrelated `workflows` documents, another both `secrets-management`,
+another all three continuous-discovery documents. This is very likely *why* several unrelated
+documents looked like duplicates to the original triage.
+
+## The 19 left standing, and why that is an answer
+
+Archiving a real document costs more than leaving a slug ambiguous for one more round. In each of
+these, both copies are genuinely different documents, so the correct fix is a **rename** — and a
+rename changes the path, therefore `doc_id`, therefore any pinned `cv`, and splits a slug that
+1,266 inbound links cannot distinguish. Deferred to task #32, to land before publication.
+
+The sharpest cases:
+
+- **`secrets-management`** — the split is authored and **bidirectional**: `backend`'s decision tree
+  *skips to* `infra` when audit-logged secrets are required, and `infra`'s Skip-If routes back for
+  dev-only `.env`. A merge is structurally impossible — `backend` produces a multi-secret plan,
+  `infra` a single-secret record. They also publish **incompatible schemas under one `$id`**, which
+  is a broken contract rather than an ambiguous slug.
+- **`accessibility`** — the two output schemas share **zero required fields**. `dev`'s is a
+  per-screen instrument, `frontend`'s the codebase-wide target that instrument asserts against.
+- **`workflows`** — four domains, four unrelated subjects, no scaffold among them.
+
+## Costs incurred, recorded rather than hidden
+
+- **5 merges moved higher-tier material into a lower-tier survivor**, two of them `pro` → `free`.
+  CR-009 measured content and links and never measured tier; the boundary policy picks a survivor
+  by execution surface, which does not take tier as an input. Neither system could see it. Task #33.
+- **3 survivors were the currently weaker copy**, kept because the policy said so and because §5
+  makes choosing free while moving is not. `pnpm-package-management` is the clearest: kept in `dev`
+  despite being thinner, because a rule that applies only when convenient is not a rule.
+- **`ruby-rails` and `java-spring-boot-patterns`** each folded two genuinely distinct documents into
+  one. Both are recorded in `domains.xml` §7 as owner's-eye items.
+
+## Verified, not assumed
+
+- **81 archived slugs, 0 orphans** — every archived slug still resolves to a live survivor.
+- **0 dangling links.** The five slugs that scan as unresolvable are all false positives:
+  `slug` is a literal placeholder inside a template, `bin`/`rules` are path fragments, and
+  `non-existent-slug`/`setup-guide` are *deliberate* examples inside
+  `sdlc-ai/ai-orphan-link-detection` — a methodology about detecting orphan links.
+- L1 `domains.xml` and all 22 L2 `INDEX.xml` regenerated; both index validators clean.
