@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Tier names are no longer tags.** `pro`, `solo` and `geek` were the #1, #2
+  and #4 most frequent tags in the corpus — 568 uses across 564 knowledge
+  files — and none of them is a tag. They duplicate the `tier` field, which
+  is authoritative, and they duplicate it **inconsistently**: the `pro` tag
+  sat on only ~19% of `pro`-tier documents, `solo` on ~22%, `geek` on ~16%,
+  and `free` never appeared at all.
+
+  That is not redundancy, it is a facet that lies. Filtering `tag:pro`
+  returns a fifth of the pro-tier corpus while reading like a tier filter.
+  Four files carried **both** `pro` and `solo` — a document has one tier, so
+  those are proof the tags never tracked it.
+
+  Removed under `.aidocs/conventions/meta-json-spec.md` §13.1, which states
+  the rule as a prohibition: a tier name is never a tag. Vocabulary 4,411 →
+  4,408 distinct, 13,446 → 12,878 uses. The visible effect is that the
+  facet's most common values are now topics — `pm`, `marketing`, `infra`,
+  `architecture`, `ba`, `rag`, `dev`.
+
+  Mechanically safe, verified rather than assumed: no file's `tags` became
+  empty (the schema has no `minItems`, but none was tested), every affected
+  file's JSON round-trips byte-identically so the diff carries only the
+  removed lines, and neither `tier-manifest.json` nor the L2 `INDEX.xml`
+  files carry tags, so no index regeneration was needed.
+
+  **Not touched, deliberately:** the 2,666 tags used exactly once (60% of the
+  vocabulary), and the fact that all 455 playbooks carry `tags: []` so a
+  playbook facet does not exist at all. Consolidating a controlled vocabulary
+  is `feature-071`'s job, and it ships switchable and measured — against a
+  measured gain of +5 R@1, it may not ship on by default.
+
 - **Every tool now has a `--self-test`, and backfilling the six that did not
   found two real bugs.** 24 of 24 pass; the count was 18 of 24 before, and
   the six without one were the original three packs — the ones already
