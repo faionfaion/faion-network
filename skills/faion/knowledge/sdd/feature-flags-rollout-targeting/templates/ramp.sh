@@ -2,8 +2,10 @@
 # __faion_header_v1__
 # purpose: Ramp helper: bump rollout_percent in steps, wait for guardrails between
 # consumes: see content/02-output-contract.xml
-# produces: spec; depends-on: content/01-core-rules.xml#deterministic-per-user
-# faion_header_json: {"__faion_header__":{"purpose":"Ramp helper: bump rollout_percent in steps, wait for guardrails between","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#deterministic-per-user","token_budget_impact":"~150 tokens when loaded"}}
+# produces: spec
+# depends-on: content/04-procedure.xml + content/01-core-rules.xml#ramp-steps-with-wait
+# token-budget-impact: ~210 tokens when loaded as context
+# faion_header_json: {"__faion_header__":{"purpose":"Ramp helper: bump rollout_percent in steps, wait for guardrails between","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/04-procedure.xml + content/01-core-rules.xml#ramp-steps-with-wait","token_budget_impact":"~210 tokens when loaded as context"}}
 set -euo pipefail
 FLAG="$1"; shift
 STEPS=("$@")

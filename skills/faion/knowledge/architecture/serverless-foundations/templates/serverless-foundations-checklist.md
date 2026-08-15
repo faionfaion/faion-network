@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Markdown checklist mirroring the rule set. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: checklist; depends-on: content/01-core-rules.xml#r1-fits-execution-limits -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"Markdown checklist mirroring the rule set.","consumes":"see content/02-output-contract.xml","produces":"checklist","depends_on":"content/01-core-rules.xml#r1-fits-execution-limits","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: checklist -->
+<!-- depends-on: content/02-output-contract.xml + content/01-core-rules.xml#run-the-checklist -->
+<!-- token-budget-impact: ~500 tokens when loaded as context -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"Markdown checklist mirroring the rule set.","consumes":"see content/02-output-contract.xml","produces":"checklist","depends_on":"content/02-output-contract.xml + content/01-core-rules.xml#run-the-checklist","token_budget_impact":"~500 tokens when loaded as context"}} -->
 # Serverless Foundations Checklist
 
 | # | Item                                                                                            | Verdict |

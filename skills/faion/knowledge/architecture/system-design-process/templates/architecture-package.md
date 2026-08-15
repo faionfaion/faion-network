@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Package skeleton aggregating phases 1-5. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: spec; depends-on: content/01-core-rules.xml#r1-numeric-nfrs -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"Package skeleton aggregating phases 1-5.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#r1-numeric-nfrs","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: spec -->
+<!-- depends-on: content/02-output-contract.xml + content/01-core-rules.xml#r1-numeric-nfrs -->
+<!-- token-budget-impact: ~250-600 tokens when filled -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"Package skeleton aggregating phases 1-5.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/02-output-contract.xml + content/01-core-rules.xml#r1-numeric-nfrs","token_budget_impact":"~250-600 tokens when filled"}} -->
 # Architecture Package — <service>
 
 ## 1. Understand

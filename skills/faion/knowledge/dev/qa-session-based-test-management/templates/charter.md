@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Markdown skeleton for the artefact. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: report; depends-on: content/01-core-rules.xml#90-min-timebox -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"Markdown skeleton for the artefact.","consumes":"see content/02-output-contract.xml","produces":"report","depends_on":"content/01-core-rules.xml#90-min-timebox","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: report -->
+<!-- depends-on: content/02-output-contract.xml + content/01-core-rules.xml#charter-mission -->
+<!-- token-budget-impact: ~180 tokens once filled -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"Markdown skeleton for the artefact.","consumes":"see content/02-output-contract.xml","produces":"report","depends_on":"content/02-output-contract.xml + content/01-core-rules.xml#charter-mission","token_budget_impact":"~180 tokens once filled"}} -->
 # QA Session-Based Test Management
 
 ## Intent

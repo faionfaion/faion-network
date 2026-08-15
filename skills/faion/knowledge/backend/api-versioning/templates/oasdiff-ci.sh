@@ -2,8 +2,10 @@
 # __faion_header_v1__
 # purpose: CI breaking-change gate: oasdiff diff + .changelog-pending enforcement
 # consumes: see content/02-output-contract.xml
-# produces: spec; depends-on: content/01-core-rules.xml#additive-first
-# faion_header_json: {"__faion_header__":{"purpose":"CI breaking-change gate: oasdiff diff + .changelog-pending enforcement","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#additive-first","token_budget_impact":"~150 tokens when loaded"}}
+# produces: spec
+# depends-on: content/04-procedure.xml + content/01-core-rules.xml#additive-first
+# token-budget-impact: ~310 tokens when loaded as context
+# faion_header_json: {"__faion_header__":{"purpose":"CI breaking-change gate: oasdiff diff + .changelog-pending enforcement","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/04-procedure.xml + content/01-core-rules.xml#additive-first","token_budget_impact":"~310 tokens when loaded as context"}}
 set -euo pipefail
 SPEC="${1:-openapi.yaml}"
 CHANGELOG_PENDING="${2:-.changelog-pending}"

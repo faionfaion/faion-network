@@ -1,8 +1,10 @@
 # __faion_header_v1__
 # purpose: CI check: every key in en.json exists in all locales
 # consumes: see content/02-output-contract.xml
-# produces: spec; depends-on: content/01-core-rules.xml#icu-messageformat
-# faion_header_json: {"__faion_header__":{"purpose":"CI check: every key in en.json exists in all locales","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#icu-messageformat","token_budget_impact":"~150 tokens when loaded"}}
+# produces: spec
+# depends-on: content/01-core-rules.xml#key-drift-ci + content/04-procedure.xml
+# token-budget-impact: ~260 tokens when loaded as context
+# faion_header_json: {"__faion_header__":{"purpose":"CI check: every key in en.json exists in all locales","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#key-drift-ci + content/04-procedure.xml","token_budget_impact":"~260 tokens when loaded as context"}}
 import json
 import sys
 from pathlib import Path

@@ -1,8 +1,10 @@
 // __faion_header_v1__
 // purpose: k6 smoke test asserting p95 threshold
 // consumes: see content/02-output-contract.xml
-// produces: spec; depends-on: content/01-core-rules.xml#slo-driven-baselines
-// faion_header_json: {"__faion_header__":{"purpose":"k6 smoke test asserting p95 threshold","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#slo-driven-baselines","token_budget_impact":"~150 tokens when loaded"}}
+// produces: spec
+// depends-on: content/04-procedure.xml + content/01-core-rules.xml#ci-gate-on-regression
+// token-budget-impact: ~250 tokens when loaded as context
+// faion_header_json: {"__faion_header__":{"purpose":"k6 smoke test asserting p95 threshold","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/04-procedure.xml + content/01-core-rules.xml#ci-gate-on-regression","token_budget_impact":"~250 tokens when loaded as context"}}
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 

@@ -1,8 +1,10 @@
 // __faion_header_v1__
 // purpose: TypeScript WebSocketClient: reconnect with exponential jitter, offline queue, heartbeat
 // consumes: see content/02-output-contract.xml
-// produces: spec; depends-on: content/01-core-rules.xml#versioned-envelope
-// faion_header_json: {"__faion_header__":{"purpose":"TypeScript WebSocketClient: reconnect with exponential jitter, offline queue, heartbeat","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#versioned-envelope","token_budget_impact":"~150 tokens when loaded"}}
+// produces: spec
+// depends-on: content/04-procedure.xml + content/01-core-rules.xml#reconnect-with-jitter
+// token-budget-impact: ~500 tokens when loaded as context
+// faion_header_json: {"__faion_header__":{"purpose":"TypeScript WebSocketClient: reconnect with exponential jitter, offline queue, heartbeat","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/04-procedure.xml + content/01-core-rules.xml#reconnect-with-jitter","token_budget_impact":"~500 tokens when loaded as context"}}
 type Msg = { v: number; type: string; channel: string; seq: number; ts: number; payload: unknown };
 
 export class WSClient {

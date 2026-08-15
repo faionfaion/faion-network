@@ -1,8 +1,10 @@
 # __faion_header_v1__
 # purpose: Two-proportion z-test with Wilson 95% CI
 # consumes: see content/02-output-contract.xml
-# produces: code; depends-on: content/01-core-rules.xml#typed-event-schema
-# faion_header_json: {"__faion_header__":{"purpose":"Two-proportion z-test with Wilson 95% CI","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/01-core-rules.xml#typed-event-schema","token_budget_impact":"~150 tokens when loaded"}}
+# produces: code
+# depends-on: content/04-procedure.xml + content/01-core-rules.xml#wilson-not-normal-ci
+# token-budget-impact: ~350 tokens when loaded as context
+# faion_header_json: {"__faion_header__":{"purpose":"Two-proportion z-test with Wilson 95% CI","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/04-procedure.xml + content/01-core-rules.xml#wilson-not-normal-ci","token_budget_impact":"~350 tokens when loaded as context"}}
 import math
 
 

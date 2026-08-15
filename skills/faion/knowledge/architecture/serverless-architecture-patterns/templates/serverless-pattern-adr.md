@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: ADR skeleton for serverless pattern selection. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: decision-record; depends-on: content/01-core-rules.xml#r1-pick-by-invocation-pattern -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"ADR skeleton for serverless pattern selection.","consumes":"see content/02-output-contract.xml","produces":"decision-record","depends_on":"content/01-core-rules.xml#r1-pick-by-invocation-pattern","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: decision-record -->
+<!-- depends-on: content/02-output-contract.xml + content/01-core-rules.xml#r1-pick-by-invocation-pattern -->
+<!-- token-budget-impact: ~280 tokens once filled -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"ADR skeleton for serverless pattern selection.","consumes":"see content/02-output-contract.xml","produces":"decision-record","depends_on":"content/02-output-contract.xml + content/01-core-rules.xml#r1-pick-by-invocation-pattern","token_budget_impact":"~280 tokens once filled"}} -->
 # ADR: Serverless Pattern Selection
 
 ## Status

@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Markdown checklist scaffolding the artefact items. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: checklist; depends-on: content/01-core-rules.xml#single-intent -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"Markdown checklist scaffolding the artefact items.","consumes":"see content/02-output-contract.xml","produces":"checklist","depends_on":"content/01-core-rules.xml#single-intent","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: checklist -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~350 tokens when loaded as context -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"Markdown checklist scaffolding the artefact items.","consumes":"see content/02-output-contract.xml","produces":"checklist","depends_on":"content/01-core-rules.xml","token_budget_impact":"~350 tokens when loaded as context"}} -->
 # Outsource PR Etiquette — Checklist
 
 - [ ] A PR carries exactly one intent (one feature, one fix, or one refactor). Mixed-intent PRs are split before opening.

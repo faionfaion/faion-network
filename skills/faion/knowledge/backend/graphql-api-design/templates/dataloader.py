@@ -1,8 +1,10 @@
 # __faion_header_v1__
 # purpose: Strawberry DataLoader: per-request batch loading with key-order preservation
 # consumes: see content/02-output-contract.xml
-# produces: spec; depends-on: content/01-core-rules.xml#schema-first
-# faion_header_json: {"__faion_header__":{"purpose":"Strawberry DataLoader: per-request batch loading with key-order preservation","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#schema-first","token_budget_impact":"~150 tokens when loaded"}}
+# produces: spec
+# depends-on: content/01-core-rules.xml#dataloader-mandatory
+# token-budget-impact: ~250 tokens when loaded as context
+# faion_header_json: {"__faion_header__":{"purpose":"Strawberry DataLoader: per-request batch loading with key-order preservation","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#dataloader-mandatory","token_budget_impact":"~250 tokens when loaded as context"}}
 from typing import List
 from uuid import UUID
 from strawberry.dataloader import DataLoader

@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Puppeteer vs Playwright vs web-scraping feature matrix -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: decision-record; depends-on: content/01-core-rules.xml#tool-by-language -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"Puppeteer vs Playwright vs web-scraping feature matrix","consumes":"see content/02-output-contract.xml","produces":"decision-record","depends_on":"content/01-core-rules.xml#tool-by-language","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: decision-record -->
+<!-- depends-on: content/01-core-rules.xml#tool-by-browser-scope + content/01-core-rules.xml#tool-by-language -->
+<!-- token-budget-impact: ~230 tokens when loaded as context -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"Puppeteer vs Playwright vs web-scraping feature matrix","consumes":"see content/02-output-contract.xml","produces":"decision-record","depends_on":"content/01-core-rules.xml#tool-by-browser-scope + content/01-core-rules.xml#tool-by-language","token_budget_impact":"~230 tokens when loaded as context"}} -->
 | Feature | Puppeteer | Playwright |
 |---|---|---|
 | Multi-browser (Chromium/WebKit/Firefox) | Chromium-only | All three |

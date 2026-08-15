@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: ADR skeleton scoring build / buy / hybrid. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: decision-record; depends-on: content/01-core-rules.xml#r1-strategic-differentiation-first -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"ADR skeleton scoring build / buy / hybrid.","consumes":"see content/02-output-contract.xml","produces":"decision-record","depends_on":"content/01-core-rules.xml#r1-strategic-differentiation-first","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: decision-record -->
+<!-- depends-on: content/02-output-contract.xml + content/01-core-rules.xml#r5-record-rejected-and-trigger -->
+<!-- token-budget-impact: ~330-600 tokens once filled -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"ADR skeleton scoring build / buy / hybrid.","consumes":"see content/02-output-contract.xml","produces":"decision-record","depends_on":"content/02-output-contract.xml + content/01-core-rules.xml#r5-record-rejected-and-trigger","token_budget_impact":"~330-600 tokens once filled"}} -->
 # ADR: Build vs Buy
 
 ## Status

@@ -1,8 +1,10 @@
 # __faion_header_v1__
 # purpose: Deterministic hash-based bucketing for stable variant assignment
 # consumes: see content/02-output-contract.xml
-# produces: spec; depends-on: content/01-core-rules.xml#preregister-before-data
-# faion_header_json: {"__faion_header__":{"purpose":"Deterministic hash-based bucketing for stable variant assignment","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#preregister-before-data","token_budget_impact":"~150 tokens when loaded"}}
+# produces: spec
+# depends-on: content/04-procedure.xml + content/01-core-rules.xml#deterministic-hash-bucketing
+# token-budget-impact: ~230 tokens when loaded as context
+# faion_header_json: {"__faion_header__":{"purpose":"Deterministic hash-based bucketing for stable variant assignment","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/04-procedure.xml + content/01-core-rules.xml#deterministic-hash-bucketing","token_budget_impact":"~230 tokens when loaded as context"}}
 import hashlib
 
 

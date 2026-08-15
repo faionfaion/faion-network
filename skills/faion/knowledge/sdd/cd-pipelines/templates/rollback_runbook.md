@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Rollback runbook: criteria, commands, comms -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: config; depends-on: content/01-core-rules.xml#discrete-stages -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"Rollback runbook: criteria, commands, comms","consumes":"see content/02-output-contract.xml","produces":"config","depends_on":"content/01-core-rules.xml#discrete-stages","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: config -->
+<!-- depends-on: content/01-core-rules.xml#auto-rollback-on-guardrail -->
+<!-- token-budget-impact: ~250 tokens when loaded as context -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"Rollback runbook: criteria, commands, comms","consumes":"see content/02-output-contract.xml","produces":"config","depends_on":"content/01-core-rules.xml#auto-rollback-on-guardrail","token_budget_impact":"~250 tokens when loaded as context"}} -->
 # Rollback Runbook
 
 ## Triggers (any 1 → roll back)

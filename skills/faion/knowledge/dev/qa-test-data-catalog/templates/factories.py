@@ -1,8 +1,10 @@
 # __faion_header_v1__
 # purpose: Python scaffold realising the artefact in code.
 # consumes: see content/02-output-contract.xml
-# produces: spec; depends-on: content/01-core-rules.xml#named-fixture-id
-# faion_header_json: {"__faion_header__":{"purpose":"Python scaffold realising the artefact in code.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#named-fixture-id","token_budget_impact":"~150 tokens when loaded"}}
+# produces: spec
+# depends-on: content/02-output-contract.xml
+# token-budget-impact: ~220 tokens when loaded as context
+# faion_header_json: {"__faion_header__":{"purpose":"Python scaffold realising the artefact in code.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/02-output-contract.xml","token_budget_impact":"~220 tokens when loaded as context"}}
 """QA Test Data Catalog scaffold. See AGENTS.md for context and content/02-output-contract.xml for the contract."""
 from __future__ import annotations
 

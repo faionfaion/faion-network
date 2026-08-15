@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: STRIDE threat-model skeleton + asset-attacker-control table. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: spec; depends-on: content/01-core-rules.xml#r1-zero-trust-default -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"STRIDE threat-model skeleton + asset-attacker-control table.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#r1-zero-trust-default","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: spec -->
+<!-- depends-on: content/01-core-rules.xml#r4-stride-per-asset -->
+<!-- token-budget-impact: ~250-600 tokens when filled -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"STRIDE threat-model skeleton + asset-attacker-control table.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#r4-stride-per-asset","token_budget_impact":"~250-600 tokens when filled"}} -->
 # Threat Model (STRIDE)
 
 ## Assets

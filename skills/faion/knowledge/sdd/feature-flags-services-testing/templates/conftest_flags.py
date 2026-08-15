@@ -1,8 +1,10 @@
 # __faion_header_v1__
 # purpose: pytest fixtures that exercise ON and OFF branches
 # consumes: see content/02-output-contract.xml
-# produces: spec; depends-on: content/01-core-rules.xml#test-both-branches
-# faion_header_json: {"__faion_header__":{"purpose":"pytest fixtures that exercise ON and OFF branches","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#test-both-branches","token_budget_impact":"~150 tokens when loaded"}}
+# produces: spec
+# depends-on: content/04-procedure.xml + content/01-core-rules.xml#test-both-branches
+# token-budget-impact: ~200 tokens when loaded as context
+# faion_header_json: {"__faion_header__":{"purpose":"pytest fixtures that exercise ON and OFF branches","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/04-procedure.xml + content/01-core-rules.xml#test-both-branches","token_budget_impact":"~200 tokens when loaded as context"}}
 import pytest
 
 

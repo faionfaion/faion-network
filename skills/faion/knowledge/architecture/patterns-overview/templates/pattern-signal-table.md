@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Lookup table mapping symptom → candidate patterns. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: decision-record; depends-on: content/01-core-rules.xml#r1-symptom-before-pattern -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"Lookup table mapping symptom \u2192 candidate patterns.","consumes":"see content/02-output-contract.xml","produces":"decision-record","depends_on":"content/01-core-rules.xml#r1-symptom-before-pattern","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: decision-record -->
+<!-- depends-on: content/01-core-rules.xml#r1-symptom-before-pattern -->
+<!-- token-budget-impact: ~400 tokens when loaded as context -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"Lookup table mapping symptom \u2192 candidate patterns.","consumes":"see content/02-output-contract.xml","produces":"decision-record","depends_on":"content/01-core-rules.xml#r1-symptom-before-pattern","token_budget_impact":"~400 tokens when loaded as context"}} -->
 # Pattern Signal Table
 
 | Symptom                                   | Candidate patterns                        |

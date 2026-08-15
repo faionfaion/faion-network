@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Markdown skeleton for the artefact. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: checklist; depends-on: content/01-core-rules.xml#twelve-item-floor -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"Markdown skeleton for the artefact.","consumes":"see content/02-output-contract.xml","produces":"checklist","depends_on":"content/01-core-rules.xml#twelve-item-floor","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: checklist -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~180 tokens when loaded as context -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"Markdown skeleton for the artefact.","consumes":"see content/02-output-contract.xml","produces":"checklist","depends_on":"content/02-output-contract.xml","token_budget_impact":"~180 tokens when loaded as context"}} -->
 # Service Bootstrap Checklist
 
 ## Intent

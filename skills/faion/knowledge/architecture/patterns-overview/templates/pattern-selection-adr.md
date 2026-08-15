@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: ADR skeleton recording the chosen pattern + rejected alternatives. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: decision-record; depends-on: content/01-core-rules.xml#r1-symptom-before-pattern -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"ADR skeleton recording the chosen pattern + rejected alternatives.","consumes":"see content/02-output-contract.xml","produces":"decision-record","depends_on":"content/01-core-rules.xml#r1-symptom-before-pattern","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: decision-record -->
+<!-- depends-on: content/02-output-contract.xml + content/01-core-rules.xml#r4-name-the-rejected -->
+<!-- token-budget-impact: ~250 tokens when loaded as context -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"ADR skeleton recording the chosen pattern + rejected alternatives.","consumes":"see content/02-output-contract.xml","produces":"decision-record","depends_on":"content/02-output-contract.xml + content/01-core-rules.xml#r4-name-the-rejected","token_budget_impact":"~250 tokens when loaded as context"}} -->
 # ADR: Pattern Selection
 
 ## Status

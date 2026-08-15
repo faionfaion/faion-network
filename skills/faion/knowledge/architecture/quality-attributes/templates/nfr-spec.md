@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: NFR spec template aggregating scenarios into ISO-25010 categories. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: spec; depends-on: content/01-core-rules.xml#r1-scenario-shape -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"NFR spec template aggregating scenarios into ISO-25010 categories.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#r1-scenario-shape","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: spec -->
+<!-- depends-on: content/02-output-contract.xml + content/01-core-rules.xml#r2-cover-iso25010-categories -->
+<!-- token-budget-impact: ~340-700 tokens once filled -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"NFR spec template aggregating scenarios into ISO-25010 categories.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/02-output-contract.xml + content/01-core-rules.xml#r2-cover-iso25010-categories","token_budget_impact":"~340-700 tokens once filled"}} -->
 # Non-Functional Requirements Spec
 
 ## Performance

@@ -1,8 +1,10 @@
 # __faion_header_v1__
 # purpose: Stale flag detector: live >90 days AND both branches still present in code
 # consumes: see content/02-output-contract.xml
-# produces: spec; depends-on: content/01-core-rules.xml#test-both-branches
-# faion_header_json: {"__faion_header__":{"purpose":"Stale flag detector: live >90 days AND both branches still present in code","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#test-both-branches","token_budget_impact":"~150 tokens when loaded"}}
+# produces: spec
+# depends-on: content/04-procedure.xml + content/01-core-rules.xml#weekly-stale-audit
+# token-budget-impact: ~350 tokens when loaded as context
+# faion_header_json: {"__faion_header__":{"purpose":"Stale flag detector: live >90 days AND both branches still present in code","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/04-procedure.xml + content/01-core-rules.xml#weekly-stale-audit","token_budget_impact":"~350 tokens when loaded as context"}}
 import json
 import subprocess
 import sys

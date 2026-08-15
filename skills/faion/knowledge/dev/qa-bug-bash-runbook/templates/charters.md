@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Markdown skeleton for the artefact. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: playbook-step; depends-on: content/01-core-rules.xml#charter-per-persona -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"Markdown skeleton for the artefact.","consumes":"see content/02-output-contract.xml","produces":"playbook-step","depends_on":"content/01-core-rules.xml#charter-per-persona","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: playbook-step -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~180 tokens when loaded as context -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"Markdown skeleton for the artefact.","consumes":"see content/02-output-contract.xml","produces":"playbook-step","depends_on":"content/02-output-contract.xml","token_budget_impact":"~180 tokens when loaded as context"}} -->
 # QA Bug Bash Runbook
 
 ## Intent

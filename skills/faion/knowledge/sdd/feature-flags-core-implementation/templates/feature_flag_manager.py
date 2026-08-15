@@ -1,8 +1,10 @@
 # __faion_header_v1__
 # purpose: FeatureFlagManager: typed flag registry + env/file loader + is_enabled API
 # consumes: see content/02-output-contract.xml
-# produces: code; depends-on: content/01-core-rules.xml#typed-flag-registration
-# faion_header_json: {"__faion_header__":{"purpose":"FeatureFlagManager: typed flag registry + env/file loader + is_enabled API","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/01-core-rules.xml#typed-flag-registration","token_budget_impact":"~150 tokens when loaded"}}
+# produces: code
+# depends-on: content/02-output-contract.xml + content/01-core-rules.xml#env-overrides-config
+# token-budget-impact: ~450 tokens when loaded as context
+# faion_header_json: {"__faion_header__":{"purpose":"FeatureFlagManager: typed flag registry + env/file loader + is_enabled API","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/02-output-contract.xml + content/01-core-rules.xml#env-overrides-config","token_budget_impact":"~450 tokens when loaded as context"}}
 import json
 import os
 from dataclasses import dataclass, field

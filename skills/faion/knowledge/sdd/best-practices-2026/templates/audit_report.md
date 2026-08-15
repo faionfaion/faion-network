@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Markdown audit report skeleton: per-item PASS/WARN/FAIL with remediation -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: rubric; depends-on: content/01-core-rules.xml#ts-strict-mandatory -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"Markdown audit report skeleton: per-item PASS/WARN/FAIL with remediation","consumes":"see content/02-output-contract.xml","produces":"rubric","depends_on":"content/01-core-rules.xml#ts-strict-mandatory","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: rubric -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~260 tokens when loaded as context -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"Markdown audit report skeleton: per-item PASS/WARN/FAIL with remediation","consumes":"see content/02-output-contract.xml","produces":"rubric","depends_on":"content/02-output-contract.xml","token_budget_impact":"~260 tokens when loaded as context"}} -->
 # 2026 Best-Practices Audit — <repo-name>
 
 Generated <date>; baseline rubric version 2026.1.

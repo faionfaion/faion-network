@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Performance spec skeleton with SLO targets + headroom + cache topology + load-test gate. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: spec; depends-on: content/01-core-rules.xml#r1-numeric-slos-only -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"Performance spec skeleton with SLO targets + headroom + cache topology + load-test gate.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#r1-numeric-slos-only","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: spec -->
+<!-- depends-on: content/02-output-contract.xml + content/01-core-rules.xml#r1-numeric-slos-only -->
+<!-- token-budget-impact: ~300 tokens when loaded as context -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"Performance spec skeleton with SLO targets + headroom + cache topology + load-test gate.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/02-output-contract.xml + content/01-core-rules.xml#r1-numeric-slos-only","token_budget_impact":"~300 tokens when loaded as context"}} -->
 # Performance Spec
 
 ## SLO Targets

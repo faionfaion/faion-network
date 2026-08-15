@@ -1,8 +1,10 @@
 # __faion_header_v1__
 # purpose: Locust user class with weighted tasks + threshold check
 # consumes: see content/02-output-contract.xml
-# produces: code; depends-on: content/01-core-rules.xml#tool-by-team-language
-# faion_header_json: {"__faion_header__":{"purpose":"Locust user class with weighted tasks + threshold check","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/01-core-rules.xml#tool-by-team-language","token_budget_impact":"~150 tokens when loaded"}}
+# produces: code
+# depends-on: content/02-output-contract.xml + content/01-core-rules.xml#tool-by-team-language
+# token-budget-impact: ~190 tokens when loaded as context
+# faion_header_json: {"__faion_header__":{"purpose":"Locust user class with weighted tasks + threshold check","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/02-output-contract.xml + content/01-core-rules.xml#tool-by-team-language","token_budget_impact":"~190 tokens when loaded as context"}}
 from locust import HttpUser, between, task
 
 

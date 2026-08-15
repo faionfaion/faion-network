@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Spec skeleton tying threat-model + controls + ASVS coverage. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: spec; depends-on: content/01-core-rules.xml#r1-zero-trust-default -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"Spec skeleton tying threat-model + controls + ASVS coverage.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#r1-zero-trust-default","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: spec -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~300 tokens once filled -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"Spec skeleton tying threat-model + controls + ASVS coverage.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/02-output-contract.xml","token_budget_impact":"~300 tokens once filled"}} -->
 # Security Spec
 
 ## Identity & Access

@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Matrix skeleton with criteria × options + weighted totals. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: spec; depends-on: content/01-core-rules.xml#r1-weights-sum-100 -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"Matrix skeleton with criteria \u00d7 options + weighted totals.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#r1-weights-sum-100","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: spec -->
+<!-- depends-on: content/02-output-contract.xml + content/01-core-rules.xml#r1-weights-sum-100 -->
+<!-- token-budget-impact: ~450-700 tokens when filled -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"Matrix skeleton with criteria \u00d7 options + weighted totals.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/02-output-contract.xml + content/01-core-rules.xml#r1-weights-sum-100","token_budget_impact":"~450-700 tokens when filled"}} -->
 # Decision Matrix — <question>
 
 ## Criteria + Weights (sum = 100%)

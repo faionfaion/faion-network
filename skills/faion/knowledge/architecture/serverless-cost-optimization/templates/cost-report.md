@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Report skeleton: per-function before/after + actions + savings. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: report; depends-on: content/01-core-rules.xml#r1-right-size-memory-first -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"Report skeleton: per-function before/after + actions + savings.","consumes":"see content/02-output-contract.xml","produces":"report","depends_on":"content/01-core-rules.xml#r1-right-size-memory-first","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: report -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~300 tokens when loaded as context -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"Report skeleton: per-function before/after + actions + savings.","consumes":"see content/02-output-contract.xml","produces":"report","depends_on":"content/02-output-contract.xml","token_budget_impact":"~300 tokens when loaded as context"}} -->
 # Serverless Cost Report
 
 ## Inventory

@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **111 template headers authored, and the "112 missing two keys" turned out
+  to be a fourth generation stamp.** They were not files where an author
+  forgot two lines. Every one carried the same shape: `depends-on` crammed
+  onto the `produces:` line so it never parsed as a key, and
+  `token-budget-impact` living only inside a `faion_header_json` blob — with
+  the **identical value `~150 tokens when loaded` in all 112**. The stamped
+  `depends_on` was uniform *per directory*: one anchor copied across every
+  template in that directory, 55 distinct values for 55 directories.
+
+  That per-directory anchor was wrong for at least one template in most
+  directories, which is exactly why this was authoring and not a script.
+  `architecture/patterns-overview/` stamped all three templates
+  `#r1-symptom-before-pattern`; reading them gave three different answers,
+  because one is a lookup table, one fills the output contract's schema and
+  one *is* that schema's artefact. `backend/websocket-design/ws_client.ts`
+  was stamped `#versioned-envelope` and contains no envelope — it implements
+  full-jitter backoff, which is a different rule entirely.
+
+  `token-budget-impact` was computed per file from actual size and calibrated
+  against a correct example elsewhere in the corpus, so no two
+  differently-sized files in a directory now share a figure.
+
+  Strict-header findings **130 across 69 directories → 19 across 17**. The 19
+  are 18 pre-existing out-of-scope files that never carried a comment header
+  at all (`.jsonl`, `.webmanifest`, `.md.tmpl`) plus one deliberate
+  abstention: `backend/django-services/templates/exceptions.py`, a generic
+  stub whose methodology mentions no exceptions concept in any of its seven
+  rules — any anchor there would have been invented.
+
+  Left for whoever owns it: several methodology `AGENTS.md` files inline
+  copies of template bodies under `## Template Contents`, including the old
+  header lines, so those copies now disagree with the real files.
+
 - **All 443 playbook intents are now distinct — 414 before.** The second
   stamp is gone: 31 playbooks carried *"Take an software architect / software
   developer from the trigger condition described in this playbook to the…"*

@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Markdown skeleton for the artefact. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: rubric; depends-on: content/01-core-rules.xml#closed-4-tier -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"Markdown skeleton for the artefact.","consumes":"see content/02-output-contract.xml","produces":"rubric","depends_on":"content/01-core-rules.xml#closed-4-tier","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: rubric -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~180 tokens when loaded as context -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"Markdown skeleton for the artefact.","consumes":"see content/02-output-contract.xml","produces":"rubric","depends_on":"content/02-output-contract.xml","token_budget_impact":"~180 tokens when loaded as context"}} -->
 # QA Prioritization Rubric
 
 ## Intent

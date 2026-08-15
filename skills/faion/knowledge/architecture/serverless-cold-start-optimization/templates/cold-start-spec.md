@@ -1,8 +1,10 @@
 <!-- __faion_header_v1__ -->
 <!-- purpose: Spec capturing baseline + chosen mitigation + post-fix numbers. -->
 <!-- consumes: see content/02-output-contract.xml -->
-<!-- produces: spec; depends-on: content/01-core-rules.xml#r1-measure-before-mitigating -->
-<!-- faion_header_json: {"__faion_header__":{"purpose":"Spec capturing baseline + chosen mitigation + post-fix numbers.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#r1-measure-before-mitigating","token_budget_impact":"~150 tokens when loaded"}} -->
+<!-- produces: spec -->
+<!-- depends-on: content/02-output-contract.xml + content/01-core-rules.xml#r5-measure-after-fix -->
+<!-- token-budget-impact: ~250 tokens when loaded as context -->
+<!-- faion_header_json: {"__faion_header__":{"purpose":"Spec capturing baseline + chosen mitigation + post-fix numbers.","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/02-output-contract.xml + content/01-core-rules.xml#r5-measure-after-fix","token_budget_impact":"~250 tokens when loaded as context"}} -->
 # Cold Start Spec
 
 ## Baseline (measured)
