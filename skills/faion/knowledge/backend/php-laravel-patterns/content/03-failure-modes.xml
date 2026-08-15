@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="Laravel Layered Architecture Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 antipatterns observed in real Laravel layered codebases. Each pairs symptom + root cause + concrete fix.</summary>
+  <summary>7 antipatterns observed in real Laravel layered codebases. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -32,6 +32,18 @@
       <symptom>Service returns `response()-&gt;json(...)`; queue job cannot reuse the method without an HTTP context.</symptom>
       <root-cause source="Internal — service-coupling retro">Author returned `JsonResponse` from a service "to save controller code".</root-cause>
       <fix>Return Eloquent model / DTO / array from service; controller wraps in `JsonResource` and returns.</fix>
+    </antipattern>
+
+    <antipattern id="inline-authorization" severity="high">
+      <symptom>Two controllers disagree about who may edit an order; the weaker check ships and becomes a security bug.</symptom>
+      <root-cause source="Laravel reference — policies">Authorization is scattered as inline `abort(403)` comparisons instead of living in a Policy.</root-cause>
+      <fix>Create `OrderPolicy`, register it in `AuthServiceProvider`, and call `$this-&gt;authorizeResource(Order::class, 'order')` in the controller constructor, per `policy-required`.</fix>
+    </antipattern>
+
+    <antipattern id="inline-validation-duplication" severity="medium">
+      <symptom>Store and Update endpoints repeat the same 15 validation rules inline; the two copies drift and the error messages stop matching.</symptom>
+      <root-cause source="Laravel reference — validation">`$request-&gt;validate([...])` written in each controller method rather than in a FormRequest.</root-cause>
+      <fix>Generate `StoreOrderRequest` + `UpdateOrderRequest`, both extending a `BaseOrderRequest` that holds the shared rules in a protected method, per `validated-only`.</fix>
     </antipattern>
 
   </section>

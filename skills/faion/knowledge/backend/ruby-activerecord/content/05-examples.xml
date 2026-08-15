@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Rails ActiveRecord Examples" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Worked example: hardening an Order model with named scopes, boundary eager-loading, an enum status, transactional multi-writes and timezone-safe time calls.</summary>
+
+  <section title="Worked example">
+    <example trace="Order model hardening">
+      <context>Rails 7 commerce app. `Order#status` is a free-text column; `OrdersController#index` iterates `Order.all` and reads `o.customer.name`; the create path writes the order and decrements inventory in two unrelated statements; `Time.now` appears twelve times.</context>
+      <walk>Step 1: extract the repeated filters into `scope :recent` and `scope :paid`. Step 2: the index becomes `Order.includes(:customer, :items).recent`, eager-loaded at the controller boundary. Step 3: a migration turns `status` into an integer and the model declares `enum status: { pending: 0, paid: 1, shipped: 2, cancelled: 3 }`, so queries become `Order.pending` and `order.paid?`. Step 4: the create path wraps both writes in `ActiveRecord::Base.transaction`. Step 5: `counter_cache: true` on `OrderItem#belongs_to :order` plus an `items_count` column removes the per-row `COUNT(*)` on the index. Step 6: the `Rails/TimeZone` cop is enabled and all twelve `Time.now` calls become `Time.current`.</walk>
+      <output>The index drops from 51 queries to 3; a status typo can no longer reach the database; the multi-write path is atomic; timestamps agree with `config.time_zone`.</output>
+    </example>
+  </section>
+
+  <section title="Hardened model shape">
+    <example type="good">
+      <code lang="ruby"><![CDATA[
+class Order < ApplicationRecord
+  belongs_to :customer
+  has_many :items, class_name: "OrderItem", dependent: :destroy
+
+  enum status: { pending: 0, paid: 1, shipped: 2, cancelled: 3 }, _prefix: true
+
+  validates :total_cents, numericality: { greater_than_or_equal_to: 0 }
+
+  scope :recent,   -> { where("created_at >= ?", 30.days.ago) }
+  scope :paid,     -> { where.not(paid_at: nil) }
+  scope :for_user, ->(user) { where(customer_id: user.customer_id) }
+
+  def cancel!
+    transaction do
+      update!(status: :cancelled, cancelled_at: Time.current)
+      items.each(&:release_inventory!)
+    end
+  end
+end
+]]></code>
+      <note>Named scopes instead of duplicated `where`, an enum instead of magic strings, one transaction around the two writes, and `Time.current` rather than `Time.now`.</note>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

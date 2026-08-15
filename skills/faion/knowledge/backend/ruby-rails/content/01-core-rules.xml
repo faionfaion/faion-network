@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="Rails 7+ Backend Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the production-grade Rails 7+ methodology. Each rule pairs a binary check + sourced rationale.</summary>
+  <summary>10 testable rules grounding the production-grade Rails 7+ methodology — 6 on the service / job architecture, then 4 framework fundamentals on the conventions the app is built out of. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
 
@@ -20,8 +20,8 @@
     </rule>
 
     <rule id="strong-params-not-into-service" testable="true" depth="essential">
-      <statement>Controllers MUST call `params.require(...).permit(...)` and pass the result to the service. Services MUST NOT touch `params` or HTTP globals.</statement>
-      <rationale source="Rails guides — Strong Parameters">Strong Parameters enforce an allowlist at the HTTP boundary; services receiving raw `params` reintroduce mass-assignment risk.</rationale>
+      <statement>Controllers MUST call `params.require(:resource).permit(:f1, :f2)` in a private `&lt;resource&gt;_params` method and pass its result to the service. Passing `params[:resource]` raw — to a service or to `create` / `update` — is forbidden, and services MUST NOT touch `params` or HTTP globals.</statement>
+      <rationale source="Rails guides — Strong Parameters">Strong Parameters enforce an allowlist at the HTTP boundary; an unfiltered params hash lets a client set `is_admin` and reintroduces mass assignment wherever it lands.</rationale>
     </rule>
 
     <rule id="sidekiq-jobs-take-ids" testable="true" depth="essential">
@@ -36,10 +36,37 @@
 
   </section>
 
+  <section title="Framework fundamentals (conventions)">
+
+    <p>The rules above decide how business logic is arranged; these four decide how the Rails app itself is shaped. Rails is opinionated, and fighting the convention costs months — routing, secrets, shared model logic and callbacks each have one idiomatic home.</p>
+
+    <rule id="restful-resources" testable="true" depth="essential">
+      <statement>Routes MUST be declared with `resources :name` (or `resource` for a singular resource), using `member` / `collection` blocks for the non-CRUD verbs and `shallow: true` for nesting. Ad-hoc `get '/path' =&gt; 'controller#action'` entries are limited to genuinely non-CRUD endpoints (health checks, webhooks) and MUST stay in single digits.</statement>
+      <rationale source="Rails guides — Routing">Resourceful routing derives the HTTP verb mapping and the named helpers (`orders_path`, `cancel_order_path`) for free; each ad-hoc route drops out of that convention, and a routes file that is mostly ad-hoc has no consistent URL vocabulary left.</rationale>
+    </rule>
+
+    <rule id="credentials-not-env" testable="true" depth="essential">
+      <statement>Production secrets MUST live in `config/credentials.yml.enc` (edited via `rails credentials:edit`, read via `Rails.application.credentials`), with the master key held outside the repo. ENV is acceptable only for non-secret configuration.</statement>
+      <rationale source="Rails guides — Encrypted credentials">Secrets in ENV surface in error-page dumps and exception-tracker context; encrypted credentials travel with the code and are decryptable only with the master key.</rationale>
+    </rule>
+
+    <rule id="concern-for-shared-multi-model" testable="true" depth="essential">
+      <statement>Logic shared by ≥2 models MUST live in `app/models/concerns/&lt;Name&gt;.rb` (and controller-shared logic in `app/controllers/concerns/`). Copy-pasting a method between models is forbidden.</statement>
+      <rationale source="Rails guides — Modules and concerns">A concern names the shared abstraction and gives it one place to change; duplicated methods drift the moment one copy is edited.</rationale>
+    </rule>
+
+    <rule id="callback-only-for-invariants" testable="true" depth="essential">
+      <statement>Model callbacks (`before_save`, `after_create`) MUST be restricted to internal invariants — normalisation, derived fields, counters. External side effects (`deliver_later`, enqueue, publish, HTTP) MUST live in a Service Object or a job.</statement>
+      <rationale source="Rails guides — Callbacks; 'Seven Patterns' (CodeClimate)">A callback fires from every path that touches the record, so a console `touch` or a fixture load sends production email. The service is the only place where the effect is requested deliberately. Note the interaction with `after-commit-for-side-effects`: an `after_*_commit` hook that only enqueues an already-decided job is the exception this rule allows.</rationale>
+    </rule>
+
+  </section>
+
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
     <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Eloquent ORM Examples" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Worked example: hardening an Order model with $fillable, $casts, scopes, boundary eager-loading and a transactional multi-write path.</summary>
+
+  <section title="Worked example">
+    <example trace="Order model hardening">
+      <context>Laravel 11; the `Order` model declares neither `$fillable` nor `$casts`; `OrderController::store` calls `Order::create($request-&gt;all())` and then decrements inventory in a separate statement.</context>
+      <walk>Step 1: `protected $fillable = ['customer_id', 'items', 'note'];` plus `protected $casts = ['items' =&gt; 'array', 'paid_at' =&gt; 'datetime', 'total_cents' =&gt; 'integer'];`. Step 2: extract the two repeated WHERE clauses into `scopeRecent()` and `scopePaid()`. Step 3: the audit finds two N+1 sites in `OrderResource` (customer + items); move the eager-load to the service boundary — `Order::with(['customer', 'items'])-&gt;recent()-&gt;get()`. Step 4: `OrderService::create` wraps the `Order::create` and the inventory decrement in one `DB::transaction(...)`, dispatching the confirmation mail via `DB::afterCommit`. Step 5: enable `Model::preventLazyLoading(! app()-&gt;isProduction())` and add tests — POST /orders with `is_admin=1` in the body is ignored, the list endpoint asserts a query count of 3, and a throw mid-transaction leaves the database unchanged.</walk>
+      <output>Mass-assignment safe; typed attributes; N+1 eliminated at the boundary; the multi-write path is atomic.</output>
+    </example>
+  </section>
+
+  <section title="Hardened model shape">
+    <example type="good">
+      <code lang="php"><![CDATA[
+class Order extends Model
+{
+    use SoftDeletes;
+
+    protected $fillable = ['customer_id', 'status', 'note', 'total_cents'];
+
+    protected $casts = [
+        'total_cents' => 'integer',
+        'paid_at'     => 'datetime',
+        'metadata'    => 'array',
+    ];
+
+    public function customer(): BelongsTo { return $this->belongsTo(Customer::class); }
+    public function items(): HasMany      { return $this->hasMany(OrderItem::class); }
+
+    public function scopeRecent(Builder $query): Builder
+    {
+        return $query->where('created_at', '>=', now()->subDays(30));
+    }
+
+    public function scopePaid(Builder $query): Builder
+    {
+        return $query->whereNotNull('paid_at');
+    }
+}
+]]></code>
+      <note>Whitelist, casts, typed relations and named scopes in one place — the shape `fillable-whitelist`, `casts-for-typed-attrs` and `scope-for-reused-where` describe together.</note>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

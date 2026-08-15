@@ -45,10 +45,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 rules: fillable-whitelist, attribute-make-only, eager-load-at-boundary, db-transaction-multiwrite, prevent-lazy-loading-in-dev, paired-migration-factory-resource | 1100 |
+| `content/01-core-rules.xml` | essential | 8 rules: fillable-whitelist, attribute-make-only, eager-load-at-boundary, db-transaction-multiwrite, prevent-lazy-loading-in-dev, paired-migration-factory-resource, casts-for-typed-attrs, scope-for-reused-where | 1400 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the Eloquent-discipline manifest + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns: guarded-empty-mass-assignment, mixed-accessor-apis, lazy-load-in-controller, single-write-orphan, missing-index-on-where | 900 |
-| `content/04-procedure.xml` | essential | 5-step procedure: model + migration + factory → relations + accessors → scopes → repository eager-load → preventLazyLoading guard | 800 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: guarded-empty-mass-assignment, mixed-accessor-apis, lazy-load-in-controller, single-write-orphan, missing-index-on-where, missing-cast | 1000 |
+| `content/04-procedure.xml` | essential | 6-step procedure: model + migration + factory → relations + accessors → scopes → repository eager-load → preventLazyLoading guard → invariant tests | 950 |
+| `content/05-examples.xml` | essential | Worked Order-model hardening + the hardened model shape in PHP | 800 |
 | `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 700 |
 
 ## Task Routing
@@ -72,6 +73,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | File | Purpose | When to call |
 |------|---------|--------------|
 | `scripts/validate-php-eloquent.py` | Validate the Eloquent-discipline manifest against the JSON Schema. | Pre-commit; CI on every methodology PR. |
+| `scripts/eloquent-n-plus-one-audit.sh` | Heuristic scan for likely N+1 sites (`::all()`, lazy access in a loop). | Pre-commit; CI on Laravel projects. |
 
 ## Related
 

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Rails Patterns Examples" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>Worked example: extracting PlaceOrderService from a 95-line controller action, with the canonical ServiceResult and a service body whose side effect fires only after commit.</summary>
+
+  <section title="Worked example">
+    <example trace="PlaceOrderService extraction">
+      <context>Rails 7 app. `OrdersController#create` is 95 lines: it validates, creates the order, decrements inventory, charges the card, sends the confirmation email and renders — all in one method, covered only by a request spec.</context>
+      <walk>Step 1: name the action — `PlaceOrder` in the `Orders` context. Step 2: `app/services/orders/place_order_service.rb` with `initialize(params:, current_user:, gateway:, inventory:)`, collaborators defaulting to the real implementations. Step 3: `call` wraps the order creation, the inventory reservation and the charge in one `ActiveRecord::Base.transaction`, returns `ServiceResult.success(data: order)` on the happy path and `ServiceResult.failure(error: :insufficient_stock)` or `:payment_declined` on a business failure — never a raise. Step 4: the confirmation mail moves out of the transaction into an `after_create_commit` hook, so a rollback cannot email a customer about an order that does not exist. Step 5: the controller action becomes six lines branching on `result.success?`. Step 6: `spec/services/orders/place_order_service_spec.rb` covers twelve cases with mocked collaborators.</walk>
+      <output>The controller action drops to 6 lines; the service is ~80 lines; the service specs run in ~200 ms against ~4 s for the equivalent request specs; every failure mode is a named symbol a caller can match on.</output>
+    </example>
+  </section>
+
+  <section title="Canonical ServiceResult">
+    <example type="good">
+      <code lang="ruby"><![CDATA[
+# app/services/service_result.rb — the ONLY definition in the repo
+class ServiceResult
+  attr_reader :data, :error, :details
+
+  def self.success(data: nil) = new(success: true, data: data)
+  def self.failure(error:, details: nil) = new(success: false, error: error, details: details)
+
+  def initialize(success:, data: nil, error: nil, details: nil)
+    @success = success
+    @data    = data
+    @error   = error
+    @details = details
+  end
+
+  def success? = @success
+  def failure? = !@success
+end
+]]></code>
+      <note>One class, four methods, no subclasses — `single-serviceresult`. A CI grep fails the build on a second `class ServiceResult`.</note>
+    </example>
+  </section>
+
+  <section title="Service body">
+    <example type="good">
+      <code lang="ruby"><![CDATA[
+module Orders
+  class PlaceOrderService
+    def initialize(params:, current_user:, gateway: PaymentGateway.instance, inventory: InventoryService.new)
+      @params, @current_user, @gateway, @inventory = params, current_user, gateway, inventory
+    end
+
+    def call
+      order = nil
+
+      ActiveRecord::Base.transaction do
+        order = build_order
+        return ServiceResult.failure(error: :invalid_params, details: order.errors) unless order.save
+        return ServiceResult.failure(error: :insufficient_stock) unless @inventory.reserve(order.items).success?
+
+        charge = @gateway.charge(amount: order.total_cents, customer: @current_user)
+        return ServiceResult.failure(error: :payment_declined) unless charge.success?
+
+        order.update!(charge_id: charge.id, status: :paid)
+      end
+
+      ServiceResult.success(data: order)   # mail fires from after_create_commit, not from here
+    end
+
+    private
+
+    def build_order
+      @current_user.orders.build(@params).tap do |order|
+        order.status    = :pending
+        order.placed_at = Time.current
+      end
+    end
+  end
+end
+]]></code>
+      <note>One action, `params:` / `current_user:` kwargs, the transaction owned by the service, failures as results rather than raises, and no `deliver_later` inside the transaction — `side-effects-after-commit`.</note>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

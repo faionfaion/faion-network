@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="04-procedure" title="Rails 7+ Backend Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>5-step procedure to apply the Rails 7+ methodology end-to-end.</summary>
+  <summary>7-step procedure to apply the Rails 7+ methodology end-to-end — five steps on the service / job architecture, then two that bring the app back onto the framework's conventions.</summary>
 
   <section title="Procedure">
 
@@ -36,6 +36,20 @@
       <input>Branch list per service / job</input>
       <action>Add request specs (`spec/requests/...`) for controller paths and service specs (`spec/services/...`) for branches. Use FactoryBot `build_stubbed` where persistence isn't needed.</action>
       <output>Layered RSpec suite</output>
+    </step>
+
+    <step n="6" name="restore-restful-routing">
+      <input>`config/routes.rb` + the controller list</input>
+      <action>Count the ad-hoc routes, then regroup them by resource into `resources` blocks, using `member` / `collection` for the non-CRUD verbs and `shallow: true` for nested resources. Give each controller a private `&lt;resource&gt;_params` method built from `params.require(...).permit(...)` and have every action use it.</action>
+      <output>Resourceful routes with named helpers + mass-assignment-safe controllers</output>
+      <decision-gate>If an endpoint is still declared ad hoc without being genuinely non-CRUD, BLOCK per `restful-resources`; if a controller mass-assigns unpermitted params, BLOCK per `strong-params-not-into-service`.</decision-gate>
+    </step>
+
+    <step n="7" name="callbacks-concerns-and-credentials">
+      <input>Models with callbacks, duplicated model methods, ENV-held secrets</input>
+      <action>For each `after_create :send_email` / `after_save :enqueue_job`, move the effect into the service that owns the verb and delete the callback, keeping only invariants. Extract any method duplicated across ≥2 models into `app/models/concerns/`. Move each production secret into `config/credentials.yml.enc` via `rails credentials:edit`, switch call sites to `Rails.application.credentials`, and remove the ENV var from the deploy script.</action>
+      <output>Invariant-only callbacks, shared logic in concerns, encrypted credentials</output>
+      <decision-gate>If a callback still triggers an external effect, BLOCK per `callback-only-for-invariants`; if a secret is still read from ENV in production, BLOCK per `credentials-not-env`.</decision-gate>
     </step>
 
   </section>

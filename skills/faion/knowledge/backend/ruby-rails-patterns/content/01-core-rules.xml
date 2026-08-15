@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="Rails Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Service Object + ServiceResult patterns for Rails 7+. Each rule pairs a binary check + sourced rationale.</summary>
+  <summary>9 testable rules grounding the Service Object + ServiceResult patterns for Rails 7+. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
 
@@ -10,8 +10,8 @@
     </rule>
 
     <rule id="service-signature-params-current-user" testable="true" depth="essential">
-      <statement>Service classes MUST accept `params:` and `current_user:` keyword args in `initialize`. The public API MUST be a single `call` instance method returning `ServiceResult`. Helpers MUST be private. Namespacing follows `Users::CreateService`.</statement>
-      <rationale source="Internal — service-discoverability retro">Consistent signatures make every service testable + discoverable the same way.</rationale>
+      <statement>Service classes MUST accept `params:` and `current_user:` keyword args in `initialize`. The public API MUST be a single `call` instance method returning `ServiceResult`. Helpers MUST be private. Namespacing follows `Users::CreateService`. The service is the unit-of-work boundary: multi-write logic wraps in `ActiveRecord::Base.transaction` inside `call`, and controllers and models MUST NOT open a transaction for a business action.</statement>
+      <rationale source="Internal — service-discoverability retro; Rails guides — Transactions">Consistent signatures make every service testable + discoverable the same way. Putting the transaction anywhere else blends the HTTP scope (or the record's lifecycle) with the database's, which is what leaves half-written state behind a redirect.</rationale>
     </rule>
 
     <rule id="side-effects-after-commit" testable="true" depth="essential">
@@ -34,12 +34,28 @@
       <rationale source="Internal — regression retro 2026-Q1">Without automated gates, N+1 regressions, SQL-injection patterns, and outdated gem CVEs ship to production.</rationale>
     </rule>
 
+    <rule id="one-action-per-service" testable="true" depth="essential">
+      <statement>Each service class MUST encapsulate exactly one business action, named verb-first (`Orders::PlaceOrderService`, `Orders::RefundOrderService`). A class exposing `create` + `update` + `cancel` as public methods is forbidden; so is a service over 150 lines.</statement>
+      <rationale source="Seven Patterns (CodeClimate); Practical Object-Oriented Design (Metz)">A multi-action service is the fat model relocated — it re-accumulates the same conditionals. One action per class keeps the name honest and the test focused.</rationale>
+    </rule>
+
+    <rule id="service-result-explicit" testable="true" depth="essential">
+      <statement>`call` MUST signal business failure by returning `ServiceResult.failure(error: :symbol)`. Raising an exception for a business outcome (insufficient stock, payment declined), or returning a naked boolean or `nil`, is forbidden — exceptions are reserved for bugs and infrastructure faults.</statement>
+      <rationale source="Seven Patterns (CodeClimate)">Exceptions as control flow force every caller into a `rescue` and hide the failure set from the reader; an explicit result makes each branch visible at the call site.</rationale>
+    </rule>
+
+    <rule id="service-tested-in-isolation" testable="true" depth="essential">
+      <statement>Every service MUST have a spec under `spec/services/` that runs without booting the HTTP stack (load `spec_helper`, not `rails_helper`, where possible) and covers each business branch with mocked collaborators. A request spec alone does not satisfy this.</statement>
+      <rationale source="RSpec Rails — request specs vs unit specs">A service exercised only through HTTP is retested for the controller's reasons, runs an order of magnitude slower, and leaves its failure branches uncovered.</rationale>
+    </rule>
+
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
     <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

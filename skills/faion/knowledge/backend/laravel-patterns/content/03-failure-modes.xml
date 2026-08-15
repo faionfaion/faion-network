@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="Laravel Enterprise Patterns Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 antipatterns observed in real Laravel 10/11 codebases. Each pairs symptom + root cause + concrete fix.</summary>
+  <summary>7 antipatterns observed in real Laravel 10/11 codebases. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -32,6 +32,18 @@
       <symptom>Queue worker retries on transient failure; customer is double-charged.</symptom>
       <root-cause source="Laravel docs — Unique Jobs">Job does not implement `ShouldBeUnique`; retries dispatch the same work.</root-cause>
       <fix>Implement `ShouldBeUnique`; define `uniqueId()` (e.g. invoice id + state machine version); add a feature test that retries twice and verifies one external charge.</fix>
+    </antipattern>
+
+    <antipattern id="fat-controller" severity="high">
+      <symptom>`OrderController` grows past 180 lines; controller methods open transactions, call Eloquent and format responses inline.</symptom>
+      <root-cause source="Laravel reference — service container">No Action / Service layer; all logic shoved into the controller.</root-cause>
+      <fix>Extract to `OrderService` or a single-`__invoke` Action; the controller method becomes 5-10 lines calling it and returning a Resource. Gate at &gt;20 lines per method per `no-eloquent-in-controller`.</fix>
+    </antipattern>
+
+    <antipattern id="no-policy" severity="high">
+      <symptom>Authorization scattered across controller `if ($user-&gt;id !== $order-&gt;user_id) abort(403)` checks; the same rule is written three times and drifts.</symptom>
+      <root-cause source="Laravel reference — authorization">No Policy class; the logic is duplicated and untestable outside HTTP.</root-cause>
+      <fix>Generate `OrderPolicy`; register it in `AuthServiceProvider::$policies`; call `$this-&gt;authorize('update', $order)` from the controller or `$this-&gt;user()-&gt;can(...)` from the FormRequest, per `policy-for-authorization`.</fix>
     </antipattern>
 
   </section>

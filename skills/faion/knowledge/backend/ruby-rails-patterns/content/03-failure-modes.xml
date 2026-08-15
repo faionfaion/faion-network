@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="Rails Patterns Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 antipatterns observed in real Rails 7+ Service Object codebases. Each pairs symptom + root cause + concrete fix.</summary>
+  <summary>8 antipatterns observed in real Rails 7+ Service Object codebases. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -32,6 +32,24 @@
       <symptom>N+1 ships; Brakeman warns about SQL injection that nobody saw; an outdated gem with a known CVE stays on `Gemfile.lock` for months.</symptom>
       <root-cause source="Internal — security regression retro 2026-Q1">CI did not run Bullet / Brakeman / bundler-audit.</root-cause>
       <fix>Add `bundle exec brakeman --no-pager --exit-on-warn` + `bundle exec bundler-audit check --update` + Bullet enabled in test env. Gate merges on green.</fix>
+    </antipattern>
+
+    <antipattern id="service-as-god-object" severity="high">
+      <symptom>`OrderService` reaches 600 lines with `#create`, `#update`, `#cancel`, `#refund` and `#ship`; every change touches the same file.</symptom>
+      <root-cause source="Seven Patterns (CodeClimate)">One class accumulated every verb in the bounded context — the fat model moved to `app/services/`.</root-cause>
+      <fix>Split into `Orders::PlaceOrderService`, `Orders::CancelOrderService`, `Orders::RefundOrderService` and so on — one action per class, per `one-action-per-service`.</fix>
+    </antipattern>
+
+    <antipattern id="exception-control-flow" severity="medium">
+      <symptom>Every caller wraps the service in `rescue`; which failures exist is invisible until you read the service body.</symptom>
+      <root-cause source="Seven Patterns (CodeClimate)">The service raises for a business outcome such as insufficient stock.</root-cause>
+      <fix>Return `ServiceResult.failure(error: :insufficient_stock)` and let callers branch on `result.success?`, reserving exceptions for bugs, per `service-result-explicit`.</fix>
+    </antipattern>
+
+    <antipattern id="no-isolation-test" severity="medium">
+      <symptom>Service specs need a full Rails boot, the suite crawls, and a change to the HTTP stack reddens tests that have nothing to do with it.</symptom>
+      <root-cause source="RSpec Rails reference">The service is only exercised through a request spec; there is no unit spec.</root-cause>
+      <fix>Add `spec/services/orders/place_order_service_spec.rb` covering each branch with mocked collaborators, per `service-tested-in-isolation`.</fix>
     </antipattern>
 
   </section>

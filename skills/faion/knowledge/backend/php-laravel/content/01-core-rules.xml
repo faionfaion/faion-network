@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="Laravel Umbrella Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
-  <summary>5 testable rules grounding the Laravel umbrella methodology. Each rule pairs a binary check + sourced rationale.</summary>
+  <summary>9 testable rules grounding the Laravel umbrella methodology — 5 operating rules for how the app runs, then 4 framework fundamentals for how it is written. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
 
@@ -20,8 +20,8 @@
     </rule>
 
     <rule id="env-secrets-not-config-cache-leak" testable="true" depth="essential">
-      <statement>`.env` MUST live outside VCS. Code MUST read secrets via `config('service.key')` (config file references `env()`) — direct `env()` calls inside services are forbidden because `config:cache` freezes empty values.</statement>
-      <rationale source="Laravel docs — Configuration">`env()` inside services returns null after `config:cache` runs in production deploy.</rationale>
+      <statement>`.env` MUST live outside VCS. Code MUST read secrets via `config('service.key')` (a `config/*.php` file is the only place `env()` may be called) — direct `env()` calls inside services, controllers or providers are forbidden because `config:cache` freezes empty values. Deploy MUST run `php artisan config:cache` and `route:cache`.</statement>
+      <rationale source="Laravel docs — Configuration">`env()` inside services returns null after `config:cache` runs in production deploy; the caches are also where the per-request bootstrap cost is bought back.</rationale>
     </rule>
 
     <rule id="scheduler-runs-via-supervisor" testable="true" depth="essential">
@@ -31,10 +31,37 @@
 
   </section>
 
+  <section title="Framework fundamentals">
+
+    <p>The rules above constrain how a Laravel app runs; these four constrain how it is written. Laravel offers several ways to do the same thing — facades, helpers, container, providers, contracts — and only one of each pair survives `route:cache`, `config:cache` and a unit test that never boots the framework.</p>
+
+    <rule id="contract-bind-in-provider" testable="true" depth="essential">
+      <statement>Every contract (interface) MUST be bound to an implementation in a Service Provider's `register()` method, and the provider registered in `config/app.php` (or `bootstrap/providers.php` on Laravel 11). Inline `app()-&gt;bind(...)` in a controller, service or middleware is forbidden.</statement>
+      <rationale source="Laravel reference — service container + service providers">Providers are loaded once at boot; an inline bind only exists after the code path that ran it, so the first request after deploy fails.</rationale>
+    </rule>
+
+    <rule id="constructor-injection-over-facades" testable="true" depth="essential">
+      <statement>Service classes MUST constructor-inject contracts (`__construct(private MailService $mail)`). Facades (`Mail::send`, `Cache::get`) are permitted only in controllers, middleware and artisan commands.</statement>
+      <rationale source="Laravel reference — facades vs DI">Facades resolve from the container at call time, so replacing them in a test needs `Mail::fake()` boilerplate; constructor injection is mockable with plain PHPUnit and needs no framework boot.</rationale>
+    </rule>
+
+    <rule id="routes-in-route-files-only" testable="true" depth="essential">
+      <statement>Routes MUST be declared in `routes/*.php` and MUST point at a controller method (`Route::get('/', [HomeController::class, 'index'])`). Route closures and route definitions inside controllers, providers or middleware are forbidden.</statement>
+      <rationale source="Laravel reference — routing">`php artisan route:cache` serialises the route table and fails outright on a closure; inline routes are also invisible to `route:list` and to observability tooling.</rationale>
+    </rule>
+
+    <rule id="middleware-for-crosscutting" testable="true" depth="essential">
+      <statement>Cross-cutting concerns — auth checks, CORS, rate limiting, locale, tenancy — MUST be implemented as middleware and attached to a route group. Repeating the same check in N controllers is forbidden.</statement>
+      <rationale source="Laravel reference — middleware">Middleware is the framework's own seam for the concern; controller-level repetition drifts the moment one of the N copies is updated.</rationale>
+    </rule>
+
+  </section>
+
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
     <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

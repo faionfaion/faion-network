@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="Rails 7+ Backend Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 antipatterns observed in real Rails 7+ codebases. Each pairs symptom + root cause + concrete fix.</summary>
+  <summary>8 antipatterns observed in real Rails 7+ codebases — five in the service / job architecture, three in how the framework's own conventions are used. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -32,6 +32,28 @@
       <symptom>Production deploy drops a column that the previous release still wrote to; immediate outage.</symptom>
       <root-cause source="Rails guides — Active Record Migrations">Migration contained `remove_column :users, :legacy_id` and shipped without a manual review.</root-cause>
       <fix>Gate `remove_column` / `rename_column` PRs on a `MIGRATION-REVIEW.md` checklist; require an approver signed off explicitly in the PR description.</fix>
+    </antipattern>
+
+  </section>
+
+  <section title="Convention antipatterns">
+
+    <antipattern id="callback-side-effect" severity="high">
+      <symptom>Running `Order.find(1).touch` in a console sends a production email; the test suite mails real addresses.</symptom>
+      <root-cause source="Rails guides — Callbacks">`after_save :send_confirmation` lives on the model, so every write path triggers the effect.</root-cause>
+      <fix>Move the call into `OrderService#confirm`, which explicitly runs `OrderMailer.confirmation(order).deliver_later`, and delete the callback, per `callback-only-for-invariants`.</fix>
+    </antipattern>
+
+    <antipattern id="ad-hoc-routes-explosion" severity="medium">
+      <symptom>`config/routes.rb` reaches 400 lines; half the endpoints have no named helper and the URL vocabulary is inconsistent.</symptom>
+      <root-cause source="Rails guides — Routing">Each new endpoint was appended as `get '/foo' =&gt; 'bar#baz'` instead of joining a resource.</root-cause>
+      <fix>Regroup into `resources :orders do member { patch :cancel } end`; the named helpers (`cancel_order_path`) reappear automatically, per `restful-resources`.</fix>
+    </antipattern>
+
+    <antipattern id="secrets-in-env-leak" severity="high">
+      <symptom>An exception report includes the Stripe key because the 5xx context dumps ENV.</symptom>
+      <root-cause source="Rails guides — Encrypted credentials">The key is read from ENV, so anything that serialises the environment serialises the secret.</root-cause>
+      <fix>Move it into `credentials.yml.enc` and read `Rails.application.credentials.stripe[:secret]`; drop the ENV var from the deploy script, per `credentials-not-env`.</fix>
     </antipattern>
 
   </section>

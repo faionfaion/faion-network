@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="Laravel Umbrella Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns observed in real Laravel 10/11 production deployments. Each pairs symptom + root cause + concrete fix.</summary>
+  <summary>8 antipatterns observed in real Laravel 10/11 production deployments — four operational, four in how the framework itself is used. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -26,6 +26,34 @@
       <symptom>Production runs on PHP 7.4; security patches stopped landing two years ago.</symptom>
       <root-cause source="PHP supported versions">Composer `require` floor too low; deploys never enforced.</root-cause>
       <fix>Set `"php": "^8.2"` in `composer.json`. Enforce via CI matrix that fails on lower versions.</fix>
+    </antipattern>
+
+  </section>
+
+  <section title="Framework-usage antipatterns">
+
+    <antipattern id="config-cache-broken" severity="high">
+      <symptom>Local works; production crashes reading a null credential immediately after `php artisan config:cache`.</symptom>
+      <root-cause source="Laravel reference — configuration">`env('STRIPE_KEY')` is called inside a service class rather than in `config/*.php`; only config files run before the cache is frozen.</root-cause>
+      <fix>Move the call into `config/stripe.php` (`return ['key' =&gt; env('STRIPE_KEY')];`) and read `config('stripe.key')` in the service, per `env-secrets-not-config-cache-leak`.</fix>
+    </antipattern>
+
+    <antipattern id="facade-fest-test-pain" severity="medium">
+      <symptom>Every test needs `Mail::fake()`, `Queue::fake()`, `Storage::fake()`; `setUp()` is 30 lines of fake registration and unit tests boot the whole framework.</symptom>
+      <root-cause source="Laravel reference — facades vs DI">Services call facades directly, so substituting a double requires Laravel's fake registry.</root-cause>
+      <fix>Refactor the service to constructor-inject contracts (`MailService`, `CacheService`) per `constructor-injection-over-facades`; unit tests then use plain PHPUnit mocks.</fix>
+    </antipattern>
+
+    <antipattern id="route-cache-impossible" severity="medium">
+      <symptom>`php artisan route:cache` fails with a closure-not-serializable error, so the deploy ships without the route cache.</symptom>
+      <root-cause source="Laravel reference — route caching">A route is defined as an inline closure with `use ($variable)`; closures cannot be serialised.</root-cause>
+      <fix>Convert every route to a controller method reference — `Route::get('/', [HomeController::class, 'index'])` — per `routes-in-route-files-only`.</fix>
+    </antipattern>
+
+    <antipattern id="inline-bind-bootstrap" severity="medium">
+      <symptom>A binding only resolves after one specific endpoint has been hit; the first request after a deploy fails with an unresolvable contract.</symptom>
+      <root-cause source="Laravel reference — service providers">`app()-&gt;bind(MailService::class, ...)` sits inside a controller, so it never runs at boot.</root-cause>
+      <fix>Move the binding into a Service Provider's `register()` and register the provider, per `contract-bind-in-provider`.</fix>
     </antipattern>
 
   </section>

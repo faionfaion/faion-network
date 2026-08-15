@@ -47,11 +47,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 rules: single-serviceresult, service-signature-params-current-user, side-effects-after-commit, strong-params-not-into-service, pundit-verify-authorized, ci-gates-bullet-brakeman-audit | 1100 |
+| `content/01-core-rules.xml` | essential | 9 rules: single-serviceresult, service-signature-params-current-user, side-effects-after-commit, strong-params-not-into-service, pundit-verify-authorized, ci-gates-bullet-brakeman-audit, one-action-per-service, service-result-explicit, service-tested-in-isolation | 1600 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the Rails-patterns manifest + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns: serviceresult-shape-drift, deliver-later-inside-transaction, pundit-no-verify, callback-business-logic, missing-bullet-brakeman | 900 |
-| `content/04-procedure.xml` | essential | 5-step procedure: define ServiceResult → write services → after_commit side effects → Pundit verify_authorized → CI gates | 800 |
-| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 700 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns: serviceresult-shape-drift, deliver-later-inside-transaction, pundit-no-verify, callback-business-logic, missing-bullet-brakeman, service-as-god-object, exception-control-flow, no-isolation-test | 1400 |
+| `content/04-procedure.xml` | essential | 6-step procedure: define ServiceResult → write services → after_commit side effects → Pundit verify_authorized → CI gates → one-action split + isolated specs | 950 |
+| `content/05-examples.xml` | essential | Worked PlaceOrderService extraction + canonical ServiceResult and service-body shapes | 1000 |
+| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 800 |
 
 ## Task Routing
 

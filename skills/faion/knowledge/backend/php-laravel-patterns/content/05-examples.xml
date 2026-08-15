@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Laravel Layered Architecture Examples" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Worked example: migrating a 612-line fat OrderController to the Controller → Service → Resource layering, driven by an audit that must reach zero.</summary>
+
+  <section title="Worked example">
+    <example trace="OrderController migration">
+      <context>Laravel 11 commerce app. `OrderController.php` is 612 lines across 8 methods, each 70-90 lines with inline `validate()`, a controller-level `DB::transaction`, a raw model return and an inline `abort(403)` check.</context>
+      <walk>Step 1: run `scripts/laravel-anti-pattern-lint.sh` — 8 fat methods, 8 inline validations, 8 raw responses, 8 inline authorization checks, 6 controller-level transactions. Step 2: extract `OrderService` with create / update / cancel / ship / refund methods, each wrapping its writes in `DB::transaction(fn() =&gt; ...)`. Step 3: generate `StoreOrderRequest`, `UpdateOrderRequest`, `CancelOrderRequest`, moving rules and messages out of the controller. Step 4: `OrderResource` with an explicit field list; `OrderPolicy` covering create / update / cancel / refund, registered in `AuthServiceProvider` and reached via `authorizeResource` in the constructor. Step 5: re-run the audit — zero violations — and record the layering rules in `CONTRIBUTING.md` plus the PR template.</walk>
+      <output>`OrderController` drops to ~120 lines (8 methods averaging 15 lines); business logic is unit-testable without HTTP; authorization is centralised; every new endpoint inherits the shape.</output>
+    </example>
+  </section>
+
+  <section title="Audit signals to act on">
+    <list>
+      <item>Any controller method over 20 lines → extract a service method (`thin-controller-no-eloquent`).</item>
+      <item>`$request-&gt;validate(` inside a controller → FormRequest (`validated-only`).</item>
+      <item>`DB::transaction` inside a controller → move it into the service (`db-transaction-closure`).</item>
+      <item>`return $model;` from a controller → wrap in a JsonResource (`jsonresource-from-controller-only`).</item>
+      <item>`abort(403` inside a controller → Policy (`policy-required`).</item>
+    </list>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

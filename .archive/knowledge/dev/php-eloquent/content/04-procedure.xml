@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="PHP Eloquent ORM Patterns Procedure" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5-step procedure for making an Eloquent model safe + performant.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="set-fillable-and-casts">
+      <input>Model class + DB columns.</input>
+      <action>Declare `$fillable` (whitelist) listing only safe-to-mass-assign attributes. Declare `$casts` for booleans, JSON, dates, enums.</action>
+      <output>Model with $fillable + $casts.</output>
+    </step>
+    <step n="2" name="extract-scopes">
+      <input>Code scan for repeated WHERE.</input>
+      <action>For each WHERE used ≥2x, add scope method on the model: `public function scopeActive($query) { return $query-&gt;whereNull('deleted_at')-&gt;where('status', 'active'); }`.</action>
+      <output>Model with query scopes.</output>
+    </step>
+    <step n="3" name="audit-n-plus-one">
+      <input>Debugbar / Telescope output.</input>
+      <action>For each detected N+1, add `-&gt;with('relation')` at the query origin OR `-&gt;load('relation')` after the collection is obtained.</action>
+      <output>0 N+1 in the audited paths.</output>
+    </step>
+    <step n="4" name="wrap-multi-write-tx">
+      <input>Service methods.</input>
+      <action>Identify any service method with ≥2 writes. Wrap body in `DB::transaction(function () use (...) { ... })`.</action>
+      <output>All multi-write paths transactional.</output>
+      <decision-gate>If any multi-write path remains untrahsactional, STOP and wrap.</decision-gate>
+    </step>
+    <step n="5" name="test-and-document">
+      <input>PHPUnit / Pest.</input>
+      <action>Write feature tests: mass-assignment with extra key (assert ignored); N+1 detection via assertQueryCount; transaction rollback test (throw mid-tx, assert DB unchanged).</action>
+      <output>Tests green + model documented.</output>
+    </step>
+
+  </section>
+</text>

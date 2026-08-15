@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Rails 7+ Backend Examples" version="1.1.0" est_tokens="1000" depth="essential">
+  <summary>Worked example: bringing an Orders module back onto Rails conventions — resourceful routes, Strong Parameters, side effects out of callbacks and secrets into encrypted credentials — plus the routes and controller shapes it produces.</summary>
+
+  <section title="Worked example">
+    <example trace="Orders module hardening">
+      <context>Rails 7 app. `OrdersController` is reached through eight ad-hoc routes; `Order` carries `after_create :send_confirmation_email`; the Stripe key is read from ENV; `create` mass-assigns `params[:order]`.</context>
+      <walk>Step 1: audit the module — 8 ad-hoc routes, 1 side-effect callback, 1 ENV secret, 1 unpermitted mass assignment. Step 2: `config/routes.rb` collapses to `resources :orders` with `member { patch :cancel; post :refund }` and a `collection { get :recent }`, so `cancel_order_path` exists again. Step 3: the controller grows a private `order_params` returning `params.require(:order).permit(:note, items_attributes: %i[sku qty])`, and every action uses it. Step 4: the mailer call moves from the `Order` callback into `OrderService#confirm`, which the controller invokes explicitly; the callback is deleted. Step 5: `rails credentials:edit` takes `stripe.secret`, the call site becomes `Rails.application.credentials.stripe[:secret]`, and the ENV var leaves the deploy script.</walk>
+      <output>Eight routes become one `resources` block plus two member routes; a console `touch` no longer mails a customer; the secret no longer appears in an exception dump; unpermitted attributes never reach the model.</output>
+    </example>
+  </section>
+
+  <section title="Resourceful routes shape">
+    <example type="good">
+      <code lang="ruby"><![CDATA[
+Rails.application.routes.draw do
+  namespace :api do
+    namespace :v1 do
+      resources :orders, only: %i[index show create update destroy] do
+        member do
+          patch :cancel
+          post  :refund
+        end
+
+        collection { get :recent }
+
+        resources :items, only: %i[index show create destroy], shallow: true
+      end
+
+      resource  :session, only: %i[create destroy]
+      resources :users,   only: %i[show update]
+    end
+  end
+
+  get "/health", to: "health#show"
+  root "home#index"
+end
+]]></code>
+      <note>Non-CRUD verbs live inside the resource as `member` / `collection`, so they keep named helpers — `restful-resources`.</note>
+    </example>
+  </section>
+
+  <section title="Controller shape">
+    <example type="good">
+      <code lang="ruby"><![CDATA[
+class Api::V1::OrdersController < Api::V1::BaseController
+  before_action :set_order, only: %i[show update destroy cancel refund]
+
+  def index
+    @orders = policy_scope(Order).includes(:items).recent
+    render json: OrderResource.from_collection(@orders)
+  end
+
+  def create
+    result = Orders::CreateService.new(params: order_params, current_user: current_user).call
+    return render json: { errors: result.errors }, status: :unprocessable_entity if result.failure?
+
+    render json: OrderResource.from(result.value), status: :created
+  end
+
+  private
+
+  def set_order
+    @order = Order.find(params[:id])
+  end
+
+  def order_params
+    params.require(:order).permit(:note, items_attributes: %i[sku qty])
+  end
+end
+]]></code>
+      <note>Strong Parameters at the boundary, the service returning the shared `ServiceResult`, eager-loading at the controller — the architecture rules and the convention rules meeting in one class.</note>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

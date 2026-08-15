@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Laravel Enterprise Patterns Examples" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Worked example: a greenfield POST /api/v1/orders slice applying the layering, validation, transaction and authorization rules end-to-end.</summary>
+
+  <section title="Worked example">
+    <example trace="OrderController slice">
+      <context>Laravel 11 API; `Order` model with an `OrderItem` child; POST /api/v1/orders accepts an items array; the write is transactional; Sanctum authentication.</context>
+      <walk>Step 1: artisan generates `Api\V1\OrderController` + `StoreOrderRequest` + `OrderResource` + `OrderPolicy`. Step 2: `StoreOrderRequest::rules()` returns ['items' =&gt; 'required|array|min:1', 'items.*.sku' =&gt; 'required|string', 'items.*.qty' =&gt; 'required|integer|min:1']; `authorize()` returns `$this-&gt;user()-&gt;can('create', Order::class)`. Step 3: `OrderService::create(array $data)` wraps the writes in `DB::transaction(...)`, creating the order and then its items, and dispatches notifications via `DB::afterCommit(...)`. Step 4: `OrderResource::toArray()` returns an explicit literal array — ['id', 'items' =&gt; OrderItemResource::collection($this-&gt;whenLoaded('items')), 'created_at'] — never `$this-&gt;toArray()`. Step 5: the controller method is four lines: `return new OrderResource($this-&gt;service-&gt;create($request-&gt;validated()));`. Step 6: `OrderPolicy::create()` returns `$user-&gt;subscribed()` and is registered in `AuthServiceProvider::$policies`.</walk>
+      <output>Controller 32 lines; the transaction is scoped to the service; the Resource controls the API shape; authorization lives in the Policy; the layering audit script reports clean.</output>
+    </example>
+  </section>
+
+  <section title="Slice artefact shape">
+    <example type="good">
+      <code lang="php"><![CDATA[
+// app/Http/Controllers/Api/V1/OrderController.php — thin, delegating, Resource-returning
+class OrderController extends Controller
+{
+    public function __construct(private readonly OrderService $service)
+    {
+        $this->authorizeResource(Order::class, 'order');
+    }
+
+    public function store(StoreOrderRequest $request): OrderResource
+    {
+        return new OrderResource($this->service->create($request->validated()));
+    }
+}
+]]></code>
+      <note>No Eloquent call, no transaction and no authorization branch in the controller — each lives in the layer that owns it.</note>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

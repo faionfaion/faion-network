@@ -45,11 +45,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 rules: feature-vs-unit-boundary, refreshdatabase-on-feature, fakes-before-action, assertjsonpath-not-structure, one-behaviour-per-test, coverage-gate-in-ci | 1100 |
+| `content/01-core-rules.xml` | essential | 11 rules — suite layout: feature-vs-unit-boundary, refreshdatabase-on-feature, fakes-before-action, assertjsonpath-not-structure, one-behaviour-per-test, coverage-gate-in-ci; test craft: aaa-structure, factory-no-shared-state, data-provider-table-tests, mocks-via-di, no-test-order-dependence | 1900 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the test-plan manifest + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns: unit-tests-booting-laravel, fake-after-action, assertjsonstructure-misuse, shared-mutable-fixture, time-based-flakes | 900 |
-| `content/04-procedure.xml` | essential | 5-step procedure: scaffold suite → factories + fakes → feature tests → unit tests → coverage gate | 800 |
-| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 700 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns: unit-tests-booting-laravel, fake-after-action, assertjsonstructure-misuse, shared-mutable-fixture, time-based-flakes, copy-paste-cases, facade-fake-everywhere, no-aaa | 1400 |
+| `content/04-procedure.xml` | essential | 6-step procedure: scaffold suite → factories + fakes → feature tests → unit tests → coverage gate → AAA/data-provider/random-order pass | 1000 |
+| `content/05-examples.xml` | essential | Worked OrderService unit test with factories, AAA, data provider and DI mocks | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 800 |
 
 ## Task Routing
 

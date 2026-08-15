@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Laravel Umbrella Examples" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Worked example: taking a facade-heavy legacy service to constructor injection, provider bindings and cacheable config — the framework-fundamentals half of this methodology applied end-to-end.</summary>
+
+  <section title="Worked example">
+    <example trace="PaymentService refactor">
+      <context>Legacy Laravel 11 app. `PaymentService` calls `Mail::send`, `Log::info`, `Cache::get` and reads `env('STRIPE_KEY')` directly; every test needs `Mail::fake()` plus `Queue::fake()`; `config:cache` breaks production.</context>
+      <walk>Step 1: define `Contracts\MailService`, `Contracts\CacheService` and use PSR-3 `LoggerInterface`. Step 2: `PaymentServiceProvider::register()` binds `MailService` → `SendgridMailService` and `CacheService` → `RedisCacheService`; the provider is registered. Step 3: `env('STRIPE_KEY')` becomes `config('stripe.key')`, backed by a new `config/stripe.php`. Step 4: `PaymentService` constructor-injects all three contracts; `Mail::send(...)` becomes `$this-&gt;mail-&gt;send(...)`. Step 5: the repeated terms-of-service check becomes an `EnforceTos` middleware on the route group, and the deploy script gains `route:cache` + `config:cache`.</walk>
+      <output>Unit tests run with plain PHPUnit mocks and no framework boot; `config:cache` and `route:cache` both succeed; the first request after deploy resolves every binding.</output>
+    </example>
+  </section>
+
+  <section title="Provider binding shape">
+    <example type="good">
+      <code lang="php"><![CDATA[
+class PaymentServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        $this->app->bind(MailService::class, SendgridMailService::class);
+        $this->app->bind(CacheService::class, RedisCacheService::class);
+    }
+
+    public function boot(): void
+    {
+        // Macros, route model bindings, Blade directives go here — never env() or a DB query.
+    }
+}
+]]></code>
+      <note>The one place a contract is wired to an implementation, per `contract-bind-in-provider`.</note>
+    </example>
+  </section>
+
+  <section title="Config file that survives config:cache">
+    <example type="good">
+      <code lang="php"><![CDATA[
+// config/stripe.php — the ONLY layer allowed to call env()
+return [
+    'key'            => env('STRIPE_KEY'),
+    'secret'         => env('STRIPE_SECRET'),
+    'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
+    'currency'       => env('STRIPE_CURRENCY', 'USD'),
+    'capture_method' => env('STRIPE_CAPTURE_METHOD', 'automatic'),
+];
+]]></code>
+      <note>Services read `config('stripe.key')`; the frozen cache then holds real values instead of nulls.</note>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

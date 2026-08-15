@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-009, PHP/Laravel and Ruby/Rails: 8 slug collisions resolved
+  merge-then-archive, survivor `backend/` in all eight** under
+  `domain-boundaries.md` Rule 1. Every survivor gained a canonical
+  `05-examples.xml` — all eight lacked one, which is why the losers' worked
+  examples had nowhere else to go.
+
+  **Two of the eight were briefed as "nothing unique" and both briefs were
+  wrong.** `php-laravel-patterns` held a `policy-required` rule with no
+  counterpart in the survivor's six (policies appeared only as procedure prose),
+  and `ruby-rails-patterns` held `one-action-per-service`,
+  `service-result-explicit` and `service-tested-in-isolation`. Had either been
+  archived on the brief rather than on a read, real rules would have gone with
+  it. This is the reason the method is merge-*then*-archive and not the reverse.
+
+  `ruby-rails` was the expensive call the policy predicted: two genuinely
+  different documents — operating policy against conventions/idiom — folded into
+  one under a delimited "Framework fundamentals (conventions)" section. One
+  internal tension is resolved in text rather than left to the reader:
+  `callback-only-for-invariants` against `after-commit-for-side-effects`, where
+  an `after_*_commit` hook that only enqueues an already-decided job is the
+  stated exception.
+
+  A correction was made while folding, not carried over: the `ruby-rails-patterns`
+  template called `deliver_later` **inside** the transaction, which violates the
+  survivor's own `side-effects-after-commit` rule. The folded version moves it to
+  `after_create_commit` and says why.
+
+  **Flagged, not acted on:** `backend/ruby-rails-patterns` is now substantially
+  redundant against `backend/ruby-rails` — 4 of 9 rules and 3 of 8 antipatterns
+  duplicated. Both survive in the same domain so it is not a V1 violation, and
+  collapsing them changes a `doc_id`. It is a third merge decision, recorded for
+  the owner rather than taken here.
+
 - **Validator 5 now requires a real header block, and the 19 templates that
   failed were almost all a formatting problem rather than a missing one.** The
   old check was a lowercase substring scan wanting 3 of 5 keys anywhere in the

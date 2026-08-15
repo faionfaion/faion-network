@@ -47,11 +47,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 rules: query-object-relation-chain, named-scopes-no-default-scope, eager-load-at-boundary, find-each-for-bulk, no-arel-string-injection, n-plus-one-gate-in-ci | 1100 |
+| `content/01-core-rules.xml` | essential | 10 rules: query-object-relation-chain, named-scopes-no-default-scope, eager-load-at-boundary, find-each-for-bulk, no-arel-string-injection, n-plus-one-gate-in-ci, transaction-block-multi-write, enum-for-status, no-time-now, counter-cache-for-counts | 1800 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the AR-discipline manifest + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns: default-scope-invisible, query-object-god-class, view-triggered-query, all-each-memory-blowup, scope-on-query-object-bypassed | 900 |
-| `content/04-procedure.xml` | essential | 5-step procedure: identify hot path → extract Query Object → eager-load at boundary → find_each for bulk → wire N+1 gate | 800 |
-| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 700 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns: default-scope-invisible, query-object-god-class, view-triggered-query, all-each-memory-blowup, scope-on-query-object-bypassed, missing-transaction, magic-status-strings, time-now-timezone-bug | 1400 |
+| `content/04-procedure.xml` | essential | 7-step procedure: identify hot path → extract Query Object → eager-load at boundary → find_each for bulk → N+1 gate → enum + counter_cache → transactions and timezone lint | 1100 |
+| `content/05-examples.xml` | essential | Worked Order hardening + the hardened model shape in Ruby | 800 |
+| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 800 |
 
 ## Task Routing
 

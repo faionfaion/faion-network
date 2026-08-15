@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Laravel PHPUnit / Pest Examples" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Worked example: a unit test for OrderService built from per-test factories, AAA structure, a data provider and constructor-injected mocks — no framework boot.</summary>
+
+  <section title="Worked example">
+    <example trace="OrderServiceTest">
+      <context>Laravel 11 with PHPUnit 11. `OrderService::calculateTotal($items)` returns a `Money` value and must cover four edge cases: empty basket, single line, discount applied, mixed currency.</context>
+      <walk>Step 1: `tests/Unit/Services/OrderServiceTest.php` extends `PHPUnit\Framework\TestCase` — no Laravel boot. Step 2: a data builder produces the `OrderItem` stubs per test, never a shared `setUp` field. Step 3: the body is AAA — arrange the `Money` inputs and a `createMock(DiscountService::class)`, act with a single `calculateTotal(...)` call, assert the returned `Money`. Step 4: the four cases collapse into one `test_calculates_total` method behind `#[DataProvider('totalCases')]`, whose rows are `[items, expectedCents]`. Step 5: `--order-by=random` is run three times and stays green.</walk>
+      <output>The class runs in ~80 ms because nothing boots; a failure names the offending provider row instead of a file; adding a case is one array line.</output>
+    </example>
+  </section>
+
+  <section title="Test-craft shape">
+    <example type="good">
+      <code lang="php"><![CDATA[
+#[DataProvider('totalCases')]
+public function test_calculates_total(array $items, int $expectedCents): void
+{
+    // Arrange
+    $discounts = $this->createMock(DiscountService::class);
+    $discounts->method('for')->willReturn(Money::zero());
+    $service = new OrderService($discounts);
+
+    // Act
+    $total = $service->calculateTotal($items);
+
+    // Assert
+    $this->assertSame($expectedCents, $total->cents());
+}
+
+public static function totalCases(): array
+{
+    return [
+        'empty basket'  => [[], 0],
+        'single line'   => [[['cents' => 1200, 'qty' => 1]], 1200],
+        'two lines'     => [[['cents' => 1200, 'qty' => 2]], 2400],
+    ];
+}
+]]></code>
+      <note>One act, phases separated, mock injected through the constructor, cases in a provider — `aaa-structure`, `mocks-via-di` and `data-provider-table-tests` in one method.</note>
+    </example>
+  </section>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

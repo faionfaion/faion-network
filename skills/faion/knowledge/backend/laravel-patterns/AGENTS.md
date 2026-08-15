@@ -47,10 +47,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 rules: validated-not-all, db-transaction-for-multistep-writes, eager-load-with-relations, api-resource-explicit-fields, shouldbeunique-on-jobs, constructor-injection-not-app | 1100 |
+| `content/01-core-rules.xml` | essential | 8 rules: validated-not-all, db-transaction-for-multistep-writes, eager-load-with-relations, api-resource-explicit-fields, shouldbeunique-on-jobs, constructor-injection-not-app, no-eloquent-in-controller, policy-for-authorization | 1400 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the Laravel-patterns manifest + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns: request-all-mass-assignment, n-plus-one-foreach, mail-inside-transaction, container-resolution-not-injection, queue-job-not-idempotent | 900 |
-| `content/04-procedure.xml` | essential | 5-step procedure: scaffold FormRequest + Action → API Resource → DB::transaction → queue job → tests | 800 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns: request-all-mass-assignment, n-plus-one-foreach, mail-inside-transaction, container-resolution-not-injection, queue-job-not-idempotent, fat-controller, no-policy | 1100 |
+| `content/04-procedure.xml` | essential | 6-step procedure: scaffold FormRequest + Action → API Resource → DB::transaction → queue job → tests → Policy + layering audit | 950 |
+| `content/05-examples.xml` | essential | Worked POST /api/v1/orders slice end-to-end + thin-controller code example | 800 |
 | `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 700 |
 
 ## Task Routing
@@ -74,6 +75,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | File | Purpose | When to call |
 |------|---------|--------------|
 | `scripts/validate-laravel-patterns.py` | Validate the Laravel-patterns manifest against the JSON Schema. | Pre-commit; CI on every methodology PR. |
+| `scripts/laravel-layering-audit.sh` | Lint Eloquent calls in controllers, `DB::transaction` in controllers, raw model responses. | Pre-commit; CI on Laravel projects. |
 
 ## Related
 

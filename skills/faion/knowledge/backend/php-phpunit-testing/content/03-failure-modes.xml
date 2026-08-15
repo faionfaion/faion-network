@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="Laravel PHPUnit / Pest Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 antipatterns observed in real Laravel test suites. Each pairs symptom + root cause + concrete fix.</summary>
+  <summary>8 antipatterns observed in real Laravel test suites. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -25,7 +25,25 @@
     <antipattern id="shared-mutable-fixture" severity="high">
       <symptom>Tests pass in isolation, fail when run in a specific order; root cause hides for weeks.</symptom>
       <root-cause source="Internal — flake retro 2026-Q1">Static factory state persists across tests; or `setUp` mutates a shared singleton without resetting.</root-cause>
-      <fix>Always use `RefreshDatabase` on Feature tests; reset singletons via `$this-&gt;app-&gt;instance(...)` in `setUp`; avoid static state in factories.</fix>
+      <fix>Always use `RefreshDatabase` on Feature tests; reset singletons via `$this-&gt;app-&gt;instance(...)` in `setUp`; avoid static state in factories. Prove it by running `--order-by=random` three times, per `no-test-order-dependence`.</fix>
+    </antipattern>
+
+    <antipattern id="copy-paste-cases" severity="medium">
+      <symptom>Twenty near-identical test methods differ only in one input and one expected value; adding a case means another copy.</symptom>
+      <root-cause source="PHPUnit reference — data providers">No data provider; the cases were duplicated instead of tabulated.</root-cause>
+      <fix>Add `public static function casesProvider(): array` and `#[DataProvider('casesProvider')]` on a single test method, per `data-provider-table-tests`.</fix>
+    </antipattern>
+
+    <antipattern id="facade-fake-everywhere" severity="medium">
+      <symptom>The unit suite takes minutes; every test boots Laravel even when the class under test has no framework dependency.</symptom>
+      <root-cause source="PHPUnit reference — test doubles">Every test uses facade fakes (`Mail::fake()`), which require the container.</root-cause>
+      <fix>Convert service tests to constructor-injected mocks (`createMock(MailService::class)`) and reserve facade fakes for Feature tests, per `mocks-via-di`.</fix>
+    </antipattern>
+
+    <antipattern id="no-aaa" severity="low">
+      <symptom>The test reads as a maze; a reviewer cannot say which line is the behaviour under test.</symptom>
+      <root-cause source="TDD by Example (Beck)">Arrange, act and assert are interleaved.</root-cause>
+      <fix>Collect the setup at the top, keep a single act in the middle and put every assertion at the bottom, separated by blank lines, per `aaa-structure`.</fix>
     </antipattern>
 
     <antipattern id="time-based-flakes" severity="medium">

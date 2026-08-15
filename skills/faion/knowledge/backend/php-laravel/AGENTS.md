@@ -4,7 +4,7 @@
 
 **One-sentence:** Umbrella Laravel 10/11 methodology — controller / service / Eloquent / queue / test layering, with sub-methodologies for patterns, Eloquent, queues, PHPUnit.
 
-**One-paragraph:** Umbrella methodology that aggregates the four Laravel 10/11 sub-methodologies — `php-laravel-patterns` (controller / service / FormRequest decomposition), `php-eloquent` (ORM discipline), `php-laravel-queues` (Horizon + idempotency), `php-phpunit-testing` (Pest / PHPUnit layering). Use this entry point when an agent needs to plan a Laravel feature end-to-end (HTTP + persistence + tests + background work). Defaults: thin controllers, `$request->validated()`, `DB::transaction` for multi-write, `with(...)` eager-load, `Model::preventLazyLoading` in dev, `ShouldBeUnique` on mutating jobs, Pest feature tests with `RefreshDatabase`.
+**One-paragraph:** Umbrella methodology that aggregates the four Laravel 10/11 sub-methodologies — `php-laravel-patterns` (controller / service / FormRequest decomposition), `php-eloquent` (ORM discipline), `php-laravel-queues` (Horizon + idempotency), `php-phpunit-testing` (Pest / PHPUnit layering). Use this entry point when an agent needs to plan a Laravel feature end-to-end (HTTP + persistence + tests + background work). Defaults: thin controllers, `$request->validated()`, `DB::transaction` for multi-write, `with(...)` eager-load, `Model::preventLazyLoading` in dev, `ShouldBeUnique` on mutating jobs, Pest feature tests with `RefreshDatabase`. It also carries the framework fundamentals — service container and provider bindings, facades vs constructor injection, routes in route files, middleware for cross-cutting concerns, and config that survives `config:cache`.
 
 **Ефективно для:**
 
@@ -46,11 +46,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: route-to-sub-methodology, php-version-floor, queue-driver-not-sync-in-prod, env-secrets-not-config-cache-leak, scheduler-runs-via-supervisor | 1000 |
+| `content/01-core-rules.xml` | essential | 9 rules — operating: route-to-sub-methodology, php-version-floor, queue-driver-not-sync-in-prod, env-secrets-not-config-cache-leak, scheduler-runs-via-supervisor; framework fundamentals: contract-bind-in-provider, constructor-injection-over-facades, routes-in-route-files-only, middleware-for-crosscutting | 1700 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the Laravel umbrella manifest + valid/invalid examples | 800 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns: sync-queue-in-prod, env-in-vcs, scheduler-cron-not-supervised, php-version-floor-violated | 800 |
-| `content/04-procedure.xml` | essential | 5-step procedure: route to sub-methodology → version + env check → install queue worker → wire scheduler → harden tests | 800 |
-| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 600 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns: sync-queue-in-prod, env-in-vcs, scheduler-cron-not-supervised, php-version-floor-violated, config-cache-broken, facade-fest-test-pain, route-cache-impossible, inline-bind-bootstrap | 1400 |
+| `content/04-procedure.xml` | essential | 7-step procedure: route to sub-methodology → version + env check → queue worker → scheduler → tests → contracts + provider → DI, middleware and the production caches | 1100 |
+| `content/05-examples.xml` | essential | Worked facade-to-DI refactor + provider binding and cacheable config shapes | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 700 |
 
 ## Task Routing
 

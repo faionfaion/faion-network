@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="Rails ActiveRecord Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 antipatterns observed in real Rails ActiveRecord codebases. Each pairs symptom + root cause + concrete fix.</summary>
+  <summary>8 antipatterns observed in real Rails ActiveRecord codebases. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -32,6 +32,24 @@
       <symptom>Query Object encapsulates tenant filter but caller writes `User.where(id: ids)` inline elsewhere, missing the tenant scope.</symptom>
       <root-cause source="Internal — scope-bypass retro">Multiple entry points to the same data without a single source of truth.</root-cause>
       <fix>Enforce: either every read goes through the Query Object OR every Query Object simply layers on top of model scopes (recommended). Add an RSpec helper asserting tenant scope.</fix>
+    </antipattern>
+
+    <antipattern id="missing-transaction" severity="high">
+      <symptom>An order row exists but the inventory was never decremented; the mismatch is found weeks later during manual reconciliation.</symptom>
+      <root-cause source="Rails guides — Transactions">Two ActiveRecord writes ran outside a transaction and the second failed mid-call.</root-cause>
+      <fix>Wrap the sequence: `ActiveRecord::Base.transaction { order = Order.create!(...); item.update!(qty: item.qty - 1) }`, per `transaction-block-multi-write`. Replace any business-logic `update_all` with per-record updates so callbacks and validations run.</fix>
+    </antipattern>
+
+    <antipattern id="magic-status-strings" severity="medium">
+      <symptom>`Order.where(status: 'pending')` returns nothing after a migration, and a typo like `pendnig` fails silently rather than raising.</symptom>
+      <root-cause source="Rails guides — enums">Status is a free-text column with no enum, so every comparison is an unchecked string.</root-cause>
+      <fix>Migrate the column to an integer and declare `enum status: { pending: 0, paid: 1, shipped: 2, cancelled: 3 }`; call sites become `Order.pending` and `order.paid?`, per `enum-for-status`.</fix>
+    </antipattern>
+
+    <antipattern id="time-now-timezone-bug" severity="high">
+      <symptom>Reports place events in the wrong hour and a scheduled job fires two hours early after the host is moved to UTC.</symptom>
+      <root-cause source="Rails guides — Time zones">`Time.now` was used while the app sets `config.time_zone`, which `Time.now` ignores.</root-cause>
+      <fix>Replace every `Time.now` with `Time.current` and `Date.today` with `Date.current`; enable the `Rails/TimeZone` cop so the next one fails the build, per `no-time-now`.</fix>
     </antipattern>
 
   </section>

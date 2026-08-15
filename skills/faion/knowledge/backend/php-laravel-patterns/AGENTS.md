@@ -45,10 +45,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 rules: thin-controller-no-eloquent, service-no-request-globals, validated-only, jsonresource-from-controller-only, db-transaction-closure, repository-only-when-needed | 1100 |
+| `content/01-core-rules.xml` | essential | 7 rules: thin-controller-no-eloquent, service-no-request-globals, validated-only, jsonresource-from-controller-only, db-transaction-closure, repository-only-when-needed, policy-required | 1300 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the layered-Laravel manifest + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns: controller-with-eloquent, service-calling-request, transaction-with-swallow-catch, premature-repository, jsonresponse-from-service | 900 |
-| `content/04-procedure.xml` | essential | 5-step procedure: FormRequest → Service with DB::transaction → optional Repository → JsonResource → tests | 800 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns: controller-with-eloquent, service-calling-request, transaction-with-swallow-catch, premature-repository, jsonresponse-from-service, inline-authorization, inline-validation-duplication | 1100 |
+| `content/04-procedure.xml` | essential | 6-step procedure: FormRequest → Service with DB::transaction → optional Repository → JsonResource → tests → layering audit + documented rules | 950 |
+| `content/05-examples.xml` | essential | Worked 612-line fat-controller migration + the audit signals to act on | 800 |
 | `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 700 |
 
 ## Task Routing
@@ -74,6 +75,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | File | Purpose | When to call |
 |------|---------|--------------|
 | `scripts/validate-php-laravel-patterns.py` | Validate the layered-Laravel manifest against the JSON Schema. | Pre-commit; CI on every methodology PR. |
+| `scripts/laravel-anti-pattern-lint.sh` | Count fat controller methods, inline `validate()`, controller-level `DB::transaction`, raw model returns and inline `abort(403)`. | Before and after a layering refactor; CI on Laravel projects. |
 
 ## Related
 

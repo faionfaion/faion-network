@@ -2,9 +2,9 @@
 
 ## Summary
 
-**One-sentence:** Production-grade Rails 7+ — Service Objects with shared ServiceResult, transactional writes with side effects via after_commit, Sidekiq jobs taking IDs only, RSpec + FactoryBot per-branch tests.
+**One-sentence:** Production-grade Rails 7+ — Rails conventions (RESTful routing, Strong Parameters, credentials, concerns, invariant-only callbacks) plus Service Objects with a shared ServiceResult, transactional writes with side effects via after_commit, Sidekiq jobs taking IDs only, and RSpec + FactoryBot per-branch tests.
 
-**One-paragraph:** Production-grade Rails 7+ applications. Multi-step business logic extracts into Service Objects (`Users::CreateService` style) sharing a single `ServiceResult` shape (`success?` / `failure?` / `value`). Writes wrap in `ActiveRecord::Base.transaction`; side effects (mail, webhook, search-index update) fire from `after_commit` callbacks or chained Sidekiq jobs — never inside the transaction. Sidekiq jobs accept primitives (IDs, strings) and load fresh records inside `perform`. RSpec + FactoryBot drive per-branch tests; controllers do `params.require(...).permit(...)` before passing to services.
+**One-paragraph:** Production-grade Rails 7+ applications. Multi-step business logic extracts into Service Objects (`Users::CreateService` style) sharing a single `ServiceResult` shape (`success?` / `failure?` / `value`). Writes wrap in `ActiveRecord::Base.transaction`; side effects (mail, webhook, search-index update) fire from `after_commit` callbacks or chained Sidekiq jobs — never inside the transaction. Sidekiq jobs accept primitives (IDs, strings) and load fresh records inside `perform`. RSpec + FactoryBot drive per-branch tests; controllers do `params.require(...).permit(...)` before passing to services. The methodology also carries the framework fundamentals the architecture sits on — resourceful routing with `member` / `collection`, secrets in `credentials.yml.enc` rather than ENV, shared model logic in concerns, and callbacks reserved for invariants while every external side effect lives in a service or job.
 
 **Ефективно для:**
 
@@ -16,13 +16,13 @@
 
 ## Applies If (ALL must hold)
 
-- Rails 7+ on Ruby 3.1+.
-- Multi-step business logic or transactional writes with side effects.
-- Service-centric architecture is acceptable to the team.
+- Rails 7+ on Ruby 3.1+, serving HTML and/or JSON.
+- The team commits to Rails conventions rather than a Sinatra-style ad-hoc layout.
+- For the service-object half: multi-step business logic or transactional writes with side effects, and a service-centric architecture the team accepts.
 
 ## Skip If (ANY kills it)
 
-- Tiny single-step writes where wrapping in a service is excessive ceremony.
+- Tiny single-step writes where wrapping in a service is excessive ceremony — the convention rules still apply, the service rules do not.
 - Read-only endpoints where services add no value over a query object or scope.
 - Apps using Hanami, Sinatra, or pure Rack where Rails conventions do not transfer.
 - High-throughput message processing (>10k msg/s) where Sidekiq hits ceiling — use Karafka or a Go/Rust worker.
@@ -48,11 +48,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 rules: one-serviceresult-class, service-call-returns-result, after-commit-for-side-effects, strong-params-not-into-service, sidekiq-jobs-take-ids, destructive-migration-checkpoint | 1100 |
+| `content/01-core-rules.xml` | essential | 10 rules — architecture: one-serviceresult-class, service-call-returns-result, after-commit-for-side-effects, strong-params-not-into-service, sidekiq-jobs-take-ids, destructive-migration-checkpoint; framework fundamentals: restful-resources, credentials-not-env, concern-for-shared-multi-model, callback-only-for-invariants | 1900 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the Rails-app manifest + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns: deliver-later-inside-transaction, service-result-shape-drift, ar-object-in-sidekiq-args, params-leak-to-service, destructive-migration-no-review | 900 |
-| `content/04-procedure.xml` | essential | 5-step procedure: lock ServiceResult → service per verb → transaction + after_commit → Sidekiq IDs + retry → RSpec per-branch | 800 |
-| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 700 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns: deliver-later-inside-transaction, service-result-shape-drift, ar-object-in-sidekiq-args, params-leak-to-service, destructive-migration-no-review, callback-side-effect, ad-hoc-routes-explosion, secrets-in-env-leak | 1400 |
+| `content/04-procedure.xml` | essential | 7-step procedure: lock ServiceResult → service per verb → transaction + after_commit → Sidekiq IDs + retry → RSpec per-branch → RESTful routes + strong params → callbacks, concerns and credentials | 1100 |
+| `content/05-examples.xml` | essential | Worked Orders-module hardening + resourceful routes and controller shapes | 1000 |
+| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 800 |
 
 ## Task Routing
 

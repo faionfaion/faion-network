@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="Rails ActiveRecord Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Rails ActiveRecord methodology. Each rule pairs a binary check + sourced rationale.</summary>
+  <summary>10 testable rules grounding the Rails ActiveRecord methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
 
@@ -10,13 +10,13 @@
     </rule>
 
     <rule id="named-scopes-no-default-scope" testable="true" depth="essential">
-      <statement>Filters MUST live in named scopes (`scope :active, -&gt; { where(deleted_at: nil) }`). `default_scope` is forbidden.</statement>
-      <rationale source="Rails guides — Scopes">`default_scope` is invisible at every call site; debugging "missing data" wastes an hour per incident.</rationale>
+      <statement>Filters MUST live in named scopes (`scope :active, -&gt; { where(deleted_at: nil) }`), and any WHERE clause used at ≥2 call sites MUST be extracted into one. `default_scope` is forbidden.</statement>
+      <rationale source="Rails guides — Scopes">`default_scope` is invisible at every call site; debugging "missing data" wastes an hour per incident. Duplicated inline `where` drifts as the rule changes, while a named scope carries the business meaning and one place to edit.</rationale>
     </rule>
 
     <rule id="eager-load-at-boundary" testable="true" depth="essential">
       <statement>Eager-loading MUST happen at the controller boundary via `.includes` / `.preload` / `.eager_load`. Views MUST NOT trigger relation accesses against un-loaded associations.</statement>
-      <rationale source="Rails guides — Eager loading">View-triggered queries are invisible in code review; centralising at the controller makes query cost reviewable.</rationale>
+      <rationale source="Rails guides — Eager loading">View-triggered queries are invisible in code review; centralising at the controller makes query cost reviewable. Pick deliberately: `preload` issues a second query, `eager_load` a LEFT OUTER JOIN, and `includes` lets Rails choose — only `eager_load` lets you filter on the association.</rationale>
     </rule>
 
     <rule id="find-each-for-bulk" testable="true" depth="essential">
@@ -34,12 +34,33 @@
       <rationale source="Prosopite / Bullet docs">Without an automated gate, agents reintroduce N+1 within one sprint of the last fix.</rationale>
     </rule>
 
+    <rule id="transaction-block-multi-write" testable="true" depth="essential">
+      <statement>Any sequence with ≥2 writes (`save` / `create!` / `update!` / `destroy`) MUST run inside `ActiveRecord::Base.transaction do ... end`. `update_all` / `delete_all` MUST NOT be used for state-changing business logic.</statement>
+      <rationale source="Rails guides — Transactions">A mid-sequence failure otherwise leaves half-applied state that has to be reconciled by hand; `update_all` writes straight to SQL, skipping callbacks, validations and the audit trail.</rationale>
+    </rule>
+
+    <rule id="enum-for-status" testable="true" depth="essential">
+      <statement>A column holding a closed set of states MUST be an integer column declared with `enum status: { pending: 0, paid: 1, ... }`. Magic strings or bare integers in queries are forbidden.</statement>
+      <rationale source="Rails guides — ActiveRecord enums">The enum generates scopes and predicate methods and makes a typo a NoMethodError at load time instead of a query that silently returns nothing.</rationale>
+    </rule>
+
+    <rule id="no-time-now" testable="true" depth="essential">
+      <statement>Business logic MUST use `Time.current` / `Date.current`. `Time.now` and `Date.today` are forbidden; enforce with the `Rails/TimeZone` RuboCop cop.</statement>
+      <rationale source="Rails guides — Time zones">`Time.now` reads the server's zone rather than `config.time_zone`, so reports and scheduled work drift by whole hours the moment the host's zone differs.</rationale>
+    </rule>
+
+    <rule id="counter-cache-for-counts" testable="true" depth="essential">
+      <statement>An association whose count is rendered on a list or index page MUST declare `counter_cache: true` on the `belongs_to` side, with the matching `*_count` column added by migration and backfilled. Calling `.count` per row inside a loop is forbidden.</statement>
+      <rationale source="Rails guides — Counter cache">Without it each rendered row issues its own `SELECT COUNT(*)`, which is an N+1 that eager-loading cannot fix because the count is not an association load.</rationale>
+    </rule>
+
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
     <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>
