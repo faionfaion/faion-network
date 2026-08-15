@@ -4,6 +4,48 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-012 filed: templates that parse cleanly and fail when run.** Every finding
+  reproduced by execution — against a real PostgreSQL 16 container, a real Redis,
+  a real `docker build`, and `nginx -t`. None reported from reading.
+
+  Six cause damage rather than annoyance. **The nightly backup can never
+  succeed**: `docker exec -t pg_dump -Fc` inserts `0x0D` before every `0x0A` in a
+  binary dump, so the script's own verify step prints CORRUPT and exits — and the
+  Redis snapshot, the config tarball, the **restic offsite** and the retention
+  pass never run. **The bootstrap script locks you out of a fresh VPS** (ufw
+  denies incoming and allows 2222 while SSH is still on 22). **The hardening
+  verifier green-lights a vulnerable server** — `grep -q 'PermitRootLogin no'`
+  matches the commented-out line. **A failed deploy exits 0** with the symlink
+  already switched and no `previous` symlink ever created. **The HAR scrubber
+  leaves the credential in and labels it `[REDACTED]`** — the label is what makes
+  it dangerous. **The Dockerfile bakes `.env` into the pushed image**, and there
+  is not one `.dockerignore` in all 7,340 templates.
+
+  Systemic: **57 shell templates carry the shebang on line 7**, below the
+  metadata header. Under `execve` that is `Exec format error`; under cron, 49 of
+  the 57 die on their first line with `set: Illegal option -o pipefail`.
+  `backup-recovery/templates/backup.sh` documents itself as *"Run daily from
+  cron"*.
+
+  **Ten templates break a rule stated in their own `01-core-rules.xml`** — the
+  caching template whose header claims "jittered TTL + single-flight" and has
+  neither; the logger whose `REDACT_FIELDS` covers **0 of the 5 PII categories**
+  its rule names; the GitHub Actions methodology that forbids mutable tags and
+  then uses `@v4` in the workflow holding `secrets.DEPLOY_KEY`; the supply-chain
+  scanner whose pin is **41 hex characters** and can never resolve.
+
+  **The gate never executes a template.** Validator 5 reads the header; today's
+  parse sweep reads the syntax. A file can be syntactically perfect,
+  header-complete, and destroy a production database.
+
+  Recorded with the audit's own discipline: the agent listed the false positives
+  it discarded after testing — `[ -f X ] && VAR=$(…)` under `set -e` does *not*
+  abort (POSIX exempts non-final commands of an AND-list), and its first
+  Terraform bracket-balance failures were artifacts of its own checker. It also
+  caught itself getting the opposite answer from a `grep` that was a ugrep
+  wrapper, and re-verified with `/usr/bin/grep`.
+
+
 - **SECURITY: removed the operator's own production infrastructure from paid
   content.** 52 files across 16 `backend/` methodologies were using live
   faion.net infrastructure as worked examples — not one stray value but a
