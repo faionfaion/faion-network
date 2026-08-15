@@ -48,6 +48,7 @@
 | `content/01-core-rules.xml` | essential | ≥5 testable rules + skip-rule + rationale + source | 900 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid examples + forbidden patterns | 800 |
 | `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom/root-cause/fix) | 700 |
+| `content/04-procedure.xml` | essential | 3 steps: audit current hooks → switch to staged filter → add whole-tree CI job | 700 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion ref=rule-id | 500 |
 
 ## Task Routing

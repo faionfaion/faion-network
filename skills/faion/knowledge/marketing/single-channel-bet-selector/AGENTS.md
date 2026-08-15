@@ -46,6 +46,7 @@
 | File | What's inside |
 |------|---------------|
 | `content/01-core-rules.xml` | 5 testable rules: written rubric, three-axis scoring, minimum threshold, 90-day commitment, kill criterion |
+| `content/03-failure-modes.xml` | 6 antipatterns with description + reason + repair |
 
 ## Task Routing
 

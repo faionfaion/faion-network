@@ -40,7 +40,10 @@ A weekly 30-minute risk-register cadence focused on agency-level risks (not just
 | `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
 
 ## Content (load on demand)
-See `content/01-core-rules.xml`.
+| File | What's inside |
+|------|---------------|
+| `content/01-core-rules.xml` | 7 testable rules: 6 agency-level risk classes, 8-column rows, 90-day concentration rule, key-person bus-factor, 30-min refresh, ≥15 score action, closed-risk archive |
+| `content/03-failure-modes.xml` | 6 antipatterns with description + reason + repair |
 
 ## Task Routing
 

@@ -4,6 +4,23 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **7 methodologies did not deliver their own canonical parts. Fixed.**
+  `03-failure-modes`, `04-procedure` or `05-examples` existed on disk but were
+  absent from the `## Content` table, so `get-content` never returned them —
+  three documents shipped without their failure modes, two without their
+  procedure, three without their examples. A canonical part is mandatory by the
+  corpus spec, so this is a defect and not an authoring choice about budget.
+  All 7 verified as real content before listing, not stubs.
+
+  `est_tokens` was reconciled to the table sum where the table has a token
+  column. Note that for `infra/offline-toolkit-checklist` the number went
+  **down** — 5,500 declared against a 4,400 table — so the drift ran in both
+  directions and "declared budget" was not a reliable figure.
+
+  `pm/agency-risk-register-template` had no Content table at all, only the prose
+  `See content/01-core-rules.xml.` Incidental defect found there and not fixed:
+  its `01-core-rules.xml` points at an `04-procedure.xml` that does not exist.
+
 - **CR-009, Go/Rust/Ruby stamp-signal set: 9 collisions resolved
   merge-then-archive, survivor `backend/` in all nine.**
 

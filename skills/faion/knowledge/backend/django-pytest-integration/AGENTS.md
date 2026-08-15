@@ -48,6 +48,7 @@
 | `content/02-output-contract.xml` | essential | JSON schema for the integration tests spec | ~1000 |
 | `content/03-failure-modes.xml` | essential | 4 antipatterns: 200-only assert, view-tested service logic, missing permission combo, SQLite CI | ~800 |
 | `content/04-procedure.xml` | deep | 6 steps: matrix → service tests → permission combos → transactional_db → CI → coverage | ~700 |
+| `content/05-examples.xml` | deep | Worked example: billing-invoices integration-test spec as JSON | ~600 |
 | `content/06-decision-tree.xml` | essential | Per endpoint: which fixture + which test cases? | ~200 |
 
 ## Task Routing

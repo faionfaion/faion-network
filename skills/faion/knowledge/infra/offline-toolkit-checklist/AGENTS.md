@@ -49,6 +49,7 @@
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
 | `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 900 |
 | `content/04-procedure.xml` | essential | Step-by-step pre-flight procedure | 800 |
+| `content/05-examples.xml` | essential | Worked example: 3-day off-site — inputs, filled artefact, validator trace | 700 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 700 |
 
 ## Task Routing

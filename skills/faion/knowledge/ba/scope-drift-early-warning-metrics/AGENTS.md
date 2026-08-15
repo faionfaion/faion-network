@@ -53,6 +53,8 @@
 | `content/01-core-rules.xml` | essential | 5 rules: five-metric coverage, baseline-relative thresholds, daily refresh, trigger actions, owner | 1100 |
 | `content/02-output-contract.xml` | essential | JSON Schema for dashboard + trigger-log + metric-definitions; valid/invalid examples | 800 |
 | `content/03-failure-modes.xml` | essential | 6 failure modes: vanity metrics, threshold staleness, dashboard-alone, single-metric noise, compute lag, trigger fatigue | 900 |
+| `content/04-procedure.xml` | essential | 5 steps: configure connectors → nightly compute → threshold check → daily summary → weekly review | 700 |
+| `content/05-examples.xml` | essential | Worked example: sprint-5 amber on AC-rewrite → dashboard + trigger-log JSON | 600 |
 | `content/06-decision-tree.xml` | essential | Routing tree on engagement length + baseline + history availability | 500 |
 
 ## Task Routing

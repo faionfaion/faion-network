@@ -46,6 +46,7 @@
 | File | What's inside |
 |------|---------------|
 | `content/01-core-rules.xml` | 5 testable rules: six required slots, numeric outcome floor, pull-quote from client, NDA fallback, one-week deadline |
+| `content/03-failure-modes.xml` | 6 antipatterns with description + reason + repair |
 
 ## Task Routing
 
