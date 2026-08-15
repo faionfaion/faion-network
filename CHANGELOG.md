@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Regenerated `tier-manifest.json` and refreshed the validator baseline.**
+  Manifest 3,065 → **2,986** entries: 79 removed, **0 added, 0 tier changes**.
+
+  **The zero tier changes are worth reading carefully, because they are not
+  reassurance.** Survivors kept their own tiers, so the tier *downgrade* recorded
+  in task #33 — five merges folding higher-tier material into a lower-tier
+  document, two of them `pro` → `free` — **does not appear in the manifest at
+  all**. The manifest tracks which tier a path is served at, not which tier the
+  content inside it came from. Nothing in the tooling can see this; it was found
+  by comparing archived losers against their survivors by hand.
+
+  Baseline 17 → **15** entries. The only change is the removal of the two
+  `templates` failures fixed earlier — no additions, so nothing regressed. The
+  gate blocks on new failures and would have waved through a regression at those
+  two paths for as long as the stale lines sat there.
+
+- **`AGENTS.md` recounted and given the four gotchas this work produced**: a slug
+  lives in exactly one domain and `domain-boundaries.md` decides which; 19 stay
+  ambiguous on purpose; `content_id` is not a content hash and must never be used
+  as a duplication test; a `content/*.xml` absent from its `## Content` table is
+  never delivered; and `06-decision-tree.xml` caps at depth 5, so routing is
+  added as flat siblings.
+
 - **The playbook generation stamps were one defect, not two, and the nesting is
   exact.** 167 playbooks had `<intent>` byte-identical to `<scope>`; 83 had
   *every* success criterion boilerplate; 31 named the tooling. `allboiler − same

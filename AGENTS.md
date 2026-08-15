@@ -5,8 +5,8 @@ Methodology corpus and Claude Code skill base for the `faion` CLI. Auto-loaded i
 | Item | Value |
 |------|-------|
 | Repo | `faionfaion/faion-network` |
-| Corpus | 2,601 methodology dirs over 22 domains, 455 playbook dirs, 6 workflows, 6 skill dirs (counted on disk 2026-08-15) |
-| Gating | `skills/tier-manifest.json` **v14, 3,079 entries** — authoritative path-to-tier map; every methodology and playbook dir on disk resolves in it (checked 2026-08-15) |
+| Corpus | **2,520** methodology dirs over 22 domains, **443** playbook dirs, 6 workflows, 6 skill dirs (recounted on disk 2026-08-15 after CR-009) |
+| Gating | `skills/tier-manifest.json` **v14, 2,986 entries** — authoritative path-to-tier map; every methodology and playbook dir on disk resolves in it (regenerated 2026-08-15) |
 | Composable | 25 fragments over 6 packs, 4 recipes, **12 tool packs / 24 tools**. Fragments and recipes are all tier **free** since v13; tool packs are gated per pack — `browser`/`deploy`/`python-web`/`research`/`static-web` free, `cloudflare`/`env-topology`/`game-dev`/`web-parse` solo, `github-ci`/`hetzner`/`sdd-sync` pro |
 | Tiers | free / solo / pro / geek (cumulative) |
 | Distribution | Read by `faion-cli` at runtime; read by `faion-net-be` on disk via `KNOWLEDGE_ROOT` + `TIER_MANIFEST_PATH`; not bundled into the public `faion` plugin |
@@ -65,6 +65,10 @@ bash init.sh                                         # install skills + agents i
 - The manifest is at `skills/tier-manifest.json`, not the repo root.
 - **The hooks are real now** (`core.hooksPath=.githooks`, installed by `init.sh` or `scripts/install-hooks.sh`). `commit-msg` enforces the title rule; `pre-commit` gates the `## [Unreleased]` CHANGELOG entry, the 20-80 line budget on staged `AGENTS.md` files, and the corpus validators — 9 whole-corpus sweeps in full plus `validate-methodology-v2` scoped to the slugs the commit touches, because the full v2 sweep is ~205 s of the ~4 min total. The gate is on the failure **SET** in `scripts/validator-baseline.txt`, never on counts: a count waves through a swap. Never `--no-verify`.
 - Methodology and playbook dirs already carry their own `AGENTS.md` envelope fixed by the corpus spec. Do not add repo-style `AGENTS.md` / `CLAUDE.md` pairs anywhere under `skills/faion/knowledge/**` or `skills/faion/playbooks/**`.
+- **A slug lives in exactly one domain** — which domain is decided by [.aidocs/conventions/domain-boundaries.md](.aidocs/conventions/domain-boundaries.md), not by taste. 19 slugs still resolve in two domains **on purpose** (both copies are real; the fix is a rename, deferred). Retired copies live in [`.archive/`](.archive/README.md) and were merged before they were archived.
+- **`content_id` is NOT a content hash** and never has been: 0 of 2,520 match the algorithm `meta-json-spec.md` §6 declares, and the `compute-content-id.py` it calls canonical does not exist. The only enforced check is a 16-hex regex. Never use it as a duplication or drift test.
+- **A `content/*.xml` file absent from its `## Content` table is never delivered.** 69 dirs ship 602 KB that way ([CR-010](.aidocs/improvements/CR-010-undelivered-content-bodies.md)). Adding content means adding the table row too.
+- `06-decision-tree.xml` has a hard depth cap of **5**, and many trees already sit at 5 — add routing as flat sibling branches, never by nesting deeper.
 - Retrieval is two-level: read `skills/faion/knowledge/domains.xml` (L1), pick at most 3 domains, then their `INDEX.xml` (L2) before opening any leaf. Never enumerate the corpus.
 - `README.md` still quotes pre-F-067 counts (52 knowledge bases, 1,300+ methodologies). The manifest is the source of truth. (`skills/CLAUDE.md` and `skills/faion/CLAUDE.md` carried the same stale counts and were deleted 2026-08-13 — they were orphan `CLAUDE.md` files with no `AGENTS.md` to point at.)
 
