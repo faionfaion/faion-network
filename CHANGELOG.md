@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-008 filed: 251 content files no `--parts` name can address — and it
+  is two problems, not one.** The contract records these as a single open
+  question. Measuring them splits the population cleanly and only one half is
+  urgent.
+
+  **86 slugs already carry a complete canonical set** and the odd file sits
+  *beside* one, at an ordinal the canonical file already occupies —
+  `01-cli-vs-sdk-decision` next to `01-core-rules`. **223 of the 251 are in
+  that shape**, which rules out the obvious fix: they cannot be renamed to a
+  canonical name because that name is taken by different content. They are
+  authored material the corpus cannot deliver, but their documents are still
+  reachable.
+
+  **7 slugs carry zero canonical parts**, so nothing in them is addressable
+  and the whole document is unreachable through the chunk contract. All seven
+  are in `sdd/`, which reads as one authoring pass to a different shape
+  rather than seven mistakes — and one of them is
+  `sdd/project-spec-structure`, which `faion-cli`'s own spec directory names
+  as the methodology it implements. A live, cited methodology whose content
+  the delivery path cannot return is the sharpest form of this defect, and
+  `validate-methodology-v2.py` accepts all seven, which is why nothing caught
+  it.
+
+  Recommended: fold the 7 into canonical names (~24 files, one domain) and
+  give the 223 their own decision, because "merge 223 files into the parts
+  beside them" is a different change from "rename 24". Renaming alters a
+  `doc_id`, so it has to land **before** publication — which is what makes it
+  a blocker rather than a cleanup.
+
 - **`variables:` is enforceable now — validator 5 shape-checks a declared
   block.** This is the blocker `retrieval-content-contracts.md` §4 lists as
   "validator 5 too loose to enforce `variables:`", closed by making the key
