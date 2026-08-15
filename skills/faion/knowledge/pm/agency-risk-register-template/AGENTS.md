@@ -44,6 +44,8 @@ A weekly 30-minute risk-register cadence focused on agency-level risks (not just
 |------|---------------|
 | `content/01-core-rules.xml` | 7 testable rules: 6 agency-level risk classes, 8-column rows, 90-day concentration rule, key-person bus-factor, 30-min refresh, ≥15 score action, closed-risk archive |
 | `content/03-failure-modes.xml` | 6 antipatterns with description + reason + repair |
+| `content/02-output-contract.xml` | JSON Schema the artefact must satisfy. |
+| `content/06-decision-tree.xml` | Routes observable inputs to a rule; read before drafting. |
 
 ## Task Routing
 

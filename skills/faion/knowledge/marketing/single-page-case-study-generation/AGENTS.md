@@ -47,6 +47,8 @@
 |------|---------------|
 | `content/01-core-rules.xml` | 5 testable rules: six required slots, numeric outcome floor, pull-quote from client, NDA fallback, one-week deadline |
 | `content/03-failure-modes.xml` | 6 antipatterns with description + reason + repair |
+| `content/02-output-contract.xml` | JSON Schema the artefact must satisfy. |
+| `content/06-decision-tree.xml` | Routes observable inputs to a rule; read before drafting. |
 
 ## Task Routing
 

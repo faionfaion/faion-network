@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Completed a fix that was reported as done and was not.** Commit `7336c6bd0`
+  claimed 7 methodologies stopped withholding canonical parts. It added only the
+  part each was flagged for, because that is what the brief named — leaving
+  `02-output-contract.xml` and `06-decision-tree.xml` still absent from the
+  Content table in three of them. **Six canonical parts were still undelivered
+  after the commit that said they were fixed.**
+
+  The verification that missed it was mine: it tested whether the filename
+  appeared *anywhere* in `AGENTS.md`, and all six are named in prose. Retrieval
+  resolves against the **table rows**, not the prose. Re-measured with a real
+  table parse, corpus-wide: **0 canonical parts now absent from their own
+  Content table.**
+
+  Worth stating as a rule rather than an incident: a fix scoped to a list is
+  only as complete as the list, and a check that is looser than the mechanism it
+  models will confirm a fix that did not land.
+
+
 - **Re-synced 57 inlined template bodies that had drifted from the files on
   disk — and 22 of those were a regression this session introduced.**
 

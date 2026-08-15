@@ -47,6 +47,8 @@
 |------|---------------|
 | `content/01-core-rules.xml` | 5 testable rules: written rubric, three-axis scoring, minimum threshold, 90-day commitment, kill criterion |
 | `content/03-failure-modes.xml` | 6 antipatterns with description + reason + repair |
+| `content/02-output-contract.xml` | JSON Schema the artefact must satisfy. |
+| `content/06-decision-tree.xml` | Routes observable inputs to a rule; read before drafting. |
 
 ## Task Routing
 
