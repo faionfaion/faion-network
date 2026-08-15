@@ -4,7 +4,7 @@ cr_id: CR-007
 title: "12 duplicate playbook pairs, and the stamp that marks which copy is redundant"
 priority: P1
 created: 2026-08-15
-status: proposed
+status: executed 2026-08-15 — archived, not deleted
 affected_components: [faion-network/skills/faion/playbooks, skills/tier-manifest.json]
 blocks: "publication — retrieval-content-contracts.md §4"
 ---

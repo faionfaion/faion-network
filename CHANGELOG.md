@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-007 executed: the 12 redundant playbooks are archived, not deleted.**
+  On the owner's instruction retired content moves to `.archive/` rather than
+  out of the tree. git history already preserves a deletion, but a deleted
+  directory is only findable by someone who knows it existed — archived
+  content stays browsable, so *"did we ever write this?"* is answered by
+  looking rather than by archaeology.
+
+  `.archive/` sits **outside `skills/`**, which is what makes it safe: every
+  reader of the corpus is rooted there — `vfs-pack` walks it to publish,
+  `regen-tier-manifest.py` walks it for `meta.json`, every validator resolves
+  beneath it — so an archived slug is invisible to all of them by
+  construction rather than by an exclusion rule someone must maintain.
+
+  Re-verified against disk before anything moved, as CR-005 established:
+  **12 of 12 passed**, each candidate carrying exactly one inbound reference
+  and that reference being its own goal `INDEX.xml`. After the move, zero
+  dangling references — the only hits left are inside the gitignored
+  `tier-manifest.json.f067-pre-bak`.
+
+  Playbooks 455 → **443**, manifest 3,079 → **3,067**, taxonomy passes, gate
+  clean. Duplicate summary groups 13 → **1**.
+
 - **CR-008 filed: 251 content files no `--parts` name can address — and it
   is two problems, not one.** The contract records these as a single open
   question. Measuring them splits the population cleanly and only one half is
