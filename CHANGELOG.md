@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **`variables:` is enforceable now — validator 5 shape-checks a declared
+  block.** This is the blocker `retrieval-content-contracts.md` §4 lists as
+  "validator 5 too loose to enforce `variables:`", closed by making the key
+  checkable rather than by raising the bar on the other five (see below for
+  why those are separate).
+
+  The check reads the **header region only**, and that restriction is the
+  whole engineering problem rather than a detail. §2.2 says the key *extends
+  the header*; scanning the file instead would fire on every GitLab CI,
+  Docker Compose and Ansible template in the corpus, each of which has a
+  `variables:` of its own meaning something else. A naive grep finds 7
+  templates "declaring variables" today and **all 7 are false positives** —
+  vendor YAML, not a faion header. Nothing declares the real key yet, so this
+  is forward-looking enforcement and costs zero findings.
+
+  Six rules per §2.2: the `^[a-z][a-z0-9_]{0,63}$` name pattern, `type` in
+  the five-value enum, `required` present, `enum` implying `options`,
+  `sensitive` implying `placeholder` (a sensitive value never travels, so the
+  server needs something to emit in its place), and a `description` under the
+  240-char cap — capped because a human reads it under an `AskUserQuestion`
+  prompt.
+
+  Proven on three fixtures rather than asserted: a valid block passes, a
+  block with a `Service_Name` capital, a `str` type, a missing `required`, a
+  sensitive variable with no placeholder and an enum with no options produces
+  exactly five findings, and a GitLab CI template with `variables:` in its
+  body passes untouched. Corpus unchanged at 2,600 pass / 2 fail.
+
+  **Deliberately not done: raising the header bar from 3-of-5 keys to a
+  strict `key: value` × 5.** It is measured and it is affordable — of 6,014
+  templates, 4,299 already carry all five and only 3 carry fewer than three —
+  but it surfaces **130 findings across 69 directories**, and 112 of those
+  are one uniform gap: `depends-on` and `token-budget-impact` absent where
+  the first three keys are present. Those two cannot be filled mechanically —
+  across the 4,291 correct templates there are **1,013 distinct `depends-on`
+  values** and 613 distinct `token-budget-impact` values, so they are real
+  per-template content and inventing them would be fabrication. `AGENTS.md`
+  forbids widening the baseline to absorb them. The tightening is written and
+  saved as a patch; it ships when the 112 are authored.
+
 - **The last 28 summaries without terminal punctuation are sentences now —
   §12.2 is satisfied corpus-wide.** They were three different defects wearing
   one symptom, which is why the count alone was misleading:

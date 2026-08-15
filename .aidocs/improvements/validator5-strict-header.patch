@@ -1,0 +1,60 @@
+diff --git a/scripts/validate-methodology-templates.py b/scripts/validate-methodology-templates.py
+index 255065612..410ce93e2 100644
+--- a/scripts/validate-methodology-templates.py
++++ b/scripts/validate-methodology-templates.py
+@@ -44,21 +44,33 @@ def _templates_listed(agents_md: Path) -> list[str]:
+         if not cols or cols[0].lower() in ("file", "---", ""):
+             continue
+         cell = cols[0].strip("`")
+-        if cell and "/" in cell:
++        # The section regex above already scopes this to `## Templates`. The
++        # prefix test is the second half: a row there may still name something
++        # outside `templates/`, and a header is only owed by a template.
++        if cell.startswith("templates/"):
+             files.append(cell)
+     return files
+ 
+ 
+-def _has_header(p: Path) -> bool:
++def _missing_header_keys(p: Path) -> list[str]:
++    """Which of the five header keys are absent, as `key: value` in the first 20 lines.
++
++    The old check was a lowercase SUBSTRING scan wanting 3 of 5 keys anywhere,
++    which a `content/*.xml` file passes by accident — the words "purpose" and
++    "produces" occur in ordinary methodology prose. Requiring `key:` followed by
++    a value is what makes the header a parseable block rather than a vocabulary
++    coincidence, and that is the precondition for the sixth key `variables:`
++    being enforceable instead of advisory (retrieval-content-contracts.md §2.1).
++    """
+     try:
+         text = p.read_text(encoding="utf-8", errors="replace")
+-    except Exception:
+-        return False
+-    head = "\n".join(text.splitlines()[:20]).lower()
+-    found = sum(1 for k in HEADER_KEYS if k in head)
++    except OSError:
++        return list(HEADER_KEYS)
+     if p.suffix in JSON_LIKE:
+-        return "__faion_header__" in text
+-    return found >= 3  # tolerant: at least 3/5 keys present somewhere in first 20 lines
++        return [] if "__faion_header__" in text else ["__faion_header__"]
++    head = "\n".join(text.splitlines()[:20]).lower()
++    return [k for k in HEADER_KEYS
++            if not re.search(rf"^\s*\W*\s*{re.escape(k)}\s*:\s*\S", head, re.M)]
+ 
+ 
+ def validate_dir(dir_path: Path) -> list[str]:
+@@ -75,8 +87,11 @@ def validate_dir(dir_path: Path) -> list[str]:
+         if path.stat().st_size < 50:
+             errs.append(f"template too small (<50 bytes): {f}")
+             continue
+-        if not _has_header(path):
+-            errs.append(f"template missing 5-line header (purpose/consumes/produces/depends-on/token-budget-impact): {f}")
++        missing = _missing_header_keys(path)
++        if missing:
++            errs.append(
++                f"template header incomplete, missing {', '.join(missing)} "
++                f"as 'key: value' in the first 20 lines: {f}")
+     return errs
+ 
+ 
