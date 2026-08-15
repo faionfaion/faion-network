@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-009 filed: 99 slugs exist in two domains, and 1,266 links cannot say
+  which one they mean.** CR-005 relied on wikilinks resolving **by slug, not
+  by path** — that is what made its 40 deletions safe, since a same-slug twin
+  kept every inbound link resolving. Nobody had measured the other edge of
+  that property.
+
+  839 `[[wikilinks]]` and 427 `<ref slug="…">` point at a slug that exists
+  twice. `architecture-decision-records` alone is linked **92** times and
+  lives in both `architecture` and `sdd`; `secrets-management` is linked 42
+  times across `backend` and `infra`. Whatever the resolver picks, the answer
+  is a fact about resolution order rather than about what the author meant —
+  §12.1's argument about duplicate summaries, one layer down.
+
+  It matters more under ADR-019 than it did under ADR-018: a client that held
+  the whole tier-filtered index could see both candidates, whereas a caller
+  receiving server-chosen chunks it never named cannot notice it got the
+  wrong one.
+
+  **None of the 99 is byte-identical across copies, and that is not evidence
+  they differ.** The pair examined in full differs *only* where the slug is
+  substituted into a title, a summary and a `$id` — four of six content parts
+  identical to the byte, the other two off by 9 and 18 bytes. Two documents
+  can be the same document without being byte-equal.
+
+  Not fixed here, deliberately: the last remaining duplicate-summary group
+  (`research/ai-assisted-persona-building` ↔ `research/ai-persona-building`).
+  Archiving one in isolation would silently redirect its links to the `ux/`
+  copy of the same slug — a resolution change nobody decided. Two questions
+  gate the triage and both sit outside this corpus: what the resolver does
+  with an ambiguous slug today, and whether renaming is affordable given that
+  a rename changes the path and therefore the `doc_id`.
+
 - **CR-007 executed: the 12 redundant playbooks are archived, not deleted.**
   On the owner's instruction retired content moves to `.archive/` rather than
   out of the tree. git history already preserves a deletion, but a deleted
