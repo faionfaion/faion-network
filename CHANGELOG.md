@@ -4,6 +4,62 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Built `skills/faion/tools/template-builder` (tier free): 15 blocks, two
+  tools, 45 self-test assertions.** `tpl-build` assembles Markdown and
+  self-contained HTML from blocks plus literal passthrough; `tpl-params` inspects
+  declarations, reports what must be asked, and owns the per-project store at
+  `<project>/.faion/template-params.json`.
+
+  **The honest headline is a negative result, and it shaped the design.** A block
+  library cannot assemble this corpus: after normalising the slug out, only
+  **807 of 9,278 distinct fragments (8.7%)** appear in more than one file, and the
+  **median template shares 0%** of its bytes with 20 or more others. Blocks cover
+  the *envelope* — 20-50% of a file. So the builder assembles blocks **and
+  literal passthrough** and is built for the mixed case; a design assuming
+  everything is a block fails on 79% of the corpus.
+
+  **The block set is 15, not 60, because of what was refused.** Fragments shared
+  by 39-57 files were rejected as blocks because their bodies are empty of
+  content: `## Content` → *"fill per the schema"* (55 files), `## Rules applied`
+  → `REPLACE-WITH-RULE-ID` (51), `## Fitness functions` → a body consisting of
+  the single character `…` (48 methodologies). In total **26 fragments across
+  1,008 instances have a literally empty body and none became a block.**
+  Extracting them would have made CR-011's emptiness tidy and permanent. Three of
+  the top 25 clusters were rejected on this test; the rejection rate rises sharply
+  just below the cut.
+
+  **`text` is the parameter type that makes the LLM part work.** It is not a
+  value a user types — `tpl-params --ask --json` reports it with
+  `compose: true` and the question to put to the author, and the agent writes the
+  prose. The declaration for the `purpose` parameter says it plainly:
+  *"Ask the author; never invent it."*
+
+  **Persisting a `default` is forbidden, and that is the subtle rule.** The store
+  records only values a human actually supplied. Writing a default back would
+  silently freeze it, so a later change to the block's default would stop taking
+  effect with nothing in the project to explain why. Verified end to end: first
+  build remembers 2 of 10 resolved parameters, the ask list empties, and a second
+  build with no arguments produces byte-identical output.
+
+  **Escaping runs on two code paths that never meet.** Template source keeps its
+  entities (a 58-file family stores `&lt;artefact_id&gt;` already escaped, and a
+  naive pass would double-escape it), while parameter values are held as opaque
+  sentinels through the whole render and escaped unconditionally at the end.
+  Verified: a value of `</h1><script>alert(1)</script>` renders inert. A side
+  effect worth having — a value cannot forge a heading, close a code fence, or
+  break a table cell.
+
+  The language stays as small as §2.3 requires and refuses rather than
+  interprets: `not in`, `==`, `!=`, `&&`, `||`, filters, dotted paths, `{%…%}`,
+  triple-stache, YAML anchors, nested sections, and two blocks declaring one name
+  differently — each with a named error. The stated reason is inherited: the
+  assembler runs on behalf of other accounts, so a general template language is
+  an SSTI surface we would be choosing.
+
+  Manifest 2,986 → **2,987**; `validate-tools.py` 13 packs / 26 tools /
+  **0 findings**.
+
+
 - **Ratified `.aidocs/conventions/template-builder.md`** — decomposed blocks,
   declared parameters, assembled Markdown and HTML output.
 
