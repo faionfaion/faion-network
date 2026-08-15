@@ -21,13 +21,24 @@ dropping it, the pair became visible.
 
 | | |
 |---|---|
-| `content_id` | `180a580e913ae900` — **identical** |
+| `content_id` | `180a580e913ae900` — identical, **but see the correction below** |
 | `tier` · `status` · `produces` · `est_tokens` | `solo` · `draft` · `spec` · 2000 — identical |
 | `content/01-core-rules.xml` | **byte-identical** |
 | `content/02-output-contract.xml` | **byte-identical** |
 | `content/03-failure-modes.xml` | differs (48 diff lines) |
 
 So the XML bodies were copied. That is the whole of the overlap.
+
+> **Correction, 2026-08-15: `content_id` is not a content hash and proves nothing here.**
+> Measured across the whole corpus: **165 `content_id` values are shared by two or more
+> methodologies, covering 334 directories — and in every one of those 165 groups the content
+> bytes differ.** Not one shared id corresponds to identical content. Whatever the field tracks,
+> it is not the content, so "identical `content_id`" is not evidence of duplication and
+> "different `content_id`" is not evidence against it.
+>
+> This CR's conclusion survives, because it never rested on the id: the byte-identical
+> `01-core-rules.xml` and `02-output-contract.xml` are the evidence, and they are unaffected.
+> The row above is downgraded from a finding to a coincidence.
 
 ## What they do not share — and this is the reversal
 

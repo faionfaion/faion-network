@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Correction: `content_id` is not a content hash, and two earlier CRs cited
+  it as if it were.** Measured across the corpus: **165 `content_id` values
+  are shared by two or more methodologies, covering 334 directories, and in
+  every one of those 165 groups the content bytes differ.** Not a single
+  shared id corresponds to identical content — `ml-engineering/rag` and
+  `ml-engineering/rag-rag` share one, `research/risk-assessment` and
+  `research/risk-assessment-market-research` share one, and so on.
+
+  So an identical `content_id` is not evidence of duplication, and a
+  different one is not evidence against it. CR-006 cited "identical
+  `content_id`" as its first finding and CR-007 cited "two different
+  `content_id` values" as corroboration; both are annotated in place, with
+  the citation withdrawn and the reasoning that actually carried each
+  conclusion left standing — byte-identical content files in CR-006, a
+  line-level diff in CR-007. Neither verdict changes.
+
+  Worth stating plainly because the field looks exactly like an integrity
+  digest and is named like one. `doc_id` **is** content-derived
+  (`sha256(path + "\n" + body)[:16]`, ADR-001) and is what cache
+  verification and workflow locks rest on. `content_id` in `meta.json` is a
+  different thing that survived a migration, and nothing should reason from
+  it until someone establishes what it tracks.
+
 - **111 template headers authored, and the "112 missing two keys" turned out
   to be a fourth generation stamp.** They were not files where an author
   forgot two lines. Every one carried the same shape: `depends-on` crammed

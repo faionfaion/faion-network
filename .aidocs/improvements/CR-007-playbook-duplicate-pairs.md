@@ -30,9 +30,12 @@ and **13 pairs, 12 of them playbook↔playbook**.
 
 Two hypotheses were tested and **both are wrong**:
 
-- **Not byte-identical copies.** Unlike `sdd/templates` (CR-006), every pair has two different
-  `content_id` values and two different content bodies. Measured on two pairs: 106 of 174 lines
-  differ, 152 of 246 differ.
+- **Not byte-identical copies.** Every pair has two different content bodies — measured on two
+  pairs: 106 of 174 lines differ, 152 of 246 differ. *(This bullet originally also cited two
+  different `content_id` values as corroboration. **Withdrawn 2026-08-15**: `content_id` is not a
+  content hash — 165 ids are shared across 334 directories and **every one of those groups differs
+  in content bytes**, so the field distinguishes nothing in either direction. The line-level
+  measurement is the evidence and it stands on its own.)*
 - **Not one directory filed under two goal categories.** `retrieval-content-contracts.md` §4
   suggests "one structural fix, not 12 rewrites". **11 of the 12 pairs sit inside the *same* goal
   category** — `acquire-grow` ×4, `build-ship` ×3, `operate-ritual` ×3, `govern-decide` ×1,
