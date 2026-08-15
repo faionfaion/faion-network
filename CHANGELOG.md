@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Regenerated L1 `domains.xml` and all 22 L2 `INDEX.xml` from `meta.json`.**
+  22 domains, **2,520 methodologies** (from 2,601). `validate-domains-index.py`
+  PASS, `validate-domain-index.py --all` 22 pass / 0 fail — so every `count=`
+  now reconciles against disk, which is the drift the hand-editing habit used to
+  cause.
+
+  `.archive/README.md` updated with the count and, more usefully, with **how to
+  read an archived methodology**: nothing there was retired for being worthless.
+  Merge-then-archive means each is a *superseded* copy, and two things are still
+  worth returning for — material that had no canonical home (vendor and SaaS
+  catalogues, reference lists), and the original wording where a merge folded a
+  document into a delimited section of its survivor.
+
 - **Corrective: added 65 merged files that the CR-009 commits omitted.** New
   canonical parts (three `05-examples.xml`, two `04-procedure.xml`) and 60
   templates and scripts authored during the merges were never `git add`ed, so
