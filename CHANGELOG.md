@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Ratified `.aidocs/conventions/template-builder.md`** — decomposed blocks,
+  declared parameters, assembled Markdown and HTML output.
+
+  **It implements a contract that already existed and had never been used.**
+  `retrieval-content-contracts.md` §2.2/§2.3 specify the `variables:` key and the
+  `when: <var> in [...]` section guard, and validator 5 already enforces their
+  shape — yet **adoption is zero**. Two files match a `variables:` grep and both
+  are false positives: a Terraform `variable "…" {}` block and a Python
+  docstring. So this is an implementation, not a new design, and where the two
+  disagree §2.2 wins.
+
+  **Substitution syntax is `{{name}}`, and `<Angle>` is rejected on evidence.**
+  `<AngleBracket>` is the incumbent at 1,670 of 7,344 template files (22%) — and
+  it is already the direct cause of a defect class: **9 Python templates do not
+  parse** because a placeholder lands in identifier position, and 47 more parse
+  only because their placeholders happen to fall inside strings. For the HTML
+  output this builder must emit it is worse than unusable — `<Entity>` is
+  indistinguishable from a tag.
+
+  **The decomposition thesis is a measurement, not a preference.** Normalising
+  the slug out across the canonical parts: `01-core-rules` is **2,467 distinct of
+  2,513** — 98% unique — while `02-output-contract` carries 295 redundant copies,
+  `03-failure-modes` 256, `04-procedure` 332. **Rules are specific, the envelope
+  is generic**, so the thing to decompose is the envelope and never the rules.
+
+  Stated as a guard rather than left implicit: **a block library is not a licence
+  to unify content.** A failure-modes section identical across 19 methodologies
+  is not a reusable block — it is CR-011's evidence that those 19 say nothing,
+  and extracting it would make the emptiness tidy and permanent.
+
+  The language stays tiny by inheritance, not by omission: §2.3 forbids
+  expressions, loops, filters and nested partials because the server assembles
+  templates on behalf of other accounts, which makes a general template language
+  an SSTI surface we would be *choosing*. The builder implements substitution and
+  one `in` test, and rejects everything else loudly.
+
+
 - **CR-012 filed: templates that parse cleanly and fail when run.** Every finding
   reproduced by execution — against a real PostgreSQL 16 container, a real Redis,
   a real `docker build`, and `nginx -t`. None reported from reading.
