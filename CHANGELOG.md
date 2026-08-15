@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **The pre-commit skip message now prints what it skipped, because it has
+  fired on a commit that staged 443 corpus paths.** The hook reported
+  *"validators skipped (this commit touches no corpus or script paths)"* on a
+  commit of 443 files under `skills/faion/playbooks/`, which matches its own
+  `^(skills|scripts|docs/schemas)/` test.
+
+  **Root cause not found, and the message says so rather than pretending.**
+  Instrumenting the hook showed `STAGED` is computed correctly when git
+  invokes it — `BASE=HEAD`, 444 entries, `CHANGELOG.md` first — and both the
+  `grep -qx CHANGELOG.md` and the path gate match when replayed standalone
+  against that exact input, including under `set -uo pipefail`. A SIGPIPE
+  theory was tested and does not hold at this size: 444 paths are 38 KB,
+  inside the 64 KB pipe buffer, so `printf` completes before `grep -q` exits.
+
+  So the skip branch now prints the staged count and the `skills/` count. A
+  non-zero `skills/` there means the gate did not do its job, and the fix is
+  a manual `check-validators.sh --check-fast` — which is what was done for
+  the affected commits, all of them clean.
+
+  Recorded because the failure mode matters more than its frequency: **a gate
+  that silently does not run is worse than no gate**, since the absence of a
+  complaint reads as a pass.
+
+  One diagnosis in the same hunt was simply wrong and is corrected here: a
+  rejected commit blamed on this bug was actually `commit-msg` refusing a
+  52-character title against a 50-character limit.
+
 - **All 443 playbooks are tagged, from a vocabulary built after reading them
   rather than before.** 54 tags, 1,071 uses, mean 2.42 per playbook, zero
   empty. §13.2 asked for a controlled vocabulary with a minimum-use floor;
