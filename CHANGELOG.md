@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-007 filed: 12 duplicate playbook pairs, and both prior hypotheses
+  about them were wrong.** CR-005 audited knowledge only; nobody had audited
+  playbooks, and that is where the duplication turns out to be.
+
+  They are **not** byte-identical copies — unlike `sdd/templates`, every pair
+  has two `content_id` values and two different bodies (106 of 174 lines
+  differ in one measured pair, 152 of 246 in another). They are **not** one
+  directory filed under two goal categories either, which is what the
+  content contract suggested: **11 of the 12 sit inside the same goal
+  category**. There is no structural fix; these are 12 independent authoring
+  duplications.
+
+  What separates them is a **boilerplate `<intent>`** carried by 31 of 455
+  playbooks — *"From the initial trigger to the closed outcome described in
+  scope…"* — which says nothing about the playbook, where a real one
+  restates its own subject. **Exactly one side is stamped in 9 of the 12
+  pairs; neither in 3; both in none.** That is the CR-005 shape.
+
+  Three signals agree across all 12, which makes it a measurement rather
+  than a judgement: the stamped side is stamped, it is **larger** (the
+  boilerplate pads it), and it has **`refs: 1`** — only its own goal
+  `INDEX.xml` points at it, nothing else in the corpus does. For the three
+  unstamped pairs the reference count alone separates them cleanly, most
+  sharply `productized-service-launch` at **9** inbound refs against its
+  twin's 1.
+
+  One trap recorded explicitly: **the stamp is not on the longer slug.** In
+  two pairs it sits on the longer-named side and in two on the shorter, so
+  deciding by name would delete the wrong copy.
+
+  Beyond the pairs, **22 playbooks are stamped and have no twin** — the
+  analogue of CR-005's 60 that named a real subject and were rewritten
+  rather than deleted. They are a separate, non-destructive task.
+
+  Proposed, not executed: delete the redundant side of each pair with a
+  re-verification pass against disk first, as CR-005 did.
+
 - **Tier names are no longer tags.** `pro`, `solo` and `geek` were the #1, #2
   and #4 most frequent tags in the corpus — 568 uses across 564 knowledge
   files — and none of them is a tag. They duplicate the `tier` field, which
