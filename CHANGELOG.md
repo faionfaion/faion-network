@@ -4,28 +4,59 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
-- **The pre-commit skip message now prints what it skipped, because it has
-  fired on a commit that staged 443 corpus paths.** The hook reported
-  *"validators skipped (this commit touches no corpus or script paths)"* on a
-  commit of 443 files under `skills/faion/playbooks/`, which matches its own
+- **Fixed: the pre-commit validator gate skipped itself on large corpus
+  commits.** The hook reported *"validators skipped (this commit touches no
+  corpus or script paths)"* on a commit of 443 files under
+  `skills/faion/playbooks/`, all of which match its own
   `^(skills|scripts|docs/schemas)/` test.
 
-  **Root cause not found, and the message says so rather than pretending.**
-  Instrumenting the hook showed `STAGED` is computed correctly when git
-  invokes it — `BASE=HEAD`, 444 entries, `CHANGELOG.md` first — and both the
-  `grep -qx CHANGELOG.md` and the path gate match when replayed standalone
-  against that exact input, including under `set -uo pipefail`. A SIGPIPE
-  theory was tested and does not hold at this size: 444 paths are 38 KB,
-  inside the 64 KB pipe buffer, so `printf` completes before `grep -q` exits.
+  **Root cause: `printf | grep -q` under `set -o pipefail` is a race.**
+  `grep -q` exits at its *first* match and closes the pipe. On a large commit
+  `printf` still has tens of KB left to write, takes `EPIPE`, and dies 141 —
+  and `pipefail` promotes that 141 over grep's 0, so the `if` takes the else
+  branch. The gate skipped itself in proportion to how much corpus the commit
+  contained. Measured over 200 runs each: **31 skips at 900 staged paths, 0 at
+  3**. The fix is a herestring (`grep -q … <<<"$STAGED"`), which has no second
+  process to kill: 0 skips in 200.
 
-  So the skip branch now prints the staged count and the `skills/` count. A
-  non-zero `skills/` there means the gate did not do its job, and the fix is
-  a manual `check-validators.sh --check-fast` — which is what was done for
-  the affected commits, all of them clean.
+  **The earlier SIGPIPE diagnosis was rejected for a bad reason and is
+  corrected here.** It was dismissed on the grounds that 444 paths are 38 KB
+  and so fit inside the 64 KB pipe buffer. Buffer capacity is irrelevant once
+  the reader has *exited* — the write fails because there is nobody on the
+  other end, not because there is no room. Size still mattered, but as the
+  thing that decides whether `printf` finishes before `grep -q` quits, which
+  is why small commits never tripped it and the bug survived so long.
 
   Recorded because the failure mode matters more than its frequency: **a gate
   that silently does not run is worse than no gate**, since the absence of a
-  complaint reads as a pass.
+  complaint reads as a pass. The diagnostic counts added when the cause was
+  unknown are kept — they are how this would be caught again.
+
+- **Ratified `.aidocs/conventions/domain-boundaries.md`** — the first written
+  rule for which domain a methodology belongs to. The corpus grew to 2,599
+  documents across 22 domains without one, and the bill arrived as CR-009's 97
+  slugs existing in two domains at once.
+
+  The boundary is **execution surface**, ordered runtime → practice → platform
+  → decision, first match wins. It is derived from what the corpus already
+  produces rather than from a taxonomy: `backend` has written **1 checklist and
+  0 rubrics in 137 documents** while `dev` writes judgement instruments in 21%
+  of its 378, and `architecture` writes decision records in 34% of its 64.
+
+  **A stance hypothesis — operating policy vs craft/idiom — was tested against
+  all 28 unresolved pairs and discarded.** It explains 6, *reverses* on 3, and
+  leaves 18 that are simply the same document written twice. It survives only
+  as a tie-break, and Rule 6 now states outright that stance is not a reason
+  for two documents.
+
+  The policy is written around one asymmetry: choosing between two copies that
+  already exist is **free** (links resolve by slug, so the survivor keeps it,
+  nothing dangles, no `doc_id` moves), while moving a document is a rename and
+  therefore a new `doc_id` and an invalidated pinned `cv`. So the ~44
+  documents the boundary declares misfiled are named and deliberately left
+  where they are, `frontend` stays at 21 rather than doubling to ~41, and the
+  28 collisions are resolved by choice even where the choice keeps the weaker
+  copy.
 
   One diagnosis in the same hunt was simply wrong and is corrected here: a
   rejected commit blamed on this bug was actually `commit-msg` refusing a

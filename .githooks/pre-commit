@@ -106,7 +106,16 @@ done <<<"$STAGED"
 # that reads it: a docs-only or .aidocs-only commit cannot change a
 # validator's verdict, and paying 15 s to learn that teaches people to
 # reach for --no-verify.
-if printf '%s\n' "$STAGED" | grep -qE '^(skills|scripts|docs/schemas)/'; then
+#
+# The test is a herestring, NOT `printf | grep -q`, and that is load-bearing.
+# `grep -q` exits at its FIRST match and closes the pipe. On a large commit
+# printf still has tens of KB to write, takes EPIPE, and dies 141 — and
+# `set -o pipefail` promotes that 141 over grep's 0, so the gate skipped
+# itself precisely on the commits with the most corpus in them. Measured at
+# 900 staged paths: 31 skips in 200 runs. At 3 staged paths: 0 in 200. That
+# size dependence is why it went unnoticed, and why "it worked when I tried
+# it" was never evidence. A herestring has no second process to kill: 0 in 200.
+if grep -qE '^(skills|scripts|docs/schemas)/' <<<"$STAGED"; then
   # Which methodology slugs did this commit touch? A slug directory is
   # the parent of an AGENTS.md under skills/faion/knowledge/.
   mapfile -t TOUCHED < <(
