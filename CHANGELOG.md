@@ -4,6 +4,47 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-011 filed: 69 methodologies contain no rule about their own subject, and
+  the validator cannot tell.**
+
+  `validate-methodology-v2.py` checks exactly one thing about rules — that at
+  least one `<rule testable="true">` exists. **All 16,147 rules in the corpus
+  declare `testable="true"`. Zero exceptions.** The attribute is a constant, so
+  the check passes for any document holding one rule of any quality.
+
+  **This is the fifth vacuous gate found this week**, after the pre-commit path
+  gate (a `pipefail` race), `validate-recipes.py` (a failed publish counts as
+  "skipped" and it still prints `4/4 pass`), the lexicon attestation check
+  (`ua-en.tsv` sits inside the tree it scans, so every term self-attests), and
+  `content_id` (declared a content hash, matching 0 of 2,520). The pattern is
+  the finding.
+
+  What it was hiding: **69 documents with zero subject-bearing rules** (42 pro,
+  23 geek) — `marketing/google-analytics` has six rules and none mention GA4;
+  `dev/hipaa-phi-data-flow-design` has four and none mention PHI. **83
+  methodologies share a byte-identical rule set** with another, in 18 clusters,
+  the largest being 19 documents × 5 identical rules. The citations on those
+  clones are **real books pasted across unrelated subjects** — Cooper's *About
+  Face* cited in 25 documents across 6 domains, on a HIPAA data-flow document and
+  a payment-chase script alike. No grep finds those: the rules parse clean and
+  the sources are genuine works.
+
+  **129 rules are literal placeholders reading "Replace with the real testable
+  rule", and 21 of the 57 documents carrying them are free tier** — 18.3% of the
+  whole free tier, including `dev/code-review` and `dev/documentation`. The shop
+  window instructs the reader to supply the content.
+
+  **A measured cost of CR-009:** merge survivors are ~6× more likely to
+  self-contradict (5 in 82, against 1 in 105 sampled), and run median 10 rules
+  against the corpus's 6. Merging preserved content and did not edit it down —
+  which was the instruction, and this is its bill.
+
+  Explicitly **not** the problem: testability. A lexical proxy says 30.9% of
+  rules lack an observable condition; reading 684 of them says **1.8%**. The
+  proxy over-flags checkable prose, and quoting it would aim the fix at the wrong
+  target.
+
+
 - **Completed a fix that was reported as done and was not.** Commit `7336c6bd0`
   claimed 7 methodologies stopped withholding canonical parts. It added only the
   part each was flagged for, because that is what the brief named — leaving
