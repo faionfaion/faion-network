@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **65 knowledge summaries expanded past the 15-word bar, each grounded in
+  its own core rules rather than its slug.** Under AD-019 retrieval is
+  lexical over the summary, so an under-length summary is a document that is
+  harder to find, not merely one described tersely. Knowledge median 23 → 24;
+  the rewrites run 30-43 words.
+
+  The discipline that made them worth doing: **the added terms have to be
+  the ones that separate a document from its near-twins.**
+  `dev/go-concurrency-patterns` has three siblings, so its summary now
+  carries "channels closed only by the sender" and the ADR requirement for
+  custom pipeline shapes — clauses that are rule ids in that file and in none
+  of the three. `ml-engineering/reranking-two-stage` has three twins too, so
+  it carries the pool-sizing ratio, the 100-300 ms latency reserve and the
+  degrade-to-stage-one fallback.
+
+  Openings were varied deliberately. Sixty-five sentences all starting
+  "Auditing…" would be a stamp of a different kind and would blunt exactly
+  the lexical distinctiveness the work exists to create.
+
+  Two findings worth more than the rewrites:
+
+  - **`research/ai-assisted-persona-building` and `research/ai-persona-building`
+    are the same document under two slugs** — `diff -rq` shows the same five
+    rule ids, the same tags, the same version, with only the slug string
+    substituted throughout. Independently confirmed by two separate passes
+    now. Rewriting one summary would fabricate a distinction the content does
+    not contain; it belongs to the CR-009 triage.
+  - **~13 documents have core rules that are pure scaffolding shared verbatim
+    across dozens of others** (`r1-bound-scope` / `r2-typed-input` /
+    `r3-named-owner`…), so their only subject-specific text is one sentence
+    plus the Applies-If block. They were expanded honestly from that, but the
+    real fix there is authoring rules, not a longer summary.
+
 - **22 playbooks say what they are for instead of reciting a template — and
   a second stamp surfaced while fixing the first.** These carried
   *"From the initial trigger to the closed outcome described in scope,
