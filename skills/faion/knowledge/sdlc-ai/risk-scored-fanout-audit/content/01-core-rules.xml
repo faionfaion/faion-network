@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Risk-Scored Fan-Out Audit — Core Rules" version="1.0.0" est_tokens="1400" depth="essential">
+  <summary>Ten rules for auditing a corpus too large for any one context, using many agents, without the audit quietly inventing its own findings.</summary>
+
+  <section title="The shape">
+    <p>A local, deterministic scout scores every item for risk and sorts it into waves. A fan-out gives each agent one small slice plus, at most, the single source document that slice cites. Two passes run over the slices: a cheap triage over everything, then an adversarial refute pass over only what triage flagged. Verdicts land in files, an aggregator merges them, and a human approves every change before anything is edited. Nothing in this shape is optional — remove any one part and the audit starts reporting confident nonsense.</p>
+  </section>
+
+  <section title="Rule set">
+    <rule id="r1-scout-before-agents" testable="true" depth="essential">
+      <statement>Emit a machine-generated work manifest before spawning any agent. No agent — and never the orchestrating loop — reads the whole corpus. Each row carries the item id, its slice, its risk score, its wave, and the path of the one source document it may open.</statement>
+      <rationale>The manifest is what makes the audit affordable and what makes it reproducible. It is also the load-bearing part: a wrong source-document mapping silently sends a verifier to the wrong evidence, so the mapping gets a hand spot-check before the fan-out, not after.</rationale>
+    </rule>
+
+    <rule id="r2-risk-first-waves" testable="true" depth="essential">
+      <statement>Compute a risk score from observable signals (no provenance, no citation, unclassified, compound answer, draft status), assign each item to exactly one wave, and run waves in descending risk order.</statement>
+      <rationale>Risk-first ordering surfaces most real defects in the first wave, which lets the owner stop after any wave with the best findings already in hand rather than after the whole corpus has been paid for.</rationale>
+    </rule>
+
+    <rule id="r3-evidence-or-downgrade" testable="true" depth="essential">
+      <statement>Every adverse verdict must carry evidence: a verbatim quote from the cited source, or a named source. In the aggregation step, downgrade any adverse verdict whose evidence is empty or `"none"` to `AMBIGUOUS`. Do not ask the agent to self-enforce this.</statement>
+      <rationale>This is the anti-hallucination floor, and it works because it is arithmetic in the aggregator rather than an instruction in a prompt. A finding without evidence is indistinguishable from a plausible invention.</rationale>
+    </rule>
+
+    <rule id="r4-triage-then-adversarial-refute" testable="true" depth="essential">
+      <statement>Run two passes. Pass one: cheap triage over everything, a mid-tier model, marking `suspect`. Pass two: only over `suspect === true`, several independent agents each explicitly told to REFUTE the flagged finding and to default to "the original stands" unless they find positive evidence against it.</statement>
+      <rationale>Triage optimises recall and produces plausible-but-wrong findings at a steady rate. The refute pass is where those die, before a human ever reads them — and it dies cheaply, because it only runs on the small flagged set. Framing matters: an agent asked to "check" agrees; an agent asked to refute goes looking.</rationale>
+    </rule>
+
+    <rule id="r5-disagreement-is-ambiguous" testable="true" depth="essential">
+      <statement>With N refuters, a majority decides. Split opinion resolves to `AMBIGUOUS` carrying all N notes — never to the majority verdict with the majority's confidence.</statement>
+      <rationale>A 2-1 split is information about the item, not about the answer. Collapsing it into the majority's verdict launders disagreement into false certainty, which is exactly what the human reviewer needs to see.</rationale>
+    </rule>
+
+    <rule id="r6-never-auto-apply" testable="true" depth="essential">
+      <statement>Findings are proposals. The audit writes a review file and edits nothing. Applying approved fixes is a separate, later, human-gated pass with its own commits and its own gates.</statement>
+      <rationale>An audit that can rewrite the corpus can also rewrite it wrongly at scale, and an adverse verdict is the class of output most likely to be wrong. Keeping apply separate also means a rejected finding costs nothing to discard.</rationale>
+    </rule>
+
+    <rule id="r7-normalise-field-drift-on-read" testable="true" depth="essential">
+      <statement>The aggregator must read the verdict field defensively — `verdict || judgment || decision || assessment`, falling back to an explicit `PARSE_ERROR` sentinel — and must count how often it had to fall back.</statement>
+      <rationale>Production lesson: agents silently drift a schema when writing to files. Only the value returned through the tool boundary was schema-validated; the JSON the same agent wrote to disk used `judgment` where the contract said `verdict`. Without the normaliser those rows vanish from the tally with no error anywhere. The fallback counter is what turns a silent loss into a visible one.</rationale>
+    </rule>
+
+    <rule id="r8-calibrate-before-the-bulk" testable="true" depth="essential">
+      <statement>After the first wave, hand-verify a random sample of roughly ten flagged items and record agree/disagree. If fewer than about 80% of flags are real, tighten the triage prompt or raise the suspect bar and re-run that wave before paying for the rest.</statement>
+      <rationale>Ten items is a bounded, cheap measurement of the pipeline's precision. Without it the audit's error rate is unknown, and an unknown error rate makes every downstream count meaningless.</rationale>
+    </rule>
+
+    <rule id="r9-machine-compute-every-count" testable="true" depth="essential">
+      <statement>Every number in the report is computed by the aggregator. Totals must reconcile against the corpus count, and each live item must land in exactly one wave.</statement>
+      <rationale>Hand tallies drift and are never re-checked. Reconciliation to the corpus count is the one assertion that catches items lost between manifest, fan-out and aggregation.</rationale>
+    </rule>
+
+    <rule id="r10-unverifiable-is-a-result" testable="true" depth="essential">
+      <statement>Where no source exists for an item, the verdict is `UNVERIFIABLE`. Never a guess dressed as a finding, and never a silent `CONFIRMED`.</statement>
+      <rationale>A pile of `UNVERIFIABLE` items is the correct outcome, not a gap in the audit: it is the list of things that need sourcing or retiring, which is a real deliverable the owner could not otherwise produce.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Manifest generated and spot-checked, waves risk-ordered, triage then refute, evidence floor enforced in the aggregator, field-drift normaliser in place, counts reconciled, nothing applied.</statement>
+      <rationale>Aggregate conclusion for the positive branch.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>The corpus fits in one context, or no ground truth exists to check items against, or the findings would be applied automatically anyway — in the last case fix the governance before building the audit.</statement>
+      <rationale>Aggregate conclusion for the negative branch.</rationale>
+    </rule>
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml">The verdict schema every pass returns, and the forbidden patterns the aggregator enforces.</link>
+  </see-also>
+</text>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="CDN-Fronted Static Deploy — Core Rules" version="1.0.0" est_tokens="1300" depth="essential">
+  <summary>Nine rules for shipping a static site through a caching CDN proxy you hold no purge credentials for, each anchored to a measured production failure.</summary>
+
+  <section title="The measurement this methodology exists for">
+    <p>A site served everything under `/assets/` with `cache-control: public, max-age=31536000, immutable`, behind a CDN proxy. Measured on 2026-07-28, hours after a green deploy: `GET /assets/js/main.js` returned a 735-byte file three days old, carrying nothing but a theme toggle, with `cf-cache-status: HIT` and `age: 280134`. The origin held the current 10 487-byte file with the whole feature in it. The same edge object hid a stylesheet change in the same window. CI was green throughout, because nothing in a normal pipeline looks at what the edge serves.</p>
+  </section>
+
+  <section title="Rule set">
+    <rule id="r1-content-hash-the-url" testable="true" depth="essential">
+      <statement>Emit every asset URL with the asset's own content hash appended (`/assets/x.js?v=&lt;sha256[:10]&gt;`), computed at build time over the file's bytes. Do this in the last build step, and gate it in CI.</statement>
+      <rationale>An `immutable` edge object outlives any number of deploys, and purging the zone needs credentials the build does not have. Hashing the bytes means a changed asset becomes a URL the edge has never seen, while an unchanged asset keeps its URL and stays cached — invalidation without giving up caching.</rationale>
+    </rule>
+
+    <rule id="r2-html-is-the-only-lever" testable="true" depth="essential">
+      <statement>Before relying on r1, confirm page HTML is NOT edge-cached — `cf-cache-status: DYNAMIC` or equivalent. If the HTML is cached too, r1 buys nothing and the problem moves to purge credentials.</statement>
+      <rationale>The URL the HTML emits is the one lever a build controls without CDN credentials, and it only works if the HTML itself arrives fresh. `cache: 'reload'` in a service worker does not help: it bypasses the browser HTTP cache, not the CDN's.</rationale>
+    </rule>
+
+    <rule id="r3-version-the-worker-registration" testable="true" depth="essential">
+      <statement>If a service worker is registered, register it as `/sw.js?v=&lt;hash&gt;`, hashed over the worker's SOURCE plus the precache FILE LIST — never over the files' contents.</statement>
+      <rationale>`/sw.js` is served with the same `immutable` header and sits behind the same edge cache; it was measured answering a copy 7.7 hours old while the origin held the current one, so every fix to the worker itself was unreachable. Hashing file contents would be circular — the pages carry the value in their head and the pages are part of what would be hashed — and unnecessary, because assets already carry their own content hash.</rationale>
+    </rule>
+
+    <rule id="r4-versioned-assets-match-exactly" testable="true" depth="essential">
+      <statement>In the service worker, match a versioned asset request with `cache.match(req)` — no options. Keep `{ ignoreSearch: true }` only for unversioned paths (documents, sw-listed roots).</statement>
+      <rationale>`ignoreSearch` makes the worker answer a new `?v=` from the old cached body, which cancels r1 outright for every client the worker already controls. A versioned URL the cache has never seen must be a clean miss straight to network.</rationale>
+    </rule>
+
+    <rule id="r5-navigations-are-network-first" testable="true" depth="essential">
+      <statement>Serve navigations network-first with a cache fallback. Reserve stale-while-revalidate for subresources.</statement>
+      <rationale>Stale-while-revalidate on a document means the first open of every page is always the previous build — and because a page pins its asset URLs by content hash, yesterday's HTML also pins yesterday's CSS and JS. A shipped, deployed, verified feature stayed invisible for an hour that way: not old JavaScript, an old page asking for it by name.</rationale>
+    </rule>
+
+    <rule id="r6-allow-list-the-rsync" testable="true" depth="essential">
+      <statement>Deploy with an rsync allow-list (`--include` per shipped path, then `--exclude='*'`), never an exclude-list. Pass `--delete` and deliberately NOT `--delete-excluded`. Remove orphans in a separate, explicitly named step.</statement>
+      <rationale>The exclude-list version shipped 960 files of a virtualenv plus every build script, because nobody had thought to name them; an allow-list fails closed. With plain `--delete`, rsync PROTECTS receiver-side files a filter excludes, so the deploy cannot delete anything it did not put there — the correct default, at the cost of orphans that stay reachable by URL until named one at a time.</rationale>
+    </rule>
+
+    <rule id="r7-full-history-when-a-test-reads-git" testable="true" depth="essential">
+      <statement>Set `fetch-depth: 0` on the checkout action whenever any test or build step reads a blob out of git history.</statement>
+      <rationale>The default single-commit checkout makes `git show &lt;sha&gt;:&lt;path&gt;` fail on the runner while passing on every developer machine — a green-locally, red-in-CI failure with no other symptom.</rationale>
+    </rule>
+
+    <rule id="r8-probe-the-edge-with-a-browser-like-ua" testable="true" depth="extended">
+      <statement>When a script fetches the live URL to verify what the edge serves, send a curl-like or browser-like `User-Agent`. A default library User-Agent is rejected.</statement>
+      <rationale>CDN bot protection answers a default `urllib`/library User-Agent with 403, so the probe reports a deploy failure that is really a UA policy. Operational note, not reproduced from the source repo — treat as a first thing to check, not a measured constant.</rationale>
+    </rule>
+
+    <rule id="r9-ci-must-look-at-the-artefact-it-ships" testable="true" depth="essential">
+      <statement>Add a build-output gate that fails when a page names a stale or unstamped asset, and keep it separate from the full render check so it stays deterministic on any runner.</statement>
+      <rationale>The failure — an asset edited without a rebuild, so pages name the previous hash and the worker carries the previous precache list — shipped three times in one day and is invisible every time: green deploy, correct origin, browser serving the old body under a URL that never changed.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Asset URLs content-hashed, HTML confirmed uncached at the edge, worker registration versioned, versioned matches exact, navigations network-first, rsync allow-listed, stamp gate in CI.</statement>
+      <rationale>Aggregate conclusion for the positive branch.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>No caching proxy in front of the origin, or the pipeline holds CDN purge credentials and purges on every deploy — invalidate at the edge instead and skip the URL gymnastics.</statement>
+      <rationale>Aggregate conclusion for the negative branch.</rationale>
+    </rule>
+  </section>
+
+  <see-also>
+    <link path="../../../tools/static-web/tools/asset-stamp.card.md">Executable gate implementing r1 — stamps `href`/`src` asset URLs and fails CI on drift under `--check`.</link>
+  </see-also>
+</text>

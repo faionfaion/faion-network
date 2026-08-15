@@ -5,9 +5,9 @@ Methodology corpus and Claude Code skill base for the `faion` CLI. Auto-loaded i
 | Item | Value |
 |------|-------|
 | Repo | `faionfaion/faion-network` |
-| Corpus | 2,598 methodology dirs over 22 domains, 455 playbook dirs, 6 workflows, 6 skill dirs (counted on disk 2026-08-14) |
-| Gating | `skills/tier-manifest.json` **v14, 3,067 entries** — authoritative path-to-tier map; every methodology and playbook dir on disk resolves in it (checked 2026-08-14) |
-| Composable | 25 fragments over 6 packs, 4 recipes, 3 tool packs. Fragments and recipes are all tier **free** since v13; tool packs are not — `game-dev` is `solo`, `python-web` and `research` are `free` |
+| Corpus | 2,601 methodology dirs over 22 domains, 455 playbook dirs, 6 workflows, 6 skill dirs (counted on disk 2026-08-15) |
+| Gating | `skills/tier-manifest.json` **v14, 3,075 entries** — authoritative path-to-tier map; every methodology and playbook dir on disk resolves in it (checked 2026-08-15) |
+| Composable | 25 fragments over 6 packs, 4 recipes, **8 tool packs / 16 tools**. Fragments and recipes are all tier **free** since v13; tool packs are gated per pack — `browser`/`python-web`/`research`/`static-web` free, `cloudflare`/`game-dev`/`web-parse` solo, `github-ci` pro |
 | Tiers | free / solo / pro / geek (cumulative) |
 | Distribution | Read by `faion-cli` at runtime; read by `faion-net-be` on disk via `KNOWLEDGE_ROOT` + `TIER_MANIFEST_PATH`; not bundled into the public `faion` plugin |
 | Ecosystem | `../AGENTS.md` — full stack and runtime data flow |

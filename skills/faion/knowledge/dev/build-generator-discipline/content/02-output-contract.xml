@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Build-Generator Discipline — Run Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>What a compliant generator run must guarantee and must print, and the separation of duties between the three modes — build, full check, deterministic check. Deliberately not a JSON schema: the artefact is a tree of files, and the contract is about the process that produced it.</summary>
+
+  <section title="Three modes, three jobs">
+    <list>
+      <item>`build` — renders everything into memory, writes atomically, repairs drift in hand-maintained files, regenerates derived artefacts, then verifies. Writes; asserts only after writing, and only about things it did not itself repair.</item>
+      <item>`--check` — renders everything and compares with disk. Writes nothing. This is the pre-push gate. It is meaningful only where the external toolchain matches the one that built the tree.</item>
+      <item>`--check-&lt;deterministic-subset&gt;` — the half of the check that needs no external converter: stamps, derived lists, generated manifests. This is the CI gate, because it is reproducible on any machine.</item>
+    </list>
+    <p>The three are separate entry points, not flags that fall through to one another. The reason is r6: a build repairs drift, so a check that runs after its own repair proves nothing, and a check folded into the build is that check.</p>
+  </section>
+
+  <section title="Guarantees a build run must satisfy">
+    <list>
+      <item>g1 — either every output file is written, or none is. A failure at any point leaves the tree exactly as it was.</item>
+      <item>g2 — every source under the source directory is either mapped to an output or named in the explicit unpublished list. A third state does not exist.</item>
+      <item>g3 — no output file was produced from a converter run that emitted anything on stderr.</item>
+      <item>g4 — no output body falls below the short-body floor.</item>
+      <item>g5 — every derived artefact (precache list, index, manifest, count) was computed in this run, not read from a previous one and not transcribed.</item>
+      <item>g6 — every shared block that the generator injects into hand-maintained files is present in all of them after the run, asserted explicitly.</item>
+      <item>g7 — the run is idempotent: running it twice changes nothing, which is what makes `--check` meaningful at all.</item>
+    </list>
+  </section>
+
+  <section title="What the run must print">
+    <p>Enough for the operator to notice a repair. A silent successful build hides exactly the events worth seeing.</p>
+    <list>
+      <item>The number of outputs written.</item>
+      <item>Every hand-maintained file whose shared block was REPAIRED, by name — that file had drifted, and a deploy without a rebuild would have shipped it broken.</item>
+      <item>Every derived artefact regenerated, with its size or item count.</item>
+      <item>Every degradation the build chose to tolerate (a muted dead link, a skipped optional source), by name.</item>
+      <item>The result of the post-write verification, not merely its absence of failure.</item>
+    </list>
+  </section>
+
+  <example type="good">
+    <code lang="text"><![CDATA[
+$ build --check
+  --check: 21 pages, sw.js and 6 entry points are all current
+
+$ build
+  21 pages
+  PWA head REPAIRED in trainer.html — it had drifted; a deploy without a
+    rebuild would have shipped it broken
+  sw.js  (48 files, 3.1 MB)
+  2 dead link(s) muted: draft-a, draft-b
+  verified: 6 entry points carry the head
+]]></code>
+    <note>The repair line is the whole point of printing anything: it is a defect that had already happened and would otherwise have been fixed invisibly.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="text"><![CDATA[
+$ build && build --check
+  built 21 pages
+  --check: OK
+]]></code>
+    <note>Meaningless. The build repaired the drift the check then failed to find. This is r6 stated as a shell line: check first, or check in a separate run on unmodified state.</note>
+  </example>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Can a mid-run failure leave the tree half-written? If yes, g1 is not met.</item>
+      <item>Is there a source that is neither built nor declared unpublished?</item>
+      <item>Does any generated number appear as a literal anywhere?</item>
+      <item>Does CI run the deterministic check rather than the full one?</item>
+      <item>Does a second consecutive build print zero repairs?</item>
+    </list>
+  </section>
+</text>

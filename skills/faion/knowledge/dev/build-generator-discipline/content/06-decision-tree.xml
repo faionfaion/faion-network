@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Build-Generator Discipline — Decision Tree" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>First gate: is there a generator between the sources and the shipped artefact? If so, each branch below names the one rule that closes the gap the observable reveals.</summary>
+  <decision-tree>
+    <root-question id="q-is-there-a-generator">Does a build step turn source files into the artefact that ships, using templates, an external converter, or derived indexes?</root-question>
+
+    <branch when="generator_exists == false OR (single_output == true AND external_converter == false AND derived_artefacts == 0)">
+      <conclusion ref="skip-this-methodology" verdict="Skip. With no generator there is no drift to repair, no partial write to survive and no flavour to pin. Revisit the moment a second output or a derived index appears."/>
+    </branch>
+
+    <branch when="writes_output_as_each_is_rendered == true">
+      <conclusion ref="r2-render-all-before-writing-any" verdict="Fix this first — it is the only failure on the list that leaves the tree in a state no later run can diagnose. Render into a dict, write after the last render succeeds."/>
+    </branch>
+
+    <branch when="check_mode_absent == true OR check_runs_after_build_in_same_process == true">
+      <conclusion ref="r6-check-is-a-separate-mode" verdict="Add `--check` as its own entry point that renders into memory and compares against untouched disk. A check running after the build's own repair passes unconditionally."/>
+    </branch>
+
+    <branch when="ci_runs_full_check == true AND external_converter_version_varies == true">
+      <conclusion ref="r7-split-the-check-by-determinism" verdict="Split it. Gate CI on the toolchain-free half (stamps, derived lists, manifests); keep the full re-render as a local pre-push gate. A CI gate that fails for reasons unrelated to the change gets disabled."/>
+    </branch>
+
+    <branch when="autoescape_disabled == true OR safe_filter_count &gt; 1">
+      <conclusion ref="r1-autoescape-on-one-audited-safe" verdict="Restore autoescaping and reduce to one named exception. Route raw fragments through the same conversion path rather than widening the escape policy."/>
+    </branch>
+
+    <branch when="converter_stderr_ignored == true OR short_body_floor_absent == true">
+      <conclusion ref="r3-generator-stderr-and-short-bodies-are-fatal" verdict="Make both fatal. An emptied source otherwise produces a structurally valid page with a header, a pager and nothing in it."/>
+    </branch>
+
+    <branch when="markup_flavour_not_pinned == true">
+      <conclusion ref="r4-pin-the-markup-flavour" verdict="Pin the flavour and subtract unwanted extensions by name. A currency figure opening a TeX formula and eating the rest of the sentence is the canonical instance."/>
+    </branch>
+
+    <branch when="unmapped_sources_silently_skipped == true">
+      <conclusion ref="r5-unmapped-source-fails-by-name" verdict="Add an explicit unpublished list and fail the build, naming any other unmapped source. Deliberate and forgotten must not look identical."/>
+    </branch>
+
+    <branch when="counts_or_sizes_appear_as_literals == true">
+      <conclusion ref="r8-measurements-are-generated-never-transcribed" verdict="Read every number from the built artefact in the run that emits it. A transcribed measurement is correct once and re-checked never."/>
+    </branch>
+
+    <branch when="comment_claims_a_test_covers_an_invariant == true">
+      <conclusion ref="r10-no-comment-may-claim-a-test-exists" verdict="Verify the file and the assertion exist. If not, move the assertion into the generator's post-write verification rather than deleting the comment."/>
+    </branch>
+
+    <branch when="all_gates_true == true">
+      <conclusion ref="run-the-checklist" verdict="Run the build twice and confirm the second run prints zero repairs and produces no diff. Idempotence is what makes every other guarantee checkable."/>
+    </branch>
+
+    <example trace="pandoc-backed static site, writes per page, no --check -> r2-render-all-before-writing-any first, then r6"/>
+  </decision-tree>
+</text>

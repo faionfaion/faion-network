@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="CDN-Fronted Static Deploy — Decision Tree" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>First gate: is there a caching proxy between the origin and the user that this pipeline cannot purge? Everything below follows from the answer, and each leaf names the rule that applies.</summary>
+  <decision-tree>
+    <root-question id="q-is-there-an-unpurgeable-edge">Does a caching proxy sit in front of the origin, and does the deploy pipeline lack credentials to purge it?</root-question>
+
+    <branch when="caching_proxy == false OR pipeline_can_purge_zone == true">
+      <conclusion ref="skip-this-methodology" verdict="Skip. Invalidate at the edge on deploy. Content-hashing URLs is still good hygiene but it is no longer load-bearing, and the report artefact has nothing to prove."/>
+    </branch>
+
+    <branch when="page_html_edge_status != 'DYNAMIC'">
+      <conclusion ref="r2-html-is-the-only-lever" verdict="STOP before anything else. If the HTML is edge-cached, hashing the URLs inside it cannot reach a browser. Get the HTML uncached — origin cache-control, a bypass rule — or get purge credentials. There is no build-side fix."/>
+    </branch>
+
+    <branch when="assets_served_immutable == true AND asset_urls_content_hashed == false">
+      <conclusion ref="r1-content-hash-the-url" verdict="Stamp every asset URL with its own content hash as the last build step, and add the same check to CI in report-only mode. This is the whole lever; everything else defends it."/>
+    </branch>
+
+    <branch when="service_worker_registered == true AND sw_registration_url_versioned == false">
+      <conclusion ref="r3-version-the-worker-registration" verdict="Register `/sw.js?v=&lt;hash&gt;`, hashed over the worker source plus the precache file list. Never over the files' contents — the pages carry the value, so content hashing is circular."/>
+    </branch>
+
+    <branch when="service_worker_registered == true AND sw_match_uses_ignoresearch_globally == true">
+      <conclusion ref="r4-versioned-assets-match-exactly" verdict="Split the match: exact for `/assets/*` carrying `?v=`, `ignoreSearch` for unversioned paths. Left global, it silently cancels the hash fix for every client the worker controls."/>
+    </branch>
+
+    <branch when="service_worker_registered == true AND navigation_strategy != 'network-first'">
+      <conclusion ref="r5-navigations-are-network-first" verdict="Make navigations network-first with a cache fallback. Stale documents pin stale hashed assets, so a document-level staleness bug presents as a whole release failing to appear."/>
+    </branch>
+
+    <branch when="deploy_filter_style == 'exclude-list'">
+      <conclusion ref="r6-allow-list-the-rsync" verdict="Invert it: `--include` per shipped path then `--exclude='*'`, keeping `--delete` and deliberately not `--delete-excluded`. Orphan removal becomes a separate step naming one file at a time."/>
+    </branch>
+
+    <branch when="ci_reads_blob_from_git_history == true AND checkout_fetch_depth != 0">
+      <conclusion ref="r7-full-history-when-a-test-reads-git" verdict="Set `fetch-depth: 0`. Symptom to recognise: the step passes on every developer machine and fails only on the runner."/>
+    </branch>
+
+    <branch when="edge_probe_returns_403_for_all_urls == true">
+      <conclusion ref="r8-probe-the-edge-with-a-browser-like-ua" verdict="Send a curl-like User-Agent before debugging the deploy. Bot protection rejecting a default library User-Agent looks identical to a broken release."/>
+    </branch>
+
+    <branch when="asset_urls_content_hashed == true AND ci_has_stamp_gate == false">
+      <conclusion ref="r9-ci-must-look-at-the-artefact-it-ships" verdict="Add the stamp check to CI as a failing gate, kept separate from any full re-render check so it stays deterministic on a runner whose toolchain differs from the author's."/>
+    </branch>
+
+    <branch when="all_gates_true == true">
+      <conclusion ref="run-the-checklist" verdict="Emit the edge-freshness report and probe the live URL. A green pipeline is not the evidence; the recorded edge response is."/>
+    </branch>
+
+    <example trace="static site, proxy in front, HTML DYNAMIC, assets immutable and unstamped -> r1-content-hash-the-url"/>
+  </decision-tree>
+</text>

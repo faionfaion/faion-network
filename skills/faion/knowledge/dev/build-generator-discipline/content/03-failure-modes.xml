@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="Build-Generator Discipline — Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Seven antipatterns, each responsible for a shipped defect in one static-site generator, and each of which passed every test that existed at the time.</summary>
+
+  <section title="Antipatterns">
+    <antipattern id="ap-01-write-as-you-go">
+      <description>A generator that writes each output as it finishes rendering it.</description>
+      <reason>A converter failure partway through leaves a half-published tree: some outputs new, some stale, and every derived artefact — precache list, index, manifest — still carrying the previous run's hash. Installed clients then serve the old copies of precisely the pages that changed. Render all, then write.</reason>
+    </antipattern>
+
+    <antipattern id="ap-02-build-then-check">
+      <description>Running the build and then asserting the tree is current, in the same command or the same process.</description>
+      <reason>The build repairs drift by design. A check after its own repair always passes, which is worse than no check because it reports a guarantee it never tested. The check must render into memory and compare against untouched disk.</reason>
+    </antipattern>
+
+    <antipattern id="ap-03-a-second-safe-filter">
+      <description>Adding another `|safe`, or turning autoescaping off, to get some raw HTML to render.</description>
+      <reason>The single audited exception is enforceable by grep and reviewable in one line; the second one ends that. The correct fixes are to convert the raw fragment through the same pipeline as everything else, or to widen what the one audited body is allowed to contain — never to widen the escape policy.</reason>
+    </antipattern>
+
+    <antipattern id="ap-04-default-markup-flavour">
+      <description>Invoking the converter with its default input format, or a bare flavour name with all extensions on.</description>
+      <reason>Enabled-by-default extensions silently reinterpret ordinary prose. `$14.1M` opened a TeX formula and swallowed the rest of the sentence into a math span across five pages. Nothing errored; the source looked right and only the rendered page was wrong. Pin the flavour and subtract the extensions by name.</reason>
+    </antipattern>
+
+    <antipattern id="ap-05-silent-skip-of-an-unmapped-source">
+      <description>Iterating the site map and ignoring source files that are not in it.</description>
+      <reason>A forgotten source and a deliberately unpublished one become indistinguishable, and the forgotten one disappears with no signal at all. An explicit unpublished list plus a hard failure naming any other unmapped file is a two-line change that converts silence into a build error.</reason>
+    </antipattern>
+
+    <antipattern id="ap-06-transcribed-measurements">
+      <description>Copying a count, size or total into a template, a heading or a marketing line.</description>
+      <reason>It is correct once and then drifts forever, and no test will ever look at it. One page advertised a bank of 353 items while the bank held 442 — the third such stale literal in the same project. Read the number from the built artefact in the same run that emits the page.</reason>
+    </antipattern>
+
+    <antipattern id="ap-07-a-comment-that-claims-coverage">
+      <description>A comment stating that some invariant is asserted by a named test file.</description>
+      <reason>The named file did not exist. The invariant — that every entry point carries a byte-identical shared head block — held by coincidence, so the next hand-edit would have disabled a subsystem on one page with nothing going red. When you find such a comment, do not delete it: turn it into the assertion it claimed, inside the generator's post-write verification.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Cheap symptoms worth memorising">
+    <list>
+      <item>Every generated file reports "stale" on CI and none locally — the runner's converter version differs; the full check does not belong in CI, only its deterministic half does.</item>
+      <item>A page renders with a header, navigation and no body — the source went empty and no length floor caught it.</item>
+      <item>Non-ASCII characters mojibake only in CI output — the writes are relying on locale defaults.</item>
+      <item>The build prints nothing but a page count — every repair it performed is invisible, including the ones that were symptoms.</item>
+      <item>Two consecutive builds produce a diff — the generator is not idempotent, and `--check` cannot mean anything until it is.</item>
+    </list>
+  </section>
+</text>

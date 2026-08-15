@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="CDN-Fronted Static Deploy — Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>Six antipatterns, each observed in production behind a caching proxy, each invisible to a green pipeline.</summary>
+
+  <section title="Antipatterns">
+    <antipattern id="ap-01-trust-the-green-deploy">
+      <description>Treating a green pipeline as evidence that users receive the new build. Nothing in the pipeline opens a socket to the public URL.</description>
+      <reason>The pipeline verifies the origin and the artefact, and the edge is neither. Measured: `GET /assets/js/main.js` served 735 bytes with `cf-cache-status: HIT` and `age: 280134` while the origin held 10 487 bytes — hours after a green deploy, and for three days before it. Fix: probe the live URL and record status, age and byte count next to the origin's (see `content/02-output-contract.xml`).</reason>
+    </antipattern>
+
+    <antipattern id="ap-02-reload-to-defeat-the-edge">
+      <description>Reaching for `cache: 'reload'`, a cache-busting timestamp, or a hard refresh instruction to get past a stale edge object.</description>
+      <reason>`cache: 'reload'` bypasses the browser's HTTP cache, not the proxy's; a timestamp busts the cache on every deploy including the unchanged 95% of assets, discarding the caching you are paying for. Only a content hash both invalidates what changed and preserves what did not.</reason>
+    </antipattern>
+
+    <antipattern id="ap-03-ignoresearch-everywhere">
+      <description>A service worker matching every request with `cache.match(req, { ignoreSearch: true })`, including versioned assets.</description>
+      <reason>It cancels the content-hash fix precisely for the clients the worker already controls: a new `?v=` is answered from the old cached body, and the browser only catches up when a background revalidate happens to land. The correct split is exact match for `/assets/*?v=`, `ignoreSearch` for unversioned paths.</reason>
+    </antipattern>
+
+    <antipattern id="ap-04-stale-while-revalidate-on-documents">
+      <description>Applying one cache strategy — stale-while-revalidate — uniformly, navigations included, because "it is fast and it self-heals".</description>
+      <reason>The first open of every page is always the previous build, and a hashed-asset build makes that worse rather than better: yesterday's HTML pins yesterday's CSS and JS by name, so the whole release stays invisible, not just the document. Observed keeping a shipped feature off a device for an hour.</reason>
+    </antipattern>
+
+    <antipattern id="ap-05-exclude-list-deploy">
+      <description>Deploying with `rsync --exclude` per unwanted path, extended each time something unwanted turns up on the webroot.</description>
+      <reason>It fails open: everything nobody thought to name ships. One such list put 960 virtualenv files, the generator sources and every build script onto a public webroot. An allow-list plus a terminal `--exclude='*'` fails closed, which is the property that keeps a test fixture holding real user data off the server.</reason>
+    </antipattern>
+
+    <antipattern id="ap-06-delete-excluded-as-a-cleanup-reflex">
+      <description>Adding `--delete-excluded` to an allow-list rsync to tidy the webroot in the same command.</description>
+      <reason>Under an allow-list, `--delete-excluded` means "delete everything not in the allow-list" — which is the entire receiver except the shipped paths, including anything another process, another deploy or an operator put there. Plain `--delete` protects receiver-side excluded paths deliberately, so the deploy can only remove what it placed. The price is orphans: a page removed from the repo stays reachable by URL. Remove them in a separate step that names each file, with no globs.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Cheap symptoms worth memorising">
+    <list>
+      <item>A test that reads a blob out of git passes locally and fails only on the runner — the checkout is shallow; set `fetch-depth: 0`.</item>
+      <item>An edge-probe script reports 403 for every URL while a browser loads the site fine — bot protection is rejecting the default library User-Agent; send a curl-like one.</item>
+      <item>Two cache generations live at once in the browser and the page still gets the previous stylesheet — the worker is waiting for every tab to close; `skipWaiting` plus `clients.claim` is the intended pair when the strategy is whole-document.</item>
+      <item>A fix to the worker itself never lands — `/sw.js` is edge-cached under the same `immutable` header; version the registration URL.</item>
+    </list>
+  </section>
+</text>

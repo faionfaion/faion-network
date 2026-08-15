@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Audit Verdict Set — Output Contract" version="1.0.0" est_tokens="1000" depth="essential">
+  <summary>The artefact this methodology produces: a per-wave verdict set in which every adverse verdict carries evidence, every disagreement is recorded as ambiguous, and nothing has been applied — machine-checkable by the bundled validator.</summary>
+
+  <section title="JSON Schema">
+    <schema format="json-schema-draft-07" filename="wave-verdicts.json">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/risk-scored-fanout-audit.json",
+  "type": "object",
+  "required": ["wave", "corpus_total", "count", "applied", "by_verdict", "items"],
+  "properties": {
+    "wave": {"type": "integer", "minimum": 1},
+    "corpus_total": {"type": "integer", "minimum": 1},
+    "count": {"type": "integer", "minimum": 0},
+    "applied": {"type": "boolean", "const": false},
+    "field_drift_fallbacks": {"type": "integer", "minimum": 0},
+    "by_verdict": {"type": "object", "additionalProperties": {"type": "integer"}},
+    "calibration": {
+      "type": "object",
+      "required": ["sampled", "agreed"],
+      "properties": {
+        "sampled": {"type": "integer", "minimum": 0},
+        "agreed": {"type": "integer", "minimum": 0}
+      }
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "verdict", "suspect", "evidence"],
+        "properties": {
+          "id": {"type": "string", "minLength": 1},
+          "verdict": {
+            "type": "string",
+            "enum": ["CONFIRMED", "INCORRECT", "WEAK", "AMBIGUOUS",
+                     "OUT_OF_SCOPE", "UNVERIFIABLE", "PARSE_ERROR"]
+          },
+          "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+          "suspect": {"type": "boolean"},
+          "issue": {"type": "string"},
+          "fix": {"type": ["string", "null"]},
+          "evidence": {"type": "string"},
+          "refuted_by": {"type": "integer", "minimum": 0},
+          "refuter_notes": {"type": "array", "items": {"type": "string"}},
+          "verified": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}
+]]></code>
+    </schema>
+    <reference path="templates/verdict-schema.json">The same schema as a standalone file, for passing to a structured-output call.</reference>
+    <reference path="scripts/validate-risk-scored-fanout-audit.py">Stdlib validator; enforces the forbidden patterns below and reports field drift.</reference>
+  </section>
+
+  <section title="Adverse verdicts">
+    <p>`INCORRECT`, `OUT_OF_SCOPE` and `WEAK` are adverse: they assert a defect in the corpus. `CONFIRMED`, `AMBIGUOUS` and `UNVERIFIABLE` are not. The evidence floor applies to adverse verdicts only, which is what keeps it cheap.</p>
+  </section>
+
+  <section title="Forbidden patterns">
+    <list>
+      <item>f1 — an adverse verdict with `evidence` empty, `"none"` or whitespace. The aggregator downgrades it to `AMBIGUOUS`; a file that still contains one means the floor was never applied.</item>
+      <item>f2 — `applied: true`, or any item carrying an `applied_at` field. This artefact is a proposal set; applying is a separate gated pass.</item>
+      <item>f3 — a `suspect: true` item with no `verified: true` and no `refuted_by` count. Every suspect must have been through the refute pass or be explicitly recorded as skipped.</item>
+      <item>f4 — `count` not equal to `len(items)`, or the `by_verdict` totals not summing to `count`. Every number is machine-computed or it is not trusted.</item>
+      <item>f5 — a `PARSE_ERROR` verdict left in a final file. It means the field-drift normaliser found nothing usable; fix the read or re-run the slice, do not ship it as a tally line.</item>
+      <item>f6 — duplicate `id` values. Later passes override earlier ones by id, so a duplicate means the merge lost a result.</item>
+      <item>f7 — a `calibration` block with `sampled` below 5, or with `agreed / sampled` under 0.8, while the wave is presented as final.</item>
+    </list>
+  </section>
+
+  <example type="good">
+    <code lang="json"><![CDATA[
+{
+  "wave": 1, "corpus_total": 1460, "count": 3, "applied": false,
+  "field_drift_fallbacks": 0,
+  "by_verdict": {"CONFIRMED": 1, "INCORRECT": 1, "UNVERIFIABLE": 1},
+  "calibration": {"sampled": 10, "agreed": 9},
+  "items": [
+    {"id": "it-0031", "verdict": "CONFIRMED", "suspect": false, "evidence": "src/ch09.md:'…'"},
+    {"id": "it-0114", "verdict": "INCORRECT", "suspect": true, "verified": true,
+     "refuted_by": 1, "confidence": 0.82,
+     "issue": "keyed option contradicts the cited paragraph",
+     "fix": "change key to B", "evidence": "src/ch09.md:'the second stage precedes …'",
+     "refuter_notes": ["stands: key is wrong", "stands: key is wrong", "unclear"]},
+    {"id": "it-0207", "verdict": "UNVERIFIABLE", "suspect": true, "verified": true,
+     "refuted_by": 0, "issue": "no source cited and none found", "fix": null,
+     "evidence": "none"}
+  ]
+}
+]]></code>
+    <note>`UNVERIFIABLE` is allowed `evidence: "none"` — it is not an adverse verdict, and the absence of a source is the finding.</note>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[
+{
+  "wave": 1, "corpus_total": 1460, "count": 4, "applied": true,
+  "by_verdict": {"CONFIRMED": 2, "INCORRECT": 1},
+  "items": [
+    {"id": "it-0114", "verdict": "INCORRECT", "suspect": true, "evidence": "none"},
+    {"id": "it-0114", "verdict": "CONFIRMED", "suspect": false, "evidence": ""},
+    {"id": "it-0301", "verdict": "PARSE_ERROR", "suspect": false, "evidence": ""}
+  ]
+}
+]]></code>
+    <note>Six violations: f1 (adverse with no evidence), f2 (`applied: true`), f3 (suspect never refuted), f4 (`count` 4 against 3 items and a by_verdict summing to 3), f5 (`PARSE_ERROR` shipped), f6 (duplicate id). Each of these has been produced by a real run; none of them raises an error anywhere else in the pipeline.</note>
+  </example>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Every adverse verdict quotes a source or names one.</item>
+      <item>`applied` is false and no item records an application.</item>
+      <item>Every suspect carries a refute result.</item>
+      <item>`count`, `by_verdict` and `corpus_total` reconcile.</item>
+      <item>No `PARSE_ERROR` and no duplicate ids survive the merge.</item>
+      <item>Calibration recorded before the wave is called final.</item>
+    </list>
+  </section>
+</text>

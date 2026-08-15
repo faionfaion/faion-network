@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="Build-Generator Discipline — Core Rules" version="1.0.0" est_tokens="1400" depth="essential">
+  <summary>Ten rules for a static-site or code generator, each one written because the absence of it shipped a specific defect.</summary>
+
+  <section title="Scope">
+    <p>These rules govern the generator, not the artefact. The generated site or code may still have no build step and no runtime dependencies; the generator is allowed dependencies precisely because it runs before anything is shipped. Every rule below names the failure that produced it — a rule with no defect behind it does not belong in this file.</p>
+  </section>
+
+  <section title="Rule set">
+    <rule id="r1-autoescape-on-one-audited-safe" testable="true" depth="essential">
+      <statement>Keep template autoescaping ON, and allow exactly one `|safe` in the whole project — the converted document body — named in the docs. Do not add a second, and do not disable autoescaping to make raw HTML render.</statement>
+      <rationale>Every additional escape hatch is an injection path through content, and a project-wide autoescape switch turns every future page into one. One audited exception is checkable by grep; two are a policy nobody enforces.</rationale>
+    </rule>
+
+    <rule id="r2-render-all-before-writing-any" testable="true" depth="essential">
+      <statement>Render every output into memory first, then write. No output touches disk until all of them exist.</statement>
+      <rationale>A converter failure on page 14 of 20 left 13 pages rewritten, 7 stale, and the service worker's precache carrying its old hash — so installed clients went on serving the old copies of exactly the pages that had changed. Atomicity here is not tidiness; it is the difference between a failed build and a half-published site.</rationale>
+    </rule>
+
+    <rule id="r3-generator-stderr-and-short-bodies-are-fatal" testable="true" depth="essential">
+      <statement>Treat any output on the external converter's stderr as fatal, and treat a suspiciously short rendered body (a threshold of a couple of hundred characters works) as fatal too.</statement>
+      <rationale>An emptied source produced a valid-looking page: header, navigation, pager, and no content. Nothing failed, nothing was empty enough to notice, and the page shipped. A length floor is the cheapest detector of a source that silently produced nothing.</rationale>
+    </rule>
+
+    <rule id="r4-pin-the-markup-flavour" testable="true" depth="essential">
+      <statement>Pin the converter's input flavour explicitly and disable extensions you do not want, by name — e.g. `gfm-tex_math_dollars` rather than a bare `gfm` or the default.</statement>
+      <rationale>With TeX math enabled, `$14.1M` is read as the opening of a formula and the prose after it is swallowed into an inline-math span. Five pages shipped that way before anyone looked at the rendered output rather than the source. Defaults change between converter versions; the flavour string is the only thing that does not.</rationale>
+    </rule>
+
+    <rule id="r5-unmapped-source-fails-by-name" testable="true" depth="essential">
+      <statement>Keep an explicit list of sources that live in the source directory on purpose and are NOT built. Anything else missing from the site map fails the build, naming the file.</statement>
+      <rationale>Without it, an unmapped source vanishes: no error, no output, and no way to tell "deliberately unpublished" from "forgotten". The explicit list converts an invisible omission into a build failure that says which file and lets the deliberate case be declared once.</rationale>
+    </rule>
+
+    <rule id="r6-check-is-a-separate-mode" testable="true" depth="essential">
+      <statement>Implement `--check` as a mode that renders everything and compares with disk, writing nothing. Never assert drift after the build has run in the same process.</statement>
+      <rationale>The build REPAIRS drift — it rewrites the shared head block into hand-edited pages, restamps URLs, regenerates derived files. By the time a post-write assertion runs there is nothing left to catch, so building and then checking always passes and proves nothing.</rationale>
+    </rule>
+
+    <rule id="r7-split-the-check-by-determinism" testable="true" depth="essential">
+      <statement>Split `--check` into the part that depends on an external toolchain and the part that does not. Gate CI on the deterministic part; run the full check locally as a pre-push gate.</statement>
+      <rationale>A full re-render through an external converter is only meaningful on a machine whose converter version matches the one that built the repo. On a CI runner every generated page came back "stale" while passing on every developer machine — a gate that fails for a reason unrelated to the change gets disabled within a week. The deterministic half (stamps, derived lists, generated manifests) is pure and catches the failure that actually keeps reaching production.</rationale>
+    </rule>
+
+    <rule id="r8-measurements-are-generated-never-transcribed" testable="true" depth="essential">
+      <statement>Any number that appears in generated output — item counts, sizes, totals — is read from the built artefact at build time. Never typed into a template or a string literal.</statement>
+      <rationale>A page advertised "a bank of 353" for as long as the bank had held 442 items. That was the third stale literal found in one project. A transcribed measurement is correct exactly once, and nothing ever re-checks it.</rationale>
+    </rule>
+
+    <rule id="r9-explicit-encoding-and-newline-on-every-write" testable="true" depth="extended">
+      <statement>Open every output file with an explicit encoding and an explicit newline translation. Do not rely on locale defaults.</statement>
+      <rationale>Without them the generator builds correctly on the author's machine and either dies or mojibakes every non-ASCII character under a CI runner with a C locale — a diff that looks like content corruption and is really an unset environment variable.</rationale>
+    </rule>
+
+    <rule id="r10-no-comment-may-claim-a-test-exists" testable="true" depth="essential">
+      <statement>If a comment says an assertion is covered elsewhere, verify the file exists and the assertion is in it; otherwise move the assertion into the generator as a post-write verification step.</statement>
+      <rationale>A comment named a test file asserting that every entry point carried the shared head block. That file had never been written. The blocks happened to match, so the next hand-edit would have silently disabled a whole subsystem on one page with nothing going red. A claim about coverage is not coverage.</rationale>
+    </rule>
+
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>Autoescape on with one audited exception, render-all-then-write, stderr and short bodies fatal, flavour pinned, unmapped sources named, `--check` separate and split by determinism, measurements generated, writes explicit, no comment claiming absent coverage.</statement>
+      <rationale>Aggregate conclusion for the positive branch.</rationale>
+    </rule>
+
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>There is no generator — the artefact is authored directly — or the generator produces a single file with no external converter and no derived indexes.</statement>
+      <rationale>Aggregate conclusion for the negative branch.</rationale>
+    </rule>
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml">The observable guarantees a compliant build run must satisfy, and what `--check` may and may not do.</link>
+  </see-also>
+</text>

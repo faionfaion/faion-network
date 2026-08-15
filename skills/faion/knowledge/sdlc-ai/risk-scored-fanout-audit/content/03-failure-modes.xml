@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="Risk-Scored Fan-Out Audit — Failure Modes" version="1.0.0" est_tokens="950" depth="essential">
+  <summary>Seven antipatterns that turn a multi-agent audit into a confident, expensive fiction, each observed in a real run.</summary>
+
+  <section title="Antipatterns">
+    <antipattern id="ap-01-schema-validated-return-unvalidated-file">
+      <description>Trusting a field name because the agent's returned value was schema-validated, while the artefact the agent WROTE to disk used a different name.</description>
+      <reason>Only the value crossing the tool boundary is checked. Agents drift when writing files: one run produced `judgment` where the contract said `verdict`, and those rows disappeared from every tally with no error raised anywhere. Read defensively — `verdict || judgment || decision || assessment`, then a `PARSE_ERROR` sentinel — and count the fallbacks so silent loss becomes visible loss.</reason>
+    </antipattern>
+
+    <antipattern id="ap-02-one-pass-audit">
+      <description>A single triage pass whose output goes straight to a human.</description>
+      <reason>Triage is tuned for recall, so it produces plausible-but-wrong findings at a steady rate, and each one costs a human the full price of investigating it. The refute pass exists to kill those before they are read, and it is cheap because it only runs on the flagged minority.</reason>
+    </antipattern>
+
+    <antipattern id="ap-03-check-instead-of-refute">
+      <description>Prompting the second pass with "verify this finding" or "check whether the key is right".</description>
+      <reason>An agent asked to check agrees with what it is shown. The stance has to be adversarial and explicit — try to refute this, default to "the original stands", only overturn on positive evidence — or the second pass is an expensive echo of the first.</reason>
+    </antipattern>
+
+    <antipattern id="ap-04-evidence-floor-as-a-prompt-instruction">
+      <description>Telling agents "never report a finding without evidence" and treating that as the anti-hallucination control.</description>
+      <reason>An instruction is not a control. The floor has to be arithmetic in the aggregator: adverse verdict with empty or `"none"` evidence is downgraded, unconditionally, after the fact. A prompt that asks for evidence gets evidence-shaped text; a downgrade rule gets truth.</reason>
+    </antipattern>
+
+    <antipattern id="ap-05-auto-apply-because-the-diff-is-small">
+      <description>Applying high-confidence findings automatically, or offering an `--apply` flag "for the obvious ones".</description>
+      <reason>Adverse verdicts are the output class most likely to be wrong, and applying them at scale is precisely the failure the audit was commissioned to prevent. The proposal set costs nothing to reject; a wrongly applied batch costs a re-audit plus the trust.</reason>
+    </antipattern>
+
+    <antipattern id="ap-06-fan-out-before-the-mapping-is-checked">
+      <description>Generating the manifest and immediately launching the waves, trusting the item-to-source mapping.</description>
+      <reason>The mapping is the load-bearing part: a wrong chapter or file reference sends a verifier to evidence that has nothing to do with the item, and it will still return a well-formed, confident verdict. Hand spot-check a handful of rows before spending a wave, and count unmapped rows explicitly in the manifest summary.</reason>
+    </antipattern>
+
+    <antipattern id="ap-07-uniform-waves">
+      <description>Slicing the corpus into equal batches in id order and processing them front to back.</description>
+      <reason>It spends the same money on the safest items as on the riskiest, and it gives the owner no place to stop. Risk-first ordering puts the reconstructed, uncited and unclassified items in wave one, so the first invoice buys the highest density of real defects and every later wave is an explicit decision.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Cheap symptoms worth memorising">
+    <list>
+      <item>A verdict tally that does not reconcile to the corpus count — items were lost between manifest, fan-out and merge; look for field drift first.</item>
+      <item>A wave in which almost nothing is flagged — the triage prompt is agreeing, not triaging.</item>
+      <item>A wave in which almost everything is flagged — the suspect bar is too low, and the refute pass is about to cost more than the triage did.</item>
+      <item>Refuter notes that paraphrase the triage note — the refuters were shown the finding's reasoning instead of the item and its source.</item>
+      <item>A pile of `UNVERIFIABLE` — this is a deliverable, not a defect in the audit: it is the list of items to source or retire.</item>
+    </list>
+  </section>
+</text>

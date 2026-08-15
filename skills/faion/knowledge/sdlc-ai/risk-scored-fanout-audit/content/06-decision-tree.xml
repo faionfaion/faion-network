@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Risk-Scored Fan-Out Audit — Decision Tree" version="1.0.0" est_tokens="750" depth="essential">
+  <summary>First gate: does the corpus exceed one context AND does ground truth exist to check it against? Both must hold, or this is the wrong shape. After that, each branch names the missing part of the pipeline.</summary>
+  <decision-tree>
+    <root-question id="q-too-big-and-checkable">Is the corpus too large for one context to read, and does a source of truth exist that individual items can be checked against?</root-question>
+
+    <branch when="corpus_fits_in_one_context == true">
+      <conclusion ref="skip-this-methodology" verdict="Skip the fan-out. One reviewer with the whole corpus in context beats a manifest, a merge and a drift normaliser. Keep only the evidence floor and the no-auto-apply rule — those are cheap and they still apply."/>
+    </branch>
+
+    <branch when="ground_truth_source_exists == false">
+      <conclusion ref="r10-unverifiable-is-a-result" verdict="Do not run a correctness audit. Every verdict would be UNVERIFIABLE, which you can determine for free. Run a coverage or consistency audit instead, or source the corpus first."/>
+    </branch>
+
+    <branch when="findings_would_be_applied_automatically == true">
+      <conclusion ref="r6-never-auto-apply" verdict="STOP and fix the governance before building the pipeline. An audit with an apply path is a rewrite engine, and adverse verdicts are its least reliable output."/>
+    </branch>
+
+    <branch when="work_manifest_exists == false">
+      <conclusion ref="r1-scout-before-agents" verdict="Write the scout first: deterministic, local, no agents. One row per live item with id, slice, risk, wave and the single source path that item may open. Spot-check a handful of source mappings by hand before any fan-out."/>
+    </branch>
+
+    <branch when="waves_ordered_by_id_or_equal_size == true">
+      <conclusion ref="r2-risk-first-waves" verdict="Re-order by risk. Score on observable signals — no provenance, no citation, unclassified, compound answer, draft — and put the worst wave first so the owner can stop after any wave with the best findings already bought."/>
+    </branch>
+
+    <branch when="second_pass_missing == true OR second_pass_stance != 'refute'">
+      <conclusion ref="r4-triage-then-adversarial-refute" verdict="Add the adversarial pass over `suspect === true` only, prompted to REFUTE and to default to 'the original stands'. A 'verify' or 'double-check' stance produces agreement, not scrutiny."/>
+    </branch>
+
+    <branch when="refuter_count &gt; 1 AND tie_break_rule != 'ambiguous'">
+      <conclusion ref="r5-disagreement-is-ambiguous" verdict="Resolve splits to AMBIGUOUS carrying every refuter note. A 2-1 split is information about the item; collapsing it into the majority verdict manufactures certainty the run does not have."/>
+    </branch>
+
+    <branch when="evidence_floor_enforced_in_prompt_only == true">
+      <conclusion ref="r3-evidence-or-downgrade" verdict="Move the floor into the aggregator: adverse verdict with empty or 'none' evidence is downgraded to AMBIGUOUS, unconditionally, after the fact. An instruction in a prompt is not a control."/>
+    </branch>
+
+    <branch when="aggregator_reads_verdict_field_directly == true">
+      <conclusion ref="r7-normalise-field-drift-on-read" verdict="Add the normaliser — verdict || judgment || decision || assessment, then a PARSE_ERROR sentinel — and count the fallbacks. Agents drift the schema when writing files even when the returned value validated."/>
+    </branch>
+
+    <branch when="first_wave_complete == true AND calibration_sample_taken == false">
+      <conclusion ref="r8-calibrate-before-the-bulk" verdict="Hand-verify about ten flagged items before paying for the remaining waves. Under roughly 80% real flags, tighten the triage prompt or raise the suspect bar and re-run this wave."/>
+    </branch>
+
+    <branch when="report_counts_typed_by_hand == true">
+      <conclusion ref="r9-machine-compute-every-count" verdict="Compute every number in the aggregator and reconcile the total against the corpus count. A tally that does not reconcile is the first symptom of field drift."/>
+    </branch>
+
+    <branch when="all_gates_true == true">
+      <conclusion ref="run-the-checklist" verdict="Run wave one, aggregate, calibrate, then decide about wave two. Present findings as proposals; edit nothing."/>
+    </branch>
+
+    <example trace="corpus of 1460 items, cited sources exist, no manifest yet -> r1-scout-before-agents"/>
+  </decision-tree>
+</text>

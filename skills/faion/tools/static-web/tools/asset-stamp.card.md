@@ -4,7 +4,9 @@
 Appends each static asset's own content hash to the URL the HTML emits, so a CDN edge holding an
 `immutable` copy is forced to fetch the new bytes while unchanged assets keep their URL and stay
 cached. Use it as the last build step, and in `--check` mode as a CI gate that fails when a page
-still points at an unstamped or stale asset.
+still points at an unstamped or stale asset. It implements the first lever of the
+`cdn-fronted-static-deploy` methodology, which carries the measured incident behind it and the
+service-worker and rsync rules this tool does not cover.
 
 ## Invoke
 ```

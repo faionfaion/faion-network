@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Three methodologies harvested from a sibling product, where the
+  evidence is measured rather than researched.** `infra/cdn-fronted-static-deploy`,
+  `sdlc-ai/risk-scored-fanout-audit`, `dev/build-generator-discipline`.
+
+  The first carries its incident numbers intact — 2026-07-28, 735 bytes
+  served against 10,487 at origin, `cf-cache-status: HIT`, `age: 280134`,
+  `/sw.js` 7.7 hours stale, 960 `.venv` files shipped by an exclude-list
+  rsync — and writes that incident out twice as a *failing artefact*: once
+  as the bad example in `02-output-contract.xml`, once as a validator
+  fixture. The rule is executable, not narrated. It pairs with the
+  `asset-stamp` tool, which implements its first lever; both now link to
+  each other.
+
+  Two of the three ship a validator with fixtures (7 and 12); the third
+  deliberately declares **no** `<schema>`, because its artefact is a tree of
+  files rather than a JSON document, and a mandatory-but-fake validator is
+  worse than none.
+
+  One claim from the brief could not be corroborated in the source — that a
+  default `urllib` User-Agent draws a 403 from the CDN. It is kept as an
+  operational note in its own `<rationale>` rather than stated as a measured
+  constant, because everything else in that file is a number that came out
+  of a file.
+
+  Not harvested, and why: the source's subject-matter corpus is third-party
+  copyrighted certification material and is off-limits in any form,
+  including as a test fixture; the audit scripts' risk weights are bound to
+  one dataset's field names, so the transferable part is the policy, which
+  is now two rules; and a genuinely interesting dependency-surface-freezing
+  technique was left out rather than smuggled into a build-discipline file
+  where it does not belong.
+
 - **Four new tool packs: `cloudflare/` (solo), `github-ci/` (pro),
   `web-parse/` (solo), `browser/` (free).** Nine tools, all stdlib, all
   carded, all self-tested — 146 self-test checks across the pack, `0`

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-output-contract" title="Edge Freshness Report — Output Contract" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>The artefact this methodology produces: an edge-freshness report that records, per probed URL, what the CDN actually served next to what the origin holds, plus the three build-side gates — machine-checkable by the bundled validator.</summary>
+
+  <section title="Why an artefact at all">
+    <p>A green pipeline is not evidence. The report exists so the claim "the deploy is live" is backed by a response the edge produced, with its status, its age and its byte count recorded next to the origin's. Anything the build asserts about itself (stamping, allow-list, worker version) is a gate flag; anything about the edge is a probe.</p>
+  </section>
+
+  <section title="JSON Schema">
+    <schema format="json-schema-draft-07" filename="edge-freshness-report.json">
+      <code lang="json"><![CDATA[
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://faion.net/schemas/cdn-fronted-static-deploy.json",
+  "type": "object",
+  "required": ["artefact_id", "generated", "site", "probes", "gates", "verdict"],
+  "properties": {
+    "artefact_id": {"type": "string", "minLength": 3},
+    "generated": {"type": "string", "format": "date"},
+    "site": {"type": "string", "minLength": 3},
+    "max_age_budget_seconds": {"type": "integer", "minimum": 0},
+    "probes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["url", "edge_status", "edge_bytes", "origin_bytes", "verdict"],
+        "properties": {
+          "url": {"type": "string", "pattern": "^/"},
+          "edge_status": {"type": "string", "enum": ["HIT", "MISS", "DYNAMIC", "EXPIRED", "BYPASS", "UNKNOWN"]},
+          "edge_age_seconds": {"type": "integer", "minimum": 0},
+          "edge_bytes": {"type": "integer", "minimum": 0},
+          "origin_bytes": {"type": "integer", "minimum": 0},
+          "stamped": {"type": "boolean"},
+          "verdict": {"type": "string", "enum": ["FRESH", "STALE", "UNVERIFIED"]},
+          "note": {"type": "string"}
+        }
+      }
+    },
+    "gates": {
+      "type": "object",
+      "required": ["asset_stamp_check", "deploy_allow_list", "sw_registration_versioned"],
+      "properties": {
+        "asset_stamp_check": {"type": "boolean"},
+        "deploy_allow_list": {"type": "boolean"},
+        "sw_registration_versioned": {"type": "boolean"},
+        "navigations_network_first": {"type": "boolean"}
+      }
+    },
+    "verdict": {"type": "string", "enum": ["PASS", "FAIL"]}
+  }
+}
+]]></code>
+    </schema>
+    <reference path="templates/edge-freshness-report.json">Filled example of the artefact, safe to copy as a starting shape.</reference>
+    <reference path="scripts/validate-cdn-fronted-static-deploy.py">Stdlib validator for the artefact; enforces the forbidden patterns below.</reference>
+  </section>
+
+  <section title="Forbidden patterns">
+    <list>
+      <item>f1 — a probe with `verdict: FRESH` whose `edge_bytes` differs from `origin_bytes`. That is the exact 735-vs-10 487 shape the methodology exists for; byte disagreement outranks any self-report.</item>
+      <item>f2 — a probe with `verdict: FRESH`, `edge_status: HIT` and `edge_age_seconds` above `max_age_budget_seconds`. An old HIT is stale until proven otherwise.</item>
+      <item>f3 — a probe on a path under `/assets/` with `stamped: false`. An unstamped asset URL means r1 was never applied to it.</item>
+      <item>f4 — `verdict: PASS` while any gate is false or any probe is `STALE`. The report may record a failure; it may not round it up.</item>
+      <item>f5 — `site` containing a bare IPv4 literal or an `ssh`-style `user@host:port` string. Probe the public name; identifiers do not belong in a committed artefact.</item>
+      <item>f6 — a probe with `edge_status: UNKNOWN` and `verdict: FRESH`. Unknown is `UNVERIFIED`, never a pass.</item>
+    </list>
+  </section>
+
+  <example type="good">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "release-2026-08-15-edge-probe",
+  "generated": "2026-08-15",
+  "site": "example.test",
+  "max_age_budget_seconds": 300,
+  "probes": [
+    {"url": "/assets/js/main.js?v=9f21c0ab41", "edge_status": "MISS",
+     "edge_age_seconds": 0, "edge_bytes": 10487, "origin_bytes": 10487,
+     "stamped": true, "verdict": "FRESH"},
+    {"url": "/index.html", "edge_status": "DYNAMIC", "edge_age_seconds": 0,
+     "edge_bytes": 24310, "origin_bytes": 24310, "stamped": true, "verdict": "FRESH"}
+  ],
+  "gates": {"asset_stamp_check": true, "deploy_allow_list": true,
+            "sw_registration_versioned": true, "navigations_network_first": true},
+  "verdict": "PASS"
+}
+]]></code>
+  </example>
+
+  <example type="bad">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "release-probe",
+  "generated": "2026-07-28",
+  "site": "203.0.113.10",
+  "max_age_budget_seconds": 300,
+  "probes": [
+    {"url": "/assets/js/main.js", "edge_status": "HIT", "edge_age_seconds": 280134,
+     "edge_bytes": 735, "origin_bytes": 10487, "stamped": false, "verdict": "FRESH"}
+  ],
+  "gates": {"asset_stamp_check": false, "deploy_allow_list": true,
+            "sw_registration_versioned": false},
+  "verdict": "PASS"
+}
+]]></code>
+    <note>Five violations: f1 (735 vs 10 487 called FRESH), f2 (HIT aged 280 134 s against a 300 s budget), f3 (unstamped asset path), f4 (PASS over two false gates), f5 (an address where the public name belongs). This is the measured 2026-07-28 incident written out as an artefact — every field the pipeline never looked at.</note>
+  </example>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Every probed asset URL carries a `?v=` stamp.</item>
+      <item>edge_bytes equals origin_bytes on every FRESH probe.</item>
+      <item>No FRESH probe is an aged HIT.</item>
+      <item>All three required gates are true before `verdict: PASS`.</item>
+      <item>`site` is a public hostname, not an address or a connection string.</item>
+    </list>
+  </section>
+</text>
