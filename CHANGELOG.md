@@ -4,6 +4,44 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **The playbook generation stamps were one defect, not two, and the nesting is
+  exact.** 167 playbooks had `<intent>` byte-identical to `<scope>`; 83 had
+  *every* success criterion boilerplate; 31 named the tooling. `allboiler − same
+  = 0` and `tooling ⊂ allboiler` — so this was never a 443-document sweep, it
+  was the innermost ring of one bad generator run.
+
+  | | Before | After |
+  |---|--:|--:|
+  | `intent` == `scope` | 167 | **0** |
+  | criterion repeat rate | **43%** | **4%** |
+  | playbooks carrying a stamp | 133 | **22** |
+
+  **The "is `<intent>` redundant with `<scope>`?" question was answered no, and
+  there is an authority for it.** `playbooks/taxonomy.xml` uses the two
+  distinctly — intent is the transformation and what the output *is*, scope is
+  an enumeration of covered situations — and `validate-playbook-taxonomy.py`
+  requires both. So 167 intents were written rather than a tag dropped from the
+  schema. Worth recording because the cheaper answer was available and wrong.
+
+  Frequency alone does not separate a stamp from a real criterion: `Target &
+  list stage complete: Prospect list (30 rows) in CRM` is corpus-unique and pure
+  stamp. The rule that works is **pattern + sharing**, which correctly spares
+  domain uses of the same words (`Documented funnel stages with conversion
+  rates`).
+
+  **22 playbooks keep their stamped criteria deliberately, and they are the
+  deepest defect in the corpus — named by neither original ticket.** Their
+  `<intent>` was polished by an earlier commit, which *masked* the problem
+  rather than fixing it: the entire body is one generic skeleton
+  (Scope/Discovery/Plan/Execute/Verify), tasks read `Restate the <stage> outcome
+  in one sentence`, every output is `<X> artefact (written, signed off)`, and
+  only the `<ref>` slugs differ. There is nothing in them to ground a real
+  criterion in, so writing one would be invention.
+
+  Also surfaced, not fixed: **66 `<scope>` elements are hard-wrapped mid-word**
+  (`def\nensively`, `senior d\nev`). Whitespace-collapsing consumers survive;
+  anything else renders corruption.
+
 - **CR-009 closed: 97 ambiguous slugs down to 19, and the 19 are decisions, not
   leftovers.** 77 resolved merge-then-archive, 0 undecided. Corpus 2,601 to
   2,520. Execution record appended to the CR itself, including the four claims
