@@ -47,10 +47,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules (JSON output, correlation_id everywhere, level discipline, no PII in logs, single redaction pipeline, no print statements) | 900 |
+| `content/01-core-rules.xml` | essential | 8 testable rules (JSON output, correlation_id everywhere, level discipline, no PII in logs, single redaction pipeline, no print statements, egress perf fields, log-volume budget) | 1200 |
 | `content/02-output-contract.xml` | essential | JSON Schema for logging module spec + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
-| `content/04-procedure.xml` | essential | 5-step procedure: pick library → middleware → redaction → level audit → aggregator | 800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 7-step procedure: pick library → middleware → redaction → level audit → egress perf fields → volume budget → aggregator | 1000 |
+| `content/05-examples.xml` | reference | Worked trace from printf logs to the validated artefact, with before/after call sites | 700 |
 | `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
@@ -60,6 +61,7 @@
 | `middleware_wiring` | sonnet | Plug correlation_id into request context. |
 | `redaction_rules` | sonnet | Field-list-driven redaction pipeline. |
 | `level_audit` | sonnet | Walk existing log calls; reclassify by contract. |
+| `volume_budget` | haiku | Count lines per second per call site; mechanical. |
 
 ## Templates
 
@@ -67,6 +69,8 @@
 |------|---------|
 | `templates/structlog-config.py` | structlog (Python) config with JSON renderer + processors |
 | `templates/request-middleware.py` | Middleware: bind correlation_id + request context |
+| `templates/redaction-patterns.py` | Value-level PII regexes (email / phone / card-like), applied recursively inside the one pipeline |
+| `templates/stdlib-json-logger.py` | stdlib-only JSON logger with request_id ContextVar, for services that cannot add structlog |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

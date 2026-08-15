@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="pnpm Package Management Failure Modes" version="2.0.0" est_tokens="800" depth="essential">
+  <summary>5 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+
+  <section title="Antipatterns">
+
+    <antipattern id="shameful-hoist-as-quick-fix" severity="high">
+      <symptom>Author hit 'module not found' for a native add-on or bundler plugin and set shamefully-hoist=true to make it green.</symptom>
+      <root-cause source="field experience">Agent defaults to the most permissive setting; never auditioned the real cause (missing direct dep).</root-cause>
+      <fix>Revert shamefully-hoist=true. Add the missing package as an explicit dependency. Only fall back to node-linker=hoisted with an inline comment + linked issue.</fix>
+    </antipattern>
+    <antipattern id="mixed-npm-yarn-pnpm" severity="high">
+      <symptom>Repo has both package-lock.json and pnpm-lock.yaml; CI sometimes installs one, sometimes the other.</symptom>
+      <root-cause source="field experience">No preinstall guard; team members ran npm install in the wrong checkout.</root-cause>
+      <fix>Add "preinstall": "npx -y only-allow pnpm" to package.json scripts. Delete package-lock.json. Commit pnpm-lock.yaml as the single source of truth.</fix>
+    </antipattern>
+    <antipattern id="no-frozen-lockfile-in-ci" severity="high">
+      <symptom>CI passes locally but lockfile silently drifts; production behaviour differs from dev.</symptom>
+      <root-cause source="field experience">CI runs pnpm install without --frozen-lockfile; minor version drift accumulates.</root-cause>
+      <fix>Hard-code --frozen-lockfile in the CI install step. Run pnpm install locally first when adding deps; commit the lockfile.</fix>
+    </antipattern>
+    <antipattern id="patch-without-package-json" severity="medium">
+      <symptom>After pnpm patch, only the patch file is committed; the patch is silently ignored at install time.</symptom>
+      <root-cause source="field experience">Author forgot pnpm.patchedDependencies block in package.json.</root-cause>
+      <fix>Always run pnpm patch-commit immediately after pnpm patch. Commit both the patch file and the package.json block atomically.</fix>
+    </antipattern>
+    <antipattern id="no-pinned-package-manager" severity="medium">
+      <symptom>Lockfile reshuffles between commits for no semantic reason.</symptom>
+      <root-cause source="field experience">Different developers run different pnpm majors; corepack resolves to latest.</root-cause>
+      <fix>Add "packageManager": "pnpm@&lt;x.y.z&gt;" to root package.json. Enable corepack on all machines.</fix>
+    </antipattern>
+
+  </section>
+</text>

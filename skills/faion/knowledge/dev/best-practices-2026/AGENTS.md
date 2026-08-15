@@ -6,7 +6,7 @@
 
 **One-paragraph:** Produces a versioned snapshot of current-stable best practices for the dominant 2026 stack (AI-assisted coding with Copilot/Cursor/Claude Code, TypeScript 5 strict, React 19 + Next 15, Python 3.12-3.13, AI testing) extracted into a project-local `constitution.md` so downstream agents cite a stable, project-specific contract — not this drifting reference.
 
-**Ефективно для:** старту нового проєкту або щоквартального оновлення `constitution.md` чинного.
+**Ефективно для:** старту нового проєкту, аудиту чинного за зваженою рубрикою, або щоквартального оновлення `constitution.md`.
 
 ## Applies If (ALL must hold)
 
@@ -38,10 +38,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 8 rules: AI tool matching, prompt structure, no auto-accept on auth/data, TS strict flags, React 19 patterns, Python 3.12+ baseline, AI testing baseline, snapshot+drift cadence | ~1200 |
+| `content/01-core-rules.xml` | essential | 13 rules: AI tool matching, prompt structure, no auto-accept on auth/data, TS strict flags, React 19 patterns, Python 3.12+ baseline, ruff + mypy --strict, uv lockfile, pre-commit gate, `.aidocs/` scaffold, AI testing baseline, snapshot+drift cadence, applicability skip gate | ~1900 |
 | `content/02-output-contract.xml` | essential | Schema for the constitution snapshot record (stack versions, rule citations, drift-scan date) | ~700 |
-| `content/03-failure-modes.xml` | essential | 6 antipatterns: auto-accept on auth, single-tool monomania, stale snapshot, unstructured prompts, partial TS strict adoption, AI tests as oracle | ~900 |
-| `content/06-decision-tree.xml` | essential | When to extract vs cite vs deprecate a rule | ~300 |
+| `content/03-failure-modes.xml` | essential | 9 antipatterns: auto-accept on auth, single-tool monomania, stale snapshot, unstructured prompts, partial TS strict adoption, AI tests as oracle, raw pip in CI, no pre-commit, `strict: false` from an old template | ~1200 |
+| `content/04-procedure.xml` | essential | 5-step audit: detect stack → score each rule → prioritise by weight x blast radius → one fix per PR → extract and lock the baseline | ~900 |
+| `content/06-decision-tree.xml` | essential | When to extract vs cite vs deprecate a rule, plus the skip-the-methodology leaf | ~350 |
 
 ## Task Routing
 
@@ -57,6 +58,8 @@
 |------|---------|
 | `templates/tsconfig-strict.json` | TypeScript 5 strict tsconfig with all recommended flags. |
 | `templates/bp2026-drift.sh` | Drift scanner: compares pinned stack versions in repo vs the 2026 baseline; prints a delta. |
+| `templates/rubric.json` | Weighted baseline rubric — one item per gating rule, with weight and acceptance criterion. |
+| `templates/audit-report.md` | Audit report skeleton: per-rule PASS/WARN/FAIL with evidence, remediation order, extraction record. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -74,7 +77,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Decision tree
 
-The mandatory tree at `content/06-decision-tree.xml` decides for each candidate rule whether to extract it into `constitution.md` (project-specific contract), cite it inline (keep this file as a reference), or deprecate it (aged out of current stack).
+The mandatory tree at `content/06-decision-tree.xml` decides for each candidate rule whether to extract it into `constitution.md` (project-specific contract), cite it inline (keep this file as a reference), or deprecate it (aged out of current stack). A skip leaf (`r13-skip-gate`) is always reachable: non-TS/Python stacks, sub-100-LOC repos and frozen legacy trees exit here.
 
 ## Template Contents
 
@@ -140,3 +143,14 @@ if [ -f "$root/pyproject.toml" ]; then
 fi
 exit $fail
 ```
+
+### `templates/rubric.json`
+
+Weighted rubric, one item per gating rule; see the file for the full body. Item ids are the rule ids
+of `content/01-core-rules.xml` (`r4-ts-strict-flags`, `r9-ruff-mypy-strict`, `r10-uv-lockfile`,
+`r11-pre-commit-gate`, `r12-aidocs-scaffold`, …), each with `weight` (1-5) and a `check` string.
+
+### `templates/audit-report.md`
+
+Markdown skeleton: a per-rule table (Rule / Status / Weight / Evidence / Remediation), a remediation
+order ordered by weight x blast radius, and a constitution-extraction record with the next drift-scan date.

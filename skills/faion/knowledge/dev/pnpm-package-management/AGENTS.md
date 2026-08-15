@@ -40,9 +40,10 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: packageManager pin, no shamefully-hoist, workspace:*, frozen-lockfile in CI, .pnpmfile.cjs for phantom deps | ~600 |
+| `content/01-core-rules.xml` | essential | 7 rules: packageManager pin, no shamefully-hoist (with the narrow node-linker escape), workspace:*, frozen-lockfile in CI, committed lockfile, `only-allow pnpm` preinstall guard, lockfile in its own commit | ~900 |
 | `content/02-output-contract.xml` | essential | Required files (package.json packageManager, .npmrc, .pnpmfile.cjs) + CI fields | ~500 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns: unpinned pnpm, shamefully-hoist=true, npm install in CI, missing lockfile | ~500 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: unpinned pnpm, shamefully-hoist=true, npm install in CI, missing lockfile, two lockfiles side by side, `pnpm patch` without `patch-commit` | ~700 |
+| `content/04-procedure.xml` | essential | 6-step conversion: audit → pin → .npmrc → block other managers → CI → validate | ~800 |
 | `content/06-decision-tree.xml` | essential | Root: "JS/TS project where pnpm is acceptable?" | ~400 |
 
 ## Task Routing
@@ -59,7 +60,9 @@
 |------|---------|
 | `templates/npmrc` | .npmrc with `engine-strict=true`, `strict-peer-dependencies=false` (or true if team accepts). |
 | `templates/pnpm-bootstrap.sh` | Bootstrap script — corepack enable + install + verify. |
-| `templates/gh-actions-ci.yml` | GitHub Actions CI with pnpm cache + frozen-lockfile. |
+| `templates/gh-actions-ci.yml` | GitHub Actions CI with pnpm cache + frozen-lockfile, plus the `--filter '...[origin/main]'` monorepo variant. |
+| `templates/dockerfile-pnpm` | Multi-stage Dockerfile using `pnpm fetch` so the dependency layer caches on the lockfile alone. |
+| `templates/pnpm-workspace.yaml` | Workspace definition for an apps / packages / tools layout. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -76,7 +79,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Decision tree
 
-The decision tree at `content/06-decision-tree.xml` filters: pnpm acceptable, corepack supported, lockfile commit acceptable.
+The decision tree at `content/06-decision-tree.xml` filters on pnpm acceptability and corepack support, then branches by repo shape: a publishing monorepo lands on the `workspace:*` rule (published via `pnpm publish`, never `npm publish`), and a repo with native add-ons lands on the hoisting rule and its narrow `node-linker=hoisted` escape.
 
 ## Template Contents
 

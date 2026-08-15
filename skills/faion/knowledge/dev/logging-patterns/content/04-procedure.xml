@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="04-procedure" title="Structured Logging Patterns Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>5-step procedure to apply logging-patterns end-to-end.</summary>
+  <summary>7-step procedure to apply logging-patterns end-to-end.</summary>
   <section title="Procedure">
     <step n="1" name="pick-library-and-config">
       <input>Language + library choice</input>
@@ -23,7 +23,18 @@
       <action>Walk each call. Reclassify per the contract: error/warn/info/debug. Remove duplicate logs (event logged at multiple layers).</action>
       <output>Level-audited code</output>
     </step>
-    <step n="5" name="ship-to-aggregator">
+    <step n="5" name="add-egress-perf-fields">
+      <input>Request / job egress hook</input>
+      <action>Attach `duration_ms`, `db_query_count` and `cache_hit_count` to every completion log line. Take the counts from the ORM / cache instrumentation, not from hand-maintained counters.</action>
+      <output>Egress lines carrying the three perf fields</output>
+    </step>
+    <step n="6" name="set-volume-budget">
+      <input>Current logs-per-second per service + sink ingest cap</input>
+      <action>Declare a per-service budget. Find loop-resident log calls and replace them with sampling (1 in N) or per-batch aggregates. Assert the budget in CI or as a runtime alarm.</action>
+      <output>Volume budget + sampled loops</output>
+      <decision-gate>If a loop genuinely needs per-iteration visibility, log at DEBUG and keep it off in production rather than sampling INFO.</decision-gate>
+    </step>
+    <step n="7" name="ship-to-aggregator">
       <input>Logger + aggregator endpoint</input>
       <action>Configure aggregator transport (HTTP, syslog, file scraper). Verify index schema matches JSON keys. Smoke test queries.</action>
       <output>Logs visible in aggregator</output>

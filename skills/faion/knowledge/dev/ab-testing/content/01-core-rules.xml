@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="A/B Testing Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 testable rules every A/B runtime must obey. Each rule pairs a binary check + sourced rationale.</summary>
+  <summary>12 testable rules every A/B experiment must obey — five binding the runtime that assigns and measures, seven binding the design that is registered before it launches and the decision taken after it closes.</summary>
 
   <section title="Rule set">
     <rule id="deterministic-hash" testable="true" depth="essential">
@@ -23,6 +23,43 @@
       <statement>Decision artefact MUST report Wilson 95% CI on the conversion-rate delta, not raw percentages. A point-estimate without CI is invalid.</statement>
       <rationale source="Wilson 1927 + modern stats engine output norms">Raw percentages hide variance; small samples can show "10% lift" with a CI spanning -5% to +25%, i.e. no decision possible.</rationale>
     </rule>
+    <rule id="preregistered-design" testable="true" depth="essential">
+      <statement>Hypothesis, primary metric, guardrail metrics and minimum detectable effect are written down and frozen BEFORE launch. Adjusting any of them after data starts arriving invalidates the experiment.</statement>
+      <rationale source="Kohavi, Tang, Xu — Trustworthy Online Controlled Experiments">Pre-registration is the only defence against moving the goalposts: with the metric chosen after the data is visible, some metric always wins, and the write-up is indistinguishable from an honest one.</rationale>
+      <reference path="templates/test-plan.md">Pre-registration plan: hypothesis, split, metrics, guardrails, sample size, timeline, risks.</reference>
+    </rule>
+
+    <rule id="sample-size-locked" testable="true" depth="essential">
+      <statement>Sample size is computed before launch from the baseline rate, the MDE, 80% power and 95% significance, and is never reduced once the experiment is running.</statement>
+      <rationale source="Optional-stopping bias literature">A fixed-horizon p-value checked continuously is not a p-value. Cutting the planned sample on a positive trend inflates the false-positive rate several-fold, and the effect that looked biggest is the one most likely to be noise.</rationale>
+      <reference path="templates/sample-size.py">Sample-size calculator for the two-proportion test.</reference>
+    </rule>
+
+    <rule id="full-business-cycle" testable="true" depth="essential">
+      <statement>An experiment runs for at least one full business cycle — two weeks minimum — even when the planned sample size is reached sooner.</statement>
+      <rationale source="Practitioner experience">Weekday and weekend populations behave differently, as do payday and pre-payday weeks. A three-day run that hit its sample measured whoever happened to be online on those three days, and that population is not the one the change ships to.</rationale>
+    </rule>
+
+    <rule id="guardrails-gate-the-ship" testable="true" depth="essential">
+      <statement>Guardrail metrics — revenue per session, error rate, latency, retention — are evaluated alongside the primary metric, and a regression on any guardrail blocks the ship regardless of how the primary metric moved.</statement>
+      <rationale source="Kohavi et al.">A local win that costs revenue is net-negative, and it ships anyway whenever guardrails are tracked but not gating. The gate has to be mechanical: a human reading a dashboard reliably discounts the number they did not want to see.</rationale>
+    </rule>
+
+    <rule id="segments-prespecified" testable="true" depth="essential">
+      <statement>Segment analyses are named in the pre-registration. A post-hoc segment slice requires a multiple-comparison correction and is reported as exploratory, never as a result.</statement>
+      <rationale source="Multiple-comparisons statistics">Slice any dataset finely enough and a significant segment appears by construction. Without correction, "it won for mobile users in Germany" is a description of the noise, not of the change.</rationale>
+    </rule>
+
+    <rule id="practical-significance-floor" testable="true" depth="essential">
+      <statement>A statistically significant result must also clear a pre-declared practical-significance floor (e.g. +0.5 percentage points absolute) before it ships.</statement>
+      <rationale source="Practitioner experience">With enough traffic every difference becomes significant. The floor is what separates a result worth the implementation and maintenance cost from one that merely cleared p &lt; 0.05.</rationale>
+    </rule>
+
+    <rule id="ship-needs-named-human" testable="true" depth="essential">
+      <statement>The analysis and its recommendation are advisory. A named human — PM or analyst — signs off before the ship, having reviewed the guardrails and the risk.</statement>
+      <rationale source="F-066 methodology DoD">The decision weighs organisation-specific risk tolerance and commitments that appear in no metric. An agent can compute the verdict; it cannot own the consequences of it.</rationale>
+    </rule>
+
   </section>
 
   <see-also>

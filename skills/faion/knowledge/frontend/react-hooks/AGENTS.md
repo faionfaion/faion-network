@@ -44,10 +44,10 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 6 testable rules: hook call order, effect cleanup, functional updater, dep array primitives, memoize after profiling, custom-hook contracts | ~1000 |
+| `content/01-core-rules.xml` | essential | 9 testable rules: hook call order, effect cleanup, no async effect body, functional updater, dep array primitives, memoize after profiling, derive-not-sync, ESLint gate at `error`, `use*` naming | ~1400 |
 | `content/02-output-contract.xml` | essential | JSON schema for the hooks-usage spec + valid/invalid examples | ~800 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns: stale closure, conditional hook, object-literal deps, over-memoization | ~700 |
-| `content/04-procedure.xml` | medium | 5 steps: classify state → pick hook → declare deps + cleanup → memoize-or-not → emit spec | ~600 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: stale closure, conditional hook, object-literal deps, over-memoization, sync-via-effect, exhaustive-deps left at `warn` | ~950 |
+| `content/04-procedure.xml` | medium | 6 steps: classify state → pick hook → declare deps + cleanup → memoize-or-not → emit spec → lock the lint gate | ~800 |
 | `content/05-examples.xml` | medium | One worked example: SearchBox feature with useState + useDebounce + useEffect + AbortController | ~500 |
 | `content/06-decision-tree.xml` | essential | Root: per state slice, which hook owns it? | ~200 |
 
@@ -58,6 +58,7 @@
 | `classify_state_slices` | haiku | Mechanical classification of slices into local/context/external. |
 | `emit_hooks_spec` | sonnet | Bounded transformation: spec assembly from inputs. |
 | `review_for_perf` | opus | Cross-checks memoization decisions against the profiling claim. |
+| `lock_lint_gate` | sonnet | Install the flat-config block, classify the existing violation set, sequence the fixes. |
 
 ## Templates
 
@@ -66,6 +67,7 @@
 | `templates/hooks-spec.json` | Reference output document for one feature module. |
 | `templates/useDebounce.ts` | Canonical custom hook with explicit return interface and cleanup. |
 | `templates/useFetch.ts` | useEffect + AbortController + Result type example. |
+| `templates/eslint-react-hooks.config.js` | Flat-config block setting `rules-of-hooks` and `exhaustive-deps` to `error` — the gate that keeps the codebase on the spec. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

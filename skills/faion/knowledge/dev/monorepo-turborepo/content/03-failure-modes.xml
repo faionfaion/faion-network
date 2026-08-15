@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="Monorepo with Turborepo Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns observed when applying monorepo-turborepo. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
+  <summary>6 antipatterns observed when applying monorepo-turborepo. Each pairs symptom + root cause + concrete fix keyed to the methodology.</summary>
   <section title="Antipatterns">
     <antipattern id="fm-mixed-package-manager" severity="high">
       <symptom>Repo has package-lock.json + pnpm-lock.yaml; developers install with whatever they have; transitive deps differ.</symptom>
@@ -21,6 +21,16 @@
       <symptom>Root scripts include `prebuild: pnpm -r run prebuild` that bypasses turbo; cache miss across the board.</symptom>
       <root-cause source="Practitioner experience">Author wanted finer control; bypassed pipeline.</root-cause>
       <fix>Migrate to a turbo task with proper dependsOn. Remove direct -r commands from root scripts.</fix>
+    </antipattern>
+    <antipattern id="fm-no-inputs-on-tasks" severity="high">
+      <symptom>A change in any package invalidates every cache entry; CI creeps toward 35 minutes even though the build is cached.</symptom>
+      <root-cause source="Turborepo caching docs">Tasks declare `outputs` but not `inputs`, so the cache key hashes the whole package — including files the task never reads.</root-cause>
+      <fix>Add `inputs` per task (`src/**`, `tsconfig.json`, `package.json`). Verify by touching a README and confirming the build still hits cache.</fix>
+    </antipattern>
+    <antipattern id="fm-relative-cross-package-import" severity="high">
+      <symptom>`import { Button } from "../../packages/ui/Button"` compiles locally, then serves stale output after `packages/ui` changes.</symptom>
+      <root-cause source="pnpm workspace protocol docs">The import bypasses the workspace protocol, so neither TypeScript project references nor the turbo graph record the dependency.</root-cause>
+      <fix>Replace with `@workspace/ui` and declare `workspace:*` in the importer's package.json. Add a lint rule banning `../` paths that escape the package root.</fix>
     </antipattern>
   </section>
 </text>

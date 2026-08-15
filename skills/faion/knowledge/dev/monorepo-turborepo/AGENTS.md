@@ -47,10 +47,10 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 testable rules (pnpm workspaces, turbo.json explicit pipeline, pinned versions, cache outputs declared, remote cache in CI, no top-level scripts that bypass turbo) | 900 |
+| `content/01-core-rules.xml` | essential | 11 testable rules (pnpm workspaces, explicit pipeline, pinned versions, cache outputs, remote cache in CI, no bypass scripts, two-tier layout, shared tsconfig base, per-task inputs, workspace-protocol imports, filtered CI matrix) | 1600 |
 | `content/02-output-contract.xml` | essential | JSON Schema for monorepo config spec + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
-| `content/04-procedure.xml` | essential | 5-step procedure: workspace init → turbo.json → pin versions → cache outputs → remote cache CI | 800 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom/root-cause/fix | 1000 |
+| `content/04-procedure.xml` | essential | 7-step procedure: workspace init → hoist shared configs → turbo.json → pin versions → cache inputs+outputs → remote cache CI → filtered CI matrix | 1100 |
 | `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
@@ -59,7 +59,8 @@
 |----------|-------|-----------|
 | `workspace_layout` | sonnet | Mechanical: pnpm-workspace.yaml + package layout. |
 | `pipeline_authoring` | opus | Task graph design (build/test/lint dependencies) needs synthesis. |
-| `cache_config` | sonnet | Declare outputs per task; verify cache hit rate. |
+| `cache_config` | sonnet | Declare inputs + outputs per task; verify cache hit rate. |
+| `import_migration` | sonnet | Rewrite relative cross-package imports to the workspace protocol. |
 | `remote_cache_ci` | sonnet | Wire TURBO_TOKEN + TURBO_TEAM env vars in CI. |
 
 ## Templates
@@ -67,7 +68,7 @@
 | File | Purpose |
 |------|---------|
 | `templates/pnpm-workspace.yaml` | pnpm workspace declaration |
-| `templates/turbo.json` | Turborepo pipeline config with cached outputs |
+| `templates/turbo.json` | Turborepo task graph with per-task `inputs` and cached `outputs` |
 | `templates/tsconfig-base.json` | Shared tsconfig referenced by package tsconfigs |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

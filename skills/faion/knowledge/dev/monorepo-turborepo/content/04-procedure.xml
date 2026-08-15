@@ -1,32 +1,43 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="04-procedure" title="Monorepo with Turborepo Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>5-step procedure to apply monorepo-turborepo end-to-end.</summary>
+  <summary>7-step procedure to apply monorepo-turborepo end-to-end.</summary>
   <section title="Procedure">
     <step n="1" name="initialise-workspace">
       <input>Package inventory + pnpm choice</input>
       <action>pnpm-workspace.yaml lists packages. Each package has its own package.json with `name` matching directory.</action>
       <output>Workspace scaffold</output>
     </step>
-    <step n="2" name="author-turbo-json">
+    <step n="2" name="hoist-shared-configs">
+      <input>Existing per-package tsconfig + eslint config</input>
+      <action>Hoist `tsconfig.base.json` and the eslint preset to the root; rewrite each package config to extend them. Replace every cross-package relative import with the workspace name and add the lint rule that keeps them out.</action>
+      <output>Shared config + workspace-protocol imports</output>
+      <decision-gate>If a package cannot compile under the base's strict flags, fix the package — do not relax the base and do not opt the package out.</decision-gate>
+    </step>
+    <step n="3" name="author-turbo-json">
       <input>Task list + dependency graph</input>
-      <action>Declare tasks (build, test, lint, dev) with dependsOn edges and outputs per task. Use `^build` for upstream package dependencies.</action>
+      <action>Declare tasks (build, test, lint, dev) with dependsOn edges, plus `inputs` and `outputs` per task. Use `^build` for upstream package dependencies.</action>
       <output>turbo.json</output>
     </step>
-    <step n="3" name="pin-versions">
+    <step n="4" name="pin-versions">
       <input>All workspace package.json files</input>
       <action>Replace `^X.Y.Z` with `X.Y.Z`. Add `packageManager: pnpm@X.Y.Z` to root package.json.</action>
       <output>Pinned deps</output>
       <decision-gate>If any dep cannot be pinned (transitive constraint), document and pin to a narrow range.</decision-gate>
     </step>
-    <step n="4" name="declare-cache-outputs">
+    <step n="5" name="declare-cache-inputs-and-outputs">
       <input>turbo.json + task list</input>
-      <action>For each task, declare outputs (dist/, .next/, etc). Run `turbo run build` twice; second run should be 100% cache hits.</action>
+      <action>For each task declare `outputs` (dist/, .next/, coverage/) and `inputs` (src/**, tsconfig.json, package.json). Run `turbo run build` twice — the second run should be 100% cache hits — then touch a README and confirm the build still hits cache, which is what proves `inputs` is right.</action>
       <output>Cache validated</output>
     </step>
-    <step n="5" name="wire-remote-cache-in-ci">
+    <step n="6" name="wire-remote-cache-in-ci">
       <input>CI provider + TURBO_TOKEN + TURBO_TEAM</input>
       <action>Add env vars to CI. Verify CI cache hits show in turbo summary. Confirm across PRs.</action>
       <output>Remote cache active</output>
+    </step>
+    <step n="7" name="scope-ci-matrix">
+      <input>CI workflow + package inventory</input>
+      <action>Convert the single CI job into a matrix scoped by `turbo --filter` to the packages the change touches. Confirm an unrelated package no longer appears in the run.</action>
+      <output>Filtered CI matrix</output>
     </step>
   </section>
 </text>

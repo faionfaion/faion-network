@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="React Hooks Audit Procedure" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>5-step procedure: install rules, scan, classify, fix, lock.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="install-lint">
+      <input>repo root with `package.json`</input>
+      <action>Install `eslint-plugin-react-hooks` (peer-dep on ESLint 8/9). Add `templates/eslint-react-hooks.config.js` block to `eslint.config.js`. Set both `rules-of-hooks` and `exhaustive-deps` to `error`.</action>
+      <output>updated `eslint.config.js`</output>
+    </step>
+
+    <step n="2" name="scan">
+      <input>configured ESLint</input>
+      <action>Run `eslint src --format json` and pipe to `scripts/parse-react-hooks-audit.js` (or jq) to produce a violations array conforming to the audit schema in 02-output-contract.xml.</action>
+      <output>audit JSON</output>
+    </step>
+
+    <step n="3" name="classify">
+      <input>audit JSON</input>
+      <action>For each violation: classify as one of {conditional-hook-call, stale-closure, sync-via-effect, cleanup-missing, memo-bloat}. Match against 03-failure-modes.xml.</action>
+      <output>classified-violations JSON</output>
+      <decision-gate>If &gt;100 violations: fix in priority order — high severity first; do not boil-the-ocean in one PR.</decision-gate>
+    </step>
+
+    <step n="4" name="fix">
+      <input>classified-violations + source files</input>
+      <action>For each violation apply the fix from 03-failure-modes.xml. Run unit tests after each component fix. For sync-via-effect: convert to direct derivation. For cleanup-missing: add return value. For exhaustive-deps: add deps OR wrap in `useRef`.</action>
+      <output>passing build, ESLint clean</output>
+    </step>
+
+    <step n="5" name="lock">
+      <input>green build</input>
+      <action>Add the ESLint config to pre-commit hook. Add an action in CI workflow to run `eslint --max-warnings 0`. Any future PR that re-introduces a violation fails the gate.</action>
+      <output>gate locked; new violations cannot land</output>
+    </step>
+
+  </section>
+</text>

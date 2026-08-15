@@ -1,12 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="06-decision-tree" title="A/B Testing Decision Tree" version="1.1.0" est_tokens="400" depth="essential">
-  <summary>Routes by power + SRM + significance to a rule in 01-core-rules.xml.</summary>
+  <summary>Routes by cycle length, power, SRM, significance, guardrails and practical significance to a rule in 01-core-rules.xml.</summary>
 
   <decision-tree>
     <root-question id="q-power">sample_size_achieved &gt;= planned_sample_size?</root-question>
 
     <branch when="sample_size_achieved &lt; planned_sample_size">
-      <conclusion ref="wilson-ci-not-percent" verdict="decision=invalid-underpowered; extend or kill (no ship)"/>
+      <conclusion ref="sample-size-locked" verdict="decision=invalid-underpowered; extend or kill (no ship). Never cut the planned sample on a positive trend"/>
+    </branch>
+
+    <branch when="elapsed_days &lt; 14">
+      <conclusion ref="full-business-cycle" verdict="decision=extend; the sample may be reached but the population is not representative until one full business cycle has run"/>
     </branch>
 
     <branch when="sample_size_achieved &gt;= planned_sample_size">
@@ -19,14 +23,20 @@
         <branch when="wilson_ci_low &lt;= 0">
           <conclusion ref="wilson-ci-not-percent" verdict="decision=kill or extend; CI spans zero"/>
         </branch>
-        <branch when="wilson_ci_low &gt; 0">
-          <conclusion ref="deterministic-hash" verdict="decision=ship; close flag + record artefact"/>
+        <branch when="wilson_ci_low &gt; 0 AND guardrail_regression == true">
+          <conclusion ref="guardrails-gate-the-ship" verdict="decision=kill; a guardrail regression blocks the ship regardless of the primary metric"/>
+        </branch>
+        <branch when="wilson_ci_low &gt; 0 AND guardrail_regression == false AND effect &lt; practical_floor">
+          <conclusion ref="practical-significance-floor" verdict="decision=kill; significant but below the declared practical floor — not worth the implementation and maintenance cost"/>
+        </branch>
+        <branch when="wilson_ci_low &gt; 0 AND guardrail_regression == false AND effect &gt;= practical_floor">
+          <conclusion ref="ship-needs-named-human" verdict="decision=ship pending the named human's sign-off; close flag + record artefact"/>
         </branch>
       </branch>
     </branch>
   </decision-tree>
 
   <example trace="exp-0142">
-    sample_size=24940 &gt;= 24000 → srm_chi_square_p=0.78 &gt;= 0.001 → wilson_ci_low=0.041 &gt; 0 → conclusion deterministic-hash → ship.
+    sample_size=24940 &gt;= 24000 → elapsed 17 days → srm_chi_square_p=0.78 &gt;= 0.001 → wilson_ci_low=0.041 &gt; 0 → guardrails flat → effect above the practical floor → conclusion ship-needs-named-human → ship on sign-off.
   </example>
 </text>

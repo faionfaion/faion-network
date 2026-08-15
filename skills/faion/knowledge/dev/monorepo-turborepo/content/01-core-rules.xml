@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="Monorepo with Turborepo Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>6 testable rules every Monorepo with Turborepo application must enforce. These are HARD rules — implementation expedience does not override them.</summary>
+  <summary>11 testable rules every Monorepo with Turborepo application must enforce. These are HARD rules — implementation expedience does not override them.</summary>
 
   <section title="Rule set">
 
@@ -32,6 +32,32 @@
     <rule id="r6-no-top-level-bypass-scripts" testable="true" depth="essential">
       <statement>package.json scripts at the root delegate to turbo (`"build": "turbo run build"`). Direct cross-package commands that bypass turbo are forbidden.</statement>
       <rationale source="Practitioner experience">Bypass scripts skip the pipeline + cache, producing inconsistent behaviour.</rationale>
+    </rule>
+
+    <rule id="r7-two-tier-layout" testable="true" depth="essential">
+      <statement>The workspace has two product tiers: `apps/*` for deployables and `packages/*` for libraries. A third top-level tier is allowed only for non-published build tooling (`tools/*`) and never for anything another package imports.</statement>
+      <rationale source="Turborepo workspace docs">Two tiers keep the dependency graph readable: everything in `apps/` is a leaf, everything in `packages/` is shared. Extra product tiers re-create the pre-monorepo question "where does this live?", which is the confusion the monorepo was adopted to remove.</rationale>
+    </rule>
+
+    <rule id="r8-shared-tsconfig-base" testable="true" depth="essential">
+      <statement>One `tsconfig.base.json` lives at the root with strict on, and every package's tsconfig extends it. Per-package compiler options are additive only — no package relaxes a strictness flag set in the base.</statement>
+      <rationale source="TypeScript project references guide">Per-package config drift defeats the central type-checking benefit of the monorepo: a package compiled under looser flags exports types the strict consumers then trust.</rationale>
+      <reference path="templates/tsconfig-base.json">Root base config every package extends.</reference>
+    </rule>
+
+    <rule id="r9-task-inputs-declared" testable="true" depth="essential">
+      <statement>Every task in `turbo.json` declares `inputs` as well as `outputs` (typically `src/**`, `tsconfig.json`, `package.json`). A task without `inputs` is a cache-key defect, not a style choice.</statement>
+      <rationale source="Turborepo caching docs">Without `inputs`, the hash covers the whole package, so editing a README invalidates the build of every dependent. `outputs` alone gives you a cache that stores correctly and restores almost never.</rationale>
+    </rule>
+
+    <rule id="r10-workspace-protocol-imports" testable="true" depth="essential">
+      <statement>Packages import each other by workspace name (`@workspace/ui`, declared `workspace:*`), never by relative path across package boundaries (`../../packages/ui`). A lint rule enforces this.</statement>
+      <rationale source="pnpm workspace protocol + Turborepo docs">A relative cross-package import is invisible to the dependency graph: TypeScript project references break, and turbo does not know the importer depends on the importee, so it serves a stale cache entry after the importee changes.</rationale>
+    </rule>
+
+    <rule id="r11-ci-matrix-filtered" testable="true" depth="essential">
+      <statement>CI runs as a matrix scoped by `turbo --filter` to the packages the change actually touches, rather than one job that builds everything.</statement>
+      <rationale source="GitHub Actions matrix + turbo --filter">A single job rebuilds the whole graph and serialises what the task graph says is parallel; the cost of that grows with package count exactly as the monorepo grows.</rationale>
     </rule>
 
     <rule id="run-the-checklist" testable="true" depth="essential">

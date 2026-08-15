@@ -47,10 +47,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules (no hardcoded strings, ICU MessageFormat for plurals, Intl for numbers/dates, logical CSS for RTL, pseudo-loc in CI) | 900 |
+| `content/01-core-rules.xml` | essential | 7 testable rules (no hardcoded strings, ICU MessageFormat for plurals, Intl for numbers/dates, logical CSS for RTL, pseudo-loc in CI, key-drift gate, explicit fallback chain) | 1200 |
 | `content/02-output-contract.xml` | essential | JSON Schema for i18n module spec + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix | 800 |
-| `content/04-procedure.xml` | essential | 5-step procedure: catalogue init → externalise strings → ICU patterns → RTL audit → pseudo-loc CI | 800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix | 900 |
+| `content/04-procedure.xml` | essential | 7-step procedure: catalogue init → externalise strings → ICU patterns → RTL audit → pseudo-loc CI → key-drift gate → translator handoff | 1000 |
+| `content/05-examples.xml` | reference | Worked trace of a three-locale RTL rollout, gate by gate, with the resulting artefact | 700 |
 | `content/06-decision-tree.xml` | essential | Routing tree → rule from 01-core-rules.xml | 500 |
 
 ## Task Routing
@@ -60,6 +61,7 @@
 | `string_externalisation` | sonnet | Mechanical: replace string literals with t() calls + keys. |
 | `icu_message_authoring` | sonnet | Convert hand-built plural strings to ICU. |
 | `rtl_audit` | sonnet | Walk CSS; replace physical (left/right) with logical (start/end). |
+| `key_drift_gate` | haiku | Set comparison across catalogues; mechanical. |
 | `pseudo_loc_pipeline` | sonnet | CI step: render pages with pseudo-loc; assert no truncation. |
 
 ## Templates
@@ -68,6 +70,8 @@
 |------|---------|
 | `templates/babel-cfg.ini` | Babel/extraction config for gettext-style flows |
 | `templates/pseudo-loc.py` | Pseudo-localization transformer for catalogue values |
+| `templates/key-drift-check.py` | CI gate: every base-locale key exists in every other catalogue (nested keys flattened) |
+| `templates/locale-base.json` | Base catalogue skeleton with ICU plural / currency / date / select patterns |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

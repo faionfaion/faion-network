@@ -46,10 +46,10 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules + sourced rationale | 1100 |
+| `content/01-core-rules.xml` | essential | 7 testable rules + sourced rationale: full 9-SC coverage, focus visible + not obscured, 24px target floor, non-cognitive auth alternative, consistent help, no redundant entry, delta from the 2.1 baseline | 1400 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 700 |
-| `content/04-procedure.xml` | essential | 5-step procedure end-to-end | 700 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom / root-cause / fix, incl. redundant form entry and a delta claimed with no 2.1 baseline | 950 |
+| `content/04-procedure.xml` | essential | 6-step procedure: import the 2.1 baseline → scope → automated → manual SC → compute overall → validate + CI gate | 850 |
 | `content/05-examples.xml` | essential | Worked example end-to-end | 500 |
 | `content/06-decision-tree.xml` | essential | Routes by observable signal to a rule from 01-core-rules.xml | 400 |
 

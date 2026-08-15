@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="react-hooks Core Rules" version="1.1.0" est_tokens="1000" depth="essential">
-  <summary>Six testable rules covering hook call order, effect cleanup, dependency arrays, and memoization. Each rule has a script-detectable signal.</summary>
+  <summary>Nine testable rules covering hook call order, effect cleanup, dependency arrays, derivation-over-sync, memoization, custom-hook naming, and the ESLint gate that blocks regressions. Each rule has a script-detectable signal.</summary>
 
   <section title="Rule set">
 
@@ -32,6 +32,22 @@
     <rule id="r6-memo-after-profile" testable="true" depth="essential">
       <statement>Apply useMemo / useCallback / React.memo only when (a) profiling demonstrates a re-render bottleneck, OR (b) the memoized value is consumed as a stable reference by an effect dep or a memoized child. Otherwise: do not memoize.</statement>
       <rationale source="react.dev + react-compiler-rfc">useMemo and useCallback add allocation + comparison overhead per render. Reflexive memoization makes the bundle slower, not faster. With React Compiler enabled, most cases auto-memoize.</rationale>
+    </rule>
+
+    <rule id="r7-derive-not-sync" testable="true" depth="essential">
+      <statement>If a value can be computed from props or other state during render, compute it inline. The pattern `useState(derived)` paired with `useEffect(() =&gt; setDerived(...), [deps])` is forbidden.</statement>
+      <rationale source="react.dev/learn/you-might-not-need-an-effect">Mirroring derivable state creates two sources of truth. The effect fires after render, so the stale value paints for one frame before the effect schedules a second render — and every future edit has to keep both copies in step.</rationale>
+    </rule>
+
+    <rule id="r8-eslint-gate-at-error" testable="true" depth="essential">
+      <statement>`react-hooks/rules-of-hooks` and `react-hooks/exhaustive-deps` are both set to `error`, never `warn`, and CI runs the linter with `--max-warnings 0`.</statement>
+      <rationale source="eslint-plugin-react-hooks docs">At `warn` the finding joins a backlog nobody reads, and the dep-array bugs it names are exactly the ones that reproduce only in production. At `error` the violation blocks the merge, which is the only level at which the rule changes behaviour.</rationale>
+      <reference path="templates/eslint-react-hooks.config.js">Flat-config block setting both rules to error.</reference>
+    </rule>
+
+    <rule id="r9-custom-hook-prefix" testable="true" depth="essential">
+      <statement>Every custom hook is named `use*` in camelCase, and only functions named `use*` may call other hooks.</statement>
+      <rationale source="react.dev — rules of hooks">The linter identifies hook call sites by name. A helper that calls hooks without the `use` prefix is invisible to `rules-of-hooks`, so it silently drops out of coverage — the rule keeps passing while the file it should be checking is unchecked.</rationale>
     </rule>
 
   </section>

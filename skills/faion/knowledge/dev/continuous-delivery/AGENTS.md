@@ -45,9 +45,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source + `skip-this-methodology` rule | ~1000 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source, incl. the four-prerequisite gate before pipeline YAML + `skip-this-methodology` | ~1200 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid + invalid + forbidden patterns | ~800 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns (symptom / root-cause / fix) | ~800 |
+| `content/03-failure-modes.xml` | essential | 11 antipatterns (symptom / detector / repair), incl. YAML-before-prerequisites and principles-only stall | ~900 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure with decision gates | ~700 |
 | `content/05-examples.xml` | essential | Worked example trace + final artefact | ~700 |
 | `content/06-decision-tree.xml` | essential | Root question + branches → conclusion(ref=rule-id) | ~600 |
@@ -66,6 +66,7 @@
 |------|---------|
 | `templates/spec.json` | JSON skeleton for the spec artefact |
 | `templates/spec.md` | Markdown skeleton for the spec artefact |
+| `templates/cd-triage-checklist.md` | Four-prerequisite triage routing to `cd-basics` vs `cd-pipelines`, emitting a decision record |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -79,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 - Parent: `pro/dev/software-developer/AGENTS.md`
 - Sibling methodologies: see `pro/dev/software-developer/` index
+- [[cd-basics]] — prerequisites, principles and expand-contract migrations, when the triage says the groundwork is missing.
+- [[cd-pipelines]] — concrete pipeline YAML, deploy strategies, health checks and rollback, once all four prerequisites hold.
 
 ## Decision tree
 

@@ -46,10 +46,10 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/01-core-rules.xml` | essential | 11 testable rules: mobile-first cascade, finite breakpoint catalogue, container queries, 44px targets, viewport meta, safe-area, hover not load-bearing, fluid sizing over fixed px, dvh on iOS, multi-viewport verification gate, skip contract | 1500 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom/root-cause/fix, incl. fixed-px widths and `100vh` on iOS | 1000 |
+| `content/04-procedure.xml` | essential | 10-step procedure with input/action/output per step, ending on the four-width verification gate | 1000 |
 | `content/05-examples.xml` | essential | Worked end-to-end example anchored to the output contract | 700 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
@@ -60,6 +60,7 @@
 | `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
 | `fill-mobile-responsive-artefact` | sonnet | Bounded template fill with citation discipline. |
 | `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+| `run-verification-gate` | haiku | Execute the Playwright widths and read the overflow assertions. |
 
 ## Templates
 
@@ -67,6 +68,8 @@
 |------|---------|
 | `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-mobile-responsive.py --self-test` |
+| `templates/playwright-devices.ts` | Playwright project matrix for mobile / tablet / desktop device profiles |
+| `templates/responsive-check.ts` | Multi-viewport screenshot run with a horizontal-overflow assertion per width |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

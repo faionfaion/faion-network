@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-009, dev↔sdd and dev↔frontend: 10 collisions resolved, 1 left dual.**
+
+  The `sdd/` boundary needed stating and now is: **`sdd/` holds the
+  spec-driven-development lifecycle itself** — its document types, stage gates
+  and templates — and *a document is not an SDD-lifecycle document merely because
+  an SDD project would also do it*. All five `dev/`↔`sdd/` pairs were craft
+  documents duplicated into `sdd/`, so `dev/` survived every one. The `produces`
+  fingerprint confirmed it independently: `sdd/best-practices-2026` produced a
+  **rubric**, and rubrics are the instrument `dev` writes 19 of and `sdd` does
+  not write.
+
+  `pnpm-package-management` survives in `dev/` **despite being the weaker copy** —
+  policy §2 names package managers in `dev` explicitly, and §5 says choosing
+  between existing copies is free while moving one is not. The rule is worth
+  nothing if it only applies when it is also convenient.
+
+  `accessibility` is kept in **both** `dev/` and `frontend/`, and the reading is
+  now measured rather than argued: the two output schemas share **zero required
+  fields**. `dev/`'s is a per-screen instrument (`screen_id` matching
+  `^A11Y-[A-Z0-9-]{2,40}$`, `verdict: pass|fail`, `must_fix`); `frontend/`'s is
+  the codebase-wide target that instrument asserts against (`conformance_target`,
+  `ci_gates`, `third_party_policy`). Neither is a scaffold, so archiving either
+  destroys a real document. Renaming `dev/`'s is the correct fix and is deferred.
+
+  Two merges fixed defects rather than only moving text: `monorepo-turborepo`'s
+  template declared `outputs` with no `inputs`, so the cache stored and
+  **almost never restored**; and `logging-patterns` masked secrets by field
+  *name* only, so a token in a message body went to the log — the merged copy
+  carries value-level regexes.
+
 - **CR-009, product/pm/AI and the multi-domain singletons: 16 collisions
   resolved, 6 deliberately left standing.** Archived where one side was the same
   document or a scaffold; left alone where both were real.

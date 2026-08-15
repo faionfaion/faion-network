@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="react-hooks Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
-  <summary>Four high-frequency hook antipatterns the spec must never produce.</summary>
+  <summary>Six high-frequency hook antipatterns the spec must never produce.</summary>
 
   <section title="Failure modes">
 
@@ -26,6 +26,18 @@
       <symptom>The component still re-renders just as often; benchmarks show no improvement, but the code is now harder to read and review.</symptom>
       <root-cause>Every value, including cheap arithmetic and string concatenation, was wrapped in useMemo/useCallback. The hook overhead (allocation + comparison) is larger than the value's computation cost, so memoization is a pure tax.</root-cause>
       <fix>Apply rule r6-memo-after-profile. Run the Profiler in dev, identify the slow component, only then memoize. Justify each memoization entry with a profiling fact. Enable React Compiler if available.</fix>
+    </antipattern>
+
+    <antipattern id="fm-5-sync-via-effect">
+      <symptom>Component holds `const [doubled, setDoubled] = useState(count * 2)` plus `useEffect(() =&gt; setDoubled(count * 2), [count])`. The UI paints the previous value for one frame after `count` changes.</symptom>
+      <root-cause>Derivable state was mirrored into `useState`, creating two sources of truth. The effect runs after render, so the stale value renders once before `setDoubled` schedules the second render.</root-cause>
+      <fix>Delete the state and the effect; compute `const doubled = count * 2` inline. Only if the value is consumed by a memoised child or another hook's deps does it need `useMemo`. Covered by rule r7-derive-not-sync.</fix>
+    </antipattern>
+
+    <antipattern id="fm-6-exhaustive-deps-at-warn">
+      <symptom>`exhaustive-deps` is configured but set to `warn`; the repo carries hundreds of warnings and stale-closure bugs keep shipping.</symptom>
+      <root-cause>At warn level the finding never blocks anything, so the backlog grows past the point where anyone reads it — and each unaddressed warning is a dep array that is actually wrong.</root-cause>
+      <fix>Set both `rules-of-hooks` and `exhaustive-deps` to `error`, fix the existing set in priority order (high-severity first, never one boil-the-ocean PR), and run `eslint --max-warnings 0` in CI so regressions cannot land. Covered by rule r8-eslint-gate-at-error.</fix>
     </antipattern>
 
   </section>

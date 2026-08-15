@@ -47,10 +47,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules with rationale + source | 1100 |
+| `content/01-core-rules.xml` | essential | 12 testable rules: brief first, ≥3-axis divergence, per-variant rationale, working code not mockups, explicit selection, Storybook handoff, discoverable designs folder, screenshot comparison before selection, tokens before components, pinned Storybook versions, colocated component+story+test, skip contract | 1600 |
+| `content/01-rules.xml` | essential | Variant-diversity constraints, the 3-5 ceiling, variant-local token persistence, per-variant a11y gate, rationale requirement, runnable variants | 900 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom/root-cause/fix | 800 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure with input/action/output per step | 800 |
+| `content/02-workflow.xml` | medium | Four-phase agent workflow with the brainstorm/refinement dispatch prompts and the agent gotchas | 1400 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom/root-cause/fix, incl. deciding from static frames, components before tokens, Storybook version rot | 1100 |
+| `content/04-procedure.xml` | essential | 9-step procedure: brief → brainstorm → render comparison → review → refine → extract tokens → Storybook → components → artefact | 1000 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion referencing rule from 01-core-rules.xml | 600 |
 
 ## Task Routing
@@ -60,6 +62,7 @@
 | `decide-applies-or-skip` | sonnet | Apply decision tree against observable signals. |
 | `fill-frontend-design-artefact` | sonnet | Bounded template fill with citation discipline. |
 | `synthesize-recommendation` | opus | Cross-input synthesis + rationale write-up. |
+| `extract-tokens` | sonnet | Read the selected variant's CSS into primitive + semantic token tiers. |
 
 ## Templates
 
@@ -67,6 +70,7 @@
 |------|---------|
 | `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-frontend-design.py --self-test` |
+| `templates/frontend-spec.md` | Full design-spec skeleton: brief, variant table, chosen variant + rationale, token table, pinned Storybook versions, planned components |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -75,6 +79,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | File | Purpose | When to call |
 |------|---------|--------------|
 | `scripts/validate-frontend-design.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
+| `scripts/render-variants.sh` | Render every variant at desktop + mobile widths and stitch the side-by-side comparison grid | Before the selection step; the screenshot gate depends on it |
 
 ## Related
 

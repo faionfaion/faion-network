@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="01-core-rules" title="pnpm-package-management Core Rules" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Five testable rules for reproducible pnpm setup.</summary>
+  <summary>Seven testable rules for a reproducible pnpm setup, plus the run and skip leaves.</summary>
 
   <section title="Rule set">
     <rule id="r1" testable="true" depth="essential">
@@ -8,8 +8,8 @@
       <rationale>Corepack runs the exact version on every dev machine + CI, eliminating "works on my laptop" lockfile drift.</rationale>
     </rule>
     <rule id="r2" testable="true" depth="essential">
-      <statement source="pnpm-doc">Keep `shamefully-hoist=false` (default). Fix phantom-dep issues via `.pnpmfile.cjs` `readPackage` hook, never by hoisting.</statement>
-      <rationale>Hoisting hides bugs and creates downstream version conflicts; readPackage adds the missing dep declaratively.</rationale>
+      <statement source="pnpm-doc">Keep `shamefully-hoist=false` (default). Fix phantom-dep issues via `.pnpmfile.cjs` `readPackage` hook or by declaring the missing direct dependency — never by hoisting. The one allowed escape is `node-linker=hoisted`, and only with an inline comment naming the native add-on and linking the upstream issue.</statement>
+      <rationale>Hoisting hides bugs and creates downstream version conflicts; readPackage adds the missing dep declaratively. The narrow `node-linker=hoisted` exception exists because a handful of native add-ons genuinely cannot resolve under the isolated layout — writing down which one, with a link, is what stops the exception spreading.</rationale>
     </rule>
     <rule id="r3" testable="true" depth="essential">
       <statement source="pnpm-workspaces">Reference internal packages with the `workspace:*` protocol; use Changesets to rewrite to real versions at publish time.</statement>
@@ -23,8 +23,16 @@
       <statement source="self">Commit `pnpm-lock.yaml`. Never gitignore it.</statement>
       <rationale>Without the lockfile, every install is a fresh resolution; reproducibility lost.</rationale>
     </rule>
+    <rule id="r6" testable="true" depth="essential">
+      <statement source="only-allow">Set `"scripts.preinstall": "npx -y only-allow pnpm"` in the root package.json so an accidental `npm install` or `yarn` fails immediately instead of writing a second lockfile.</statement>
+      <rationale>A mixed package manager produces a second lockfile and an npm-shaped `node_modules`, and the resulting install is neither reproducible nor diagnosable from the diff. The guard costs one line and fails at the earliest possible moment.</rationale>
+    </rule>
+    <rule id="r7" testable="true" depth="essential">
+      <statement source="self">Land `pnpm-lock.yaml` updates in a commit separate from application code changes.</statement>
+      <rationale>A commit that mixes a lockfile diff with app changes cannot be bisected: the regression is either in the dependency bump or in the code, and the commit gives you no way to tell which.</rationale>
+    </rule>
     <rule id="run-the-checklist" testable="true" depth="essential">
-      <statement source="self">packageManager pinned, lockfile committed, shamefully-hoist off, CI uses frozen-lockfile, workspace:* used.</statement>
+      <statement source="self">packageManager pinned, lockfile committed in its own commit, shamefully-hoist off, `only-allow pnpm` preinstall guard present, CI uses frozen-lockfile, workspace:* used.</statement>
       <rationale>Aggregate conclusion for positive branch.</rationale>
     </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">

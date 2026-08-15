@@ -47,12 +47,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules (deterministic hash, sticky across surfaces, SRM gate, exposure-before-conversion, Wilson CI) | 900 |
+| `content/01-core-rules.xml` | essential | 12 rules — runtime: deterministic hash, sticky across surfaces, SRM gate, exposure-before-conversion, Wilson CI; design + decision: pre-registered design, locked sample size, full business cycle, guardrails gate the ship, pre-specified segments, practical-significance floor, named human signs off | 2000 |
 | `content/02-output-contract.xml` | essential | JSON Schema for experiment-run artefact + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns: random.choice, no-SRM, peeking, post-assignment-changes | 700 |
-| `content/04-procedure.xml` | essential | 5-step procedure (wire bucket → emit exposure → emit conversion → analyse → ship/kill) | 700 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: random.choice, no-SRM, peeking, post-assignment changes, multi-variable variant, ignored guardrail | 950 |
+| `content/04-procedure.xml` | essential | 6-step procedure (pre-register design → wire bucket → emit exposure → emit conversion → analyse → decide + sign off) | 950 |
 | `content/05-examples.xml` | essential | Worked example: pricing-page A/B run with SRM-clean output | 600 |
-| `content/06-decision-tree.xml` | essential | Routes by power + SRM + significance | 400 |
+| `content/06-decision-tree.xml` | essential | Routes by cycle length, power, SRM, significance, guardrails, practical floor | 600 |
 
 ## Task Routing
 
@@ -61,6 +61,7 @@
 | `ab_testing_implement_bucket` | sonnet | Hash impl + collision checks. |
 | `ab_testing_analyse` | sonnet | Stats engine query + Wilson CI computation. |
 | `ab_testing_srm_check` | haiku | Mechanical chi-square check. |
+| `ab_testing_preregister` | sonnet | Draft the plan: metric choice, guardrail selection, sample-size computation. |
 
 ## Templates
 
@@ -70,6 +71,8 @@
 | `templates/sample-size.py` | Sample-size calculator (proportions test, two-sided) |
 | `templates/analyzer.py` | Variant analyser with z-test + Wilson CI + SRM check |
 | `templates/_smoke-test.json` | Minimum viable filled-in experiment-run for validator round-trip |
+| `templates/test-plan.md` | Pre-registration plan frozen before launch: hypothesis, split, metrics, guardrails, sample size, timeline, risks |
+| `templates/results-report.md` | Human-readable results report: per-metric table, guardrail verdict, statistical detail, pre-specified segments, sign-off |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

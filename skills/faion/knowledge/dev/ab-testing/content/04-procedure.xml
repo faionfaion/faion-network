@@ -1,39 +1,48 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="04-procedure" title="A/B Testing Procedure" version="1.1.0" est_tokens="700" depth="essential">
-  <summary>5-step procedure from experiment design to ship/kill decision.</summary>
+  <summary>6-step procedure from pre-registered design through the runtime to the signed ship/kill decision.</summary>
 
   <section title="Procedure">
 
-    <step n="1" name="wire-deterministic-bucket">
+    <step n="1" name="pre-register-the-design">
+      <input>Product question + baseline conversion rate + the metric inventory</input>
+      <action>Write the plan before any code: hypothesis, primary metric, guardrail metrics, named segments, MDE, and the sample size computed at 80% power / 95% significance. Set the minimum end date at one full business cycle. Freeze it.</action>
+      <output>Pre-registration plan; `design` block of the experiment-run artefact</output>
+      <reference path="templates/test-plan.md">Plan skeleton.</reference>
+      <decision-gate>If the required sample size cannot be reached inside a reasonable window at current traffic, stop here — the experiment cannot answer the question, and running it anyway produces a number that looks like an answer.</decision-gate>
+    </step>
+
+    <step n="2" name="wire-deterministic-bucket">
       <input>experiment_id + salt + user_id stream</input>
       <action>Implement bucket(user_id) = (int.from_bytes(blake2b((user_id+experiment_id+salt).encode(), digest_size=8).digest(), "big") % 100) &lt; threshold. Verify in unit tests that the same user always lands in the same arm.</action>
       <output>bucket function deployed to web + mobile + server</output>
       <decision-gate>If two surfaces use different hash inputs, fail sticky-across-surfaces and rework.</decision-gate>
     </step>
 
-    <step n="2" name="emit-exposure">
+    <step n="3" name="emit-exposure">
       <input>Per-request user_id + variant assignment</input>
       <action>Fire exposure event the first time a user hits the gate. Use idempotent event keys.</action>
       <output>exposure events flowing to stats engine</output>
     </step>
 
-    <step n="3" name="emit-conversion">
+    <step n="4" name="emit-conversion">
       <input>Conversion signal in business logic</input>
       <action>Fire conversion event ONLY for users with a prior exposure within the experiment window. Conversions without prior exposure are dropped.</action>
       <output>conversion events flowing to stats engine</output>
     </step>
 
-    <step n="4" name="analyse">
+    <step n="5" name="analyse">
       <input>Variant exposure + conversion counts</input>
       <action>Compute z-test for proportions; build Wilson 95% CI on lift; compute SRM chi-square p-value against expected_split. Run `templates/analyzer.py`.</action>
       <output>{lift, wilson_ci_low, wilson_ci_high, z, p_value, srm_chi_square_p}</output>
       <decision-gate>srm_chi_square_p &lt; 0.001 → decision=invalid-srm; investigate bucket leak before any other interpretation.</decision-gate>
     </step>
 
-    <step n="5" name="decide">
-      <input>Result block + sample size achieved</input>
-      <action>Sample size &lt; planned → decision=invalid-underpowered. CI spans zero → decision=kill or extend. CI strictly &gt; 0 and SRM clean → decision=ship. Record artefact + close flag.</action>
-      <output>experiment-run JSON + ship/kill action</output>
+    <step n="6" name="decide">
+      <input>Result block + sample size achieved + guardrail readings + the pre-registration</input>
+      <action>Sample size &lt; planned, or elapsed time under one business cycle → decision=invalid-underpowered. CI spans zero → decision=kill or extend. CI strictly &gt; 0, SRM clean, no guardrail regression, and the effect clears the practical-significance floor → decision=ship, pending the named human's sign-off. Record the artefact and close the flag.</action>
+      <output>experiment-run JSON + signed ship/kill action</output>
+      <decision-gate>Any guardrail regression blocks the ship regardless of the primary metric. Segment findings not named in the pre-registration are reported as exploratory, never as the result.</decision-gate>
     </step>
 
   </section>
