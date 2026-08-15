@@ -250,8 +250,6 @@ echo "Scaffolded ${N} across model/repository/service. Add handler + routes manu
 ### `templates/scaffold-go.sh`
 
 ```bash
-# faion_header_json: {"__faion_header__":{"purpose":"Bootstrap the standard Go tree — cmd/, internal/, pkg/, migrations/, Makefile, go.mod","consumes":"module path + binary names","produces":"code","depends_on":"content/04-procedure.xml + content/01-core-rules.xml#cmd-internal-default","token_budget_impact":"~340 tokens when loaded as context"}}
-# Usage: ./scaffold-go.sh github.com/org/name api worker
 set -euo pipefail
 
 MOD="${1:?module path required (e.g. github.com/org/name)}"
@@ -285,4 +283,5 @@ go mod init "$MOD"
 gofmt -w . 2>/dev/null || true
 
 echo "scaffold ready: $MOD | binaries: ${BINS[*]}"
+echo "next: author the Makefile targets and run 'go list -deps ./...' to confirm zero cycles"
 ```

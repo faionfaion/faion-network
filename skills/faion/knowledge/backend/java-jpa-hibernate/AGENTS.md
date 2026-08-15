@@ -256,12 +256,6 @@ logging:
 ### `templates/NarrowRepository.java`
 
 ```java
-// purpose: narrow read/write repository interfaces per narrow-repo-interface rule
-// consumes: Order + DTO projections
-// produces: Spring Data interface segregated for read vs write
-// depends-on: content/01-core-rules.xml
-// token-budget-impact: ~250 tokens when loaded as reference
-
 package faion.infra.orders;
 
 import faion.domain.orders.Order;
@@ -308,12 +302,6 @@ record OrderSummaryDto(UUID id, String customerName, java.math.BigDecimal total)
 ### `templates/Service.java`
 
 ```java
-// purpose: transactional service returning DTOs (not entities)
-// consumes: OrderRepository + request inputs
-// produces: service class for the controller
-// depends-on: content/01-core-rules.xml, templates/NarrowRepository.java
-// token-budget-impact: ~250 tokens when loaded as reference
-
 package faion.app.orders;
 
 import faion.domain.orders.Order;
@@ -369,15 +357,6 @@ class OrderNotFoundException extends RuntimeException {
 ### `templates/application-jpa.yml`
 
 ```yaml
-# purpose: Safe JPA/Hibernate application.yml defaults for Spring Boot
-# consumes: the service's existing application.yml plus its datasource settings
-# produces: config conforming to content/02-output-contract.xml
-# depends-on: content/01-core-rules.xml
-# token-budget-impact: ~200 tokens when loaded
-
-# application.yml — Safe JPA/Hibernate defaults for Spring Boot.
-# Copy this block into your application.yml and adjust values for your environment.
-
 spring:
   jpa:
     # Disable open-in-view to prevent lazy-loading outside transactions.

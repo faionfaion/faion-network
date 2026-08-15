@@ -151,7 +151,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
           version: 9
 
@@ -175,4 +175,9 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      # Monorepo variant — replace the three steps above with these two to
+      # build and test only the packages changed since main and their dependents.
+      # - run: pnpm --filter '...[origin/main]' build
+      # - run: pnpm --filter '...[origin/main]' test
 ```

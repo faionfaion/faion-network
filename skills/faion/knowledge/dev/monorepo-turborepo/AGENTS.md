@@ -124,6 +124,11 @@ packages:
       "env": [
         "NEXT_PUBLIC_API_URL"
       ],
+      "inputs": [
+        "src/**",
+        "tsconfig.json",
+        "package.json"
+      ],
       "outputs": [
         "dist/**",
         ".next/**",
@@ -133,16 +138,33 @@ packages:
     "lint": {
       "dependsOn": [
         "^build"
-      ]
+      ],
+      "inputs": [
+        "src/**",
+        ".eslintrc*",
+        "package.json"
+      ],
+      "outputs": []
     },
     "typecheck": {
       "dependsOn": [
         "^build"
-      ]
+      ],
+      "inputs": [
+        "src/**",
+        "tsconfig.json",
+        "../../tsconfig.base.json"
+      ],
+      "outputs": []
     },
     "test": {
       "dependsOn": [
         "build"
+      ],
+      "inputs": [
+        "src/**",
+        "tests/**",
+        "package.json"
       ],
       "outputs": [
         "coverage/**"

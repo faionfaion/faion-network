@@ -93,6 +93,14 @@ Bodies of the templates above that the packer does not ship as standalone files,
 ### `templates/base_model.py`
 
 ```python
+"""
+purpose: BaseModel + TimestampMixin + SoftDeleteMixin + managers reference for Django 5.x.
+consumes: a Django 5.x project with PostgreSQL.
+produces: importable abstract base classes for concrete models.
+depends-on: django >= 5.0; psycopg / mysqlclient depending on engine.
+token-budget-impact: ~520 tokens when read by an agent.
+"""
+
 from __future__ import annotations
 
 import uuid
@@ -213,13 +221,6 @@ class SoftDeletableModel(TimestampMixin, UidMixin, SoftDeleteMixin):
 
 ```json
 {
-  "__faion_header__": {
-    "purpose": "Reference output document",
-    "consumes": "input from methodology",
-    "produces": "output artefact",
-    "depends-on": "01-core-rules.xml",
-    "token-budget-impact": "small"
-  },
   "_purpose": "Reference base-model spec output.",
   "_consumes": "ERD + soft-delete scope + tenant scope.",
   "_produces": "JSON for codegen.",
@@ -230,8 +231,23 @@ class SoftDeletableModel(TimestampMixin, UidMixin, SoftDeleteMixin):
   "django_version": "5.2.1",
   "db_engine": "postgresql",
   "bases": [
-    {"name": "BaseModel",          "abstract": true, "mixins": ["TimestampMixin", "UidMixin"]},
-    {"name": "SoftDeletableModel", "abstract": true, "mixins": ["TimestampMixin", "UidMixin", "SoftDeleteMixin"]}
+    {
+      "name": "BaseModel",
+      "abstract": true,
+      "mixins": [
+        "TimestampMixin",
+        "UidMixin"
+      ]
+    },
+    {
+      "name": "SoftDeletableModel",
+      "abstract": true,
+      "mixins": [
+        "TimestampMixin",
+        "UidMixin",
+        "SoftDeleteMixin"
+      ]
+    }
   ],
   "models": [
     {
@@ -241,7 +257,9 @@ class SoftDeletableModel(TimestampMixin, UidMixin, SoftDeleteMixin):
       "exposes_uid": true,
       "tenant_scoped": false,
       "url_lookup_field": "uid",
-      "unique_fields": ["email"],
+      "unique_fields": [
+        "email"
+      ],
       "foreign_keys": []
     },
     {
@@ -253,10 +271,21 @@ class SoftDeletableModel(TimestampMixin, UidMixin, SoftDeleteMixin):
       "url_lookup_field": "uid",
       "unique_fields": [],
       "indexes": [
-        {"fields": ["customer", "status", "-created_at"], "reason": "order dashboard filter; FK index covers only customer"}
+        {
+          "fields": [
+            "customer",
+            "status",
+            "-created_at"
+          ],
+          "reason": "order dashboard filter; FK index covers only customer"
+        }
       ],
       "foreign_keys": [
-        {"field": "customer", "on_delete": "PROTECT", "reason": "Retain order history even when Customer is soft-deleted; compliance requires 7y retention."}
+        {
+          "field": "customer",
+          "on_delete": "PROTECT",
+          "reason": "Retain order history even when Customer is soft-deleted; compliance requires 7y retention."
+        }
       ]
     }
   ],

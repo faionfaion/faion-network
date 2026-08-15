@@ -89,9 +89,8 @@ Bodies of the templates above that the packer does not ship as standalone files,
 ### `templates/signal.jsonl`
 
 ```json
-# Signal.Jsonl
-
-Fill per the parent Continuous Discovery schema; carry one verbatim citation per non-trivial field.
+{"signal_id": "sig-001", "captured_at": "2026-05-20T10:00:00Z", "source_url": "https://example.com/thread/1234", "raw_hash": "sha256:<64-hex-of-the-verbatim-capture>", "channel": "support-ticket", "verbatim": "<one verbatim customer quote, unparaphrased>", "opportunity_id": "opp-<slug>"}
+{"signal_id": "sig-002", "captured_at": "2026-05-21T14:30:00Z", "source_url": "https://example.com/interview/7", "raw_hash": "sha256:<64-hex-of-the-verbatim-capture>", "channel": "discovery-interview", "verbatim": "<one verbatim customer quote, unparaphrased>", "opportunity_id": "opp-<slug>"}
 ```
 
 ### `templates/_smoke-test.json`

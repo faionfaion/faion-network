@@ -106,16 +106,12 @@ Bodies of the templates above that the packer does not ship as standalone files,
 ### `templates/adr-lint.sh`
 
 ```bash
-#!/usr/bin/env bash
-# adr-lint.sh — validate ADR files in docs/adr/
-# Usage: ./adr-lint.sh [--dir docs/adr]
-# Returns exit code 0 if all ADRs pass, 1 if any fail.
-# Integrate into CI: add as a pre-commit hook or GitHub Actions step.
-
 set -euo pipefail
 
 ADR_DIR="${1:-docs/adr}"
-# r4-status-discipline closes the enum at exactly these four.
+# r4-status-discipline closes the enum at exactly these four. "Draft" and
+# "Rejected" were accepted here until the sdd merge surfaced the contradiction
+# with the schema in content/02-output-contract.xml.
 VALID_STATUSES=("Proposed" "Accepted" "Deprecated" "Superseded")
 ERRORS=0
 FILES_CHECKED=0

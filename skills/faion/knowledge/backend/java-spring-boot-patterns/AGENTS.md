@@ -136,12 +136,6 @@ public final class NPlusOneAssertion {
 ### `templates/MailProperties.java`
 
 ```java
-// purpose: Typed @ConfigurationProperties record with Jakarta Bean Validation
-// consumes: see content/02-output-contract.xml inputs
-// produces: artefact conforming to content/02-output-contract.xml
-// depends-on: content/01-core-rules.xml
-// token-budget-impact: ~300 tokens when loaded as context
-
 package com.example.config;
 
 import jakarta.validation.constraints.*;
@@ -165,12 +159,6 @@ public record MailProperties(
 ### `templates/GlobalExceptionHandler.java`
 
 ```java
-// purpose: @RestControllerAdvice translating business exceptions to ProblemDetail
-// consumes: see content/02-output-contract.xml inputs
-// produces: artefact conforming to content/02-output-contract.xml
-// depends-on: content/01-core-rules.xml
-// token-budget-impact: ~450 tokens when loaded as context
-
 package com.example.web;
 
 import java.net.URI;
@@ -203,12 +191,6 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
 ### `templates/application-prod.yml`
 
 ```yaml
-# purpose: Profile-specific configuration overlay (prod)
-# consumes: see content/02-output-contract.xml inputs
-# produces: artefact conforming to content/02-output-contract.xml
-# depends-on: content/01-core-rules.xml
-# token-budget-impact: ~200 tokens when loaded as context
-
 spring:
   profiles:
     active: prod

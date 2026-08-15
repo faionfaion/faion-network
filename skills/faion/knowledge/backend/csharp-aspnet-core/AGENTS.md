@@ -187,12 +187,10 @@ public sealed class SampleBackgroundService(ILogger<SampleBackgroundService> log
 ### `templates/problem-details-handler.cs`
 
 ```csharp
-// .NET 8+ IExceptionHandler — maps domain exceptions to RFC 7807 ProblemDetails.
-// Register in Program.cs:
-//   builder.Services.AddProblemDetails();
-//   builder.Services.AddExceptionHandler<ProblemDetailsHandler>();
-//   app.UseExceptionHandler();
-public sealed class ProblemDetailsHandler : IExceptionHandler
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
+
+public class ProblemDetailsHandler : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
         HttpContext ctx, Exception ex, CancellationToken ct)
@@ -204,8 +202,11 @@ public sealed class ProblemDetailsHandler : IExceptionHandler
             ValidationException ve =>
                 new ProblemDetails { Status = 422, Title = "Validation failed",
                                      Detail = ve.Message },
-            _ => new ProblemDetails { Status = 500, Title = "Server error" }
+            UnauthorizedAccessException =>
+                new ProblemDetails { Status = 403, Title = "Forbidden" },
+            _ => new ProblemDetails { Status = 500, Title = "An unexpected error occurred" }
         };
+
         ctx.Response.StatusCode = pd.Status!.Value;
         await ctx.Response.WriteAsJsonAsync(pd, ct);
         return true;
@@ -218,11 +219,12 @@ public sealed class ProblemDetailsHandler : IExceptionHandler
 ```text
 Add <Entity> vertical slice in MyApp.Features.<Entities>:
 - Records: Create<Entity>Dto(string Name, ...), <Entity>Dto(int Id, string Name, DateTime CreatedAt)
-- I<Entity>Service { Task<<Entity>Dto> CreateAsync(Create<Entity>Dto, CancellationToken);
-                     Task Delete<Entity>Async(int id, CancellationToken) }
-- <Entity>Service uses AppDbContext, maps to DTO via Mapperly, injects TimeProvider
-- <Entity>sController: POST/DELETE/GET with [Authorize], CreatedAtAction,
-  CancellationToken on all actions, keyset cursor on the list endpoint
+- I<Entity>Service { Task<<Entity>Dto> CreateAsync(Create<Entity>Dto, CancellationToken); Task Delete<Entity>Async(int id, CancellationToken) }
+- <Entity>Service uses AppDbContext, maps to DTO via Mapperly
+- <Entity>sController: POST/DELETE/GET with [Authorize], CreatedAtAction, CancellationToken on all actions
 - EF migration Add<Entities>
 - Integration test using WebApplicationFactory<Program> + Testcontainers Postgres
+
+Use record DTOs (not classes). Use TimeProvider.GetUtcNow(), not DateTime.UtcNow.
+Pass CancellationToken to every async EF call. Register <Entity>Service as Scoped, not Singleton.
 ```

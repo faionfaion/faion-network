@@ -123,7 +123,7 @@ jobs:
       - run: git apply healed-selectors.diff
       - run: rm healed-selectors.diff
       - name: Open follow-up PR
-        run: gh pr create --title "chore(e2e): apply approved healer diff" --body "Automated."
+        run: 'gh pr create --title "chore(e2e): apply approved healer diff" --body "Automated."'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 ```

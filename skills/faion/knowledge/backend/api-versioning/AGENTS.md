@@ -91,7 +91,6 @@ Bodies of the templates above that the packer does not ship as standalone files,
 ### `templates/versioned_router.py`
 
 ```python
-# faion_header_json: {"__faion_header__":{"purpose":"FastAPI v1/v2 router scaffold with frozen v1 module","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#additive-first","token_budget_impact":"~150 tokens when loaded"}}
 from fastapi import APIRouter, FastAPI, Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -133,7 +132,6 @@ app.include_router(v2_router)
 ### `templates/spectral-rules.yaml`
 
 ```yaml
-# faion_header_json: {"__faion_header__":{"purpose":"Spectral ruleset enforcing one-scheme-per-api, url-path default and no body-carried version","consumes":"openapi.yaml","produces":"spec","depends_on":"content/01-core-rules.xml#one-scheme-per-api","token_budget_impact":"~330 tokens when loaded as context"}}
 extends: ["spectral:oas"]
 
 rules:
@@ -145,6 +143,14 @@ rules:
       function: pattern
       functionOptions:
         match: "^/api/v[0-9]+/"
+
+  deprecation-header-on-legacy:
+    description: Deprecated versions must declare a Deprecation header (rule deprecation-headers)
+    severity: warn
+    given: "$.paths['/api/v1/{*}'].*.responses.*.headers"
+    then:
+      field: "Deprecation"
+      function: truthy
 
   no-query-param-versioning:
     description: Never carry the version in a query parameter (rule url-path-default)

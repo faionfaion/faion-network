@@ -107,9 +107,6 @@ Bodies of the templates above that the packer does not ship as standalone files,
 ### `templates/create_index_concurrently.sql`
 
 ```sql
--- Idempotent, non-blocking, safe on a live table.
--- CONCURRENTLY cannot run inside a transaction block — in Django, mark the
--- migration atomic = False; in raw psql, run it outside BEGIN.
 CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_orders_tenant_created_id
   ON orders (tenant_id, created_at DESC, id);
 -- Equality column (tenant_id) first, range/sort column last: reversing this

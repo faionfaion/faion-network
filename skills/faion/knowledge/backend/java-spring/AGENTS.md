@@ -118,12 +118,6 @@ echo "OK: build clean, no entity leaks"
 ### `templates/Controller.java`
 
 ```java
-// purpose: thin @RestController skeleton conforming to thin-controller rule
-// consumes: OrdersService + request DTO
-// produces: HTTP controller artefact
-// depends-on: content/01-core-rules.xml
-// token-budget-impact: ~300 tokens when loaded as reference
-
 package faion.web.orders;
 
 import faion.app.orders.OrdersService;
@@ -166,12 +160,6 @@ public class OrdersController {
 ### `templates/Service.java`
 
 ```java
-// purpose: @Transactional service skeleton returning DTOs only
-// consumes: OrderRepository (narrow) + DTOs
-// produces: service class for the controller
-// depends-on: content/01-core-rules.xml
-// token-budget-impact: ~300 tokens when loaded as reference
-
 package faion.app.orders;
 
 import faion.infra.orders.OrderRepository;
@@ -234,12 +222,6 @@ class OrderNotFoundException extends RuntimeException {
 ### `templates/AsyncConfig.java`
 
 ```java
-// purpose: named ThreadPoolTaskExecutor + @Async configuration per async-via-named-executor rule
-// consumes: pool-size config from application.yml
-// produces: Spring config bean defining the executor + @Async target bean
-// depends-on: content/01-core-rules.xml
-// token-budget-impact: ~250 tokens when loaded as reference
-
 package faion.config;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -285,12 +267,6 @@ class EmailSender {
 ### `templates/maven-annotation-processors.xml`
 
 ```xml
-<!-- purpose: Maven compiler plugin snippet with Lombok + MapStruct in required order -->
-<!-- consumes: lombok.version + mapstruct.version properties -->
-<!-- produces: annotationProcessorPaths block for pom.xml -->
-<!-- depends-on: content/01-core-rules.xml -->
-<!-- token-budget-impact: ~150 tokens when loaded as reference -->
-<!-- Place inside <build><plugins> in pom.xml -->
 <plugin>
   <artifactId>maven-compiler-plugin</artifactId>
   <configuration>
@@ -320,12 +296,6 @@ class EmailSender {
 ### `templates/prompt-vertical-slice.txt`
 
 ```text
-# purpose: vertical-slice prompt for AI codegen of a Spring Boot feature package
-# consumes: <Entity> + <package> + <fields>
-# produces: prompt string fed to the codegen subagent
-# depends-on: content/01-core-rules.xml, templates/Controller.java, templates/Service.java
-# token-budget-impact: ~250 tokens when loaded as system prompt
-
 Add a vertical slice for "<Entity>" under com.example.<package>:
 - entity <Entity> (id Long, <fields>) extending BaseEntity if available
 - <Entity>Repository extends JpaRepository<<Entity>, Long>

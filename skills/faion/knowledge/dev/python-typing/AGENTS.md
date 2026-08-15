@@ -99,7 +99,9 @@ warn_return_any = true
 # Django-stubs plugin
 plugins = ["mypy_django_plugin.main"]
 
-[tool.mypy.plugins.django-stubs]
+# django-stubs reads its own settings from [tool.django-stubs], not from a
+# table under [tool.mypy].plugins — that key is the plugin-list array above.
+[tool.django-stubs]
 django_settings_module = "config.settings.development"
 # Strict mode for Django models (requires django-stubs 5.0+)
 strict_settings = true

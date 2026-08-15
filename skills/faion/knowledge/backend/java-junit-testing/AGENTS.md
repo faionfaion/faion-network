@@ -251,12 +251,6 @@ PY
 ### `templates/RepositoryTests.java`
 
 ```java
-// purpose: @DataJpaTest repository slice test skeleton (Testcontainers Postgres optional)
-// consumes: repository interface + entity
-// produces: repository slice test class
-// depends-on: content/01-core-rules.xml
-// token-budget-impact: ~250 tokens when loaded as reference
-
 package faion.infra.orders;
 
 import faion.domain.orders.Order;
@@ -298,12 +292,6 @@ class OrderRepositoryTest {
 ### `templates/IntegrationTests.java`
 
 ```java
-// purpose: @SpringBootTest end-to-end integration test skeleton with Testcontainers
-// consumes: full application context + real DB
-// produces: integration test class
-// depends-on: content/01-core-rules.xml
-// token-budget-impact: ~250 tokens when loaded as reference
-
 package faion.app;
 
 import org.junit.jupiter.api.Test;

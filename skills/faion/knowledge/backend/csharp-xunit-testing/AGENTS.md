@@ -355,7 +355,5 @@ public sealed record OrderResponse(int Id, string CustomerName, decimal Total);
 ### `templates/ProgramPartial.cs`
 
 ```csharp
-// Append to the bottom of the API project's Program.cs:
-
 public partial class Program { }
 ```

@@ -58,10 +58,6 @@ Bodies of the templates above that the packer does not ship as standalone files,
 ### `templates/ui-ux-design.md.tmpl`
 
 ```markdown
-# ui-ux-design: <feature name>
-
-## Intent
-
 <One sentence: what is the user trying to accomplish on this surface?>
 
 ## Layout

@@ -90,7 +90,6 @@ Bodies of the templates above that the packer does not ship as standalone files,
 ### `templates/schema.graphql`
 
 ```graphql
-<!-- faion_header_json: {"__faion_header__":{"purpose":"SDL skeleton: Node/Timestamped interfaces, Relay Connection/Edge/PageInfo, Payload with userErrors, @auth directive","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#relay-cursor-pagination + content/01-core-rules.xml#mutation-error-union + content/01-core-rules.xml#naming-conventions-enforced","token_budget_impact":"~520 tokens when loaded as context"}} -->
 scalar DateTime
 scalar Email
 
@@ -159,7 +158,6 @@ type Mutation {
 ### `templates/dataloader.py`
 
 ```python
-# faion_header_json: {"__faion_header__":{"purpose":"Strawberry DataLoaders: per-request batch loading, key-order preservation, 1:N grouping","consumes":"see content/02-output-contract.xml","produces":"spec","depends_on":"content/01-core-rules.xml#dataloader-mandatory","token_budget_impact":"~420 tokens when loaded as context"}}
 from typing import List
 from uuid import UUID
 

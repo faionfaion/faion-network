@@ -93,6 +93,14 @@ Bodies of the templates above that the packer does not ship as standalone files,
 ### `templates/conftest.py`
 
 ```python
+"""
+purpose: Shared pytest fixtures: api_client, authed_client, staff_client, factory registration.
+consumes: 01-core-rules.xml
+produces: code
+depends-on: content/01-core-rules.xml
+token-budget-impact: small
+"""
+
 import datetime as dt
 
 import pytest

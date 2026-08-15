@@ -283,7 +283,6 @@ PY
 ### `templates/constants.py`
 
 ```python
-# apps/users/constants.py — TextChoices enums and module-level constants
 from django.db import models
 
 
@@ -310,9 +309,6 @@ MAX_ITEMS_PER_USER = 100
 ### `templates/check-migrations.sh`
 
 ```bash
-#!/usr/bin/env bash
-# scripts/check-migrations.sh — refuse commit if models changed without a staged migration.
-# Wire as pre-commit hook or in CI.
 set -euo pipefail
 
 changed=$(git diff --cached --name-only -- "apps/*/models/*.py" "apps/*/models.py" "core/models.py" 2>/dev/null || true)

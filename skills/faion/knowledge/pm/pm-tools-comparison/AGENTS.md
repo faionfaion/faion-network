@@ -225,7 +225,7 @@ summary:
   three_year_tco: 73000
 
 notes:
-  - Migration cost captured at item level: [N] issues, [N] automations, [N] integrations
+  - "Migration cost captured at item level: [N] issues, [N] automations, [N] integrations"
   - Productivity loss estimate based on [N]-week transition at [N]% reduced throughput
   - Mark any estimate older than 12 months as STALE before presenting
 ```

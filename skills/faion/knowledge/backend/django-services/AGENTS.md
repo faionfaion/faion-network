@@ -146,7 +146,6 @@ if __name__ == "__main__":
 ### `templates/exceptions.py`
 
 ```python
-# faion_header_json: {"__faion_header__":{"purpose":"Python scaffold realising the artefact in code.","consumes":"see content/02-output-contract.xml","produces":"code","depends_on":"content/01-core-rules.xml#entity-action-naming","token_budget_impact":"~150 tokens when loaded"}}
 """Django Services Layer scaffold. See AGENTS.md for context and content/02-output-contract.xml for the contract."""
 from __future__ import annotations
 
@@ -166,15 +165,6 @@ if __name__ == "__main__":
 ### `templates/service-module.py`
 
 ```python
-# purpose: Service module skeleton with function signatures + docstrings
-# consumes: See content/02-output-contract.xml inputs
-# produces: artefact conforming to content/02-output-contract.xml
-# depends-on: content/01-core-rules.xml
-# token-budget-impact: ~200-1000 tokens when loaded as context
-# Service module skeleton for Django
-# Copy and fill in: Feature, Model, app, verb, noun, params
-# Conventions: lazy model imports, keyword-only args, domain exception, transaction.atomic
-
 from __future__ import annotations
 from typing import TYPE_CHECKING
 from django.db import transaction

@@ -583,8 +583,6 @@ class TimelinePagination(CursorPagination):
 ### `templates/check-api-schema.sh`
 
 ```bash
-# Export the OpenAPI schema and fail if breaking changes appear vs docs/api/schema.yml.
-# Run in CI or as a pre-commit hook.
 set -euo pipefail
 
 SCHEMA_FILE="docs/api/schema.yml"
@@ -623,6 +621,7 @@ Rules:
   - Service must NOT receive request or request.user — pass user_id: int instead (r9)
   - Input and output serializers must be different classes (r3)
   - Meta.fields = "__all__" is forbidden; list fields explicitly (r4)
+  - View must use reverse('app:url-name') in tests, not hardcoded paths
   - @extend_schema is required on every view with non-empty tags=["<Tag>"] (r10)
   - Errors are raised as exceptions and rendered RFC 7807 by the global handler (r11)
   - Run: python manage.py spectacular --validate after implementation

@@ -57,10 +57,6 @@ Bodies of the templates above that the packer does not ship as standalone files,
 ### `templates/user-flows.md.tmpl`
 
 ```markdown
-# user-flows: <feature name>
-
-## Flow F-01: <one-line flow title>
-
 - Actor: <who>
 - Preconditions: <what state>
 - Happy path:

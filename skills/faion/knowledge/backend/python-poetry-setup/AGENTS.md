@@ -90,14 +90,12 @@ dependencies = []
 
 [tool.poetry]
 package-mode = false
+virtualenvs = { in-project = true }
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"
 ruff = "^0.7"
 mypy = "^1.11"
-
-[tool.poetry]
-virtualenvs = { in-project = true }
 
 [build-system]
 requires = ["poetry-core>=2.0"]

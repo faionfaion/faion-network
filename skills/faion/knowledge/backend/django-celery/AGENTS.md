@@ -168,15 +168,6 @@ if __name__ == "__main__":
 ### `templates/task-idempotent.py`
 
 ```python
-# purpose: Celery task template with idempotency, retry, time limits
-# consumes: See content/02-output-contract.xml inputs
-# produces: artefact conforming to content/02-output-contract.xml
-# depends-on: content/01-core-rules.xml
-# token-budget-impact: ~200-1000 tokens when loaded as context
-# task-idempotent.py — Canonical idempotent Celery task pattern
-# Input:  user_id (int, primitive)
-# Output: bool — True if action was performed, False if already done
-
 import requests
 from celery import shared_task
 
@@ -231,15 +222,6 @@ def _send_welcome_email(email: str) -> None:
 ### `templates/celery-worker.service`
 
 ```ini
-# purpose: systemd unit for Celery worker
-# consumes: See content/02-output-contract.xml inputs
-# produces: artefact conforming to content/02-output-contract.xml
-# depends-on: content/01-core-rules.xml
-# token-budget-impact: ~200-1000 tokens when loaded as context
-# /etc/systemd/system/celery-emails.service
-# Systemd unit for a single-queue Celery worker.
-# Adjust: User, WorkingDirectory, ExecStart queue name, concurrency.
-
 [Unit]
 Description=Celery worker (emails queue)
 After=network.target redis.service

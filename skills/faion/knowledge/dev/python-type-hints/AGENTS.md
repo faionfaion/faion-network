@@ -157,19 +157,6 @@ mypy --strict "${files[@]}"
 ### `templates/pyright.toml`
 
 ```toml
-# purpose: [tool.pyright] strict block with test + migration overrides
-# consumes: input from methodology
-# produces: output artefact
-# depends-on: 01-core-rules.xml
-# token-budget-impact: small
-
-# Paste under [tool] in pyproject.toml when `checker = "pyright"`.
-# The mypy equivalent is templates/mypy.toml — pick one checker per repo,
-# never run both gates on the same files.
-#
-# Strict at the boundary; relaxation is per-module and named, never global.
-# See content/01-core-rules.xml#strict-at-boundary.
-
 [tool.pyright]
 pythonVersion = "3.11"
 typeCheckingMode = "strict"
@@ -199,15 +186,6 @@ reportMissingParameterType = "none"
 ### `templates/precommit-mypy.yaml`
 
 ```yaml
-# purpose: Pre-commit hook config for mypy strict
-# consumes: content/01-core-rules.xml
-# produces: config
-# depends-on: content/01-core-rules.xml
-# token-budget-impact: small
-# .pre-commit-config.yaml snippet — add to existing pre-commit config
-# Runs strict mypy on changed files at pre-push stage (not pre-commit)
-# to keep commit speed fast while still catching type regressions.
-
 repos:
   # ─── Ruff (fast, runs on every commit) ───────────────────────────────────
   - repo: https://github.com/astral-sh/ruff-pre-commit

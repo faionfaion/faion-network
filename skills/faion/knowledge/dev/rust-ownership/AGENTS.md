@@ -104,8 +104,6 @@ pub fn example(input: &str) -> usize {
 ### `templates/audit-clones.sh`
 
 ```bash
-#!/usr/bin/env bash
-# Usage: bash scripts/audit-clones.sh
 set -euo pipefail
 
 cargo clippy --all-targets -- \

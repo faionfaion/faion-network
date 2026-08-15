@@ -130,8 +130,14 @@ Bodies of the templates above that the packer does not ship as standalone files,
 ### `templates/roadmap-diff.py`
 
 ```python
-#!/usr/bin/env python3
 """roadmap-diff.py — diff two roadmap JSON snapshots for the monthly review (r9).
+
+__faion_header__
+purpose: Diff two roadmap snapshots so the monthly review sees what moved
+consumes: Two roadmap JSON snapshots (previous and current)
+produces: report
+depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+token-budget-impact: low — single python file, no output unless run
 
 Usage: python roadmap-diff.py prev.json curr.json
 

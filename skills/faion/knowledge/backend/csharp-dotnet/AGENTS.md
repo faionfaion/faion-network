@@ -283,10 +283,6 @@ public class BackgroundOrderProcessor : BackgroundService
 ### `templates/EntityConfiguration.cs`
 
 ```csharp
-// Data/Configurations/UserConfiguration.cs
-// IEntityTypeConfiguration keeps mapping logic out of the entity class.
-// Apply via: modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly)
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

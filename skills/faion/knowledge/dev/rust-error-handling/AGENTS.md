@@ -124,8 +124,6 @@ avoid-breaking-exported-api = false
 ### `templates/check-errors.sh`
 
 ```bash
-#!/usr/bin/env bash
-# Usage: bash scripts/check-errors.sh
 set -euo pipefail
 
 cargo clippy --all-targets --all-features -- \

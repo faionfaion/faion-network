@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Re-synced 57 inlined template bodies that had drifted from the files on
+  disk — and 22 of those were a regression this session introduced.**
+
+  **The mechanism nobody in the CR-009 work knew about:** 1,918 methodology
+  `AGENTS.md` files carry a `## Template Contents` section that inlines template
+  bodies, under the note *"read them there, do not fetch the path"*. For formats
+  `vfs-pack` does not ship standalone — `.json` among them — **the inlined copy
+  is the only thing delivered**. So a template fixed on disk and not in the
+  inline is not fixed at all.
+
+  Every merge brief in CR-009 told agents to carry templates across and none of
+  them mentioned the inline. One agent noticed unprompted and patched both
+  copies; the rest did not, because they had no reason to. **My own `.jsonl`
+  header fix is in the regression set** — the broken `_purpose` form was still
+  being served from the inline after the disk file was corrected.
+
+  Corpus-wide the drift is **187 of 3,368 blocks (5.5%)**: 22 from this session,
+  165 pre-existing. Only the 22 are re-synced here, because for those the disk
+  copy is provably authoritative — an agent edited it deliberately this week.
+  For the 165 pre-existing, which copy is right is unknown and guessing would
+  destroy content in whichever direction is wrong.
+
+  A first measurement put the drift at 98.6% and was wrong: it counted the
+  `__faion_header__` block, which the inline strips **on purpose**, since corpus
+  metadata is not part of the artefact a user copies. The real figure only
+  appears once that is normalised out. Recorded because the wrong number was the
+  more alarming one and would have been easy to report.
+
+
 - **Regenerated `tier-manifest.json` and refreshed the validator baseline.**
   Manifest 3,065 → **2,986** entries: 79 removed, **0 added, 0 tier changes**.
 

@@ -242,8 +242,28 @@ public sealed class Order { public int Id { get; } public void Ship(string c, Da
 ### `templates/feature-folder.md`
 
 ```markdown
-# Feature folder layout
+```
+src/
+├── Faion.Domain/
+│   └── Orders/
+│       ├── Order.cs                 # aggregate, no public setters
+│       └── Events/OrderShipped.cs   # domain event record
+├── Faion.Application/
+│   └── Orders/
+│       ├── ShipOrderCommand.cs      # IRequest<ShipOrderResponse>
+│       ├── ShipOrderHandler.cs      # IRequestHandler
+│       ├── ShipOrderValidator.cs    # AbstractValidator
+│       └── ShipOrderResponse.cs     # response record
+├── Faion.Infrastructure/
+│   └── Orders/OrderRepository.cs    # EF Core impl of IOrderRepository
+└── Faion.Web/
+    └── Controllers/OrdersController.cs   # one-line mediator dispatch
+```
 
+Reference rules:
+- `Faion.Domain.csproj` has no PackageReference to EF/AspNetCore.
+- `Faion.Web.csproj` references Application + Infrastructure only.
+- Validator registered via `AddValidatorsFromAssemblyContaining<ShipOrderValidator>()`.
 ```
 src/
 ├── Faion.Domain/
@@ -271,11 +291,6 @@ Reference rules:
 ### `templates/dotnet-cleanarch-lint.sh`
 
 ```bash
-# token-budget-impact: ~450 tokens when loaded as context
-#
-# Usage: dotnet-cleanarch-lint.sh <solution-root>
-# Wire into `dotnet build` via an MSBuild BeforeTargets="Build" target, or into a
-# pre-commit hook. Pair with `dotnet format --verify-no-changes` for style drift.
 set -euo pipefail
 root="${1:?usage: dotnet-cleanarch-lint.sh SOLUTION_ROOT}"
 fail=0

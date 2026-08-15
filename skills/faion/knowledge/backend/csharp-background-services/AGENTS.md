@@ -162,9 +162,6 @@ public class TProcessor : BackgroundService
 ### `templates/registration.cs`
 
 ```csharp
-// Program.cs — registration for Channel<T>, queue abstraction, hosted services and health check.
-// Adjust TItem, TQueue, and TProcessor to your domain types.
-
 using System.Threading.Channels;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 

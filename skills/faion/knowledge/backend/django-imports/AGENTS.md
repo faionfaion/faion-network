@@ -258,13 +258,6 @@ echo "  # then use: user_models.User"
 ### `templates/django_import_lint.py`
 
 ```python
-#!/usr/bin/env python3
-
-# django_import_lint.py — flag cross-app imports without an alias, and wildcard imports.
-# Usage: python django_import_lint.py path/to/repo
-# Exits 1 if violations are found. Wire into pre-commit and CI.
-# This is the rule ruff cannot express: ruff sorts imports, it does not know that
-# `from apps.users.models import User` is the shape that shadows a name.
 import ast
 import pathlib
 import sys
