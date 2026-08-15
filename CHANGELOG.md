@@ -4,6 +4,41 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Four more tool packs: `deploy/` (free), `env-topology/` (solo),
+  `sdd-sync/` (pro), `hetzner/` (pro).** The tool layer is now **12 packs /
+  24 tools**, manifest 3,075 → 3,079, `0` validator findings.
+
+  `hetzner/fw-sync` is the one worth reading. `set_rules` is a destructive
+  replace — an empty array wipes every rule — so the tool computes the
+  post-apply rule set and **proves** inbound SSH survives from every
+  `admin_cidrs` entry plus the caller's own source before it writes;
+  failing that proof is a refusal, not a warning. Then it arms a revert and
+  requires a *second* invocation to cancel it. No commit, no permanent
+  change.
+
+  `sdd-sync` resolved a delivery trap by reading the packer **and** the
+  materialiser rather than one of them: `.json` is excluded from the blob
+  outright, and while `.xml` is packed, `syncPack` puts only scripts, cards
+  and nested helpers on disk. A `profiles/*.xml` would therefore have
+  worked in-repo and 404'd on a customer's machine. Vendor profiles are
+  embedded in the script with a `--profiles` override instead.
+
+  That correction also overturned a claim this changelog made two entries
+  ago: **shared helper modules are not impossible.** The card rule globs
+  `scripts/*` non-recursively and the CLI materialises nested
+  `scripts/<sub>/*.py` as pack Helpers, so `scripts/lib/` both validates
+  and ships. The earlier guidance cost real duplication — the Cloudflare
+  pack copied its HTTP helper into three scripts on the strength of it.
+  Both `tools/AGENTS.md` and `docs/tool-authoring.md` are corrected.
+
+  Two contract clarifications, both prompted by an author pushing back with
+  evidence: a **two-phase apply-then-commit is stronger than `--yes`** and
+  satisfies the `mutate` rule in its place, which is why `fw-sync` has no
+  `--yes`; and exit `6` means *vendor API error* — a non-2xx, an
+  unparseable envelope, a failed async action — while `2` stays for
+  genuine unreachability, so a caller can tell "their API is unhappy" from
+  "I could not start".
+
 - **Three methodologies harvested from a sibling product, where the
   evidence is measured rather than researched.** `infra/cdn-fronted-static-deploy`,
   `sdlc-ai/risk-scored-fanout-audit`, `dev/build-generator-discipline`.

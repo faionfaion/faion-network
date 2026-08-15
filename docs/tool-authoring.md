@@ -81,7 +81,8 @@ here needs judgement.
 | Left a stray `return 3` in `main` | `## Outputs does not say what exit 3 means` |
 | Kept the guidance comments and wrote long sections | `lines: 54 is above maximum 40` |
 | Put a `--flag` or a backticked digit inside a card comment | The scans read comment text too. No double dashes in `## Inputs`/`## Invoke` comments, no backticked integers in `## Outputs` comments |
-| Added a shared helper module `scripts/common.py` | `scripts/common.py: no tools/common.card.md` — **shared helper modules are impossible today.** Every `.py`/`.sh` in a pack's `scripts/` needs its own card. Duplicate the helper, or change the validator first |
+| Added a shared helper as `scripts/common.py` | `scripts/common.py: no tools/common.card.md`. Put it in **`scripts/lib/`** instead — the card rule globs `scripts/*` non-recursively, and the CLI materialises nested `scripts/<sub>/*.py` as pack Helpers, so a helper there both validates and reaches the user |
+| Shipped a `profiles/*.json` or `*.xml` a tool reads at runtime | Nothing fails in-repo, and the tool **500s on a customer's machine**. `vfs-pack` excludes `.json` outright; `.xml` enters the blob but `syncPack` materialises only scripts, cards and nested helpers. Embed the data in the script and add a `--file` flag to override it locally |
 | Added a seventh `##` section to the card | Schema failure: `card.schema.json` pins exactly six sections, and `faion-cli/internal/tools/card.go` hardcodes the same six headings. Adding one means editing the schema **and** the Go in lockstep |
 | Added a field to `meta.json` | Schema failure: `tool-pack-meta.schema.json` is `additionalProperties:false`. No comment fields either |
 | Forgot `regen-fragment-index.py` | `INDEX.xml: pack 'x-tools' is on disk and not in the index` — but **only on a full run**. Passing a pack path skips the index check, so a scoped run is never proof |
@@ -132,8 +133,13 @@ honour that literally. The amendment:
 - Missing credential → exit `3`. Rejected credential → exit `4`. A mutation refused for want of
   `--yes` → exit `5`. Network failure or a non-2xx that is not the answer → exit `2`. "You have no
   token" and "I crashed" are different actions for the calling agent.
-- **Read-only by default.** A mutating tool is dry-run unless `--yes`, prints the exact diff in
-  both modes, and caps the change set. An irreversible delete does not ship at all.
+- **Read-only by default.** A mutating tool is dry-run unless the caller confirms, prints the
+  exact diff in both modes, and caps the change set. An irreversible delete does not ship at all.
+  `--yes` is the baseline form. A **two-phase apply-then-commit** — the change goes live, a
+  revert is armed, and a *second* invocation with `--commit` cancels it — is stronger and
+  satisfies the rule in its place; use it wherever a wrong change locks the caller out of the
+  thing being changed. Confirmation is always a flag, never an interactive prompt: agents
+  auto-answer prompts, and a flag is auditable.
 - `--self-test` **must not touch the network.** It exercises parsing and rules against inline
   fixtures. A self-test that needs a token is a self-test nobody runs.
 - `## Cost` states the request count and the rate limit, not milliseconds.
