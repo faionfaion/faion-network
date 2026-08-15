@@ -61,11 +61,44 @@
         "reason"
       ]
     }
+  },
+  "gateway_config": {
+    "type": "object",
+    "required": ["stateless", "rate_limit", "request_id_propagation", "timeouts", "circuit_breaker", "gitops"],
+    "properties": {
+      "stateless": { "const": true },
+      "rate_limit": {
+        "type": "object",
+        "required": ["scope"],
+        "properties": { "scope": { "enum": ["consumer", "user-id", "api-key", "plan"] } }
+      },
+      "request_id_propagation": { "const": true },
+      "timeouts": {
+        "type": "object",
+        "required": ["gateway_ms", "upstream_ms", "client_ms"],
+        "properties": {
+          "gateway_ms": { "type": "integer", "minimum": 100, "maximum": 30000 },
+          "upstream_ms": { "type": "integer", "minimum": 100, "maximum": 10000 },
+          "client_ms": { "type": "integer", "minimum": 100, "maximum": 60000 }
+        }
+      },
+      "circuit_breaker": {
+        "type": "object",
+        "required": ["scope"],
+        "properties": { "scope": { "enum": ["per-upstream-service"] } }
+      },
+      "gitops": {
+        "type": "object",
+        "required": ["managed_by"],
+        "properties": { "managed_by": { "enum": ["argo-cd", "flux", "terraform", "deck"] } }
+      }
+    }
   }
 }
 }
 ]]></code>
     </schema>
+    <p>`gateway_config` is optional at selection time and REQUIRED once the gateway is being configured (procedure steps 6-9). It carries the operational settings pinned by rules r6-r13.</p>
   </section>
 
   <example valid="true">
@@ -103,6 +136,12 @@
     <pattern id="pattern-not-enum">`pattern` not in `[edge, bff, per-service, none]`.</pattern>
     <pattern id="product-not-enum">`product` not in the documented enum.</pattern>
     <pattern id="no-alternatives">`alternatives_rejected` empty — every selection must document at least one rejected option.</pattern>
+    <pattern id="not-stateless">`gateway_config.stateless` is false — r6 violation.</pattern>
+    <pattern id="rate-limit-by-ip">`gateway_config.rate_limit.scope` is `ip` — r7 violation behind a CDN or load balancer.</pattern>
+    <pattern id="no-request-id">`gateway_config.request_id_propagation` is false — r8 violation.</pattern>
+    <pattern id="timeout-inversion">`gateway_ms >= client_ms` or `upstream_ms >= gateway_ms` — r9 violation.</pattern>
+    <pattern id="global-circuit-breaker">`gateway_config.circuit_breaker.scope` is `global` — r10 violation.</pattern>
+    <pattern id="manual-gitops">`gateway_config.gitops.managed_by` is `none-manual` — r11 violation.</pattern>
   </forbidden>
 
   <reference path="scripts/validate-api-gateway-patterns.py">Stdlib-only validator implementing this schema.</reference>

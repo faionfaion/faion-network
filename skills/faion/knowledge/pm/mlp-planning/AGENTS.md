@@ -47,11 +47,13 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology: 4-layer audit, base-before-delight, evidence-required, retention-curve gate, bounded sprints | 1000 |
+| `content/01-core-rules.xml` | essential | 7 testable rules + skip-this-methodology: 4-layer audit, base-before-delight, evidence-required, retention-curve gate, bounded sprints, 4+ MLP threshold, polish-priority formula | 1300 |
+| `content/01-framework.xml` | essential | The four-layer model defined, the 1-5 rating scale, the 4+ MLP threshold, MVP vs MLP contrast | 600 |
+| `content/02-process.xml` | medium | 5-step process: audit -> find delight moments (4 moments, 5 delight types) -> prioritise -> write MLP criteria -> plan the gap | 650 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 for MLP plan | 850 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns: delight-on-broken-base, designer-opinion, unbounded-polish, missing curve target | 750 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns: delight-on-broken-base, designer-opinion, unbounded-polish, missing curve target, cosmetic polish, context-blind delight, features-instead-of-polish | 1150 |
 | `content/04-procedure.xml` | essential | 5-step procedure: audit -> score -> gate -> sprint -> measure | 800 |
-| `content/05-examples.xml` | medium | Worked MLP plan moving Day-30 retention from 22% to 38% | 700 |
+| `content/05-examples.xml` | medium | Worked MLP plan moving Day-30 retention 22% -> 38%, plus note-taking and invoicing upgrade cases | 1100 |
 | `content/06-decision-tree.xml` | essential | Apply/skip routing on retention + NPS + lifecycle stage | 650 |
 
 ## Task Routing

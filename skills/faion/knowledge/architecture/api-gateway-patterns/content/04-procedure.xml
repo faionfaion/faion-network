@@ -32,6 +32,28 @@
       <output>CI guard committed.</output>
       <decision-gate>If team has no service catalog, ship a stub before merging the gate.</decision-gate>
     </step>
+    <step n="6" name="design-stateless-gateway">
+      <input>Selected product + service map.</input>
+      <action>Configure the gateway stateless per r6 — JWT/mTLS for auth state, Redis for rate-limit counters, no business logic in plugins. Route any aggregation to a separate BFF (r13). If Kong, commit to DB or DB-less mode now (r12).</action>
+      <output>Stateless gateway config.</output>
+      <decision-gate>If any plugin needs backend state to decide, stop and create the BFF first.</decision-gate>
+    </step>
+    <step n="7" name="wire-cross-cutting-concerns">
+      <input>Auth provider, X-Forwarded-For policy, timeout budget.</input>
+      <action>Configure per-consumer rate limiting (r7), X-Request-ID generation and propagation (r8), the upstream &lt; gateway &lt; client timeout cascade (r9), and per-upstream circuit breakers (r10).</action>
+      <output>`gateway_config` block of the artefact, populated.</output>
+    </step>
+    <step n="8" name="add-smoke-tests">
+      <input>Route table + deployed gateway.</input>
+      <action>Pair every route change with a smoke test (curl script or Pact contract) proving route, auth and rate-limit behaviour; commit the tests beside the gateway config.</action>
+      <output>Smoke tests in CI.</output>
+    </step>
+    <step n="9" name="validate-and-deploy">
+      <input>Artefact with `gateway_config` + smoke tests.</input>
+      <action>Run `scripts/validate-api-gateway-patterns.py --file artefact.json`; deploy through the GitOps controller named in `gitops.managed_by` (r11); verify smoke tests green.</action>
+      <output>Gateway live and validated.</output>
+      <decision-gate>If the deploy path is a hand-run reload, block — r11 requires a controller.</decision-gate>
+    </step>
 
   </section>
 </text>

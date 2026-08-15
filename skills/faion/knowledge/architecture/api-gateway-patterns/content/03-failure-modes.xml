@@ -24,6 +24,31 @@
       <root-cause source="F-066 wave-23 chunk-00 grounding">'Best practice' framing without specific drivers.</root-cause>
       <fix>Name ≥2 concerns (auth, rate limit, observability, protocol translation) the gateway will own.</fix>
     </antipattern>
+    <antipattern id="business-logic-in-plugin" severity="high">
+      <symptom>A Kong Lua plugin or Envoy filter computes a domain rule that depends on backend state (e.g. order routing by user tier).</symptom>
+      <root-cause source="dev/api-gateway-patterns fm-01 (merged)">Pressure to land a routing tweak fast while no BFF service existed yet.</root-cause>
+      <fix>Extract the logic into a BFF service; restore the gateway to cross-cutting concerns only (r6).</fix>
+    </antipattern>
+    <antipattern id="ip-rate-limit-behind-cdn" severity="high">
+      <symptom>rate_limit.scope=ip while the gateway sits behind Cloudflare / CloudFront / an ALB, so every consumer shares one bucket.</symptom>
+      <root-cause source="dev/api-gateway-patterns fm-02 (merged)">Operator copied a tutorial that assumed a direct-to-gateway topology.</root-cause>
+      <fix>Switch rate_limit.scope to consumer (API key / user id) or key off X-Forwarded-For (r7).</fix>
+    </antipattern>
+    <antipattern id="timeout-inversion" severity="high">
+      <symptom>gateway_ms ≥ client_ms, or upstream_ms ≥ gateway_ms; clients abort before the 504 arrives and retry into a still-retrying gateway.</symptom>
+      <root-cause source="dev/api-gateway-patterns fm-03 (merged)">Default timeouts copied without computing the cascade.</root-cause>
+      <fix>Set gateway below client and upstream below gateway with ≥50% headroom at each step (r9).</fix>
+    </antipattern>
+    <antipattern id="global-circuit-breaker" severity="medium">
+      <symptom>One circuit breaker for the whole platform; a single slow service takes down every route.</symptom>
+      <root-cause source="dev/api-gateway-patterns fm-04 (merged)">Misread the docs; assumed `global` meant defaults applied per service.</root-cause>
+      <fix>Configure circuit breakers per upstream service (r10).</fix>
+    </antipattern>
+    <antipattern id="manual-config-changes" severity="medium">
+      <symptom>`kong reload` or `kubectl apply` run against the gateway outside any GitOps controller, with no matching commit.</symptom>
+      <root-cause source="dev/api-gateway-patterns fm-05 (merged)">Manual workflow never migrated to deck / Terraform.</root-cause>
+      <fix>Move to deck (Kong), Terraform (AWS API Gateway) or Argo CD / Flux, and reject manual applies (r11).</fix>
+    </antipattern>
 
   </section>
 

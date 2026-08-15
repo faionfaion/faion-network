@@ -43,11 +43,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules each with rationale + source. | ~900 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check. | ~800 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom/root-cause/fix. | ~800 |
-| `content/04-procedure.xml` | essential | 6-step procedure: scope → classify → cite Articles → gap-analyse → document → review. | ~700 |
-| `content/05-examples.xml` | medium | Worked example: HR-screening tool → Annex III high-risk → Articles 9-15 obligations. | ~800 |
+| `content/01-core-rules.xml` | essential | 12 testable rules each with rationale + source — r1-r7 map the system to the Act, r8-r12 govern the pipeline that drafts the documentation (citation validation, human legal sign-off, immutable artefacts, re-classification trigger, GDPR parallel track). | ~1600 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples + self-check; carries reviewer_signoff and the model-card stub schema. | ~1000 |
+| `content/03-failure-modes.xml` | essential | 9 antipatterns with symptom/root-cause/fix — mis-classification, stripped citations, skipped GPAI docs, missing Article 50, hallucinated articles, classification drift, missing human gate, uninterpretable explanations, GDPR collision. | ~1500 |
+| `content/04-procedure.xml` | essential | 8-step procedure: scope → classify → cite Articles → gap-analyse → generate evidence (model card, bias report, explainability) → document → legal review → register and monitor. | ~1100 |
+| `content/05-examples.xml` | medium | Two worked examples: HR-screening tool → Annex III high-risk → Articles 9-15 obligations; credit-scoring agent through registration, including a caught hallucinated citation. | ~1300 |
 | `content/06-decision-tree.xml` | essential | Risk-tier branching: prohibited / high-risk / GPAI / limited / minimal. | ~500 |
 
 ## Task Routing

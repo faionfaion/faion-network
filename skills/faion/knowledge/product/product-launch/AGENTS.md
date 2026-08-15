@@ -21,6 +21,9 @@
 - Silent feature toggle for internal use only.
 - Bug fix or maintenance release with no audience comms.
 - No metrics infrastructure to evaluate launch success.
+- Pre-PMF, where 'launch' is premature — keep iterating in discovery.
+- Compliance or regulator-mandated release with no marketing surface.
+- Single-customer enterprise deploy — use the account-handoff playbook instead.
 
 ## Prerequisites
 
@@ -29,6 +32,8 @@
 | Launch brief (problem/audience/value) | markdown | PM doc |
 | Success metrics list | table | analytics plan |
 | Audience segments | csv | CRM |
+| Positioning statement | 1-page doc | PM |
+| Channel inventory | table (email, social, blog, paid) | marketing |
 
 ## Assumes Loaded
 
@@ -41,11 +46,13 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | ≥5 testable rules + skip + run rules | 800 |
+| `content/01-core-rules.xml` | essential | 8 testable rules + skip + run rules: stage gates, segmented cadence, rollback, armed monitors, +14d window, one positioning segment, per-channel runbook, three-channel floor | 1200 |
+| `content/01-planning.xml` | medium | Launch types, the T-8 to T+2 timeline, asset checklist, channel matrix, launch-day-of-week, pre-written rollback narrative | 1000 |
+| `content/02-execution.xml` | medium | Launch-day DRI + human-held kill switch, monitoring thresholds, testimonials in 48h, 7-day retro, banned launch-copy words, press unreliability | 1050 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 700 |
-| `content/04-procedure.xml` | essential | Step-by-step procedure end-to-end | 700 |
-| `content/05-examples.xml` | essential | Worked example end-to-end | 600 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: press-release launch, no rollback plan, metrics vacuum, multi-segment mush, single-channel launch | 1000 |
+| `content/04-procedure.xml` | essential | 6-step procedure: position -> pre-launch -> dry-run -> launch day -> first 72h -> +14d review | 1000 |
+| `content/05-examples.xml` | essential | Worked examples: a concrete indie-dev launch hitting its metric, plus a stage-gated paid-plan launch | 900 |
 | `content/06-decision-tree.xml` | essential | Routes observable inputs to a rule id in 01-core-rules.xml | 500 |
 
 ## Task Routing

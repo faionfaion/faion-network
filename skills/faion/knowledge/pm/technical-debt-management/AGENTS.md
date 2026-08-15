@@ -19,6 +19,7 @@
 - Quarterly planning where 15-20% capacity is reserved for paydown.
 - Post-P0 outage or regression cluster where the post-mortem identifies debt as root cause.
 - Before a major architectural change (auth rewrite, billing migration).
+- Stakeholder pressure to ship features is visibly crowding debt work out of the sprint.
 - Multi-repo solopreneur portfolio where debt silently compounds in lower-traffic repos.
 
 ## Skip If (ANY kills it)
@@ -26,6 +27,7 @@
 - Greenfield product <3 months of code (premature optimization).
 - Throwaway prototype.
 - Team explicitly running tracer-bullet methodology with debt-acceptable-by-design.
+- Crisis sprint stabilising production — debt work pauses until the incident closes.
 - Capacity contract already in force <=90 days with no trigger event.
 
 ## Prerequisites
@@ -47,10 +49,10 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology: typed register, interest × contagion / effort score, capacity contract, prevention policy paired, public visibility | 1000 |
+| `content/01-core-rules.xml` | essential | 7 testable rules + skip-this-methodology: typed register, interest × contagion / effort score, interest-rate derivation, capacity contract, prevention policy paired, no zero-debt sprints, public visibility | 1300 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 for debt-register + capacity-contract | 850 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns: untyped register, effort-only score, soft capacity, fix-without-prevention | 750 |
-| `content/04-procedure.xml` | essential | 5-step procedure: inventory -> classify -> score -> contract -> prevent | 800 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns: untyped register, effort-only score, soft capacity, fix-without-prevention, budget drift, big-bang refactor, invisible debt | 1100 |
+| `content/04-procedure.xml` | essential | 6-step procedure: inventory -> classify -> score -> contract -> prevent -> track | 950 |
 | `content/05-examples.xml` | medium | Worked debt register with capacity contract + prevention policy | 700 |
 | `content/06-decision-tree.xml` | essential | Apply/skip routing on code age + velocity trend | 650 |
 

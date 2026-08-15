@@ -48,10 +48,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology: canonical store, fixed taxonomy, segment-weighted ranking, close-loop, monthly review | 1000 |
+| `content/01-core-rules.xml` | essential | 7 testable rules + skip-this-methodology: canonical store, fixed taxonomy, segment-weighted ranking, close-loop, monthly review, daily triage SLA, volume threshold before escalation | 1300 |
+| `content/01-feedback-pipeline.xml` | medium | Source inventory, categorization taxonomy, 6-step pipeline, agent workflow (triage / aggregator / close-loop) | 1100 |
+| `content/02-feedback-patterns.xml` | medium | Monthly review example, app-store response strategy, embedding dedup, LLM-drift audit, PII gotchas, human-in-loop checkpoints | 900 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 for feedback-record + monthly-theme-report | 850 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns: noise-overload, vote-only ranking, lost close-loop, taxonomy drift | 750 |
-| `content/04-procedure.xml` | essential | 5-step procedure: ingest -> normalize -> classify -> rank -> dispose | 800 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: noise-overload, vote-only ranking, lost close-loop, taxonomy drift, anecdote-driven escalation, inbox rot | 1050 |
+| `content/04-procedure.xml` | essential | 6-step procedure: ingest -> normalize -> classify -> deduplicate -> rank -> dispose | 950 |
 | `content/05-examples.xml` | medium | Worked monthly review producing top-10 themes + dispositions | 700 |
 | `content/06-decision-tree.xml` | essential | Apply/skip routing on volume + multi-channel + commitment | 600 |
 
@@ -75,6 +77,7 @@
 | File | Purpose | When to call |
 |------|---------|--------------|
 | `scripts/validate-feedback-management.py` | Validate the methodology output artefact against the schema in content/02-output-contract.xml | Pre-commit + CI on artefact changes |
+| `scripts/triage.py` | Triage one feedback item via LLM with strict JSON-schema output; normalises text, computes the dedup hash, validates topic against the taxonomy | Per item, at the classify step; PII must be stripped first |
 
 ## Related
 

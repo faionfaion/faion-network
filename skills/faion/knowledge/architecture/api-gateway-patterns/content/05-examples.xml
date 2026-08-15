@@ -38,4 +38,83 @@ Adopt the BFF pattern with Kong gateways; one BFF per client family backed by a 
     </example>
 
   </section>
+
+  <section title="Operational configuration (procedure steps 6-9)">
+
+    <example type="good" title="gateway_config block honouring r6-r13">
+      <code lang="json"><![CDATA[
+"gateway_config": {
+  "stateless": true,
+  "rate_limit": { "scope": "api-key" },
+  "request_id_propagation": true,
+  "timeouts": { "upstream_ms": 2000, "gateway_ms": 5000, "client_ms": 10000 },
+  "circuit_breaker": { "scope": "per-upstream-service" },
+  "gitops": { "managed_by": "deck" }
+}
+]]></code>
+      <note>Cascade holds (2000 &lt; 5000 &lt; 10000). Rate limit keyed on the API key, not the CDN's IP.</note>
+    </example>
+
+    <example type="good" title="Kong declarative route — the four allowed plugins only">
+      <code lang="yaml"><![CDATA[
+_format_version: "3.0"
+services:
+  - name: user-service
+    url: http://user-service:8080
+    routes:
+      - name: users-route
+        paths: [/api/users]
+        strip_path: false
+        preserve_host: true
+plugins:
+  - name: jwt
+    config: { claims_to_verify: [exp] }
+  - name: rate-limiting
+    config: { minute: 100, policy: redis, limit_by: consumer }
+  - name: correlation-id
+    config: { header_name: X-Request-ID, generator: uuid, echo_downstream: true }
+  - name: cors
+    config: { origins: ["https://app.example.com"], headers: [Authorization, Content-Type] }
+]]></code>
+      <note>limit_by: consumer satisfies r7; correlation-id at ingress satisfies r8; preserve_host prevents Host header breakage.</note>
+    </example>
+
+    <example type="bad" title="nginx rate limit keyed on the wrong variable">
+      <code lang="nginx"><![CDATA[
+# WRONG — behind a CDN every consumer shares one bucket (r7)
+limit_req_zone $binary_remote_addr zone=api_limit:10m rate=10r/s;
+
+# RIGHT — key on the consumer identity the gateway resolved
+limit_req_zone $http_x_consumer_id zone=api_limit:10m rate=10r/s;
+proxy_set_header X-Request-ID $request_id;
+proxy_read_timeout 5s;
+]]></code>
+      <note>The bad form is antipattern ip-rate-limit-behind-cdn in 03-failure-modes.xml.</note>
+    </example>
+
+    <example type="good" title="BFF fan-out with per-service timeout and partial degradation">
+      <code lang="python"><![CDATA[
+async with httpx.AsyncClient(timeout=2.0) as c:      # per-service, not global (r13)
+    user, orders, notifs = await asyncio.gather(
+        c.get("http://user-svc/me", headers=h),
+        c.get("http://order-svc/me/orders?limit=5", headers=h),
+        c.get("http://notify-svc/me/unread", headers=h),
+        return_exceptions=True,
+    )
+return {                                              # partial failure degrades, never 500s
+    "user": user.json() if getattr(user, "is_success", False) else None,
+    "orders": orders.json() if getattr(orders, "is_success", False) else [],
+    "notifications": notifs.json() if getattr(notifs, "is_success", False) else [],
+}
+]]></code>
+      <note>Parallel fan-out, 2s per hop, null/[] on a failed upstream. No caching in the BFF — that belongs at the gateway (r13).</note>
+    </example>
+
+    <reference path="templates/kong-route.yml">Full Kong declarative route, deck-sync compatible.</reference>
+    <reference path="templates/nginx-gateway.conf">Full nginx gateway config with consumer-scoped rate limiting.</reference>
+    <reference path="templates/bff-aggregator.py">Full BFF aggregator module.</reference>
+    <reference path="templates/gateway-config.json">`gateway_config` skeleton for the operational half of the artefact.</reference>
+    <reference path="templates/prompt-gateway-route.txt">Prompt template for adding a route without smuggling in business logic.</reference>
+
+  </section>
 </text>

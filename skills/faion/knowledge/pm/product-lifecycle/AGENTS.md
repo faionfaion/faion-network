@@ -26,6 +26,7 @@
 - Single-product team with no portfolio.
 - Pre-PMF product where lifecycle stages don't apply yet.
 - Agency project (each engagement is finite).
+- Crisis mode — run the stage assessment after stabilisation, not during it.
 - Stable lifecycle tag <=90 days old without trigger events.
 
 ## Prerequisites
@@ -35,6 +36,7 @@
 | Product metrics | growth, churn, NPS, market share | product-analytics |
 | Lifecycle tag history | list | previous reviews |
 | Market context | competitive landscape | research |
+| Margin trend | table | finance |
 
 ## Assumes Loaded
 
@@ -46,10 +48,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology: quantitative classification, stage-investment match, transition memo, mandatory sunset, pre-roadmap tagging | 1000 |
+| `content/01-core-rules.xml` | essential | 7 testable rules + skip-this-methodology: quantitative classification, stage-investment match, confidence label, playbook routing, transition memo, mandatory sunset, pre-roadmap tagging | 1300 |
 | `content/02-output-contract.xml` | essential | JSON Schema draft-07 for lifecycle-decision-record | 850 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns: vibes-tagging, growth-budget-on-maturity, silent-transition, open-ended-decline | 750 |
-| `content/04-procedure.xml` | essential | 5-step procedure: collect signals -> classify -> match strategy -> write memo -> sunset if needed | 800 |
+| `content/03-failure-modes.xml` | essential | 6 antipatterns: vibes-tagging, growth-budget-on-maturity, silent-transition, open-ended-decline, perma-launch mindset, decline denial | 1050 |
+| `content/04-procedure.xml` | essential | 5-step procedure: collect signals -> classify -> label + match strategy + route playbook -> write memo -> sunset if needed | 900 |
+| `content/05-examples.xml` | medium | Worked Growth-to-Maturity transition + a vibes-tag counter-example | 700 |
 | `content/06-decision-tree.xml` | essential | Apply/skip routing on portfolio + recent tag | 650 |
 
 ## Task Routing

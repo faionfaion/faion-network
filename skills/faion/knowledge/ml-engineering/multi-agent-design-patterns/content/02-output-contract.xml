@@ -53,8 +53,45 @@
         },
         "recommendation": {
           "type": "string"
-        }
-      }
+        },
+        "pattern": {
+          "type": "string",
+          "enum": [
+            "sequential",
+            "parallel_fanout",
+            "hierarchical",
+            "generator_critic",
+            "loop",
+            "human_in_loop",
+            "router",
+            "blackboard"
+          ]
+        },
+        "alternatives_considered": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "required": ["pattern", "why_rejected"],
+            "properties": {
+              "pattern": {"type": "string"},
+              "why_rejected": {"type": "string", "minLength": 16}
+            }
+          }
+        },
+        "tradeoffs": {
+          "type": "object",
+          "required": ["latency", "cost", "audit", "parallelism"]
+        },
+        "downstream_methodology": {"type": "string"},
+        "hitl_gates": {"type": "array", "items": {"type": "string"}},
+        "concurrency_plan": {"type": "string"},
+        "classifier_accuracy": {"type": "number", "minimum": 0.85}
+      },
+      "allOf": [
+        {"if": {"properties": {"pattern": {"const": "blackboard"}}}, "then": {"required": ["concurrency_plan"]}},
+        {"if": {"properties": {"pattern": {"const": "router"}}}, "then": {"required": ["classifier_accuracy"]}}
+      ]
     },
     "forbidden_seen": {
       "type": "array",
@@ -122,6 +159,10 @@
       <item>`forbidden_seen` array empty.</item>
       <item>`signature` matches sha1(slug + version + ISO date)[:16].</item>
       <item>`date` is ISO 8601 (YYYY-MM-DD).</item>
+      <item>`payload.pattern` is one of the 8 canonical names exactly — never a stack such as "hierarchical + loop".</item>
+      <item>At least 2 `alternatives_considered`, each carrying `why_rejected`.</item>
+      <item>Every irreversible action in the design is listed in `hitl_gates`.</item>
+      <item>If `pattern == blackboard`, `concurrency_plan` is present; if `pattern == router`, `classifier_accuracy >= 0.85`.</item>
     </list>
   </section>
 </text>

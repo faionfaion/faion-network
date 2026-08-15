@@ -21,6 +21,7 @@
 - No instrumented outcomes — outcome-based framing has nothing to anchor.
 - Single-product operator with no stakeholders — roadmap is overkill, use OKRs alone.
 - Pre-MVP — fix MVP scoping first.
+- Pure execution phase with fully scoped and validated work — nothing left for the roadmap to hold open.
 
 ## Prerequisites
 
@@ -30,6 +31,7 @@
 | candidate outcomes | array | founder |
 | instrumented metrics per outcome | object | analytics |
 | public roadmap surface URL | URL | operator |
+| not-doing list | list | strategy review |
 
 ## Assumes Loaded
 
@@ -42,11 +44,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 8 testable rules with rationale + source | ~1200 |
 | `content/02-output-contract.xml` | essential | JSON Schema fields, forbidden patterns, allowed transformations | ~800 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
-| `content/04-procedure.xml` | essential | 4 step-by-step procedure | ~700 |
-| `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
+| `content/03-failure-modes.xml` | essential | 7 failure modes with detector + repair | ~1100 |
+| `content/04-procedure.xml` | essential | 6 step-by-step procedure | ~900 |
+| `content/05-examples.xml` | essential | Worked end-to-end examples incl. a concrete churn quarter | ~900 |
 | `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing

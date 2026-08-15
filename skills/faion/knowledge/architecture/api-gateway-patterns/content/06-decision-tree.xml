@@ -31,4 +31,44 @@
   <example trace="happy-path">
     Applies-If holds, Skip-If clear → owner is a named human → inputs reachable → produce + validate the decision-record artefact.
   </example>
+
+  <section title="Operational review tree (merged from dev/api-gateway-patterns)">
+    <p>Once the pattern and product are chosen, review an existing gateway config or PR diff against this second tree. Apply top to bottom; the first matching branch is decisive, and when several match, fix in the order listed because later fixes usually depend on earlier ones.</p>
+
+    <decision-tree>
+      <root-question id="q-signal">Which observable signal best describes the artefact under review?</root-question>
+
+      <branch when="signal == business-logic-in-plugin">
+        <conclusion ref="r6-stateless-gateway" verdict="move the logic into a BFF; reserve plugins for auth, rate-limit, tracing and CORS."/>
+      </branch>
+      <branch when="signal == ip-rate-limit-behind-cdn">
+        <conclusion ref="r7-rate-limit-by-consumer" verdict="rate-limit by consumer or X-Forwarded-For; never by the proxy's remote IP."/>
+      </branch>
+      <branch when="signal == no-request-id">
+        <conclusion ref="r8-request-id-propagation" verdict="generate X-Request-ID at ingress, propagate downstream, log it at every hop."/>
+      </branch>
+      <branch when="signal == gateway-timeout-ge-client">
+        <conclusion ref="r9-timeout-cascade" verdict="reduce gateway below client and upstream below gateway with 50% headroom."/>
+      </branch>
+      <branch when="signal == global-circuit-breaker">
+        <conclusion ref="r10-per-service-circuit-breaker" verdict="configure breakers per upstream service; one slow service must not kill all routes."/>
+      </branch>
+      <branch when="signal == manual-config-changes">
+        <conclusion ref="r11-declarative-config-as-code" verdict="manage via deck / Terraform / Argo CD; reject hand-run reloads and UI edits."/>
+      </branch>
+      <branch when="signal == kong-mode-switch-in-flight">
+        <conclusion ref="r12-kong-mode-committed" verdict="finish on one mode; migrating DB to DB-less while serving traffic loses state."/>
+      </branch>
+      <branch when="signal == bff-serial-or-global-timeout">
+        <conclusion ref="r13-bff-parallel-partial" verdict="fan out in parallel with a per-service timeout and degrade partially instead of failing the composition."/>
+      </branch>
+      <branch when="signal == monolith-one-backend">
+        <conclusion ref="skip-this-methodology" verdict="use a direct reverse proxy; a gateway adds operational overhead for no gain."/>
+      </branch>
+      <branch when="signal == none-of-the-above">
+        <conclusion ref="skip-this-methodology" verdict="signal does not match; route to a different methodology or proceed without this one."/>
+      </branch>
+
+    </decision-tree>
+  </section>
 </text>

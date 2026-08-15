@@ -15,6 +15,8 @@
 - Domain expertise must be isolated — a billing agent must not have access to CRM tools
 - Enterprise workflows map naturally to organizational units (teams, departments, roles)
 - Reliability requires cross-checking: parallel agents can validate each other's outputs
+- Pattern choice is not yet locked in — still architecting, not implementing
+- The decision will be persisted as an SDD design.md / ADR entry
 
 ## Skip If (ANY kills it)
 
@@ -22,6 +24,7 @@
 - Latency is critical (<2s) — agent-to-agent round trips add 500ms–2s each
 - The problem is not well-decomposed yet — build a working single agent first, then extract workers
 - Token budget is constrained — multi-agent systems use significantly more tokens per task
+- Implementation already committed and the pattern is locked in — go straight to the relevant impl methodology
 
 ## Prerequisites
 
@@ -41,12 +44,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | Five testable rules with rationale and source. | ~900 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples for the output artefact. | ~800 |
-| `content/03-failure-modes.xml` | essential | Antipatterns with symptom / root-cause / fix. | ~800 |
+| `content/01-core-rules.xml` | essential | Ten testable rules with rationale and source — five on mesh operation (tiering, handoff contracts, termination, tracing), five on topology selection and the decision record. | ~1600 |
+| `content/02-output-contract.xml` | essential | JSON Schema + valid/invalid examples; payload carries the 8-pattern enum with conditional requirements (blackboard needs a concurrency plan, router needs classifier accuracy ≥0.85). | ~1000 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns with symptom / root-cause / fix — infinite loop, token explosion, shared-state race, pattern stacking, router without a classifier, blackboard without locking, same-model generator and critic, missing HITL gates. | ~1400 |
 | `content/04-procedure.xml` | medium | Five-step procedure with decision-gates. | ~700 |
 | `content/05-examples.xml` | medium | One end-to-end worked example. | ~600 |
-| `content/06-decision-tree.xml` | essential | Decision tree gating whether the methodology applies, ending in rule refs. | ~500 |
+| `content/06-decision-tree.xml` | essential | Topology-selection tree on observable signals (irreversible actions, classifier accuracy, shared mutable state, critique, iteration, parallelisability, manager need), each leaf naming the pattern and its rule ref. | ~600 |
 
 ## Task Routing
 

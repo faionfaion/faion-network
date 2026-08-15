@@ -1,36 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="06-decision-tree" title="Multi-Agent Design Patterns — Decision Tree" version="1.0.0" est_tokens="500" depth="essential">
-  <summary>Tree the agent walks before applying multi-agent-design-patterns. Branches name observable input fields; every leaf points at a rule id from 01-core-rules.</summary>
+  <summary>Tree the agent walks to pick the topology. Branches name observable input signals — irreversible actions, classifier accuracy, shared mutable state, need for critique or iteration, parallelisability, need for a manager — and every leaf points at a rule id from 01-core-rules and names the pattern to pick.</summary>
 
   <decision-tree>
-    <root-question id="q-applies">Do ALL Applies-If preconditions hold AND no Skip-If trigger fires (input.applies_if == true AND input.skip_if == false)?</root-question>
-    <branch when="applies_if == false OR skip_if == true">
-      <conclusion ref="r1-pick-pattern-by-decomposition" verdict="skip-methodology"/>
+    <root-question id="q-applies">Does the workflow contain any irreversible action (DB writes, payments, deploys, external emails)?</root-question>
+    <branch when="has_irreversible_action == true">
+      <conclusion ref="r5-hitl-on-irreversible" verdict="Primary pattern stays the one from the rest of the tree; ADD `hitl_gates` listing every irreversible action. HITL is overlay, not replacement."/>
     </branch>
-    <branch when="applies_if == true AND skip_if == false">
-      <question id="q-inputs">Are the Prerequisites artefacts present AND well-typed (input.prereqs_present == true)?</question>
-      <branch when="prereqs_present == false">
-        <conclusion ref="r2-ladder-model-tiers" verdict="block-need-prereqs"/>
-      </branch>
-      <branch when="prereqs_present == true">
-        <question id="q-rules">Do rules 1-3 from 01-core-rules pass on the input bundle (input.rules_1_to_3_pass == true)?</question>
-        <branch when="rules_1_to_3_pass == false">
-          <conclusion ref="r3-explicit-handoff-contract" verdict="repair-rule-violation"/>
-        </branch>
-        <branch when="rules_1_to_3_pass == true">
-          <question id="q-output">Does the draft artefact validate against 02-output-contract (input.contract_valid == true)?</question>
-          <branch when="contract_valid == false">
-            <conclusion ref="r4-global-termination" verdict="block-need-contract-fix"/>
-          </branch>
-          <branch when="contract_valid == true">
-            <conclusion ref="r5-trace-every-edge" verdict="accept-and-handoff"/>
-          </branch>
-        </branch>
-      </branch>
+    <branch when="has_irreversible_action == false OR HITL_added == true AND needs_classifier_dispatch == true AND classifier_accuracy &gt;= 0.85">
+      <conclusion ref="r4-router-needs-classifier" verdict="Pick `router`. Document classifier_accuracy; fall back to a generalist agent below threshold."/>
+    </branch>
+    <branch when="has_irreversible_action == false OR HITL_added == true AND needs_classifier_dispatch == false OR classifier_accuracy &lt; 0.85 AND shared_mutable_state == true">
+      <conclusion ref="r3-blackboard-locking" verdict="Pick `blackboard`. Document concurrency_plan (single-writer queue / CRDT / DB transactions)."/>
+    </branch>
+    <branch when="has_irreversible_action == false OR HITL_added == true AND needs_classifier_dispatch == false OR classifier_accuracy &lt; 0.85 AND shared_mutable_state == false AND needs_critique == true">
+      <conclusion ref="r2-downstream-impl-link" verdict="Pick `generator_critic`. Generator + critic on different model families; downstream impl = `multi-agent-conversational`."/>
+    </branch>
+    <branch when="has_irreversible_action == false OR HITL_added == true AND needs_classifier_dispatch == false OR classifier_accuracy &lt; 0.85 AND shared_mutable_state == false AND needs_critique == false AND needs_iteration == true">
+      <conclusion ref="r2-downstream-impl-link" verdict="Pick `loop`. Halting predicate required; downstream impl = `multi-agent-conversational` with `max_turns` cap."/>
+    </branch>
+    <branch when="has_irreversible_action == false OR HITL_added == true AND needs_classifier_dispatch == false OR classifier_accuracy &lt; 0.85 AND shared_mutable_state == false AND needs_critique == false AND needs_iteration == false AND parallelisable == true">
+      <conclusion ref="r1-one-named-pattern" verdict="Pick `parallel_fanout`. Strong synthesizer at gather step (opus-grade); downstream impl = `multi-agent-basics`."/>
+    </branch>
+    <branch when="has_irreversible_action == false OR HITL_added == true AND needs_classifier_dispatch == false OR classifier_accuracy &lt; 0.85 AND shared_mutable_state == false AND needs_critique == false AND needs_iteration == false AND parallelisable == false AND needs_manager == true">
+      <conclusion ref="r2-downstream-impl-link" verdict="Pick `hierarchical`. Manager + stateless workers + synthesis; downstream impl = `multi-agent-hierarchical`."/>
+    </branch>
+    <branch when="has_irreversible_action == false OR HITL_added == true AND needs_classifier_dispatch == false OR classifier_accuracy &lt; 0.85 AND shared_mutable_state == false AND needs_critique == false AND needs_iteration == false AND parallelisable == false AND needs_manager == false">
+      <conclusion ref="r1-one-named-pattern" verdict="Pick `sequential`. Linear chain; downstream impl = `multi-agent-basics`."/>
+    </branch>
+    <branch when="applies_if == false OR skip_if == true">
+      <conclusion ref="skip-this-methodology" verdict="preconditions not met; route to correct methodology or skip."/>
     </branch>
   </decision-tree>
 
   <example trace="happy-path">
-    applies_if=true, skip_if=false → q-inputs: prereqs_present=true → q-rules: rules_1_to_3_pass=true → q-output: contract_valid=true → accept-and-handoff (ref r5-trace-every-edge).
+    has_irreversible_action=false, needs_classifier_dispatch=false, shared_mutable_state=false, needs_critique=true → pick `generator_critic` (ref r2-downstream-impl-link); then apply r2-ladder-model-tiers and r3-explicit-handoff-contract to the resulting mesh.
   </example>
 </text>

@@ -4,7 +4,9 @@
 
 **One-sentence:** Captures one architecturally significant decision per ADR with Context, Decision, Consequences, Alternatives. Lock format; CI-enforce; treat as first-class artefacts.
 
-**One-paragraph:** An ADR is a short document capturing one architecturally significant decision. Standard format (Nygard or MADR), locked in ADR-0001, enforced by CI. Output is an ADR file in `docs/adr/` plus an updated ADR index. Status fields (Proposed, Accepted, Deprecated, Superseded) demand periodic review; pair with `adr-staleness-audit` quarterly.
+**One-paragraph:** An ADR is a short document — 1-2 pages — capturing one architecturally significant decision, stored in version control next to the code it explains so the choice outlives the team's memory and the same debates stop recurring. Standard format (Nygard or MADR), locked in ADR-0001, enforced by CI. Output is an ADR file in `docs/adr/` plus an updated ADR index, consumed downstream by `design-docs-patterns` and `code-review-cycle`. Status fields (Proposed, Accepted, Deprecated, Superseded) demand periodic review; pair with `adr-staleness-audit` quarterly.
+
+**Ефективно для (додатково):** solo devs and small teams who keep re-debating 'why did we pick Postgres over MongoDB' every six months because nobody wrote it down.
 
 **Ефективно для:**
 
@@ -16,14 +18,17 @@
 
 ## Applies If (ALL must hold)
 
-- An architecturally significant decision is being made (technology, pattern, boundary).
-- More than one option was considered.
-- The decision will affect future work or be referenced by ≥2 people.
+- An architecturally significant decision is being made (database, framework, language, deployment target, pattern, boundary).
+- More than one option was considered — ≥2 genuine alternatives, not strawmen.
+- The decision will affect future work or be referenced by ≥2 people, and will be revisited or questioned within 18 months.
+- The repo has a `docs/adr/` or `.aidocs/decisions/` folder to store it in.
 
 ## Skip If (ANY kills it)
 
 - Trivial implementation choice with no cross-cutting impact.
-- Reversible-without-cost dev-tooling tweak.
+- Operational tweak (CDN cache TTL, log level).
+- Decision reversible inside a single sprint, or reversible-without-cost dev-tooling tweak.
+- One-person hobby project with no future readership.
 - Same decision already documented in an existing ADR.
 
 ## Prerequisites
@@ -33,20 +38,23 @@
 | Decision context | problem statement | the deciding engineer |
 | Alternatives explored | ≥2 options | design discussion |
 | ADR-0001 (format lock) | ADR file | repo ADR folder |
+| ADR index file | markdown | repo |
 
 ## Assumes Loaded
 
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/software-architect/adr-reversibility-tagging` | Optional pairing — tag reversibility on every ADR. |
+| `solo/sdd/sdd/design-docs-patterns` | Sibling — ADRs extract from design docs once locked. |
+| `solo/sdd/sdd/living-documentation` | Parent — ADRs live in the docs-as-code repo. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology fallback | ~1000 |
-| `content/02-output-contract.xml` | essential | JSON Schema for the ADR record + valid/invalid examples | ~900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~800 |
+| `content/01-core-rules.xml` | essential | 7 testable rules + skip-this-methodology fallback | ~1500 |
+| `content/02-output-contract.xml` | essential | JSON Schema + allowed transformations + forbidden patterns + self-check checklist | ~1400 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom + detector + root-cause + fix | ~1000 |
 | `content/04-procedure.xml` | medium | 5-step procedure: scope → alternatives → draft → review → merge | ~700 |
 | `content/06-decision-tree.xml` | essential | Root-question → branches → conclusion(ref=rule-id) | ~500 |
 
@@ -54,9 +62,10 @@
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
-| `draft-adr` | sonnet | Template-driven ADR composition. |
+| `draft-adr` | haiku | Template fill from prerequisites. |
 | `synthesize-alternatives` | sonnet | Generate rejected options + reasons. |
-| `audit-adr-portfolio` | opus | Cross-ADR consistency and staleness audit. |
+| `audit-against-rules` | sonnet | Bounded judgement: do outputs satisfy `01-core-rules.xml`? |
+| `audit-adr-portfolio` | opus | Cross-ADR consistency and staleness audit; sign-off before downstream handoff. |
 
 ## Templates
 
@@ -65,6 +74,8 @@
 | `templates/adr-nygard.md` | Nygard-format ADR template (Title, Status, Context, Decision, Consequences). |
 | `templates/adr-madr.md` | MADR-format ADR template (with Considered Options and Pros/Cons of the Decision). |
 | `templates/adr-lint.sh` | CI lint script — filename/status/sections/superseded-ref checks across `docs/adr/`. |
+| `templates/adr-authoring-template.md` | Fill-in ADR with inline guidance, a "Do nothing" baseline option, and split Positive/Negative/Risks consequences. |
+| `templates/new-adr.sh` | Scaffold the next-numbered ADR into `docs/adr/` from the authoring template. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -79,6 +90,10 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 - [[adr-reversibility-tagging]]
 - [[architect-pr-review-checklist]]
 - [[decision-tree-architecture-style]]
+- [[design-docs-patterns]]
+- [[design-docs-big-tech]]
+- [[code-review-cycle]]
+- [[living-documentation]]
 
 ## Decision tree
 
@@ -100,7 +115,8 @@ Bodies of the templates above that the packer does not ship as standalone files,
 set -euo pipefail
 
 ADR_DIR="${1:-docs/adr}"
-VALID_STATUSES=("Draft" "Proposed" "Accepted" "Rejected" "Deprecated" "Superseded")
+# r4-status-discipline closes the enum at exactly these four.
+VALID_STATUSES=("Proposed" "Accepted" "Deprecated" "Superseded")
 ERRORS=0
 FILES_CHECKED=0
 

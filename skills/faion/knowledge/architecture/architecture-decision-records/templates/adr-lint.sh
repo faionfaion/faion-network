@@ -12,7 +12,10 @@
 set -euo pipefail
 
 ADR_DIR="${1:-docs/adr}"
-VALID_STATUSES=("Draft" "Proposed" "Accepted" "Rejected" "Deprecated" "Superseded")
+# r4-status-discipline closes the enum at exactly these four. "Draft" and
+# "Rejected" were accepted here until the sdd merge surfaced the contradiction
+# with the schema in content/02-output-contract.xml.
+VALID_STATUSES=("Proposed" "Accepted" "Deprecated" "Superseded")
 ERRORS=0
 FILES_CHECKED=0
 

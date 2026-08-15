@@ -19,13 +19,14 @@ import re
 import sys
 from pathlib import Path
 
-REQUIRED = ['artefact_id', 'version', 'last_reviewed', 'persona', 'backbone', 'walking_skeleton', 'release_slices', 'owner']
+REQUIRED = ['artefact_id', 'version', 'last_reviewed', 'persona', 'backbone', 'tasks', 'walking_skeleton', 'release_slices', 'owner']
 ENUMS = {}
 SEMVER_FIELDS = ['version']
 DATE_FIELDS = ['last_reviewed']
 INT_FIELDS = []
 NUM_FIELDS = []
-ARRAY_FIELDS = ['backbone', 'walking_skeleton', 'release_slices']
+ARRAY_FIELDS = ['backbone', 'tasks', 'walking_skeleton', 'release_slices']
+PLURAL_OWNERS = {"team", "we", "us", "the team", "", "engineering"}
 OBJECT_FIELDS = []
 BOOL_FIELDS = []
 STRING_FIELDS = ['artefact_id', 'persona', 'owner']
@@ -56,6 +57,10 @@ def validate(obj):
     for k in REQUIRED:
         if k not in obj:
             errs.append(f"missing required field: {k}")
+        # Merged from ba/user-story-mapping: a present-but-empty required field
+        # passed every pre-merge validator in this slug.
+        elif obj[k] in (None, "", [], {}):
+            errs.append(f"required field is empty: {k}")
     for k, allowed in ENUMS.items():
         if k in obj and obj[k] not in allowed:
             errs.append(f"{k} not in enum {allowed!r}: got {obj[k]!r}")
@@ -83,10 +88,23 @@ def validate(obj):
     for k in STRING_FIELDS:
         if k in obj and not _type_ok(obj[k], "string"):
             errs.append(f"{k} must be string; got {type(obj[k]).__name__}")
+    # Rule checks the schema declares and no pre-merge validator enforced.
+    owner = obj.get("owner", "")
+    if isinstance(owner, str) and owner.strip().lower() in PLURAL_OWNERS:
+        errs.append("owner is a group, not a named individual (f2)")
+    backbone = obj.get("backbone")
+    if isinstance(backbone, list) and not (5 <= len(backbone) <= 10):
+        errs.append(f"backbone must hold 5-10 activities (r1-backbone-first); got {len(backbone)}")
+    skeleton = obj.get("walking_skeleton")
+    if isinstance(backbone, list) and isinstance(skeleton, list) and len(skeleton) != len(backbone):
+        errs.append(
+            f"walking_skeleton needs exactly one task per activity (r2-walking-skeleton); "
+            f"got {len(skeleton)} for {len(backbone)} activities"
+        )
     return errs
 
 
-VALID_FIXTURE = json.loads('{"artefact_id": "user-story-mapping-example", "version": "1.0.0", "last_reviewed": "2026-05-23", "persona": "persona value", "backbone": ["item-1", "item-2", "item-3"], "walking_skeleton": ["item-1", "item-2", "item-3"], "release_slices": ["item-1", "item-2", "item-3"], "owner": "@solo-founder"}')
+VALID_FIXTURE = json.loads('{"artefact_id": "user-story-mapping-example", "version": "1.0.0", "last_reviewed": "2026-05-23", "persona": "persona value", "backbone": ["Sign up", "Create Project", "Invite Teammate", "Track Task", "Close Project"], "tasks": ["magic-link signup", "blank project", "email invite", "plain task list", "one-click close"], "walking_skeleton": ["magic-link signup", "blank project", "email invite", "plain task list", "one-click close"], "release_slices": ["walking-skeleton", "release-1", "later"], "owner": "@solo-founder"}')
 INVALID_FIXTURE = json.loads('{"version": "not-semver"}')
 
 

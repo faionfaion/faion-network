@@ -29,6 +29,46 @@
       <rationale source="ATAM rejection-rationale; ADR best practice">Without rejected alternatives the ADR is decision laundering and provides no audit value.</rationale>
     </rule>
 
+    <rule id="r6-stateless-gateway" testable="true" depth="essential">
+      <statement>The selected gateway MUST be stateless: it operates only on request headers, path and auth tokens. Auth state lives in tokens (JWT, mTLS certs, signed cookies); rate-limit counters live in shared Redis, never in gateway process memory. Plugins (Lua, JS, WASM) are reserved for auth, rate-limit, request-tracing and CORS — any aggregation or transformation belongs in a BFF service.</statement>
+      <rationale source="dev/api-gateway-patterns r1 (merged)">Stateless gateways scale horizontally and survive restarts. Business logic in plugins creates a second monolith owned by the platform team, invisible to domain developers and gated by a separate release cycle.</rationale>
+    </rule>
+
+    <rule id="r7-rate-limit-by-consumer" testable="true" depth="essential">
+      <statement>Rate limiting MUST be per-consumer (API key, authenticated user id) or per-plan, never per source IP when the gateway sits behind a CDN or load balancer. Behind a CDN, rate-limit on the client IP carried in X-Forwarded-For or on the authenticated subject, never on the CDN's IP.</statement>
+      <rationale source="dev/api-gateway-patterns r2 (merged)">Behind a proxy all traffic arrives from a small IP set, so one consumer exhausts the bucket for everyone. Consumer-scoped limiting is correct regardless of network topology and is attributable.</rationale>
+    </rule>
+
+    <rule id="r8-request-id-propagation" testable="true" depth="essential">
+      <statement>Every inbound request MUST carry a unique X-Request-ID, generated at ingress when absent ($request_id in nginx, correlation-id plugin in Kong), propagated to every downstream service, and emitted in the structured logs of every hop.</statement>
+      <rationale source="dev/api-gateway-patterns r3 (merged)">Correlation ids are the only reliable way to reconstruct a failed request across services; timestamp matching is unreliable under concurrent traffic. Cost is one header assignment at the edge.</rationale>
+    </rule>
+
+    <rule id="r9-timeout-cascade" testable="true" depth="essential">
+      <statement>Timeouts MUST descend: upstream &lt; gateway &lt; client, with at least 50% headroom at each step (for example 2s upstream, 5s gateway, 10s client). A gateway timeout greater than or equal to the client timeout is a defect.</statement>
+      <rationale source="dev/api-gateway-patterns r4 (merged)">If the client aborts first it loses the gateway's 504 and may retry while the gateway is still retrying upstream — cascading load and thundering herd. A short gateway timeout fails fast with a clear error the client can handle.</rationale>
+    </rule>
+
+    <rule id="r10-per-service-circuit-breaker" testable="true" depth="essential">
+      <statement>Circuit breakers MUST be configured per upstream service, never globally. One failing upstream returns 503 for its own routes only while healthy routes keep serving. Implement with Kong request-termination or Envoy outlier_detection.</statement>
+      <rationale source="dev/api-gateway-patterns r5 (merged)">A global breaker converts one slow service into a total outage, and without per-service isolation a slow upstream exhausts the gateway's connection pool and degrades every route.</rationale>
+    </rule>
+
+    <rule id="r11-declarative-config-as-code" testable="true" depth="essential">
+      <statement>Gateway configuration MUST be versioned in git and applied by CI (deck for Kong, Terraform for AWS API Gateway, Argo CD/Flux for Kubernetes). Route or plugin changes made through a web UI or a hand-run reload without a matching PR are rejected. nginx is for expert operators only — it has no dynamic reload without OpenResty; Envoy implies a mesh deployment.</statement>
+      <rationale source="dev/api-gateway-patterns r6 (merged)">UI changes are unversioned, unreviewed and unreproducible, with no rollback path; a mis-click takes down all traffic. Declarative config makes the diff reviewable and replayable in a new environment.</rationale>
+    </rule>
+
+    <rule id="r12-kong-mode-committed" testable="true" depth="essential">
+      <statement>When Kong is selected, commit to DB mode (PostgreSQL, live updates, multiple instances in sync, needed above ~10k req/s) or DB-less mode (config from file/ConfigMap, static, faster) and do not switch mid-flight.</statement>
+      <rationale source="dev/api-gateway-patterns r7 (merged)">The two modes have different update semantics; migrating between them while serving traffic loses gateway state.</rationale>
+    </rule>
+
+    <rule id="r13-bff-parallel-partial" testable="true" depth="essential">
+      <statement>A BFF MUST fan out to upstreams in parallel (asyncio.gather, Promise.all, goroutines) with a per-service timeout rather than one global timeout, and MUST degrade partially — a timed-out upstream yields null or an empty list in the composed response instead of failing the whole request. A BFF MUST NOT cache; caching belongs at the gateway.</statement>
+      <rationale source="dev/api-gateway-patterns r8 (merged)">Serial fan-out multiplies latency and a global timeout lets one slow upstream block the composition. Caching at the gateway saves both the aggregation and the upstream cost, which caching inside the BFF does not.</rationale>
+    </rule>
+
     <rule id="skip-this-methodology" testable="true" depth="essential">
       <statement>If any Applies-If precondition fails OR any Skip-If condition triggers, do NOT apply this methodology. Emit a skip-record naming the failed precondition / triggered skip, and route the task to the correct methodology (or none).</statement>
       <rationale source="F-066 wave-23 chunk-00 grounding">Methodology hygiene: mis-application produces worse artefacts than no methodology because downstream consumers trust the schema; the skip-record makes non-application traceable.</rationale>

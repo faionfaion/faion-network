@@ -19,13 +19,14 @@ import re
 import sys
 from pathlib import Path
 
-REQUIRED = ['artefact_id', 'version', 'last_reviewed', 'horizons', 'confidence_rubric', 'review_cadence', 'audience', 'owner']
-ENUMS = {}
+REQUIRED = ['artefact_id', 'version', 'last_reviewed', 'horizon_quarters', 'uncertainty', 'format', 'horizons', 'external_themes', 'not_doing', 'confidence_rubric', 'review_cadence', 'audience', 'owner']
+ENUMS = {'uncertainty': ['low', 'medium', 'high'], 'format': ['timeline', 'now-next-later', 'outcome-themed', 'kanban']}
 SEMVER_FIELDS = ['version']
 DATE_FIELDS = ['last_reviewed']
-INT_FIELDS = []
+INT_FIELDS = ['horizon_quarters']
 NUM_FIELDS = []
-ARRAY_FIELDS = ['horizons']
+ARRAY_FIELDS = ['horizons', 'external_themes', 'not_doing']
+MIN_ITEMS = {'not_doing': 1}
 OBJECT_FIELDS = ['confidence_rubric']
 BOOL_FIELDS = []
 STRING_FIELDS = ['artefact_id', 'review_cadence', 'audience', 'owner']
@@ -74,6 +75,9 @@ def validate(obj):
     for k in ARRAY_FIELDS:
         if k in obj and not _type_ok(obj[k], "array"):
             errs.append(f"{k} must be array; got {type(obj[k]).__name__}")
+    for k, minimum in MIN_ITEMS.items():
+        if k in obj and isinstance(obj[k], list) and len(obj[k]) < minimum:
+            errs.append(f"{k} must hold at least {minimum} item(s); got {len(obj[k])}")
     for k in OBJECT_FIELDS:
         if k in obj and not _type_ok(obj[k], "object"):
             errs.append(f"{k} must be object; got {type(obj[k]).__name__}")
@@ -86,7 +90,7 @@ def validate(obj):
     return errs
 
 
-VALID_FIXTURE = json.loads('{"artefact_id": "roadmap-design-example", "version": "1.0.0", "last_reviewed": "2026-05-23", "horizons": ["item-1", "item-2", "item-3"], "confidence_rubric": {"key": "value"}, "review_cadence": "review_cadence value", "audience": "audience value", "owner": "@solo-founder"}')
+VALID_FIXTURE = json.loads('{"artefact_id": "roadmap-design-example", "version": "1.0.0", "last_reviewed": "2026-05-23", "horizon_quarters": 3, "uncertainty": "medium", "format": "now-next-later", "horizons": ["item-1", "item-2", "item-3"], "external_themes": ["item-1", "item-2", "item-3"], "not_doing": ["item-1", "item-2", "item-3"], "confidence_rubric": {"key": "value"}, "review_cadence": "review_cadence value", "audience": "audience value", "owner": "@solo-founder"}')
 INVALID_FIXTURE = json.loads('{"version": "not-semver"}')
 
 

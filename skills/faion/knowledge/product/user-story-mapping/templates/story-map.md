@@ -1,3 +1,9 @@
+<!-- purpose: Story-map worksheet — context, backbone, walking skeleton, release slices, parking lot. -->
+<!-- consumes: persona, journey hypotheses, backlog or feature list -->
+<!-- produces: a filled story map matching content/02-output-contract.xml (r1, r2, r4, r7) -->
+<!-- depends-on: content/01-core-rules.xml, content/04-procedure.xml -->
+<!-- token-budget-impact: ~400 tokens once filled -->
+
 # Story Map: [Product/Feature]
 
 ## Context

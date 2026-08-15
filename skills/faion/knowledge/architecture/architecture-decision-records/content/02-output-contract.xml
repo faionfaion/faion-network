@@ -56,17 +56,30 @@
     "minLength": 20
   },
   "consequences": {
-    "type": "array",
-    "minItems": 1
+    "type": "object",
+    "required": ["positive", "negative"],
+    "properties": {
+      "positive": { "type": "array", "minItems": 1 },
+      "negative": { "type": "array", "minItems": 1 } }
   },
   "alternatives_rejected": {
     "type": "array",
-    "minItems": 1
-  }
+    "minItems": 2
+  },
+  "supersedes": { "type": ["string", "null"] },
+  "superseded_by": { "type": ["string", "null"] }
 }
 }
 ]]></code>
     </schema>
+    <p>`alternatives_rejected` is minItems 2 because r3-alternatives-required says ≥2; the earlier minItems 1 contradicted the rule it was meant to encode. `consequences` is an object rather than a flat array so that r7-consequences-both-signs is machine-checkable. `supersedes` / `superseded_by` carry the r1-immutable-history chain in both directions; both are null on a first-of-its-kind ADR.</p>
+  </section>
+
+  <section title="Allowed transformations">
+    <list>
+      <item>Updating an Accepted ADR's `status` to Deprecated or Superseded (and setting `superseded_by`) WITHOUT editing the body. r1-immutable-history freezes the argument, not the status field.</item>
+      <item>Backfilling an ADR for a pre-existing decision, when the rationale can still be reconstructed honestly. Mark `date` as the backfill date, not a fabricated original date.</item>
+    </list>
   </section>
 
   <example valid="true">
@@ -82,16 +95,22 @@
   "date": "2026-05-23",
   "context": "Auth0 pricing climbed; we need an alternative with SSO and decent UX.",
   "decision": "Adopt Clerk as the primary identity provider for new signups.",
-  "consequences": [
-    "Vendor concentration on Clerk",
-    "Cheaper at current MAU"
-  ],
+  "consequences": {
+    "positive": ["Cheaper at current MAU", "SSO ships without custom work"],
+    "negative": ["Vendor concentration on Clerk", "Migration cost if pricing moves again"]
+  },
   "alternatives_rejected": [
     {
       "option": "WorkOS",
       "reason": "Higher floor cost"
+    },
+    {
+      "option": "Stay on Auth0",
+      "reason": "The pricing climb is the reason for the ADR"
     }
-  ]
+  ],
+  "supersedes": null,
+  "superseded_by": null
 }
 ]]></code>
   </example>
@@ -109,9 +128,20 @@
 
   <forbidden>
     <pattern id="status-not-enum">`status` not in `[Proposed, Accepted, Deprecated, Superseded]`.</pattern>
-    <pattern id="no-alternatives">`alternatives_rejected` empty.</pattern>
+    <pattern id="no-alternatives">`alternatives_rejected` holds fewer than 2 entries — r3 is not satisfied by a single option.</pattern>
     <pattern id="decision-laundering">`status: Accepted` AND `date` precedes any referenced commit date by &lt; 1 hour — likely retroactive.</pattern>
+    <pattern id="one-sided-consequences">`consequences.positive` empty OR `consequences.negative` empty — r7 violation.</pattern>
+    <pattern id="edit-after-accept">A body diff on an ADR whose `status` is already Accepted — r1 violation; supersede instead.</pattern>
   </forbidden>
+
+  <section title="Self-check checklist">
+    <list>
+      <item>Every required field populated with a typed value — no empty strings, no empty lists.</item>
+      <item>No forbidden pattern above matches the output.</item>
+      <item>Allowed transformations applied where applicable, and nothing outside that list was mutated.</item>
+      <item>Output exits 0 against `scripts/validate-architecture-decision-records.py`.</item>
+    </list>
+  </section>
 
   <reference path="scripts/validate-architecture-decision-records.py">Stdlib-only validator implementing this schema.</reference>
 </text>

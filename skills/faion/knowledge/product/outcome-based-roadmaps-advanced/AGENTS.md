@@ -6,7 +6,7 @@
 
 **Ефективно для:** Senior solopreneur PMs whose 1-quarter outcome roadmap is fine but cross-quarter chains, dependencies, and confidence-decay over 6+ months are invisible.
 
-**One-paragraph:** Single-quarter outcome roadmaps work for 1 product / 1 team / 1 stakeholder. Beyond that, outcomes chain across quarters, solutions develop hard dependencies, and confidence decays predictably the further out you plan. This advanced methodology produces a multi-quarter outcome chain with explicit dependency edges, a confidence-decay model (high < 1Q, medium 1-2Q, low > 2Q), and portfolio-level swim lanes per product. Output is consumed by board / stakeholder reviews + strategic planning.
+**One-paragraph:** Single-quarter outcome roadmaps work for 1 product / 1 team / 1 stakeholder. Beyond that, outcomes chain across quarters, solutions develop hard dependencies, and confidence decays predictably the further out you plan. This advanced methodology produces a multi-quarter outcome chain with explicit dependency edges, a confidence-decay model (high < 1Q, medium 1-2Q, low > 2Q), and portfolio-level swim lanes per product. It also anchors the horizon downward: a falsifiable business goal at the root, a causal hypothesis and one weekly-readable leading indicator per outcome, experiments with pre-registered criteria, and four audience views (customer, board, engineering, sales) rendered from the one source tree. Output is consumed by board / stakeholder reviews + strategic planning.
 
 ## Applies If (ALL must hold)
 
@@ -21,6 +21,8 @@
 - Single product + no cross-outcome dependencies — base methodology suffices.
 - Stakeholders demand exact long-horizon dates — use a date-bound plan instead.
 - Pre-PMF — long-horizon planning is theatre at this stage.
+- No analytics instrumentation for weekly leading indicators — the chain cannot be steered between quarter closes.
+- Compliance or regulatory work where the outcome is dictated externally.
 
 ## Prerequisites
 
@@ -30,6 +32,8 @@
 | portfolio swim lanes (per product) | array | operator |
 | dependency graph candidates | DAG | operator |
 | instrumented metrics per outcome | object | analytics |
+| business goal statement | metric + current + target + deadline | leadership |
+| audience list | table | stakeholder map |
 
 ## Assumes Loaded
 
@@ -42,11 +46,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 5 testable rules with rationale + source | ~900 |
+| `content/01-core-rules.xml` | essential | 10 testable rules with rationale + source — r1-r5 multi-quarter chain, r6-r10 goal decomposition + multi-audience | ~1600 |
 | `content/02-output-contract.xml` | essential | JSON Schema fields, forbidden patterns, allowed transformations | ~800 |
-| `content/03-failure-modes.xml` | essential | 5 failure modes with detector + repair | ~900 |
-| `content/04-procedure.xml` | essential | 5 step-by-step procedure | ~700 |
-| `content/05-examples.xml` | essential | Worked end-to-end example | ~600 |
+| `content/03-failure-modes.xml` | essential | 8 failure modes with detector + repair | ~1300 |
+| `content/04-procedure.xml` | essential | 9 step-by-step procedure: anchor goal -> chain -> dependencies -> decay -> lanes -> hypotheses -> indicators -> experiments -> publish | ~1200 |
+| `content/05-examples.xml` | essential | Worked end-to-end examples incl. an ARR goal decomposed over three quarters | ~1000 |
 | `content/06-decision-tree.xml` | essential | Run-or-skip gate + branching to rule-id conclusions | ~300 |
 
 ## Task Routing

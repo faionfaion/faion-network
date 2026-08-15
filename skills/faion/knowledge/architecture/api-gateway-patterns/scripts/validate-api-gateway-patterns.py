@@ -41,6 +41,46 @@ def validate(obj) -> list[str]:
     d = obj.get("last_reviewed", "")
     if isinstance(d, str) and d and not DATE.match(d):
         errs.append(f"last_reviewed not YYYY-MM-DD: {d!r}")
+    errs.extend(_validate_gateway_config(obj.get("gateway_config")))
+    return errs
+
+
+RATE_LIMIT_SCOPES = {"consumer", "user-id", "api-key", "plan"}
+GITOPS_MANAGERS = {"argo-cd", "flux", "terraform", "deck"}
+
+
+def _validate_gateway_config(cfg) -> list[str]:
+    """Operational settings pinned by rules r6-r13 (merged from dev/api-gateway-patterns).
+
+    Optional at selection time; once present it is checked in full.
+    """
+    if cfg is None:
+        return []
+    errs: list[str] = []
+    if not isinstance(cfg, dict):
+        return ["gateway_config must be an object"]
+    if cfg.get("stateless") is not True:
+        errs.append("gateway_config.stateless must be true (r6)")
+    if cfg.get("request_id_propagation") is not True:
+        errs.append("gateway_config.request_id_propagation must be true (r8)")
+    scope = (cfg.get("rate_limit") or {}).get("scope")
+    if scope not in RATE_LIMIT_SCOPES:
+        errs.append(f"gateway_config.rate_limit.scope must be one of {sorted(RATE_LIMIT_SCOPES)} (r7); got {scope!r}")
+    cb = (cfg.get("circuit_breaker") or {}).get("scope")
+    if cb != "per-upstream-service":
+        errs.append(f"gateway_config.circuit_breaker.scope must be 'per-upstream-service' (r10); got {cb!r}")
+    managed = (cfg.get("gitops") or {}).get("managed_by")
+    if managed not in GITOPS_MANAGERS:
+        errs.append(f"gateway_config.gitops.managed_by must be one of {sorted(GITOPS_MANAGERS)} (r11); got {managed!r}")
+    t = cfg.get("timeouts")
+    if not isinstance(t, dict):
+        errs.append("gateway_config.timeouts missing (r9)")
+    else:
+        gw, up, cl = t.get("gateway_ms"), t.get("upstream_ms"), t.get("client_ms")
+        if not all(isinstance(x, int) for x in (gw, up, cl)):
+            errs.append("gateway_config.timeouts needs integer gateway_ms, upstream_ms, client_ms (r9)")
+        elif not (up < gw < cl):
+            errs.append(f"timeout cascade must be upstream < gateway < client (r9); got {up} / {gw} / {cl}")
     return errs
 
 

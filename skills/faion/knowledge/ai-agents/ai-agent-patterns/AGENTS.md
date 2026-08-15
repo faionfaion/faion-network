@@ -2,7 +2,7 @@
 
 ## Summary
 
-**One-sentence:** Picks one of four control-flow patterns (CoT / ReAct / Plan-and-Execute / Tool Use) and a matching framework (raw SDK / LangGraph / AutoGen / CrewAI / OpenAI Agents SDK) for a new agent task.
+**One-sentence:** Picks one of six control-flow patterns (CoT / ReAct / Tool Use / Plan-and-Execute / Reflection / Tree-of-Thoughts) and a matching framework (raw SDK / LangGraph / AutoGen / CrewAI / OpenAI Agents SDK) for a new agent task.
 
 **One-paragraph:** Single prompt-response is insufficient for any non-trivial agent task; choosing the right control-flow pattern matters more than upgrading the underlying model. This methodology classifies the task on three axes (needs-tools, step-count, branching), maps to CoT / ReAct / Plan-and-Execute / Tool Use, and then maps the chosen pattern to a framework that fits team experience and dependency budget. Output is one decision record committed alongside the agent code.
 
@@ -44,9 +44,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: classified-in-writing, comment-pattern-at-top, framework-pinned, schema-tools, max-steps-guard | ~900 |
+| `content/01-core-rules.xml` | essential | 9 rules: classified-in-writing, comment-pattern-at-top, framework-pinned, schema-tools, max-steps-guard, default-ReAct, Plan-Execute at depth ≥5, Reflection for self-correction, ToT only when branching | ~1500 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the pattern+framework decision record | ~700 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns (no classification, framework first, no max-steps, vague tool desc, no tracing) | ~900 |
+| `content/03-failure-modes.xml` | essential | 10 antipatterns (no classification, framework first, no max-steps, vague tool desc, no tracing, ToT cargo-cult, over-deep ReAct, missing Reflection, multi-agent for breadth, verbal decision) | ~1500 |
 | `content/04-procedure.xml` | medium | 5-step procedure: classify → pick pattern → pick framework → define tools → ship behind flag | ~1000 |
 | `content/05-examples.xml` | medium | Three worked examples (CoT, ReAct, Plan-and-Execute) | ~1000 |
 | `content/06-decision-tree.xml` | essential | Pattern tree + framework tree | ~600 |

@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-009, product/pm/AI and the multi-domain singletons: 16 collisions
+  resolved, 6 deliberately left standing.** Archived where one side was the same
+  document or a scaffold; left alone where both were real.
+
+  **`workflows` existed in four domains and is four unrelated subjects** —
+  architecture-ceremony selector, PM bootstrap pipelines, research-mode router,
+  SDD phase catalog. Nothing was archived: the fix is four renames, and no copy
+  was a scaffold.
+
+  **`secrets-management` is stronger than "both are correct" — the split is
+  authored and bidirectional.** The `backend/` decision tree *skips to* `infra/`
+  when audit-logged secrets are required, and `infra/`'s Skip-If routes back for
+  dev-only `.env`. A merge is structurally impossible: `backend/` produces a
+  multi-secret plan, `infra/` a single-secret record. They also publish
+  **incompatible schemas under one `$id`**, which is a broken contract rather
+  than an ambiguous slug.
+
+  **`content_id` is derived from slug identity, not content** — confirmed again
+  from the other direction: one id covers three unrelated `workflows`, another
+  both `secrets-management`, another all three continuous-discovery documents.
+  That is very likely *why* several of these looked like duplicates to the
+  original triage.
+
+  `architecture-decision-records`, the corpus's most-linked ambiguous slug at 92
+  inbound links, resolved to `architecture/`: the "ADR as SDD lifecycle document"
+  hypothesis did not survive reading — the `sdd/` copy has no phase gate, no
+  entry/exit criteria and no numbering rule, and three of its five rules are
+  propositionally identical to the survivor's. The merge surfaced three live
+  bugs that are now fixed: `alternatives_rejected` was `minItems: 1` while its
+  own rule demanded ≥2; `adr-lint.sh` accepted `Draft`/`Rejected` against a
+  closed enum; and neither validator enforced the status enum, the ≥2
+  alternatives, or the consequences split.
+
 - **CR-009, Go/Rust/API-transport: 6 collisions resolved merge-then-archive.**
   `api-versioning`, `go-project-structure`, `graphql-api-design` and
   `websocket-design` survive in `backend/`; **`rust-error-handling` and

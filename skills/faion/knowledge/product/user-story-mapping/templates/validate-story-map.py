@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# purpose: Check backbone size, task->backbone referential integrity and walking-skeleton coverage.
+# consumes: a story-map YAML file (backbone / tasks / slices)
+# produces: FAIL lines per violation; exit 1 if any (r1, r2)
+# depends-on: content/01-core-rules.xml, content/02-output-contract.xml
+# token-budget-impact: none at runtime
 """validate-story-map.py — verify backbone coverage and walking-skeleton completeness.
 
 Input:  story-map YAML file with keys:

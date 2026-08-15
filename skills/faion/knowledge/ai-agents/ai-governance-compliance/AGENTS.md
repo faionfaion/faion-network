@@ -45,10 +45,10 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 rules: model-card-required, bias-audit-statistical, explainability-typed, human-oversight-named, audit-log-immutable | ~900 |
+| `content/01-core-rules.xml` | essential | 8 rules: model-card-required, bias-audit-statistical, explainability-typed, human-oversight-named, audit-log-immutable, risk-tier-first, named-DRI, audit-trail-hash-chained | ~1400 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the governance pack manifest | ~800 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns | ~900 |
-| `content/04-procedure.xml` | deep | 7-step procedure across the 5 artefacts | ~1300 |
+| `content/03-failure-modes.xml` | essential | 9 antipatterns, incl. post-launch model card, mutable audit table, missing right-to-deletion, anonymous DRI | ~1500 |
+| `content/04-procedure.xml` | deep | 7-step procedure across the artefact set, incl. hash-chained trail, retention and right-to-deletion path | ~1500 |
 | `content/05-examples.xml` | medium | Worked example: governance pack for a CV-screening AI | ~1100 |
 | `content/06-decision-tree.xml` | essential | Risk-class → mandatory artefacts → ship/escalate | ~600 |
 
@@ -82,7 +82,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Related
 
 - parent skill: `geek/ai/ai-agents/`
-- peer: [[eu-ai-act-compliance]] — risk classification methodology.
+- upstream: [[eu-ai-act-compliance]] — determines the risk tier this pack is conditional on (r6-risk-tier-first).
 - peer: [[ai-incident-postmortem-template]] — incidents feed the audit log.
 
 ## Decision tree

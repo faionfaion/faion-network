@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <text id="03-failure-modes" title="Multi-Agent Design Patterns — Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>The 3 antipatterns that defeat multi-agent-design-patterns in practice, with symptom, root cause, and fix per item.</summary>
+  <summary>The 8 antipatterns that defeat multi-agent-design-patterns in practice — three in mesh operation, five in pattern selection — with symptom, root cause, and fix per item.</summary>
 
   <section title="Failure modes">
     <antipattern>
@@ -16,6 +16,29 @@
     <antipattern>
       <description>Parallel fan-out agents writing to shared state simultaneously.</description>
       <reason>Race conditions corrupt state. Use merge nodes with explicit conflict resolution. Fix: Re-run the methodology end-to-end; do not patch the output by hand. Re-validate before merge.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Pattern selection">
+    <antipattern>
+      <description>Pattern stacking — design.md claims "Hierarchical + Loop + HITL" instead of nesting one inside another.</description>
+      <reason>Detect: validator flags `pattern` not in the 8-canonical enum. Fix: pick one primary pattern; declare nested sub-patterns explicitly in `rationale` (e.g. "Hierarchical primary; worker-3 runs an internal Loop pattern").</reason>
+    </antipattern>
+    <antipattern>
+      <description>Router pattern selected without a real classifier — the "router" is the LLM itself in a free-form dispatch prompt.</description>
+      <reason>Detect: `classifier_accuracy` missing or &lt;0.85. Fix: train or rule-set a real classifier; if accuracy cannot reach 0.85, pick `hierarchical` instead — the manager does the dispatch in one call.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Blackboard pattern without concurrency control — agents read/write the same workspace keys with last-write-wins semantics.</description>
+      <reason>Detect: `concurrency_plan` missing. Fix: serialize writes (single-writer queue), use append-only (NDJSON, SQLite WAL), or use a CRDT; if none of these is acceptable, pick `hierarchical` instead.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Generator and critic on the same base model — both share training-data blind spots; critic approves whatever generator emits.</description>
+      <reason>Detect: trace shows critic approval rate &gt; 0.95. Fix: assign different model families (e.g. generator=Claude Sonnet, critic=GPT-5 Opus or vice versa); document in `tradeoffs`.</reason>
+    </antipattern>
+    <antipattern>
+      <description>HITL gates not listed despite design containing irreversible actions (DB write, payment, deploy, external email).</description>
+      <reason>Detect: `hitl_gates` is empty AND task description contains any irreversible verb. Fix: enumerate every irreversible action; gate each with a typed approval check that pauses the run.</reason>
     </antipattern>
   </section>
 
