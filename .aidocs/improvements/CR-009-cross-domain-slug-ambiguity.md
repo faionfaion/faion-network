@@ -71,6 +71,71 @@ genuinely different documents that happen to share a name — `dev/accessibility
 
 So the fix is not one action. It is a triage.
 
+## Triage result, 2026-08-15 — three of this CR's premises were wrong
+
+All 99 classified by reading every shared `content/*.xml` line-by-line and localising where the
+bytes differ. The measurement above reproduced exactly; the reasoning did not survive.
+
+**1. The DUPLICATE bucket as defined above is empty — 0 of 99.** Not one pair confines its
+differences to `<text title>` / `summary` / `$id` / `est_tokens`. Highest line-similarity in the
+corpus is 0.67 (`user-story-mapping` pm~product); the median is ~0.30. These are not one document
+filed twice — they are **two independently generated documents per subject**.
+
+**2. Reference counts cannot pick a survivor, anywhere.** Links resolve by slug, so all 1,266 are
+per-*slug*, not per-copy: there is no inbound count for either side of any pair. The tiebreak this
+CR leaned on does not exist. It also means **archiving is free** — the survivor keeps the slug and
+zero links dangle — while **renaming is the expensive move**, because it splits a slug that 1,266
+links cannot distinguish, so every one must be re-decided by hand.
+
+**3. The VARIANT bucket is empty, and that is a finding rather than an omission.** A variant
+presumes an authored intent, and nothing records one: no `meta.json` field marks a variant
+relationship, no `AGENTS.md` names its twin, and across 1,266 links there is exactly **one**
+cross-reference between any two twins. Every distinguishable pair is distinguishable by a
+qualifier, which makes it a collision; where no qualifier exists, it is the same document written
+twice.
+
+Two further corrections fall out:
+
+- **`content_id` is not a content hash.** 47 of the 99 pairs carry an identical one while
+  differing in every rule; corpus-wide, 165 ids are shared across 334 directories and **every one
+  of those groups differs in content bytes**. Never use it as a duplication test — this CR's own
+  earlier siblings did, and are annotated.
+- **The CR-005 stamp is gone entirely** (`anchor-evidence-required`: 0 files). The only automatic
+  discriminator left is the *partial* stamp — generic `artefact_id` / `template_version` /
+  `last_touched` — present in 57 of the 201 directories.
+
+**Link topology is cleanly split and it matters:** all 839 wikilinks originate in `knowledge/**`
+`## Related` rows, while all 427 `<ref slug=>` originate in `playbooks/**` as pipeline steps.
+Handing back the wrong twin is a broken link in the first case and **broken execution** in the
+second.
+
+| Bucket | Slugs | Links |
+|---|--:|--:|
+| Same subject, one side weaker — archive the loser | 34 | 443 |
+| Collision — rename one side | 22 | 371 |
+| Variant | **0** | 0 |
+| No discriminator — needs a human | **43** | 452 |
+
+**Only 2 of the 34 are provable by defect**, and both are executed below. The other 32 rest on a
+single signal — a partial stamp, a missing canonical part, stub rules, or bare `r1..rN` ids — and
+each names real content on both sides, so they are **merge-then-archive**: fold the loser's unique
+rules into the survivor first, or real material is lost.
+
+Of the 43 unresolved, **28 are one question**: whether `backend/` and `dev/` are permitted to cover
+the same subject. A stated authoring policy would settle them in a single stroke. The remaining 15
+need a per-pair editorial read, and 12 of those have *conflicting* signals — the stamped side is
+the larger or better-ruled one.
+
+### Executed
+
+| Archived | Survivor | Why it is provable rather than judged |
+|---|---|---|
+| `dev/shadcn-ui` | `frontend/shadcn-ui` | 4 parts / 5.8 KB against 6 / 20.5 KB; its single rule is literally named `r1` and the file carries **12 `TBD` markers**, against seven named subject rules on the survivor |
+| `dev/ruby-sidekiq-jobs` | `backend/ruby-sidekiq-jobs` | Its five rules are the generic scaffolding set (`r1-bound-scope`, `r2-typed-input`, …) and **not one concerns Sidekiq**; the survivor carries seven that do, including `r-idempotent-perform` and `r-per-queue-concurrency` |
+
+Both archived to `.archive/knowledge/`. Manifest 3,067 → 3,065, knowledge 2,601 → 2,599, and both
+slugs still resolve — to the survivor, as intended.
+
 ## Options
 
 1. **Triage the 99 into three buckets and act per bucket.** *Same document* → archive one, repoint

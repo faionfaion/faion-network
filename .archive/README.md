@@ -30,3 +30,4 @@ the path it sits at.
 | Path | Retired | Why | Record |
 |---|---|---|---|
 | `playbooks/` | 2026-08-15 | 12 duplicate playbook pairs — the redundant side of each | [CR-007](../.aidocs/improvements/CR-007-playbook-duplicate-pairs.md) |
+| `knowledge/` | 2026-08-15 | Cross-domain slug twins whose loser is provable by defect, not judged | [CR-009](../.aidocs/improvements/CR-009-cross-domain-slug-ambiguity.md) |

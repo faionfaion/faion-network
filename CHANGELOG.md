@@ -4,6 +4,47 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-009 triaged: all 99 cross-domain slug twins classified, and three of
+  the CR's own premises were wrong.** Every pair was read line-by-line with
+  the differences localised rather than merely counted.
+
+  - **The duplicate bucket the CR defined is empty — 0 of 99.** Not one pair
+    confines its differences to title, summary and `$id`. Highest similarity
+    in the corpus is 0.67, median ~0.30. These are **two independently
+    generated documents per subject**, not one document filed twice.
+  - **Reference counts cannot pick a survivor anywhere.** Links resolve by
+    slug, so all 1,266 are per-*slug*: there is no inbound count for either
+    side of any pair. The tiebreak the CR leaned on does not exist. The
+    corollary is useful — **archiving is free** (the survivor keeps the slug,
+    zero links dangle) while **renaming is expensive**, because it splits a
+    slug 1,266 links cannot distinguish.
+  - **The variant bucket is empty, and that is the finding.** A variant
+    presumes an authored intent and nothing records one: no field marks the
+    relationship, no `AGENTS.md` names its twin, and across 1,266 links there
+    is exactly **one** cross-reference between any two twins.
+
+  Buckets: **34** same-subject-one-side-weaker, **22** collisions needing a
+  rename, **0** variants, **43** with no discriminator at all. Of the 43,
+  **28 are a single question** — whether `backend/` and `dev/` may cover the
+  same subject — which one authoring policy would settle at a stroke.
+
+  Link topology is split cleanly and it changes the stakes: all 839 wikilinks
+  come from `knowledge/` `## Related` rows, all 427 `<ref slug=>` from
+  playbooks as pipeline steps. The wrong twin is a bad link in the first case
+  and **broken execution** in the second.
+
+  **Only 2 of the 34 are provable by defect rather than judged, and only
+  those two were archived.** `dev/shadcn-ui` has one rule literally named
+  `r1` and twelve `TBD` markers against a survivor with seven named subject
+  rules; `dev/ruby-sidekiq-jobs` carries the generic scaffolding set and
+  **not one rule about Sidekiq**, against a survivor with seven that are.
+  Both slugs still resolve — to the survivor. Knowledge 2,601 → 2,599,
+  manifest 3,067 → 3,065.
+
+  The other 32 are deliberately left: each names real content on both sides,
+  so they are merge-then-archive, and archiving them as-is would lose
+  material.
+
 - **Correction: `content_id` is not a content hash, and two earlier CRs cited
   it as if it were.** Measured across the corpus: **165 `content_id` values
   are shared by two or more methodologies, covering 334 directories, and in
