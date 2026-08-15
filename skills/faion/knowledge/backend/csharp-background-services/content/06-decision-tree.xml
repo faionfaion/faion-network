@@ -1,21 +1,38 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="C# Background Services Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from `content/01-core-rules.xml`. Every leaf names either a concrete rule id or `skip-this-methodology` when the case is out of scope. Max depth = 2.</summary>
+<text id="06-decision-tree" title="C# Background Services Decision Tree" version="1.2.0" est_tokens="650" depth="essential">
+  <summary>Routing tree mapping observable job-shape signals to a rule from `content/01-core-rules.xml`. Every leaf names either a concrete rule id or `skip-this-methodology` when the case is out of scope.</summary>
 
   <decision-tree>
-    <root-question id="q-root">Is the worker a long-lived loop with at-least-once delivery?</root-question>
-      <branch when="loop_type == long_lived AND delivery_semantics == at_least_once">
-        <conclusion ref="r1" verdict="apply rule r1 from content/01-core-rules.xml"/>
+    <root-question id="q-durability">Must the job survive process restarts (durable)?</root-question>
+
+    <branch when="durability == true">
+      <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: use Hangfire, Quartz.NET, or a durable broker; BackgroundService is in-memory only"/>
+    </branch>
+
+    <branch when="durability == false">
+      <question id="q-cpu">Is per-item work CPU-bound &gt; 100ms wall time?</question>
+      <branch when="cpu_heavy == true">
+        <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: isolate to a separate Worker host so the API thread pool is not starved"/>
       </branch>
-      <branch when="loop_type == one_shot">
-        <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: this case is out of scope for this methodology"/>
+      <branch when="cpu_heavy == false">
+        <question id="q-queue">Producer-consumer queue inside the API?</question>
+        <branch when="needs_queue == true">
+          <conclusion ref="bounded-channel" verdict="use BackgroundService + Channel.CreateBounded with FullMode.Wait; resolve scoped deps per item"/>
+        </branch>
+        <branch when="needs_queue == false">
+          <question id="q-periodic">Periodic schedule?</question>
+          <branch when="periodic == true">
+            <conclusion ref="periodic-timer-not-delay-loop" verdict="use BackgroundService + PeriodicTimer.WaitForNextTickAsync(stoppingToken)"/>
+          </branch>
+          <branch when="periodic == false">
+            <conclusion ref="scope-per-item" verdict="use BackgroundService with a poll-loop + CreateScope per iteration"/>
+          </branch>
+        </branch>
       </branch>
-      <branch when="delivery_semantics == exactly_once">
-        <conclusion ref="r2" verdict="apply rule r2 from content/01-core-rules.xml"/>
-      </branch>
+    </branch>
   </decision-tree>
 
-  <example trace="primary-path">
-    Observable: loop_type == long_lived AND delivery_semantics == at_least_once → conclusion: r1.
+  <example trace="order-queue-consumer">
+    durability=false → cpu_heavy=false → needs_queue=true → BackgroundService + bounded channel; scope per item; per-item log scope; health check tracking last-dequeue timestamp.
   </example>
 </text>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-base-model Core Rules" version="1.1.0" est_tokens="1300" depth="essential">
-  <summary>Seven testable rules for a Django abstract base-model hierarchy.</summary>
+<text id="01-core-rules" title="django-base-model Core Rules" version="1.2.0" est_tokens="1700" depth="essential">
+  <summary>Nine testable rules for a Django abstract base-model hierarchy.</summary>
 
   <section title="Rule set">
 
@@ -30,13 +30,23 @@
     </rule>
 
     <rule id="r6-cascade-audit" testable="true" depth="essential">
-      <statement>For every ForeignKey or OneToOneField on a soft-deletable model, on_delete is explicitly chosen from {CASCADE, SET_NULL, PROTECT, DO_NOTHING} with a comment naming the reason. Default CASCADE through soft-delete is forbidden.</statement>
+      <statement>Every ForeignKey and OneToOneField in the project declares `on_delete=` explicitly, chosen from {CASCADE, SET_NULL, PROTECT, DO_NOTHING} with a comment naming the reason. On a soft-deletable model the choice defaults to PROTECT (parent-of-record) or SET_NULL (soft reference); default CASCADE through soft-delete is forbidden.</statement>
       <rationale source="postgres referential-integrity">CASCADE hard-deletes children even when the parent is only soft-deleted; data leaks the soft-delete contract. PROTECT or SET_NULL are usually correct for child rows.</rationale>
     </rule>
 
     <rule id="r7-tenant-context" testable="true" depth="essential">
       <statement>TenantAwareModel access from Celery tasks / management commands MUST use `with tenant_context(tenant): …`. Reading from thread-local-only middleware state outside HTTP is forbidden.</statement>
       <rationale source="django-tenants + thread-local pitfalls">Middleware sets thread-local at request time. Celery worker threads do not inherit that context; without explicit tenant_context, queries return cross-tenant rows.</rationale>
+    </rule>
+
+    <rule id="r8-uid-in-urls" testable="true" depth="essential">
+      <statement>Public URLs and API paths route on `uid`, never on `id`: `path("orders/&lt;uuid:uid&gt;/", ...)` and `get_object_or_404(Order, uid=...)`. An integer PK in a URL or a response body is a defect.</statement>
+      <rationale source="OWASP IDOR guidance">Sequential ids leak scale (a competitor reads the order count off a URL) and make enumeration trivial. A UUID path also survives a database export or a shard split unchanged, which an auto-increment id does not.</rationale>
+    </rule>
+
+    <rule id="r9-composite-indexes" testable="true" depth="essential">
+      <statement>Every multi-column query pattern the code actually issues gets a covering `Meta.indexes = [models.Index(fields=[...])]`. Do NOT assume the FK's automatic index covers it — that index is on the FK column alone.</statement>
+      <rationale source="Django index docs; PostgreSQL planner behaviour">`filter(user=u, status="active", created_at__gte=...)` cannot use a single-column FK index for the status/date predicates, so the planner falls back to a scan. Django never infers a composite index; it has to be declared.</rationale>
     </rule>
 
   </section>

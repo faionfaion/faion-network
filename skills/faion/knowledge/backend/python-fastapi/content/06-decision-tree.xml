@@ -1,27 +1,65 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Python FastAPI — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+<text id="06-decision-tree" title="Python FastAPI — Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routes the concrete question in front of the author — is this stack in scope, where does this piece of work go, how does it reach the database — to a rule from 01-core-rules.xml.</summary>
+
   <decision-tree>
-    <root-question id="q-applies">Do the Applies-If preconditions ALL hold for this task?</root-question>
-    <branch when="applies_if_all_hold == true">
-      <question id="q-primary">Is the primary trigger (first Applies-If item) present in the input artefact?</question>
-      <branch when="primary_trigger_present == true">
-        <question id="q-secondary">Is the secondary constraint (second Applies-If item) also met?</question>
-        <branch when="secondary_constraint_met == true">
-          <conclusion ref="r1-thin-routes">Apply the full methodology starting from r1-thin-routes; load content/01-core-rules.xml and follow content/04-procedure.xml (if present).</conclusion>
+    <root-question id="q-stack">Is this an async Python REST API on Pydantic v2 + SQLAlchemy 2 async, with a team that can ship async safely?</root-question>
+
+    <branch when="async_stack_adoptable == false">
+      <conclusion ref="r12-no-sync-io-in-async-route">Skip this methodology. A sync stack (Flask, Django, sync SQLAlchemy) does not become safe by adding `async def`; route to the framework's own methodology instead.</conclusion>
+    </branch>
+
+    <branch when="async_stack_adoptable == true">
+      <question id="q-piece">What is being written right now?</question>
+
+      <branch when="piece == 'app-startup-or-shutdown'">
+        <conclusion ref="r7-lifespan-not-on-event">One `@asynccontextmanager` lifespan opening resources before `yield` and disposing after. Gate docs_url on settings.debug in the same place (r13-guard-docs-in-prod).</conclusion>
+      </branch>
+
+      <branch when="piece == 'request-or-response-shape'">
+        <conclusion ref="r8-schema-quartet">Base / Create / Update / Response for the entity; Response carries ConfigDict(from_attributes=True). Never a bare dict at the boundary (r2-pydantic-v2-in-out).</conclusion>
+      </branch>
+
+      <branch when="piece == 'route-handler'">
+        <conclusion ref="r1-thin-routes">Validate, call exactly one service, return the response model. Dependencies arrive through the Annotated aliases (r9-annotated-dependency-aliases), not through module-level imports (r5-depends-injection).</conclusion>
+      </branch>
+
+      <branch when="piece == 'business-logic'">
+        <question id="q-db-access">Does it read or write the database?</question>
+
+        <branch when="touches_db == true">
+          <conclusion ref="r10-services-return-orm">A service `async def` taking the AsyncSession and typed values, returning an ORM instance or None; `flush` + `refresh` for generated ids, and no commit inside the service (r11-flush-refresh-not-commit).</conclusion>
         </branch>
-        <branch when="secondary_constraint_met == false">
-          <conclusion ref="r2-pydantic-v2-in-out">Partial application: apply r2-pydantic-v2-in-out only; do not enforce later-stage rules.</conclusion>
+
+        <branch when="touches_db == false">
+          <conclusion ref="r12-no-sync-io-in-async-route">Still a service function — and still no blocking client. `httpx.AsyncClient` for HTTP; `run_in_threadpool` for a library with no async form.</conclusion>
         </branch>
       </branch>
-      <branch when="primary_trigger_present == false">
-        <conclusion ref="r3-session-per-task">Pre-conditions not met; revisit Applies-If list before applying any rule. Pause and clarify.</conclusion>
+
+      <branch when="piece == 'work-after-the-response'">
+        <question id="q-duration">Does the work finish in under ~100 ms and is losing it on a restart acceptable?</question>
+
+        <branch when="short_and_droppable == true">
+          <conclusion ref="r4-backgroundtasks-short-only">FastAPI BackgroundTasks. It runs in the same process after the response is sent.</conclusion>
+        </branch>
+
+        <branch when="short_and_droppable == false">
+          <conclusion ref="r4-backgroundtasks-short-only">Celery / Arq / Taskiq and a 202 Accepted. BackgroundTasks has no durability and no backpressure, so a slow job there degrades the API that scheduled it.</conclusion>
+        </branch>
+      </branch>
+
+      <branch when="piece == 'concurrent-fan-out'">
+        <conclusion ref="r3-session-per-task">Each coroutine in the `gather` / TaskGroup acquires its own AsyncSession. Sharing one across siblings corrupts session state and fails intermittently under load.</conclusion>
       </branch>
     </branch>
-    <branch when="applies_if_all_hold == false">
-      <conclusion ref="r6-openapi-snapshot">Skip this methodology; route to the sibling methodology indicated by the Skip-If reason.</conclusion>
-    </branch>
-    <example trace="canonical-path">
-      <p>Typical happy path: applies-if holds, primary trigger present, secondary met → run the full methodology against r1-thin-routes.</p>
-    </example>
   </decision-tree>
+
+  <example trace="create-user-endpoint"><![CDATA[
+piece = "POST /users which hashes a password and inserts a row"
+q-stack -> async_stack_adoptable = true
+q-piece -> route-handler for the transport half => r1-thin-routes (payload: UserCreate, db: DBSession)
+q-piece -> business-logic, touches_db = true => r10: users_service.create(db, data) returns User,
+   using flush + refresh for the generated id; get_db commits once at request end.
+Welcome email => work-after-the-response, short_and_droppable = false => Celery, not BackgroundTasks.
+]]></example>
 </text>

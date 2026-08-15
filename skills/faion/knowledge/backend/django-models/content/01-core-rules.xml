@@ -1,59 +1,117 @@
-<?xml version='1.0' encoding='utf-8'?>
-<text id="01-core-rules" title="django-models Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-models. Verify and refine before relying on for production.</summary>
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="django-models Core Rules" version="1.2.0" est_tokens="2400" depth="essential">
+  <summary>Seventeen testable rules for Django domain models: inheritance and thinness, enums and constraints, relationships, indexing, query defaults, validation, and migration hygiene.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Every domain model inherits from BaseModel (uid + created_at + updated_at). Never inherit from models.Model directly for domain entities.</statement>
-      <rationale source="v1-source">Consistent base fields across all models enables audit trails and safe public APIs without per-model boilerplate.</rationale>
+  <section title="Model shape">
+
+    <rule id="r1-inherit-base-model" testable="true" depth="essential">
+      <statement>Every domain model inherits `BaseModel` (uid + created_at + updated_at, see [[django-base-model]]). `class Foo(models.Model)` is forbidden for a domain entity, and no model redefines `id` / `uid` / the timestamps itself.</statement>
+      <rationale source="django-base-model methodology">A consistent base is what lets audit trails, uid-only API exposure and soft-delete evolve in one place instead of per model. A model that opts out silently leaks its integer PK the first time it is serialised.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Models must be thin: fields, Meta, and __str__ only. Business logic belongs in services/. Always call full_clean() before save() in service functions.</statement>
-      <rationale source="v1-source">full_clean() is not called automatically by save(). Omitting it silently bypasses model-level validation (clean(), validators, constraints).</rationale>
+
+    <rule id="r2-thin-models-full-clean" testable="true" depth="essential">
+      <statement>A model carries fields, `Meta`, `__str__`, simple `@property` accessors and pure-self predicates (`is_active`) — nothing else. Cross-model orchestration lives in `services/`, and every service that saves calls `obj.full_clean()` before `obj.save()`.</statement>
+      <rationale source="Two Scoops of Django; Django Model.save docs">`save()` does NOT call `full_clean()` — only ModelForm and the admin do — so validation written in `clean()` never fires on the service path. And a model method that touches a second model creates a circular dependency that no amount of import trickery fixes.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Always use TextChoices or IntegerChoices for enumerated fields. Never use raw string tuples as choices.</statement>
-      <rationale source="v1-source">TextChoices provides .choices, .values, .labels, and .names; raw tuples require parallel string maintenance and are caught by ruff DJ rules.</rationale>
+
+    <rule id="r3-text-choices-enums" testable="true" depth="essential">
+      <statement>Status / kind / role / state fields use `TextChoices` (or `IntegerChoices`), defined in the app's `constants.py` and referenced through a module alias: `from apps.users import constants as user_constants` → `choices=user_constants.UserType.choices`. Raw string tuples and docstring-managed values are forbidden.</statement>
+      <rationale source="Django 3.0 TextChoices; internal drift audits">`TextChoices` gives `.choices`, `.values`, `.labels`, `.names` and translation hooks from one declaration. Keeping it in `constants.py` is what stops the model, the serializer and the admin from each carrying a slightly different copy of the same list.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use Meta.constraints for invariants that span multiple fields. Use CheckConstraint for value-range rules and UniqueConstraint for conditional uniqueness.</statement>
-      <rationale source="v1-source">DB-level constraints enforce invariants even when ORM validation is bypassed (bulk_create, raw SQL). CheckConstraint with condition requires PostgreSQL — pin the backend in a comment.</rationale>
+
+  </section>
+
+  <section title="Constraints and relationships">
+
+    <rule id="r4-meta-constraints" testable="true" depth="essential">
+      <statement>Invariants that span more than one field live in `Meta.constraints`: `CheckConstraint` for value ranges, `UniqueConstraint(fields=[...], name="...")` for conditional or composite uniqueness. `unique_together` is forbidden — it is deprecated.</statement>
+      <rationale source="Django constraints docs">A DB-level constraint still holds when the ORM is bypassed by `bulk_create`, `update()` or raw SQL, which is exactly when the invariant matters. `unique_together` cannot express a condition and is scheduled for removal.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Choose on_delete deliberately: PROTECT for user/account refs (delete is an event, not silent cascade), CASCADE only for child rows with no meaning without parent, SET_NULL for optional assignees.</statement>
-      <rationale source="v1-source">CASCADE on user references causes irreversible data loss when an account is deleted — a common production incident.</rationale>
+
+    <rule id="r5-on-delete" testable="true" depth="essential">
+      <statement>Every `ForeignKey` and `OneToOneField` declares `on_delete=` deliberately: `PROTECT` for user/account and parent-of-record references, `CASCADE` only when the child row is meaningless without the parent, `SET_NULL` for optional assignees. Each choice carries a reason of at least 10 characters in the spec.</statement>
+      <rationale source="Django 2.0 release notes; production incident history">Implicit `on_delete` was removed precisely because the old default silently cascaded. `CASCADE` on a user reference turns one account deletion into irreversible loss of everything that account touched.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Define domain-specific filter logic as QuerySet methods, not in service functions or views. Use Manager.from_queryset(QuerySet)() — note the trailing () to instantiate.</statement>
-      <rationale source="v1-source">QuerySet methods are chainable; service-level filtering is not. Missing () on from_queryset creates the class object, not an instance — a confusing runtime error.</rationale>
+
+    <rule id="r6-queryset-methods" testable="true" depth="essential">
+      <statement>Domain-specific filter logic lives in `QuerySet` methods, wired with `Manager.from_queryset(FooQuerySet)()` — note the trailing `()`. It does not live in services or views.</statement>
+      <rationale source="Django custom-manager docs">QuerySet methods chain (`Foo.objects.active().recent()`); a helper in a service does not. Omitting the trailing `()` binds the class instead of an instance, which fails later with a confusing attribute error.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>If a child model redefines objects, it must replicate the alive() filter or the soft-delete protection is lost.</statement>
-      <rationale source="v1-source">Custom managers override the default; naively replacing objects loses the alive filter and returns deleted rows.</rationale>
+
+    <rule id="r7-manager-override-alive" testable="true" depth="essential">
+      <statement>A child model that redefines `objects` MUST replicate the base manager's `alive()` filter, or restate the default explicitly. Silently replacing `objects` is forbidden on a soft-deletable model.</statement>
+      <rationale source="Django manager-inheritance semantics">The most-derived `objects` wins. A child that defines its own manager without the alive filter starts returning soft-deleted rows through every existing call site, and nothing errors.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Add db_index or a composite Index for every field combination used in filter()/order_by()/distinct() paths that hit production traffic. Require justification — every index costs write amplification.</statement>
-      <rationale source="v1-source">Missing indexes cause full-table scans at scale. Unnecessary indexes slow writes and bloat storage.</rationale>
+
+    <rule id="r14-related-name" testable="true" depth="essential">
+      <statement>Every `ForeignKey` and `ManyToManyField` declares `related_name=`. When the reverse accessor is genuinely unwanted, write `related_name="+"`.</statement>
+      <rationale source="Django related-objects docs">Without it Django derives the reverse name from the model, so two FKs from different models to the same target collide and `makemigrations` fails with a clash error that names neither field usefully.</rationale>
     </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>Use partial indexes (condition=Q(...)) only on PostgreSQL. Comment the backend requirement next to the index definition.</statement>
-      <rationale source="v1-source">Partial indexes use PostgreSQL-specific SQL. MySQL and SQLite ignore the condition silently or error at migration time.</rationale>
+
+    <rule id="r15-no-orchestration-in-managers" testable="true" depth="essential">
+      <statement>Custom managers are read-only queryset composers (`.active()`, `.recent()`). A manager method that writes, sends mail, or coordinates a second model (`create_user_send_welcome()`) is forbidden.</statement>
+      <rationale source="django-styleguide service layer">A manager is reachable from every call site including the admin and migrations, so side effects hidden there fire in contexts nobody tested. It is the same defect as logic on the model, one indirection further away.</rationale>
     </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Use select_related for ForeignKey/OneToOne (JOIN), prefetch_related for reverse FK and ManyToMany (second query). Add these at the QuerySet/Manager level for the common access pattern.</statement>
-      <rationale source="v1-source">Per-call select_related is easy to forget; manager-level defaults ensure the optimization is always applied for the most common query shape.</rationale>
+
+  </section>
+
+  <section title="Indexing and query defaults">
+
+    <rule id="r8-index-justification" testable="true" depth="essential">
+      <statement>Add `db_index` (single field) or a `Meta.indexes` composite `Index` for every field combination on a production `filter()` / `order_by()` / `distinct()` path — and only those. Each index is named `appname_model_columns_idx` and carries a justification of at least 10 characters. Drop `db_index=True` where a unique constraint already implies the index.</statement>
+      <rationale source="PostgreSQL write-amplification measurements">A missing composite index turns a list endpoint into a sequential scan at the first customer with real data. An unused one costs an index update on every INSERT and UPDATE forever. Naming makes the index reviewable in the migration diff.</rationale>
     </rule>
-    <rule id="r11" testable="true" depth="essential">
-      <statement>Define cross-field invariants in clean(). Define field-level constraints with validators=[...] on the field. Both require full_clean() to be called explicitly from services.</statement>
-      <rationale source="v1-source">DRF and Ninja do not call clean() automatically. Validation placed only in clean() is invisible to API consumers unless services call full_clean().</rationale>
+
+    <rule id="r9-partial-index-postgres-only" testable="true" depth="essential">
+      <statement>Partial indexes and `UniqueConstraint(condition=Q(...))` are used only when the spec pins `db_engine=postgresql`, with the requirement commented next to the definition.</statement>
+      <rationale source="Django + SQLite/MySQL backend differences">The condition is PostgreSQL-specific SQL. On another backend the migration either errors or applies without the condition, so dev and CI end up with different schemas and the divergence surfaces as a flaky integrity error.</rationale>
     </rule>
-    <rule id="r12" testable="true" depth="essential">
-      <statement>Use db_default for values the database computes at INSERT time (avoids Python-side time skew). Use GeneratedField for columns computed from other columns. Pin PostgreSQL when using GeneratedField(db_persist=True).</statement>
-      <rationale source="v1-source">db_default uses DB NOW() — strictly monotonic in distributed systems. GeneratedField(db_persist=False) is a virtual column unsupported on SQLite.</rationale>
+
+    <rule id="r10-select-related-prefetch" testable="true" depth="essential">
+      <statement>Use `select_related` for ForeignKey / OneToOne (a JOIN) and `prefetch_related` for reverse FK and ManyToMany (a second query). Declare them on the QuerySet or Manager for the common access pattern rather than at each call site.</statement>
+      <rationale source="Django database-optimization docs">A per-call `select_related` is forgotten exactly once and the N+1 ships. Attaching it to the manager makes the optimised shape the default and leaves the un-optimised one an explicit choice.</rationale>
     </rule>
-    <rule id="r13" testable="true" depth="essential">
-      <statement>Do not use SoftDeleteModel for models containing personally identifiable information (PII). PII subject to deletion requests requires hard delete.</statement>
-      <rationale source="v1-source">Soft delete preserves the data — directly contradicting GDPR Article 17 (right to erasure) deletion requests.</rationale>
+
+  </section>
+
+  <section title="Validation, computed columns, deletion">
+
+    <rule id="r11-clean-and-validators" testable="true" depth="essential">
+      <statement>Cross-field invariants go in `clean()`; field-level rules go in `validators=[...]` on the field. Both are inert unless a service calls `full_clean()` (rule r2).</statement>
+      <rationale source="DRF + Ninja validation behaviour">Neither DRF nor Ninja calls `clean()`. Validation that exists only there is invisible to every API consumer, so it reads as enforced while doing nothing.</rationale>
     </rule>
-  <rule id="r5-on-delete" testable="true" depth="essential"><statement>Stub rule for conclusion 'r5-on-delete' referenced from 06-decision-tree.xml. Replace with the real testable rule that resolves this branch of the tree.</statement><rationale source="phase-d-autofix">Auto-added by fix-methodology-phase-d.py to keep tree refs resolvable.</rationale></rule><rule id="r8-index-justification" testable="true" depth="essential"><statement>Stub rule for conclusion 'r8-index-justification' referenced from 06-decision-tree.xml. Replace with the real testable rule that resolves this branch of the tree.</statement><rationale source="phase-d-autofix">Auto-added by fix-methodology-phase-d.py to keep tree refs resolvable.</rationale></rule></section>
+
+    <rule id="r12-db-default-generatedfield" testable="true" depth="essential">
+      <statement>Use `db_default` for values the database computes at INSERT (e.g. `Now()`), `default=` for values Python computes, and never both on one field. `GeneratedField` is for columns derived from other columns; pin PostgreSQL when `db_persist=True`.</statement>
+      <rationale source="Django 5.0 db_default / GeneratedField docs">`db_default` uses the database clock, which is monotonic across application instances in a way `timezone.now()` in Python is not. `GeneratedField(db_persist=False)` is a virtual column SQLite does not support, so mixing the two produces migrations that only apply on one backend.</rationale>
+    </rule>
+
+    <rule id="r13-no-soft-delete-for-pii" testable="true" depth="essential">
+      <statement>A model holding personally identifiable information MUST NOT use `SoftDeleteModel`. PII subject to an erasure request is hard-deleted.</statement>
+      <rationale source="GDPR Article 17">Soft delete preserves the row by design, which is the opposite of the right to erasure. Marking the model `is_pii` in the spec is what makes the wrong base class a validation failure rather than a legal one.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Layout and migrations">
+
+    <rule id="r16-split-models-package" testable="true" depth="essential">
+      <statement>An app with more than two models replaces `models.py` with a `models/` package — one model per file, re-exported from `models/__init__.py`. `TextChoices` stay in `constants.py`, not in the model files.</statement>
+      <rationale source="merge-conflict frequency in multi-model apps">A flat `models.py` is the file every concurrent feature branch touches, so it is where the conflicts land. One file per model also makes the import graph between models visible instead of implicit.</rationale>
+    </rule>
+
+    <rule id="r17-migration-hygiene" testable="true" depth="essential">
+      <statement>`manage.py makemigrations --check --dry-run` runs in pre-commit (see `templates/check-migrations.sh`). Every migration — including a squashed one — is read by a human before `migrate`. An applied migration is never edited; a new one supersedes it.</statement>
+      <rationale source="squashmigrations incident history">A squash can silently drop a partial-index constraint and re-add it without a backfill, which only fails after deploy on rows that already violate it. And a model change without a staged migration is a green CI that breaks the next environment to run `migrate`.</rationale>
+    </rule>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

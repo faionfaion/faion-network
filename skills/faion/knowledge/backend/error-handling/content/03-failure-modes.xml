@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Error Handling (RFC 7807 Problem Details) Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns specific to Error Handling (RFC 7807 Problem Details). Each has a symptom, root cause, and concrete fix.</summary>
+<text id="03-failure-modes" title="Error Handling (RFC 7807 Problem Details) Failure Modes" version="1.2.0" est_tokens="1200" depth="essential">
+  <summary>7 antipatterns specific to Error Handling (RFC 7807 Problem Details). Each has a symptom, root cause, and concrete fix.</summary>
 
   <section title="Failure modes">
 
@@ -26,6 +26,24 @@
       <symptom>Body says `status: 422`; HTTP line says `200 OK`. Clients misroute.</symptom>
       <root-cause>Author returned envelope but did not set framework response status.</root-cause>
       <fix>Always set both; assert match in tests.</fix>
+    </antipattern>
+
+    <antipattern id="fm-wrong-content-type" severity="medium">
+      <symptom>The body is a correct Problem Details document but the response says `Content-Type: application/json`. RFC 7807-aware clients fall back to generic parsing and type-based dispatch stops firing — with no error anywhere.</symptom>
+      <root-cause>The framework's default JSON response sets `application/json`; the media type has to be overridden explicitly and nobody did.</root-cause>
+      <fix>Set `Content-Type: application/problem+json` in the global handler (or override the framework default media type once). Assert the header in the contract test, not just the body. Rule r-content-type-problem-json.</fix>
+    </antipattern>
+
+    <antipattern id="fm-errors-array-misuse" severity="low">
+      <symptom>A 404 returns `"errors": []`, a 500 returns one fabricated entry. Client code that treated a non-empty errors[] as "this is a validation failure" starts mis-rendering.</symptom>
+      <root-cause>`errors[]` was read as a general-purpose error list rather than the validation-failure extension it is.</root-cause>
+      <fix>Restrict errors[] to 4xx validation responses (400 / 422) and omit the field entirely elsewhere — absent, never empty. Rule r-errors-array-scope.</fix>
+    </antipattern>
+
+    <antipattern id="fm-missing-trace-id" severity="high">
+      <symptom>A customer reports an error with a screenshot. On-call cannot find the corresponding log line and resorts to scraping by timestamp across every service.</symptom>
+      <root-cause>`traceparent` is not propagated inbound and there is no fallback UUID generation in the handler, so the envelope ships without traceId.</root-cause>
+      <fix>In the global handler read `request.headers["traceparent"]`; if absent generate `uuid4().hex`. Put it in the body AND the log line, and propagate the header on outbound calls. Rule r-trace-id-required.</fix>
     </antipattern>
 
   </section>

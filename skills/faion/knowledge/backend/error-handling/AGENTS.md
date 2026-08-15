@@ -22,7 +22,8 @@
 
 ## Skip If (ANY kills it)
 
-- Wire protocol is not HTTP / JSON (gRPC, MQTT, raw TCP).
+- Wire protocol is not HTTP / JSON — gRPC uses `google.rpc.Status` + `error_details`; GraphQL puts errors in the response `errors[]` per spec; SSE / WebSocket frames follow their own conventions.
+- Static asset or file-download endpoints — raw HTTP status, no body.
 - Internal-only RPC with bespoke error envelope contracted.
 - Public spec already locked to non-7807 shape (don't break clients).
 
@@ -39,12 +40,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules with rationale + source | ~900 |
-| `content/02-output-contract.xml` | essential | JSON Schema + valid / invalid examples | ~700 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | ~800 |
-| `content/04-procedure.xml` | essential | 5-step procedure with input / action / output per step | ~900 |
-| `content/05-examples.xml` | recommended | one end-to-end worked example | ~600 |
-| `content/06-decision-tree.xml` | essential | run / skip router referencing rule ids | ~400 |
+| `content/01-core-rules.xml` | essential | 11 testable rules: required fields, type is a stable URI, traceId from traceparent, single mapper, errors[] scope + shape, status match, no stack leak, problem+json content-type, static 5xx detail, type URIs are contract | ~1400 |
+| `content/02-output-contract.xml` | essential | Two contracts: the spec artefact, and the ProblemDetails response envelope schema + valid/invalid HTTP examples | ~1300 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns: free-form codes, multiple shapes, stack leak, status mismatch, wrong content-type, errors[] misuse, missing traceId | ~1200 |
+| `content/04-procedure.xml` | essential | 10 steps: 5 to produce the spec, 5 to implement it (URIs → model → one handler → traceId → contract test) | ~1500 |
+| `content/05-examples.xml` | recommended | One end-to-end worked example + FastAPI / Express / Spring handlers + the reusable contract test | ~1500 |
+| `content/06-decision-tree.xml` | essential | Protocol + commitment gate, then preconditions and duplicate check; run / update / skip | ~600 |
 
 ## Task Routing
 
@@ -61,6 +62,7 @@
 | `templates/error-handling.json` | JSON Schema for the Error Handling (RFC 7807 Problem Details) output contract |
 | `templates/error-handling.md` | Markdown skeleton with the required fields |
 | `templates/_smoke-test.md` | Filled-in minimum viable example of a error-handling record |
+| `templates/problem-details.schema.yaml` | JSON Schema 2020-12 for the ProblemDetails response body — drop-in for jsonschema / ajv / schemathesis |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 - [[go-error-handling]]
 - [[go-error-handling-patterns]]
 - [[database-design]]
+- [[python-fastapi]] — FastAPI exception-handler integration.
+- [[django-api]] — the DRF `EXCEPTION_HANDLER` hook this envelope is wired into.
 
 ## Decision tree
 
@@ -158,4 +162,44 @@ Bodies of the templates above that the packer does not ship as standalone files,
     }
   }
 }
+```
+
+### `templates/problem-details.schema.yaml`
+
+```yaml
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "https://api.example.com/schemas/problem-details"
+type: object
+required: [type, title, status]
+properties:
+  type:
+    type: string
+    format: uri
+  title:
+    type: string
+    minLength: 1
+  status:
+    type: integer
+    minimum: 100
+    maximum: 599
+  detail:
+    type: string
+  instance:
+    type: string
+  traceId:
+    type: string
+    minLength: 1
+  errors:
+    type: array
+    items:
+      type: object
+      required: [field, code, message]
+      properties:
+        field:
+          type: string
+        code:
+          type: string
+        message:
+          type: string
+additionalProperties: true
 ```

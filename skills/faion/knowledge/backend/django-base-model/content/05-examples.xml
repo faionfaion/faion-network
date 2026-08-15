@@ -32,6 +32,7 @@
       "soft_delete": true,
       "exposes_uid": true,
       "tenant_scoped": false,
+      "url_lookup_field": "uid",
       "unique_fields": ["email"],
       "foreign_keys": []
     },
@@ -41,7 +42,11 @@
       "soft_delete": true,
       "exposes_uid": true,
       "tenant_scoped": false,
+      "url_lookup_field": "uid",
       "unique_fields": [],
+      "indexes": [
+        {"fields": ["customer", "status", "-created_at"], "reason": "order dashboard filters on all three; the FK index covers only customer"}
+      ],
       "foreign_keys": [
         {"field": "customer", "on_delete": "PROTECT", "reason": "Retain order history even when Customer is soft-deleted; compliance requires 7y retention."}
       ]
@@ -59,6 +64,8 @@
       <item>Customer.email migration: replace `unique=True` with `UniqueConstraint(fields=['email'], condition=Q(deleted_at__isnull=True), name='unique_active_customer_email')`.</item>
       <item>Both models add UUIDField uid + a separate unique index on uid (NOT swapping the PK).</item>
       <item>Order.customer uses on_delete=PROTECT — deleting an active Customer with Orders fails loudly.</item>
+      <item>Both ViewSets set `lookup_field = "uid"`; `/api/v1/orders/&lt;uuid&gt;/` never exposes the integer PK (r8-uid-in-urls).</item>
+      <item>Order declares `Meta.indexes = [Index(fields=["customer", "status", "-created_at"])]` for the dashboard filter — the FK index alone leaves status and date uncovered (r9-composite-indexes).</item>
     </list>
   </section>
 </text>

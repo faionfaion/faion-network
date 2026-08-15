@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-api Core Rules" version="1.1.0" est_tokens="1400" depth="essential">
-  <summary>Eight testable rules for Django REST APIs (DRF or Ninja).</summary>
+<text id="01-core-rules" title="django-api Core Rules" version="1.2.0" est_tokens="1800" depth="essential">
+  <summary>Eleven testable rules for Django REST APIs (DRF or Ninja).</summary>
 
   <section title="Rule set">
 
@@ -42,6 +42,21 @@
     <rule id="r8-scoped-throttle-cursor-pagination" testable="true" depth="essential">
       <statement>Throttle by scope: at minimum `anon`, `user`, `burst` (for write endpoints), `login` (for auth endpoints). List endpoints use cursor pagination ordered by `(-created_at, -id)` when the dataset can grow unbounded; page-number pagination otherwise.</statement>
       <rationale source="drf throttling + cursor-pagination docs">A single anon/user limit can't distinguish a read flood from a login brute-force. Cursor pagination on an unindexed field causes table scans; the -id tie-breaker ensures stable ordering across same-timestamp rows.</rationale>
+    </rule>
+
+    <rule id="r9-service-takes-domain-types" testable="true" depth="essential">
+      <statement>Service functions accept domain types (`User` instance or `user_id: int`, `Decimal` amount, validated dataclass), NEVER `request`, `request.user`, `request.POST` or a raw `request.data` dict. The view unpacks the request; the service never sees it.</statement>
+      <rationale source="hexagonal architecture; django-styleguide services pattern">A service must be callable identically from a view, a Celery task and a management command. Taking the `Request` object locks the business rule to the HTTP layer forever, and there is no request to construct inside a worker.</rationale>
+    </rule>
+
+    <rule id="r10-openapi-generated" testable="true" depth="essential">
+      <statement>The OpenAPI document is GENERATED, never hand-maintained: `drf-spectacular` for DRF (with `@extend_schema` on each ViewSet/action) or Ninja's built-in schema. CI regenerates it and fails the build on an undeclared breaking diff (`oasdiff breaking` or a committed-schema diff).</statement>
+      <rationale source="drf-spectacular docs; oasdiff">A hand-written schema drifts within one sprint of shipping, and consumers integrate against the document, not the code. Generation plus a CI drift gate is the only thing that keeps the published contract true.</rationale>
+    </rule>
+
+    <rule id="r11-error-shape-rfc7807" testable="true" depth="essential">
+      <statement>Every 4xx/5xx response uses one RFC 7807 problem-detail shape `{type, title, status, detail, instance}`, wired once through `REST_FRAMEWORK["EXCEPTION_HANDLER"]` (or Ninja's exception handlers). Per-endpoint bespoke error JSON is forbidden.</statement>
+      <rationale source="RFC 7807; consumer-integration audits">Mixed error shapes force every consumer to write per-endpoint error handling. One handler at the edge is the only place where the shape can be guaranteed for errors raised deep in a service.</rationale>
     </rule>
 
   </section>

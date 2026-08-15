@@ -10,6 +10,12 @@ from __future__ import annotations
 
 import uuid
 
+# UUID default is v4. On very-high-write tables, upgrade to a time-ordered v7:
+#   pip install uuid-utils
+#   import uuid_utils
+#   def uuid7(): return uuid_utils.uuid7()
+#   uid = models.UUIDField(default=uuid7, ...)   # pass the callable, never uuid7()
+
 from django.db import models
 from django.db.models import Q, UniqueConstraint
 from django.utils import timezone
@@ -28,7 +34,12 @@ class TimestampMixin(models.Model):
 class UidMixin(models.Model):
     """Adds a public-facing UUID `uid` while keeping integer `id` as the PK."""
 
-    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    uid = models.UUIDField(
+        default=uuid.uuid4,  # callable — NOT uuid.uuid4()
+        editable=False,
+        unique=True,
+        db_index=True,
+    )
 
     class Meta:
         abstract = True
@@ -77,14 +88,23 @@ class SoftDeleteMixin(models.Model):
         self.deleted_at = None
         self.save(update_fields=["deleted_at"])
 
+    @property
+    def is_deleted(self) -> bool:
+        return self.deleted_at is not None
+
 
 class BaseModel(TimestampMixin, UidMixin):
     class Meta:
         abstract = True
+        ordering = ["-created_at"]
+        get_latest_by = "created_at"
+
+    def __str__(self) -> str:
+        return f"{type(self).__name__}({self.uid})"
 
 
 class SoftDeletableModel(TimestampMixin, UidMixin, SoftDeleteMixin):
-    class Meta:
+    class Meta(BaseModel.Meta):
         abstract = True
 
 

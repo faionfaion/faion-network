@@ -1,8 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="django-api Procedure" version="1.1.0" est_tokens="700" depth="deep">
-  <summary>Six-step procedure: framework → endpoints → serializers → auth → throttle → validate.</summary>
+<text id="04-procedure" title="django-api Procedure" version="1.2.0" est_tokens="950" depth="deep">
+  <summary>Nine-step procedure: layer audit → framework → endpoints → serializers → service signatures → auth → throttle → schema + error shape → validate.</summary>
 
   <section title="Steps">
+
+    <step n="0" name="layer-audit">
+      <input>Existing `apps/*/views.py` (skip on greenfield).</input>
+      <action>Grep views for ORM writes, external API calls and multi-step transactions. Move each hit to `&lt;app&gt;/services.py` (business logic) or `&lt;app&gt;/integrations/` (third-party calls) before the spec is written.</action>
+      <output>List of moved call sites.</output>
+      <decision-gate>If a view body still exceeds ~25 lines after the move, it still holds logic — do not proceed.</decision-gate>
+    </step>
 
     <step n="1" name="pick-framework">
       <input>Project context: greenfield vs existing DRF / Ninja, async needs.</input>
@@ -24,6 +31,13 @@
       <decision-gate>Reject input_serializer == output_serializer.</decision-gate>
     </step>
 
+    <step n="3b" name="fix-service-signatures">
+      <input>Service functions each endpoint calls.</input>
+      <action>Replace `def fn(request, ...)` with `def fn(*, user_id: int, ...)` taking domain types. The view passes `request.user.id` and `serializer.validated_data` fields explicitly.</action>
+      <output>Service signatures free of `request`.</output>
+      <decision-gate>Grep for `request` inside `services.py`; any hit blocks. Rule r9-service-takes-domain-types.</decision-gate>
+    </step>
+
     <step n="4" name="wire-auth">
       <input>Auth model from prerequisites.</input>
       <action>Set auth.mode + access_ttl_minutes ≤ 15 + refresh_ttl_days ≤ 7 + rotate_refresh=true + blacklist_after_rotation=true + transport.</action>
@@ -36,7 +50,21 @@
       <output>throttle.scopes + endpoints[].pagination.</output>
     </step>
 
-    <step n="6" name="assemble-validate">
+    <step n="6" name="generate-openapi">
+      <input>Wired endpoints + framework choice.</input>
+      <action>DRF: install drf-spectacular, set SPECTACULAR_SETTINGS, decorate each ViewSet/action with `@extend_schema`. Ninja: rely on the built-in schema. Wire `templates/check-api-schema.sh` into CI so a breaking diff fails the build.</action>
+      <output>openapi.{generator, ci_drift_check} + a generated schema file.</output>
+      <decision-gate>`manage.py spectacular --fail-on-warn` must exit 0. Rule r10-openapi-generated.</decision-gate>
+    </step>
+
+    <step n="7" name="wire-error-shape">
+      <input>Service exception types.</input>
+      <action>Point `REST_FRAMEWORK["EXCEPTION_HANDLER"]` at one handler that renders every raised exception as RFC 7807 `{type, title, status, detail, instance}`. Re-test all 4xx responses against that shape.</action>
+      <output>error_shape="rfc-7807".</output>
+      <decision-gate>Any endpoint returning a bespoke error body blocks. Rule r11-error-shape-rfc7807.</decision-gate>
+    </step>
+
+    <step n="8" name="assemble-validate">
       <input>All outputs.</input>
       <action>Emit api-spec.json; run scripts/validate-django-api.py.</action>
       <output>Validated spec.</output>

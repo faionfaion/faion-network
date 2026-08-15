@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Error Handling (RFC 7807 Problem Details) Decision Tree" version="1.1.0" est_tokens="400">
-  <summary>Two-question gate: preconditions present? duplicate artefact exists? Routes to run / update / skip. Every conclusion references a rule id from 01-core-rules.xml.</summary>
+<text id="06-decision-tree" title="Error Handling (RFC 7807 Problem Details) Decision Tree" version="1.2.0" est_tokens="600">
+  <summary>Protocol and commitment gate first, then preconditions and duplicate check. Routes to run / update / skip; every conclusion references a rule id from 01-core-rules.xml.</summary>
 
   <decision-tree>
     <root-question id="q-preconditions">Are ALL preconditions satisfied? (prerequisite artefacts present AND named owner identifiable AND artefact store writable)</root-question>
@@ -20,6 +20,18 @@
     <branch when="q-preconditions == false">
       <conclusion ref="skip-this-methodology">Skip this methodology. Surface the missing precondition. Defer until the gap is closed.</conclusion>
     </branch>
+
+    <branch when="protocol != 'rest-json-http'">
+      <conclusion ref="skip-this-methodology">Not JSON over HTTP. gRPC uses `google.rpc.Status` + `error_details`; GraphQL puts errors in the response `errors[]` per spec; SSE/WebSocket frames follow their own conventions.</conclusion>
+    </branch>
+
+    <branch when="protocol == 'rest-json-http' AND single_handler_supported == false">
+      <conclusion ref="r-single-mapper">The framework cannot host one global handler. Do not ship per-route envelopes — solve the handler problem first, or the envelope drifts back apart within a sprint.</conclusion>
+    </branch>
+
+    <branch when="protocol == 'rest-json-http' AND contract_commitment == false">
+      <conclusion ref="r-type-uri-is-contract">The team will not commit to stable `type` URIs or to `application/problem+json`. Skip: the envelope's value is the commitment, not the field list.</conclusion>
+    </branch>
   </decision-tree>
 
   <example trace="all-preconditions-and-no-duplicate"><![CDATA[
@@ -27,5 +39,9 @@ inputs: {owner=alex@acme.com, prerequisites_present=true, existing_artefact=fals
 q-preconditions -> true
 q-duplicate -> false
 => conclusion run-the-checklist: emit new artefact.
+
+second pass, implementation gate:
+protocol=rest-json-http, single_handler_supported=true, contract_commitment=true
+=> run steps 6-10 of 04-procedure: URIs -> model -> one handler -> traceId -> contract test.
 ]]></example>
 </text>

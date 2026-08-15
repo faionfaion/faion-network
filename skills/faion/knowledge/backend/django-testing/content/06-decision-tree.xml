@@ -1,27 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Django Testing with pytest — Decision Tree" version="1.0.0" est_tokens="400" depth="essential">
+<text id="06-decision-tree" title="Django Testing with pytest — Decision Tree" version="1.1.0" est_tokens="450" depth="essential">
+  <summary>Routes one test being written to the rule that decides its shape: DB access mode, client, data construction, mock placement, and the permission matrix.</summary>
+
   <decision-tree>
-    <root-question id="q-applies">Do the Applies-If preconditions ALL hold for this task?</root-question>
-    <branch when="applies_if_all_hold == true">
-      <question id="q-primary">Is the primary trigger (first Applies-If item) present in the input artefact?</question>
-      <branch when="primary_trigger_present == true">
-        <question id="q-secondary">Is the secondary constraint (second Applies-If item) also met?</question>
-        <branch when="secondary_constraint_met == true">
-          <conclusion ref="r1-pyproject-pytest-config">Apply the full methodology starting from r1-pyproject-pytest-config; load content/01-core-rules.xml and follow content/04-procedure.xml (if present).</conclusion>
-        </branch>
-        <branch when="secondary_constraint_met == false">
-          <conclusion ref="r2-savepoint-default">Partial application: apply r2-savepoint-default only; do not enforce later-stage rules.</conclusion>
-        </branch>
+    <root-question id="q-touches-db">Does the test under construction touch the ORM at all?</root-question>
+
+    <branch when="touches_db == false">
+      <question id="q-pure">Is it a pure unit test of a util or a serializer's field logic?</question>
+
+      <branch when="pure == true">
+        <conclusion ref="r1-pyproject-pytest-config">No django_db marker. Plain pytest function; the pinned settings module is all the Django wiring it needs.</conclusion>
       </branch>
-      <branch when="primary_trigger_present == false">
-        <conclusion ref="r3-conftest-shared-fixtures">Pre-conditions not met; revisit Applies-If list before applying any rule. Pause and clarify.</conclusion>
+
+      <branch when="pure == false">
+        <conclusion ref="r9-mock-only-at-boundaries">It reaches an external system. Mock at the process boundary only, patched at the USE site, and keep the rest of the call path real.</conclusion>
       </branch>
     </branch>
-    <branch when="applies_if_all_hold == false">
-      <conclusion ref="r7-parametrize-permission-matrix">Skip this methodology; route to the sibling methodology indicated by the Skip-If reason.</conclusion>
+
+    <branch when="touches_db == true">
+      <question id="q-commit-semantics">Does the code under test depend on a real COMMIT — transaction.on_commit, a post-commit signal, or raw SQL on its own connection?</question>
+
+      <branch when="commit_semantics == true">
+        <conclusion ref="r2-savepoint-default">@pytest.mark.django_db(transaction=True). Accept the truncate cost; this is the only case that earns it.</conclusion>
+      </branch>
+
+      <branch when="commit_semantics == false">
+        <question id="q-surface">What is being exercised — a service, or an HTTP endpoint?</question>
+
+        <branch when="surface == 'service'">
+          <conclusion ref="r8-no-inline-object-creation">@pytest.mark.django_db (savepoint). Build fixtures from the factory or baker.make; call the real service, never a mocked one.</conclusion>
+        </branch>
+
+        <branch when="surface == 'endpoint-single-role'">
+          <conclusion ref="r5-apiclient-force-authenticate">@pytest.mark.django_db with APIClient + force_authenticate, format='json'. Assert the status, then the body fields (r6-status-and-body-asserts).</conclusion>
+        </branch>
+
+        <branch when="surface == 'endpoint-role-matrix'">
+          <conclusion ref="r7-parametrize-permission-matrix">One @pytest.mark.parametrize table of (client_fixture, expected_status) instead of N near-identical functions.</conclusion>
+        </branch>
+      </branch>
     </branch>
-    <example trace="canonical-path">
-      <p>Typical happy path: applies-if holds, primary trigger present, secondary met → run the full methodology against r1-pyproject-pytest-config.</p>
-    </example>
   </decision-tree>
+
+  <example trace="order-create-endpoint"><![CDATA[
+test = POST /api/v1/orders/ as owner, staff and anonymous
+q-touches-db -> true
+q-commit-semantics -> false (no on_commit hook)
+q-surface -> endpoint-role-matrix
+=> r7: one parametrized test over (api_client, 401), (authed_client, 201), (staff_client, 201);
+   fixtures come from the OrderFactory, APIClient + force_authenticate, format='json'.
+]]></example>
 </text>

@@ -44,10 +44,10 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 13 testable rules: BaseModel, thin models, TextChoices, on_delete deliberate, Meta constraints, full_clean, QuerySet methods, indexes with justification, partial indexes pg-only, select_related defaults, clean(), db_default, no soft-delete for PII | ~1500 |
+| `content/01-core-rules.xml` | essential | 17 testable rules: BaseModel, thin models + full_clean, TextChoices in constants.py, Meta constraints over unique_together, deliberate on_delete, QuerySet methods, manager alive-filter, related_name, no orchestration in managers, justified + named indexes, partial indexes pg-only, select_related defaults, clean() + validators, db_default vs default, no soft-delete for PII, models/ package, migration hygiene | ~2400 |
 | `content/02-output-contract.xml` | essential | JSON schema for the models spec | ~1000 |
-| `content/03-failure-modes.xml` | essential | 7 antipatterns: direct models.Model, missing full_clean, exposing id, GeneratedField on SQLite, auto-squash migrations, blanket db_index, field reorder | ~900 |
-| `content/04-procedure.xml` | deep | 6 steps: extend BaseModel → declare fields → constraints → indexes → on_delete audit → full_clean wiring | ~700 |
+| `content/03-failure-modes.xml` | essential | 10 antipatterns: direct models.Model, missing full_clean, exposing id, GeneratedField on SQLite, auto-squash migrations, blanket db_index, field reorder, docstring-managed enums, fat manager / model orchestrator, missing related_name | ~1250 |
+| `content/04-procedure.xml` | deep | 9 steps: extend BaseModel → fields → constraints → indexes → on_delete audit → related_name → models/ layout → full_clean wiring → migration gate | ~950 |
 | `content/05-examples.xml` | deep | One worked example: Invoice with constraints, indexes, partial-unique | ~600 |
 | `content/06-decision-tree.xml` | essential | on_delete choice tree + index choice tree | ~250 |
 
@@ -66,6 +66,8 @@
 | `templates/base_model.py` | Reference BaseModel implementation (mirrors django-base-model). |
 | `templates/django-model-lint.sh` | grep-based audit script for common antipatterns. |
 | `templates/models-spec.json` | Reference output document. |
+| `templates/constants.py` | Per-app TextChoices + limits skeleton, the single source for `choices=`. |
+| `templates/check-migrations.sh` | Pre-commit guard refusing a commit that changed models without a staged migration. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 - [[django-base-model]] — abstract bases inherited by every model here.
 - [[django-constants]] — enum classes consumed by choices=.
 - [[django-pytest-fixtures]] — fixtures built on top of the model spec.
+- [[django-project-structure]] — the apps/core layout the models/ package rule assumes.
+- [[django-imports]] — the module-alias convention `constants` is imported through.
 
 ## Decision tree
 
@@ -274,4 +278,52 @@ PY
   "version": "1.0.0",
   "last_reviewed": "2026-05-22"
 }
+```
+
+### `templates/constants.py`
+
+```python
+# apps/users/constants.py — TextChoices enums and module-level constants
+from django.db import models
+
+
+class UserType(models.TextChoices):
+    REGULAR = "regular", "Regular"
+    PREMIUM = "premium", "Premium"
+    ADMIN = "admin", "Administrator"
+
+
+class OrderStatus(models.TextChoices):
+    PENDING = "pending", "Pending"
+    PROCESSING = "processing", "Processing"
+    SHIPPED = "shipped", "Shipped"
+    DELIVERED = "delivered", "Delivered"
+    CANCELLED = "cancelled", "Cancelled"
+
+
+# Pagination and limits
+DEFAULT_PAGE_SIZE = 20
+MAX_PAGE_SIZE = 100
+MAX_ITEMS_PER_USER = 100
+```
+
+### `templates/check-migrations.sh`
+
+```bash
+#!/usr/bin/env bash
+# scripts/check-migrations.sh — refuse commit if models changed without a staged migration.
+# Wire as pre-commit hook or in CI.
+set -euo pipefail
+
+changed=$(git diff --cached --name-only -- "apps/*/models/*.py" "apps/*/models.py" "core/models.py" 2>/dev/null || true)
+
+[[ -z "$changed" ]] && exit 0
+
+out=$(python manage.py makemigrations --dry-run --check 2>&1) || {
+  echo "FAIL — models changed but migration not staged:"
+  echo "$out"
+  exit 1
+}
+
+echo "OK — migration is up to date"
 ```

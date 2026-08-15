@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="sql-optimization Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Step-by-step procedure to apply the sql-optimization methodology end-to-end.</summary>
+<text id="04-procedure" title="sql-optimization Procedure" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>Seven-step procedure to apply the sql-optimization methodology end-to-end. Each step lists input, action, output and an optional decision gate.</summary>
 
   <section title="Procedure">
     <step n="1" name="rank-queries-by-impact">
@@ -13,6 +13,13 @@
       <action>Run EXPLAIN (ANALYZE, BUFFERS) on production-sized data; record output.</action>
       <output>explain artefacts</output>
     </step>
+    <step n="2b" name="investigate-estimate-skew">
+      <input>baseline plan</input>
+      <action>Compare actual rows against estimated at every node. Where the ratio exceeds 10x, run ANALYZE on the table and re-capture the plan; if the skew survives, raise the column statistics target and ANALYZE again.</action>
+      <output>a plan whose estimates describe the data</output>
+      <decision-gate>Do not propose an index while an unexplained 10x skew remains — the planner is choosing on numbers that are wrong, and no index changes that.</decision-gate>
+    </step>
+
     <step n="3" name="propose-changes">
       <input>explain artefacts</input>
       <action>Author composite / covering / partial indexes + query rewrites; explicit columns instead of SELECT *.</action>
@@ -26,8 +33,21 @@
     </step>
     <step n="5" name="synthesize-report">
       <input>evidence + changes</input>
-      <action>Compose Markdown + JSON report; validate against schema.</action>
+      <action>Compose the Markdown + JSON report; validate against the schema in 02-output-contract.xml.</action>
       <output>validated report</output>
+    </step>
+
+    <step n="6" name="regression-gate">
+      <input>before vs after plans and timings</input>
+      <action>Compare wall-clock over the recorded sample size, not a single run. If the change shows no improvement, or a write-path regression, revert it rather than merging it "since it is already written".</action>
+      <output>merge / revert decision recorded in the report</output>
+      <decision-gate>No measurable improvement and no documented exception blocks the merge. Rule regression-gate-before-merge.</decision-gate>
+    </step>
+
+    <step n="7" name="ship-safely">
+      <input>approved change</input>
+      <action>Create the index with CONCURRENTLY outside a transaction (see `templates/create_index_concurrently.sql`), then check `pg_index` for an INVALID index left behind by a failed build and REINDEX CONCURRENTLY if one exists.</action>
+      <output>a live, valid index and a post-deploy plan confirming the planner uses it</output>
     </step>
   </section>
 </text>

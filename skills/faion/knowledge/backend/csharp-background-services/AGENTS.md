@@ -2,34 +2,42 @@
 
 ## Summary
 
-**One-sentence:** Produces a robust BackgroundService / IHostedService implementation with graceful shutdown, retry, idempotency, and metrics.
+**One-sentence:** Long-running in-process workers via `BackgroundService` + Channels with bounded back-pressure, scoped DI, graceful shutdown, idempotent retry and health checks.
 
-**One-paragraph:** Produces a robust BackgroundService / IHostedService implementation with graceful shutdown, retry, idempotency, and metrics. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness.
+**One-paragraph:** Ad-hoc `Task.Run` loops bypass the `IHost` lifecycle, ignore `CancellationToken`, and capture scoped DI as singletons. `BackgroundService` extends `IHostedService` and integrates with graceful shutdown, `IHealthCheck`, and `System.Threading.Channels` for in-memory queues with back-pressure. This methodology pins seven testable rules: extend `BackgroundService` (never `Task.Run`), pass `stoppingToken` everywhere, catch per item inside `ExecuteAsync`, `CreateScope()` for scoped access, `Channel.CreateBounded` with an explicit `FullMode`, `PeriodicTimer` instead of a delay loop, and a per-item log scope. Output: a worker class + DI registration + xUnit test conforming to the contract in `02-output-contract.xml`.
 
 **Ефективно для:**
 
 - Queue consumer / scheduler / file watcher з graceful shutdown і bounded drain.
 - Idempotent work units під at-least-once delivery.
-- Observability як first-class concern (metrics + tracing per work unit).
+- In-memory back-pressure between HTTP and background workers.
+- Observability як first-class concern (metrics + tracing + per-item log scope).
+- Moderate-throughput scheduled tasks where Hangfire/Quartz is overkill.
 
 ## Applies If (ALL must hold)
 
-- Service runs a long-lived background loop (queue consumer, scheduler, watcher).
+- Service runs a long-lived background loop (queue consumer, scheduler, watcher) inside the API host process.
 - Process must shut down gracefully on SIGTERM with bounded drain time.
 - Work units must be idempotent to survive at-least-once delivery.
+- Throughput fits on a single replica or a leader-elected replica.
 
 ## Skip If (ANY kills it)
 
-- One-shot CLI / job runner — Worker Service overkill.
-- Periodic job better expressed as a cron-triggered Function / Lambda.
+- Jobs MUST survive restarts — use Hangfire, Quartz.NET, or a durable broker; channels are in-memory only.
+- Heavy CPU work per item — would starve the HTTP thread pool; isolate to a separate Worker host.
+- Distributed scheduling across replicas without leader election.
+- Exactly-once semantics required — in-memory channels lose state on shutdown.
+- One-shot CLI / job runner, or a periodic job better expressed as a cron-triggered Function / Lambda.
 - Hosted in IIS in-process — BackgroundService lifecycle does not align cleanly.
 
 ## Prerequisites
 
 | Artefact | Format | Source |
 |----------|--------|--------|
-| Worker scope (queue / scheduler / watcher) | markdown | product |
+| Worker scope / job spec (queue / scheduler / watcher) | markdown | product / ticket |
 | Idempotency key strategy | markdown | architecture |
+| ASP.NET Core 6+ project | csproj | repo |
+| DbContext or downstream service contract | C# interface | repo |
 | Observability stack (metrics + tracing) | config | platform |
 
 ## Assumes Loaded
@@ -37,23 +45,27 @@
 | Methodology | Why |
 |-------------|-----|
 | [[csharp-aspnet-core]] | Hosted service runs inside the same Generic Host as the API |
+| [[csharp-dotnet]] | Base .NET wiring, DI, hosting model |
+| [[csharp-entity-framework]] | Scoped DbContext lifecycle the worker depends on |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source | 1200 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
-| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output per step | 1000 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
+| `content/01-core-rules.xml` | essential | 7 testable rules: extend-backgroundservice, pass-stoppingtoken, per-item-trycatch, scope-per-item, bounded-channel, periodic-timer-not-delay-loop, structured-per-item-logging | 1300 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) for the worker spec + valid/invalid examples + forbidden patterns | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns: task-run-loop, unbounded-channel, captive-dbcontext, no-stoppingtoken, uncorrelated-worker-logs | 900 |
+| `content/04-procedure.xml` | essential | 7-step procedure with input/action/output per step | 1100 |
+| `content/06-decision-tree.xml` | essential | Routing tree on durability / CPU / queue / schedule → conclusion(ref=rule-id) | 650 |
 
 ## Task Routing
 
 | Sub-task | Model | Rationale |
 |----------|-------|-----------|
+| `classify-job-shape` | sonnet | Apply the decision tree on durability / throughput / CPU |
 | `scaffold-skeleton` | haiku | Mechanical template emission |
 | `wire-feature-logic` | sonnet | Per-feature judgment with bounded inputs |
+| `write-xunit-test` | haiku | Mechanical AAA test against the IHostedService API |
 | `audit-output` | sonnet | Verify rules in 01-core-rules.xml hold |
 
 ## Templates
@@ -61,7 +73,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/queue-consumer.cs` | BackgroundService queue-consumer skeleton with retry + idempotency |
-| `templates/registration.cs` | Hosted-service registration snippet for Program.cs |
+| `templates/registration.cs` | Channel + worker + health-check registration snippet for Program.cs |
+| `templates/prompt-worker.txt` | Subagent prompt generating worker + registration + xUnit test |
 | `templates/_smoke-test.cs` | Filled-in minimal queue consumer for a Users.Created topic |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
@@ -75,11 +88,14 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 ## Related
 
 - [[csharp-aspnet-core]]
+- [[csharp-dotnet]]
+- [[csharp-entity-framework]]
+- [[csharp-xunit-testing]]
 - [[audit-grade-api-design]]
 
 ## Decision tree
 
-See `content/06-decision-tree.xml`. The tree routes observable signals (input shape, evidence quality, scope, stakes) to a concrete action; every leaf references a rule id from `01-core-rules.xml` so the chosen action is grounded in a testable rule. Use it when in doubt about which variant of the methodology to apply.
+See `content/06-decision-tree.xml`. The tree maps observable job-shape signals (durability requirement, CPU profile, queue vs schedule) to a rule from `01-core-rules.xml`, and either approves BackgroundService or redirects to a durable broker / separate Worker host. Use it whenever an engineer reaches for `Task.Run` or considers a hosted service for periodic work.
 
 ## Template Contents
 
@@ -146,10 +162,11 @@ public class TProcessor : BackgroundService
 ### `templates/registration.cs`
 
 ```csharp
-// Program.cs — registration for Channel<T>, queue abstraction, and hosted services.
+// Program.cs — registration for Channel<T>, queue abstraction, hosted services and health check.
 // Adjust TItem, TQueue, and TProcessor to your domain types.
 
 using System.Threading.Channels;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 // Bounded channel — capacity 1024, block producer when full
 builder.Services.AddSingleton(_ => Channel.CreateBounded<TItem>(
@@ -158,9 +175,51 @@ builder.Services.AddSingleton(_ => Channel.CreateBounded<TItem>(
 // Queue abstraction (singleton — shares the channel)
 builder.Services.AddSingleton<ITQueue, TQueue>();
 
+// Health probe the worker stamps on every successful unit
+builder.Services.AddSingleton<TProcessorHealth>();
+
 // Hosted services
 builder.Services.AddHostedService<TProcessor>();
 builder.Services.AddHostedService<CleanupService>(); // periodic if needed
+
+builder.Services.AddHealthChecks()
+    .AddCheck<TProcessorHealth>("t-processor");
+
+var app = builder.Build();
+app.MapHealthChecks("/healthz");
+app.Run();
+
+// Liveness signal: the worker is only healthy while it keeps draining.
+public sealed class TProcessorHealth : IHealthCheck
+{
+    public DateTime LastSuccess { get; set; } = DateTime.UtcNow;
+
+    public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext _, CancellationToken __)
+        => Task.FromResult(
+            DateTime.UtcNow - LastSuccess > TimeSpan.FromMinutes(5)
+                ? HealthCheckResult.Unhealthy("no successful run in >5m")
+                : HealthCheckResult.Healthy());
+}
+```
+
+### `templates/prompt-worker.txt`
+
+```text
+Add MyApp.Services.<Name>Service as a BackgroundService consuming Channel<<JobType>>.
+- Use bounded capacity 1000, BoundedChannelFullMode.Wait
+- Resolve I<Name>Handler via CreateScope() per item
+- Open ILogger.BeginScope with the entity id before handling each item
+- Log at Information on dequeue, Error on handler failure (no rethrow except OperationCanceledException on the stopping token)
+- Register in Program.cs:
+    AddSingleton(Channel.CreateBounded<<JobType>>(new BoundedChannelOptions(1000) { FullMode = Wait }))
+    AddHostedService<<Name>Service>()
+    AddSingleton<<Name>Health>()
+    AddHealthChecks().AddCheck<<Name>Health>("<name>")
+- Add an xUnit integration test using WebApplicationFactory<Program> that:
+    enqueues one item via I<Name>Queue
+    awaits until IHealthCheck reports Healthy (or timeout 5s)
+    asserts the handler was invoked
+    asserts the loop exits within 1s of StopAsync
 ```
 
 ### `templates/_smoke-test.cs`

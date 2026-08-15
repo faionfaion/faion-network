@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="django-decision-tree Core Rules" version="1.1.0" est_tokens="1300" depth="essential">
-  <summary>Six testable rules for an architectural decision record at Django bootstrap or refactor checkpoint.</summary>
+<text id="01-core-rules" title="django-decision-tree Core Rules" version="1.2.0" est_tokens="1900" depth="essential">
+  <summary>Twelve testable rules: six choosing the architecture at bootstrap, six placing each kind of code once the layering tier is chosen.</summary>
 
   <section title="Rule set">
 
@@ -32,6 +32,40 @@
     <rule id="r6-audit-deps" testable="true" depth="essential">
       <statement>For every candidate third-party package, audit eight signals: commit within 6 months, Django 5.x + Python 3.11+ compat, ≥ 1k stars OR clear maintainer track-record, complete docs, CI green, no known CVEs, licence compatible, cannot-be-done-with-builtins=true. Reject "high-risk" (≤ 1k stars + no recent commits) unless a sunset plan exists.</statement>
       <rationale source="supply-chain attacks + package abandonment data">Unmaintained packages are the dominant source of long-tail security issues and refactor cost. Eight signals catch most low-effort risks.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Code-placement rules (apply once layering is chosen)">
+
+    <rule id="r7-views-http-only" testable="true" depth="essential">
+      <statement>Views parse HTTP, validate via a serializer, call exactly ONE service, and build the response. Maximum body length 25 lines. ORM calls, external API calls and business logic in a view are forbidden.</statement>
+      <rationale source="hexagonal architecture; Two Scoops of Django">Layer purity makes a view trivially testable — mock the service, assert the status code. A mixed view is a permanent refactor target and cannot be reused from a task or a management command.</rationale>
+    </rule>
+
+    <rule id="r8-services-do-side-effects" testable="true" depth="essential">
+      <statement>Every DB write, external API call, email/SMS send and queue enqueue lives in `services/`. Any function performing more than one write is decorated `@transaction.atomic`.</statement>
+      <rationale source="django-styleguide services pattern">Concentrating side effects in one directory makes them auditable (grep one folder to find every write) and testable (mock the service in a view test, assert the effect in a service test). Un-atomic multi-writes leave partial state after an exception.</rationale>
+    </rule>
+
+    <rule id="r9-utils-pure" testable="true" depth="essential">
+      <statement>Code in `utils/` is pure: same input → same output, no I/O, no DB, no clock, no randomness. Its tests are `assert f(x) == y` with zero mocks.</statement>
+      <rationale source="functional core / imperative shell — Gary Bernhardt">A pure function is testable in three lines. The moment `utils/` touches the ORM or the clock, its tests need a database or a freezegun, and the layer has stopped paying for itself.</rationale>
+    </rule>
+
+    <rule id="r10-dependency-direction" testable="true" depth="essential">
+      <statement>Dependency direction is one-way: `views/` → `services/` + `serializers/`; `services/` → `models/` + `utils/` + `integrations/`; `utils/` → stdlib only. A reverse import is forbidden.</statement>
+      <rationale source="Clean Architecture — Robert Martin">Reverse dependencies (a service importing a view, a util importing a service) produce circular imports at startup and make it impossible to test a layer in isolation. The direction is the only thing keeping the tiers separable.</rationale>
+    </rule>
+
+    <rule id="r11-tasks-thin-wrappers" testable="true" depth="essential">
+      <statement>A Celery task in `tasks/` contains exactly one service call and no business logic: `result = service_fn(...); return result`.</statement>
+      <rationale source="Celery best practices">Tasks are an async transport, not a business layer. Logic written into a task body cannot be invoked synchronously from a view or a REPL, and testing it requires a broker.</rationale>
+    </rule>
+
+    <rule id="r12-integrations-no-domain" testable="true" depth="essential">
+      <statement>Third-party SDK wrappers live in `integrations/&lt;vendor&gt;.py` and take primitives (str, int, dict). Domain types (`User`, `Order`) MUST NOT cross into the integration layer.</statement>
+      <rationale source="hexagonal architecture — ports and adapters">An integration that imports domain models becomes app-specific, so it cannot be reused by a second app and cannot be swapped for a fake in tests. Primitives at the boundary keep both options open.</rationale>
     </rule>
 
   </section>

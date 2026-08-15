@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Django Testing with pytest — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
-  <summary>Testable rules every django-testing application must obey.</summary>
+<text id="01-core-rules" title="Django Testing with pytest — Core Rules" version="1.1.0" est_tokens="1600" depth="essential">
+  <summary>Ten testable rules every django-testing application must obey.</summary>
 
   <section title="Rule set">
     <rule id="r1-pyproject-pytest-config" testable="true" depth="essential">
-      <statement>Configure pytest-django via pyproject.toml [tool.pytest.ini_options] with DJANGO_SETTINGS_MODULE, addopts including --strict-markers, and testpaths.</statement>
-      <rationale source="faion-network">pyproject-as-single-source-of-truth: eliminates pytest.ini/setup.cfg duplication and keeps lint+test config co-located.</rationale>
+      <statement>Configure pytest-django via pyproject.toml [tool.pytest.ini_options] with an explicitly pinned DJANGO_SETTINGS_MODULE pointing at a dedicated test settings module (config.settings.test), addopts including --strict-markers, and testpaths. The settings module is never inferred from the environment.</statement>
+      <rationale source="faion-network; pytest-django docs">pyproject-as-single-source-of-truth eliminates pytest.ini/setup.cfg duplication and keeps lint+test config co-located. Pinning the settings module is the part that matters most: an inherited DJANGO_SETTINGS_MODULE means CI can run the suite against production settings, and the first thing that notices is the production database.</rationale>
     </rule>
     <rule id="r2-savepoint-default" testable="true" depth="essential">
       <statement>Use @pytest.mark.django_db (savepoint rollback) by default. Use @pytest.mark.django_db(transaction=True) only when code calls on_commit or raw transactions.</statement>
@@ -16,7 +16,7 @@
       <rationale source="faion-network">Centralised fixtures give one canonical client construction and let force_authenticate stay decoupled from the auth backend.</rationale>
     </rule>
     <rule id="r4-one-factory-per-model" testable="true" depth="essential">
-      <statement>Create exactly one Factory Boy factory per model, registered via pytest_factoryboy.register. Use SubFactory for relationships, Faker for realistic data, LazyAttribute for derived fields, LazyFunction for independent computed values.</statement>
+      <statement>Create exactly one data-construction path per model: a Factory Boy factory registered via pytest_factoryboy.register (explicit), or `model_bakery.baker.make` (terse) — pick one per project. Use SubFactory for relationships, Faker for realistic data, LazyAttribute for derived fields, LazyFunction for independent computed values.</statement>
       <rationale source="faion-network">Single factory prevents divergent defaults; pytest_factoryboy auto-creates instance and factory fixtures, eliminating manual fixture boilerplate.</rationale>
     </rule>
     <rule id="r5-apiclient-force-authenticate" testable="true" depth="essential">
@@ -31,5 +31,20 @@
       <statement>Use @pytest.mark.parametrize to express permission matrices: (client_fixture, expected_status). One parametrized test replaces N nearly-identical tests.</statement>
       <rationale source="faion-network">Combinatorial permission logic (roles × methods) is explicit and maintainable as a parametrize table; adding a role is one tuple, not a new function.</rationale>
     </rule>
+    <rule id="r8-no-inline-object-creation" testable="true" depth="essential">
+      <statement>`Model.objects.create(...)` inline inside a test is forbidden. Every fixture object comes from the factory or from `baker.make`.</statement>
+      <rationale source="model_bakery / factory_boy docs">Inline construction duplicates the model's required fields into every test file, so a single non-null field addition breaks dozens of unrelated tests at once and each one has to be edited by hand.</rationale>
+    </rule>
+
+    <rule id="r9-mock-only-at-boundaries" testable="true" depth="essential">
+      <statement>Service-layer tests invoke the real service, the real ORM and the real utils. Mocking is allowed ONLY at a process boundary: outbound HTTP, S3, a third-party SDK, the email backend. Mocking another function in the same codebase is forbidden.</statement>
+      <rationale source="Martin Fowler — Mocks Aren't Stubs">Mocking an internal collaborator tests the mock's contract, so a refactor that breaks the real call still passes. With savepoint rollback the real path is fast enough that the mock buys nothing but false confidence.</rationale>
+    </rule>
+
+    <rule id="r10-drf-client-not-django-client" testable="true" depth="essential">
+      <statement>DRF endpoints are exercised with `rest_framework.test.APIClient`, never `django.test.Client`.</statement>
+      <rationale source="DRF testing docs">The plain test client negotiates content differently, does not carry DRF authentication, and parses request bodies inconsistently — so the test either fails for reasons unrelated to the view, or passes against a request shape no real client sends.</rationale>
+    </rule>
+
   </section>
 </text>

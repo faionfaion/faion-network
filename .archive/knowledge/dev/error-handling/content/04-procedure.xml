@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="error-handling Procedure" version="1.0.0" est_tokens="900" depth="medium">
+  <summary>Five-step procedure from URI namespace to live contract gate.</summary>
+
+  <section title="Steps">
+    <step n="1" name="declare-type-uris">
+      <input>List of error classes the API will return (validation, auth, not-found, rate-limit, internal).</input>
+      <action>Define a stable URI namespace `https://api.example.com/errors/&lt;slug&gt;` and document each (`type`, `title`, `status`) in OpenAPI.</action>
+      <output>errors-namespace.md table + OpenAPI components/responses.</output>
+      <decision-gate>If team cannot commit to URI stability, stop — methodology requires this guarantee (rule:r7).</decision-gate>
+    </step>
+    <step n="2" name="model-problem-detail">
+      <input>Framework + URI namespace.</input>
+      <action>Define a ProblemDetail data class (Pydantic BaseModel / TypeScript interface / Java record) with type, title, status, detail, instance, traceId, errors[].</action>
+      <output>One model file in shared module.</output>
+      <decision-gate>Model must serialize unknown extension fields permissively (additionalProperties: true at JSON Schema level).</decision-gate>
+    </step>
+    <step n="3" name="register-one-handler">
+      <input>ProblemDetail model + framework hook.</input>
+      <action>Register a single framework-level exception handler that catches all unhandled exceptions and returns ProblemDetail with `Content-Type: application/problem+json`.</action>
+      <output>One handler file; per-route handlers removed.</output>
+      <decision-gate>Grep CI rule blocks per-route `JSONResponse(content={"error":` patterns after this step.</decision-gate>
+    </step>
+    <step n="4" name="propagate-traceid">
+      <input>Handler + observability conventions.</input>
+      <action>Read W3C `traceparent`; if absent generate UUID. Set on response body and log line.</action>
+      <output>Updated handler + middleware that ensures trace context exists per request.</output>
+      <decision-gate>If trace propagation is missing for cross-service calls, also add the traceparent header outbound.</decision-gate>
+    </step>
+    <step n="5" name="contract-test">
+      <input>JSON Schema from templates/problem-details.schema.yaml + every error endpoint.</input>
+      <action>Author an integration test that hits each error path and validates response body+content-type against the schema.</action>
+      <output>tests/test_error_contract.py (or equivalent) running in CI.</output>
+      <decision-gate>If any endpoint fails the schema, block deploy; fix shape before merging.</decision-gate>
+    </step>
+  </section>
+</text>

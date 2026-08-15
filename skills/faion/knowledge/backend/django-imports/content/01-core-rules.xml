@@ -1,47 +1,70 @@
-<?xml version='1.0' encoding='utf-8'?>
-<text id="01-core-rules" title="django-imports Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for django-imports. Verify and refine before relying on for production.</summary>
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="django-imports Core Rules" version="1.2.0" est_tokens="1800" depth="essential">
+  <summary>Eleven testable rules for import discipline in a multi-app Django repo: section order, aliasing, and the ordered ladder of circular-import strategies.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Organize imports in this order: (1) __future__, (2) standard library, (3) third-party (Django, DRF, Celery, etc.), (4) cross-app absolute imports, (5) local relative imports. Separate each group with a blank line.</statement>
-      <rationale source="v1-source">PEP 8 defines this order. Django adds the cross-app vs local-relative distinction. Ruff I (isort) with known-first-party enforcement automates this — developers should not sort manually.</rationale>
+
+    <rule id="r1-pep8-section-order" testable="true" depth="essential">
+      <statement>Imports are grouped in this order, one blank line between groups: (1) `__future__`, (2) standard library, (3) third-party (Django, DRF, Celery), (4) first-party absolute (`apps.*`, `core.*`, `config.*`), (5) local relative. Nobody sorts by hand — `ruff check --select I --fix` does it.</statement>
+      <rationale source="PEP 8 + ruff isort docs">PEP 8 fixes the first three groups; Django projects need the fourth to make the cross-app dependency graph visible at a glance. Hand-sorting produces noisy diffs that reviewers learn to skip, which is how the convention dies.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use absolute imports for Django core (from django.db import models), third-party packages, and cross-app imports. Use single-dot relative imports (from .models import User) within the same app only.</statement>
-      <rationale source="v1-source">Absolute imports make the module's location unambiguous when reading the file in isolation. Single-dot relative imports are idiomatic within an app and survive app renaming. Multi-dot relative imports (from ...users.models) are fragile and break on any restructuring.</rationale>
+
+    <rule id="r2-absolute-cross-app-relative-in-app" testable="true" depth="essential">
+      <statement>Django core, third-party packages and every cross-app reference use absolute imports. Within one app, single-dot relative imports are correct and preferred: `from .models import User`.</statement>
+      <rationale source="PEP 328 + Django project audits">An absolute path tells the reader which app a name comes from without opening another file. Inside one app there is no ambiguity — only one `User` is in scope — so the single-dot form is both shorter and survives the app being renamed.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Never use multi-dot relative imports (from .., from ...). Replace them with absolute cross-app imports using the full apps.X.Y path.</statement>
-      <rationale source="v1-source">Multi-dot relative imports are fragile — any reorganization of the directory tree breaks them. They also confuse readers about where the module lives. Absolute cross-app imports are always unambiguous regardless of nesting depth.</rationale>
+
+    <rule id="r3-no-multi-dot-relative" testable="true" depth="essential">
+      <statement>Multi-dot relative imports (`from ..`, `from ...`) are forbidden. Replace with the absolute `apps.&lt;app&gt;.&lt;module&gt;` path.</statement>
+      <rationale source="PEP 328; restructuring incidents">A multi-dot import encodes the physical directory depth. Moving `apps/users/` under `apps/accounts/users/` breaks every `from ...users.models import` in the repo at once, and the failure is an ImportError at startup, not a test failure.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>All cross-app imports MUST use module-level aliases: from apps.users import models as user_models. Even when no current naming collision exists, future apps will introduce one.</statement>
-      <rationale source="v1-source">Unaliased cross-app imports (from apps.users.models import User) are the primary cause of ImportError: cannot import name 'User' circular-dependency crashes. An alias makes the origin explicit (user_models.User vs order_models.User) and prevents silent shadowing when two apps export the same name.</rationale>
+
+    <rule id="r4-alias-convention" testable="true" depth="essential">
+      <statement>Every cross-app import uses a module alias: `from apps.users import models as user_models`, referenced as `user_models.User`. Direct symbol imports across apps (`from apps.users.models import User`) are forbidden even when no collision exists today.</statement>
+      <rationale source="internal lint rule; circular-import incident history">Two apps eventually both export `User`, `Status` or `Profile`; the second import silently shadows the first and the bug only fires when both code paths run. Aliasing also imports the module rather than the symbol, which is what lets Django finish loading the app registry before the name is resolved.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Apply circular dependency strategies in this order: (1) string FK references for model fields, (2) apps.get_model() for runtime model access in services, (3) TYPE_CHECKING guard for type-only imports, (4) function-scoped imports as a last resort, (5) extract shared types to a core/ app if multiple strategies are needed in the same module.</statement>
-      <rationale source="v1-source">Each strategy has a different scope and cost. String FK references are zero-cost and the standard Django model pattern. apps.get_model() is safe but verbose. TYPE_CHECKING guards work for types but break runtime isinstance checks. Function-scoped imports add call overhead. core/ extraction is a structural fix for systemic circular dependency clusters.</rationale>
+
+    <rule id="r5-circular-strategy-ladder" testable="true" depth="essential">
+      <statement>Resolve a circular import by climbing this ladder in order, never skipping upward: (1) string FK reference, (2) `apps.get_model()` for runtime model access in a service, (3) a `TYPE_CHECKING` guard for type-only imports, (4) a function-scoped import as a last resort, (5) extraction into `core/` when more than one of the above is needed in the same module.</statement>
+      <rationale source="Django app-registry semantics">Each rung costs more than the one above it. String references are free and idiomatic; `apps.get_model()` is safe but verbose; a `TYPE_CHECKING` guard breaks runtime `isinstance`; a function-scoped import pays on every call. Reaching for rung 4 first hides a structural problem that rung 5 is the actual fix for.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Always use string references in ForeignKey and ManyToManyField definitions: ForeignKey('users.User', ...) instead of ForeignKey(User, ...). This is the Django standard and makes the model layer circular-import-proof.</statement>
-      <rationale source="v1-source">String references ('app_label.ModelName') are resolved by Django's app registry after all apps have loaded. Direct import references create load-order dependencies between apps that can cause circular import failures depending on INSTALLED_APPS order.</rationale>
+
+    <rule id="r6-string-fk" testable="true" depth="essential">
+      <statement>`ForeignKey` and `ManyToManyField` targets are written as strings: `ForeignKey("users.User", on_delete=...)`, never `ForeignKey(User, ...)`, for every cross-app relation.</statement>
+      <rationale source="Django model-loading docs">A string reference is resolved by the app registry after every app has loaded, so it carries no load-order dependency. A class reference forces `users` to be importable while `billing` is still being imported, which fails or succeeds depending on `INSTALLED_APPS` order.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Use apps.get_model('app_label', 'ModelName') in service/selector functions that need model classes at runtime but cannot import them at module level due to circular deps.</statement>
-      <rationale source="v1-source">apps.get_model() returns the model class from Django's app registry, which is fully populated after django.setup(). It moves the import from module load time to function call time, breaking the circular import chain without coupling the module to a specific import path.</rationale>
+
+    <rule id="r7-apps-get-model" testable="true" depth="essential">
+      <statement>A service or selector that needs a model class at runtime but cannot import it at module level uses `apps.get_model("users", "User")` inside the function body.</statement>
+      <rationale source="django.apps registry docs">`get_model` reads the fully populated registry, moving the resolution from import time to call time. That breaks the cycle without hard-coding an import path, so the module keeps working if the model later moves.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Move imports needed only for type hints into if TYPE_CHECKING: blocks. Combine with from __future__ import annotations to avoid evaluating the annotation strings at runtime.</statement>
-      <rationale source="v1-source">TYPE_CHECKING is False at runtime — imports inside the block are never executed. Type checkers (mypy, pyright) treat TYPE_CHECKING as True and follow the imports for analysis. This eliminates circular imports caused by cross-app type annotations.</rationale>
+
+    <rule id="r8-type-checking" testable="true" depth="essential">
+      <statement>Imports used only in annotations live inside `if TYPE_CHECKING:`, paired with `from __future__ import annotations` — EXCEPT in `apps/*/serializers.py`, where DRF and drf-spectacular need real types at runtime. Enforced by ruff's `TCH` rules.</statement>
+      <rationale source="PEP 563 + ruff TCH + drf-spectacular issue history">`TYPE_CHECKING` is False at runtime, so the import never executes and the cycle disappears while mypy and pyright still see it. DRF is the documented exception: `get_type_hints()` on a stringified ForwardRef raises at serializer construction time.</rationale>
     </rule>
-    <rule id="r9" testable="true" depth="essential">
-      <statement>When three or more apps have circular import relationships, extract the shared types, constants, or base classes into a core/ (or common/) app. The core/ app imports from no other app.</statement>
-      <rationale source="v1-source">Circular import clusters indicate shared concepts that belong in a common layer. Moving them to core/ establishes a dependency direction: all apps can import from core/, but core/ never imports from other apps. This pattern resolves the entire cluster in one structural change.</rationale>
+
+    <rule id="r9-core-extraction" testable="true" depth="essential">
+      <statement>When three or more apps depend on each other cyclically, extract the shared types, constants or base classes into a `core/` (or `common/`) app. `core/` imports from no other app — ever.</statement>
+      <rationale source="dependency-inversion; Django multi-app audits">A cycle across three apps is a shared concept without a home. Giving it one establishes a direction — every app may import `core/`, `core/` imports nobody — which resolves the whole cluster in one change instead of patching each edge.</rationale>
     </rule>
-    <rule id="r10" testable="true" depth="essential">
-      <statement>Configure ruff with known-first-party = ["apps"] and section-order to place cross-app imports in their own section. Run ruff check --select I --fix on staged files in pre-commit.</statement>
-      <rationale source="v1-source">Without known-first-party configured, ruff treats apps.users as a third-party package and merges it with Django imports. The separate section makes the cross-app dependency graph visible at a glance.</rationale>
+
+    <rule id="r10-ruff-first-party" testable="true" depth="essential">
+      <statement>Configure ruff with `known-first-party = ["apps", "config", "core"]` and an explicit `section-order`. Run `ruff check --select I --fix` on staged files in pre-commit.</statement>
+      <rationale source="ruff isort configuration">Without `known-first-party`, ruff files `apps.users` under third-party and merges it with the Django imports, so the cross-app dependencies become invisible in the diff. A misconfigured first-party list is why "the import order rule" quietly stops being enforced.</rationale>
     </rule>
-  <rule id="r4-alias-convention" testable="true" depth="essential"><statement>Stub rule for conclusion 'r4-alias-convention' referenced from 06-decision-tree.xml. Replace with the real testable rule that resolves this branch of the tree.</statement><rationale source="phase-d-autofix">Auto-added by fix-methodology-phase-d.py to keep tree refs resolvable.</rationale></rule><rule id="r6-string-fk" testable="true" depth="essential"><statement>Stub rule for conclusion 'r6-string-fk' referenced from 06-decision-tree.xml. Replace with the real testable rule that resolves this branch of the tree.</statement><rationale source="phase-d-autofix">Auto-added by fix-methodology-phase-d.py to keep tree refs resolvable.</rationale></rule><rule id="r7-apps-get-model" testable="true" depth="essential"><statement>Stub rule for conclusion 'r7-apps-get-model' referenced from 06-decision-tree.xml. Replace with the real testable rule that resolves this branch of the tree.</statement><rationale source="phase-d-autofix">Auto-added by fix-methodology-phase-d.py to keep tree refs resolvable.</rationale></rule><rule id="r8-type-checking" testable="true" depth="essential"><statement>Stub rule for conclusion 'r8-type-checking' referenced from 06-decision-tree.xml. Replace with the real testable rule that resolves this branch of the tree.</statement><rationale source="phase-d-autofix">Auto-added by fix-methodology-phase-d.py to keep tree refs resolvable.</rationale></rule><rule id="r9-core-extraction" testable="true" depth="essential"><statement>Stub rule for conclusion 'r9-core-extraction' referenced from 06-decision-tree.xml. Replace with the real testable rule that resolves this branch of the tree.</statement><rationale source="phase-d-autofix">Auto-added by fix-methodology-phase-d.py to keep tree refs resolvable.</rationale></rule></section>
+
+    <rule id="r11-no-star-imports" testable="true" depth="essential">
+      <statement>`from anywhere import *` is forbidden in every module, including `__init__.py` and settings splits.</statement>
+      <rationale source="PEP 8; ruff F403/F405">A star import binds an unknown set of names, so neither a reader nor ruff can tell what is in scope or which names are unused. It also leaks any public name the source module happened to import itself.</rationale>
+    </rule>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

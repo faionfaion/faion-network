@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Django Testing with pytest — Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
+<text id="03-failure-modes" title="Django Testing with pytest — Failure Modes" version="1.1.0" est_tokens="1150" depth="essential">
   <summary>Antipatterns observed when django-testing is mis-applied, each with symptom, root cause, and concrete fix.</summary>
 
   <section title="Antipatterns">
@@ -22,6 +22,18 @@
     <antipattern>
       <description>assert response.status_code == 200 with nothing else.</description>
       <reason>Root cause: A 200 with empty body or missing fields silently passes broken serializers. Fix: Assert status, then assert response.data['&lt;field&gt;'] per contract field.</reason>
+    </antipattern>
+    <antipattern>
+      <description>DJANGO_SETTINGS_MODULE inherited from the environment instead of pinned in pyproject.toml.</description>
+      <reason>Root cause: The runner uses whatever settings the shell exported — on a CI box or a developer machine that can be production settings, and the suite then creates and truncates the production database. Fix: Pin DJANGO_SETTINGS_MODULE = "config.settings.test" in [tool.pytest.ini_options]; rule r1-pyproject-pytest-config.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`User.objects.create_user(...)` repeated inline across dozens of test modules.</description>
+      <reason>Root cause: No shared construction path, so every required-field change breaks every test that built the object by hand and the defaults drift apart. Fix: One factory per model (or baker.make) and reference it as a fixture; rules r4-one-factory-per-model and r8-no-inline-object-creation.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`from django.test import Client` used against DRF endpoints.</description>
+      <reason>Root cause: Content negotiation and DRF authentication do not apply, so the test exercises a request shape no real client produces — or fails for reasons unrelated to the view. Fix: Use `rest_framework.test.APIClient` with force_authenticate; rule r10-drf-client-not-django-client.</reason>
     </antipattern>
   </section>
 </text>

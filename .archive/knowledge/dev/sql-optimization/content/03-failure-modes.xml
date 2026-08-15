@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="SQL Optimization Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Antipatterns observed in real deployments of SQL Optimization. Each ties a symptom to a root cause and a concrete fix.</summary>
+  <section title="Antipatterns">
+    <antipattern id="explain-skipped" severity="high">
+      <symptom>Index added 'because it might help'; no measurable improvement; index later dropped.</symptom>
+      <root-cause source="DB-optimisation retro">No baseline EXPLAIN captured.</root-cause>
+      <fix>EXPLAIN (ANALYZE, BUFFERS) before AND after every change; record both in the report.</fix>
+    </antipattern>
+    <antipattern id="stats-skew-ignored" severity="high">
+      <symptom>Planner picks nested-loop on 1M rows; new index does nothing.</symptom>
+      <root-cause source="Stats-stale postmortem">Estimate=10, actual=1M; planner picked wrong plan.</root-cause>
+      <fix>Run ANALYZE on the table; re-EXPLAIN; if still skewed, raise statistics target on the column.</fix>
+    </antipattern>
+    <antipattern id="composite-order-reversed" severity="medium">
+      <symptom>Composite index on (created_at, tenant_id); tenant_id equality query does seq scan.</symptom>
+      <root-cause source="B-tree audit">Range column first; equality column last.</root-cause>
+      <fix>Reorder to (tenant_id, created_at); confirm with EXPLAIN that index scan picks tenant_id prefix.</fix>
+    </antipattern>
+    <antipattern id="subquery-in-select" severity="medium">
+      <symptom>List query takes 8s for 200 rows; pg_stat shows 200 sub-query executions.</symptom>
+      <root-cause source="N+1 retro">Subquery in SELECT list.</root-cause>
+      <fix>Rewrite as JOIN with GROUP BY + aggregate; verify single execution in EXPLAIN.</fix>
+    </antipattern>
+  </section>
+</text>

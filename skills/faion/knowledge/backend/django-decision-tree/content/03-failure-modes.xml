@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-decision-tree Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Four architectural decision-tree antipatterns.</summary>
+<text id="03-failure-modes" title="django-decision-tree Failure Modes" version="1.2.0" est_tokens="1300" depth="essential">
+  <summary>Ten antipatterns: four mis-decisions at bootstrap, six layer-placement violations after it.</summary>
 
   <section title="Failure modes">
 
@@ -26,6 +26,40 @@
       <symptom>Architecture re-debate happens every retrospective. Implementation stalls. Team morale drops.</symptom>
       <root-cause>The decision tree was re-run without a trigger event (12-month checkpoint, 50-model milestone, major refactor). Discussion is unbounded.</root-cause>
       <fix>Define triggers in the record's metadata. Re-walk only when triggered. Spec field last_reviewed + a triggers field controls re-walk cadence.</fix>
+    </antipattern>
+
+  </section>
+
+  <section title="Layer-placement failure modes">
+
+    <antipattern id="fm-5-orm-in-view">
+      <description>`.objects.filter()` or `.save()` inside a view body.</description>
+      <reason>The view becomes untestable without an HTTP fixture, and the business rule is locked to the HTTP transport — a Celery task needing the same logic has to duplicate it. Violates r7-views-http-only.</reason>
+    </antipattern>
+
+    <antipattern id="fm-6-orm-in-utils">
+      <description>`Model.objects.get(...)` inside a `utils/` function.</description>
+      <reason>`utils/` stops being pure, so its tests now need a database and the layer's whole justification disappears. Violates r9-utils-pure.</reason>
+    </antipattern>
+
+    <antipattern id="fm-7-business-logic-in-task">
+      <description>A Celery task body computes pricing, sends emails and writes rows directly.</description>
+      <reason>The same logic can no longer run synchronously from a view or a REPL; the task has become a hidden service that only a broker can reach. Violates r11-tasks-thin-wrappers.</reason>
+    </antipattern>
+
+    <antipattern id="fm-8-circular-import">
+      <description>`services/` imports from `views/`, or `utils/` imports from `services/`.</description>
+      <reason>Circular ImportError at startup, and layer isolation is gone — neither side can be tested or replaced alone. Violates r10-dependency-direction.</reason>
+    </antipattern>
+
+    <antipattern id="fm-9-domain-in-integration">
+      <description>`integrations/stripe.py` imports `apps.billing.models.Order`.</description>
+      <reason>The Stripe wrapper is now billing-specific; upgrading or replacing it risks the whole billing app, and tests cannot substitute a fake. Violates r12-integrations-no-domain.</reason>
+    </antipattern>
+
+    <antipattern id="fm-10-multi-write-no-atomic">
+      <description>A service performs two `.save()` calls without `@transaction.atomic`.</description>
+      <reason>An exception between the two leaves a partial write that no later request will repair. Violates r8-services-do-side-effects.</reason>
     </antipattern>
 
   </section>

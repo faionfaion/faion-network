@@ -1,50 +1,98 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="sql-optimization Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>9 testable rules grounding the sql-optimization methodology. Each rule pairs a binary check with a sourced rationale.</summary>
+<text id="01-core-rules" title="sql-optimization Core Rules" version="1.2.0" est_tokens="1900" depth="essential">
+  <summary>Thirteen testable rules grounding the sql-optimization methodology, plus the skip gate. Each rule pairs a binary check with a sourced rationale.</summary>
 
-  <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Measure before optimizing. Use EXPLAIN ANALYZE (with BUFFERS) to understand actual plans, not guesses.</statement>
-      <rationale source="v1-source">Without measurement, optimization targets the wrong queries.</rationale>
+  <section title="Measure before you change">
+
+    <rule id="explain-before-change" testable="true" depth="essential">
+      <statement>Every optimisation starts with `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)` capturing the current plan. An index or rewrite proposed without a captured baseline plan is rejected.</statement>
+      <rationale source="PostgreSQL docs; performance-engineering practice">Without a baseline the planner's actual choice is invisible, so the change targets a guess. The recurring outcome is an index that `pg_stat_user_indexes` later shows was never used, paid for on every write in the meantime.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Optimize the right queries. Focus on frequent + resource-heavy queries, not just slow ones.</statement>
-      <rationale source="v1-source">Total impact beats individual query time.</rationale>
+
+    <rule id="rank-queries-by-total-time" testable="true" depth="essential">
+      <statement>Rank candidates by `total_time = mean_time × calls` from `pg_stat_statements` (or the slow-query log) and optimise the top N. Do not optimise by wall-clock rank alone.</statement>
+      <rationale source="pg_stat_statements methodology">A 10-second nightly batch is a smaller problem than a 100 ms query called ten thousand times a day, and only the second one moves p95. Sorting by mean time alone reliably selects the wrong target.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Indexes are not free. Estimate write cost vs read benefit before adding one.</statement>
-      <rationale source="v1-source">Over-indexing degrades writes without guaranteed read gain.</rationale>
+
+    <rule id="investigate-row-estimate-skew" testable="true" depth="essential">
+      <statement>When actual rows differ from estimated by more than 10×, run `ANALYZE` on the table and re-capture the plan before proposing anything. Continuing past unexplained skew is forbidden.</statement>
+      <rationale source="PostgreSQL planner notes">Join order and index choice are made on estimates. When the estimate is off by orders of magnitude the planner picks a nested loop over a million rows, and no new index changes that decision — the statistics have to be fixed first.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Reduce data movement. Filter early (WHERE on largest table first), avoid Cartesian products, fetch only needed columns.</statement>
-      <rationale source="v1-source">Moving data between tables and across the network is the dominant cost.</rationale>
+
+    <rule id="refresh-statistics-after-bulk-change" testable="true" depth="essential">
+      <statement>Run `ANALYZE` (or `ANALYZE TABLE`) after every bulk load, large delete, or schema change, and verify the new plan with EXPLAIN. If skew persists, raise the per-column statistics target.</statement>
+      <rationale source="PostgreSQL autovacuum/ANALYZE docs">Autovacuum's thresholds are tuned for steady-state churn, not for a ten-million-row import. Between the load and the next autoanalyze, the planner is working from cardinalities that no longer describe the table.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>For composite indexes, order columns by selectivity (most selective first) for equality; put equality columns BEFORE range columns.</statement>
-      <rationale source="v1-source">Optimizer can use the index for all conditions only if order matches the predicate shape.</rationale>
+
+  </section>
+
+  <section title="Index design">
+
+    <rule id="index-cost-before-benefit" testable="true" depth="essential">
+      <statement>Indexes are not free. Before adding one, state the expected read benefit and the write cost (every INSERT and UPDATE maintains it). On a write-dominant table, an index needs an explicit justification to survive review.</statement>
+      <rationale source="PostgreSQL write-amplification measurements">Each additional index is another structure to update per row written. "Five indexes to be safe" is how write latency triples while read latency stays where it was.</rationale>
     </rule>
-    <rule id="r6" testable="true" depth="essential">
-      <statement>Use covering indexes (INCLUDE clause) to make index-only scans possible.</statement>
-      <rationale source="v1-source">Without INCLUDE, the index scan must look up the table to fetch non-indexed columns.</rationale>
+
+    <rule id="composite-index-ordering" testable="true" depth="essential">
+      <statement>In a composite index, equality columns come first and the range column last; among equality columns, order by selectivity, most selective first. Reversed ordering is rejected unless a documented reason applies.</statement>
+      <rationale source="B-tree index ordering rules">A B-tree can use a leading prefix for equality and then traverse a range on the next column. Put the range column first and the equality predicates cannot use the index at all, so the planner falls back to a sequential scan on an indexed table.</rationale>
     </rule>
-    <rule id="r7" testable="true" depth="essential">
-      <statement>Update statistics (ANALYZE / ANALYZE TABLE) after bulk loads or schema changes; stale stats produce bad plans.</statement>
-      <rationale source="v1-source">Optimizer relies on cardinality estimates.</rationale>
+
+    <rule id="covering-index-include" testable="true" depth="essential">
+      <statement>Where a hot query reads a small fixed column set, use a covering index (`INCLUDE (...)`) so an index-only scan is possible — and write the explicit column list in the query, never `SELECT *`.</statement>
+      <rationale source="PostgreSQL index-only-scan docs">Without the payload columns in the index, every matching row still needs a heap lookup, which is most of the cost the index was supposed to remove. And `SELECT *` guarantees the index-only scan never triggers, however well the index was designed.</rationale>
     </rule>
-    <rule id="r8" testable="true" depth="essential">
-      <statement>Use connection pooling with pre-ping + recycle; stream large result sets rather than loading into memory.</statement>
-      <rationale source="v1-source">Connection-setup overhead and OOM on full result loads are the most common ops failure modes.</rationale>
+
+  </section>
+
+  <section title="Query shape">
+
+    <rule id="reduce-data-movement" testable="true" depth="essential">
+      <statement>Filter early (the most selective predicate on the largest table first), never produce a Cartesian product, and fetch only the columns the caller uses.</statement>
+      <rationale source="query-planner cost models">Every row that survives a join stage is carried through the remaining stages and across the network. Reducing the row set at the earliest possible stage is worth more than any index added downstream of it.</rationale>
     </rule>
+
+    <rule id="no-subquery-in-select" testable="true" depth="essential">
+      <statement>A subquery in a `SELECT` list is rewritten as a JOIN with aggregation. Per-row subqueries are forbidden.</statement>
+      <rationale source="PostgreSQL planner notes">A correlated subquery in the select list runs once per outer row — the N+1 pattern in SQL form. `pg_stat_statements` shows it as 200 executions for a 200-row list; the JOIN form executes once regardless of row count.</rationale>
+    </rule>
+
+    <rule id="cursor-for-deep-pagination" testable="true" depth="essential">
+      <statement>Pagination past roughly a thousand rows uses keyset (cursor) pagination keyed on `(last_seen_at, id)`. `OFFSET`-based pagination at depth is forbidden.</statement>
+      <rationale source="PostgreSQL OFFSET performance studies">`OFFSET n` scans and discards n rows before returning anything, so page 500 costs 500 pages of work. A keyset seek costs the same at page 500 as at page 1 because it is an index seek on the last key seen.</rationale>
+    </rule>
+
+    <rule id="materialized-views-for-aggregates" testable="true" depth="essential">
+      <statement>An expensive aggregation read far more often than its inputs change is precomputed into a materialized view refreshed with `REFRESH MATERIALIZED VIEW CONCURRENTLY`.</statement>
+      <rationale source="PostgreSQL materialized-view docs">Recomputing a GROUP BY over millions of rows on every dashboard load pays the full cost for data that changed once an hour. `CONCURRENTLY` is what keeps the refresh from taking an exclusive lock on the view readers are using.</rationale>
+    </rule>
+
+  </section>
+
+  <section title="Runtime and merge gate">
+
+    <rule id="connection-pooling-and-streaming" testable="true" depth="essential">
+      <statement>Use a connection pool with pre-ping and connection recycling, and stream large result sets (server-side cursor / chunked fetch) rather than materialising them in application memory.</statement>
+      <rationale source="production ops incident classes">Connection setup dominates latency for short queries, and a stale pooled connection fails the first query after a network blip unless pre-ping catches it. Loading a full result set is the most common path from "a slow query" to "an OOM-killed process".</rationale>
+    </rule>
+
+    <rule id="regression-gate-before-merge" testable="true" depth="essential">
+      <statement>The optimisation PR carries before/after EXPLAIN output, the wall-clock delta, and the sample size behind that delta. "Looks faster" without evidence is rejected; a change showing no improvement is reverted, not merged.</statement>
+      <rationale source="engineering-rigour retros">A single timed run is noise. Requiring the sample size makes the claim checkable, and requiring the after-plan catches the case where the query got faster on staging for a reason unrelated to the change.</rationale>
+    </rule>
+
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>Skip when the input does not satisfy the Applies-If preconditions or another methodology owns this output shape.</statement>
-      <rationale source="Skip-rule guard">Prevents duplicate work and wrong-tool application.</rationale>
+      <statement>Apply this methodology only when every `## Applies If` entry holds and no `## Skip If` entry triggers; otherwise abort and route to the correct methodology.</statement>
+      <rationale source="F-066 spec — decision-tree minimum form">A misrouted methodology produces a wrong-shape output that still looks complete. The explicit skip rule is the universal default branch of the decision tree.</rationale>
     </rule>
+
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
     <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

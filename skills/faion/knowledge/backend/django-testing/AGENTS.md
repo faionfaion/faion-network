@@ -43,11 +43,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 7 testable rules: pyproject pytest config, savepoint vs transaction, conftest fixtures, factory per model, LazyAttribute vs LazyFunction, APIClient + force_authenticate, status + body asserts, parametrized permission matrices | ~1100 |
+| `content/01-core-rules.xml` | essential | 10 testable rules: pinned pytest/settings config, savepoint vs transaction, conftest fixtures, one factory (or baker) per model, APIClient + force_authenticate, status + body asserts, parametrized permission matrices, no inline objects.create, mocks only at process boundaries, APIClient not django.test.Client | ~1600 |
 | `content/02-output-contract.xml` | essential | Output shape: pyproject.toml block + conftest.py block + tests/factories.py + per-feature test module skeleton. Forbidden: ORM mocking, transaction=True as default, bare status_code assertions. | ~900 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns: missing django_db marker, ORM mocking, patch-define-site vs use-site, transaction=True default, assert status_code only | ~800 |
-| `content/04-procedure.xml` | medium | 6-step procedure: configure pytest-django → write factories + register → conftest fixtures → write model/service/view tests → add parametrized permission matrix → wire coverage + CI | ~800 |
-| `content/06-decision-tree.xml` | essential | Decide: needs DB? → django_db. Needs commit semantics? → transaction=True. Else parametrize. Else patch use-site. | ~400 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns: missing django_db marker, ORM mocking, patch-define-site vs use-site, transaction=True default, assert status_code only, unpinned DJANGO_SETTINGS_MODULE, inline objects.create, django.test.Client against DRF | ~1150 |
+| `content/04-procedure.xml` | medium | 9-step procedure: configure pytest-django → create the test settings module → factories + register → conftest fixtures → feature tests → pull mocks back to the boundary → permission matrix → coverage + CI | ~1000 |
+| `content/06-decision-tree.xml` | essential | Per test: touches the DB? → django_db; needs a real COMMIT? → transaction=True; service vs endpoint vs role matrix; where the mock is allowed | ~450 |
 
 ## Task Routing
 
@@ -79,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 - [[python-pytest-fixtures]]
 - [[python-pytest-mocking]]
 - [[python-pytest-parametrize]]
+- [[django-api]] — the endpoints these APIClient tests exercise.
+- [[django-models]] — the models the factories construct.
 
 ## Decision tree
 
@@ -91,7 +93,7 @@ Bodies of the templates above that the packer does not ship as standalone files,
 ### `templates/conftest.py`
 
 ```python
-"""
+import datetime as dt
 
 import pytest
 from pytest_factoryboy import register
@@ -121,13 +123,42 @@ def staff_client(api_client, user_factory):
     staff_user = user_factory(is_staff=True)
     api_client.force_authenticate(user=staff_user)
     return api_client
+
+
+# --- model_bakery alternative -------------------------------------------------
+# Projects that chose baker over factory_boy (rule r4) drop the register() calls
+# above and use these instead. Pick ONE path per project, never both.
+#
+# from model_bakery import baker
+#
+# @pytest.fixture
+# def user(db):
+#     return baker.make("users.User", is_active=True)
+#
+# @pytest.fixture
+# def staff_user(db):
+#     return baker.make("users.User", is_active=True, is_staff=True)
+
+
+@pytest.fixture(autouse=True)
+def _capture_outbound_email(settings):
+    """Mail never leaves the process, in any test, without opting out."""
+    settings.EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+
+
+@pytest.fixture
+def freeze_now(monkeypatch):
+    """Freeze django.utils.timezone.now to a fixed instant."""
+    from django.utils import timezone
+
+    fixed = dt.datetime(2026, 1, 1, 12, 0, tzinfo=dt.timezone.utc)
+    monkeypatch.setattr(timezone, "now", lambda: fixed)
+    return fixed
 ```
 
 ### `templates/test_api.py`
 
 ```python
-"""
-
 import pytest
 
 
@@ -168,7 +199,14 @@ python_version = "3.13"
 strict = true
 
 [tool.pytest.ini_options]
-addopts = "--strict-markers --cov --cov-fail-under=80 -n auto"
+# Pinned, never inherited from the environment (rule r1) — an inherited value
+# lets CI run the suite against production settings.
+DJANGO_SETTINGS_MODULE = "config.settings.test"
+python_files = ["test_*.py"]
+addopts = "--strict-markers --tb=short --reuse-db --cov=apps --cov-report=term-missing --cov-fail-under=80 -n auto"
 testpaths = ["tests"]
-markers = ["integration: requires external services"]
+markers = [
+    "slow: slow test (deselect with '-m \"not slow\"')",
+    "integration: requires external services",
+]
 ```

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="django-base-model Procedure" version="1.1.0" est_tokens="700" depth="deep">
-  <summary>Six-step procedure to convert an ERD into a validated base-model spec.</summary>
+<text id="04-procedure" title="django-base-model Procedure" version="1.2.0" est_tokens="900" depth="deep">
+  <summary>Eight-step procedure to convert an ERD into a validated base-model spec.</summary>
 
   <section title="Steps">
 
@@ -28,6 +28,20 @@
       <action>For every FK, name on_delete explicitly with a `reason` &gt;= 10 chars. Default-CASCADE without a reason is rejected.</action>
       <output>models[].foreign_keys array.</output>
       <decision-gate>If on_delete=CASCADE and the parent model has soft_delete=true, require reason naming explicit cascade intent.</decision-gate>
+    </step>
+
+    <step n="4b" name="pick-url-lookup-field">
+      <input>models[] with exposes_uid flag.</input>
+      <action>For every model surfaced in a public API, set url_lookup_field="uid" and record that the ViewSet needs `lookup_field = "uid"` and the URLconf `&lt;uuid:uid&gt;`. Integer PKs never appear in a path or a response body.</action>
+      <output>models[].url_lookup_field.</output>
+      <decision-gate>Reject exposes_uid=true together with url_lookup_field="id" (rule r8-uid-in-urls).</decision-gate>
+    </step>
+
+    <step n="4c" name="declare-composite-indexes">
+      <input>The list of queries the application actually issues per model.</input>
+      <action>For each multi-column predicate, declare an indexes[] entry whose field order matches the predicate. Skip anything already covered by a unique constraint or the FK's own index.</action>
+      <output>models[].indexes.</output>
+      <decision-gate>A model with a known multi-column filter and no covering index blocks (rule r9-composite-indexes).</decision-gate>
     </step>
 
     <step n="5" name="declare-tenant-context">

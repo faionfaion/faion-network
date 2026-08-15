@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Python FastAPI — Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Antipatterns observed when python-fastapi is mis-applied, each with symptom, root cause, and concrete fix.</summary>
+<text id="03-failure-modes" title="Python FastAPI — Failure Modes" version="1.1.0" est_tokens="1300" depth="essential">
+  <summary>Nine antipatterns observed when python-fastapi is mis-applied, each with symptom, root cause, and concrete fix.</summary>
 
   <section title="Antipatterns">
     <antipattern>
@@ -18,6 +18,22 @@
     <antipattern>
       <description>openapi.json never snapshotted.</description>
       <reason>Root cause: Field renames ship to production without anyone noticing. Fix: Snapshot the schema; fail CI on diff without bump.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`@app.on_event("startup")` / `@app.on_event("shutdown")` still in main.py.</description>
+      <reason>Root cause: Copied from a pre-0.93 tutorial and never migrated; FastAPI emits a DeprecationWarning at boot and the hooks will be removed. Fix: One `@asynccontextmanager async def lifespan(app)` doing setup, `yield`, teardown, passed as `FastAPI(lifespan=lifespan)`. Rule r7-lifespan-not-on-event.</reason>
+    </antipattern>
+    <antipattern>
+      <description>One Pydantic model reused for create, update and response.</description>
+      <reason>Root cause: Writing four classes felt like boilerplate. Symptom: clients can set `id` and `created_at` on create, the response schema advertises `password`, and PATCH requires fields the caller did not want to change. Fix: Base / Create / Update / Response, with `ConfigDict(from_attributes=True)` on Response. Rule r8-schema-quartet.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Synchronous I/O inside an async route — `requests.get(...)`, a sync `Session.query(...)`, a blocking file read.</description>
+      <reason>Root cause: A sync client was in scope and the call looked harmless. Symptom: throughput is fine in a single-user test and collapses under concurrency, because the blocking call holds the event loop and every other request queues behind it. Fix: `httpx.AsyncClient` and `AsyncSession` + `await db.execute(select(...))`; wrap genuinely blocking libraries in `run_in_threadpool`. Rule r12-no-sync-io-in-async-route.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`/docs`, `/redoc` and `/openapi.json` served in production with no environment guard.</description>
+      <reason>Root cause: The defaults were never overridden. Symptom: the full API surface — every route, parameter and schema — is readable by anyone who finds the host. Fix: `docs_url="/docs" if settings.debug else None` (and the same for redoc/openapi), with settings loaded from cached `BaseSettings`. Rule r13-guard-docs-in-prod.</reason>
     </antipattern>
   </section>
 </text>

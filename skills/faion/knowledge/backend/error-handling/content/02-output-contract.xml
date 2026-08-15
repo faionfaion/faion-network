@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Error Handling (RFC 7807 Problem Details) Output Contract" version="1.1.0" est_tokens="700" depth="essential">
-  <summary>Pins the shape of a valid Error Handling (RFC 7807 Problem Details) output. Subagent MUST satisfy this contract before returning to caller.</summary>
+<text id="02-output-contract" title="Error Handling (RFC 7807 Problem Details) Output Contract" version="1.2.0" est_tokens="1300" depth="essential">
+  <summary>Two contracts: the spec artefact this methodology emits, and the ProblemDetails response envelope that artefact commits the service to. Subagent MUST satisfy both before returning to caller.</summary>
 
   <output-contract>
     <required>
@@ -70,6 +70,78 @@
       <item>Every required field populated with a typed value</item>
       <item>No forbidden pattern matches the output</item>
       <item>Output validates against templates/error-handling.json</item>
+    </list>
+  </section>
+
+  <section title="Response envelope schema (what the service must emit)">
+    <reference path="templates/problem-details.schema.yaml">JSON Schema 2020-12 source — load it instead of duplicating; the block below is the same schema in JSON for reading.</reference>
+    <code lang="json"><![CDATA[{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://faion.net/schemas/problem-details",
+  "type": "object",
+  "required": ["type", "title", "status"],
+  "additionalProperties": true,
+  "properties": {
+    "type":     {"type": "string", "format": "uri"},
+    "title":    {"type": "string", "minLength": 1},
+    "status":   {"type": "integer", "minimum": 100, "maximum": 599},
+    "detail":   {"type": "string"},
+    "instance": {"type": "string"},
+    "traceId":  {"type": "string", "minLength": 1},
+    "errors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["field", "code", "message"],
+        "properties": {
+          "field":   {"type": "string"},
+          "code":    {"type": "string"},
+          "message": {"type": "string"}
+        }
+      }
+    }
+  }
+}]]></code>
+
+    <example type="good">
+      <code lang="http"><![CDATA[HTTP/1.1 400 Bad Request
+Content-Type: application/problem+json
+
+{
+  "type": "https://api.example.com/errors/validation-error",
+  "title": "Validation Error",
+  "status": 400,
+  "detail": "Request validation failed",
+  "instance": "/users",
+  "traceId": "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
+  "errors": [
+    {"field": "email", "code": "format", "message": "must be a valid e-mail address"}
+  ]
+}]]></code>
+      <note>Content-type is +json. status=400 matches the HTTP code. traceId comes from W3C traceparent. errors[] only on 4xx validation.</note>
+    </example>
+
+    <example type="bad">
+      <code lang="http"><![CDATA[HTTP/1.1 500 Internal Server Error
+Content-Type: application/json
+
+{
+  "error": "psycopg2.OperationalError: connection refused at /opt/app/db.py:42",
+  "stack": "Traceback (most recent call last)...",
+  "code": 502
+}]]></code>
+      <note>Five violations: wrong content-type (r-content-type-problem-json), missing type/title/status (r-envelope-required-fields), raw exception text (r-5xx-detail-is-static), stack trace (r-never-leak-stack), body code disagrees with the HTTP line (r-status-matches-class).</note>
+    </example>
+  </section>
+
+  <section title="Envelope self-check checklist">
+    <list>
+      <item>Every error response carries Content-Type: application/problem+json.</item>
+      <item>type / title / status are always present; status equals the HTTP status code.</item>
+      <item>For 5xx, detail is a static string — no exception text, no stack, no SQL, no internal path.</item>
+      <item>traceId is set on every response, sourced from traceparent or a generated UUID.</item>
+      <item>errors[] appears only on 4xx validation responses, each item carrying field / code / message.</item>
+      <item>type URIs are stable; any change is documented in CHANGELOG as breaking.</item>
     </list>
   </section>
 </text>

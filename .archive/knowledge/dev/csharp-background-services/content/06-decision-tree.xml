@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="C# Background Services Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable job-shape signals to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-durability">Must the job survive process restarts (durable)?</root-question>
+
+    <branch when="durability == true">
+      <conclusion ref="extend-backgroundservice" verdict="skip-this-methodology: use Hangfire, Quartz.NET, or a durable broker; BackgroundService is in-memory only"/>
+    </branch>
+
+    <branch when="durability == false">
+      <question id="q-cpu">Is per-item work CPU-bound &gt; 100ms wall time?</question>
+      <branch when="cpu_heavy == true">
+        <conclusion ref="extend-backgroundservice" verdict="skip-this-methodology: isolate to a separate Worker host so the API thread pool is not starved"/>
+      </branch>
+      <branch when="cpu_heavy == false">
+        <question id="q-queue">Producer-consumer queue inside the API?</question>
+        <branch when="needs_queue == true">
+          <conclusion ref="bounded-channel" verdict="use BackgroundService + Channel.CreateBounded with FullMode.Wait; resolve scoped deps per item"/>
+        </branch>
+        <branch when="needs_queue == false">
+          <question id="q-periodic">Periodic schedule?</question>
+          <branch when="periodic == true">
+            <conclusion ref="pass-stoppingtoken" verdict="use BackgroundService + PeriodicTimer.WaitForNextTickAsync(stoppingToken)"/>
+          </branch>
+          <branch when="periodic == false">
+            <conclusion ref="scope-per-item" verdict="use BackgroundService with poll-loop + CreateScope per iteration"/>
+          </branch>
+        </branch>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="order-queue-consumer">
+    durability=false → cpu_heavy=false → needs_queue=true → BackgroundService + bounded channel; scope per item; health check tracking last-dequeue timestamp.
+  </example>
+</text>

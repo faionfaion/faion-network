@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-009, defect-signal set: the last 10 `backend`↔`dev` collisions resolved
+  merge-then-archive, survivor `backend/` in all ten.** This closes the 47-pair
+  `backend`↔`dev` population.
+
+  **The brief was over-broad on two of them and the correction matters.** It
+  said the stub was on the `backend/` side for `django-imports` and
+  `sql-optimization`. True — but **only in `01-core-rules.xml`**. The rest of
+  each backend copy (output contract, failure modes, procedure, tree, templates)
+  is authored and richer than the `dev/` copy. So the fix was to rewrite the
+  rules file, not to rebuild the methodology from the other side. Acting on the
+  brief as written would have thrown away the better four-fifths of two
+  documents.
+
+  `csharp-background-services` was the case where the brief held in full: bare
+  `r1..r5`, a `03-failure-modes` that was **off-subject** (ASP.NET controller and
+  AutoMapper antipatterns inside a background-worker document), and a generic
+  output contract. Rebuilt from the `dev/` copy.
+
+  `error-handling` was flagged as a possible collision and is not one — both
+  copies are RFC 7807 Problem Details envelopes. The defect sits on `dev/`, but
+  `backend/`'s non-rules parts were the **generic decision-record template**,
+  which is a boilerplate family worth its own sweep.
+
+  `django-decision-tree` is the owner's-eye case: two genuinely different
+  documents shared the slug — a stack-selection ADR and a code-placement rule
+  set. Nothing was lost (the placement rules live on as a second section) but the
+  slug now covers two related things, and the `AGENTS.md` summary says so rather
+  than hiding it.
+
+  One template carried a real syntax error that was fixed rather than copied:
+  the `dev/sql-optimization` index template used `<!-- -->` HTML comments **in a
+  `.sql` file**.
+
 - **CR-010 filed: 602 KB of hand-written methodology content ships and is never
   delivered.** 69 directories hold 177 `content/*.xml` files absent from their
   own `## Content` table — packed by `vfs-pack`, shipped, cached, and never

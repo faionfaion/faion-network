@@ -1,73 +1,64 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="C# Background Services Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the code artefact this methodology produces. Validator script enforces required keys, field shapes, and forbidden patterns. Output that fails the schema is rejected.</summary>
+<text id="02-output-contract" title="C# Background Services Output Contract" version="1.2.0" est_tokens="900" depth="essential">
+  <summary>JSON Schema (draft-07) for the worker-spec artefact this methodology produces. The validator script enforces required fields, per-field constraints and forbidden combinations. Output that fails the schema is rejected.</summary>
 
   <section title="Schema">
     <code lang="json"><![CDATA[
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://faion.net/schemas/csharp-background-services.json",
-  "title": "C# Background Services",
+  "title": "C# Background Services worker spec",
   "type": "object",
-  "additionalProperties": false,
   "required": [
-    "artefact_id",
+    "worker_class",
+    "channel",
+    "scope_strategy",
+    "stopping_token_propagated",
+    "exception_handling",
+    "health_check",
     "owner",
-    "file_path",
-    "language",
-    "build_passes",
-    "tests_passing",
-    "rules_checked",
     "version",
     "last_reviewed"
   ],
   "properties": {
-    "artefact_id": {
-      "type": "string",
-      "pattern": "^[a-z][a-z0-9-]+$"
+    "worker_class": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Service$"},
+    "base_class": {"type": "string", "const": "BackgroundService"},
+    "channel": {
+      "type": "object",
+      "required": ["mode", "capacity", "full_mode"],
+      "properties": {
+        "mode": {"enum": ["bounded", "none"]},
+        "capacity": {"type": "integer", "minimum": 1},
+        "full_mode": {"enum": ["Wait", "DropOldest", "DropNewest"]}
+      }
     },
-    "owner": {
-      "type": "string",
-      "minLength": 2
+    "schedule": {
+      "type": "object",
+      "properties": {
+        "kind": {"enum": ["periodic-timer", "queue-driven", "poll-loop"]},
+        "period_seconds": {"type": "integer", "minimum": 1}
+      }
     },
-    "file_path": {
-      "type": "string"
-    },
-    "language": {
-      "enum": [
-        "csharp",
-        "java",
-        "kotlin",
-        "swift",
-        "python",
-        "typescript",
-        "go",
-        "bash"
-      ]
-    },
-    "build_passes": {
-      "type": "boolean",
-      "const": true
-    },
-    "tests_passing": {
-      "type": "integer",
-      "minimum": 1
+    "scope_strategy": {"enum": ["create-scope-per-item", "no-scoped-deps"]},
+    "stopping_token_propagated": {"type": "boolean", "const": true},
+    "exception_handling": {"enum": ["try-catch-per-item"]},
+    "log_scope_per_item": {"type": "boolean"},
+    "health_check": {
+      "type": "object",
+      "required": ["registered"],
+      "properties": {
+        "registered": {"type": "boolean"},
+        "stale_after_seconds": {"type": "integer", "minimum": 1}
+      }
     },
     "rules_checked": {
       "type": "array",
       "minItems": 1,
-      "items": {
-        "type": "string"
-      }
+      "items": {"type": "string"}
     },
-    "version": {
-      "type": "string",
-      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
-    },
-    "last_reviewed": {
-      "type": "string",
-      "format": "date"
-    }
+    "owner": {"type": "string", "minLength": 2},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "last_reviewed": {"type": "string", "format": "date"}
   }
 }
 ]]></code>
@@ -76,17 +67,17 @@
   <example valid="true">
     <code lang="json"><![CDATA[
 {
-  "artefact_id": "csharp-background-services-impl-v1",
+  "worker_class": "OrderProcessorService",
+  "base_class": "BackgroundService",
+  "channel": {"mode": "bounded", "capacity": 1000, "full_mode": "Wait"},
+  "schedule": {"kind": "queue-driven"},
+  "scope_strategy": "create-scope-per-item",
+  "stopping_token_propagated": true,
+  "exception_handling": "try-catch-per-item",
+  "log_scope_per_item": true,
+  "health_check": {"registered": true, "stale_after_seconds": 300},
+  "rules_checked": ["extend-backgroundservice", "bounded-channel", "scope-per-item"],
   "owner": "ruslan@faion.net",
-  "file_path": "src/Features/Users/UsersController.cs",
-  "language": "csharp",
-  "build_passes": true,
-  "tests_passing": 12,
-  "rules_checked": [
-    "r1",
-    "r2",
-    "r3"
-  ],
   "version": "1.0.0",
   "last_reviewed": "2026-05-23"
 }
@@ -96,21 +87,41 @@
   <example valid="false">
     <code lang="json"><![CDATA[
 {
-  "artefact_id": "BAD ID",
-  "owner": "",
+  "worker_class": "orderWorker",
+  "base_class": "IHostedService",
+  "channel": {"mode": "none", "capacity": 0, "full_mode": "Wait"},
+  "scope_strategy": "no-scoped-deps",
+  "stopping_token_propagated": false,
+  "exception_handling": "try-catch-per-item",
+  "health_check": {"registered": false},
+  "owner": "team",
   "version": "draft"
 }
 ]]></code>
-    <note>artefact_id violates pattern; owner is empty; version not semver; required fields missing.</note>
+    <note>worker_class violates PascalCase + Service suffix; base_class is the raw interface; stopping_token_propagated=false; owner is a collective noun; version is not semver.</note>
   </example>
 
   <section title="Forbidden patterns">
-    <list>
-      <item>owner equals "team" / "we" / "us" / empty string</item>
-      <item>rationale or evidence that does not cite at least one input artefact by name</item>
-      <item>version frozen at 1.0.0 when decision content has changed</item>
-      <item>artefact_id reuses an existing id within the same store</item>
-    </list>
+    <antipattern>
+      <description>`channel.mode == "none"` AND `scope_strategy == "no-scoped-deps"` AND the worker uses a `Task.Run` loop.</description>
+      <reason>Bypasses BackgroundService entirely. Reject — violates `extend-backgroundservice`.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`channel.mode == "bounded"` AND `channel.full_mode` absent.</description>
+      <reason>A bounded channel without a back-pressure mode is meaningless. Violates `bounded-channel`.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`scope_strategy == "no-scoped-deps"` while the constructor lists `DbContext` or other scoped services.</description>
+      <reason>Captive-dependency violation of `scope-per-item`.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`schedule.kind == "periodic-timer"` with no `period_seconds`, or a `poll-loop` implemented with `Task.Delay` and no token.</description>
+      <reason>Violates `periodic-timer-not-delay-loop` and `pass-stoppingtoken`.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`owner` equals "team" / "we" / "us" / empty string, or `version` frozen while the spec content changed.</description>
+      <reason>An unowned or unversioned artefact cannot be reviewed or superseded.</reason>
+    </antipattern>
   </section>
 
   <reference path="scripts/validate-csharp-background-services.py">Validator script (stdlib-only; --help + --self-test)</reference>

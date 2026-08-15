@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="python-fastapi Failure Modes" version="1.0.0" est_tokens="600" depth="essential">
+  <summary>Four antipatterns each with symptom / root-cause / fix.</summary>
+
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>`@app.on_event("startup")` / `@app.on_event("shutdown")` (deprecated).</description>
+      <symptom>FastAPI emits DeprecationWarning at boot; will break in a future major version.</symptom>
+      <root-cause>Old tutorial code; never migrated.</root-cause>
+      <fix>Replace with `@asynccontextmanager async def lifespan(app)` + `FastAPI(lifespan=lifespan)`.</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>Single schema reused for Create + Update + Response.</description>
+      <symptom>Clients can set `id` on Create; response leaks `password` field; OpenAPI docs are confusing.</symptom>
+      <root-cause>Shortcut to avoid writing four classes.</root-cause>
+      <fix>Define Base (shared), Create (input), Update (partial), Response (output with `from_attributes=True`).</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>Business logic in router function.</description>
+      <symptom>Routes call ORM directly; tests require TestClient; logic not reusable from CLI/cron.</symptom>
+      <root-cause>No services/ layer.</root-cause>
+      <fix>Extract into `services/&lt;entity&gt;.py` async function; router calls service, translates result to HTTP.</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>Sync DB call inside an async route (e.g. `db.query(...)` with sync Session).</description>
+      <symptom>Event loop blocked; concurrency dies; latency spikes under load.</symptom>
+      <root-cause>Mixed sync/async session; agents grab the wrong one.</root-cause>
+      <fix>Use AsyncSession + `await db.execute(select(...))`. Verify no sync DB methods in async routes.</fix>
+    </antipattern>
+  </section>
+</text>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="django-base-model Output Contract" version="1.1.0" est_tokens="1000" depth="essential">
+<text id="02-output-contract" title="django-base-model Output Contract" version="1.2.0" est_tokens="1150" depth="essential">
   <summary>JSON schema for a Django base-model spec.</summary>
 
   <output-contract>
@@ -38,7 +38,19 @@
           "soft_delete": {"type": "boolean"},
           "exposes_uid": {"type": "boolean"},
           "tenant_scoped": {"type": "boolean"},
+          "url_lookup_field": {"type": "string", "enum": ["uid", "id", "slug"]},
           "unique_fields": {"type": "array", "items": {"type": "string"}},
+          "indexes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["fields"],
+              "properties": {
+                "fields": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+                "reason": {"type": "string"}
+              }
+            }
+          },
           "foreign_keys": {
             "type": "array",
             "items": {
@@ -65,6 +77,8 @@
       <pattern id="f2">a model with soft_delete=true and a unique_fields entry without an explicit partial-unique constraint in the same spec or a reference to it</pattern>
       <pattern id="f3">on_delete=CASCADE on a soft-deletable model's foreign key without a reason naming the cascade intent</pattern>
       <pattern id="f4">owner equals "team" or empty</pattern>
+      <pattern id="f5">a model with exposes_uid=true and url_lookup_field="id"</pattern>
+      <pattern id="f6">an indexes entry with a single field that duplicates an existing FK or unique index</pattern>
     </forbidden>
 
     <allowed-transformations>
@@ -89,6 +103,7 @@
       "soft_delete": true,
       "exposes_uid": true,
       "tenant_scoped": false,
+      "url_lookup_field": "uid",
       "unique_fields": ["email"],
       "foreign_keys": []
     },
@@ -98,7 +113,11 @@
       "soft_delete": true,
       "exposes_uid": true,
       "tenant_scoped": false,
+      "url_lookup_field": "uid",
       "unique_fields": [],
+      "indexes": [
+        {"fields": ["customer", "status", "-created_at"], "reason": "dashboard filter; FK index alone does not cover status/date"}
+      ],
       "foreign_keys": [
         {"field": "customer", "on_delete": "PROTECT", "reason": "keep historical orders even if customer is soft-deleted"}
       ]
@@ -117,7 +136,7 @@
   "db_engine": "postgresql",
   "bases": [{"name": "BaseModel", "abstract": false, "mixins": []}],
   "models": [
-    {"name": "Order", "extends": "BaseModel", "soft_delete": true, "exposes_uid": false, "tenant_scoped": false, "unique_fields": ["code"], "foreign_keys": [{"field": "x", "on_delete": "CASCADE", "reason": "x"}]}
+    {"name": "Order", "extends": "BaseModel", "soft_delete": true, "exposes_uid": true, "tenant_scoped": false, "url_lookup_field": "id", "unique_fields": ["code"], "foreign_keys": [{"field": "x", "on_delete": "CASCADE", "reason": "x"}]}
   ],
   "version": "1.0.0",
   "last_reviewed": "2026-05-22"

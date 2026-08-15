@@ -1,27 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="csharp-background-services Core Rules" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>Migrated testable rules for csharp-background-services. Verify and refine before relying on for production.</summary>
+<text id="01-core-rules" title="C# Background Services Core Rules" version="1.2.0" est_tokens="1300" depth="essential">
+  <summary>Seven testable rules grounding ASP.NET Core BackgroundService + Channels patterns. Each rule pairs a binary check with a sourced rationale.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Always use a bounded Channel&lt;T&gt; with an explicit FullMode; never use Channel.CreateUnbounded.</statement>
-      <rationale source="v1-source">Unbounded channels build up memory without limit under load. Explicit capacity + FullMode (Wait, DropOldest, or DropWrite) forces the producer to handle backpressure instead of silently growing the heap.</rationale>
+
+    <rule id="extend-backgroundservice" testable="true" depth="essential">
+      <statement>Long-running in-process work MUST extend `BackgroundService` (never `Task.Run(async () =&gt; while(true) ...)` and never implement `IHostedService` directly).</statement>
+      <rationale source="Microsoft Learn — Background tasks with hosted services">`BackgroundService` plumbs `ExecuteAsync`, `StartAsync`, `StopAsync`, and `stoppingToken`. `Task.Run` bypasses `IHost` lifecycle, cancellation, and DI scoping.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Resolve scoped services inside ExecuteAsync via IServiceProvider.CreateScope() per item; never inject scoped services directly into the singleton BackgroundService.</statement>
-      <rationale source="v1-source">BackgroundService is registered as a singleton. Injecting a scoped service (DbContext, repository) directly causes a scope-mismatch exception at runtime on first access.</rationale>
+
+    <rule id="pass-stoppingtoken" testable="true" depth="essential">
+      <statement>Every `await` inside `ExecuteAsync` MUST receive `stoppingToken` (or a linked token). No `await Task.Delay(ms)` without the token; no `await channel.Reader.ReadAllAsync()` without the token.</statement>
+      <rationale source="ASP.NET Core graceful-shutdown docs">Without `stoppingToken`, shutdown blocks for the default 30s `ShutdownTimeout` before SIGKILL; in-flight work is force-killed.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Wrap per-item processing in try/catch inside the ReadAllAsync loop; rethrow OperationCanceledException only when stoppingToken is cancelled.</statement>
-      <rationale source="v1-source">An unhandled exception inside ExecuteAsync terminates the hosted service silently in .NET 6+ (the host logs but keeps running). One bad item must not kill the consumer loop.</rationale>
+
+    <rule id="per-item-trycatch" testable="true" depth="essential">
+      <statement>The per-item handler inside `ExecuteAsync` MUST be wrapped in `try/catch`. Unhandled exceptions MUST NOT bubble to `ExecuteAsync`'s outer loop. Rethrow `OperationCanceledException` only when `stoppingToken.IsCancellationRequested`.</statement>
+      <rationale source=".NET 6 release notes — BackgroundServiceExceptionBehavior">Default `BackgroundServiceExceptionBehavior.StopHost` brings down the whole process on an unhandled `ExecuteAsync` exception. One bad item must not kill the consumer loop, but a genuine shutdown must still unwind.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>Use PeriodicTimer.WaitForNextTickAsync(stoppingToken) for fixed-interval work; never use Task.Delay in a loop as a timer.</statement>
-      <rationale source="v1-source">Task.Delay ignores the cancellation token after the delay starts if not forwarded explicitly, and loops can leak on shutdown. PeriodicTimer cancels at the next tick boundary cleanly.</rationale>
+
+    <rule id="scope-per-item" testable="true" depth="essential">
+      <statement>Scoped services (`DbContext`, scoped repositories) MUST be resolved via `IServiceProvider.CreateScope()` inside the per-item loop. Scoped types MUST NOT appear in the `BackgroundService` constructor.</statement>
+      <rationale source="EF Core docs — DbContext lifetime + .NET DI captive-dependency warnings">`BackgroundService` is a singleton; injecting `DbContext` directly creates a captive dependency reused across items, causing concurrency bugs and connection leaks.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Log structured fields per item ({OrderId}) and use ILogger.BeginScope per item for distributed trace correlation.</statement>
-      <rationale source="v1-source">Background service logs without correlation IDs make triage in production impossible; structured fields enable filtering by entity ID.</rationale>
+
+    <rule id="bounded-channel" testable="true" depth="essential">
+      <statement>In-memory work queues MUST use `Channel.CreateBounded&lt;T&gt;(new BoundedChannelOptions(capacity) { FullMode = BoundedChannelFullMode.Wait })` (or `DropOldest` when lossy is acceptable). `Channel.CreateUnbounded` is forbidden.</statement>
+      <rationale source="System.Threading.Channels API docs">Unbounded channels under producer spikes exhaust memory. Bounded + Wait propagates back-pressure to the producer instead of silently growing the heap.</rationale>
     </rule>
+
+    <rule id="periodic-timer-not-delay-loop" testable="true" depth="essential">
+      <statement>Fixed-interval work MUST use `PeriodicTimer.WaitForNextTickAsync(stoppingToken)`; a `while (true) { ...; await Task.Delay(period); }` loop is forbidden as a scheduler.</statement>
+      <rationale source="Microsoft Learn — PeriodicTimer + .NET 6 timer guidance">A `Task.Delay` loop drifts by the work duration each iteration and leaks on shutdown when the token is not forwarded. `PeriodicTimer` cancels cleanly at the next tick boundary and keeps the interval fixed.</rationale>
+    </rule>
+
+    <rule id="structured-per-item-logging" testable="true" depth="essential">
+      <statement>Each work unit MUST be logged with structured fields (`{OrderId}`, `{IdempotencyKey}`) and wrapped in `ILogger.BeginScope` so every log line inside the unit carries the correlation id.</statement>
+      <rationale source="ASP.NET Core logging docs — log scopes">Background work has no HTTP request to hang a trace on. Without a per-item scope, production triage cannot separate interleaved units, and failures cannot be traced back to the entity that caused them.</rationale>
+    </rule>
+
   </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
 </text>

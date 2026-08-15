@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-imports Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>Five Django import antipatterns.</summary>
+<text id="03-failure-modes" title="django-imports Failure Modes" version="1.2.0" est_tokens="1150" depth="essential">
+  <summary>Seven Django import antipatterns.</summary>
 
   <section title="Failure modes">
 
@@ -32,6 +32,18 @@
       <symptom>Moving `apps/users/` to `apps/accounts/users/` breaks every `from ...users.models import` in a different app. CI fails on every dependent import.</symptom>
       <root-cause>Multi-dot relative imports (`from ..` / `from ...`) couple modules to the physical directory layout. Any restructuring breaks them.</root-cause>
       <fix>Replace with absolute cross-app imports: `from apps.users import models as user_models`. policies.multi_dot_relative_allowed=false is forbidden by the spec.</fix>
+    </antipattern>
+
+    <antipattern id="fm-6-misconfigured-first-party">
+      <symptom>`apps.billing` sorts into the same block as `django` and `rest_framework`. Every PR touching imports produces a re-sorted block, so reviewers stop reading import diffs entirely.</symptom>
+      <root-cause>`known-first-party` was never set (or omits `core` / `config`), so ruff classifies the project's own packages as third-party.</root-cause>
+      <fix>Set `known-first-party = ["apps", "config", "core"]` plus an explicit `section-order` in pyproject.toml — see `templates/ruff-isort-config.toml`. Rule r10-ruff-first-party.</fix>
+    </antipattern>
+
+    <antipattern id="fm-7-type-imports-at-runtime">
+      <symptom>A module imports `apps.billing.models` solely to annotate a parameter. Startup time grows with every such import, and one of them eventually closes a cycle that fails at `django.setup()`.</symptom>
+      <root-cause>The annotation was written before the import strategy was decided, so a type-only dependency became a runtime dependency.</root-cause>
+      <fix>Move it under `if TYPE_CHECKING:` with `from __future__ import annotations`, and enable ruff's `TCH` rules so the next one is caught in pre-commit. Rule r8-type-checking — but never in `serializers.py`, see fm-3.</fix>
     </antipattern>
 
   </section>

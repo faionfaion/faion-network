@@ -43,10 +43,10 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 10 testable rules: PEP 8 order, absolute > multi-dot, mandatory aliases, string FKs, apps.get_model, TYPE_CHECKING, core/ extraction, ruff config | ~1400 |
+| `content/01-core-rules.xml` | essential | 11 testable rules: PEP 8 section order, absolute cross-app + relative in-app, no multi-dot relative, mandatory aliases, circular-strategy ladder, string FKs, apps.get_model, TYPE_CHECKING, core/ extraction, ruff first-party, no star imports | ~1800 |
 | `content/02-output-contract.xml` | essential | JSON schema for imports spec | ~900 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns: unaliased cross-app, wildcard, __future__ in serializers, PEP 810 on 3.13, multi-dot relative | ~900 |
-| `content/04-procedure.xml` | medium | 5 steps: order → alias → FK refs → ruff config → CI gate | ~600 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns: unaliased cross-app, wildcard, __future__ in serializers, PEP 810 on 3.13, multi-dot relative, misconfigured first-party, type-only import at runtime | ~1150 |
+| `content/04-procedure.xml` | medium | 6 steps: enumerate apps → policies → ruff config → FK strategy → wire the lint → validate | ~750 |
 | `content/06-decision-tree.xml` | essential | Per cross-app dependency: model field vs runtime service vs type-only | ~200 |
 
 ## Task Routing
@@ -62,7 +62,8 @@
 | File | Purpose |
 |---|---|
 | `templates/ruff-isort-config.toml` | Ruff config snippet that enforces sections + aliases. |
-| `templates/find-circular-imports.sh` | Shell script that runs python -c "import …" against every app to surface circulars. |
+| `templates/find-circular-imports.sh` | Grep audit for unaliased cross-app imports, multi-dot relatives and wildcards in an existing tree. |
+| `templates/django_import_lint.py` | AST pre-commit hook failing the build on a bare cross-app symbol import, a multi-dot relative or a wildcard. |
 | `templates/imports-spec.json` | Reference output document. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
@@ -78,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 - [[django-project-structure]] — `apps/` layout that this spec assumes.
 - [[django-models]] — string FK references referenced by rule r6.
 - [[django-quality-linting]] — ruff rule set this spec extends.
+- [[django-coding-standards]] — the apps/core/config layout `known-first-party` names.
+- [[python-typing]] — the type-checker whose annotations rule r8 keeps out of the runtime.
 
 ## Decision tree
 
@@ -250,4 +253,70 @@ echo "  # then use: user_models.User"
   "version": "1.0.0",
   "last_reviewed": "2026-05-22"
 }
+```
+
+### `templates/django_import_lint.py`
+
+```python
+#!/usr/bin/env python3
+
+# django_import_lint.py — flag cross-app imports without an alias, and wildcard imports.
+# Usage: python django_import_lint.py path/to/repo
+# Exits 1 if violations are found. Wire into pre-commit and CI.
+# This is the rule ruff cannot express: ruff sorts imports, it does not know that
+# `from apps.users.models import User` is the shape that shadows a name.
+import ast
+import pathlib
+import sys
+
+BAD: list[tuple[str, int, str]] = []
+
+
+def check(path: pathlib.Path) -> None:
+    try:
+        tree = ast.parse(path.read_text(), filename=str(path))
+    except SyntaxError:
+        return
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.ImportFrom):
+            continue
+        mod = node.module or ""
+        # Cross-app: from apps.<other>.<module> import X (direct symbol import)
+        if mod.startswith("apps.") and mod.count(".") >= 2:
+            tail = mod.split(".", 2)[2]
+            if tail in {"models", "services", "selectors", "constants", "serializers"}:
+                app = mod.split(".")[1]
+                BAD.append((
+                    str(path),
+                    node.lineno,
+                    f"use `from apps.{app} import {tail} as {app}_{tail}` "
+                    f"instead of `from {mod} import ...`",
+                ))
+        # Multi-dot relative imports
+        if node.level and node.level > 1:
+            BAD.append((str(path), node.lineno,
+                        "multi-dot relative import banned; use the absolute apps.<app> path"))
+        # Wildcard imports
+        for alias in node.names:
+            if alias.name == "*":
+                BAD.append((str(path), node.lineno, "wildcard import banned"))
+
+
+def main(argv: list[str]) -> int:
+    if len(argv) != 2 or argv[1] in {"-h", "--help"}:
+        print(__doc__ or "usage: django_import_lint.py <repo-root>")
+        return 0 if argv[1:2] in ([], ["-h"], ["--help"]) else 2
+    root = pathlib.Path(argv[1])
+    for py in root.rglob("*.py"):
+        s = str(py)
+        if "/migrations/" in s or "/.venv/" in s or "/node_modules/" in s:
+            continue
+        check(py)
+    for f, ln, msg in BAD:
+        print(f"{f}:{ln}: {msg}")
+    return 1 if BAD else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv))
 ```

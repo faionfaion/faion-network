@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-project-structure" title="FastAPI Project Structure">
+  <summary>app/ layout with routers/, schemas/, services/, and db/; main.py with lifespan context manager for startup/shutdown.</summary>
+
+  <section title="Directory layout">
+    <list>
+      <item>app/main.py — FastAPI instance, lifespan, CORS middleware, router inclusion</item>
+      <item>app/config.py — pydantic-settings BaseSettings with lru_cache</item>
+      <item>app/dependencies.py — get_db, get_current_user, DBSession/CurrentUser type aliases</item>
+      <item>app/routers/ — API routes organized by domain</item>
+      <item>app/schemas/ — Pydantic v2 models for request/response</item>
+      <item>app/services/ — business logic functions (async, typed)</item>
+      <item>app/models/ — SQLAlchemy ORM models</item>
+      <item>app/db/ — database connection, session factory</item>
+    </list>
+  </section>
+
+  <section title="main.py with lifespan">
+    <rule>
+      <statement>Use @asynccontextmanager lifespan for startup/shutdown. Never use deprecated @app.on_event("startup"). The lifespan function initializes DB connections and closes them cleanly.</statement>
+      <rationale>on_event is deprecated in FastAPI 0.93+. lifespan is the standard pattern and ensures resources are released even on unhandled exceptions during startup.</rationale>
+    </rule>
+    <example type="good">
+      <code lang="python"><![CDATA[
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.config import settings
+from app.db.database import init_db, close_db
+from app.routers import users, orders
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+    await close_db()
+
+
+app = FastAPI(
+    title=settings.app_name,
+    version="1.0.0",
+    lifespan=lifespan,
+    docs_url="/docs" if settings.debug else None,
+)
+
+app.add_middleware(CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
+app.include_router(orders.router, prefix="/api/v1/orders", tags=["orders"])
+]]></code>
+    </example>
+    <reference path="templates/main.py">Full main.py template</reference>
+  </section>
+
+  <section title="Settings">
+    <example type="good">
+      <code lang="python"><![CDATA[
+from functools import lru_cache
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False)
+    app_name: str = "My API"
+    debug: bool = False
+    secret_key: str
+    database_url: str
+    cors_origins: list[str] = ["http://localhost:3000"]
+
+@lru_cache
+def get_settings() -> Settings:
+    return Settings()
+
+settings = get_settings()
+]]></code>
+    </example>
+  </section>
+</text>

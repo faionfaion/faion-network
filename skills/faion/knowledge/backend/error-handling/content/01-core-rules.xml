@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Error Handling (RFC 7807 Problem Details) Core Rules" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>7 testable rules every Error Handling (RFC 7807 Problem Details) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="Error Handling (RFC 7807 Problem Details) Core Rules" version="1.2.0" est_tokens="1400" depth="essential">
+  <summary>11 testable rules every Error Handling (RFC 7807 Problem Details) application MUST enforce. HARD rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
 
@@ -15,8 +15,8 @@
     </rule>
 
     <rule id="r-trace-id-required" testable="true" depth="essential">
-      <statement>Every envelope MUST include `traceId` matching the observability span.</statement>
-      <rationale source="OpenTelemetry trace-context">Rule rooted in source: OpenTelemetry trace-context. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+      <statement>Every envelope MUST include `traceId`, read from the W3C `traceparent` request header when present and otherwise generated (`uuid4().hex`). It is never omitted, not even on 5xx.</statement>
+      <rationale source="W3C trace-context; OpenTelemetry">Without it, supporting a customer report means scraping logs by timestamp across every service. With it, one string from the customer resolves the incident — which is precisely why the 5xx path, where `detail` says nothing, is the case that needs it most.</rationale>
     </rule>
 
     <rule id="r-single-mapper" testable="true" depth="essential">
@@ -37,6 +37,26 @@
     <rule id="r-never-leak-stack" testable="true" depth="essential">
       <statement>Stack traces MUST NOT appear in `detail` or `instance`; log them server-side only.</statement>
       <rationale source="OWASP API security top 10">Rule rooted in source: OWASP API security top 10. Violations trigger the matching antipattern in 03-failure-modes.xml.</rationale>
+    </rule>
+
+    <rule id="r-content-type-problem-json" testable="true" depth="essential">
+      <statement>Error responses set `Content-Type: application/problem+json`, never `application/json`.</statement>
+      <rationale source="RFC 7807 §6.1">The media type is what makes the envelope self-describing. RFC 7807-aware clients (Spring's `ProblemDetail`, generated SDKs) dispatch on the `+json` suffix; served as plain `application/json` the same body silently degrades to generic parsing and the type-based routing dies without an error.</rationale>
+    </rule>
+
+    <rule id="r-5xx-detail-is-static" testable="true" depth="essential">
+      <statement>For 5xx responses `detail` is a fixed, generic string ("An unexpected error occurred"). Interpolating an exception message, SQL text, an internal path or any PII is forbidden; the exception is logged server-side with `exc_info` and correlated through `traceId`.</statement>
+      <rationale source="OWASP A05:2021 — Security Misconfiguration">Default handlers render `str(exc)` into the body, which is how `psycopg2.OperationalError: connection refused at /opt/app/db.py:42` — hostname, driver, file path — reaches an unauthenticated caller. The static string plus a traceId gives the client everything it can legitimately act on.</rationale>
+    </rule>
+
+    <rule id="r-errors-array-scope" testable="true" depth="essential">
+      <statement>`errors[]` appears ONLY on 4xx validation responses (typically 400 / 422), and every item carries `field`, `code` (machine-readable slug) and `message` (human-readable). On 401, 403, 404 and every 5xx the field is omitted entirely — never present-but-empty.</statement>
+      <rationale source="RFC 7807 extension conventions">`errors[]` is an extension, not part of the spec, so clients only special-case it where it means something. An empty array on a 404, or a fabricated single entry on a 500, teaches consumers to defensively inspect a field that was supposed to be a reliable signal.</rationale>
+    </rule>
+
+    <rule id="r-type-uri-is-contract" testable="true" depth="essential">
+      <statement>Published `type` URIs are part of the API contract. Renaming or repathing one is a breaking change: it requires a version bump and a CHANGELOG entry, not a refactor commit.</statement>
+      <rationale source="API-versioning practice">Clients branch on the `type` URI to handle specific error classes. Renaming `.../validation-error` to `.../validation` compiles, deploys, passes every internal test, and silently drops every consumer into their generic fallback branch.</rationale>
     </rule>
 
   </section>

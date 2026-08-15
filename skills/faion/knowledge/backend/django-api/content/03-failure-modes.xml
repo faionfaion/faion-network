@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-api Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Five Django API antipatterns the spec must forbid.</summary>
+<text id="03-failure-modes" title="django-api Failure Modes" version="1.2.0" est_tokens="1200" depth="essential">
+  <summary>Nine Django API antipatterns the spec must forbid.</summary>
 
   <section title="Failure modes">
 
@@ -32,6 +32,30 @@
       <symptom>Endpoint declared `async def`. Tests pass under WSGI dev server. Under ASGI in production, latency under load doubles instead of dropping.</symptom>
       <root-cause>Plain DRF dispatches handlers synchronously. An `async def` method on a DRF view is awaited by Django but the surrounding pipeline still blocks the event loop.</root-cause>
       <fix>Either: use `adrf` (Async DRF) which adds an async dispatch path, OR switch the resource to Ninja, which is async-native. The spec's framework field locks the choice; mixed sync/async DRF is forbidden.</fix>
+    </antipattern>
+
+    <antipattern id="fm-6-service-takes-request">
+      <symptom>Service signature reads `def create_order(request, ...)`. A Celery task that needs the same logic either fakes a request object or copy-pastes the body.</symptom>
+      <root-cause>The service was extracted from a view without changing its inputs, so the HTTP transport followed the logic out of the view layer.</root-cause>
+      <fix>Change the signature to domain types — `def create_order(*, user_id: int, amount: Decimal, ...)`. The view does `serializer.validated_data` unpacking. Spec rule r9-service-takes-domain-types forbids the request-shaped signature.</fix>
+    </antipattern>
+
+    <antipattern id="fm-7-hand-maintained-openapi">
+      <symptom>`docs/api/schema.yml` is edited by hand in the same PR as the code. Six weeks later a consumer reports a field that the spec promises and the API does not return.</symptom>
+      <root-cause>Two sources of truth for one contract, with no mechanism forcing them to agree.</root-cause>
+      <fix>Generate the schema (`manage.py spectacular --fail-on-warn`) and diff it in CI with `oasdiff breaking`. See `templates/check-api-schema.sh`. Spec rule r10-openapi-generated.</fix>
+    </antipattern>
+
+    <antipattern id="fm-8-mixed-error-shapes">
+      <symptom>One endpoint returns `{"error": "..."}`, another returns DRF's `{"detail": "..."}`, a third returns `{"errors": [...]}`. Consumer code grows a per-endpoint error parser.</symptom>
+      <root-cause>Error responses are constructed ad hoc inside views instead of raised as exceptions and rendered once by a central handler.</root-cause>
+      <fix>Raise typed exceptions from services; render them once through `EXCEPTION_HANDLER` into RFC 7807 `{type, title, status, detail, instance}`. Spec rule r11-error-shape-rfc7807.</fix>
+    </antipattern>
+
+    <antipattern id="fm-9-unpaginated-list">
+      <symptom>A `ListAPIView` returns the full queryset. It is fast in staging and times out the first time a customer accumulates 10k rows.</symptom>
+      <root-cause>Pagination was treated as a feature to add later rather than a default; DRF happily serialises an unbounded queryset.</root-cause>
+      <fix>Set `DEFAULT_PAGINATION_CLASS` + `PAGE_SIZE` globally and cap `page_size` at 100. Unbounded or append-only datasets use cursor pagination. Spec rule r8-scoped-throttle-cursor-pagination.</fix>
     </antipattern>
 
   </section>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="sql-optimization Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>Failure modes observed when applying the sql-optimization methodology. Each pairs symptom + root-cause + concrete fix.</summary>
+<text id="03-failure-modes" title="sql-optimization Failure Modes" version="1.2.0" est_tokens="1300" depth="essential">
+  <summary>Seven failure modes observed when applying the sql-optimization methodology. Each pairs symptom + root-cause + concrete fix.</summary>
 
   <section title="Antipatterns">
     <antipattern id="fm-no-measure" severity="high">
@@ -25,6 +25,24 @@
       <symptom>Bulk load of 10M rows; optimizer keeps old stats; new query uses a seqscan instead of the new index.</symptom>
       <root-cause source="v1-source">Stats not refreshed.</root-cause>
       <fix>Run ANALYZE table_name after the bulk load; verify with EXPLAIN.</fix>
+    </antipattern>
+
+    <antipattern id="fm-estimate-skew-ignored" severity="high">
+      <symptom>The plan shows `rows=10` where `actual rows=1000000`. The planner picks a nested loop; the freshly added index changes nothing and the query stays slow.</symptom>
+      <root-cause source="planner-estimate postmortem">Not the same failure as stale stats after a load — here the column's distribution is skewed enough that the default statistics target cannot describe it, so the estimate is wrong even after ANALYZE.</root-cause>
+      <fix>ANALYZE and re-EXPLAIN first. If the skew survives, raise the column's statistics target (`ALTER TABLE t ALTER COLUMN c SET STATISTICS 1000`) and ANALYZE again before proposing any index. Rule investigate-row-estimate-skew.</fix>
+    </antipattern>
+
+    <antipattern id="fm-composite-order-reversed" severity="medium">
+      <symptom>A composite index exists on `(created_at, tenant_id)` and the `tenant_id = ?` query still does a sequential scan. The index looks right in the schema and is never used.</symptom>
+      <root-cause source="B-tree audit">The range/sort column was placed first, so the B-tree prefix is a timestamp — the equality predicate has no usable leading column.</root-cause>
+      <fix>Recreate as `(tenant_id, created_at DESC, id)` and confirm with EXPLAIN that the scan uses the tenant_id prefix. Rule composite-index-ordering; snippet in `templates/create_index_concurrently.sql`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-subquery-in-select" severity="medium">
+      <symptom>A list endpoint returning 200 rows takes 8 seconds. `pg_stat_statements` shows the inner query executed 200 times for one outer call.</symptom>
+      <root-cause source="N+1 retro">A correlated subquery sits in the SELECT list, so it runs once per outer row.</root-cause>
+      <fix>Rewrite as a JOIN with GROUP BY and an aggregate; verify a single execution in the new plan. Rule no-subquery-in-select.</fix>
     </antipattern>
 
   </section>

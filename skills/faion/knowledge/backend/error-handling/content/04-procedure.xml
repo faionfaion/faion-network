@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Error Handling (RFC 7807 Problem Details) Procedure" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5-step procedure to produce a Error Handling (RFC 7807 Problem Details) artefact from typed inputs.</summary>
+<text id="04-procedure" title="Error Handling (RFC 7807 Problem Details) Procedure" version="1.2.0" est_tokens="1500" depth="essential">
+  <summary>Ten steps: five to produce the spec artefact from typed inputs, five to implement the envelope the artefact commits to.</summary>
 
   <step n="1" name="gather">
     <input>Prerequisites table from AGENTS.md</input>
@@ -41,5 +41,44 @@
       <item>No forbidden pattern matches</item>
       <item>Decision tree (06) has been honoured</item>
     </list>
+  </section>
+
+  <section title="Implementation steps (turning the artefact into a live envelope)">
+
+    <step n="6" name="declare-type-uris">
+      <input>The list of error classes the API returns (validation, auth, not-found, rate-limit, internal).</input>
+      <action>Define a stable URI namespace `https://api.example.com/errors/&lt;slug&gt;` and document each (`type`, `title`, `status`) triple in the OpenAPI `components/responses`.</action>
+      <output>errors-namespace.md table + OpenAPI components.</output>
+      <decision-gate>If the team cannot commit to URI stability, stop — the methodology requires that guarantee (rule r-type-uri-is-contract).</decision-gate>
+    </step>
+
+    <step n="7" name="model-problem-detail">
+      <input>Framework + the URI namespace.</input>
+      <action>Define one ProblemDetail type (Pydantic BaseModel / TypeScript interface / Java record) carrying type, title, status, detail, instance, traceId, errors[].</action>
+      <output>One model file in a shared module.</output>
+      <decision-gate>The model must serialize unknown extension fields permissively (`additionalProperties: true` at schema level) so a later extension is not a breaking change.</decision-gate>
+    </step>
+
+    <step n="8" name="register-one-handler">
+      <input>ProblemDetail model + the framework's exception hook.</input>
+      <action>Register a single framework-level exception handler catching every unhandled exception and returning ProblemDetail with `Content-Type: application/problem+json`. Delete per-route handlers.</action>
+      <output>One handler file; zero per-route error shapes.</output>
+      <decision-gate>Add a CI grep blocking `JSONResponse(content={"error":` and equivalents after this step (rules r-single-mapper, r-content-type-problem-json).</decision-gate>
+    </step>
+
+    <step n="9" name="propagate-trace-id">
+      <input>Handler + observability conventions.</input>
+      <action>Read the W3C `traceparent` header; generate a UUID when absent. Set it on the response body and the log line, and send `traceparent` on outbound cross-service calls.</action>
+      <output>Updated handler + middleware guaranteeing a trace context per request.</output>
+      <decision-gate>An error response without traceId blocks (rule r-trace-id-required).</decision-gate>
+    </step>
+
+    <step n="10" name="contract-test">
+      <input>`templates/problem-details.schema.yaml` + every error path in the API.</input>
+      <action>Author an integration test hitting each error path and validating body AND content-type against the schema, including the body-status vs HTTP-status match.</action>
+      <output>tests/test_error_contract.py (or equivalent) wired into CI.</output>
+      <decision-gate>Any endpoint failing the schema blocks the deploy; fix the shape before merging.</decision-gate>
+    </step>
+
   </section>
 </text>

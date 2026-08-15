@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="error-handling Examples" version="1.0.0" est_tokens="800" depth="medium">
+  <summary>Three framework-specific reference implementations of the ProblemDetail handler.</summary>
+
+  <section title="FastAPI">
+    <example type="good">
+      <code lang="python"><![CDATA[from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
+from pydantic import BaseModel, ValidationError
+import uuid
+
+class ProblemDetail(BaseModel):
+    type: str
+    title: str
+    status: int
+    detail: str | None = None
+    instance: str | None = None
+    traceId: str | None = None
+    errors: list[dict] | None = None
+
+app = FastAPI()
+
+def _trace_id(req: Request) -> str:
+    return req.headers.get("traceparent") or uuid.uuid4().hex
+
+@app.exception_handler(ValidationError)
+async def on_validation(req: Request, exc: ValidationError):
+    body = ProblemDetail(
+        type="https://api.example.com/errors/validation-error",
+        title="Validation Error",
+        status=400,
+        detail="Request validation failed",
+        instance=str(req.url.path),
+        traceId=_trace_id(req),
+        errors=[{"field": e["loc"][-1], "code": e["type"], "message": e["msg"]} for e in exc.errors()],
+    )
+    return JSONResponse(status_code=400, content=body.model_dump(),
+                        headers={"Content-Type": "application/problem+json"})
+
+@app.exception_handler(Exception)
+async def on_unhandled(req: Request, exc: Exception):
+    body = ProblemDetail(
+        type="https://api.example.com/errors/internal-error",
+        title="Internal Server Error",
+        status=500,
+        detail="An unexpected error occurred",
+        instance=str(req.url.path),
+        traceId=_trace_id(req),
+    )
+    return JSONResponse(status_code=500, content=body.model_dump(),
+                        headers={"Content-Type": "application/problem+json"})]]></code>
+      <note>5xx detail is static — no exc.__str__. traceId propagated from W3C header.</note>
+    </example>
+  </section>
+
+  <section title="Express (Node.js)">
+    <example type="good">
+      <code lang="typescript"><![CDATA[import express, { Request, Response, NextFunction } from 'express';
+import { randomUUID } from 'crypto';
+
+const NS = 'https://api.example.com/errors';
+function pd(req: Request, status: number, slug: string, title: string, detail?: string, errors?: unknown[]) {
+  return {
+    type: `${NS}/${slug}`, title, status,
+    detail, instance: req.originalUrl,
+    traceId: req.header('traceparent') || randomUUID(),
+    ...(errors ? { errors } : {}),
+  };
+}
+
+const app = express();
+app.use((err: Error & { status?: number; errors?: unknown[] }, req: Request, res: Response, next: NextFunction) => {
+  const status = err.status ?? 500;
+  res.setHeader('Content-Type', 'application/problem+json');
+  if (status >= 500) {
+    req.log?.error({ err }, 'unhandled');
+    return res.status(500).json(pd(req, 500, 'internal-error', 'Internal Server Error', 'An unexpected error occurred'));
+  }
+  res.status(status).json(pd(req, status, err.name.toLowerCase(), err.name, err.message, err.errors));
+});]]></code>
+      <note>One middleware handles everything. 5xx body is static.</note>
+    </example>
+  </section>
+
+  <section title="Spring Boot">
+    <example type="good">
+      <code lang="java"><![CDATA[@RestControllerAdvice
+class ProblemDetailAdvice {
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  ResponseEntity<ProblemDetail> handleValidation(MethodArgumentNotValidException ex, HttpServletRequest req) {
+    ProblemDetail pd = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Request validation failed");
+    pd.setType(URI.create("https://api.example.com/errors/validation-error"));
+    pd.setTitle("Validation Error");
+    pd.setProperty("traceId", req.getHeader("traceparent") != null ? req.getHeader("traceparent") : UUID.randomUUID().toString());
+    pd.setProperty("errors", ex.getBindingResult().getFieldErrors().stream()
+        .map(e -> Map.of("field", e.getField(), "code", e.getCode(), "message", e.getDefaultMessage())).toList());
+    return ResponseEntity.status(400).contentType(MediaType.APPLICATION_PROBLEM_JSON).body(pd);
+  }
+}]]></code>
+      <note>Spring 6 provides ProblemDetail natively. APPLICATION_PROBLEM_JSON enforces +json content-type.</note>
+    </example>
+  </section>
+
+  <section title="Contract test">
+    <example type="good">
+      <code lang="python"><![CDATA[import jsonschema, requests, yaml, pathlib
+
+SCHEMA = yaml.safe_load(pathlib.Path("templates/problem-details.schema.yaml").read_text())
+
+def test_validation_error_envelope():
+    r = requests.post("http://localhost:8000/users", json={})
+    assert r.headers["content-type"].startswith("application/problem+json")
+    assert r.status_code == 400
+    body = r.json()
+    jsonschema.validate(body, SCHEMA)
+    assert body["status"] == r.status_code]]></code>
+      <note>Reusable across endpoints. Asserts content-type, status range, schema, and status-match.</note>
+    </example>
+  </section>
+</text>

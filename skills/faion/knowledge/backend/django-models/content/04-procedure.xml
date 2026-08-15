@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="django-models Procedure" version="1.1.0" est_tokens="700" depth="deep">
-  <summary>Six steps from ERD to validated models spec.</summary>
+<text id="04-procedure" title="django-models Procedure" version="1.2.0" est_tokens="950" depth="deep">
+  <summary>Nine steps from ERD to validated models spec, ending at the migration gate.</summary>
 
   <section title="Steps">
 
@@ -36,10 +36,30 @@
       <output>models[].foreign_keys.</output>
     </step>
 
+    <step n="5b" name="declare-related-names">
+      <input>models[].foreign_keys from step 5.</input>
+      <action>Give every FK and M2M an explicit `related_name`; use `"+"` where the reverse accessor is unwanted. Check for two FKs from different models to the same target.</action>
+      <output>models[].foreign_keys[].related_name.</output>
+      <decision-gate>An FK without related_name blocks — the clash surfaces as a makemigrations error naming unrelated apps (rule r14-related-name).</decision-gate>
+    </step>
+
+    <step n="5c" name="lay-out-the-models-package">
+      <input>Model count per app.</input>
+      <action>An app with more than two models gets a `models/` package: one model per file, re-exported from `__init__.py`. `TextChoices` move to `constants.py` and are imported through a module alias.</action>
+      <output>File layout note in the spec consumer's plan.</output>
+    </step>
+
     <step n="6" name="wire-full-clean-and-validate">
       <input>All outputs.</input>
       <action>Set full_clean_in_service=true (this is a contract: every service that saves the model calls full_clean first). Emit spec; run scripts/validate-django-models.py.</action>
       <output>Validated spec.</output>
+    </step>
+
+    <step n="7" name="gate-the-migration">
+      <input>The models the spec describes, now written.</input>
+      <action>Wire `templates/check-migrations.sh` into pre-commit so a model change without a staged migration fails. Read every generated migration — including squashed ones — for destructive operations (`RemoveField`, `AlterField` on a PK, a dropped constraint) before running `migrate`.</action>
+      <output>A staged, reviewed migration.</output>
+      <decision-gate>Never edit an applied migration; supersede it with a new one (rule r17-migration-hygiene).</decision-gate>
     </step>
 
   </section>

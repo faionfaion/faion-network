@@ -1,32 +1,66 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="sql-optimization Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+<text id="06-decision-tree" title="sql-optimization Decision Tree" version="1.2.0" est_tokens="750" depth="essential">
+  <summary>Routing tree mapping observable signals — preconditions, captured plan, estimate skew, scan type, pagination shape, write mix — to a rule from 01-core-rules.xml.</summary>
 
   <decision-tree>
-      <root-question id="q-root">Did EXPLAIN ANALYZE confirm a measurable bottleneck on this query?</root-question>
-      <branch when="explain_analyze_run == false">
-        <conclusion ref="r1" verdict="STOP — capture EXPLAIN ANALYZE first"/>
+    <root-question id="q-preconditions">Preconditions: Postgres-class DB, a slow query identified in APM or pg_stat_statements, and a staging snapshot at production volume?</root-question>
+
+    <branch when="preconditions == false">
+      <conclusion ref="skip-this-methodology" verdict="missing preconditions; profile the application side, or route to a store-appropriate methodology"/>
+    </branch>
+
+    <branch when="preconditions == true AND explain_analyze_run == false">
+      <conclusion ref="explain-before-change" verdict="STOP — capture EXPLAIN (ANALYZE, BUFFERS) first; everything below reads that plan"/>
+    </branch>
+
+    <branch when="preconditions == true AND explain_analyze_run == true">
+      <question id="q-skew">Do actual rows differ from estimated by more than 10x anywhere in the plan?</question>
+
+      <branch when="row_estimate_skew == true">
+        <conclusion ref="investigate-row-estimate-skew" verdict="ANALYZE the table and re-capture before proposing an index; no index fixes a wrong estimate"/>
       </branch>
-      <branch when="explain_analyze_run == true">
-        <question id="q-next">plan_uses_seqscan == true?</question>
-        <branch when="plan_uses_seqscan == true">
-          <question id="q-next">filter_columns_indexable == true?</question>
-          <branch when="filter_columns_indexable == true">
-            <conclusion ref="r5" verdict="add composite index aligned to predicate order"/>
-          </branch>
-          <branch when="filter_columns_indexable == false">
-            <conclusion ref="r6" verdict="consider partial or covering index; otherwise escalate to caching"/>
-          </branch>
+
+      <branch when="row_estimate_skew == false">
+        <question id="q-shape">What does the plan and the query shape actually show?</question>
+
+        <branch when="pagination == deep_offset">
+          <conclusion ref="cursor-for-deep-pagination" verdict="switch to keyset pagination on (last_seen_at, id); an index will not rescue OFFSET at depth"/>
         </branch>
-        <branch when="plan_uses_seqscan == false">
-          <question id="q-next">writes_dominant == true?</question>
-          <branch when="writes_dominant == true">
-            <conclusion ref="r3" verdict="audit existing indexes; drop unused"/>
-          </branch>
-          <branch when="writes_dominant == false">
-            <conclusion ref="r4" verdict="rewrite query: explicit columns, filter early"/>
-          </branch>
+
+        <branch when="subquery_in_select_list == true">
+          <conclusion ref="no-subquery-in-select" verdict="rewrite as JOIN + aggregation; confirm a single execution in the new plan"/>
+        </branch>
+
+        <branch when="plan_uses_seqscan == true AND filter_columns_indexable == true">
+          <conclusion ref="composite-index-ordering" verdict="add a composite index with equality columns first, range column last"/>
+        </branch>
+
+        <branch when="plan_uses_seqscan == true AND filter_columns_indexable == false">
+          <conclusion ref="covering-index-include" verdict="consider a partial or covering index; if neither fits, the answer is a materialized view or caching, not an index"/>
+        </branch>
+
+        <branch when="plan_uses_seqscan == false AND aggregate_recomputed_per_read == true">
+          <conclusion ref="materialized-views-for-aggregates" verdict="precompute into a materialized view refreshed CONCURRENTLY"/>
+        </branch>
+
+        <branch when="plan_uses_seqscan == false AND writes_dominant == true">
+          <conclusion ref="index-cost-before-benefit" verdict="audit existing indexes against pg_stat_user_indexes and drop the unused ones"/>
+        </branch>
+
+        <branch when="plan_uses_seqscan == false AND writes_dominant == false">
+          <conclusion ref="reduce-data-movement" verdict="rewrite the query: explicit columns, filter early, no Cartesian product"/>
         </branch>
       </branch>
+    </branch>
   </decision-tree>
+
+  <example trace="orders-list"><![CDATA[
+preconditions=true, explain captured, estimate 10k vs actual 1.5M
+q-skew -> true
+=> investigate-row-estimate-skew: ANALYZE orders, re-capture.
+second pass: skew resolved, seqscan on (tenant_id, created_at), columns indexable
+=> composite-index-ordering: CREATE INDEX CONCURRENTLY ix_orders_tenant_created_id
+   ON orders (tenant_id, created_at DESC, id).
+Merge only with before/after plans and a sample size (regression-gate-before-merge).
+]]></example>
 </text>

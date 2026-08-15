@@ -1,16 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Python FastAPI — Procedure" version="1.0.0" est_tokens="700" depth="medium">
-  <summary>Step-by-step procedure for applying python-fastapi.</summary>
+<text id="04-procedure" title="Python FastAPI — Procedure" version="1.1.0" est_tokens="1000" depth="medium">
+  <summary>Eight-step procedure for applying python-fastapi, from dependency bootstrap to the CI gate.</summary>
 
+    <section title="Step 0: Bootstrap the async stack">
+      <p>Input: Python 3.11+, a dependency manager</p>
+      <p>Action: Install `fastapi[standard] pydantic-settings sqlalchemy[asyncio] asyncpg alembic uvicorn`. Lay out `app/` as main.py + config.py + dependencies.py + routers/ + schemas/ + services/ + models/ + db/.</p>
+      <p>Output: pyproject.toml + lockfile + the package skeleton.</p>
+      <p>Decision gate: a non-async database driver aborts this methodology — every rule below assumes an AsyncSession.</p>
+    </section>
+    <section title="Step 0b: Lifespan and dependency aliases">
+      <p>Input: templates/main.py + templates/dependencies.py</p>
+      <p>Action: Create the app with an `@asynccontextmanager` lifespan opening and disposing the engine; declare `DBSession` and `CurrentUser` Annotated aliases; gate docs_url on settings.debug.</p>
+      <p>Output: app/main.py + app/dependencies.py.</p>
+      <p>Decision gate: any surviving `@app.on_event` blocks (rule r7-lifespan-not-on-event).</p>
+    </section>
     <section title="Step 1: Define Pydantic schemas">
       <p>Input: Endpoint spec</p>
-      <p>Action: Author &lt;Entity&gt;In and &lt;Entity&gt;Out in schemas.py.</p>
-      <p>Output: Typed boundaries.</p>
+      <p>Action: For each entity author the quartet in `app/schemas/&lt;entity&gt;.py` — Base (shared), Create (input), Update (all optional), Response (output, `ConfigDict(from_attributes=True)`).</p>
+      <p>Output: Typed boundaries; one schemas module per entity.</p>
+      <p>Decision gate: reject a single model serving several roles (rule r8-schema-quartet).</p>
     </section>
     <section title="Step 2: Write service function">
       <p>Input: Schemas exist</p>
-      <p>Action: Author service: takes AsyncSession + In schema, returns Out schema.</p>
-      <p>Output: Service unit-testable.</p>
+      <p>Action: Author `app/services/&lt;entity&gt;.py` — `async def`, takes an AsyncSession plus typed values, returns an ORM instance or None. Use `await db.flush(); await db.refresh(obj)` for generated ids; never commit inside a service.</p>
+      <p>Output: Service unit-testable without HTTP.</p>
+      <p>Decision gate: routers import services, never models directly (rules r10-services-return-orm, r11-flush-refresh-not-commit).</p>
     </section>
     <section title="Step 3: Wire route">
       <p>Input: Service exists</p>
@@ -26,5 +40,17 @@
       <p>Input: App boots</p>
       <p>Action: Generate openapi.json; commit to repo; add CI diff job.</p>
       <p>Output: Drift guard.</p>
+    </section>
+    <section title="Step 6: Audit for blocking calls">
+      <p>Input: The routes and services just written</p>
+      <p>Action: Grep the async modules for `requests.`, sync `Session`, `open(` on a hot path and `time.sleep`. Replace with `httpx.AsyncClient`, `AsyncSession`, or `run_in_threadpool` where the library has no async form.</p>
+      <p>Output: No blocking call reachable from a coroutine.</p>
+      <p>Decision gate: one blocking call is enough to erase the benefit of the whole async stack (rule r12-no-sync-io-in-async-route).</p>
+    </section>
+    <section title="Step 7: Wire the CI gate">
+      <p>Input: pre-commit + CI</p>
+      <p>Action: Run ruff, mypy --strict, pytest, the openapi diff, and scripts/validate-python-fastapi.py on every PR.</p>
+      <p>Output: Updated CI workflow.</p>
+      <p>Decision gate: block merge on any gate failure.</p>
     </section>
 </text>

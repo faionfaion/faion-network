@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Python FastAPI — Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
-  <summary>Testable rules every python-fastapi application must obey.</summary>
+<text id="01-core-rules" title="Python FastAPI — Core Rules" version="1.1.0" est_tokens="2000" depth="essential">
+  <summary>Thirteen testable rules every python-fastapi application must obey: app lifecycle, schema boundaries, dependency injection, service contract, and the CI gates that hold them.</summary>
 
   <section title="Rule set">
     <rule id="r1-thin-routes" testable="true" depth="essential">
@@ -27,5 +27,40 @@
       <statement>Snapshot openapi.json into the repo and diff it on every PR.</statement>
       <rationale source="faion-network">Schema changes are API breaks; explicit diffs catch accidental renames or type narrowing.</rationale>
     </rule>
+    <rule id="r7-lifespan-not-on-event" testable="true" depth="essential">
+      <statement>Startup and shutdown run inside one `@asynccontextmanager async def lifespan(app)` passed as `FastAPI(lifespan=lifespan)`. `@app.on_event("startup")` / `("shutdown")` are forbidden.</statement>
+      <rationale source="fastapi.tiangolo.com/advanced/events">`on_event` has been deprecated since FastAPI 0.93 and emits a DeprecationWarning at boot. `lifespan` owns both phases in one scope, so a resource opened before `yield` is still released when startup raises after it.</rationale>
+    </rule>
+
+    <rule id="r8-schema-quartet" testable="true" depth="essential">
+      <statement>Each entity declares four Pydantic models: `Base` (shared fields), `Create` (input), `Update` (all fields optional), `Response` (output, `model_config = ConfigDict(from_attributes=True)`). One model serving several roles is forbidden.</statement>
+      <rationale source="Pydantic v2 + OpenAPI contract practice">A single model cannot say "Create requires password", "Response must never contain it" and "Update makes everything optional" at once. Reusing one lets a client set `id` on create and leaks write-only fields into the documented response schema.</rationale>
+    </rule>
+
+    <rule id="r9-annotated-dependency-aliases" testable="true" depth="essential">
+      <statement>Dependencies are declared once as `Annotated` aliases — `DBSession = Annotated[AsyncSession, Depends(get_db)]`, `CurrentUser = Annotated[User, Depends(get_current_user)]` — and used by name in route signatures.</statement>
+      <rationale source="FastAPI dependency docs">Spelling `Annotated[AsyncSession, Depends(get_db)]` on every route makes the signature unreadable and means a change to the provider is a repo-wide edit. The alias makes it one line, and keeps `Depends` out of the route author's way.</rationale>
+    </rule>
+
+    <rule id="r10-services-return-orm" testable="true" depth="essential">
+      <statement>Service functions are `async def`, take typed parameters (an `AsyncSession` plus domain values), and return ORM model instances or `None`. Returning a dict or a raw SQLAlchemy `Result` is forbidden.</statement>
+      <rationale source="FastAPI response_model semantics">The router serialises through `response_model`; handing it a model keeps that the single serialisation point and lets tests assert on attributes. A dict bypasses both the type checker and the OpenAPI contract, so field drift ships silently.</rationale>
+    </rule>
+
+    <rule id="r11-flush-refresh-not-commit" testable="true" depth="essential">
+      <statement>To read a generated id or a server default after an insert, use `await db.flush()` then `await db.refresh(obj)`. Services do not commit; the commit happens once in `get_db` when the request succeeds, with rollback on exception.</statement>
+      <rationale source="SQLAlchemy 2.0 session docs">`flush` sends the INSERT and makes server-generated values readable while the transaction stays open, so two service calls in one request remain atomic. A service that commits mid-request destroys that atomicity and leaves the caller unable to roll back.</rationale>
+    </rule>
+
+    <rule id="r12-no-sync-io-in-async-route" testable="true" depth="essential">
+      <statement>No synchronous I/O inside an `async def` route or service: no `requests.get`, no sync `Session.query`, no blocking file or subprocess call. Use `httpx.AsyncClient` and `AsyncSession` with `await db.execute(select(...))`; if a blocking call is unavoidable, wrap it in `run_in_threadpool`.</statement>
+      <rationale source="asyncio event-loop semantics">A blocking call inside a coroutine stops the whole event loop, so every other in-flight request waits for it. The symptom is latency that collapses only under concurrency — which is exactly the load level the async stack was chosen for.</rationale>
+    </rule>
+
+    <rule id="r13-guard-docs-in-prod" testable="true" depth="essential">
+      <statement>Interactive docs are gated by environment: `docs_url="/docs" if settings.debug else None` (same for `redoc_url` and `openapi_url`). Settings come from `pydantic-settings` `BaseSettings` behind an `lru_cache`, never from module-level `os.environ` reads.</statement>
+      <rationale source="API attack-surface reviews">`/docs` publishes every endpoint, parameter and schema in the service — a complete map for anyone probing it. Loading settings through cached `BaseSettings` is what makes the flag testable and keeps a missing variable a startup error rather than a runtime `KeyError`.</rationale>
+    </rule>
+
   </section>
 </text>

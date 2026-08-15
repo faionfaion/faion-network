@@ -22,7 +22,7 @@
 - The choice is constrained by infrastructure / team policy / regulatory rules.
 - Tiny scripts, ETL jobs, single-page admin tools — Django is overkill.
 - Greenfield project where the bottleneck is product-market fit, not architecture.
-- Single-feature change inside an existing Django project — use code-placement guidance only.
+- Single-feature change inside an existing Django project — walk only the code-placement branch of the tree (rules r7-r12), not the bootstrap axes.
 
 ## Prerequisites
 
@@ -46,12 +46,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 6 testable rules: pick-framework, pick-api, pick-layering, pick-db, pick-deployment, audit-deps | ~1300 |
+| `content/01-core-rules.xml` | essential | 12 testable rules: pick-framework, pick-api, pick-layering, pick-db, pick-deployment, audit-deps + code placement (views HTTP-only, services own side effects, utils pure, one-way dependency direction, tasks thin, integrations domain-free) | ~1900 |
 | `content/02-output-contract.xml` | essential | JSON schema for the architecture decision-record | ~1100 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns: oversize layering for MVP, undersize for enterprise, unmaintained dep, re-running tree without trigger | ~800 |
-| `content/04-procedure.xml` | deep | 7 steps walking the tree | ~700 |
+| `content/03-failure-modes.xml` | essential | 10 antipatterns: oversize layering for MVP, undersize for enterprise, unmaintained dep, re-running tree without trigger, ORM in view, ORM in utils, logic in task, circular import, domain type in integration, multi-write without atomic | ~1300 |
+| `content/04-procedure.xml` | deep | 8 steps walking the tree, ending with the placement policy | ~850 |
 | `content/05-examples.xml` | deep | One worked example: faion-net-be architecture decision | ~700 |
-| `content/06-decision-tree.xml` | essential | The actual decision tree | ~300 |
+| `content/06-decision-tree.xml` | essential | The actual decision tree + the per-unit code-placement branch | ~450 |
 
 ## Task Routing
 
@@ -81,10 +81,12 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 - [[django-api]] — API stack choice elaborated here.
 - [[django-project-structure]] — layering choice elaborated here.
 - [[django-base-model]] — base-model choice consumed by the layering decision.
+- [[django-coding-standards]] — the apps/core/config layout the placement rules assume.
+- [[python-typing]] — type-checker baseline for the layered code.
 
 ## Decision tree
 
-Lives at `content/06-decision-tree.xml`. The tree walks: (1) Django at all? (2) DRF vs Ninja vs vanilla. (3) layering tier (simple/services/clean). (4) DB engine. (5) deployment target. (6) per-dep audit verdict. Each leaf cites a rule id and consumes the recorded project signals.
+Lives at `content/06-decision-tree.xml`. At bootstrap the tree walks: (1) Django at all? (2) DRF vs Ninja vs vanilla. (3) layering tier (simple/services/clean). (4) DB engine. (5) deployment target. (6) per-dep audit verdict. A separate branch answers the day-to-day question — where does THIS unit of code go? — routing on what the code does (HTTP / side effect / pure / async / vendor SDK) to one of rules r7-r12. Each leaf cites a rule id and consumes the recorded project signals.
 
 ## Template Contents
 

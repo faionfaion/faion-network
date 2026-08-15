@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-base-model Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>Four high-impact base-model antipatterns.</summary>
+<text id="03-failure-modes" title="django-base-model Failure Modes" version="1.2.0" est_tokens="1200" depth="essential">
+  <summary>Eight high-impact base-model antipatterns.</summary>
 
   <section title="Failure modes">
 
@@ -26,6 +26,30 @@
       <symptom>Soft-deleting a Customer hard-deletes their Orders. Compliance review fails: "deleted" customer's order history is gone.</symptom>
       <root-cause>Order.customer = ForeignKey(Customer, on_delete=models.CASCADE). Customer.delete() (soft) triggers QuerySet.delete() on children via cascade — which is the ORM's hard-delete path.</root-cause>
       <fix>Pick on_delete=PROTECT (cannot soft-delete a Customer with active Orders) or SET_NULL (orphan the Order, retain history). The spec's foreign_keys[].on_delete and reason fields force the explicit choice.</fix>
+    </antipattern>
+
+    <antipattern id="fm-5-uuid-as-pk">
+      <symptom>Greenfield model declares `id = models.UUIDField(primary_key=True, default=uuid.uuid4)`. At a few million rows, joins are roughly twice as slow and index size is up ~25% against the same schema on an integer PK.</symptom>
+      <root-cause>"Opaque external ids" was solved by changing the primary key rather than by adding a second column. A random 16-byte key also destroys B-tree insert locality, so every insert dirties a different page.</root-cause>
+      <fix>Keep the auto-increment integer PK and add `uid` alongside it (rule r1-separate-uid). If a UUID PK is genuinely required, use UUIDv7 so the key is time-ordered — never random v4.</fix>
+    </antipattern>
+
+    <antipattern id="fm-6-int-pk-in-urls">
+      <symptom>API routes read `/api/v1/orders/12345/`. Support tickets arrive quoting neighbouring order numbers that belong to other customers.</symptom>
+      <root-cause>The view routes on the PK because that is the DRF default lookup field, and nobody set `lookup_field = "uid"`.</root-cause>
+      <fix>Set `lookup_field = "uid"` / `lookup_url_kwarg = "uid"` on the ViewSet and use `&lt;uuid:uid&gt;` in URLconf. Rule r8-uid-in-urls; the serializer exposes `uid` and never `id`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-7-concrete-table-inheritance">
+      <symptom>Every read of a concrete model emits a JOIN against a `basemodel` table that nobody wrote a query for. `EXPLAIN` shows the extra node on every single query.</symptom>
+      <root-cause>BaseModel was declared without `Meta.abstract = True`, so Django created a real table and used multi-table inheritance.</root-cause>
+      <fix>Set `abstract = True` on the base and re-generate migrations. Rule r2-abstract-base. Abstract fields are inlined into each child table — zero runtime cost.</fix>
+    </antipattern>
+
+    <antipattern id="fm-8-missing-composite-index">
+      <symptom>A dashboard query filtering on (user, status, created_at) is fast in dev and takes seconds in production. `EXPLAIN` shows a sequential scan despite an index on the FK.</symptom>
+      <root-cause>Only the FK column is indexed — automatically, by Django. The status and date predicates have nothing to use, so the planner scans.</root-cause>
+      <fix>Declare `Meta.indexes = [models.Index(fields=["user", "status", "-created_at"])]` matching the actual predicate order. Rule r9-composite-indexes.</fix>
     </antipattern>
 
   </section>

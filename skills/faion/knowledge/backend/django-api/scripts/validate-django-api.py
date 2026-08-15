@@ -23,10 +23,13 @@ REQUIRED = (
     "endpoints",
     "auth",
     "throttle",
+    "openapi",
+    "error_shape",
     "version",
     "last_reviewed",
 )
 REQ_SCOPES = {"anon", "user", "burst", "login"}
+GENERATORS = {"drf-spectacular", "ninja-builtin"}
 SLUG_RE = re.compile(r"^[a-z0-9-]+$")
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -61,6 +64,19 @@ def _check(doc: dict[str, Any]) -> list[str]:
     scopes = set(doc["throttle"].get("scopes") or [])
     if not REQ_SCOPES.issubset(scopes):
         errors.append(f"throttle.scopes must include all of {REQ_SCOPES}; got {scopes}")
+
+    openapi = doc["openapi"] or {}
+    if openapi.get("generator") not in GENERATORS:
+        errors.append(f"openapi.generator must be one of {sorted(GENERATORS)}; a hand-maintained schema is forbidden")
+    if openapi.get("ci_drift_check") is not True:
+        errors.append("openapi.ci_drift_check must be true — an ungated schema drifts within a sprint")
+
+    if doc["error_shape"] != "rfc-7807":
+        errors.append('error_shape must be "rfc-7807"')
+
+    sig = doc.get("service_signature_style")
+    if sig is not None and sig != "domain-types":
+        errors.append('service_signature_style must be "domain-types" — services never take request/request.user')
 
     if not SEMVER_RE.match(doc["version"]):
         errors.append("version must be semver")

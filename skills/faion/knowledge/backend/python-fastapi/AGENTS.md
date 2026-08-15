@@ -40,11 +40,11 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 rules: thin routes, Pydantic v2 schemas in/out, one AsyncSession per task, BackgroundTasks <100ms only, dependency injection via Depends, openapi snapshot. | ~1100 |
+| `content/01-core-rules.xml` | essential | 13 rules: thin routes, Pydantic v2 in/out, one AsyncSession per task, BackgroundTasks <100ms only, Depends injection, openapi snapshot, lifespan not on_event, Base/Create/Update/Response quartet, Annotated dependency aliases, services return ORM, flush+refresh never commit, no sync I/O in async, docs guarded in prod. | ~2000 |
 | `content/02-output-contract.xml` | essential | Shape: routers/ + services/ + schemas/ + models/ + dependencies.py + main.py. Forbidden: business logic in routes, dict in/out, shared AsyncSession across gather siblings. | ~900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns: shared session across gather, fat route, BackgroundTasks for slow work, openapi drift. | ~800 |
-| `content/04-procedure.xml` | medium | Steps: define Pydantic in/out schemas → write service function → wire route → register dependency → snapshot openapi. | ~700 |
-| `content/06-decision-tree.xml` | essential | Tree: <100ms work? → BackgroundTasks. Else? → Celery/Arq. Per-request DB? → Depends(get_session). All-or-nothing fan-out? → TaskGroup. | ~400 |
+| `content/03-failure-modes.xml` | essential | 9 antipatterns: shared session across gather, fat route, BackgroundTasks for slow work, openapi drift, deprecated on_event, one-schema-fits-all, sync I/O in an async route, unguarded /docs in production. | ~1300 |
+| `content/04-procedure.xml` | medium | 8 steps: bootstrap the async stack → lifespan + dependency aliases → schema quartet → service function → wire route → register dependencies → snapshot openapi → audit blocking calls → CI gate. | ~1000 |
+| `content/06-decision-tree.xml` | essential | Tree: stack in scope? then what is being written — lifespan / schema / route / service / post-response work / fan-out — each to a rule id. | ~600 |
 
 ## Task Routing
 
@@ -59,7 +59,9 @@
 |------|---------|
 | `templates/router.py` | Thin FastAPI router: Depends() for session, Pydantic schema in/out, calls service. |
 | `templates/service.py` | Service function skeleton: AsyncSession dependency, returns Pydantic response model. |
-| `templates/schemas.py` | Pydantic v2 BaseModel pair: <Entity>In + <Entity>Out with model_config. |
+| `templates/schemas.py` | Pydantic v2 quartet: <Entity>Base/Create/Update/Response + paginated list response. |
+| `templates/main.py` | App entry: asynccontextmanager lifespan, CORS, router includes, docs gated on settings.debug. |
+| `templates/dependencies.py` | get_db + get_current_user with the DBSession / CurrentUser Annotated aliases. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 - [[python-async]]
 - [[python-type-hints]]
 - [[python-pytest-async]]
+- [[error-handling]] — the RFC 7807 envelope this app's exception handler returns.
+- [[django-api]] — the DRF/Ninja counterpart when the project is Django rather than FastAPI.
 
 ## Decision tree
 
@@ -125,17 +129,161 @@ async def create_item(session: AsyncSession, payload: ItemIn) -> ItemOut:
 
 ```python
 """
-
-from pydantic import BaseModel, ConfigDict
-
-
-class ItemIn(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    name: str
+Pydantic v2 schema hierarchy for User resource.
+Copy and adapt for other resources: rename User → YourResource.
+"""
+from datetime import datetime
+from uuid import UUID
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 
 
-class ItemOut(BaseModel):
-    id: int
-    name: str
+class UserBase(BaseModel):
+    email: EmailStr
+    name: str = Field(..., min_length=1, max_length=100)
+
+
+class UserCreate(UserBase):
+    """Request schema for user creation. Includes password (not in response)."""
+    password: str = Field(..., min_length=8, max_length=100)
+
+
+class UserUpdate(BaseModel):
+    """Request schema for partial update (PATCH). All fields optional."""
+    email: EmailStr | None = None
+    name: str | None = Field(None, min_length=1, max_length=100)
+
+
+class UserResponse(UserBase):
+    """Response schema. Excludes password. from_attributes for ORM serialization."""
+    model_config = ConfigDict(from_attributes=True)
+    id: UUID
+    is_active: bool
+    created_at: datetime
+
+
+class UserListResponse(BaseModel):
+    """Paginated user list response."""
+    items: list[UserResponse]
+    total: int
+    page: int
+    size: int
+    pages: int
+```
+
+### `templates/main.py`
+
+```python
+"""
+FastAPI application entry point.
+Adjust imports, router includes, and middleware to your project structure.
+"""
+from contextlib import asynccontextmanager
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.config import settings
+from app.db.database import init_db, close_db
+from app.routers import users  # add more routers here
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Initialize resources on startup, release on shutdown."""
+    await init_db()
+    yield
+    await close_db()
+
+
+app = FastAPI(
+    title=settings.app_name,
+    version="1.0.0",
+    description="Production API",
+    lifespan=lifespan,
+    docs_url="/docs" if settings.debug else None,
+    redoc_url="/redoc" if settings.debug else None,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
+
+
+@app.get("/health")
+async def health_check() -> dict:
+    return {"status": "healthy", "version": "1.0.0"}
+```
+
+### `templates/dependencies.py`
+
+```python
+"""
+Shared FastAPI dependencies: DB session, current user, type aliases.
+Import DBSession and CurrentUser in route functions instead of raw Depends().
+"""
+from typing import Annotated
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.ext.asyncio import AsyncSession
+from jose import jwt, JWTError
+
+from app.config import settings
+from app.db.database import async_session
+from app.models.user import User
+from app.services import users as user_service
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token")
+
+
+async def get_db() -> AsyncSession:  # type: ignore[return]
+    """Yields an async DB session; commits on success, rolls back on error."""
+    async with async_session() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+
+
+async def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, settings.jwt_secret,
+                             algorithms=[settings.jwt_algorithm])
+        user_id: str | None = payload.get("sub")
+        if user_id is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    user = await user_service.get_user_by_id(db, user_id)
+    if user is None:
+        raise credentials_exception
+    return user
+
+
+async def get_current_active_user(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    if not current_user.is_active:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN,
+                            detail="Inactive user")
+    return current_user
+
+
+# Use these aliases in route function signatures
+DBSession = Annotated[AsyncSession, Depends(get_db)]
+CurrentUser = Annotated[User, Depends(get_current_active_user)]
 ```

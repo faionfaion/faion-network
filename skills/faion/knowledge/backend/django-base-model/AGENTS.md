@@ -44,10 +44,10 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 7 testable rules: separate uid field, abstract bases, partial unique under soft-delete, manager + queryset override, all_objects preserved, CASCADE audit, tenant context | ~1300 |
-| `content/02-output-contract.xml` | essential | JSON schema for the base-model spec | ~1000 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns: PK swap, missing partial unique, manager shadowing, CASCADE through soft-delete | ~800 |
-| `content/04-procedure.xml` | deep | 6 steps: bases → uid → timestamps → soft-delete scope → tenant → emit | ~700 |
+| `content/01-core-rules.xml` | essential | 9 testable rules: separate uid field, abstract bases, partial unique under soft-delete, manager + queryset override, all_objects preserved, explicit on_delete, tenant context, uid in URLs, composite indexes | ~1700 |
+| `content/02-output-contract.xml` | essential | JSON schema for the base-model spec | ~1150 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns: PK swap, missing partial unique, manager shadowing, CASCADE through soft-delete, UUID as PK, integer PK in URLs, concrete-table inheritance, missing composite index | ~1200 |
+| `content/04-procedure.xml` | deep | 8 steps: bases → route models → unique fields → FK audit → URL lookup field → composite indexes → tenant → emit | ~900 |
 | `content/05-examples.xml` | deep | One worked example: Order + Customer with full base hierarchy | ~600 |
 | `content/06-decision-tree.xml` | essential | Per-model: needs soft-delete? needs tenant? needs uid? | ~200 |
 
@@ -79,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 - [[django-models]] — concrete model patterns built on top.
 - [[django-pytest-fixtures]] — fixtures that respect soft-delete + tenant context.
 - [[django-api]] — DRF/Ninja serializers expose `uid`, not `id`.
+- [[django-coding-standards]] — apps/core layout that decides where the base classes live.
+- [[python-typing]] — type-checker baseline for the model code this produces.
 
 ## Decision tree
 
@@ -91,11 +93,15 @@ Bodies of the templates above that the packer does not ship as standalone files,
 ### `templates/base_model.py`
 
 ```python
-"""
-
 from __future__ import annotations
 
 import uuid
+
+# UUID default is v4. On very-high-write tables, upgrade to a time-ordered v7:
+#   pip install uuid-utils
+#   import uuid_utils
+#   def uuid7(): return uuid_utils.uuid7()
+#   uid = models.UUIDField(default=uuid7, ...)   # pass the callable, never uuid7()
 
 from django.db import models
 from django.db.models import Q, UniqueConstraint
@@ -115,7 +121,12 @@ class TimestampMixin(models.Model):
 class UidMixin(models.Model):
     """Adds a public-facing UUID `uid` while keeping integer `id` as the PK."""
 
-    uid = models.UUIDField(default=uuid.uuid4, editable=False, unique=True, db_index=True)
+    uid = models.UUIDField(
+        default=uuid.uuid4,  # callable — NOT uuid.uuid4()
+        editable=False,
+        unique=True,
+        db_index=True,
+    )
 
     class Meta:
         abstract = True
@@ -164,14 +175,23 @@ class SoftDeleteMixin(models.Model):
         self.deleted_at = None
         self.save(update_fields=["deleted_at"])
 
+    @property
+    def is_deleted(self) -> bool:
+        return self.deleted_at is not None
+
 
 class BaseModel(TimestampMixin, UidMixin):
     class Meta:
         abstract = True
+        ordering = ["-created_at"]
+        get_latest_by = "created_at"
+
+    def __str__(self) -> str:
+        return f"{type(self).__name__}({self.uid})"
 
 
 class SoftDeletableModel(TimestampMixin, UidMixin, SoftDeleteMixin):
-    class Meta:
+    class Meta(BaseModel.Meta):
         abstract = True
 
 
@@ -193,6 +213,13 @@ class SoftDeletableModel(TimestampMixin, UidMixin, SoftDeleteMixin):
 
 ```json
 {
+  "__faion_header__": {
+    "purpose": "Reference output document",
+    "consumes": "input from methodology",
+    "produces": "output artefact",
+    "depends-on": "01-core-rules.xml",
+    "token-budget-impact": "small"
+  },
   "_purpose": "Reference base-model spec output.",
   "_consumes": "ERD + soft-delete scope + tenant scope.",
   "_produces": "JSON for codegen.",
@@ -203,23 +230,8 @@ class SoftDeletableModel(TimestampMixin, UidMixin, SoftDeleteMixin):
   "django_version": "5.2.1",
   "db_engine": "postgresql",
   "bases": [
-    {
-      "name": "BaseModel",
-      "abstract": true,
-      "mixins": [
-        "TimestampMixin",
-        "UidMixin"
-      ]
-    },
-    {
-      "name": "SoftDeletableModel",
-      "abstract": true,
-      "mixins": [
-        "TimestampMixin",
-        "UidMixin",
-        "SoftDeleteMixin"
-      ]
-    }
+    {"name": "BaseModel",          "abstract": true, "mixins": ["TimestampMixin", "UidMixin"]},
+    {"name": "SoftDeletableModel", "abstract": true, "mixins": ["TimestampMixin", "UidMixin", "SoftDeleteMixin"]}
   ],
   "models": [
     {
@@ -228,9 +240,8 @@ class SoftDeletableModel(TimestampMixin, UidMixin, SoftDeleteMixin):
       "soft_delete": true,
       "exposes_uid": true,
       "tenant_scoped": false,
-      "unique_fields": [
-        "email"
-      ],
+      "url_lookup_field": "uid",
+      "unique_fields": ["email"],
       "foreign_keys": []
     },
     {
@@ -239,13 +250,13 @@ class SoftDeletableModel(TimestampMixin, UidMixin, SoftDeleteMixin):
       "soft_delete": true,
       "exposes_uid": true,
       "tenant_scoped": false,
+      "url_lookup_field": "uid",
       "unique_fields": [],
+      "indexes": [
+        {"fields": ["customer", "status", "-created_at"], "reason": "order dashboard filter; FK index covers only customer"}
+      ],
       "foreign_keys": [
-        {
-          "field": "customer",
-          "on_delete": "PROTECT",
-          "reason": "Retain order history even when Customer is soft-deleted; compliance requires 7y retention."
-        }
+        {"field": "customer", "on_delete": "PROTECT", "reason": "Retain order history even when Customer is soft-deleted; compliance requires 7y retention."}
       ]
     }
   ],

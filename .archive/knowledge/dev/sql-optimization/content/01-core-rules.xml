@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="SQL Optimization Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Testable rules grounding the SQL Optimization methodology. Every rule pairs a binary check with sourced rationale, plus the universal skip-this-methodology gate.</summary>
+  <section title="Rule set">
+    <rule id="explain-before-change" testable="true" depth="essential">
+      <statement>Every optimisation MUST start with `EXPLAIN (ANALYZE, BUFFERS, FORMAT TEXT)` capturing the current plan; index/rewrite changes without a captured baseline plan are rejected.</statement>
+      <rationale source="PostgreSQL docs; performance-engineering practice">Without a baseline plan, the planner's actual choice is invisible; optimisation guesses produce indexes that are never used.</rationale>
+    </rule>
+    <rule id="investigate-row-estimate-skew" testable="true" depth="essential">
+      <statement>When actual rows differ from estimated by &gt;10x, the report MUST run `ANALYZE` on the table and re-capture the plan; ignoring statistics skew is forbidden.</statement>
+      <rationale source="PostgreSQL planner notes">Planner chooses join order + index use on estimates; skewed estimates produce wrong plans that no new index fixes.</rationale>
+    </rule>
+    <rule id="composite-index-ordering" testable="true" depth="essential">
+      <statement>Composite indexes MUST place equality columns first, range columns last; reversed ordering is rejected unless a documented reason applies.</statement>
+      <rationale source="B-tree index ordering rules">B-tree uses prefix columns for equality + traverses range on last; reversed ordering makes the index unusable for equality.</rationale>
+    </rule>
+    <rule id="cursor-for-deep-pagination" testable="true" depth="essential">
+      <statement>Pagination beyond 1k rows MUST use keyset (cursor) pagination keyed on `(last_seen_at, id)`; OFFSET-based pagination at depth is forbidden.</statement>
+      <rationale source="Postgres OFFSET-perf studies">OFFSET scans and discards rows on every page; cursor uses an index seek regardless of depth.</rationale>
+    </rule>
+    <rule id="no-subquery-in-select" testable="true" depth="essential">
+      <statement>Subqueries in `SELECT` lists MUST be rewritten as JOIN + aggregation; per-row subqueries create N+1 patterns.</statement>
+      <rationale source="Postgres planner notes">A subquery in SELECT executes once per outer row; JOIN executes once regardless of row count.</rationale>
+    </rule>
+    <rule id="materialized-views-for-aggregates" testable="true" depth="essential">
+      <statement>Expensive aggregations queried frequently MUST be precomputed via materialized view with `REFRESH CONCURRENTLY`; re-computing on every read is forbidden.</statement>
+      <rationale source="Postgres MV docs">Re-computing GROUP BY over millions of rows on every dashboard load is wasteful; MV + CONCURRENTLY refresh avoids the read lock.</rationale>
+    </rule>
+    <rule id="regression-gate-before-merge" testable="true" depth="essential">
+      <statement>Optimisation PR MUST include before/after EXPLAIN + wall-clock delta + sample size; un-evidenced 'looks faster' claims are rejected.</statement>
+      <rationale source="Engineering-rigour retros">Without evidence, regressions ship; explicit deltas with sample sizes pass review.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Apply this methodology only if all entries in `## Applies If` hold and none of `## Skip If` triggers; otherwise abort and route to the correct methodology.</statement>
+      <rationale source="F-066 spec - decision tree minimum form">A misrouted methodology produces wrong-shape output; the explicit skip rule is the universal default branch from the decision tree.</rationale>
+    </rule>
+  </section>
+</text>

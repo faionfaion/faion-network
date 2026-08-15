@@ -44,12 +44,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 9 testable rules with rationale + source | ~1100 |
+| `content/01-core-rules.xml` | essential | 13 testable rules + skip gate: EXPLAIN first, rank by total_time, estimate skew, refresh stats, index cost, composite ordering, covering index, reduce data movement, no subquery in SELECT, cursor pagination, materialized views, pooling + streaming, regression gate | ~1900 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | ~900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom + root-cause + fix | ~900 |
-| `content/04-procedure.xml` | essential | 5-step end-to-end procedure | ~800 |
-| `content/05-examples.xml` | medium | One fully-worked example matching the output schema | ~900 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | ~600 |
+| `content/03-failure-modes.xml` | essential | 7 antipatterns: no measurement, wrong target, SELECT * leak, stale stats, estimate skew ignored, composite order reversed, subquery in SELECT | ~1300 |
+| `content/04-procedure.xml` | essential | 7 steps: rank → baseline plan → investigate skew → propose → apply and re-measure → regression gate → ship with CONCURRENTLY | ~1100 |
+| `content/05-examples.xml` | medium | One fully-worked example matching the output schema, a narrated orders-list pass, and an index-by-vibes counter-example | ~1100 |
+| `content/06-decision-tree.xml` | essential | Routing tree: preconditions → plan captured → estimate skew → pagination / subquery / scan type / write mix → rule id | ~750 |
 
 ## Task Routing
 
@@ -66,6 +66,7 @@
 |------|---------|
 | `templates/sql-optimization-report.md` | Markdown skeleton for the optimization report (per-query before/after). |
 | `templates/sql-optimization-report.json` | JSON skeleton matching the output contract. |
+| `templates/create_index_concurrently.sql` | Non-blocking index creation + the INVALID-index check + the EXPLAIN that proves the planner uses it. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -101,4 +102,27 @@ Bodies of the templates above that the packer does not ship as standalone files,
   "explain_analyze_present": true,
   "net_p95_improvement_pct": 0
 }
+```
+
+### `templates/create_index_concurrently.sql`
+
+```sql
+-- Idempotent, non-blocking, safe on a live table.
+-- CONCURRENTLY cannot run inside a transaction block — in Django, mark the
+-- migration atomic = False; in raw psql, run it outside BEGIN.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_orders_tenant_created_id
+  ON orders (tenant_id, created_at DESC, id);
+-- Equality column (tenant_id) first, range/sort column last: reversing this
+-- makes the index unusable for the tenant_id predicate.
+
+-- A CONCURRENTLY build that fails leaves an INVALID index behind. Check and rebuild:
+--   SELECT indexrelid::regclass FROM pg_index WHERE NOT indisvalid;
+--   REINDEX INDEX CONCURRENTLY ix_orders_tenant_created_id;
+
+-- Confirm the planner actually picks it up — this output is the report's after_plan:
+EXPLAIN (ANALYZE, BUFFERS)
+  SELECT id, created_at FROM orders
+   WHERE tenant_id = 'X'
+   ORDER BY created_at DESC, id DESC
+   LIMIT 50;
 ```

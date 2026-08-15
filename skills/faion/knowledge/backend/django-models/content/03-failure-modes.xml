@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="django-models Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>Seven Django model antipatterns the spec must forbid or detect.</summary>
+<text id="03-failure-modes" title="django-models Failure Modes" version="1.2.0" est_tokens="1250" depth="essential">
+  <summary>Ten Django model antipatterns the spec must forbid or detect.</summary>
 
   <section title="Failure modes">
 
     <antipattern id="fm-1-direct-models-model">
       <symptom>New model lacks uid + created_at + updated_at. API responses leak integer id. Audit script flags inconsistency vs sibling models.</symptom>
       <root-cause>Developer wrote `class Foo(models.Model)` instead of `class Foo(BaseModel)`. The project BaseModel is bypassed; common fields are not inherited.</root-cause>
-      <fix>Replace base to extend BaseModel / SoftDeletableModel. Audit grep -r "models.Model" apps/*/models.py and flag. Spec rule r1-base-inheritance forbids direct inheritance for domain models.</fix>
+      <fix>Replace base to extend BaseModel / SoftDeletableModel. Audit grep -r "models.Model" apps/*/models.py and flag. Spec rule r1-inherit-base-model forbids direct inheritance for domain models.</fix>
     </antipattern>
 
     <antipattern id="fm-2-no-full-clean">
@@ -44,6 +44,24 @@
       <symptom>PR adds a spurious AlterField migration that does nothing semantically; reviewers waste time understanding it.</symptom>
       <root-cause>Developer reordered model fields "to clean up". Django detects the new order and emits a no-op AlterField migration.</root-cause>
       <fix>Lock field order via code review. Do not reorder for cosmetic reasons. If field order must change, do it in one focused PR with a hand-edited migration.</fix>
+    </antipattern>
+
+    <antipattern id="fm-8-string-enums-in-fields">
+      <symptom>`status = CharField(max_length=20)` with the allowed values listed in a docstring. A typo in a service passes validation and lands in the database; the admin filter shows two spellings of the same state.</symptom>
+      <root-cause>Choices were never declared, so nothing constrains the value and nothing gives the field a label or a translation hook.</root-cause>
+      <fix>Declare a `TextChoices` class in the app's `constants.py` and point the field at `choices=X.choices, default=X.PENDING`. Rule r3-text-choices-enums; skeleton in `templates/constants.py`.</fix>
+    </antipattern>
+
+    <antipattern id="fm-9-fat-manager-or-model-orchestrator">
+      <symptom>`User.create_with_org()` or `UserManager.create_user_send_welcome()` performs two writes and sends an email. A data migration that touches the manager starts sending mail in production.</symptom>
+      <root-cause>Orchestration was placed where it was convenient to call from, rather than in the service layer. Managers and model methods are reachable from the admin, shells and migrations, all of which are untested paths.</root-cause>
+      <fix>Move the orchestration into `apps/&lt;app&gt;/services/`. Keep the manager to queryset composition and the model to representation. Rules r2-thin-models-full-clean and r15-no-orchestration-in-managers.</fix>
+    </antipattern>
+
+    <antipattern id="fm-10-missing-related-name">
+      <symptom>Adding a second FK to `User` from another model fails `makemigrations` with "reverse accessor clashes with reverse accessor for ...", naming fields in two apps that look unrelated.</symptom>
+      <root-cause>Neither FK declared `related_name=`, so Django derived the same default accessor for both.</root-cause>
+      <fix>Declare `related_name=` on every FK and M2M from the start; use `related_name="+"` when the reverse side is genuinely unwanted. Rule r14-related-name.</fix>
     </antipattern>
 
   </section>

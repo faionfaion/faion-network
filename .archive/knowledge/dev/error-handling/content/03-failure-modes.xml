@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="error-handling Failure Modes" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>Six antipatterns each with symptom / root-cause / fix.</summary>
+
+  <section title="Antipatterns">
+    <antipattern id="ap-01">
+      <description>Interpolating exception messages, stack traces, SQL text, or internal paths into the detail field for 5xx errors.</description>
+      <symptom>Production error bodies contain `OperationalError`, `Traceback`, `psycopg2`, or hostnames; security scanner flags PII/credentials leak.</symptom>
+      <root-cause>Default exception handlers render exc.__str__ into the response without sanitization.</root-cause>
+      <fix>Catch broadly in the global handler; log exc_info=True server-side; return a static detail string and the traceId for client-side reference.</fix>
+    </antipattern>
+    <antipattern id="ap-02">
+      <description>Returning Content-Type: application/json instead of application/problem+json.</description>
+      <symptom>Spring RestClient.ProblemDetail / RFC 7807-aware clients fall back to generic parsing; type-based dispatch dies silently.</symptom>
+      <root-cause>Framework default JSONResponse sets `application/json`; methodology requires explicit override.</root-cause>
+      <fix>Set `headers={"Content-Type": "application/problem+json"}` on every error response, or override the framework's default media type globally.</fix>
+    </antipattern>
+    <antipattern id="ap-03">
+      <description>Body status field disagrees with HTTP response code.</description>
+      <symptom>HTTP 502 but body says `"status": 400`; clients route to the wrong handler.</symptom>
+      <root-cause>Downstream errors get re-wrapped without updating the body status; or middleware overrides HTTP code after handler returns body.</root-cause>
+      <fix>Build ProblemDetail with `status=response.status_code`; assert in the contract test that the two match.</fix>
+    </antipattern>
+    <antipattern id="ap-04">
+      <description>Using errors[] for 401, 403, 404, or 5xx responses.</description>
+      <symptom>Clients receive an empty errors[] on 404 or a single fabricated entry on 500; confused parsing.</symptom>
+      <root-cause>Misreading errors[] as a general-purpose error list rather than a validation-failures extension.</root-cause>
+      <fix>Restrict errors[] to 4xx validation responses (typically 400, 422). For other 4xx/5xx, omit the field entirely.</fix>
+    </antipattern>
+    <antipattern id="ap-05">
+      <description>Per-route error responses with custom shapes ({"error":...}, {"message":...}, HTML).</description>
+      <symptom>Same API returns three different error envelopes depending on the endpoint; client-side error-handling code multiplies.</symptom>
+      <root-cause>Multiple developers added per-route exception handlers instead of one framework-level handler.</root-cause>
+      <fix>Remove per-route handlers. Register one global handler returning ProblemDetail. CI grep blocks `JSONResponse(content={"error":` patterns.</fix>
+    </antipattern>
+    <antipattern id="ap-06">
+      <description>Missing traceId on every error response.</description>
+      <symptom>On-call cannot correlate a customer-supplied error report with any log line; resorts to timestamp scraping across services.</symptom>
+      <root-cause>traceparent header not propagated; no fallback UUID generation.</root-cause>
+      <fix>In the global handler, read `request.headers["traceparent"]`; if absent, generate `uuid.uuid4().hex` and set on the response.</fix>
+    </antipattern>
+  </section>
+</text>

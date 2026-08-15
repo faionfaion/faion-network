@@ -1,28 +1,39 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="C# Background Services Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>4 LLM- and human-driven antipatterns for C# Background Services. Each entry pairs symptom (observable) + root-cause + fix. Detector / repair logic is encoded in `scripts/validate-csharp-background-services.py`.</summary>
+<text id="03-failure-modes" title="C# Background Services Failure Modes" version="1.2.0" est_tokens="900" depth="essential">
+  <summary>Five antipatterns observed in production .NET deployments. Each pairs symptom (observable) + root cause + concrete fix. Detector / repair logic is encoded in `scripts/validate-csharp-background-services.py`.</summary>
 
   <section title="Antipatterns">
-    <antipattern id="ap-01" name="Cancellation not threaded" severity="high">
-      <symptom>Async signatures missing CancellationToken.</symptom>
-      <root-cause>Client disconnect leaves DB queries running; thread-pool starves.</root-cause>
-      <fix>Require CT as the last param on every async method; lint rule blocks omission.</fix>
+
+    <antipattern id="task-run-loop" severity="high">
+      <symptom>`Task.Run(async () =&gt; { while (true) { ...; await Task.Delay(5000); } })` started from `Program.cs`. On graceful shutdown the loop never exits and the host hangs for 30s before SIGKILL.</symptom>
+      <root-cause source="Microsoft Learn — Hosted services">Bypasses `IHost` lifecycle. There is no `stoppingToken`, no DI scope, no health-check hook.</root-cause>
+      <fix>Replace with a class extending `BackgroundService`. Inject `IServiceProvider` + channel; resolve scoped deps via `CreateScope()`; propagate `stoppingToken`.</fix>
     </antipattern>
-    <antipattern id="ap-02" name="Auth scope leakage" severity="high">
-      <symptom>[Authorize] missing on new actions.</symptom>
-      <root-cause>Endpoint shipped publicly by accident.</root-cause>
-      <fix>Set RequireAuthenticatedUser() globally; opt out per route with [AllowAnonymous].</fix>
+
+    <antipattern id="unbounded-channel" severity="high">
+      <symptom>`Channel.CreateUnbounded&lt;T&gt;()` queue grows without bound under producer spikes; container OOM-killed.</symptom>
+      <root-cause source="System.Threading.Channels docs">Unbounded queues offer no back-pressure; producers run unchecked.</root-cause>
+      <fix>Switch to `Channel.CreateBounded&lt;T&gt;(new BoundedChannelOptions(capacity) { FullMode = BoundedChannelFullMode.Wait })`. Pick a capacity tied to the worker's drain rate.</fix>
     </antipattern>
-    <antipattern id="ap-03" name="Mapper drift" severity="medium">
-      <symptom>DTO field added without AutoMapper profile update.</symptom>
-      <root-cause>Runtime 500 on first request; tests passed at compile time.</root-cause>
-      <fix>Add AssertConfigurationIsValid() to unit tests.</fix>
+
+    <antipattern id="captive-dbcontext" severity="high">
+      <symptom>`DbContext` (or a scoped repository) injected in the worker constructor. EF Core throws `InvalidOperationException: A second operation was started on this context` under load.</symptom>
+      <root-cause source="EF Core docs — DbContext lifetime">`BackgroundService` is a singleton; the captured `DbContext` is reused across items, breaking EF's per-request session model.</root-cause>
+      <fix>Constructor takes `IServiceProvider`. Inside the loop: `using var scope = _sp.CreateScope(); var db = scope.ServiceProvider.GetRequiredService&lt;TContext&gt;();`.</fix>
     </antipattern>
-    <antipattern id="ap-04" name="ProblemDetails skipped" severity="medium">
-      <symptom>Ad-hoc 500 strings returned.</symptom>
-      <root-cause>Clients cannot parse errors; integrators reverse-engineer formats.</root-cause>
-      <fix>Centralize via global exception middleware emitting RFC 7807.</fix>
+
+    <antipattern id="no-stoppingtoken" severity="medium">
+      <symptom>`await Task.Delay(5000)` without `stoppingToken`. Pod takes 30s to terminate during rolling deploys; readiness probe failures cascade.</symptom>
+      <root-cause source="ASP.NET Core graceful-shutdown docs">Missing token = nothing to observe cancellation = `ExecuteAsync` only exits on `ShutdownTimeout`.</root-cause>
+      <fix>Pass `stoppingToken` to every async API: `await Task.Delay(period, stoppingToken)`, `await channel.Reader.ReadAllAsync(stoppingToken)`, scope-resolved service calls. For fixed intervals switch to `PeriodicTimer.WaitForNextTickAsync(stoppingToken)`.</fix>
     </antipattern>
+
+    <antipattern id="uncorrelated-worker-logs" severity="medium">
+      <symptom>Worker logs are flat lines ("processing item", "failed") with no entity id. When two units interleave, triage cannot tell which failure belongs to which item.</symptom>
+      <root-cause source="ASP.NET Core logging docs — log scopes">Background work carries no ambient HTTP request, so nothing supplies a correlation id unless the worker opens one per item.</root-cause>
+      <fix>Open `using var _ = _logger.BeginScope(new Dictionary&lt;string, object&gt; { ["OrderId"] = item.Id })` at the top of the per-item handler and log structured fields, never interpolated strings.</fix>
+    </antipattern>
+
   </section>
 
   <section title="Prompt-injection markers">

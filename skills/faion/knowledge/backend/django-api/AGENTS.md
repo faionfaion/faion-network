@@ -45,10 +45,10 @@
 
 | File | Depth | What's inside | Est. tokens |
 |---|---|---|---|
-| `content/01-core-rules.xml` | essential | 8 testable rules: framework lock, ViewSet vs APIView, serializer pair, no __all__, JWT cfg, IsAuthenticated default, object-level perms, scoped throttle, cursor pagination | ~1400 |
-| `content/02-output-contract.xml` | essential | JSON schema for the API spec | ~1100 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns: fat view, serializer business logic, __all__, BrowsableAPIRenderer in prod, async in DRF without adrf | ~800 |
-| `content/04-procedure.xml` | deep | 6 steps: pick framework → enumerate endpoints → declare serializers → wire auth → set throttle → paginate | ~700 |
+| `content/01-core-rules.xml` | essential | 11 testable rules: framework lock, thin views, serializer pair, no __all__, JWT cfg, IsAuthenticated default, object-level perms, scoped throttle + cursor pagination, service takes domain types, generated OpenAPI, RFC 7807 errors | ~1800 |
+| `content/02-output-contract.xml` | essential | JSON schema for the API spec | ~1250 |
+| `content/03-failure-modes.xml` | essential | 9 antipatterns: fat view, serializer business logic, __all__, BrowsableAPIRenderer in prod, async in DRF without adrf, service takes request, hand-maintained OpenAPI, mixed error shapes, unpaginated list | ~1200 |
+| `content/04-procedure.xml` | deep | 9 steps: layer audit → framework → endpoints → serializers → service signatures → auth → throttle → schema + error shape → validate | ~950 |
 | `content/05-examples.xml` | deep | One worked example: Invoice resource with ModelViewSet + CreateInvoiceSerializer + InvoiceDetailSerializer | ~700 |
 | `content/06-decision-tree.xml` | essential | Per-endpoint: ViewSet vs APIView; per-resource: cursor vs page pagination | ~200 |
 
@@ -71,6 +71,8 @@
 | `templates/permissions.py` | IsOrganizationMember / IsOwnerOrReadOnly. |
 | `templates/pagination.py` | StandardPagination + TimelinePagination (cursor). |
 | `templates/api-spec.json` | Reference API spec output. |
+| `templates/check-api-schema.sh` | CI step: regenerate the OpenAPI schema, fail on a breaking diff. |
+| `templates/prompt-endpoint-scaffold.txt` | Subagent prompt scaffolding one endpoint across all five layers. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -85,6 +87,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 - [[django-base-model]] — uid pattern surfaced through serializers.
 - [[django-models]] — model field types consumed by ModelSerializer / ModelSchema.
 - [[django-pytest-integration]] — integration test patterns for these endpoints.
+- [[django-coding-standards]] — apps/core/config layout that gates where services and views land.
+- [[python-typing]] — type-checker baseline the service-signature rule (r9) depends on.
 
 ## Decision tree
 
@@ -564,7 +568,63 @@ class TimelinePagination(CursorPagination):
       "login"
     ]
   },
+  "openapi": {
+    "generator": "drf-spectacular",
+    "ci_drift_check": true,
+    "schema_path": "docs/api/schema.yml"
+  },
+  "error_shape": "rfc-7807",
+  "service_signature_style": "domain-types",
   "version": "1.0.0",
   "last_reviewed": "2026-05-22"
 }
+```
+
+### `templates/check-api-schema.sh`
+
+```bash
+# Export the OpenAPI schema and fail if breaking changes appear vs docs/api/schema.yml.
+# Run in CI or as a pre-commit hook.
+set -euo pipefail
+
+SCHEMA_FILE="docs/api/schema.yml"
+
+python manage.py spectacular --file /tmp/schema.new.yml --fail-on-warn
+
+if [ -f "$SCHEMA_FILE" ]; then
+  if command -v oasdiff >/dev/null 2>&1; then
+    oasdiff breaking "$SCHEMA_FILE" /tmp/schema.new.yml --fail-on ERR
+  else
+    diff -u "$SCHEMA_FILE" /tmp/schema.new.yml || {
+      echo "OpenAPI schema changed. Update ${SCHEMA_FILE} or fix the regression." >&2
+      exit 1
+    }
+  fi
+fi
+
+mkdir -p "$(dirname "$SCHEMA_FILE")"
+mv /tmp/schema.new.yml "$SCHEMA_FILE"
+echo "Schema updated: ${SCHEMA_FILE}"
+```
+
+### `templates/prompt-endpoint-scaffold.txt`
+
+```text
+Add POST /api/v1/<resource>/ endpoint per the django-api methodology.
+
+Layers to create (each as a separate commit):
+  1. Serializers: Create<Resource>Request + <Resource>Response in apps/<app>/serializers.py
+  2. Service: apps/<app>/services.<function_name>(user_id: int, ...) with full type hints
+  3. View: thin APIView or ModelViewSet action calling the service, @extend_schema with summary/request/responses/tags
+  4. URL: wire into apps/<app>/urls.py and config/urls.py
+  5. Tests: pytest @pytest.mark.django_db covering 201 success + 400 bad input + 401 unauthenticated
+
+Rules:
+  - Service must NOT receive request or request.user — pass user_id: int instead (r9)
+  - Input and output serializers must be different classes (r3)
+  - Meta.fields = "__all__" is forbidden; list fields explicitly (r4)
+  - @extend_schema is required on every view with non-empty tags=["<Tag>"] (r10)
+  - Errors are raised as exceptions and rendered RFC 7807 by the global handler (r11)
+  - Run: python manage.py spectacular --validate after implementation
+  - Run: pytest apps/<app>/tests/ -x after each step
 ```

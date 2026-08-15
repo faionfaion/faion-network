@@ -57,6 +57,15 @@ def _check(doc: dict[str, Any]) -> list[str]:
             # We require unique_fields entries to be present alongside foreign_keys notes;
             # full check is in the migration layer.
             pass
+        if m.get("exposes_uid") and m.get("url_lookup_field") == "id":
+            errors.append(
+                f"model {m.get('name')!r} exposes uid but routes on the integer PK "
+                "(url_lookup_field='id') — see rule r8-uid-in-urls"
+            )
+        for idx in m.get("indexes") or []:
+            fields = idx.get("fields")
+            if not isinstance(fields, list) or not fields:
+                errors.append(f"model {m.get('name')!r} has an index entry with no fields")
         for fk in m.get("foreign_keys") or []:
             if fk.get("on_delete") not in ON_DEL:
                 errors.append(f"unknown on_delete {fk.get('on_delete')!r}")
