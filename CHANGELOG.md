@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **The last 28 summaries without terminal punctuation are sentences now —
+  §12.2 is satisfied corpus-wide.** They were three different defects wearing
+  one symptom, which is why the count alone was misleading:
+
+  - **14 in `dev/`** were noun-phrase labels of 6-11 words — `Outbox vs CDC
+    vs dual-write decision guide`. Their rule ids are the generic
+    `r1-bound-scope` / `r2-typed-input` / `r3-named-owner` set, i.e. the same
+    template stamp CR-005 documented — but each names a **real** subject, so
+    they belong to that audit's "rewrite" class rather than its "delete"
+    class.
+  - **5 in `product/`** carried a `<TitleCase slug> delivers a concrete,
+    testable methodology that turns the recurring task of…` opener and were
+    then cut mid-word (`…design partners with disc`), so they were boilerplate
+    *and* truncated.
+  - **3 in `ux/`** were cut at `(Nielsen Heuristic`, and 6 more were plain
+    mid-phrase cuts. The three `ux/*` are the non-a11y siblings of the five
+    fixed earlier, so each was written to stay distinct from its twin rather
+    than to restate it.
+  - **5 playbooks** were already whole sentences and owed only a full stop.
+
+  Each rewrite is grounded in that document's own core rules — `ruby-rails-patterns`
+  now names one public action per service, an explicit result type and
+  transaction ownership; `lang-ruby-sorbet-strict-floor` names `typed: true`
+  as the floor, committed RBIs and `srb tc` in CI.
+
+  Corpus state after: **0** summaries without terminal punctuation, **0**
+  truncations, median 23 words. 110 sit under the 15-word working bar, which
+  §12.5 calls a bar rather than a ratified number and does not schema-enforce
+  — recorded, not padded. The only remaining duplicate groups are the 13
+  pairs CR-007 covers, which are a deletion decision and not a rewrite.
+
 - **Eleven truncated summaries repaired, and the generator that cut them is
   gone rather than fixed.** Five ended mid-abbreviation — `…(e.g.`,
   `…utilization vs.`, `…vendor lock, etc.` — and six more were cut
