@@ -4,6 +4,50 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Corrected a gotcha I added yesterday, and added the one it was hiding.**
+
+  I wrote that the `06-decision-tree.xml` depth cap of 5 blocks tree work because
+  "many trees already sit at 5". Measured: **362 of 2,510 (14.4%)**, and only
+  **21 of the 455 fully-generic trees**. So the cap is real and worth checking
+  before nesting, but it is **not** why those trees say nothing about their
+  subject — **434 of them have depth ≤4 and room to spare.** The advice was
+  right; the reason I gave for it was not, and the wrong reason excuses work
+  that is not actually blocked.
+
+  **`04-procedure.xml` is validated by nothing.** `01`, `02`, `03` and `06` each
+  have a validator; grep every script in `scripts/` and `04` is opened by none of
+  them. 2,238 files, zero checks. That is the largest single gap in the gate, and
+  a shape check alone would catch the **93 procedures with zero `<step>`
+  elements**, the 207 steps using `<description>` prose instead of
+  `<input>/<action>/<output>`, and the **272 methodologies that ship a decision
+  tree with no procedure at all** — the tree routes to a rule and nothing tells
+  the agent how to execute it.
+
+  **The sharpest single defect the audit found**, verified directly:
+  `security/cve-triage-decision-tree` pins `verdict` to the enum
+  `patch-now | patch-in-window | accept-risk | no-op`, while its decision tree
+  terminates on `patch-in-window-7d`, `patch-in-window-30d`,
+  `accept-risk-with-evidence`, `patch-batched-90d` and `patch-now`. **Four of the
+  five leaves emit a value the methodology's own validator rejects**, and
+  procedure step 5 says "Map to verdict per decision tree". Following the
+  methodology exactly as written guarantees a contract violation.
+
+  Also measured, and it reframes the tree problem: **zero dangling rule
+  references across all 11,315** — because the check already exists (B5.5). But
+  **3,168 conclusions (28%) route to an escape hatch** (`skip-this-methodology`,
+  `run-the-checklist`) rather than to a substantive rule, **61 trees route to
+  zero substantive rules at all**, and **676 trees (26.9%) attach no `verdict=`
+  to any conclusion** — a leaf that hands back a rule id and no advice. Half the
+  rules a methodology declares are unreachable from its own tree (median
+  coverage 0.50).
+
+  And the observation worth keeping above all the counts:
+  `ai-core/data-exfiltration-canary-tokens` has a coherent contract, a coherent
+  procedure and a coherent tree. All three agree with each other. **None of the
+  three mentions a canary token.** Coherent is not the same as useful, and every
+  check we have measures the first.
+
+
 - **CR-011 amended: the duplicate rule sets sit exactly where CR-009 could not
   look.** CR-009 measured *slug collisions across domains*. Two documents with
   different slugs in the same domain and identical content were outside its scope
