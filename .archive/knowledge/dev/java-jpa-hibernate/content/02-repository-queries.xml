@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-repository-queries" title="JPA/Hibernate: Repository and Query Patterns">
+  <summary>Spring Data JPA repository patterns: derived methods, @Query JPQL, Specification for dynamic filtering, @Modifying for bulk updates, and DTO projections.</summary>
+
+  <section title="Repository Definition">
+    <rule>
+      <statement>Extend JpaRepository&lt;T, ID&gt; for standard CRUD. Add JpaSpecificationExecutor&lt;T&gt; when the repository needs dynamic filtering. Never expose JpaRepository directly to service methods — define a narrower repository interface listing only required operations.</statement>
+      <rationale>JpaSpecificationExecutor enables type-safe dynamic queries without string concatenation. A narrower interface prevents services from calling arbitrary Jpa operations (deleteAllInBatch(), etc.) that bypass business rules.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Use JOIN FETCH in @Query for queries that must eagerly load associations: "SELECT u FROM User u JOIN FETCH u.roles WHERE u.id = :id". Use @EntityGraph as an alternative when the fetch plan varies by call site.</statement>
+      <rationale>FetchType.LAZY (the correct default) means accessing u.getRoles() outside a transaction throws LazyInitializationException. JOIN FETCH loads the association in a single query within the transactional boundary.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Map read-only queries directly to DTO projections (interface or class projections) when the full entity graph is not needed. Never load a full @Entity to populate a list DTO with only 3 fields.</statement>
+      <rationale>Loading full entities for read-only list views initializes all columns, all Hibernate proxies, and all auditing state for data that is never written. DTO projections generate a SELECT with only the required columns.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="java"><![CDATA[
+@Repository
+public interface UserRepository extends JpaRepository<User, Long>,
+        JpaSpecificationExecutor<User> {
+
+    Optional<User> findByEmail(String email);
+
+    boolean existsByEmail(String email);
+
+    @Query("SELECT u FROM User u WHERE u.isActive = true")
+    Page<User> findAllActive(Pageable pageable);
+
+    @Query("SELECT u FROM User u JOIN FETCH u.roles WHERE u.id = :id")
+    Optional<User> findByIdWithRoles(@Param("id") Long id);
+
+    @Query("""
+        SELECT u FROM User u
+        WHERE (:name IS NULL OR LOWER(u.name) LIKE LOWER(CONCAT('%', :name, '%')))
+        AND (:isActive IS NULL OR u.isActive = :isActive)
+        """)
+    Page<User> search(@Param("name") String name,
+                      @Param("isActive") Boolean isActive,
+                      Pageable pageable);
+
+    @Modifying
+    @Query("UPDATE User u SET u.isActive = false WHERE u.lastLoginAt < :cutoff")
+    int deactivateInactiveUsers(@Param("cutoff") LocalDateTime cutoff);
+}
+      ]]></code>
+      <note>@Modifying requires @Transactional on the calling service method. Without it, Spring Data throws TransactionRequiredException.</note>
+    </example>
+  </section>
+
+  <section title="Transaction Boundaries">
+    <rule>
+      <statement>Annotate service methods @Transactional(readOnly = true) for query-only methods and @Transactional for write methods. Never annotate repository methods with @Transactional — the service owns the transaction boundary.</statement>
+      <rationale>readOnly=true tells Hibernate to skip dirty checking and flush at the end of the transaction, reducing overhead for read paths. The service owning the transaction boundary allows multiple repository calls to participate in a single atomic unit.</rationale>
+    </rule>
+  </section>
+</text>

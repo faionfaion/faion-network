@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Spring Boot Layered Architecture Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema for the service-scaffold manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
+<text id="02-output-contract" title="Spring Boot Layered Architecture Output Contract" version="1.2.0" est_tokens="1400" depth="essential">
+  <summary>JSON Schema for the service-scaffold manifest this methodology produces. Validator enforces required keys + per-field constraints. `controller`, `request_dto`, `response_dto`, `async` and `errors_use_problemdetail` are OPTIONAL blocks — omit them for a build-level audit, supply them when the artefact describes a full vertical slice, in which case every constraint inside them is enforced.</summary>
 
   <section title="Schema">
     <code lang="json"><![CDATA[
@@ -26,6 +26,42 @@
         }
       }
     },
+    "controller": {
+      "type": "object",
+      "required": ["class_name", "has_transactional", "calls_repository_directly"],
+      "properties": {
+        "class_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Controller$"},
+        "has_transactional": {"type": "boolean", "const": false},
+        "calls_repository_directly": {"type": "boolean", "const": false},
+        "service_calls_per_method": {"type": "integer", "maximum": 1}
+      }
+    },
+    "request_dto": {
+      "type": "object",
+      "required": ["class_name", "is_record", "has_bean_validation"],
+      "properties": {
+        "class_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Request$"},
+        "is_record": {"type": "boolean", "const": true},
+        "has_bean_validation": {"type": "boolean", "const": true}
+      }
+    },
+    "response_dto": {
+      "type": "object",
+      "required": ["class_name", "is_record"],
+      "properties": {
+        "class_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Response$"},
+        "is_record": {"type": "boolean", "const": true}
+      }
+    },
+    "async": {
+      "type": "object",
+      "properties": {
+        "self_invocation": {"type": "boolean", "const": false},
+        "executor_name": {"type": "string", "minLength": 1},
+        "executor_bean_defined": {"type": "boolean", "const": true}
+      }
+    },
+    "errors_use_problemdetail": {"type": "boolean", "const": true},
     "uses_mapstruct": {"type": "boolean", "const": true},
     "uses_bcrypt_in_service": {"type": "boolean", "const": true},
     "jakarta_imports_only": {"type": "boolean", "const": true},
@@ -43,6 +79,11 @@
     {"path": "/api/v1/users", "method": "GET", "returns_dto": true, "list_pageable": true, "transactional_on_write": false},
     {"path": "/api/v1/users", "method": "POST", "returns_dto": true, "list_pageable": null, "transactional_on_write": true}
   ],
+  "controller": {"class_name": "UserController", "has_transactional": false, "calls_repository_directly": false, "service_calls_per_method": 1},
+  "request_dto": {"class_name": "CreateUserRequest", "is_record": true, "has_bean_validation": true},
+  "response_dto": {"class_name": "UserResponse", "is_record": true},
+  "async": {"self_invocation": false, "executor_name": "emailExecutor", "executor_bean_defined": true},
+  "errors_use_problemdetail": true,
   "uses_mapstruct": true,
   "uses_bcrypt_in_service": true,
   "jakarta_imports_only": true,
@@ -56,20 +97,30 @@
 {
   "spring_boot_version": "2.7.0",
   "endpoints": [{"path": "/api/v1/users", "method": "GET", "returns_dto": false, "list_pageable": false}],
+  "controller": {"class_name": "UserCtrl", "has_transactional": true, "calls_repository_directly": true, "service_calls_per_method": 3},
+  "request_dto": {"class_name": "CreateUserReq", "is_record": false, "has_bean_validation": false},
+  "response_dto": {"class_name": "UserResp", "is_record": false},
+  "async": {"self_invocation": true, "executor_name": "", "executor_bean_defined": false},
+  "errors_use_problemdetail": false,
   "uses_mapstruct": false,
   "uses_bcrypt_in_service": false,
   "jakarta_imports_only": false,
   "forbidden_patterns_found": ["javax.persistence.Entity import in src/main/java/.../User.java"]
 }
 ]]></code>
-    <note>Boot 2.x; entity returned from controller; list endpoint without Pageable; MapStruct off; BCrypt missing; javax imports present.</note>
+    <note>Boot 2.x; entity returned from controller; list endpoint without Pageable; controller transactional and reaching the repository directly; DTOs not records and unvalidated; async self-invoked with no named executor; bespoke error envelope; MapStruct off; BCrypt missing; javax imports present.</note>
   </example>
 
   <section title="Forbidden patterns">
     <list>
       <item>Controller returning a JPA entity.</item>
       <item>Service write method without `@Transactional`.</item>
+      <item>`@Transactional` on a controller, a repository, or a private method.</item>
+      <item>Controller autowiring a repository or orchestrating more than one service call per method.</item>
       <item>`findAll()` without `Pageable` on a growable list endpoint.</item>
+      <item>Request DTO that is not a record, or carries no Bean Validation annotations.</item>
+      <item>`@Async` self-invoked on the same bean, or without a named `ThreadPoolTaskExecutor`.</item>
+      <item>A bespoke error envelope in place of RFC 7807 `ProblemDetail`.</item>
       <item>`javax.persistence` / `javax.validation` import in a Boot 3 codebase.</item>
       <item>`self.method()` call relying on `@Transactional` on the same bean (self-invocation bypasses the proxy).</item>
     </list>

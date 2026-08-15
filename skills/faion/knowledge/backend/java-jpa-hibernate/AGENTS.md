@@ -4,7 +4,7 @@
 
 **One-sentence:** Spring Data JPA + Hibernate methodology — LAZY by default, business-key equality, expand-contract migrations, @DataJpaTest slices, OSIV off, DTO projections in controllers.
 
-**One-paragraph:** Production-grade JPA / Hibernate for Spring Boot 3 services. Entity associations are LAZY by default; eager loading is per-query via `JOIN FETCH` or `@EntityGraph`. `equals` / `hashCode` are implemented over a business key (never Lombok `@Data` on entities). Migrations are versioned with Flyway; every entity diff lands with a paired migration. Bulk modifying queries use `@Modifying(clearAutomatically = true)`. Tests use `@DataJpaTest` + Testcontainers; controllers return DTO projections rather than entities to avoid `LazyInitializationException` once OSIV is disabled.
+**One-paragraph:** Production-grade JPA / Hibernate for Spring Boot 3 services. Entity associations are LAZY by default; eager loading is per-query via `JOIN FETCH` or `@EntityGraph`. `equals` / `hashCode` are implemented over a business key (never Lombok `@Data` on entities). Every entity carries audit timestamps, and user-editable aggregates carry `@Version`; every cascade / `orphanRemoval` / fetch choice carries a written justification. Migrations are versioned with Flyway; every entity diff lands with a paired migration. Bulk modifying queries use `@Modifying(clearAutomatically = true)`. Services consume narrow repository interfaces — never raw `JpaRepository` — and own the transaction boundary (`readOnly = true` on reads). Tests use `@DataJpaTest` + Testcontainers; reads project to DTOs and controllers return DTO projections rather than entities, so `LazyInitializationException` cannot fire once OSIV is disabled.
 
 **Ефективно для:**
 
@@ -12,6 +12,10 @@
 - Migrating from `FetchType.EAGER` defaults that produce Cartesian explosions under load.
 - Hardening test suites that mistakenly use `@SpringBootTest` for repository slices.
 - Locking schema-change discipline with Flyway expand-contract migrations.
+- High-throughput read paths that need DTO projection instead of entity hydration.
+- Inventory / balance domains requiring optimistic or pessimistic locking.
+- Teams that have suffered N+1 or open-in-view incidents.
+- AI-generated code that defaults to `CascadeType.ALL` on every relation.
 
 ## Applies If (ALL must hold)
 
@@ -39,16 +43,18 @@
 |-------------|-----|
 | [[java-spring-boot]] | Sub-module for service / controller layering. |
 | [[java-junit-testing]] | Test layering that drives `@DataJpaTest` vs `@SpringBootTest`. |
+| [[ddd-repositories]] | Narrow-repository pattern the `narrow-repo-interface` rule builds on. |
 
 ## Content (load on demand)
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 rules: lazy-by-default, business-key-equality, flyway-migration-per-entity-change, modifying-clearautomatically, datajpatest-for-repositories, dto-projection-in-controllers | 1100 |
-| `content/02-output-contract.xml` | essential | JSON Schema for the JPA-layer manifest + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 6 antipatterns: lombok-data-on-entities, eager-fetch-default, cascade-all-on-manytoone, missing-migration, modifying-without-clear, springboottest-for-slice | 900 |
-| `content/04-procedure.xml` | essential | 5-step procedure: entity modelling → repository slice → migration → bulk op safety → test slice | 800 |
-| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 700 |
+| `content/01-core-rules.xml` | essential | 12 rules: lazy-by-default, business-key-equality, flyway-migration-per-entity-change, modifying-clearautomatically, datajpatest-for-repositories, dto-projection-in-controllers, audit-timestamps, justified-cascade-fetch, optimistic-locking-on-editable-aggregates, narrow-repo-interface, dto-projection-on-reads, service-owns-transaction-boundary | 2000 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the JPA-layer manifest (+ optional narrow-repository / service spec) + valid/invalid examples | 1200 |
+| `content/03-failure-modes.xml` | essential | 15 antipatterns: lombok-data-on-entities, id-based-equality, eager-fetch-default, cascade-all-on-manytoone, missing-migration, modifying-without-clear, springboottest-for-slice, open-in-view, lazy-outside-tx, n-plus-1, cascade-all-unjustified, optional-get-without-context, entity-serialised-directly, native-query-string-concat, entitymanager-in-singleton | 1700 |
+| `content/04-procedure.xml` | essential | 5-step procedure: entity modelling → paired migration → narrow repository + bulk-op safety → transactional service with DTOs → test slice | 900 |
+| `content/05-examples.xml` | reference | Worked fragments for the mapping / repository / narrow-repository / service rules; full bodies in templates/ | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 1000 |
 
 ## Task Routing
 
@@ -58,6 +64,9 @@
 | `generate-migration` | sonnet | Expand-contract reasoning. |
 | `audit-fetch-strategy` | haiku | Mechanical scan for EAGER fetches. |
 | `design-bulk-operation` | opus | L1 cache + clearAutomatically reasoning. |
+| `design-entity-mapping` | sonnet | Cascade + orphanRemoval + fetch judgment. |
+| `write-narrow-repository` | sonnet | Interface naming + method-set segregation. |
+| `audit-existing-queries` | sonnet | Hunt N+1 and cascade misuse in an existing codebase. |
 
 ## Templates
 
@@ -65,7 +74,10 @@
 |------|---------|
 | `templates/entity.java` | Entity skeleton with LAZY associations + business-key equals/hashCode. |
 | `templates/repository.java` | Spring Data JPA repository with @Modifying + clearAutomatically. |
+| `templates/NarrowRepository.java` | Narrow read/write repository interfaces per `narrow-repo-interface`. |
+| `templates/Service.java` | Transactional service with JOIN FETCH + DTO projection. |
 | `templates/application-test.yml` | `@DataJpaTest` configuration with Testcontainers DB. |
+| `templates/application-jpa.yml` | Runtime JPA defaults: OSIV off, ddl-auto=validate, batch inserts, Hikari pool sizing. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -80,6 +92,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 - [[java-spring-boot]]
 - [[java-junit-testing]]
 - [[java-spring]]
+- [[ddd-repositories]]
 
 ## Decision tree
 
@@ -237,5 +250,161 @@ logging:
   level:
     org.hibernate.SQL: DEBUG
     org.hibernate.stat: DEBUG
+    org.hibernate.orm.jdbc.bind: TRACE
+```
+
+### `templates/NarrowRepository.java`
+
+```java
+// purpose: narrow read/write repository interfaces per narrow-repo-interface rule
+// consumes: Order + DTO projections
+// produces: Spring Data interface segregated for read vs write
+// depends-on: content/01-core-rules.xml
+// token-budget-impact: ~250 tokens when loaded as reference
+
+package faion.infra.orders;
+
+import faion.domain.orders.Order;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.NoRepositoryBean;
+import org.springframework.data.repository.query.Param;
+
+import java.util.Optional;
+import java.util.UUID;
+
+@NoRepositoryBean
+public interface OrderRepository {
+
+    Optional<Order> findById(UUID id);
+
+    @Query("SELECT o FROM Order o JOIN FETCH o.items WHERE o.id = :id")
+    Optional<Order> findByIdWithItems(@Param("id") UUID id);
+
+    Page<OrderSummaryDto> findAllSummaries(Pageable pageable);
+
+    Order save(Order order);
+
+    void delete(Order order);
+}
+
+interface OrderRepositoryJpa extends OrderRepository, JpaRepository<Order, UUID> {
+
+    @Override
+    @EntityGraph(attributePaths = {"items"})
+    Optional<Order> findByIdWithItems(@Param("id") UUID id);
+
+    @Override
+    @Query("SELECT new faion.infra.orders.OrderSummaryDto(o.id, o.customerName, o.total) FROM Order o")
+    Page<OrderSummaryDto> findAllSummaries(Pageable pageable);
+}
+
+record OrderSummaryDto(UUID id, String customerName, java.math.BigDecimal total) {}
+```
+
+### `templates/Service.java`
+
+```java
+// purpose: transactional service returning DTOs (not entities)
+// consumes: OrderRepository + request inputs
+// produces: service class for the controller
+// depends-on: content/01-core-rules.xml, templates/NarrowRepository.java
+// token-budget-impact: ~250 tokens when loaded as reference
+
+package faion.app.orders;
+
+import faion.domain.orders.Order;
+import faion.infra.orders.OrderRepository;
+import faion.infra.orders.OrderSummaryDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
+
+@Service
+@Transactional(readOnly = true)
+public class OrderService {
+
+    private final OrderRepository repository;
+
+    public OrderService(OrderRepository repository) {
+        this.repository = repository;
+    }
+
+    public OrderResponse getById(UUID id) {
+        Order order = repository.findByIdWithItems(id)
+            .orElseThrow(() -> new OrderNotFoundException(id));
+        return OrderResponse.from(order);
+    }
+
+    public Page<OrderSummaryDto> list(Pageable pageable) {
+        return repository.findAllSummaries(pageable);
+    }
+
+    @Transactional
+    public OrderResponse create(CreateOrderRequest req) {
+        Order order = new Order(req.customerName());
+        repository.save(order);
+        return OrderResponse.from(order);
+    }
+}
+
+record CreateOrderRequest(String customerName) {}
+record OrderResponse(UUID id, String customerName, java.math.BigDecimal total) {
+    static OrderResponse from(Order o) {
+        return new OrderResponse(o.getId(), o.getCustomerName(), o.getTotal());
+    }
+}
+
+class OrderNotFoundException extends RuntimeException {
+    OrderNotFoundException(UUID id) { super("order not found: " + id); }
+}
+```
+
+### `templates/application-jpa.yml`
+
+```yaml
+# purpose: Safe JPA/Hibernate application.yml defaults for Spring Boot
+# consumes: the service's existing application.yml plus its datasource settings
+# produces: config conforming to content/02-output-contract.xml
+# depends-on: content/01-core-rules.xml
+# token-budget-impact: ~200 tokens when loaded
+
+# application.yml — Safe JPA/Hibernate defaults for Spring Boot.
+# Copy this block into your application.yml and adjust values for your environment.
+
+spring:
+  jpa:
+    # Disable open-in-view to prevent lazy-loading outside transactions.
+    open-in-view: false
+    hibernate:
+      # Use validate in production; create/create-drop only in test.
+      ddl-auto: validate
+    properties:
+      hibernate:
+        # Batch inserts/updates for bulk operations.
+        jdbc.batch_size: 50
+        order_inserts: true
+        order_updates: true
+        # Enable SQL statistics for N+1 detection.
+        generate_statistics: true
+  datasource:
+    hikari:
+      # Tune based on DB server max_connections / number of app instances.
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+logging:
+  level:
+    # SQL log in dev — disable in production or route to a separate appender.
+    org.hibernate.SQL: DEBUG
     org.hibernate.orm.jdbc.bind: TRACE
 ```

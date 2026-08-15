@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="JUnit 5 + Spring Boot Test Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Four Spring Boot test antipatterns. Symptom + root cause + fix per item.</summary>
+
+  <section title="Antipatterns">
+
+    <antipattern id="springboottest-for-everything" severity="high">
+      <symptom>Every test class uses `@SpringBootTest`. Test suite takes 20 minutes; developers stop running it locally; CI flakes.</symptom>
+      <root-cause source="Spring Boot test slices docs">Slice-appropriate annotations skipped; full context boot per test.</root-cause>
+      <fix>Replace controller tests with `@WebMvcTest`, services with `@ExtendWith(MockitoExtension.class)`, repositories with `@DataJpaTest`. Reserve `@SpringBootTest` for genuine end-to-end integration.</fix>
+    </antipattern>
+
+    <antipattern id="h2-for-relational" severity="high">
+      <symptom>Tests pass on H2; production fails on Postgres with `data exception: invalid input syntax for jsonb`. Repository code relied on Postgres JSONB.</symptom>
+      <root-cause source="H2 vs Postgres dialect divergence">In-memory H2 used for relational integration test.</root-cause>
+      <fix>Switch to Testcontainers Postgres for any test that depends on production dialect. Keep H2 only for stateless unit-of-test scenarios where SQL is trivial.</fix>
+    </antipattern>
+
+    <antipattern id="manual-collaborator-construction" severity="medium">
+      <symptom>`new OrderService(new MockRepository())` in tests. Each test wires collaborators manually; mock state leaks between tests; tests don't verify the real DI graph.</symptom>
+      <root-cause source="Mockito + JUnit Jupiter docs">Manual wiring; `MockitoExtension` not used.</root-cause>
+      <fix>Add `@ExtendWith(MockitoExtension.class)`. Declare `@Mock` for collaborators, `@InjectMocks` for the unit under test. Mockito resets mocks between tests.</fix>
+    </antipattern>
+
+    <antipattern id="void-async-test" severity="medium">
+      <symptom>Reactive/async test method declared `void`; assertion failures pass silently. CI green, prod broken.</symptom>
+      <root-cause source="JUnit Jupiter async testing">Async test must return `Mono`, `Flux`, `CompletableFuture`, or use `await` helpers; not `void`.</root-cause>
+      <fix>Return appropriate async type. Use `StepVerifier` for Reactor; `Awaitility` for general async. Never `void` for async work.</fix>
+    </antipattern>
+
+  </section>
+</text>

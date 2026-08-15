@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Spring Boot Layered Architecture Procedure" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>6-step procedure for shipping a layered Spring Boot REST endpoint end-to-end.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="model-entity">
+      <input>Domain concept + DB schema.</input>
+      <action>Create JPA @Entity with @Id, @Column, associations (LAZY by default). Add Liquibase/Flyway migration.</action>
+      <output>Entity class + migration file.</output>
+    </step>
+    <step n="2" name="repository-interface">
+      <input>Entity + query needs.</input>
+      <action>Create interface extending JpaRepository&lt;Entity, ID&gt;. Define derived methods OR @Query for complex cases. Add @EntityGraph where eager fetch needed.</action>
+      <output>Repository interface.</output>
+    </step>
+    <step n="3" name="service-class">
+      <input>Repository + business logic.</input>
+      <action>Create @Service class with constructor injection of repository. Place @Transactional on each public method that modifies data; @Transactional(readOnly=true) on read methods. Convert entity ↔ DTO inside service.</action>
+      <output>Service class with DTO conversion.</output>
+    </step>
+    <step n="4" name="dto-and-validation">
+      <input>API contract.</input>
+      <action>Define `record OrderRequest(@NotBlank String customer, @NotEmpty List&lt;...&gt; items)` and `OrderResponse`. Annotate Jakarta Bean Validation.</action>
+      <output>DTO records.</output>
+    </step>
+    <step n="5" name="controller-endpoint">
+      <input>Service + DTO.</input>
+      <action>Create @RestController with constructor injection of service. Method signature: `@PostMapping ResponseEntity&lt;OrderResponse&gt; create(@Valid @RequestBody OrderRequest req)`. No @Transactional.</action>
+      <output>Controller class.</output>
+      <decision-gate>If @Transactional appears on controller, STOP and refactor.</decision-gate>
+    </step>
+    <step n="6" name="actuator-and-tests">
+      <input>Service + controller + repository.</input>
+      <action>Enable Actuator (`management.endpoints.web.exposure.include=health,info,prometheus`); secure with Spring Security. Add WebMvcTest for controller + DataJpaTest for repository.</action>
+      <output>Endpoints live + actuator scraped.</output>
+    </step>
+
+  </section>
+</text>

@@ -46,11 +46,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 rules: constructor-injection, dto-record-separate-from-entity, mapstruct-for-mapping, problemdetail-for-errors, transactional-on-service, advice-not-per-controller | 1100 |
-| `content/02-output-contract.xml` | essential | JSON Schema for the layered-service manifest + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 5 antipatterns: logic-in-controller, entity-as-dto, custom-error-shape, n-plus-one-in-controller, field-injection | 900 |
-| `content/04-procedure.xml` | essential | 5-step procedure: constructor injection → DTO + MapStruct → controllers → ProblemDetail advice → repository pagination | 800 |
-| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 700 |
+| `content/01-core-rules.xml` | essential | 8 rules: constructor-injection, dto-record-separate-from-entity, mapstruct-for-mapping, problemdetail-for-errors, transactional-on-service, advice-not-per-controller, validation-on-controller, actuator-health-required | 1400 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the layered-service manifest (+ validation and actuator blocks) + valid/invalid examples | 1200 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns: logic-in-controller, entity-as-dto, custom-error-shape, n-plus-one-in-controller, field-injection, lazy-init-exception-on-serialise, unvalidated-request-body, actuator-wide-open | 1300 |
+| `content/04-procedure.xml` | essential | 6-step procedure: constructor injection → DTO + MapStruct → validated controllers → ProblemDetail advice → repository pagination → actuator exposure | 1000 |
+| `content/05-examples.xml` | essential | Worked POST /orders slice: entity → repository → transactional service → validated record DTOs → controller → actuator | 700 |
+| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 1000 |
 
 ## Task Routing
 
@@ -65,12 +66,16 @@
 | File | Purpose |
 |------|---------|
 | `templates/_smoke-test.md` | Minimum viable layered-service skeleton reference. |
+| `templates/OrderController.java` | REST controller skeleton with `@Valid` + `ResponseEntity` and no `@Transactional`. |
+| `templates/OrderService.java` | Service with `@Transactional` placement and entity ↔ DTO mapping. |
+| `templates/OrderRepository.java` | Spring Data JPA interface with `@EntityGraph` for the association the DTO needs. |
 
 ## Scripts
 
 | File | Purpose | When to call |
 |------|---------|--------------|
 | `scripts/validate-java-spring-boot.py` | Validate the layered-service manifest against the JSON Schema. | Pre-commit; CI on every methodology PR. |
+| `scripts/spring-boot-layering-audit.sh` | Grep-based audit of a target project for `@Transactional` on controllers, field injection, and entities returned from controllers. | Before merging any change to a controller or service. |
 
 ## Related
 

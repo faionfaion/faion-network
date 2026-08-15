@@ -44,10 +44,11 @@
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 6 rules: named-executor, caller-runs-backpressure, completablefuture-return, taskdecorator-context, graceful-shutdown, no-self-invocation | 1100 |
-| `content/02-output-contract.xml` | essential | JSON Schema for the async-config manifest + valid/invalid examples | 900 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the async-config manifest (+ uncaught-handler / executor-metrics / transactional-on-method fields) + valid/invalid examples | 1100 |
 | `content/03-failure-modes.xml` | essential | 5 antipatterns: unnamed-async, void-async-loses-exception, self-invocation-bypass, mdc-loss, async-inside-transactional | 900 |
-| `content/04-procedure.xml` | essential | 5-step procedure: define pool → name executor → decorate context → wire CompletableFuture → backpressure + shutdown | 800 |
-| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 700 |
+| `content/04-procedure.xml` | essential | 5-step procedure: define pool → decorate context → annotate methods → shutdown + Micrometer metrics + uncaught handler → Awaitility tests and audit | 1000 |
+| `content/05-examples.xml` | essential | Worked sync→@Async conversion (latency, metrics, audit) + CompletableFuture.allOf fan-out | 900 |
+| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 800 |
 
 ## Task Routing
 
@@ -71,6 +72,7 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | File | Purpose | When to call |
 |------|---------|--------------|
 | `scripts/validate-java-spring-async.py` | Validate the async-config manifest against the JSON Schema. | Pre-commit; CI on every methodology PR. |
+| `scripts/spring-async-audit.sh` | Grep-based audit of a target project for self-invocation, bare `@Async`, `@Async`+`@Transactional`, and missing shutdown drain. | Before merging any change that adds or edits an `@Async` method. |
 
 ## Related
 

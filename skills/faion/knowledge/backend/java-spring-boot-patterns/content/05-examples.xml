@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Java Spring Boot Enterprise Patterns Worked Examples" version="1.0.0" est_tokens="800" depth="essential">
+  <summary>Worked configuration-binding refactor: eight scattered @Value fields collapsed into one validated @ConfigurationProperties record, with profile-wired beans and a ProblemDetail handler replacing the leaking 500.</summary>
+
+  <section title="Worked example — the mailer module refactor">
+    <example type="good">
+      <note>Context: brownfield Boot 3.4 service. `MailService` holds eight `@Value` fields (host, port, user, password, from, maxRetries, timeoutMs, tlsEnabled), and `MailException` currently returns a 500 carrying a stack trace.</note>
+      <note>Step 1 — inventory every `@Value` and `System.getenv` call and group them by concern. Here they collapse to one concern, `app.mail`, so the plan is a single `MailProperties` record.</note>
+      <note>Step 2 — bind it, per `config-properties-typed` and `config-validation-on-properties`.</note>
+      <code lang="java"><![CDATA[
+@Validated
+@ConfigurationProperties(prefix = "app.mail")
+public record MailProperties(
+        @NotBlank String host,
+        @Min(1) @Max(65535) int port,
+        @NotBlank String user,
+        String password,
+        @NotBlank @Email String from,
+        @Min(0) int maxRetries,
+        @Min(100) int timeoutMs,
+        boolean tlsEnabled
+) {}
+      ]]></code>
+      <note>Step 3 — map the domain exception to RFC 7807 in the single advice, per `problemdetail-advice`.</note>
+      <code lang="java"><![CDATA[
+@RestControllerAdvice
+public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
+
+    @ExceptionHandler(MailRejectedException.class)
+    public ProblemDetail handleMailRejected(MailRejectedException ex) {
+        ProblemDetail pd = ProblemDetail.forStatusAndDetail(
+            HttpStatus.BAD_GATEWAY, "mail vendor rejected the message");
+        pd.setType(URI.create("https://errors.example.com/mail-rejected"));
+        return pd;
+    }
+}
+      ]]></code>
+      <note>Step 4 — replace the `if (env.equals("prod"))` branch with `@Profile("prod") MailSender realSender()` and `@Profile("!prod") MailSender logSender()`, per `config-conditional-on-property`.</note>
+      <note>Step 5 — boot each profile YAML in turn. A missing `app.mail.host` now fails startup with a `ConstraintViolation` naming the property, instead of surfacing on the first send.</note>
+      <note>Result: `MailService` injects one dependency instead of eight; a mail-vendor rejection returns a 502 `ProblemDetail` with no stack trace; non-production logs mail instead of sending it.</note>
+    </example>
+  </section>
+
+  <reference path="templates/MailProperties.java">The typed, validated properties record</reference>
+  <reference path="templates/GlobalExceptionHandler.java">The ProblemDetail advice</reference>
+  <reference path="templates/application-prod.yml">Profile overlay binding the properties + actuator exposure</reference>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

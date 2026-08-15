@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="Spring Boot Layered Architecture Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>4 antipatterns observed in real Spring Boot deployments; each pairs symptom + root cause + concrete fix.</summary>
+
+  <section title="Antipatterns">
+
+    <antipattern id="lazy-init-exc" severity="high">
+      <symptom>LazyInitializationException in JSON response; works in tests, fails at runtime.</symptom>
+      <root-cause source="Spring Data JPA reference">Entity serialized outside @Transactional scope; lazy associations fetched after session close.</root-cause>
+      <fix>Convert entity to DTO inside the service while @Transactional active; use @EntityGraph for required associations.</fix>
+    </antipattern>
+
+    <antipattern id="n-plus-one" severity="high">
+      <symptom>List endpoint runs N+1 queries; latency scales linearly with result size.</symptom>
+      <root-cause source="Hibernate User Guide">@OneToMany / @ManyToOne loaded lazily inside a loop.</root-cause>
+      <fix>Use `@EntityGraph(attributePaths=...)` on the repository method, or JOIN FETCH in JPQL, or projection DTOs via constructor query.</fix>
+    </antipattern>
+
+    <antipattern id="tx-on-controller" severity="medium">
+      <symptom>Transaction held across HTTP write; long-running requests block connection pool.</symptom>
+      <root-cause source="Spring Framework reference — transactional anti-patterns">@Transactional placed on controller method — tx scope = entire HTTP exchange.</root-cause>
+      <fix>Move @Transactional to the @Service method; controller stays HTTP-only.</fix>
+    </antipattern>
+
+    <antipattern id="field-injection-test" severity="low">
+      <symptom>Unit test fails because `@Autowired` field is null; requires Spring container to test trivially.</symptom>
+      <root-cause source="Spring Framework reference — IoC">Field injection makes the class untestable without the container.</root-cause>
+      <fix>Refactor to constructor injection (final fields); test with plain `new Service(mockRepo)`.</fix>
+    </antipattern>
+
+  </section>
+</text>

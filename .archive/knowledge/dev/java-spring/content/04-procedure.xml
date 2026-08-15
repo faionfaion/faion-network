@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Spring Boot Layered Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure to produce a layered Spring Boot feature package.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="design-package">
+      <input>Feature spec</input>
+      <action>Create `feature/&lt;name&gt;/` package with sub-packages: `web/` (controller), `app/` (service), `dto/`. Repository lives in `infra/` per `[[java-jpa-hibernate]]`.</action>
+      <output>Package layout</output>
+    </step>
+
+    <step n="2" name="dto-and-validation">
+      <input>Request shape</input>
+      <action>Define request DTO as `record CreateOrderRequest(@NotBlank @Size(max=200) String customerName, @Positive BigDecimal total)`. Define response DTO as plain record. Add MapStruct mapper if entity→DTO is non-trivial.</action>
+      <output>DTOs + validator annotations</output>
+    </step>
+
+    <step n="3" name="service">
+      <input>DTOs + repository</input>
+      <action>`@Service` class. `@Transactional(readOnly=true)` on the class; override per write method with `@Transactional`. Method signatures take/return DTOs only. Use `Pageable` for list methods.</action>
+      <output>Service class</output>
+    </step>
+
+    <step n="4" name="controller">
+      <input>Service + DTOs</input>
+      <action>`@RestController @RequestMapping("/api/...")`. Each method calls one service method, returns `ResponseEntity&lt;TResponse&gt;` or `Page&lt;TResponse&gt;`. `@Valid` on request DTOs. NO `@Transactional`, NO repository access.</action>
+      <output>Controller class</output>
+      <decision-gate>If controller annotates `@Transactional` or autowires a repository, FAIL.</decision-gate>
+    </step>
+
+    <step n="5" name="async-and-error-handler">
+      <input>Async needs + error model</input>
+      <action>If async: extract `@Async` methods into a separate bean; define a named `ThreadPoolTaskExecutor` bean with core/max/queue tuned for the workload. Add `@RestControllerAdvice` mapping exceptions to `ProblemDetail`.</action>
+      <output>AsyncConfig + GlobalExceptionHandler</output>
+    </step>
+
+  </section>
+</text>

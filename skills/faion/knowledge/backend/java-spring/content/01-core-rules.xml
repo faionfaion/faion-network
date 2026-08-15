@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Spring Boot Layered Architecture Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the canonical layered Spring Boot 3 pattern. Each rule pairs a binary check + sourced rationale.</summary>
+<text id="01-core-rules" title="Spring Boot Layered Architecture Core Rules" version="1.2.0" est_tokens="1700" depth="essential">
+  <summary>10 testable rules grounding the canonical layered Spring Boot 3 pattern. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
 
@@ -32,6 +32,26 @@
     <rule id="jakarta-not-javax" testable="true" depth="essential">
       <statement>Spring Boot 3 imports MUST be `jakarta.*` (`jakarta.persistence`, `jakarta.validation`). `javax.persistence` / `javax.validation` imports are forbidden in a Boot 3 codebase.</statement>
       <rationale source="Spring Boot 3 migration guide">Boot 3 migrated to Jakarta EE 9+ namespaces; mixing `javax.*` produces compile errors or — worse — silent runtime failures when both jars are on the classpath.</rationale>
+    </rule>
+
+    <rule id="thin-controller" testable="true" depth="essential">
+      <statement>A controller method MUST accept the HTTP request, call exactly one service method, and return the response. `@Transactional`, repository access, business logic and multi-service orchestration in a controller are forbidden.</statement>
+      <rationale source="Spring Boot layered architecture guide">Thin controllers keep `@WebMvcTest` + a mocked service sufficient to test the HTTP contract, and stop the layer bleed that makes a service impossible to reuse from a scheduler or a message consumer.</rationale>
+    </rule>
+
+    <rule id="transactional-on-service-only" testable="true" depth="essential">
+      <statement>`@Transactional` (and `@Transactional(readOnly = true)`) MUST live on `@Service` methods or the service class. It MUST NOT appear on a controller, a repository, or a private method.</statement>
+      <rationale source="Spring transaction docs + Spring AOP docs">A transaction on the controller ties the DB lifetime to the whole HTTP request including serialisation — open-in-view by another name — and holds row locks for the duration. On a private method the proxy never applies it, so the annotation silently does nothing.</rationale>
+    </rule>
+
+    <rule id="record-dtos-with-validation" testable="true" depth="essential">
+      <statement>Request DTOs MUST be Java `record` types carrying Bean Validation annotations (`@NotNull`, `@Size`, `@Email`, `@Positive`) and MUST be bound with `@Valid` at the controller. Response DTOs MUST be records carrying no logic. Service public methods MUST accept and return DTOs, never JPA entities.</statement>
+      <rationale source="Java 17 records spec + Bean Validation 3.x docs">Records give value semantics and immutability for free; validating at the boundary keeps the domain free of defensive checks and produces a uniform 400 before any service code runs.</rationale>
+    </rule>
+
+    <rule id="async-via-named-executor" testable="true" depth="essential">
+      <statement>`@Async` methods MUST live in a bean separate from the caller — never self-invoked — and MUST name their executor (`@Async("emailExecutor")`) backed by a `ThreadPoolTaskExecutor` bean with explicit core size, max size and queue capacity.</statement>
+      <rationale source="Spring Async docs + observed self-invocation antipattern">Self-invocation bypasses the AOP proxy so the method runs synchronously on the request thread, and the default `SimpleAsyncTaskExecutor` spawns an unbounded thread per call. Full treatment: [[java-spring-async]].</rationale>
     </rule>
 
   </section>

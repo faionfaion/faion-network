@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="JPA / Hibernate Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema for the JPA-layer manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
+<text id="02-output-contract" title="JPA / Hibernate Output Contract" version="1.2.0" est_tokens="1200" depth="essential">
+  <summary>JSON Schema for the JPA-layer manifest this methodology produces. Validator enforces required keys + per-field constraints. `narrow_repository` and `service` are OPTIONAL blocks — omit them for a fetch/migration audit, supply them when the artefact is a full entity + repository + service spec, in which case every constraint inside them is enforced.</summary>
 
   <section title="Schema">
     <code lang="json"><![CDATA[
@@ -23,8 +23,42 @@
           "class": {"type": "string"},
           "business_key": {"type": "string", "minLength": 1},
           "associations_lazy": {"type": "boolean", "const": true},
-          "uses_lombok_data": {"type": "boolean", "const": false}
+          "uses_lombok_data": {"type": "boolean", "const": false},
+          "has_audit_timestamps": {"type": "boolean", "const": true},
+          "version_column": {"type": "boolean"},
+          "associations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["kind", "justification"],
+              "properties": {
+                "kind": {"enum": ["OneToMany", "ManyToOne", "ManyToMany", "OneToOne"]},
+                "cascade": {"type": "string"},
+                "fetch": {"enum": ["LAZY", "EAGER"]},
+                "justification": {"type": "string", "minLength": 10}
+              }
+            }
+          }
         }
+      }
+    },
+    "narrow_repository": {
+      "type": "object",
+      "required": ["interface_name", "extends_jparepository_directly"],
+      "properties": {
+        "interface_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Repository$"},
+        "extends_jparepository_directly": {"type": "boolean", "const": false},
+        "method_count": {"type": "integer", "minimum": 1, "maximum": 12}
+      }
+    },
+    "service": {
+      "type": "object",
+      "required": ["class_name", "uses_dto_projection_on_reads"],
+      "properties": {
+        "class_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Service$"},
+        "uses_dto_projection_on_reads": {"type": "boolean", "const": true},
+        "uses_joinfetch_or_entitygraph": {"type": "boolean", "const": true},
+        "readonly_tx_on_queries": {"type": "boolean", "const": true}
       }
     },
     "migrations_paired": {"type": "boolean", "const": true},
@@ -48,8 +82,20 @@
   "ddl_auto": "validate",
   "open_in_view": false,
   "entities": [
-    {"class": "com.acme.billing.Invoice", "business_key": "invoiceNumber", "associations_lazy": true, "uses_lombok_data": false}
+    {
+      "class": "com.acme.billing.Invoice",
+      "business_key": "invoiceNumber",
+      "associations_lazy": true,
+      "uses_lombok_data": false,
+      "has_audit_timestamps": true,
+      "version_column": true,
+      "associations": [
+        {"kind": "OneToMany", "cascade": "PERSIST", "fetch": "LAZY", "justification": "Lines are owned by Invoice; persist with parent"}
+      ]
+    }
   ],
+  "narrow_repository": {"interface_name": "InvoiceRepository", "extends_jparepository_directly": false, "method_count": 5},
+  "service": {"class_name": "InvoiceService", "uses_dto_projection_on_reads": true, "uses_joinfetch_or_entitygraph": true, "readonly_tx_on_queries": true},
   "migrations_paired": true,
   "fetch_audit": {"eager_associations_found": []},
   "forbidden_patterns_found": []
@@ -63,13 +109,22 @@
   "spring_boot_version": "2.7.0",
   "ddl_auto": "update",
   "open_in_view": true,
-  "entities": [{"class": "com.acme.billing.Invoice", "business_key": "", "associations_lazy": false, "uses_lombok_data": true}],
+  "entities": [{
+    "class": "com.acme.billing.invoice",
+    "business_key": "",
+    "associations_lazy": false,
+    "uses_lombok_data": true,
+    "has_audit_timestamps": false,
+    "associations": [{"kind": "OneToMany", "cascade": "ALL", "fetch": "EAGER", "justification": ""}]
+  }],
+  "narrow_repository": {"interface_name": "InvoiceRepo", "extends_jparepository_directly": true},
+  "service": {"class_name": "invoiceSvc", "uses_dto_projection_on_reads": false, "uses_joinfetch_or_entitygraph": false},
   "migrations_paired": false,
   "fetch_audit": {"eager_associations_found": ["Invoice.lines"]},
   "forbidden_patterns_found": ["CascadeType.ALL on @ManyToOne in Invoice.customer"]
 }
 ]]></code>
-    <note>Spring Boot 2.x; ddl-auto auto-mutates; OSIV on; no business key; @Data on entity; eager fetch + cascade ALL on ManyToOne; migrations missing.</note>
+    <note>Spring Boot 2.x; ddl-auto auto-mutates; OSIV on; no business key; no audit timestamps; @Data on entity; eager fetch + cascade ALL without justification; raw JpaRepository exposed to the service; no DTO projection; migrations missing.</note>
   </example>
 
   <section title="Forbidden patterns">
@@ -80,6 +135,26 @@
       <item>Entity diff without a paired Flyway migration.</item>
       <item>`@Modifying` without `clearAutomatically = true` for bulk updates/deletes.</item>
     </list>
+    <antipattern>
+      <description>`open_in_view == true`.</description>
+      <reason>Violates `datajpatest-for-repositories` (OSIV off in all profiles) and reopens the lazy-outside-transaction failure mode.</reason>
+    </antipattern>
+    <antipattern>
+      <description>Any entry in `entities[].associations` with an empty or under-10-character `justification`.</description>
+      <reason>Violates `justified-cascade-fetch`.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`entities[].has_audit_timestamps == false`.</description>
+      <reason>Violates `audit-timestamps`.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`narrow_repository.extends_jparepository_directly == true`.</description>
+      <reason>Violates `narrow-repo-interface`.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`service.uses_dto_projection_on_reads == false`.</description>
+      <reason>Violates `dto-projection-on-reads`.</reason>
+    </antipattern>
   </section>
 
   <reference path="scripts/validate-java-jpa-hibernate.py">Validator script</reference>

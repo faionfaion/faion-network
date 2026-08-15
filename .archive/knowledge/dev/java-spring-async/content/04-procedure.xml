@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="Spring Async Procedure" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>5-step procedure for adopting Spring @Async safely on an existing Spring Boot service.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="identify-candidate">
+      <input>Method profile: blocking I/O, no return value needed by caller, idempotent on retry.</input>
+      <action>Confirm method is fire-and-forget OR caller can wait on CompletableFuture. Check method is not @Transactional. Check caller bean != target bean.</action>
+      <output>Async-eligible flag (yes/no) + bean-split requirement.</output>
+      <decision-gate>If caller == target bean, MUST extract to new bean before proceeding.</decision-gate>
+    </step>
+    <step n="2" name="configure-executor">
+      <input>Pool sizing budget + AsyncConfig presence.</input>
+      <action>Create @Configuration class with @EnableAsync. Define named ThreadPoolTaskExecutor bean: corePoolSize, maxPoolSize, queueCapacity, threadNamePrefix, CallerRunsPolicy, setWaitForTasksToCompleteOnShutdown(true), setAwaitTerminationSeconds(60), TaskDecorator (MDC + SecurityContext + OTel).</action>
+      <output>AsyncConfig.java with executor bean(s).</output>
+      <decision-gate>If TaskDecorator missing, STOP — observability is broken.</decision-gate>
+    </step>
+    <step n="3" name="annotate-method">
+      <input>Async-eligible method + executor bean name.</input>
+      <action>Annotate @Async(&quot;executorName&quot;). Change return type to CompletableFuture&lt;Void&gt; OR keep void + register AsyncUncaughtExceptionHandler. Remove @Transactional if present.</action>
+      <output>Method annotated and returning observable Future.</output>
+      <decision-gate>If method still @Transactional, STOP and split.</decision-gate>
+    </step>
+    <step n="4" name="wire-metrics-and-handler">
+      <input>Executor bean + Micrometer present.</input>
+      <action>Register Micrometer gauges: executor.queued, executor.active, executor.completed, executor.rejected. Wire AsyncUncaughtExceptionHandler in AsyncConfig that logs + increments error counter.</action>
+      <output>Observable executor with Prometheus metrics.</output>
+    </step>
+    <step n="5" name="test-with-awaitility">
+      <input>Test class + WireMock for downstream stubs.</input>
+      <action>Use Awaitility's await().atMost(2, SECONDS).untilAsserted(...) to poll completion. Never Thread.sleep. Run audit script (spring-async-audit.sh) before merge.</action>
+      <output>Green tests + audit clean.</output>
+    </step>
+
+  </section>
+</text>

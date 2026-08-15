@@ -22,7 +22,9 @@
           "name": {"type": "string", "pattern": "Test$"},
           "layer": {"enum": ["controller", "service", "repository", "integration"]},
           "slice_annotation": {"enum": ["@WebMvcTest", "@ExtendWith(MockitoExtension.class)", "@DataJpaTest", "@SpringBootTest"]},
-          "test_count": {"type": "integer", "minimum": 1}
+          "test_count": {"type": "integer", "minimum": 1},
+          "uses_assertj": {"type": "boolean", "const": true},
+          "parametric_inputs_use_parameterized_test": {"type": "boolean", "const": true}
         }
       }
     },
@@ -37,6 +39,7 @@
       }
     },
     "uses_testcontainers": {"type": "boolean", "const": true},
+    "uses_h2_for_relational": {"type": "boolean", "const": false},
     "springboottest_count": {"type": "integer", "maximum": 1},
     "forbidden_patterns_found": {"type": "array", "items": {"type": "string"}, "maxItems": 0}
   }
@@ -57,6 +60,7 @@
   ],
   "coverage": {"line": 78.4, "branch": 64.2, "tool": "jacoco", "gate_enforced_in_ci": true},
   "uses_testcontainers": true,
+  "uses_h2_for_relational": false,
   "springboottest_count": 1,
   "forbidden_patterns_found": []
 }
@@ -71,11 +75,12 @@
   "test_classes": [{"name": "user_controller", "layer": "controller", "slice_annotation": "@SpringBootTest", "test_count": 0}],
   "coverage": {"line": 35.0, "branch": 12.0, "tool": "cobertura", "gate_enforced_in_ci": false},
   "uses_testcontainers": false,
+  "uses_h2_for_relational": true,
   "springboottest_count": 5,
   "forbidden_patterns_found": ["Thread.sleep(1000) in OrdersServiceTest.waitsForJob"]
 }
 ]]></code>
-    <note>Wrong framework + naming; slice-controller using @SpringBootTest; H2 instead of Testcontainers; gate off; many @SpringBootTest; Thread.sleep used.</note>
+    <note>Wrong framework + naming; slice-controller using @SpringBootTest; H2 instead of Testcontainers; gate off; many @SpringBootTest; Thread.sleep used; boundary cases duplicated as @Test instead of @ParameterizedTest.</note>
   </example>
 
   <section title="Forbidden patterns">
@@ -85,7 +90,17 @@
       <item>`@SpringBootTest` used for a controller-only or repository-only slice.</item>
       <item>Mixing Hamcrest + AssertJ + JUnit assertions in the same class.</item>
       <item>Double-mocking (mocking both the service and its repository in a controller test).</item>
+      <item>Duplicated `@Test` methods for parametric inputs instead of one `@ParameterizedTest`.</item>
+      <item>An async or reactive test method declared `void`.</item>
     </list>
+    <antipattern>
+      <description>`test_classes[].parametric_inputs_use_parameterized_test == false`.</description>
+      <reason>Violates `parameterizedtest-for-boundaries`.</reason>
+    </antipattern>
+    <antipattern>
+      <description>`uses_h2_for_relational == true`.</description>
+      <reason>Violates `testcontainers-not-h2` for any code depending on relational invariants or vendor SQL.</reason>
+    </antipattern>
   </section>
 
   <reference path="scripts/validate-java-junit-testing.py">Validator script</reference>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="JPA / Hibernate Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Spring Data JPA + Hibernate methodology. Each rule pairs a binary check + sourced rationale.</summary>
+<text id="01-core-rules" title="JPA / Hibernate Core Rules" version="1.2.0" est_tokens="2000" depth="essential">
+  <summary>12 testable rules grounding the Spring Data JPA + Hibernate methodology. Each rule pairs a binary check + sourced rationale. Rules 1-6 govern the runtime fetch / migration / test discipline; rules 7-12 govern entity mapping, repository shape and transaction ownership.</summary>
 
   <section title="Rule set">
 
@@ -34,12 +34,45 @@
       <rationale source="Internal — LazyInitializationException postmortem 2026-Q1">Returning entities to controllers crashes with `LazyInitializationException` once OSIV is disabled; DTO projections fix the contract permanently.</rationale>
     </rule>
 
+    <rule id="audit-timestamps" testable="true" depth="essential">
+      <statement>Every entity MUST carry created/updated timestamps via `@CreationTimestamp` + `@UpdateTimestamp` (Hibernate) or `@CreatedDate` + `@LastModifiedDate` (Spring Data JPA with `@EntityListeners(AuditingEntityListener.class)`). `createdAt` MUST be `updatable = false`.</statement>
+      <rationale source="Spring Data JPA + Hibernate docs">Auditing fields support compliance + debugging at near-zero cost; missing them forces post-hoc trigger work later. Manual timestamp management in service code is error-prone and misses bulk-update paths — Hibernate-managed timestamps are applied at the persistence layer regardless of which code path modifies the entity.</rationale>
+    </rule>
+
+    <rule id="justified-cascade-fetch" testable="true" depth="essential">
+      <statement>Every `@OneToMany` / `@ManyToMany` MUST carry an explicit Javadoc comment justifying its cascade, `orphanRemoval` and fetch choice. `CascadeType.ALL` is forbidden without a written reason; `FetchType.LAZY` is preserved as the default and `EAGER` requires justification.</statement>
+      <rationale source="Hibernate docs + observed antipatterns">Unjustified `CascadeType.ALL` deletes data. `CascadeType.ALL` with `orphanRemoval = true` on a relation to an entity referenced elsewhere corrupts data: orphan removal deletes the child when it leaves the parent collection even if other entities still reference it. `EAGER` collections cause Cartesian explosions.</rationale>
+    </rule>
+
+    <rule id="optimistic-locking-on-editable-aggregates" testable="true" depth="essential">
+      <statement>User-editable aggregates MUST declare `@Version` for optimistic locking. Inventory / balance writes where a lost update is unacceptable MUST use `LockModeType.PESSIMISTIC_WRITE` on the repository method, with the reason documented. The service MUST catch `OptimisticLockException` and surface a domain error.</statement>
+      <rationale source="JPA locking spec">Without locking, two concurrent requests that each read then update the same row produce a lost update — the second write silently overwrites the first and neither party is told.</rationale>
+    </rule>
+
+    <rule id="narrow-repo-interface" testable="true" depth="essential">
+      <statement>Services MUST consume a narrow repository interface listing only the operations actually used. Raw `JpaRepository&lt;T, ID&gt;` MUST NOT appear in service method signatures. `JpaSpecificationExecutor` is added only when dynamic filtering is required.</statement>
+      <rationale source="Interface-segregation principle + ddd-repositories methodology">Exposing the full CRUD surface tempts callers to bypass the aggregate boundary and to reach for operations such as `deleteAllInBatch()` that skip business rules; narrow interfaces are testable + auditable.</rationale>
+    </rule>
+
+    <rule id="dto-projection-on-reads" testable="true" depth="essential">
+      <statement>Read-only queries that do not need the full entity MUST project to a DTO (interface or class projection). Loading a full `@Entity` to populate a 3-field list view is forbidden.</statement>
+      <rationale source="Hibernate query performance docs">Entity hydration initialises every column, every Hibernate proxy and all auditing state — hundreds of bytes per row — for data that is never written. A projection generates a `SELECT` over only the required columns.</rationale>
+    </rule>
+
+    <rule id="service-owns-transaction-boundary" testable="true" depth="essential">
+      <statement>Service methods MUST be annotated `@Transactional(readOnly = true)` for query-only paths and `@Transactional` for writes. Repository methods MUST NOT be annotated `@Transactional` — the service owns the boundary.</statement>
+      <rationale source="Spring transaction management docs">`readOnly = true` lets Hibernate skip dirty checking and the end-of-transaction flush on read paths. Service-owned boundaries let several repository calls join one atomic unit; repository-owned boundaries fragment them.</rationale>
+    </rule>
+
   </section>
+
+  <p>`lazy-by-default` and `datajpatest-for-repositories` together carry the eager-loading contract: eager loading is opt-in per query via `JOIN FETCH` / `@EntityGraph` inside the transactional boundary, and `spring.jpa.open-in-view` is `false` in every profile, so no lazy association is reachable outside it.</p>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
     <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

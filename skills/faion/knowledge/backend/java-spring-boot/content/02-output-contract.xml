@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Spring Boot Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+<text id="02-output-contract" title="Spring Boot Patterns Output Contract" version="1.2.0" est_tokens="1200" depth="essential">
   <summary>JSON Schema for the layered-service manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
   <section title="Schema">
@@ -8,7 +8,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://faion.net/schemas/java-spring-boot.json",
   "type": "object",
-  "required": ["spring_boot_version", "stack", "uses_records_for_dtos", "uses_mapstruct", "uses_problemdetail_advice", "injection_style"],
+  "required": ["spring_boot_version", "stack", "uses_records_for_dtos", "uses_mapstruct", "uses_problemdetail_advice", "injection_style", "validation_on_request_bodies", "actuator"],
   "properties": {
     "spring_boot_version": {"type": "string", "pattern": "^3\\."},
     "stack": {"const": "webmvc"},
@@ -17,6 +17,17 @@
     "uses_problemdetail_advice": {"type": "boolean", "const": true},
     "injection_style": {"const": "constructor"},
     "transactional_layer": {"const": "service"},
+    "validation_on_request_bodies": {"type": "boolean", "const": true},
+    "actuator": {
+      "type": "object",
+      "required": ["health_exposed", "prometheus_exposed", "exposure_is_wildcard", "secured"],
+      "properties": {
+        "health_exposed": {"type": "boolean", "const": true},
+        "prometheus_exposed": {"type": "boolean", "const": true},
+        "exposure_is_wildcard": {"type": "boolean", "const": false},
+        "secured": {"type": "boolean", "const": true}
+      }
+    },
     "forbidden_patterns_found": {"type": "array", "items": {"type": "string"}, "maxItems": 0}
   }
 }
@@ -33,6 +44,8 @@
   "uses_problemdetail_advice": true,
   "injection_style": "constructor",
   "transactional_layer": "service",
+  "validation_on_request_bodies": true,
+  "actuator": {"health_exposed": true, "prometheus_exposed": true, "exposure_is_wildcard": false, "secured": true},
   "forbidden_patterns_found": []
 }
 ]]></code>
@@ -48,10 +61,12 @@
   "uses_problemdetail_advice": false,
   "injection_style": "field",
   "transactional_layer": "controller",
+  "validation_on_request_bodies": false,
+  "actuator": {"health_exposed": false, "prometheus_exposed": false, "exposure_is_wildcard": true, "secured": false},
   "forbidden_patterns_found": ["@Autowired field injection in UserService"]
 }
 ]]></code>
-    <note>Boot 2.x; reactive stack; class DTOs sharing entity; no MapStruct; no ProblemDetail; field injection; @Transactional on controller.</note>
+    <note>Boot 2.x; reactive stack; class DTOs sharing entity; no MapStruct; no ProblemDetail; field injection; @Transactional on controller; request bodies unvalidated; actuator wide open and unsecured.</note>
   </example>
 
   <section title="Forbidden patterns">
@@ -61,6 +76,8 @@
       <item>`BeanUtils.copyProperties(entity, dto)` mapping.</item>
       <item>`try/catch` in controllers for cross-cutting concerns (use `@RestControllerAdvice`).</item>
       <item>`@Transactional` on a controller method.</item>
+      <item>`@RequestBody` parameter bound without `@Valid`, or a request record with no Bean Validation constraints.</item>
+      <item>`management.endpoints.web.exposure.include=*`, or any actuator endpoint beyond health reachable unauthenticated.</item>
     </list>
   </section>
 

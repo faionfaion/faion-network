@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Spring Boot Layered Architecture Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
+<text id="06-decision-tree" title="Spring Boot Layered Architecture Decision Tree" version="1.2.0" est_tokens="1000" depth="essential">
   <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
 
   <decision-tree>
@@ -25,11 +25,34 @@
         <branch when="shape == read_single">
           <conclusion ref="dto-record-never-entity" verdict="return record DTO; never the entity"/>
         </branch>
+        <branch when="shape == async_workflow">
+          <conclusion ref="async-via-named-executor" verdict="extract the @Async method into its own bean; @Async(&quot;namedExecutor&quot;) backed by a ThreadPoolTaskExecutor with explicit core/max/queue"/>
+        </branch>
       </branch>
     </branch>
 
     <branch when="stack == quarkus_or_micronaut">
       <conclusion ref="dto-record-never-entity" verdict="skip-this-methodology — annotations differ; pattern translates conceptually but not literally"/>
+    </branch>
+
+    <branch when="stack == webmvc_blocking AND authoring == web_layer">
+      <question id="q-controller-work">Does the controller method do more than call one service?</question>
+      <branch when="extra_work == true">
+        <conclusion ref="thin-controller" verdict="push orchestration, repository access and @Transactional down into one service method"/>
+      </branch>
+      <branch when="extra_work == false">
+        <conclusion ref="record-dtos-with-validation" verdict="request record + Bean Validation + @Valid; response record; nothing else in the web layer"/>
+      </branch>
+    </branch>
+
+    <branch when="stack == webmvc_blocking AND authoring == transaction_boundary">
+      <question id="q-tx-target">Where is the @Transactional annotation being placed?</question>
+      <branch when="target == service_method">
+        <conclusion ref="transactional-on-service-only" verdict="correct layer; class-level readOnly=true, writes override locally"/>
+      </branch>
+      <branch when="target == controller_repository_or_private">
+        <conclusion ref="transactional-on-service-only" verdict="move it to a public service method; on a private method the proxy never applies it"/>
+      </branch>
     </branch>
   </decision-tree>
 

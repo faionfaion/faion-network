@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Spring @Async Worked Examples" version="1.0.0" est_tokens="900" depth="essential">
+  <summary>End-to-end conversion of a synchronous email send into a Spring @Async fan-out, plus the CompletableFuture.allOf composition pattern the rules make possible.</summary>
+
+  <section title="Worked example — converting sendOrderConfirmation to @Async">
+    <example type="good">
+      <note>Context: brownfield Boot 3.4 monolith. `OrderController.placeOrder()` inline-calls `emailService.send()`; p99 latency is 800 ms and the email vendor contributes roughly 400 ms of it.</note>
+      <note>Step 1 — confirm the send is fire-and-forget (no caller waits on the result) and carries no `@Transactional`, so it is eligible. Check the bean split: `OrderController` calls `NotificationService`, already a separate bean, so `no-self-invocation` is satisfied without extraction.</note>
+      <note>Step 2 — create `AsyncConfig` with an `emailExecutor` (core 4, max 8, queue 100, `CallerRunsPolicy`, `setWaitForTasksToCompleteOnShutdown(true)` with a 60 s drain, and a `TaskDecorator` copying MDC + `SecurityContext`), per `named-executor`, `caller-runs-backpressure`, `graceful-shutdown` and `taskdecorator-context`.</note>
+      <note>Step 3 — annotate `NotificationService.sendOrderConfirmation` with `@Async("emailExecutor")` and change the return type to `CompletableFuture&lt;Void&gt;` per `completablefuture-return`.</note>
+      <note>Step 4 — register the `executor.*` Micrometer gauges and an `AsyncUncaughtExceptionHandler` that logs and increments a `notification.error` counter.</note>
+      <note>Step 5 — test with `Awaitility.await().atMost(2, SECONDS).untilAsserted(...)` against a WireMock SMTP stub, then run `scripts/spring-async-audit.sh` and require 0 violations.</note>
+      <note>Result: p99 drops from 800 ms to 380 ms, the `notification.error` metric becomes visible in Grafana, and a deploy drains the queue instead of dropping mail.</note>
+    </example>
+  </section>
+
+  <section title="Fan-out — composing several async calls">
+    <example type="good">
+      <code lang="java"><![CDATA[
+@Service
+public class NotificationService {
+
+    private static final Logger log = LoggerFactory.getLogger(NotificationService.class);
+    private final EmailService emailService;
+    private final SmsService smsService;
+
+    public NotificationService(EmailService emailService, SmsService smsService) {
+        this.emailService = emailService;
+        this.smsService = smsService;
+    }
+
+    @Async("emailExecutor")
+    public CompletableFuture<Void> sendOrderConfirmation(Order order) {
+        try {
+            emailService.send(order.userEmail(), "Order Confirmation",
+                              "Order #" + order.id() + " confirmed.");
+            return CompletableFuture.completedFuture(null);
+        } catch (Exception e) {
+            log.error("Failed to send order confirmation {}", order.id(), e);
+            return CompletableFuture.failedFuture(e);   // caller can observe it
+        }
+    }
+
+    @Async("emailExecutor")
+    public CompletableFuture<Void> sendWelcome(User user) {
+        CompletableFuture<Void> email = CompletableFuture.runAsync(() ->
+            emailService.send(user.email(), "Welcome!", "Welcome, " + user.name() + "!"));
+        CompletableFuture<Void> sms = CompletableFuture.runAsync(() ->
+            smsService.send(user.phone(), "Welcome to our service!"));
+        return CompletableFuture.allOf(email, sms)
+            .exceptionally(ex -> {
+                log.error("Welcome notifications failed for {}", user.id(), ex);
+                return null;
+            });
+    }
+}
+      ]]></code>
+      <note>Returning `CompletableFuture` rather than `void` is what makes `allOf` and `exceptionally` available; a `void` `@Async` method would have swallowed both failures silently. `runAsync` without an executor argument uses the common ForkJoinPool — pass the named executor explicitly when the inner work is itself blocking.</note>
+    </example>
+  </section>
+
+  <reference path="templates/AsyncConfig.java">Executor configuration this example assumes</reference>
+  <reference path="templates/async-service.java">Single-method async service skeleton</reference>
+  <reference path="scripts/spring-async-audit.sh">Audit that verifies the result</reference>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

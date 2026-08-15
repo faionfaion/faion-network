@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="Spring Boot Patterns Worked Example" version="1.0.0" est_tokens="700" depth="essential">
+  <summary>End-to-end worked example: a layered OrderController + OrderService + OrderRepository slice that satisfies every rule in 01-core-rules.xml, including validation at the boundary and actuator exposure.</summary>
+
+  <section title="Worked example — POST /orders on a Boot 3.4 monolith">
+    <example type="good">
+      <note>Context: existing `Order` `@Entity` with `@OneToMany(LineItem)` LAZY. The endpoint must validate the payload, persist, and return a DTO — no entity crosses the controller boundary.</note>
+      <note>Step 1 — the `Order` entity already exists with lazy associations; the schema change ships as a Flyway migration in the same PR.</note>
+      <note>Step 2 — `OrderRepository extends JpaRepository&lt;Order, UUID&gt;` with `@EntityGraph(attributePaths = "items")` on `findById`, so the association the DTO needs is loaded inside the transaction rather than lazily at serialisation time.</note>
+      <note>Step 3 — `OrderService.create(OrderRequest)` is `@Transactional`: it maps request → entity, calls `repository.save`, and maps entity → `OrderResponse` while the session is still open, per `dto-record-separate-from-entity` and `transactional-on-service`.</note>
+      <note>Step 4 — `record OrderRequest(@NotBlank String customer, @NotEmpty @Valid List&lt;LineItemRequest&gt; items)`. The nested list carries its own `@Valid` so line-item constraints are enforced too, per `validation-on-controller`.</note>
+      <note>Step 5 — `OrderController` is constructor-injected and exposes `@PostMapping ResponseEntity&lt;OrderResponse&gt; create(@Valid @RequestBody OrderRequest req)`. No `@Transactional`, no `try/catch`: the `@RestControllerAdvice` turns `MethodArgumentNotValidException` into a `ProblemDetail` 400.</note>
+      <note>Step 6 — `management.endpoints.web.exposure.include=health,info,prometheus`, secured with Spring Security, per `actuator-health-required`. A `@WebMvcTest` asserts 400 when `customer` is missing.</note>
+      <note>Result: the endpoint returns 201 with a `Location` header; the transaction is scoped to `service.create`; lazy associations resolve inside it via `@EntityGraph`; and `http.server.requests` appears on the Prometheus scrape.</note>
+    </example>
+  </section>
+
+  <reference path="templates/OrderController.java">Controller skeleton with @Valid and no @Transactional</reference>
+  <reference path="templates/OrderService.java">Service with @Transactional placement and entity↔DTO mapping</reference>
+  <reference path="templates/OrderRepository.java">Repository with @EntityGraph</reference>
+  <reference path="scripts/spring-boot-layering-audit.sh">Audit that verifies the layering held</reference>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/04-procedure.xml"/>
+  </see-also>
+</text>

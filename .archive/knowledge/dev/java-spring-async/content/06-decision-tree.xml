@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Spring Async Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping observable signals to a Spring @Async rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+      <root-question id="q-async-shape">Workload shape?</root-question>
+
+        <branch when="shape == durable_required">
+          <conclusion ref="named-executor-required" verdict="use a queue (SQS / RabbitMQ / Kafka), not @Async"/>
+        </branch>
+        <branch when="shape == in_process_fire_and_forget">
+          <question id="q-bean">Caller and target in same bean?</question>
+          <branch when="same_bean == true">
+            <conclusion ref="no-self-invocation" verdict="extract @Async method to a new @Service bean first"/>
+          </branch>
+          <branch when="same_bean == false">
+            <question id="q-tx">Method @Transactional?</question>
+            <branch when="transactional == true">
+              <conclusion ref="no-async-with-tx" verdict="remove @Transactional or split tx boundary"/>
+            </branch>
+            <branch when="transactional == false">
+              <conclusion ref="task-decorator-propagation" verdict="annotate @Async(named) + TaskDecorator + CompletableFuture&lt;Void&gt;"/>
+            </branch>
+          </branch>
+        </branch>
+        <branch when="shape == event_listener">
+          <conclusion ref="completable-future-or-handler" verdict="@Async @EventListener + AsyncUncaughtExceptionHandler in AsyncConfig"/>
+        </branch>
+    </decision-tree>
+
+    <example trace="sendOrderConfirmation">
+      shape=in_process_fire_and_forget → same_bean=false → transactional=false → annotate @Async(&quot;emailExecutor&quot;) + TaskDecorator + CompletableFuture&lt;Void&gt;.
+    </example>
+</text>

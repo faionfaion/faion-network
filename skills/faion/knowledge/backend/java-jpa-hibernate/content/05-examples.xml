@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="JPA / Hibernate Worked Examples" version="1.0.0" est_tokens="900" depth="reference">
+  <summary>Worked fragments for the mapping, repository and transaction rules — the justification comment, @Version, parameterised dynamic queries, narrow-repository segregation and service-owned transactions. Full file bodies live in templates/.</summary>
+
+  <section title="Entity mapping — audit timestamps, @Version, justified associations">
+    <example type="good">
+      <code lang="java"><![CDATA[
+@Version                            // optimistic lock — blocks lost updates
+private Long version;
+
+// Cascade justification: Role lifecycle is independent of User; no cascade.
+// FetchType.LAZY is the correct default for collections.
+@ManyToMany(fetch = FetchType.LAZY)
+@JoinTable(name = "user_roles",
+    joinColumns = @JoinColumn(name = "user_id"),
+    inverseJoinColumns = @JoinColumn(name = "role_id"))
+private Set<Role> roles = new HashSet<>();
+
+// Cascade justification: Order lifecycle is fully owned by User.
+// orphanRemoval: true because an Order without a User is invalid business state.
+@OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+private Set<Order> orders = new HashSet<>();
+
+@CreationTimestamp
+@Column(name = "created_at", updatable = false)
+private LocalDateTime createdAt;
+
+@UpdateTimestamp
+@Column(name = "updated_at")
+private LocalDateTime updatedAt;
+      ]]></code>
+      <note>Satisfies `audit-timestamps`, `optimistic-locking-on-editable-aggregates` and `justified-cascade-fetch`. `CascadeType.ALL` is permitted on `orders` only because the comment states the ownership analysis; strip the comment and the mapping is blocked.</note>
+    </example>
+  </section>
+
+  <section title="Repository — JOIN FETCH, parameterised filtering, safe bulk update">
+    <example type="good">
+      <code lang="java"><![CDATA[
+// JOIN FETCH — loads roles in one query inside the transaction; no N+1.
+@Query("SELECT u FROM User u JOIN FETCH u.roles WHERE u.id = :id")
+Optional<User> findByIdWithRoles(@Param("id") Long id);
+
+// Named parameters only — never string concatenation.
+@Query("""
+    SELECT u FROM User u
+    WHERE (:name IS NULL OR LOWER(u.name) LIKE LOWER(CONCAT('%', :name, '%')))
+    AND (:isActive IS NULL OR u.isActive = :isActive)
+    """)
+Page<User> search(@Param("name") String name,
+                  @Param("isActive") Boolean isActive,
+                  Pageable pageable);
+
+@Modifying(clearAutomatically = true, flushAutomatically = true)
+@Query("UPDATE User u SET u.isActive = false WHERE u.lastLoginAt < :cutoff")
+int deactivateInactiveUsers(@Param("cutoff") LocalDateTime cutoff);
+      ]]></code>
+      <note>`@Modifying` requires `@Transactional` on the calling service method — without it Spring Data throws `TransactionRequiredException`. Add `JpaSpecificationExecutor` only when dynamic filtering is genuinely required.</note>
+    </example>
+  </section>
+
+  <section title="Narrow repository — segregating what services may call">
+    <example type="good">
+      <code lang="java"><![CDATA[
+@NoRepositoryBean
+public interface OrderRepository {                       // what services see
+    Optional<Order> findById(UUID id);
+    Optional<Order> findByIdWithItems(UUID id);
+    Page<OrderSummaryDto> findAllSummaries(Pageable pageable);
+    Order save(Order order);
+}
+
+interface OrderRepositoryJpa extends OrderRepository, JpaRepository<Order, UUID> {
+    @Override
+    @EntityGraph(attributePaths = {"items"})
+    Optional<Order> findByIdWithItems(UUID id);
+
+    @Override
+    @Query("SELECT new faion.infra.orders.OrderSummaryDto(o.id, o.customerName, o.total) FROM Order o")
+    Page<OrderSummaryDto> findAllSummaries(Pageable pageable);
+}
+      ]]></code>
+      <note>Satisfies `narrow-repo-interface` and `dto-projection-on-reads`. `OrderRepository` carries no `deleteAllInBatch()` and no `findAll()`; `OrderRepositoryJpa` is the Spring Data implementation and never appears in a service signature.</note>
+    </example>
+  </section>
+
+  <section title="Service — transaction ownership and DTOs across the boundary">
+    <example type="good">
+      <code lang="java"><![CDATA[
+@Service
+@Transactional(readOnly = true)          // reads are the default; writes opt in
+public class OrderService {
+
+    private final OrderRepository repository;
+
+    public OrderResponse getById(UUID id) {
+        Order order = repository.findByIdWithItems(id)
+            .orElseThrow(() -> new OrderNotFoundException(id));   // never .get()
+        return OrderResponse.from(order);                        // mapped inside the tx
+    }
+
+    public Page<OrderSummaryDto> list(Pageable pageable) {
+        return repository.findAllSummaries(pageable);            // no entity hydrated
+    }
+
+    @Transactional
+    public OrderResponse create(CreateOrderRequest req) {
+        Order order = new Order(req.customerName());
+        repository.save(order);
+        return OrderResponse.from(order);
+    }
+}
+      ]]></code>
+      <note>Satisfies `service-owns-transaction-boundary` and `dto-projection-in-controllers`, and closes the `optional-get-without-context` failure mode. Nothing but DTOs leaves the class, so `lazy-outside-tx` cannot fire.</note>
+    </example>
+  </section>
+
+  <reference path="templates/entity.java">Full entity skeleton — LAZY associations, @Version, business-key equals/hashCode</reference>
+  <reference path="templates/repository.java">Full Spring Data repository with @Modifying + clearAutomatically</reference>
+  <reference path="templates/NarrowRepository.java">Full narrow read/write repository interfaces</reference>
+  <reference path="templates/Service.java">Full transactional service with JOIN FETCH + DTO projection</reference>
+  <reference path="templates/application-jpa.yml">Runtime JPA defaults — OSIV off, ddl-auto=validate, batch inserts, Hikari sizing</reference>
+
+  <see-also>
+    <link path="content/01-core-rules.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+  </see-also>
+</text>

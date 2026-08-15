@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-009, Java/Spring: 6 slug collisions resolved merge-then-archive,
+  survivor `backend/` in all six.** `java-jpa-hibernate` was the heaviest merge
+  in the set — 6→12 rules, 6→15 antipatterns, and the loser's three CR-008
+  non-canonical parts (`01-entity-mapping`, `02-repository-queries`,
+  `03-antipatterns`) folded *into* canonical parts, which closes a CR-008 item
+  as a side effect rather than carrying the bad filenames across.
+
+  **A third brief in this CR turned out to be wrong, and the pattern is now the
+  finding.** `java-spring` was briefed as "nothing — dev is backend minus
+  MapStruct and BCrypt". The `dev/` copy in fact held four rules the survivor
+  lacked (`thin-controller`, `transactional-on-service-only`,
+  `record-dtos-with-validation`, `async-via-named-executor`), three failure
+  modes, and five templates — including `maven-annotation-processors.xml`, the
+  only template backing the survivor's *existing* `mapstruct-annotation-processor`
+  rule. Together with `php-laravel-patterns` and `ruby-rails-patterns`, that is
+  three of three "nothing unique" claims falsified by reading. **The triage's
+  per-pair content claims were derived from partial reads and are not reliable;
+  only its bucket assignment is.** Merge-then-archive is what made this
+  recoverable — the ordering is the safeguard, not a formality.
+
+  **`06-decision-tree` has a hard depth cap of 5, and several trees already sit
+  exactly at 5** — so *any* added nesting breaks them. The merges use flat
+  sibling branches throughout. Worth knowing before the next tree edit: the
+  natural way to express a new routing rule is the one that fails.
+
+  `java-spring-boot-patterns` is the collision the policy predicted: the `dev/`
+  copy is a different subject (`@ConfigurationProperties` binding), folded as a
+  delimited "Configuration binding" section. The clean answer was a rename to
+  `spring-boot-configuration`, rejected on the §5 cost asymmetry.
+
+  `meta.json` was left untouched in all six survivors so the manifest's
+  `version` field does not drift; content versions were bumped inside the XML
+  headers only.
+
 - **CR-009, Python/Django: 3 slug collisions resolved merge-then-archive.**
   `django-celery` and `django-services` survive in `backend/` under
   `domain-boundaries.md` Rule 1; **`python-type-hints` survives in `dev/`** —

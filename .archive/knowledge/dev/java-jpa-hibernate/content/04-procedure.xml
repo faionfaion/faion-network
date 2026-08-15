@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="04-procedure" title="JPA/Hibernate Procedure" version="1.1.0" est_tokens="700" depth="essential">
+  <summary>5-step procedure to produce an entity + narrow repository + transactional service.</summary>
+
+  <section title="Procedure">
+
+    <step n="1" name="design-entity">
+      <input>Entity spec + relations</input>
+      <action>Define `@Entity` with `@Id`, audit timestamps (`@CreationTimestamp`/`@UpdateTimestamp`), `@Version` if mutable. For each association add Javadoc justifying cascade + orphanRemoval + fetch choice.</action>
+      <output>Entity class</output>
+      <decision-gate>If any association uses `CascadeType.ALL` without justification, FAIL.</decision-gate>
+    </step>
+
+    <step n="2" name="osiv-off">
+      <input>application.yml</input>
+      <action>Set `spring.jpa.open-in-view: false`. Add CI check that fails if the property is missing or set to true.</action>
+      <output>OSIV disabled</output>
+    </step>
+
+    <step n="3" name="narrow-repository">
+      <input>Entity + use cases</input>
+      <action>Define narrow interface `OrderRepository` listing only used methods. If dynamic filtering needed, also extend `JpaSpecificationExecutor&lt;Order&gt;` on a separate interface.</action>
+      <output>Repository interface</output>
+    </step>
+
+    <step n="4" name="dto-projections-for-reads">
+      <input>Read endpoints</input>
+      <action>Define interface or class projections for list endpoints. Repository methods return `List&lt;OrderDto&gt;` via `@Query("SELECT new ...OrderDto(o.id, o.total) FROM Order o")` or interface projection.</action>
+      <output>DTO + projection query</output>
+    </step>
+
+    <step n="5" name="transactional-service-with-joinfetch">
+      <input>Repository + DTOs</input>
+      <action>Service uses `@Transactional(readOnly=true)` on read methods, `@Transactional` on writes. Eager loads use `JOIN FETCH` repository methods. Returns DTOs, not entities.</action>
+      <output>Service class</output>
+      <decision-gate>If service returns an entity, FAIL — wrap in DTO.</decision-gate>
+    </step>
+
+  </section>
+</text>

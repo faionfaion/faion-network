@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="JPA/Hibernate Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Four JPA/Hibernate antipatterns observed in production. Symptom + root cause + fix per item.</summary>
+
+  <section title="Antipatterns">
+
+    <antipattern id="open-in-view" severity="high">
+      <symptom>`spring.jpa.open-in-view=true` (Spring Boot default). Lazy collections accessed during JSON serialisation fire queries inside the request thread; p99 latency inflates; LazyInit errors hide.</symptom>
+      <root-cause source="Spring Boot defaults">OSIV kept session open across the full HTTP lifecycle.</root-cause>
+      <fix>Set `spring.jpa.open-in-view=false`. Eager-load required associations inside the service via `JOIN FETCH` / `@EntityGraph`. Map to DTOs before returning to the controller.</fix>
+    </antipattern>
+
+    <antipattern id="cascade-all" severity="high">
+      <symptom>`@OneToMany(cascade = CascadeType.ALL)` on `Customer.orders`. Deleting a customer wipes their order history including paid invoices. Compliance violation + customer-trust event.</symptom>
+      <root-cause source="Hibernate cascade semantics">`CascadeType.ALL` applied without justification; ownership not analyzed.</root-cause>
+      <fix>Replace with narrower cascade set (e.g., `PERSIST, MERGE` only) + write a Javadoc justification. Orphan removal only where the child genuinely cannot exist without parent.</fix>
+    </antipattern>
+
+    <antipattern id="lazy-outside-tx" severity="high">
+      <symptom>Service returns entity; controller serialises it; `LazyInitializationException` fires on a nested collection.</symptom>
+      <root-cause source="Hibernate session lifecycle">Lazy collection accessed after transaction close.</root-cause>
+      <fix>Either: (a) load the association via `JOIN FETCH` in the repository method, OR (b) map to a DTO inside the transactional service so the controller never touches the entity graph.</fix>
+    </antipattern>
+
+    <antipattern id="n-plus-1" severity="high">
+      <symptom>List endpoint loads 100 orders; iterating `order.items` triggers 100 additional `SELECT * FROM items WHERE order_id = ?`. Endpoint takes 4s.</symptom>
+      <root-cause source="Naive FetchType.LAZY iteration">Repository method `findAll()` returned entities; caller iterated collections without `JOIN FETCH`.</root-cause>
+      <fix>Add a repository method with `@Query("SELECT o FROM Order o JOIN FETCH o.items")` or project directly to a DTO with the required fields.</fix>
+    </antipattern>
+
+  </section>
+</text>

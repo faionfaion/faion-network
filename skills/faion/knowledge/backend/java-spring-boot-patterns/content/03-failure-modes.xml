@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Java Spring Boot Enterprise Patterns Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 antipatterns observed in real enterprise Spring Boot 3 codebases. Each pairs symptom + root cause + concrete fix.</summary>
+<text id="03-failure-modes" title="Java Spring Boot Enterprise Patterns Failure Modes" version="1.2.0" est_tokens="1300" depth="essential">
+  <summary>8 antipatterns observed in real enterprise Spring Boot 3 codebases. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -23,15 +23,33 @@
     </antipattern>
 
     <antipattern id="custom-error-shape" severity="medium">
-      <symptom>Each controller returns a different JSON error shape; clients implement N different parsers.</symptom>
-      <root-cause source="Spring docs — exception handling">No `@RestControllerAdvice`; each controller invents its own.</root-cause>
-      <fix>Add one `@RestControllerAdvice` mapping every domain exception → `ProblemDetail`. Delete per-controller `try/catch` for cross-cutting handling.</fix>
+      <symptom>Each controller returns a different JSON error shape; clients implement N different parsers. Where no handler exists at all, the production 500 carries Spring's default body including a stack trace.</symptom>
+      <root-cause source="Spring docs — exception handling">No `@RestControllerAdvice`; each controller invents its own, and unhandled exceptions fall through to the default error attributes.</root-cause>
+      <fix>Add one `@RestControllerAdvice` extending `ResponseEntityExceptionHandler`, mapping every domain exception → `ProblemDetail.forStatusAndDetail(...)` with a stable `type` URI. Delete per-controller `try/catch` for cross-cutting handling.</fix>
     </antipattern>
 
     <antipattern id="no-readonly-default" severity="medium">
       <symptom>Read-heavy endpoint runs slow under load; Hibernate flushes the dirty-check cache on every method exit.</symptom>
       <root-cause source="Spring transaction docs">Service has no class-level `@Transactional(readOnly = true)`; every method opens a writable transaction.</root-cause>
       <fix>Add `@Transactional(readOnly = true)` at class level; override on write methods. Verify with a single integration test that read endpoints log zero `UPDATE` statements.</fix>
+    </antipattern>
+
+    <antipattern id="config-value-blast" severity="medium">
+      <symptom>A bean carries 15 `@Value("${...}")` fields. Renaming a property in `application.yml` breaks code the compiler never touched, and the failure appears at runtime.</symptom>
+      <root-cause source="Spring Boot reference — externalized configuration">String-based property access spread bean by bean, with no central type-safe binding.</root-cause>
+      <fix>Collapse each concern into one `@ConfigurationProperties` record (`MailProperties`, `AuthProperties`) and inject the record per `config-properties-typed`.</fix>
+    </antipattern>
+
+    <antipattern id="config-startup-misconfig" severity="high">
+      <symptom>The deploy reports success; the first request that touches the retry path fails with `NumberFormatException` because `retry.delay=abc`.</symptom>
+      <root-cause source="Spring Boot reference — JSR-380 validation">The property was bound by `@Value` at injection time with no validation, so the bad value reached business logic unchecked.</root-cause>
+      <fix>Bind via `@ConfigurationProperties` + `@Validated` per `config-validation-on-properties`, so the misconfiguration fails context startup with a `ConstraintViolation` naming the property.</fix>
+    </antipattern>
+
+    <antipattern id="config-runtime-env-branch" severity="medium">
+      <symptom>`if (env.equals("prod")) sendEmail(); else log(...);` — after a refactor, development starts sending real email to real customers.</symptom>
+      <root-cause source="Spring Framework reference — environment">Environment branching decided at runtime instead of at bean-wiring time.</root-cause>
+      <fix>Replace the branch with two beans — `@Profile("prod") EmailSender realSender()` and `@Profile("!prod") EmailSender logSender()` — or `@ConditionalOnProperty` for a feature flag, per `config-conditional-on-property`.</fix>
     </antipattern>
 
   </section>

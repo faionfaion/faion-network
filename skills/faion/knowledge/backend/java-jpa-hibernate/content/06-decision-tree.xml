@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="JPA / Hibernate Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+<text id="06-decision-tree" title="JPA / Hibernate Decision Tree" version="1.2.0" est_tokens="1000" depth="essential">
+  <summary>Routing tree mapping observable signals — workload shape, entity diff, bulk op, new aggregate, read vs write path, test layer — to a rule from 01-core-rules.xml.</summary>
 
   <decision-tree>
-    <root-question id="q-workload">Workload shape?</root-question>
+    <root-question id="q-workload">Workload shape, and which part of the JPA layer is being touched?</root-question>
 
     <branch when="shape == read_heavy_analytics">
       <conclusion ref="lazy-by-default" verdict="skip-this-methodology — use Spring Data JDBC / jOOQ for reporting"/>
@@ -34,9 +34,53 @@
         </branch>
       </branch>
     </branch>
+
+    <branch when="shape == transactional_oltp AND touching == new_aggregate">
+      <question id="q-editable">Aggregate is user-editable with concurrent writers?</question>
+      <branch when="concurrent_writes == true">
+        <conclusion ref="optimistic-locking-on-editable-aggregates" verdict="add @Version; the service catches OptimisticLockException and surfaces a domain error; PESSIMISTIC_WRITE only for inventory / balance writes"/>
+      </branch>
+      <branch when="concurrent_writes == false">
+        <conclusion ref="audit-timestamps" verdict="add @CreationTimestamp (updatable=false) + @UpdateTimestamp before anything else touches the entity"/>
+      </branch>
+    </branch>
+
+    <branch when="shape == transactional_oltp AND touching == association_mapping">
+      <question id="q-cascade">Declaring cascade or orphanRemoval on the association?</question>
+      <branch when="declares_cascade == true">
+        <conclusion ref="justified-cascade-fetch" verdict="write the Javadoc justification for cascade + orphanRemoval + fetch; CascadeType.ALL without one is blocked"/>
+      </branch>
+      <branch when="declares_cascade == false">
+        <conclusion ref="lazy-by-default" verdict="leave FetchType.LAZY; load per query via JOIN FETCH or @EntityGraph where a caller needs it"/>
+      </branch>
+    </branch>
+
+    <branch when="shape == transactional_oltp AND touching == read_path">
+      <question id="q-list">List query over potentially many rows?</question>
+      <branch when="is_list == true">
+        <conclusion ref="dto-projection-on-reads" verdict="project to a DTO in the query; add JOIN FETCH only if the DTO needs an association"/>
+      </branch>
+      <branch when="is_list == false">
+        <conclusion ref="narrow-repo-interface" verdict="single-entity load via a narrow repository method; raw JpaRepository never reaches a service signature"/>
+      </branch>
+    </branch>
+
+    <branch when="shape == transactional_oltp AND touching == service_method">
+      <question id="q-tx">Method reads or writes?</question>
+      <branch when="method == read">
+        <conclusion ref="service-owns-transaction-boundary" verdict="@Transactional(readOnly = true) on the service method; never annotate the repository"/>
+      </branch>
+      <branch when="method == write">
+        <conclusion ref="service-owns-transaction-boundary" verdict="@Transactional on the service write method; map to DTOs before returning"/>
+      </branch>
+    </branch>
   </decision-tree>
 
   <example trace="invoice-aggregate-add">
     shape=transactional_oltp → entity_diff=true → flyway-migration-per-entity-change → ship V12__add_invoice_status.sql with the entity change.
+  </example>
+
+  <example trace="orders-list-read">
+    shape=transactional_oltp, touching=read_path → is_list=true → dto-projection-on-reads → add `findAllSummaries(Pageable)` returning `OrderSummaryDto`; no entity hydrated.
   </example>
 </text>

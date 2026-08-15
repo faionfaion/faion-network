@@ -46,9 +46,9 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 rules: naming-convention, layer-slice-assignment, assertj-over-junit-assert, awaitility-not-thread-sleep, testcontainers-not-h2, jacoco-gate-in-ci | 1100 |
+| `content/01-core-rules.xml` | essential | 7 rules: naming-convention, layer-slice-assignment, assertj-over-junit-assert, awaitility-not-thread-sleep, testcontainers-not-h2, jacoco-gate-in-ci, parameterizedtest-for-boundaries | 1300 |
 | `content/02-output-contract.xml` | essential | JSON Schema for the test-plan manifest + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 6 antipatterns: mocking-wrong-layer, argument-matcher-mixing, mockbean-on-non-bean, springboottest-everywhere, mockedstatic-leak, missing-rollback | 900 |
+| `content/03-failure-modes.xml` | essential | 9 antipatterns: mocking-wrong-layer, argument-matcher-mixing, mockbean-on-non-bean, springboottest-everywhere, mockedstatic-leak, missing-rollback, manual-collaborator-construction, void-async-test, deprecated-mockbean | 1300 |
 | `content/04-procedure.xml` | essential | 5-step procedure: assign-layer-slice → controller tests → service tests → repository tests → coverage gate | 800 |
 | `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 700 |
 
@@ -59,6 +59,7 @@
 | `generate-controller-test` | sonnet | MockMvc + jsonPath assertion synthesis. |
 | `generate-service-test` | sonnet | Per-branch Mockito stubbing. |
 | `audit-springboottest-usage` | haiku | Mechanical scan for `@SpringBootTest` on slice tests. |
+| `generate-parametric-cases` | sonnet | Choosing @ValueSource vs @CsvSource vs @MethodSource per boundary set. |
 
 ## Templates
 
@@ -66,6 +67,8 @@
 |------|---------|
 | `templates/controller-test.java` | @WebMvcTest skeleton with MockMvc + jsonPath assertions. |
 | `templates/service-test.java` | Mockito-only unit test skeleton with AssertJ. |
+| `templates/RepositoryTests.java` | @DataJpaTest repository slice skeleton with Testcontainers Postgres + @ServiceConnection. |
+| `templates/IntegrationTests.java` | @SpringBootTest(RANDOM_PORT) end-to-end skeleton with TestRestTemplate + Testcontainers. |
 | `templates/jacoco-gate.sh` | CI wrapper enforcing line/branch thresholds against `jacoco.xml`. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
@@ -243,4 +246,104 @@ if fails:
     sys.exit(1)
 print("OK")
 PY
+```
+
+### `templates/RepositoryTests.java`
+
+```java
+// purpose: @DataJpaTest repository slice test skeleton (Testcontainers Postgres optional)
+// consumes: repository interface + entity
+// produces: repository slice test class
+// depends-on: content/01-core-rules.xml
+// token-budget-impact: ~250 tokens when loaded as reference
+
+package faion.infra.orders;
+
+import faion.domain.orders.Order;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
+import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@DataJpaTest
+@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@Testcontainers
+class OrderRepositoryTest {
+
+    @Container
+    @ServiceConnection
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
+
+    @Autowired
+    private OrderRepository repository;
+
+    @Test
+    void save_and_findById_returnsAggregateWithItems() {
+        Order saved = repository.save(new Order("Alice"));
+
+        var found = repository.findByIdWithItems(saved.getId());
+
+        assertThat(found).isPresent();
+        assertThat(found.get().getCustomerName()).isEqualTo("Alice");
+    }
+}
+```
+
+### `templates/IntegrationTests.java`
+
+```java
+// purpose: @SpringBootTest end-to-end integration test skeleton with Testcontainers
+// consumes: full application context + real DB
+// produces: integration test class
+// depends-on: content/01-core-rules.xml
+// token-budget-impact: ~250 tokens when loaded as reference
+
+package faion.app;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Testcontainers
+class OrdersIntegrationTest {
+
+    @Container
+    @ServiceConnection
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
+
+    @Autowired
+    private TestRestTemplate rest;
+
+    @Test
+    void createAndGetOrder_endToEnd() {
+        ResponseEntity<String> created = rest.postForEntity(
+            "/api/orders",
+            new CreateOrderRequest("Alice"),
+            String.class
+        );
+        assertThat(created.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+
+        ResponseEntity<String> got = rest.getForEntity(created.getHeaders().getLocation(), String.class);
+        assertThat(got.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertThat(got.getBody()).contains("Alice");
+    }
+
+    record CreateOrderRequest(String customerName) {}
+}
 ```

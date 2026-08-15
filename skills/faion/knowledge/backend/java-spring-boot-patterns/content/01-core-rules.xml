@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Java Spring Boot Enterprise Patterns Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the enterprise Spring Boot 3 patterns. Each rule pairs a binary check + sourced rationale.</summary>
+<text id="01-core-rules" title="Java Spring Boot Enterprise Patterns Core Rules" version="1.2.0" est_tokens="1700" depth="essential">
+  <summary>10 testable rules for Spring Boot 3 services: 6 enterprise entity/service/search patterns, plus a delimited configuration-binding group with `config-` prefixed ids. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
 
@@ -25,8 +25,8 @@
     </rule>
 
     <rule id="problemdetail-advice" testable="true" depth="essential">
-      <statement>Errors MUST surface as RFC 7807 `ProblemDetail` via a single `@RestControllerAdvice`. Custom JSON error shapes are forbidden.</statement>
-      <rationale source="RFC 7807 + Spring 6 docs">One contract lets every client implement a single parser; ad-hoc shapes multiply parsing logic and miss security-relevant fields.</rationale>
+      <statement>Errors MUST surface as RFC 7807 `ProblemDetail` via a single `@RestControllerAdvice` extending `ResponseEntityExceptionHandler`, with `handleMethodArgumentNotValid` overridden so validation failures share the contract. Custom JSON error shapes are forbidden, and no response may carry a stack trace.</statement>
+      <rationale source="RFC 7807 + Spring 6 docs">One contract lets every client implement a single parser; ad-hoc shapes multiply parsing logic and miss security-relevant fields. Spring's default error JSON includes a timestamp and trace, so leaving it in place leaks internals on every 500.</rationale>
     </rule>
 
     <rule id="actuator-and-micrometer" testable="true" depth="essential">
@@ -36,10 +36,36 @@
 
   </section>
 
+  <section title="Configuration binding">
+    <p>These four rules govern how configuration reaches a bean. They were merged in from a second methodology that shared this slug and covered configuration binding rather than the entity/service/search patterns above; their ids carry a `config-` prefix so the two concerns stay legible. They apply to any Spring Boot 3 service, enterprise-grade or not.</p>
+
+    <rule id="config-properties-typed" testable="true" depth="essential">
+      <statement>Every group of related properties MUST bind to a `@ConfigurationProperties` record or class registered with `@EnableConfigurationProperties`. More than three `@Value` annotations in a single bean is forbidden.</statement>
+      <rationale source="Spring Boot reference — externalized configuration">Type-safe binding turns a misconfiguration into a startup failure with a named property. Scattered `@Value` spreads brittle string references across the codebase, so renaming a property breaks code the compiler never looked at.</rationale>
+    </rule>
+
+    <rule id="config-validation-on-properties" testable="true" depth="essential">
+      <statement>Every `@ConfigurationProperties` type MUST be annotated `@Validated` and MUST constrain each field with Jakarta Bean Validation (`@NotNull`, `@NotBlank`, `@Min`, `@Max`, `@Pattern`, `@Email`).</statement>
+      <rationale source="Spring Boot reference — JSR-380 validation">A misconfigured production deploy then fails the context startup with a clear `ConstraintViolation` naming the property, instead of surfacing as a `NumberFormatException` on the first request that happens to touch the value.</rationale>
+    </rule>
+
+    <rule id="config-conditional-on-property" testable="true" depth="essential">
+      <statement>Optional and feature-flagged beans MUST be wired with `@ConditionalOnProperty(name = ..., havingValue = ...)`. Environment-specific beans MUST use `@Profile`. Runtime branches such as `if (env.equals("prod"))` are forbidden.</statement>
+      <rationale source="Spring Boot reference — auto-configuration">Conditions are evaluated once at bootstrap and are visible to static analysis and to the actuator's conditions report. A runtime `if` drifts silently — the classic outcome is a refactor that leaves the real email sender wired in a development profile.</rationale>
+    </rule>
+
+    <rule id="config-no-system-getenv" testable="true" depth="essential">
+      <statement>Beans MUST NOT read configuration through `System.getenv()` or `System.getProperty()`. All configuration flows through `Environment`, `@Value`, or `@ConfigurationProperties`.</statement>
+      <rationale source="Spring Framework reference — environment abstraction">A direct environment read bypasses profiles, bypasses validation, and cannot be overridden in a test — the value is fixed by the JVM the test happens to run in.</rationale>
+    </rule>
+
+  </section>
+
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
     <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="JPA/Hibernate Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping read/write shape to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-shape">Method is read-only or write?</root-question>
+
+    <branch when="shape == read">
+      <question id="q-list">List query (potentially many rows)?</question>
+      <branch when="is_list == true">
+        <conclusion ref="dto-projection-on-reads" verdict="DTO projection + .AsNoTracking equivalent (Hibernate: stateless / projection); add JOIN FETCH only if associations are required by the DTO"/>
+      </branch>
+      <branch when="is_list == false">
+        <question id="q-eager">Need to eager-load associations?</question>
+        <branch when="needs_eager == true">
+          <conclusion ref="joinfetch-for-eager" verdict="use JOIN FETCH or @EntityGraph inside the @Transactional service"/>
+        </branch>
+        <branch when="needs_eager == false">
+          <conclusion ref="narrow-repo-interface" verdict="single-entity load via narrow repository method"/>
+        </branch>
+      </branch>
+    </branch>
+
+    <branch when="shape == write">
+      <question id="q-concurrency">User-editable aggregate with concurrent writers?</question>
+      <branch when="concurrent_writes == true">
+        <conclusion ref="audit-timestamps" verdict="add @Version + optimistic locking; service catches OptimisticLockException and surfaces a domain error"/>
+      </branch>
+      <branch when="concurrent_writes == false">
+        <conclusion ref="justified-cascade-fetch" verdict="write through narrow repository; cascade choices documented; @Transactional on the service write method"/>
+      </branch>
+    </branch>
+  </decision-tree>
+
+  <example trace="orders-list-read">
+    shape=read → is_list=true → use DTO projection + narrow repository method `findAllSummaries(Pageable)`; no entity loaded.
+  </example>
+</text>

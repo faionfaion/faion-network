@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Spring Boot Layered Architecture Procedure" version="1.1.0" est_tokens="800" depth="essential">
+<text id="04-procedure" title="Spring Boot Layered Architecture Procedure" version="1.2.0" est_tokens="1000" depth="essential">
   <summary>5-step procedure to scaffold a Spring Boot 3 layered service end-to-end.</summary>
 
   <section title="Procedure">
 
     <step n="1" name="add-controller">
       <input>API contract</input>
-      <action>Add `@RestController` under `Features/&lt;Feature&gt;/`. Annotate inputs with `@Valid` + Bean Validation. Inject the service; return record DTOs.</action>
+      <action>Add `@RestController` under `Features/&lt;Feature&gt;/`. Define the request DTO as a `record` carrying Bean Validation annotations and bind it with `@Valid`. Inject the service; each method makes exactly one service call and returns a record DTO. No `@Transactional`, no repository, no orchestration in this layer.</action>
       <output>Per-endpoint controller method</output>
       <decision-gate>If a method returns an entity, BLOCK per `dto-record-never-entity` rule.</decision-gate>
+      <decision-gate>If the controller annotates `@Transactional` or autowires a repository, BLOCK per `thin-controller` and `transactional-on-service-only` rules.</decision-gate>
+      <decision-gate>If a request DTO is not a record or carries no validation annotations, BLOCK per `record-dtos-with-validation` rule.</decision-gate>
     </step>
 
     <step n="2" name="add-service-with-transactional">
@@ -34,8 +36,9 @@
 
     <step n="5" name="add-global-exception-advice-and-tests">
       <input>Domain exception list</input>
-      <action>Add `@RestControllerAdvice` mapping `ResourceNotFoundException` → 404, `ValidationException` → 400, etc., into RFC 7807 ProblemDetail. Add controller/service tests per `java-junit-testing`.</action>
-      <output>Consistent error responses + green tests</output>
+      <action>Add `@RestControllerAdvice` mapping `ResourceNotFoundException` → 404, `ValidationException` → 400, etc., into RFC 7807 `ProblemDetail` — never a bespoke error envelope. If the feature needs async work, extract the `@Async` methods into their own bean and define a named `ThreadPoolTaskExecutor` with explicit core size, max size and queue capacity. Add controller/service tests per `java-junit-testing`.</action>
+      <output>Consistent ProblemDetail error responses + AsyncConfig where needed + green tests</output>
+      <decision-gate>If `@Async` is self-invoked or has no named executor, BLOCK per `async-via-named-executor` rule.</decision-gate>
     </step>
 
   </section>

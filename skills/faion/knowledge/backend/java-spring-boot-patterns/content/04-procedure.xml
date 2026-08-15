@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Java Spring Boot Enterprise Patterns Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>5-step procedure to scaffold an enterprise Spring Boot 3 service end-to-end.</summary>
+<text id="04-procedure" title="Java Spring Boot Enterprise Patterns Procedure" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>6-step procedure to scaffold an enterprise Spring Boot 3 service end-to-end.</summary>
 
   <section title="Procedure">
 
@@ -32,9 +32,18 @@
 
     <step n="5" name="wire-actuator-problemdetail-security">
       <input>Observability + security policy</input>
-      <action>Add Spring Boot Actuator + Micrometer Prometheus + `springdoc-openapi-starter-webmvc-ui`. Configure Spring Security to require auth on Actuator endpoints other than `/health`. Add one `@RestControllerAdvice` returning `ProblemDetail`.</action>
+      <action>Add Spring Boot Actuator + Micrometer Prometheus + `springdoc-openapi-starter-webmvc-ui`. Configure Spring Security to require auth on Actuator endpoints other than `/health`. Add one `@RestControllerAdvice` extending `ResponseEntityExceptionHandler` that returns `ProblemDetail` for every domain exception and for `handleMethodArgumentNotValid`.</action>
       <output>Observability + auth + error contract in place</output>
       <decision-gate>If Actuator endpoints are open to the public, BLOCK per `actuator-and-micrometer` rule.</decision-gate>
+    </step>
+
+    <step n="6" name="bind-configuration">
+      <input>Every `@Value` and `System.getenv` call in the module, plus the per-environment override list</input>
+      <action>Group the properties by concern and define one `@ConfigurationProperties(prefix = "app.&lt;concern&gt;") @Validated` record per group, constraining every field with Jakarta Bean Validation and registering it with `@EnableConfigurationProperties`. Delete the scattered `@Value` fields and every `System.getenv` / `System.getProperty` read. Replace runtime environment branches with `@Profile`-annotated beans, and feature-flagged beans with `@ConditionalOnProperty`. Boot each profile YAML in turn and confirm a bad value fails startup with a `ConstraintViolation`.</action>
+      <output>One validated properties record per concern; profile- and condition-wired beans; green startup across every profile</output>
+      <decision-gate>If any bean holds more than three `@Value` annotations, BLOCK per `config-properties-typed` rule.</decision-gate>
+      <decision-gate>If a `@ConfigurationProperties` type lacks `@Validated` or leaves a field unconstrained, BLOCK per `config-validation-on-properties` rule.</decision-gate>
+      <decision-gate>If a runtime environment check or a `System.getenv` call remains, BLOCK per `config-conditional-on-property` and `config-no-system-getenv` rules.</decision-gate>
     </step>
 
   </section>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Spring Boot JUnit Testing Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>6 antipatterns observed in real Spring Boot test suites. Each pairs symptom + root cause + concrete fix.</summary>
+<text id="03-failure-modes" title="Spring Boot JUnit Testing Failure Modes" version="1.2.0" est_tokens="1300" depth="essential">
+  <summary>9 antipatterns observed in real Spring Boot test suites. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -38,6 +38,24 @@
       <symptom>`@SpringBootTest` repository test runs twice on CI; second run fails with `DuplicateKeyException` on seed data.</symptom>
       <root-cause source="Spring Boot test docs">`@SpringBootTest` does not roll back per test by default; seed inserts persist.</root-cause>
       <fix>Add `@Transactional` (rolls back per test) or `@Sql(executionPhase=AFTER_TEST_METHOD)` for explicit cleanup.</fix>
+    </antipattern>
+
+    <antipattern id="manual-collaborator-construction" severity="medium">
+      <symptom>`new OrderService(new MockRepository())` in the test body. Collaborators are wired by hand per test, mock state leaks between methods, and the real DI graph is never exercised.</symptom>
+      <root-cause source="Mockito + JUnit Jupiter docs">`MockitoExtension` skipped in favour of manual construction, usually because the SUT constructor was easy to call.</root-cause>
+      <fix>Use `@ExtendWith(MockitoExtension.class)` with `@Mock` collaborators and `@InjectMocks` on the SUT per `layer-slice-assignment`. Mockito then enforces strict stubbing and resets mocks between tests.</fix>
+    </antipattern>
+
+    <antipattern id="void-async-test" severity="medium">
+      <symptom>An async or reactive test method is declared `void`; assertion failures inside the async path never propagate. CI stays green while production is broken.</symptom>
+      <root-cause source="JUnit Jupiter async testing">The test returned before the async work completed, so the assertion ran on another thread and its failure was swallowed.</root-cause>
+      <fix>Return the async type (`Mono`, `Flux`, `CompletableFuture`) so JUnit joins on it, use `StepVerifier` for Reactor, or block on `Awaitility.await()` per `awaitility-not-thread-sleep`. Never leave async work behind a `void` test.</fix>
+    </antipattern>
+
+    <antipattern id="deprecated-mockbean" severity="medium">
+      <symptom>Build emits deprecation warnings on every slice test; a Spring Boot upgrade breaks the suite wholesale.</symptom>
+      <root-cause source="Spring Boot 3.4 release notes">`@MockBean` and `@SpyBean` are deprecated as of Spring Boot 3.4 in favour of `@MockitoBean` / `@MockitoSpyBean`. Models and snippets predating 2024 keep emitting the old annotations.</root-cause>
+      <fix>On Spring Boot ≥ 3.4 use `@MockitoBean` / `@MockitoSpyBean`. Pin the Boot version in any generation prompt and lint for the deprecated pair. On Boot &lt; 3.4 `@MockBean` remains correct.</fix>
     </antipattern>
 
   </section>

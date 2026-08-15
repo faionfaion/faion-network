@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="JPA / Hibernate Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>6 antipatterns observed in real Spring Data JPA + Hibernate deployments. Each pairs symptom + root cause + concrete fix.</summary>
+<text id="03-failure-modes" title="JPA / Hibernate Failure Modes" version="1.2.0" est_tokens="1700" depth="essential">
+  <summary>15 antipatterns observed in real Spring Data JPA + Hibernate deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -8,6 +8,12 @@
       <symptom>Adding an entity to a `Set` triggers infinite recursion and a `StackOverflowError`; or `Set` semantics break (duplicates allowed).</symptom>
       <root-cause source="Lombok docs">`@Data` generates `equals`/`hashCode` over all fields, including lazy collections; touching a collection loads it from the DB and recurses.</root-cause>
       <fix>Replace `@Data` with `@Getter @Setter`. Implement `equals`/`hashCode` manually over a business key per `business-key-equality` rule.</fix>
+    </antipattern>
+
+    <antipattern id="id-based-equality" severity="high">
+      <symptom>Two unpersisted entities compare equal and collapse into one element of a `Set`/`Map`; after flush the same object stops matching its earlier hash bucket.</symptom>
+      <root-cause source="Vlad Mihalcea — entity equality">`equals`/`hashCode` written over the DB-assigned `@Id`, typically via Lombok `@EqualsAndHashCode(of = "id")`. Before insert `id` is `null`, so every transient instance is equal to every other; after insert the hash changes.</root-cause>
+      <fix>Use an externally-assigned UUID or a business key per `business-key-equality`, or Mihalcea's type-plus-UUID pattern that stays stable across the transient→managed transition.</fix>
     </antipattern>
 
     <antipattern id="eager-fetch-default" severity="high">
@@ -24,8 +30,8 @@
 
     <antipattern id="missing-migration" severity="high">
       <symptom>Deploy aborts with `SchemaManagementException: missing column ...` or — worse — `ddl-auto=update` silently alters the prod schema.</symptom>
-      <root-cause source="Internal — migration retro 2026-Q1">Entity diff merged without a paired Flyway migration.</root-cause>
-      <fix>Enforce `ddl-auto=validate` in prod profile; gate PRs on a `validate-paired-migration.py` script that fails if an entity diff lands without a `db/migration/V*.sql` change.</fix>
+      <root-cause source="Internal — migration retro 2026-Q1">Entity diff merged without a paired Flyway migration. CI hides it because tests run `ddl-auto=create`; only the production deploy, running `validate`, fails.</root-cause>
+      <fix>Enforce `ddl-auto=validate` in prod profile; gate PRs on a `validate-paired-migration.py` script that fails if an entity diff lands without a `db/migration/V*.sql` change. `ddl-auto=update` is never the fix: it cannot drop a column, cannot rename one, and has no rollback path — schema change belongs in a reviewed Flyway/Liquibase migration with a documented rollback.</fix>
     </antipattern>
 
     <antipattern id="modifying-without-clear" severity="medium">
@@ -38,6 +44,54 @@
       <symptom>Repository test suite takes 90 s to boot; CI flakes when the full context cache exceeds the JVM heap.</symptom>
       <root-cause source="Spring Boot test slice docs">Author used `@SpringBootTest` for what should be a repository-only test, loading the entire web + security context.</root-cause>
       <fix>Switch to `@DataJpaTest` + Testcontainers; reserve `@SpringBootTest` for cross-layer integration tests where the full stack is the SUT.</fix>
+    </antipattern>
+
+    <antipattern id="open-in-view" severity="high">
+      <symptom>`spring.jpa.open-in-view=true` (the Spring Boot default). Lazy collections accessed during JSON serialisation fire queries on the request thread; p99 latency inflates and `LazyInitializationException` never surfaces in development.</symptom>
+      <root-cause source="Spring Boot defaults">OSIV keeps the `EntityManager` session open across the whole HTTP lifecycle including the view/serialisation layer, masking N+1 in dev and exhausting the connection pool under production pressure.</root-cause>
+      <fix>Set `spring.jpa.open-in-view=false` in every profile and add a CI check that fails if the property is missing or true. Eager-load required associations inside the service via `JOIN FETCH` / `@EntityGraph` and map to DTOs before returning.</fix>
+    </antipattern>
+
+    <antipattern id="lazy-outside-tx" severity="high">
+      <symptom>Service returns an entity; the controller or `@RestController` serialiser walks a nested collection; `LazyInitializationException` fires.</symptom>
+      <root-cause source="Hibernate session lifecycle">The Hibernate session closes when the service transaction commits; accessing `order.getItems()` afterwards queries a closed session.</root-cause>
+      <fix>Either load the association via `JOIN FETCH` / `@EntityGraph` in the repository method, or map to a DTO inside the transactional service so the controller never touches the entity graph.</fix>
+    </antipattern>
+
+    <antipattern id="n-plus-1" severity="high">
+      <symptom>A list endpoint loads 100 orders; iterating `order.items` triggers 100 extra `SELECT * FROM items WHERE order_id = ?`. The endpoint takes 4 s.</symptom>
+      <root-cause source="Naive FetchType.LAZY iteration">`findAll()` returned entities and the caller iterated collections without `JOIN FETCH`. LAZY is the correct default; the missing piece is the explicit fetch plan.</root-cause>
+      <fix>Add a repository method with `@Query("SELECT o FROM Order o JOIN FETCH o.items")` or an `@EntityGraph`, or project straight to a DTO carrying only the required fields. Enable `hibernate.generate_statistics` and review the query count per test.</fix>
+    </antipattern>
+
+    <antipattern id="cascade-all-unjustified" severity="high">
+      <symptom>`@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)` on `Customer.orders`. Deleting a customer wipes their order history including paid invoices — a compliance and customer-trust event.</symptom>
+      <root-cause source="Hibernate cascade semantics">`CascadeType.ALL` applied reflexively without analysing ownership. With `orphanRemoval = true`, removing a child from the collection deletes a row that another aggregate may still reference.</root-cause>
+      <fix>Narrow the cascade set (often `PERSIST, MERGE` only) and write the Javadoc justification required by `justified-cascade-fetch`. Use `orphanRemoval` only where the child genuinely cannot exist without the parent.</fix>
+    </antipattern>
+
+    <antipattern id="optional-get-without-context" severity="medium">
+      <symptom>`NoSuchElementException: No value present` in the logs with no entity id, no type and no request context.</symptom>
+      <root-cause source="java.util.Optional contract">`findById(id).get()` called directly instead of `orElseThrow`.</root-cause>
+      <fix>Use `findById(id).orElseThrow(() -&gt; new NotFoundException("User " + id + " not found"))` so the message names the aggregate and the exception handler can map it to a 404.</fix>
+    </antipattern>
+
+    <antipattern id="entity-serialised-directly" severity="medium">
+      <symptom>Bidirectional association serialises to infinite recursion, or a JSON response leaks a password column.</symptom>
+      <root-cause source="Jackson + bidirectional mappings">The entity was handed to Jackson instead of a DTO; the back-reference re-enters the parent forever and every mapped column is exposed by default.</root-cause>
+      <fix>Serialise through DTOs per `dto-projection-in-controllers`. `@JsonIgnore` on the back-reference is a patch, not the boundary.</fix>
+    </antipattern>
+
+    <antipattern id="native-query-string-concat" severity="high">
+      <symptom>A `@Query(nativeQuery = true)` built by string concatenation over a request parameter; a crafted filter value returns rows from another tenant.</symptom>
+      <root-cause source="SQL injection — OWASP A03">JPQL and native queries concatenated instead of parameterised, usually to implement dynamic filtering.</root-cause>
+      <fix>Use named parameters (`:name`) exclusively; for dynamic filtering use `JpaSpecificationExecutor` / Criteria API, which is type-safe. Treat every `nativeQuery = true` as a human review checkpoint.</fix>
+    </antipattern>
+
+    <antipattern id="entitymanager-in-singleton" severity="medium">
+      <symptom>Intermittent `IllegalStateException: Session/EntityManager is closed`, or entities from one request visible in another.</symptom>
+      <root-cause source="JPA EntityManager contract">`EntityManager` injected into a singleton that outlives the request instead of being scoped to a transaction.</root-cause>
+      <fix>Inject `EntityManager` only via `@PersistenceContext` into beans used inside a transaction, or go through the repository. Never cache it on a long-lived field.</fix>
     </antipattern>
 
   </section>

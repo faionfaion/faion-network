@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Spring @Async Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+<text id="02-output-contract" title="Spring @Async Output Contract" version="1.2.0" est_tokens="1100" depth="essential">
   <summary>JSON Schema for the async-config manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
   <section title="Schema">
@@ -34,11 +34,14 @@
           "class": {"type": "string"},
           "method": {"type": "string"},
           "executor": {"type": "string", "minLength": 1},
-          "returns": {"type": "string", "pattern": "^CompletableFuture"}
+          "returns": {"type": "string", "pattern": "^CompletableFuture"},
+          "transactional_on_method": {"type": "boolean", "const": false}
         }
       }
     },
     "task_decorator_installed": {"type": "boolean", "const": true},
+    "uncaught_handler_registered": {"type": "boolean"},
+    "executor_metrics_registered": {"type": "boolean"},
     "graceful_shutdown": {
       "type": "object",
       "required": ["wait_for_tasks", "await_termination_seconds"],
@@ -60,9 +63,11 @@
     {"name": "emailExecutor", "rejected_execution_handler": "CallerRunsPolicy", "core_pool_size": 4, "queue_capacity": 256}
   ],
   "async_methods": [
-    {"class": "com.acme.notif.EmailService", "method": "send", "executor": "emailExecutor", "returns": "CompletableFuture<Void>"}
+    {"class": "com.acme.notif.EmailService", "method": "send", "executor": "emailExecutor", "returns": "CompletableFuture<Void>", "transactional_on_method": false}
   ],
   "task_decorator_installed": true,
+  "uncaught_handler_registered": true,
+  "executor_metrics_registered": true,
   "graceful_shutdown": {"wait_for_tasks": true, "await_termination_seconds": 30},
   "forbidden_patterns_found": []
 }
@@ -73,13 +78,15 @@
     <code lang="json"><![CDATA[
 {
   "executors": [{"name": "", "rejected_execution_handler": "AbortPolicy", "core_pool_size": 100, "queue_capacity": 0}],
-  "async_methods": [{"class": "com.acme.notif.EmailService", "method": "send", "executor": "", "returns": "void"}],
+  "async_methods": [{"class": "com.acme.notif.EmailService", "method": "send", "executor": "", "returns": "void", "transactional_on_method": true}],
   "task_decorator_installed": false,
+  "uncaught_handler_registered": false,
+  "executor_metrics_registered": false,
   "graceful_shutdown": {"wait_for_tasks": false, "await_termination_seconds": 0},
   "forbidden_patterns_found": ["self-invocation: this.sendAsync() inside EmailService"]
 }
 ]]></code>
-    <note>Executor unnamed; AbortPolicy; void return; decorator missing; no graceful shutdown; self-invocation present.</note>
+    <note>Executor unnamed; AbortPolicy; void return with no uncaught handler; @Transactional on the async method; decorator missing; no executor metrics; no graceful shutdown; self-invocation present.</note>
   </example>
 
   <section title="Forbidden patterns">
@@ -89,6 +96,8 @@
       <item>`this.asyncMethod()` self-invocation.</item>
       <item>`@Async` applied inside a `@Transactional` boundary expecting tx propagation.</item>
       <item>`Executors.newCachedThreadPool()` / unbounded queue.</item>
+      <item>`@Transactional` on the same method as `@Async` — the async thread holds no connection from the caller's transaction.</item>
+      <item>Executor with no Micrometer gauges — a rejected task is then invisible.</item>
     </list>
   </section>
 

@@ -1,0 +1,68 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-entity-mapping" title="JPA/Hibernate: Entity Mapping Rules">
+  <summary>Rules for @Entity definitions: auditing timestamps, fetch strategy justification, cascade declaration, @Version for optimistic locking, and required JPA annotations.</summary>
+
+  <section title="Entity Definition">
+    <rule>
+      <statement>Annotate created/updated timestamps with @CreationTimestamp and @UpdateTimestamp (Hibernate-specific) or use @EntityListeners(AuditingEntityListener.class) with @CreatedDate / @LastModifiedDate (Spring Data JPA). Mark createdAt with updatable=false.</statement>
+      <rationale>Manual timestamp management in service code is error-prone and misses bulk update paths. Hibernate-managed timestamps are applied at the persistence layer regardless of which code path modifies the entity.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Every @OneToMany and @ManyToMany must carry an explicit justification comment for cascade and orphanRemoval choices. Never use CascadeType.ALL without a written reason. FetchType.LAZY is the default and the correct default for collections.</statement>
+      <rationale>CascadeType.ALL with orphanRemoval=true on a relation to an entity referenced elsewhere corrupts data — orphanRemoval deletes the child when it is removed from the parent collection, even if other entities still reference it.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Add @Version on user-editable aggregates to enable optimistic locking. Use LockModeType.PESSIMISTIC_WRITE on repository methods for inventory / balance writes where lost updates must be prevented.</statement>
+      <rationale>Without locking, two concurrent requests that both read and then update the same row produce a lost update: the second write silently overwrites the first without either party knowing.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="java"><![CDATA[
+@Entity
+@Table(name = "users")
+@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, length = 100)
+    private String name;
+
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    @Column(nullable = false)
+    private String password;
+
+    @Column(name = "is_active")
+    @Builder.Default
+    private Boolean isActive = true;
+
+    @Version
+    private Long version;
+
+    // Cascade justification: Order lifecycle is fully owned by User.
+    // orphanRemoval: true because an Order without a User is invalid.
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private Set<Order> orders = new HashSet<>();
+
+    @CreationTimestamp
+    @Column(name = "created_at", updatable = false)
+    private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <reference path="templates/entity.java">Entity skeleton with auditing, lazy relations, @Version</reference>
+  <reference path="templates/application-jpa.yml">Safe JPA defaults: open-in-view=false, ddl-auto=validate, batch inserts</reference>
+</text>

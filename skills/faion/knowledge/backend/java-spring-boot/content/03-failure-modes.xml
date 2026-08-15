@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Spring Boot Patterns Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 antipatterns observed in real Spring Boot 3 codebases. Each pairs symptom + root cause + concrete fix.</summary>
+<text id="03-failure-modes" title="Spring Boot Patterns Failure Modes" version="1.2.0" est_tokens="1300" depth="essential">
+  <summary>8 antipatterns observed in real Spring Boot 3 codebases. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -32,6 +32,24 @@
       <symptom>Unit test cannot instantiate the bean without booting Spring; refactor that changes the constructor breaks tests.</symptom>
       <root-cause source="Spring docs — DI styles">Author used `@Autowired private Foo foo;`.</root-cause>
       <fix>Switch to constructor injection; declare fields `private final`. Add a static-analysis rule (`ArchUnit`) banning `@Autowired` on fields.</fix>
+    </antipattern>
+
+    <antipattern id="lazy-init-exception-on-serialise" severity="high">
+      <symptom>`LazyInitializationException` thrown while Jackson serialises the response. The same code path passes in tests, where a transaction is still open, and fails at runtime.</symptom>
+      <root-cause source="Spring Data JPA reference">An entity crossed the service boundary and its lazy associations were touched after the Hibernate session closed.</root-cause>
+      <fix>Convert the entity to a DTO inside the service while `@Transactional` is still active, and declare the associations the DTO needs with `@EntityGraph` or `JOIN FETCH` on the repository method.</fix>
+    </antipattern>
+
+    <antipattern id="unvalidated-request-body" severity="medium">
+      <symptom>A malformed payload reaches the service and fails deep in business logic as a `NullPointerException` or a constraint violation from the database; the client gets a 500 instead of a 400.</symptom>
+      <root-cause source="Jakarta Bean Validation 3.0 spec">`@Valid` missing on the controller parameter, or the request record carries no validation annotations, so nothing rejects the payload at the boundary.</root-cause>
+      <fix>Annotate the parameter `@Valid` and the record fields with Bean Validation constraints per `validation-on-controller`; let the `@RestControllerAdvice` map `MethodArgumentNotValidException` to a `ProblemDetail` 400.</fix>
+    </antipattern>
+
+    <antipattern id="actuator-wide-open" severity="high">
+      <symptom>`management.endpoints.web.exposure.include=*` in `application.yml`. `/actuator/env` returns datasource passwords and `/actuator/heapdump` downloads process memory to anyone who can reach the port.</symptom>
+      <root-cause source="Spring Boot Actuator reference">Wildcard exposure was set to make a probe work, and the security config was never narrowed afterwards.</root-cause>
+      <fix>Replace the wildcard with an explicit list (`health,info,prometheus`), put the actuator behind Spring Security, and expose only liveness/readiness health groups unauthenticated.</fix>
     </antipattern>
 
   </section>

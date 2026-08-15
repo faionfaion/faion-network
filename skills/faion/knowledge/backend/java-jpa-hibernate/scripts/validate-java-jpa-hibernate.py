@@ -31,6 +31,9 @@ REQUIRED = [
     "fetch_audit",
 ]
 SB_RE = re.compile(r"^3\.")
+REPO_RE = re.compile(r"^[A-Z][A-Za-z0-9]+Repository$")
+SVC_RE = re.compile(r"^[A-Z][A-Za-z0-9]+Service$")
+ASSOC_KINDS = {"OneToMany", "ManyToOne", "ManyToMany", "OneToOne"}
 
 
 def validate(obj: dict) -> list[str]:
@@ -56,6 +59,33 @@ def validate(obj: dict) -> list[str]:
             errs.append(f"entities[{i}].associations_lazy must be true")
         if e.get("uses_lombok_data") is not False:
             errs.append(f"entities[{i}].uses_lombok_data must be false")
+        # audit-timestamps — optional key, but false is always a violation.
+        if "has_audit_timestamps" in e and e.get("has_audit_timestamps") is not True:
+            errs.append(f"entities[{i}].has_audit_timestamps must be true (audit-timestamps)")
+        # justified-cascade-fetch — every declared association carries a reason.
+        for j, a in enumerate(e.get("associations") or []):
+            where = f"entities[{i}].associations[{j}]"
+            if a.get("kind") not in ASSOC_KINDS:
+                errs.append(f"{where}.kind must be one of {sorted(ASSOC_KINDS)}")
+            if len(str(a.get("justification", "")).strip()) < 10:
+                errs.append(f"{where}.justification must be non-empty (>=10 chars)")
+            if str(a.get("cascade", "")).upper() == "ALL" and len(str(a.get("justification", ""))) < 20:
+                errs.append(f"{where}: CascadeType.ALL requires substantial justification (>=20 chars)")
+    # narrow_repository / service — optional blocks; fully checked when present.
+    if "narrow_repository" in obj:
+        repo = obj.get("narrow_repository") or {}
+        if not REPO_RE.match(str(repo.get("interface_name", ""))):
+            errs.append("narrow_repository.interface_name must be PascalCase ending with Repository")
+        if repo.get("extends_jparepository_directly") is not False:
+            errs.append("narrow_repository.extends_jparepository_directly must be false (narrow-repo-interface)")
+    if "service" in obj:
+        svc = obj.get("service") or {}
+        if not SVC_RE.match(str(svc.get("class_name", ""))):
+            errs.append("service.class_name must be PascalCase ending with Service")
+        if svc.get("uses_dto_projection_on_reads") is not True:
+            errs.append("service.uses_dto_projection_on_reads must be true (dto-projection-on-reads)")
+        if "readonly_tx_on_queries" in svc and svc.get("readonly_tx_on_queries") is not True:
+            errs.append("service.readonly_tx_on_queries must be true (service-owns-transaction-boundary)")
     if obj.get("migrations_paired") is not True:
         errs.append("migrations_paired must be true")
     eager = (obj.get("fetch_audit") or {}).get("eager_associations_found") or []
@@ -71,6 +101,30 @@ OK = {
     "spring_boot_version": "3.2.1",
     "ddl_auto": "validate",
     "open_in_view": False,
+    "entities": [{
+        "class": "com.acme.Invoice",
+        "business_key": "invoiceNumber",
+        "associations_lazy": True,
+        "uses_lombok_data": False,
+        "has_audit_timestamps": True,
+        "version_column": True,
+        "associations": [
+            {"kind": "OneToMany", "cascade": "PERSIST", "fetch": "LAZY",
+             "justification": "Lines owned by Invoice; persist with parent"}
+        ],
+    }],
+    "narrow_repository": {"interface_name": "InvoiceRepository", "extends_jparepository_directly": False, "method_count": 5},
+    "service": {"class_name": "InvoiceService", "uses_dto_projection_on_reads": True,
+                "uses_joinfetch_or_entitygraph": True, "readonly_tx_on_queries": True},
+    "migrations_paired": True,
+    "fetch_audit": {"eager_associations_found": []},
+    "forbidden_patterns_found": [],
+}
+# A fetch/migration-only audit is still valid: narrow_repository + service are optional.
+OK_MINIMAL = {
+    "spring_boot_version": "3.2.1",
+    "ddl_auto": "validate",
+    "open_in_view": False,
     "entities": [{"class": "com.acme.Invoice", "business_key": "invoiceNumber", "associations_lazy": True, "uses_lombok_data": False}],
     "migrations_paired": True,
     "fetch_audit": {"eager_associations_found": []},
@@ -80,7 +134,16 @@ BAD = {
     "spring_boot_version": "2.7.0",
     "ddl_auto": "update",
     "open_in_view": True,
-    "entities": [{"class": "com.acme.Invoice", "business_key": "", "associations_lazy": False, "uses_lombok_data": True}],
+    "entities": [{
+        "class": "com.acme.Invoice",
+        "business_key": "",
+        "associations_lazy": False,
+        "uses_lombok_data": True,
+        "has_audit_timestamps": False,
+        "associations": [{"kind": "OneToMany", "cascade": "ALL", "fetch": "EAGER", "justification": ""}],
+    }],
+    "narrow_repository": {"interface_name": "InvoiceRepo", "extends_jparepository_directly": True},
+    "service": {"class_name": "invoiceSvc", "uses_dto_projection_on_reads": False},
     "migrations_paired": False,
     "fetch_audit": {"eager_associations_found": ["Invoice.lines"]},
     "forbidden_patterns_found": ["@Data on entity"],
@@ -90,6 +153,9 @@ BAD = {
 def self_test() -> int:
     if validate(OK):
         sys.stderr.write("ok fixture rejected\n")
+        return 1
+    if validate(OK_MINIMAL):
+        sys.stderr.write("minimal ok fixture rejected\n")
         return 1
     if not validate(BAD):
         sys.stderr.write("bad fixture accepted\n")

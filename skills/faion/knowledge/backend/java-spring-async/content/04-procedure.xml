@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Spring @Async Procedure" version="1.1.0" est_tokens="800" depth="essential">
+<text id="04-procedure" title="Spring @Async Procedure" version="1.2.0" est_tokens="1000" depth="essential">
   <summary>5-step procedure to introduce Spring `@Async` to a service end-to-end.</summary>
 
   <section title="Procedure">
@@ -27,14 +27,15 @@
 
     <step n="4" name="wire-graceful-shutdown">
       <input>Deploy SLA + max in-flight task duration</input>
-      <action>Set `setWaitForTasksToCompleteOnShutdown(true)` + `setAwaitTerminationSeconds(30)` on every executor. Add an `@PreDestroy` hook for cleanup if needed.</action>
-      <output>Graceful shutdown verified</output>
+      <action>Set `setWaitForTasksToCompleteOnShutdown(true)` + `setAwaitTerminationSeconds(30)` on every executor. Add an `@PreDestroy` hook for cleanup if needed. Register the Micrometer gauges `executor.queued`, `executor.active`, `executor.completed` and `executor.rejected` per executor, and wire an `AsyncUncaughtExceptionHandler` in the async configuration that logs the failure and increments an error counter — without it a rejected or failed task is invisible.</action>
+      <output>Graceful shutdown verified + executor metrics and uncaught-exception handler in place</output>
+      <decision-gate>If a `void`-returning `@Async` method exists with no `AsyncUncaughtExceptionHandler` registered, BLOCK per `completablefuture-return` rule.</decision-gate>
     </step>
 
     <step n="5" name="add-tests-with-awaitility">
       <input>Async method list</input>
-      <action>Author tests using `Awaitility.await().atMost(...)` for completion assertions. Configure tests to use a deterministic executor (`SyncTaskExecutor`) if the test focus is logic, not threading.</action>
-      <output>Deterministic test suite</output>
+      <action>Author tests using `Awaitility.await().atMost(...).untilAsserted(...)` for completion assertions, stubbing downstream calls with WireMock. Configure tests to use a deterministic executor (`SyncTaskExecutor`) if the test focus is logic, not threading. Run `scripts/spring-async-audit.sh` before merge and require zero violations.</action>
+      <output>Deterministic test suite + clean audit</output>
       <decision-gate>If `Thread.sleep` appears in async tests, fail per the no-thread-sleep convention.</decision-gate>
     </step>
 

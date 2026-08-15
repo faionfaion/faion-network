@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Spring Boot Layered Architecture Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>6 antipatterns observed in real Spring Boot 3 codebases. Each pairs symptom + root cause + concrete fix.</summary>
+<text id="03-failure-modes" title="Spring Boot Layered Architecture Failure Modes" version="1.2.0" est_tokens="1400" depth="essential">
+  <summary>10 antipatterns observed in real Spring Boot 3 codebases. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -38,6 +38,30 @@
       <symptom>`@Transactional` method called from another method on `this`; transaction never starts; rollback never happens.</symptom>
       <root-cause source="Spring AOP docs">Self-invocation bypasses the proxy that wraps `@Transactional`.</root-cause>
       <fix>Move the `@Transactional` method to a separate bean and inject it; or use `AopContext.currentProxy()` (with `exposeProxy=true`) as a last resort.</fix>
+    </antipattern>
+
+    <antipattern id="transactional-on-controller" severity="high">
+      <symptom>`@Transactional` sits on a controller method. The DB transaction spans the whole HTTP request including JSON serialisation; lazy collections fire queries mid-response and row locks are held for the request duration.</symptom>
+      <root-cause source="Spring transaction docs">The transaction boundary was placed on the wrong layer — usually to make a `LazyInitializationException` go away.</root-cause>
+      <fix>Move `@Transactional` to the service method per `transactional-on-service-only`. The controller calls the service and returns a DTO; nothing transactional lives in the HTTP layer.</fix>
+    </antipattern>
+
+    <antipattern id="fat-controller-with-repository" severity="high">
+      <symptom>The controller autowires a repository and orchestrates two or three services; `@WebMvcTest` no longer covers it, so the endpoint is only reachable through a full `@SpringBootTest`.</symptom>
+      <root-cause source="Spring Boot layered architecture guide">Business logic accreted in the web layer because that was where the request already was.</root-cause>
+      <fix>Push the orchestration into one service method per `thin-controller`; the controller keeps a single service call. The logic then becomes reusable from a scheduler or a queue consumer.</fix>
+    </antipattern>
+
+    <antipattern id="async-self-invocation" severity="high">
+      <symptom>An `@Async` method such as `sendEmail()` is called via `this.sendEmail(...)` from another method of the same bean. It runs synchronously; the observed thread is the request thread.</symptom>
+      <root-cause source="Spring AOP proxy semantics">Self-invocation never crosses the proxy, so `@Async` is never applied.</root-cause>
+      <fix>Extract the `@Async` methods into a separate bean, inject it, and call `emailSender.sendEmail(...)`. Define a named executor bean and annotate `@Async("emailExecutor")` per `async-via-named-executor`.</fix>
+    </antipattern>
+
+    <antipattern id="custom-error-envelope" severity="medium">
+      <symptom>Controllers return a bespoke `ApiErrorResponse{code, message, timestamp, ...}`. Each new endpoint duplicates the envelope and every client writes its own parser.</symptom>
+      <root-cause source="RFC 7807 / Spring 6 ProblemDetail docs">A custom error shape was rolled by hand instead of using the standard `ProblemDetail`.</root-cause>
+      <fix>Replace with a single `@RestControllerAdvice` mapping domain exceptions to `ProblemDetail` (RFC 7807). One error format across every endpoint, and OpenAPI generation describes it for free.</fix>
     </antipattern>
 
   </section>
