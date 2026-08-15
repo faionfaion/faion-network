@@ -56,11 +56,68 @@ _HEADER_KEY_LINE = re.compile(
     r"|variables|sections)\s*:", re.MULTILINE)
 
 
+# One whole comment on one line: `<!-- purpose: x -->`. Measured over the 2,918
+# Markdown templates this is the single most common header form — 1,607 files,
+# against 613 writing one `<!-- ... -->` block and 281 writing a `#` run — so a
+# parser that does not read it cannot read the corpus.
+_INLINE_COMMENT = re.compile(r"^<!--(.*?)-->\s*$")
+# A header line: one of the seven keys at column 0, or an indented list item or
+# continuation under one. The run STOPS at the first comment that is neither,
+# rather than failing on it: `<!-- stub fixture, replace me -->` sitting under
+# the five keys is a note to a human, and eating it would raise on prose.
+_HEADER_KEY_STRICT = re.compile(
+    r"^(purpose|consumes|produces|depends-on|token-budget-impact"
+    r"|variables|sections)\s*:")
+_HEADER_CONT_LINE = re.compile(r"^ {2,}(?:- )?[a-z][a-z0-9_-]*\s*:")
+
+
+def _undent(text: str) -> str:
+    """Drop the single space that separates a comment marker from the header
+    text. `# purpose: x` and `<!-- purpose: x -->` are the corpus's de-facto
+    forms, and without this the leading space made every one of them
+    unparseable, because the YAML-ish subset anchors its keys at column 0 and
+    its list items at exactly two spaces. Exactly one space goes, so
+    `#   - name: x` still lands on two."""
+    return text[1:] if text.startswith(" ") else text
+
+
+def _take_header_run(lines: list[str], unwrap) -> list[str]:
+    """The leading comment lines that are header lines, in order.
+
+    `unwrap` returns the comment's own text, or None when the line is not a
+    comment of this form at all. Stopping on the first non-header comment is
+    what lets a template carry both a five-key header and a human note.
+    """
+    taken: list[str] = []
+    for line in lines:
+        inner = unwrap(line)
+        if inner is None:
+            break
+        inner = _undent(inner).rstrip()
+        if not _HEADER_KEY_STRICT.match(inner) \
+                and not _HEADER_CONT_LINE.match(inner):
+            break
+        taken.append(inner)
+    return taken
+
+
+def _unwrap_inline(line: str):
+    found = _INLINE_COMMENT.match(line)
+    return found.group(1) if found else None
+
+
+def _unwrap_marker(line: str):
+    if line.startswith("//"):
+        return line[2:]
+    return line.lstrip("#") if line.startswith("#") else None
+
+
 def split_header(text: str) -> tuple[str, str]:
     """Split a template into (header text, body text).
 
-    A leading `<!-- ... -->`, `/* ... */` or run of `#` / `//` line comments is
-    the header only when it actually carries one of the six declared keys —
+    A leading `<!-- ... -->` block, a run of one-line `<!-- key: value -->`
+    comments, a `/* ... */` block or a run of `#` / `//` line comments is the
+    header only when it actually carries one of the seven declared keys —
     otherwise a Markdown `# Heading` would be eaten as a comment header.
     Returns ("", text) when the template is static.
     """
@@ -77,29 +134,27 @@ def split_header(text: str) -> tuple[str, str]:
                 "JSON template with a __faion_header__ object: refused. This "
                 "builder emits Markdown and HTML only (design 6); a JSON "
                 "artefact is a different producer, not a flag on this one")
+    lines = body.split("\n")
+    for unwrap in (_unwrap_inline, _unwrap_marker):
+        taken = _take_header_run(lines, unwrap)
+        head = "\n".join(taken)
+        if taken and _HEADER_KEY_LINE.search(head):
+            return head, "\n".join(lines[len(taken):])
+
     for opener, closer, width in (("<!--", "-->", 4), ("/*", "*/", 2)):
         if not body.startswith(opener):
             continue
         end = body.find(closer)
         if end < 0:
             raise TplError(f"header opens with {opener} and never closes")
-        head = body[width:end]
+        # `<!-- purpose: x` puts the first key on the opener's own line, one
+        # space past the marker; `<!--\npurpose: x` puts it at column 0. Undent
+        # only the first line and the two forms agree.
+        first, _, rest = body[width:end].partition("\n")
+        head = _undent(first) + ("\n" + rest if rest else "")
         if not _HEADER_KEY_LINE.search(head):
             return "", body
         return head, body[end + len(closer):]
-
-    lines = body.split("\n")
-    taken: list[str] = []
-    for line in lines:
-        if line.startswith("#"):
-            taken.append(line.lstrip("#"))
-        elif line.startswith("//"):
-            taken.append(line[2:])
-        else:
-            break
-    head = "\n".join(taken)
-    if taken and _HEADER_KEY_LINE.search(head):
-        return head, "\n".join(lines[len(taken):])
     return "", body
 
 
@@ -339,6 +394,136 @@ def _as_text(value) -> str:
     if isinstance(value, list):
         raise TplError("a list is not a scalar value")
     return str(value)
+
+
+# ------------------------------------------- emitting a declaration back out
+
+def emit_scalar(value) -> str:
+    """One scalar in the form `_scalar` reads back. The inverse of parsing.
+
+    Kept here rather than in the migrator because a second implementation of
+    the quoting rule is a second thing that can disagree with the parser. A
+    value is quoted only when leaving it bare would change what comes back —
+    a leading YAML sigil, an integer-looking or boolean-looking string, or a
+    string already wrapped in quotes that `_unquote` would strip.
+    """
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
+    text = " ".join(str(value).split()).replace('"', "'")
+    if not text:
+        raise TplError("a declaration field cannot be an empty scalar")
+    wrapped = len(text) >= 2 and text[0] == text[-1] and text[0] in "\"'"
+    if text[0] in "|>&*!{[#-" or wrapped or text in ("true", "false") \
+            or _INT.fullmatch(text):
+        return f'"{text}"'
+    return text
+
+
+def format_variables(decls: list[dict]) -> str:
+    """A `variables:` block that parse_header + parse_variables read back.
+
+    Field order follows VAR_FIELDS, and an absent field is omitted rather
+    than written null — 2.2 gives every optional field a default and writing
+    it out explicitly only invites the two to drift.
+    """
+    if not decls:
+        raise TplError("format_variables: nothing to declare")
+    lines = ["variables:"]
+    for decl in decls:
+        name = decl["name"]
+        if not VAR_NAME.match(str(name)):
+            raise TplError(f"format_variables: {name!r} is not a legal name")
+        if decl.get("type") not in VAR_TYPES:
+            raise TplError(f"format_variables: {name}: type "
+                           f"{decl.get('type')!r} is not one of "
+                           + ", ".join(VAR_TYPES))
+        lines.append(f"  - name: {name}")
+        lines.append(f"    type: {decl['type']}")
+        lines.append(f"    required: {emit_scalar(bool(decl['required']))}")
+        if decl.get("default") is not None:
+            lines.append(f"    default: {emit_scalar(decl['default'])}")
+        if decl.get("sensitive"):
+            lines.append("    sensitive: true")
+            lines.append(f"    placeholder: {emit_scalar(decl['placeholder'])}")
+        if decl.get("options"):
+            options = [str(o) for o in decl["options"]]
+            for option in options:
+                if "," in option or "]" in option:
+                    raise TplError(f"format_variables: {name}: option "
+                                   f"{option!r} carries a comma or bracket, "
+                                   "which a flow list cannot round-trip")
+            lines.append("    options: ["
+                         + ", ".join(emit_scalar(o) for o in options) + "]")
+        description = " ".join(str(decl["description"]).split())
+        if len(description) > DESC_MAX:
+            description = description[:DESC_MAX - 1].rstrip() + "…"
+        lines.append(f"    description: {emit_scalar(description)}")
+    return "\n".join(lines)
+
+
+_KEYS_ANYWHERE = re.compile(
+    r"^\s*(purpose|consumes|produces|depends-on|token-budget-impact)\s*:",
+    re.MULTILINE)
+
+
+def splice_variables(text: str, block: str) -> str:
+    """Put a `variables:` block into a template's header, or refuse by name.
+
+    Each case writes the block in the header form the template already uses,
+    which is why this is the inverse of split_header and lives beside it:
+
+      * a run of one-line `<!-- key: value -->` comments — one more comment
+        per block line, after the run.
+      * a leading `#` / `//` line-comment header — same, with that marker.
+      * a leading `<!-- ... -->` block — the block goes in before the close,
+        which is where 2.2 puts it (the key *extends* the five lines).
+      * no header at all — a new leading comment carrying only the block.
+      * five-key lines that are not at the top of the file — refused.
+        Prepending there would push the real header past the 20-line window
+        validator 5 scans, and the loose validator would then read the
+        template as having no header at all.
+    """
+    head, _ = split_header(text)
+    if head and "variables" in parse_header(head):
+        raise TplError("template already declares `variables:`; merge into the "
+                       "existing block rather than adding a second")
+    stripped = text.lstrip("\n")
+    lead = len(text) - len(stripped)
+    lines = stripped.split("\n")
+    if head:
+        taken = len(_take_header_run(lines, _unwrap_inline))
+        if taken:
+            # The run is rewritten as ONE block comment rather than extended
+            # with more one-line comments. `<!--     type: string -->` parses
+            # here, and does not in scripts/validate-methodology-templates.py,
+            # whose field regex captures the closing marker as part of the
+            # value and then rejects `'string -->'` as an unknown type. Two
+            # parsers read this header; the form has to satisfy both.
+            kept = [_undent(_unwrap_inline(line) or "").rstrip()
+                    for line in lines[:taken]]
+            return text[:lead] + "\n".join(
+                ["<!--"] + kept + block.split("\n") + ["-->"] + lines[taken:])
+        taken = len(_take_header_run(lines, _unwrap_marker))
+        if taken:
+            marker = "//" if lines[taken - 1].startswith("//") else "#"
+            written = [f"{marker} {line}".rstrip()
+                       for line in block.split("\n")]
+            return text[:lead] + "\n".join(lines[:taken] + written
+                                           + lines[taken:])
+    if stripped.startswith("<!--"):
+        end = stripped.find("-->")
+        if end < 0:
+            raise TplError("header opens with <!-- and never closes")
+        if _HEADER_KEY_LINE.search(stripped[4:end]):
+            inner = stripped[4:end].rstrip() + "\n" + block + "\n"
+            return text[:lead] + "<!--" + inner + stripped[end:]
+    if _KEYS_ANYWHERE.search("\n".join(text.split("\n")[:20])):
+        raise TplError("the five-key header is not a leading <!-- --> comment; "
+                       "adding one above it would push it out of the 20-line "
+                       "window validator 5 scans. Move the header first by hand")
+    return f"<!--\n{block}\n-->\n\n" + text.lstrip("\n")
 
 
 # ------------------------------------------------------------- secret shapes

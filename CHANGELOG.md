@@ -4,6 +4,50 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **`tpl-migrate` added, and it found two blockers in what had already been
+  committed.**
+
+  **The builder could not read most of the corpus.** `tplcore` parsed only one of
+  the three header forms in use — the `<!--\npurpose: x\n-->` block. The other
+  two, a `# purpose: x` line and a run of one-line `<!-- purpose: x -->`
+  comments, failed hard. That is **1,868 of 2,920 `.md` templates unreadable by
+  `tpl-build` and `tpl-params` as shipped.** The self-tests were green because
+  they exercised the form the parser knew. Fixed by widening the parser; the
+  change strictly adds what parses.
+
+  **Validator 5 read the header from the first 40 lines, and that is a
+  truncation, not a guard.** The loop already ends at the first non-comment line,
+  so the slice was a pure ceiling — and at ~4 lines per `variables:` entry it
+  capped a template at roughly **seven parameters**. The eighth fell outside the
+  window and the gate reported it as *"variable has no type"*: a declaration
+  correct on disk, failing because the reader stopped early. Measured over a full
+  scratch migration of 1,079 templates, 181 exceeded the window, 161 failed, and
+  **every validator-5 finding in that run was explained by this and nothing
+  else.** Raised to 400.
+
+  Two more corpus-shape findings the run surfaced, neither acted on:
+  **189 Markdown templates carry `<!-- __faion_header__ … -->`** — a JSON header
+  object inside a Markdown comment, a fourth header form the pack refuses by
+  design; and **1,183 placeholders are already HTML-escaped in source**
+  (`&amp;lt;name&amp;gt;`), detected and deliberately untouched. Un-escaping those is
+  the highest-leverage manual step available, since they are the largest
+  mechanically-shaped block of otherwise-unusable placeholders.
+
+  **The migration estimate is deliberately unflattering.** Of the 1,469 templates
+  carrying `<Angle>`/`[bracket]` placeholders, 7,911 of 13,784 placeholders (57%)
+  map mechanically — but only **169 templates (11.5%) migrate with no human at
+  all**; 929 are partial and 371 map nothing. So this is not a batch job to leave
+  running. It is ~1,300 templates where the tool does the typing and a human
+  adjudicates four or five placeholders each.
+
+  `tpl-migrate` proposes and does not decide: `--write` is required to touch a
+  file, prose placeholders (`<Optional: 'ready for owner review'>`) are flagged
+  and left byte-identical, two placeholders normalising onto one name are
+  reported rather than silently merged, and a template that already declares
+  `variables:` is refused. Proof at scale: 1,079 scratch rewrites, **0 broken
+  round-trips**.
+
+
 - **Built `skills/faion/tools/template-builder` (tier free): 15 blocks, two
   tools, 45 self-test assertions.** `tpl-build` assembles Markdown and
   self-contained HTML from blocks plus literal passthrough; `tpl-params` inspects

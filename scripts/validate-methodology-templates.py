@@ -94,7 +94,13 @@ def _missing_header_keys(p: Path) -> list[str]:
 
 
 VAR_NAME = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
-VAR_TYPES = {"string", "integer", "boolean", "enum", "path"}
+# The five of retrieval-content-contracts.md §2.2, plus `text` — the sixth type
+# added by .aidocs/conventions/template-builder.md §3 and already implemented in
+# skills/faion/tools/template-builder/scripts/lib/tplcore.py (VAR_TYPES there).
+# `text` is prose an LLM composes from the author's answer to `description`; it
+# is never a value the builder generates. Without it here the assembler accepts
+# a type this gate rejects, and no author can declare a prose parameter at all.
+VAR_TYPES = {"string", "integer", "boolean", "enum", "path", "text"}
 
 
 def _header_block(text: str, suffix: str) -> str:
@@ -110,8 +116,22 @@ def _header_block(text: str, suffix: str) -> str:
     lines = text.splitlines()
     # The header is the leading comment region: everything up to the first line
     # that is neither blank nor comment-like nor inside an open block comment.
+    # The slice is a BACKSTOP, not the boundary — the `break` below is what ends
+    # the header, at the first line that is neither blank nor comment-like. So a
+    # low ceiling does not protect anything; it silently truncates.
+    #
+    # It was 40, and at ~4 lines per `variables:` entry that capped a template at
+    # roughly SEVEN parameters. The eighth fell outside the window and this
+    # validator reported it as "variable has no type" — a declaration that is
+    # correct on disk, failing because the reader stopped early. Measured on a
+    # full scratch migration: 181 of 1,079 rewritten templates exceeded 40 lines
+    # and 161 failed the gate, and **every** validator-5 finding in that run was
+    # explained by this and nothing else.
+    #
+    # 400 is chosen to be past any plausible declaration (20 parameters is 80
+    # lines) while still bounding a pathological file that is comments to its end.
     out, in_block = [], False
-    for line in lines[:40]:
+    for line in lines[:400]:
         s = line.strip()
         if s.startswith("<!--") or s.startswith("/*"):
             in_block = True
@@ -124,6 +144,35 @@ def _header_block(text: str, suffix: str) -> str:
     return "\n".join(out)
 
 
+def _variables_region(header: str) -> str:
+    """The `variables:` list only — never the sibling keys after it.
+
+    `sections:` (retrieval-content-contracts.md §2.3) is a list of `- name:`
+    mappings too, and scanning the whole header made every section entry look
+    like a variable missing its `type` and `required`. Nothing in the corpus
+    declared `sections:` while adoption of `variables:` was zero, so the first
+    author to use §2.3 would have been the one to find this.
+    """
+    lines = header.split("\n")
+    start, prefix = None, ""
+    for i, line in enumerate(lines):
+        m = re.match(r"(?i)^(\s*\W*\s*)variables\s*:", line)
+        if m:
+            start, prefix = i + 1, m.group(1)
+            break
+    if start is None:
+        return ""
+    # A sibling key sits at exactly the same prefix; list items and their
+    # continuations are indented past it, so they never match.
+    sibling = re.compile(rf"^{re.escape(prefix)}[a-z][a-z0-9_-]*\s*:")
+    out: list[str] = []
+    for line in lines[start:]:
+        if sibling.match(line):
+            break
+        out.append(line)
+    return "\n".join(out)
+
+
 def _variable_findings(p: Path, header: str) -> list[str]:
     """Shape-check a declared `variables:` block. Absence means a static
     template on the unchanged delivery path, which is the documented default —
@@ -132,7 +181,7 @@ def _variable_findings(p: Path, header: str) -> list[str]:
         return []
     errs: list[str] = []
     entries = re.findall(r"(?ms)^\s*\W*\s*-\s+name\s*:\s*(\S+)(.*?)(?=^\s*\W*\s*-\s+name\s*:|\Z)",
-                         header)
+                         _variables_region(header))
     if not entries:
         return [f"{p.name}: declares 'variables:' with no '- name:' entry"]
     for name, body in entries:
