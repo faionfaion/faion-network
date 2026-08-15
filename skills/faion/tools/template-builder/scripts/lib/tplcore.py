@@ -61,6 +61,11 @@ _HEADER_KEY_LINE = re.compile(
 # against 613 writing one `<!-- ... -->` block and 281 writing a `#` run — so a
 # parser that does not read it cannot read the corpus.
 _INLINE_COMMENT = re.compile(r"^<!--(.*?)-->\s*$")
+
+# A bare identifier alone in a comment — a version marker like
+# `__faion_header_v1__`. One token, no spaces, no colon, so it cannot match prose.
+_MARKER_ONLY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
 # A header line: one of the seven keys at column 0, or an indented list item or
 # continuation under one. The run STOPS at the first comment that is neither,
 # rather than failing on it: `<!-- stub fixture, replace me -->` sitting under
@@ -89,11 +94,26 @@ def _take_header_run(lines: list[str], unwrap) -> list[str]:
     what lets a template carry both a five-key header and a human note.
     """
     taken: list[str] = []
+    seen_key = False
     for line in lines:
         inner = unwrap(line)
         if inner is None:
             break
         inner = _undent(inner).rstrip()
+        # A bare identifier ABOVE the first key is a version marker, not content:
+        # `<!-- __faion_header_v1__ -->` sits on top of the five keys in 62 of the
+        # corpus's Markdown templates, is read by nothing in scripts/, docs/ or
+        # this pack, and — because the run used to stop on the very first line —
+        # made every one of those templates parse as static. The skip is
+        # deliberately narrow: one token, no spaces, no colon. Anything with a
+        # colon or a space is prose, and eating prose is the failure this run's
+        # stop-on-non-header rule exists to prevent. After the first key line the
+        # rule is unchanged, so a human note under the header still ends the run.
+        if not seen_key and _MARKER_ONLY.match(inner):
+            taken.append(line)
+            continue
+        if _HEADER_KEY_STRICT.match(inner):
+            seen_key = True
         if not _HEADER_KEY_STRICT.match(inner) \
                 and not _HEADER_CONT_LINE.match(inner):
             break

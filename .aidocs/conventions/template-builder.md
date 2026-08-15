@@ -130,6 +130,40 @@ store records that the parameter *exists* and its placeholder, never the value. 
 checks, neither trusting the other: the corpus declares `sensitive`, and the builder additionally
 refuses any value matching the secret shapes it already knows, whatever the declaration says.
 
+## 5a. `sensitive` covers personal data, not only credentials
+
+**Ratified 2026-08-15**, after the first author to need it asked rather than assumed.
+
+§2.2 introduces `sensitive` in the language of secrets. The first real use in the corpus is not a
+secret: `hr/structured-interview-design/templates/scorecard.md` takes a **candidate's name** — an
+evaluative record naming an identified person.
+
+`sensitive` covers it, and the reason is the same one §2.2 gives for credentials: **the assembler
+runs on behalf of other accounts.** A name on a hiring scorecard has no business reaching a
+multi-tenant server, and the mechanism already built for secrets — the value never travels, the
+server emits the `placeholder`, the client substitutes locally — is exactly the right shape for it.
+
+Measured while deciding: **no `.md` template in the corpus takes a credential.** All 1,626 were
+checked; the corpus refers to secrets by manager key (`stripe.webhook_secret_v2`) rather than
+inlining them. So had `sensitive` stayed credentials-only it would have had **zero** legitimate uses
+and would have rotted.
+
+The test for an author: *would this value identify a person, or open a door?* Either answer means
+`sensitive`.
+
+## 5b. One substitution namespace, and a template that needs two
+
+`ai-core/judge-calibration-protocol/templates/judge-prompt-skeleton.md` already contains `{{input}}`
+and `{{model_output}}` — but those are **runtime** slots, filled per case when the judge runs, not
+authoring parameters filled once when the artefact is built. Declaring them would make the builder
+substitute at build time and destroy the prompt; leaving them undeclared makes `tpl-build` refuse
+the file. **The template is unreachable either way**, and that is a genuine gap in §2.2 rather than
+a defect in the file.
+
+Recorded, not solved. A second namespace is a contract change, and a contract change to dodge one
+template is how small languages stop being small. Whoever needs the second one should arrive with
+more than one example.
+
 ## 6. Output
 
 - **`.md` is canonical.** It is what the assembler produces and what the store round-trips against.

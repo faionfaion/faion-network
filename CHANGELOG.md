@@ -4,6 +4,57 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **`variables:` adoption goes from 0 to 56 templates / 358 parameters across 18
+  domains**, each verified end to end through `tpl-params` → `tpl-build` to both
+  `.md` and `.html`. Types: 205 `string`, 95 `text`, 35 `enum`, 18 `integer`,
+  4 `path`, 1 `boolean`, 1 `sensitive`, and one template exercising §2.3
+  `sections:`.
+
+  The set was chosen by measurement, not by eye: a placeholder-signature
+  frequency map cut 1,626 candidates to 427 by discarding signatures appearing
+  20-300× — those name the *template mechanism* (`<input name>`, `<slug>`,
+  `<source path or URL>`), not the artefact. Shared names were used deliberately
+  (`date` ×16, `owner` ×10, `slug` ×6) so the project store carries a value
+  between artefacts, but `product_name`/`project_name`/`team_name` were **not**
+  collapsed into `name` — one store slot for three subjects would carry the wrong
+  value silently, which is the opposite of what sharing is for.
+
+- **Ratified: `sensitive` covers personal data, not only credentials.** The first
+  real use is a candidate's name on a hiring scorecard — and the reason is §2.2's
+  own: the assembler runs **on behalf of other accounts**. Measured while
+  deciding: **no `.md` template in the corpus takes a credential** — all 1,626
+  checked; the corpus refers to secrets by manager key rather than inlining them.
+  So a credentials-only reading of `sensitive` would have had zero legitimate
+  uses and would have rotted. The author's test is now stated: *would this value
+  identify a person, or open a door?*
+
+- **Fixed: 62 Markdown templates were invisible to the builder because of a
+  decorative marker.** `<!-- __faion_header_v1__ -->` sits above the five keys,
+  is read by **nothing** in `scripts/`, `docs/` or the pack — and the header run
+  stopped on it at line one, so every one of those templates parsed as *static*.
+  Fixed in the parser rather than by editing 122 corpus files, and the skip is
+  deliberately narrow: one bare identifier, no spaces, no colon. Anything with a
+  colon or a space is prose, and eating prose is the exact failure the
+  stop-on-non-header rule exists to prevent. Verified: 62 of 62 now read, a plain
+  `# Title` + prose file is still correctly treated as static.
+
+- **Recorded, not solved: one template needs two substitution namespaces.**
+  `ai-core/judge-calibration-protocol`'s judge prompt carries `{{input}}` and
+  `{{model_output}}`, which are **runtime** slots filled per case — declaring them
+  makes the builder substitute at build time and destroy the prompt, leaving them
+  undeclared makes it refuse the file. Unreachable either way, and a genuine gap
+  in §2.2. A contract change to accommodate one template is how small languages
+  stop being small; whoever needs the second namespace should arrive with more
+  than one example.
+
+  Two further findings left for a delivery decision rather than an authoring one:
+  **17 of the 56 are absent from their `AGENTS.md` `## Templates` table**, so
+  validator 5 never header-checked them and they are plausibly never delivered;
+  and table rows (`| <option> | <reason> |`) cannot become parameters at all,
+  because §2.3 has no loops by design — that is the single biggest limit on how
+  far `variables:` reaches in this corpus.
+
+
 - **`tpl-migrate` added, and it found two blockers in what had already been
   committed.**
 
