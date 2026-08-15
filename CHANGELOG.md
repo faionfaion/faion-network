@@ -4,6 +4,37 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **`INDEX.xml` is generated again, and the reason it wasn't was a name
+  collision.** `regen-domains-xml.py` skipped any leaf whose path contained
+  `templates`, `scripts`, `content` or `__pycache__` — a filter meant for a
+  methodology's *structural subdirectories*, matched against the **whole**
+  relative path. `skills/faion/knowledge/sdd/templates` is a real
+  methodology whose slug is literally `templates`, so the filter swallowed
+  it: the generator reported 2,597 methodologies against 2,598 on disk and
+  would have dropped a live entry from `sdd/INDEX.xml`. The match now starts
+  below `<domain>/<slug>`, because the slug position is a name the author
+  chose and only the parts under it are structural.
+
+  This corrects a claim made earlier in this same changelog: the drop was
+  **not** a `status` filter. Both `sdd/templates` and `sdd/templates-planning`
+  are `status: "draft"` and only one was affected, which is what gave the
+  first explanation away.
+
+  With that fixed the generator is a genuine drop-in replacement, verified
+  rather than assumed: regenerating the whole corpus removes **zero**
+  methodology entries and adds zero, `validate-domains-index.py` and
+  `validate-domain-index.py --all` both pass 22/22, and `count=` now matches
+  the directory count exactly for every domain — it had drifted (`sdd` said
+  101 against 101 on disk only after the fix; the pre-fix generator said
+  100). The hand-edit instruction in the root and `scripts/` `AGENTS.md` is
+  replaced with the command.
+
+  Left for a content decision, not fixed here: `sdd/templates` and
+  `sdd/templates-planning` share the same `content_id` and two of their three
+  content files are byte-identical. That is a duplicate pair, and deleting
+  corpus content is a change-request with its own evidence, not a side
+  effect of a tooling fix.
+
 - **A tool may now hold a third-party credential, and the validator polices
   it.** `tool-pack-meta.schema.json` gains two optional objects: `network`
   (`hosts[]` + `class: read|mutate`) and `credentials` (`env_var`, `vendor`,

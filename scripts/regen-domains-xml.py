@@ -94,9 +94,12 @@ def collect() -> dict[str, list[dict[str, str]]]:
         leaf = marker.parent
         if leaf in seen:
             continue
-        # Skip if any path part is on the skip list (e.g. templates/, scripts/)
+        # Skip the structural subdirectories of a methodology (templates/,
+        # scripts/, content/). Only parts BELOW <domain>/<slug> are structural:
+        # the slug position is a name the author chose, and `sdd/templates` is a
+        # real methodology that a whole-path match silently swallowed.
         rel_parts = leaf.relative_to(KNOWLEDGE).parts
-        if any(part in SKIP_DIR_PARTS for part in rel_parts):
+        if any(part in SKIP_DIR_PARTS for part in rel_parts[2:]):
             continue
         # Skip the knowledge root itself
         if leaf == KNOWLEDGE:
