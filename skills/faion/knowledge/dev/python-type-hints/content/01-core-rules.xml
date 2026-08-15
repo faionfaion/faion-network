@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Python Type Hints Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules covering union syntax, boundary annotation, ignore-comment policy, structural typing, payload-vs-body type choice, and incremental adoption.</summary>
+<text id="01-core-rules" title="Python Type Hints Core Rules" version="1.2.0" est_tokens="1700" depth="essential">
+  <summary>10 testable rules covering union syntax, PEP 695 generics, boundary annotation, strict-checker configuration, ignore-comment policy, structural typing, payload-vs-body type choice, Pydantic at the IO boundary, the ban on bare Any, and incremental adoption.</summary>
 
   <section title="Rule set">
 
@@ -9,9 +9,19 @@
       <rationale source="PEP 604; ruff UP007 docs">Mixing `Optional[X]` and `X | None` in one repo triggers linter warnings and degrades readability. PEP 604 syntax is shorter and Python 3.10+ runtime-supported. Pick one and enforce it project-wide via auto-fix.</rationale>
     </rule>
 
+    <rule id="pep695-type-params" testable="true" depth="essential">
+      <statement>On Python 3.12+ declare generics with PEP 695 syntax (`def f[T](x: T) -&gt; T`, `class Box[T]:`, `type Alias[T] = ...`). Do not introduce new module-level `TypeVar` declarations; keep existing ones only until the module is migrated.</statement>
+      <rationale source="PEP 695; internal — python-type-hints backend copy, merged 2026-08-15.">PEP 695 attaches the type parameter to the definition that uses it, so scope is obvious and the module-level TypeVar — which reads as a shared global while actually being per-function — disappears. On &lt;3.12 the old TypeVar form remains the only option, which is why this rule is version-gated.</rationale>
+    </rule>
+
     <rule id="annotate-boundary" testable="true" depth="essential">
       <statement>Annotate boundary signatures first: HTTP handlers, queue consumers, DB models, library public exports. Internal helpers get arg + return annotations only; locals only when mypy complains. Type the boundary before the body.</statement>
       <rationale source="Internal — gradual-typing rollouts Q4 2025">Boundaries are where bugs cross module ownership lines; that's where types pay off most. Annotating every local variable bloats diff without proportional bug-catch.</rationale>
+    </rule>
+
+    <rule id="strict-at-boundary" testable="true" depth="essential">
+      <statement>Run the checker in strict mode at the module/package boundary — `[tool.mypy] strict = true` or `[tool.pyright] typeCheckingMode = "strict"` — and grant relaxation only per-module, to named legacy modules, never globally. Pick one checker per repo; `checker` in the spec records which.</statement>
+      <rationale source="mypy / pyright configuration docs; internal — python-type-hints backend copy, merged 2026-08-15.">Strict is what catches implicit Any, untyped defs and Optional misuse — the cheapest defect-detection layer available. A global relaxation silently disables it everywhere; a named per-module override keeps the exceptions visible and countable in review. See `templates/mypy.toml` and `templates/pyright.toml`.</rationale>
     </rule>
 
     <rule id="no-bare-ignore" testable="true" depth="essential">
@@ -27,6 +37,16 @@
     <rule id="typeddict-vs-pydantic" testable="true" depth="essential">
       <statement>`TypedDict` for cache payloads, queue messages, and internal dicts crossing module boundaries. `Pydantic` (v2) for HTTP request/response bodies and external-input validation. Never define both `TypedDict` and `Pydantic` for the same data shape — pick one per shape and use everywhere.</statement>
       <rationale source="Pydantic v2 docs; TypedDict — PEP 589">TypedDict is zero-runtime-cost typing for already-validated data. Pydantic adds validation + serialization but costs CPU on every instantiation. Maintaining parallel definitions for the same shape doubles the maintenance and the two drift apart.</rationale>
+    </rule>
+
+    <rule id="pydantic-at-io" testable="true" depth="essential">
+      <statement>Every IO boundary — HTTP request/response bodies, queue messages, and rows read from an external store — is parsed through a Pydantic v2 `BaseModel` before the value reaches business code. Internal, already-validated data uses dataclasses or `TypedDict` instead; never run Pydantic validation inside a hot per-iteration loop.</statement>
+      <rationale source="Pydantic v2 docs; internal — python-type-hints backend copy, merged 2026-08-15.">Pydantic parses, validates and types in one step, and the boundary is the highest-leverage place to do it: everything downstream can then be trusted and cheaply typed. The same call costs CPU on every instantiation, so pushing it inside a loop converts a validation win into a throughput loss — hence the dataclass carve-out. This rule refines `typeddict-vs-pydantic` from the choice of type to the placement of the validation.</rationale>
+    </rule>
+
+    <rule id="no-bare-any" testable="true" depth="essential">
+      <statement>Do not annotate with `Any` in new code. Use a concrete type, a `Protocol`, or `object` for a genuinely unknown shape and narrow explicitly. `Any` is a last resort and requires a justifying comment on the same line. Every public function is fully annotated — an unannotated public def is an implicit `Any` and fails strict.</statement>
+      <rationale source="mypy docs — dynamic typing; internal — python-type-hints backend copy, merged 2026-08-15.">`Any` disables checking on every operation chained off the value, so one `Any` at the top of a call graph erases the guarantees of every typed function below it. `object` forces an explicit narrowing at the point of use, which is where the author actually knows the shape.</rationale>
     </rule>
 
     <rule id="no-strict-on-day-1" testable="true" depth="essential">

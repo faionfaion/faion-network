@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Django + Celery Background Jobs Decision Tree" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from content/01-core-rules.xml. The skip-this-methodology branch is always reachable.</summary>
+<text id="06-decision-tree" title="Django + Celery Background Jobs Decision Tree" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from content/01-core-rules.xml. The skip-this-methodology and run-the-checklist branches are always reachable.</summary>
   <decision-tree>
-    <root-question id="q-root">Is the workload high-volume async work compatible with at-least-once delivery?</root-question>
-    <branch when="task_volume_per_day &lt; 100">
+    <root-question id="q-root">Is the workload high-volume async work on Celery 5+ compatible with at-least-once delivery?</root-question>
+    <branch when="runner != celery">
+      <conclusion ref="skip-this-methodology" verdict="skip — a different runner's conventions apply"/>
+    </branch>
+    <branch when="task_volume_per_day &lt; 100 OR sync_handling_acceptable">
       <conclusion ref="skip-this-methodology" verdict="skip — Celery overhead wasted"/>
     </branch>
     <branch when="dispatch_latency_required_ms &lt; 1000">
@@ -12,14 +15,32 @@
     <branch when="dispatched_inside_transaction == true AND dispatch_mode != on_commit">
       <conclusion ref="on-commit-dispatch" verdict="switch to on_commit dispatch"/>
     </branch>
+    <branch when="task_lacks_explicit_name == true">
+      <conclusion ref="explicit-task-name" verdict="block — add the name= argument"/>
+    </branch>
     <branch when="idempotent_key_present == false">
       <conclusion ref="idempotent-key" verdict="add business key + dedupe check"/>
     </branch>
     <branch when="max_retries &gt; 5 OR jitter == none">
       <conclusion ref="bounded-retry" verdict="fix retry policy"/>
     </branch>
+    <branch when="soft_time_limit_missing OR time_limit_missing">
+      <conclusion ref="time-limits-required" verdict="block — set both limits"/>
+    </branch>
+    <branch when="default_queue_only == true">
+      <conclusion ref="named-queues-not-default" verdict="block — assign an explicit queue"/>
+    </branch>
     <branch when="dlq_queue == null">
       <conclusion ref="dead-letter-after-max" verdict="configure DLQ + alert"/>
     </branch>
+    <branch when="task_args_contain_orm_instance == true">
+      <conclusion ref="no-orm-in-args" verdict="pass primitive ids instead"/>
+    </branch>
+    <branch when="all_gates_green == true">
+      <conclusion ref="run-the-checklist" verdict="approve — walk the procedure and run the validator"/>
+    </branch>
   </decision-tree>
+  <example trace="django-celery-happy-path">
+    Celery 5 + 12 tasks/day above threshold → the three skip branches do not match → dispatch on_commit → every task named → idempotency_key on mutating tasks → max_retries 5 with full jitter → soft/hard limits set → payments queue → DLQ + on-call channel → primitive ids only → all_gates_green=true → approve.
+  </example>
 </text>

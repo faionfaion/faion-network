@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Django Services Layer Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+<text id="03-failure-modes" title="Django Services Layer Failure Modes" version="1.1.0" est_tokens="1300" depth="essential">
+  <summary>8 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
   <section title="Antipatterns">
     <antipattern id="fat-view" severity="high">
       <symptom>View body contains 60+ lines of business logic across 3 models; nothing in services.py.</symptom>
@@ -12,10 +12,30 @@
       <root-cause source="Internal — failure-mode audit">task.delay() called inside @atomic without on_commit.</root-cause>
       <fix>Wrap in transaction.on_commit(lambda: task.delay(...)).</fix>
     </antipattern>
+    <antipattern id="leaky-http-in-services" severity="high">
+      <symptom>services/orders.py imports HttpRequest so that order_create() can read user.id off the request.</symptom>
+      <root-cause source="Practitioner experience">The author short-cut the refactor by threading the whole request through instead of extracting the primitive.</root-cause>
+      <fix>Pass user_id into the service as a primitive. Add an import-linter contract: services/ may not import django.http.*.</fix>
+    </antipattern>
+    <antipattern id="orm-leak-in-views" severity="high">
+      <symptom>Views still call Model.objects.create(...) for some 'small' operations after a partial refactor.</symptom>
+      <root-cause source="Practitioner experience">Partial migration; the 'simple' operations never moved into services.</root-cause>
+      <fix>Sweep with a codemod that finds Model.objects.(create|save|delete) outside services/. Route each call through a service function.</fix>
+    </antipattern>
     <antipattern id="subject-verb-naming" severity="medium">
       <symptom>Services named create_order, update_user, etc. Project mixes both conventions.</symptom>
       <root-cause source="Internal — failure-mode audit">entity-action-naming rule not enforced.</root-cause>
       <fix>Rename to order_create, user_update; document the convention in project AGENTS.md.</fix>
+    </antipattern>
+    <antipattern id="service-by-caller-type" severity="medium">
+      <symptom>Services organised as services/views.py, services/admin.py, services/tasks.py — the same aggregate logic duplicated in each.</symptom>
+      <root-cause source="Practitioner experience">Module structure mirrors the callers instead of the aggregates.</root-cause>
+      <fix>Reorganise by aggregate: services/orders.py, services/payments.py. Each function is then callable from any number of caller types.</fix>
+    </antipattern>
+    <antipattern id="test-via-client" severity="medium">
+      <symptom>All tests go through the Django test client; the service layer is never called directly.</symptom>
+      <root-cause source="Practitioner experience">Habit from the fat-view era — the client test covers everything, slowly.</root-cause>
+      <fix>Add direct pytest tests against service functions with pydantic/dataclass inputs. Keep client tests only for HTTP-layer concerns (auth, content type).</fix>
     </antipattern>
     <antipattern id="atomic-on-everything" severity="medium">
       <symptom>Every service is wrapped in @transaction.atomic, including read-only.</symptom>

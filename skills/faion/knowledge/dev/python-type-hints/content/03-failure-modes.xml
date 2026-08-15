@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Python Type Hints Failure Modes" version="1.1.0" est_tokens="700" depth="essential">
-  <summary>4 antipatterns observed in real Python typing rollouts. Each has a symptom, a root cause, and a fix the validator or CI gate can enforce.</summary>
+<text id="03-failure-modes" title="Python Type Hints Failure Modes" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7 antipatterns observed in real Python typing rollouts. Each has a symptom, a root cause, and a fix the validator or CI gate can enforce.</summary>
 
   <section title="Antipatterns">
 
@@ -13,7 +13,7 @@
     <antipattern id="bare-type-ignore" severity="high">
       <symptom>Files contain `# type: ignore` with no error code; new type bugs are masked because mypy can no longer surface them; `warn_unused_ignores` cannot fire because there's no code to compare.</symptom>
       <root-cause source="Internal — observed in test-author subagent runs Q1 2026">Under pressure from a mypy gate the agent reaches for the broadest silencer first. Bare `# type: ignore` is faster to write than diagnosing the actual mismatch.</root-cause>
-      <fix>ruff rule PGH003 forbids bare `# type: ignore`. Enforce `warn_unused_ignores = true` in mypy config so stale coded ignores fail too. Block PRs that introduce bare ignores.</fix>
+      <fix>ruff rule PGH003 forbids bare `# type: ignore`. Require the coded-plus-reason form `# type: ignore[arg-type]  # reason: upstream stub is wrong, see issue #123` so the ignore is auditable years later. Enforce `warn_unused_ignores = true` in mypy config so stale coded ignores fail too. Block PRs that introduce bare ignores.</fix>
     </antipattern>
 
     <antipattern id="protocol-without-runtime-checkable" severity="medium">
@@ -22,8 +22,26 @@
       <fix>Either add `@runtime_checkable` (accept the perf cost) OR replace `isinstance(x, Proto)` with structural duck-typing (`hasattr(x, 'send')`). Lint: `mypy --strict` does not catch this; add a custom grep rule.</fix>
     </antipattern>
 
+    <antipattern id="any-everywhere" severity="high">
+      <symptom>New code ships `def f(x: Any) -&gt; Any: ...`. The checker reports zero errors on the module and IDE autocomplete goes dead for every caller downstream.</symptom>
+      <root-cause source="Internal — python-type-hints backend copy, merged 2026-08-15">`Any` is the annotation that always satisfies the checker, so under a strict gate it is the fastest way to make the error disappear. Being valid everywhere, it silently propagates: every value derived from an `Any` is itself `Any`.</root-cause>
+      <fix>Replace with the concrete type, a `Protocol`, or `object` plus an explicit narrowing at the point of use. Enable `disallow_any_explicit` (mypy) or `reportAny` (pyright) on new modules so the shortcut fails CI rather than review.</fix>
+    </antipattern>
+
+    <antipattern id="untyped-public-api" severity="high">
+      <symptom>A public function or library export has no annotations. Consumers get no autocomplete, and `mypy --strict` fails the module with `no-untyped-def` the moment it enters the allowlist.</symptom>
+      <root-cause source="Internal — python-type-hints backend copy, merged 2026-08-15">Internal helpers were typed first because they were easier, and the public surface — the one place where types are the contract — was left for later.</root-cause>
+      <fix>Type every public signature (args + return) before any internal helper; seed `strict_files` with the public-API manifest so the boundary is the first thing the gate covers.</fix>
+    </antipattern>
+
+    <antipattern id="pydantic-in-hot-loop" severity="medium">
+      <symptom>A per-iteration loop constructs a Pydantic model for each record; profiling shows validation dominating CPU time on a path that handles already-validated internal data.</symptom>
+      <root-cause source="Internal — python-type-hints backend copy, merged 2026-08-15">"Pydantic at the boundary" was read as "Pydantic everywhere". Validation cost is per instantiation, so moving it inside a loop multiplies a one-off boundary cost by N.</root-cause>
+      <fix>Validate once at the boundary, then carry a `@dataclass(frozen=True, slots=True)` or `TypedDict` through the loop. See `pydantic-at-io` and `typeddict-vs-pydantic` in content/01-core-rules.xml.</fix>
+    </antipattern>
+
     <antipattern id="mixed-union-syntax" severity="low">
-      <symptom>Same module mixes `Optional[X]`, `X | None`, and `Union[X, None]`. Ruff UP007 warnings accumulate; new contributors copy the closest example, perpetuating the mix.</symptom>
+      <symptom>Same module mixes `Optional[X]`, `X | None`, and `Union[X, None]`, and still carries `from typing import List, Optional, Union` — a deprecated-alias import that buys nothing. Ruff UP007 warnings accumulate; new contributors copy the closest example, perpetuating the mix.</symptom>
       <root-cause source="ruff UP007 docs">Multiple equivalent syntaxes exist for historical reasons; without a linter, drift is the default. The single-syntax convention requires enforcement, not preference.</root-cause>
       <fix>Enable ruff rule UP007 and run `ruff check --fix --select UP007 .` as a one-shot migration. Add the rule to pre-commit. Result: only `X | None` remains in the codebase.</fix>
     </antipattern>

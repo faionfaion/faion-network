@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Python Type Hints Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema for the typed-module spec emitted by this methodology — covers mypy config, file allowlist, ignore policy, version metadata.</summary>
+<text id="02-output-contract" title="Python Type Hints Output Contract" version="1.2.0" est_tokens="1200" depth="essential">
+  <summary>JSON Schema for the typed-module spec emitted by this methodology — covers checker config, file allowlist, ignore policy, the four boolean gates, and version metadata.</summary>
 
   <section title="Typed-module spec schema">
     <code lang="json"><![CDATA[
@@ -8,7 +8,18 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://faion.net/schemas/python-type-hints-spec.json",
   "type": "object",
-  "required": ["python_version", "mode", "strict_files", "checker", "version", "last_reviewed"],
+  "required": [
+    "python_version",
+    "mode",
+    "strict_files",
+    "checker",
+    "strict_at_boundary",
+    "pydantic_at_io",
+    "no_legacy_typing_imports",
+    "no_bare_any",
+    "version",
+    "last_reviewed"
+  ],
   "properties": {
     "python_version":  {"type": "string", "pattern": "^3\\.(9|1[0-9])$"},
     "mode":            {"enum": ["greenfield", "legacy", "library"]},
@@ -17,11 +28,17 @@
     "test_relax":      {"type": "boolean", "default": true},
     "ignore_policy":   {"enum": ["coded-only", "any"], "default": "coded-only"},
     "future_annotations_pydantic_v2_only": {"type": "boolean", "default": true},
+    "strict_at_boundary":       {"type": "boolean", "const": true},
+    "pydantic_at_io":           {"type": "boolean", "const": true},
+    "no_legacy_typing_imports": {"type": "boolean", "const": true},
+    "no_bare_any":              {"type": "boolean", "const": true},
+    "pep695_generics":          {"type": "boolean", "default": false},
     "version":         {"type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$"},
     "last_reviewed":   {"type": "string", "format": "date"}
   }
 }
 ]]></code>
+    <note>The four `const: true` booleans are the gates carried over from the backend copy of this methodology: the checker runs strict at the boundary (`strict-at-boundary`), every IO boundary is parsed by Pydantic v2 (`pydantic-at-io`), no `typing.List`/`Optional`/`Union` imports remain (`pep604-only`), and no bare `Any` was introduced (`no-bare-any`). A spec reporting any of them false is a spec describing an unfinished migration.</note>
   </section>
 
   <example valid="true">
@@ -34,6 +51,11 @@
   "test_relax": true,
   "ignore_policy": "coded-only",
   "future_annotations_pydantic_v2_only": true,
+  "strict_at_boundary": true,
+  "pydantic_at_io": true,
+  "no_legacy_typing_imports": true,
+  "no_bare_any": true,
+  "pep695_generics": true,
   "version": "1.0.0",
   "last_reviewed": "2026-05-22"
 }
@@ -46,13 +68,19 @@
   "python_version": "3.8",
   "mode": "strict-everywhere",
   "checker": "mypy",
-  "ignore_policy": "any"
+  "ignore_policy": "any",
+  "strict_at_boundary": false,
+  "pydantic_at_io": false,
+  "no_legacy_typing_imports": false,
+  "no_bare_any": false
 }
 ]]></code>
-    <note>python_version 3.8 below minimum (3.9 required for `list[T]`); mode value not in enum; ignore_policy=any forbidden in this methodology (coded-only mandated); missing version + last_reviewed + strict_files.</note>
+    <note>python_version 3.8 below minimum (3.9 required for `list[T]`); mode value not in enum; ignore_policy=any forbidden in this methodology (coded-only mandated); all four gates red — the methodology has not actually been applied; missing version + last_reviewed + strict_files.</note>
   </example>
 
   <reference path="templates/mypy.toml">Canonical mypy config block</reference>
+  <reference path="templates/pyright.toml">Canonical pyright config block (checker = pyright)</reference>
   <reference path="templates/typecheck-touched.sh">CI gate script</reference>
+  <reference path="templates/precommit-mypy.yaml">Pre-commit / pre-push wiring for the gate</reference>
   <reference path="scripts/validate-python-type-hints.py">Schema validator</reference>
 </text>

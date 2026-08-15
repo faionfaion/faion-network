@@ -24,6 +24,7 @@ from pathlib import Path
 ALLOWED_MODES = {"greenfield", "legacy", "library"}
 ALLOWED_CHECKERS = {"mypy", "pyright"}
 ALLOWED_IGNORE_POLICY = {"coded-only", "any"}
+GATES = ("strict_at_boundary", "pydantic_at_io", "no_legacy_typing_imports", "no_bare_any")
 PY_VER_RE = re.compile(r"^3\.(9|1[0-9])$")
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -31,10 +32,21 @@ DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 def validate(obj: dict) -> list[str]:
     errs: list[str] = []
-    required = ["python_version", "mode", "strict_files", "checker", "version", "last_reviewed"]
+    required = [
+        "python_version", "mode", "strict_files", "checker",
+        "strict_at_boundary", "pydantic_at_io", "no_legacy_typing_imports", "no_bare_any",
+        "version", "last_reviewed",
+    ]
     for k in required:
         if k not in obj:
             errs.append(f"missing required field: {k}")
+    for k in GATES:
+        if k not in obj:
+            continue
+        if not isinstance(obj[k], bool):
+            errs.append(f"gate {k!r} must be boolean, got {type(obj[k]).__name__}")
+        elif obj[k] is False:
+            errs.append(f"gate failed: {k} is false")
     if "python_version" in obj and not PY_VER_RE.match(str(obj["python_version"])):
         errs.append("python_version must match ^3\\.(9|1[0-9])$")
     if "mode" in obj and obj["mode"] not in ALLOWED_MODES:
@@ -68,6 +80,11 @@ OK = {
     "test_relax": True,
     "ignore_policy": "coded-only",
     "future_annotations_pydantic_v2_only": True,
+    "strict_at_boundary": True,
+    "pydantic_at_io": True,
+    "no_legacy_typing_imports": True,
+    "no_bare_any": True,
+    "pep695_generics": True,
     "version": "1.0.0",
     "last_reviewed": "2026-05-22",
 }
@@ -76,6 +93,10 @@ BAD = {
     "mode": "strict-everywhere",
     "checker": "mypy",
     "ignore_policy": "any",
+    "strict_at_boundary": False,
+    "pydantic_at_io": False,
+    "no_legacy_typing_imports": False,
+    "no_bare_any": False,
 }
 
 

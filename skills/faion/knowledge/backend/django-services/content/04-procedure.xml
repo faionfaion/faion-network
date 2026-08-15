@@ -1,36 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Django Services Layer Procedure" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>6-step procedure applying the django-services methodology end-to-end. Each step lists inputs, action, output, and optional decision gate.</summary>
+<text id="04-procedure" title="Django Services Layer Procedure" version="1.1.0" est_tokens="1300" depth="essential">
+  <summary>8-step procedure applying the django-services methodology end-to-end. Each step lists inputs, action, output, and optional decision gate.</summary>
   <section title="Procedure">
-    <step n="1" name="inventory-view-logic">
-      <input>views.py</input>
-      <action>List business-logic blocks in views; group by entity.</action>
-      <output>logic_inventory.md</output>
+    <step n="1" name="inventory-business-operations">
+      <input>views.py, admin.py, tasks.py, management commands</input>
+      <action>List business-logic blocks and business operations (order_create, subscription_cancel, invoice_recompute); group by entity and record every caller of each.</action>
+      <output>logic_inventory.md with a caller column</output>
     </step>
-    <step n="2" name="draft-service-signature">
-      <input>logic block</input>
-      <action>Write entity_action(*, kw, ...) -&gt; ReturnType with full type hints.</action>
+    <step n="2" name="group-by-aggregate">
+      <input>operation inventory</input>
+      <action>Group operations by aggregate and choose the module path — apps/&lt;app&gt;/services.py or app/services/&lt;aggregate&gt;.py. Never a module per caller type.</action>
+      <output>service module skeleton</output>
+    </step>
+    <step n="3" name="draft-service-signature">
+      <input>logic block + skeleton</input>
+      <action>Write entity_action(*, kw, ...) -&gt; ReturnType with full type hints; inputs are primitives, dataclasses or pydantic models, never a request or queryset.</action>
       <output>services.py stub</output>
     </step>
-    <step n="3" name="move-logic">
+    <step n="4" name="move-logic">
       <input>stub + view</input>
-      <action>Move logic out of view into the service body; view calls service.</action>
+      <action>Move logic out of the view into the service body; replace any HttpRequest use with the primitive it needed; the view calls the service.</action>
       <output>diff: view -10 lines, services.py +N lines</output>
     </step>
-    <step n="4" name="apply-atomic">
+    <step n="5" name="apply-atomic">
       <input>service</input>
       <action>If ≥2 writes that must succeed together, wrap in @transaction.atomic.</action>
       <output>services.py with @atomic</output>
     </step>
-    <step n="5" name="defer-side-effects">
+    <step n="6" name="defer-side-effects">
       <input>service</input>
       <action>Replace direct task.delay()/webhook/email with transaction.on_commit dispatch.</action>
       <output>services.py diff</output>
     </step>
-    <step n="6" name="write-service-test">
+    <step n="7" name="write-service-test">
       <input>service</input>
-      <action>Add unit test calling the service directly (no Client) and asserting model + side-effect.</action>
+      <action>Add unit tests calling the service directly (no Client) with pydantic/dataclass inputs and factory_boy fixtures, asserting model state + side-effect.</action>
       <output>tests/test_services.py green</output>
+      <decision-gate>If a service is hard to test directly, its inputs are still leaking HTTP — refactor before continuing.</decision-gate>
+    </step>
+    <step n="8" name="migrate-callers">
+      <input>service functions + caller list</input>
+      <action>Update every caller (view, admin, task, command) to invoke the service. Run import-linter to confirm no service imports django.http and no caller performs an ORM mutation.</action>
+      <output>callers using services; http_imports = 0, orm_outside_services = 0</output>
     </step>
   </section>
 </text>

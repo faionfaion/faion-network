@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Django Services Layer Output Contract" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the code artefact this methodology produces. Validator in scripts/validate-django-services.py enforces required keys, enum bounds, and pattern constraints.</summary>
+<text id="02-output-contract" title="Django Services Layer Output Contract" version="1.1.0" est_tokens="1300" depth="essential">
+  <summary>JSON Schema (draft-07) for the code artefact this methodology produces. Validator in scripts/validate-django-services.py enforces required keys, enum bounds, and pattern constraints; the forbidden-pattern list below is checked by review and by the import-linter contract, not by the schema.</summary>
   <section title="Schema">
     <code lang="json"><![CDATA[
 {
@@ -11,11 +11,14 @@
   "required": [
     "service_name",
     "module_path",
+    "aggregate",
     "kw_only",
     "type_hints_complete",
     "write_count",
     "atomic",
     "side_effects_on_commit",
+    "http_imports",
+    "orm_outside_services",
     "tests_path"
   ],
   "additionalProperties": false,
@@ -28,7 +31,21 @@
     "module_path": {
       "type": "string",
       "minLength": 1,
-      "description": "Dotted path apps.<app>.services."
+      "pattern": "^[a-z_][a-z0-9_]*(\\.[a-z_][a-z0-9_]*)*\\.services(\\.[a-z_][a-z0-9_]*)?$",
+      "description": "Dotted path apps.<app>.services (file form app/services/<aggregate>.py maps onto it)."
+    },
+    "aggregate": {
+      "type": "string",
+      "minLength": 2,
+      "description": "Aggregate the module owns; one module per aggregate, never per caller type."
+    },
+    "public_functions": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "description": "Public service functions exported by the module."
     },
     "kw_only": {
       "type": "boolean",
@@ -40,6 +57,7 @@
     },
     "write_count": {
       "type": "integer",
+      "minimum": 0,
       "description": "Number of writes performed."
     },
     "atomic": {
@@ -52,6 +70,23 @@
         "type": "string"
       },
       "description": "Side effects dispatched via on_commit."
+    },
+    "http_imports": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 0,
+      "description": "Imports of django.http / rest_framework.response / template engines inside the service module; must be 0."
+    },
+    "orm_outside_services": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 0,
+      "description": "ORM mutations found outside services/ for this aggregate; must be 0."
+    },
+    "validated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the artefact last passed the validator."
     },
     "tests_path": {
       "type": "string",
@@ -67,6 +102,11 @@
 {
   "service_name": "order_create",
   "module_path": "apps.orders.services",
+  "aggregate": "orders",
+  "public_functions": [
+    "order_create",
+    "order_cancel"
+  ],
   "kw_only": true,
   "type_hints_complete": true,
   "write_count": 3,
@@ -74,20 +114,43 @@
   "side_effects_on_commit": [
     "apps.orders.tasks.send_order_confirmation.delay"
   ],
+  "http_imports": 0,
+  "orm_outside_services": 0,
+  "validated_at": "2026-05-23T10:00:00Z",
   "tests_path": "apps/orders/tests/test_services.py"
 }
 ]]></code>
-    <note>All required keys present; enums and patterns satisfied.</note>
+    <note>All required keys present; enums, bounds and the dotted module_path pattern satisfied.</note>
   </example>
   <example valid="false">
     <code lang="json"><![CDATA[
 {
   "service_name": "create_order",
+  "module_path": "apps.orders.views",
+  "aggregate": "o",
+  "public_functions": [],
   "atomic": false,
-  "write_count": 4
+  "write_count": 4,
+  "http_imports": 3,
+  "orm_outside_services": 5
 }
 ]]></code>
-    <note>Forbidden traits: service_name not entity_action; write_count&gt;1 with atomic=false; kw_only=false; missing tests_path.</note>
+    <note>Forbidden traits: service_name not entity_action; module_path not a services module; aggregate under 2 chars; public_functions empty; write_count&gt;1 with atomic=false; kw_only=false; http_imports or orm_outside_services above zero; missing tests_path.</note>
   </example>
+  <output-contract>
+    <forbidden>
+      <pattern id="f1">Service module imports from django.http, rest_framework.response or a template engine</pattern>
+      <pattern id="f2">View, admin or task calls Model.objects.create/save/delete directly instead of going through a service</pattern>
+      <pattern id="f3">Service function accepting an HttpRequest, view or queryset as a parameter</pattern>
+      <pattern id="f4">Service module mixing two aggregates (orders and payments in one file)</pattern>
+      <pattern id="f5">Service module organised by caller type (services/views.py, services/admin.py)</pattern>
+      <pattern id="f6">Side effect dispatched inside @transaction.atomic without on_commit</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Auto-format with ruff before final review.</transformation>
+      <transformation>Sort public_functions alphabetically for diff hygiene.</transformation>
+      <transformation>Rename subject_verb services to entity_action.</transformation>
+    </allowed-transformations>
+  </output-contract>
   <reference path="scripts/validate-django-services.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

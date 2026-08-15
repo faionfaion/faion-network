@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="Django + Celery Background Jobs Output Contract" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the code artefact this methodology produces. Validator in scripts/validate-django-celery.py enforces required keys, enum bounds, and pattern constraints.</summary>
+<text id="02-output-contract" title="Django + Celery Background Jobs Output Contract" version="1.1.0" est_tokens="1300" depth="essential">
+  <summary>JSON Schema (draft-07) for the code artefact this methodology produces. Validator in scripts/validate-django-celery.py enforces required keys, enum bounds, and pattern constraints; the forbidden-pattern list below is checked by review, not by the schema.</summary>
   <section title="Schema">
     <code lang="json"><![CDATA[
 {
@@ -11,10 +11,15 @@
   "required": [
     "task_name",
     "business_key",
+    "idempotency",
+    "queue",
     "max_retries",
     "backoff_base_seconds",
     "backoff_jitter",
+    "soft_time_limit",
+    "time_limit",
     "dispatch_mode",
+    "dlq_strategy",
     "dlq_queue",
     "alerting_channel"
   ],
@@ -23,20 +28,39 @@
     "task_name": {
       "type": "string",
       "minLength": 1,
-      "description": "Dotted path to the task function."
+      "pattern": "^[a-z][a-z0-9_.]+$",
+      "description": "Explicit dotted task name passed to name= on the decorator."
     },
     "business_key": {
       "type": "string",
       "minLength": 1,
       "description": "Name of the idempotency-key argument."
     },
+    "idempotency": {
+      "type": "string",
+      "enum": [
+        "idempotency_key",
+        "db_upsert",
+        "check_before_act",
+        "natural_key"
+      ],
+      "description": "Declared idempotency strategy guarding the business key."
+    },
+    "queue": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Explicit queue name; never the default queue."
+    },
     "max_retries": {
       "type": "integer",
-      "description": "Bounded retry count; \u22645."
+      "minimum": 0,
+      "maximum": 5,
+      "description": "Bounded retry count; ≤5."
     },
     "backoff_base_seconds": {
       "type": "integer",
-      "description": "Exponential backoff base; \u22651."
+      "minimum": 1,
+      "description": "Exponential backoff base; ≥1."
     },
     "backoff_jitter": {
       "type": "string",
@@ -47,6 +71,24 @@
       ],
       "description": "Jitter style."
     },
+    "retry_backoff": {
+      "type": "boolean",
+      "description": "Exponential backoff enabled on the decorator."
+    },
+    "retry_jitter": {
+      "type": "boolean",
+      "description": "Jitter enabled on the decorator."
+    },
+    "soft_time_limit": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Seconds before SoftTimeLimitExceeded is raised inside the task."
+    },
+    "time_limit": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Seconds before the worker process is hard-killed."
+    },
     "dispatch_mode": {
       "type": "string",
       "enum": [
@@ -54,6 +96,15 @@
         "outside_transaction"
       ],
       "description": "Where dispatch happens."
+    },
+    "dlq_strategy": {
+      "type": "string",
+      "enum": [
+        "dlq",
+        "failure_record",
+        "alert_only"
+      ],
+      "description": "What happens once retries are exhausted."
     },
     "dlq_queue": {
       "type": "string",
@@ -74,24 +125,48 @@
 {
   "task_name": "apps.payments.tasks.process_refund",
   "business_key": "refund_id",
+  "idempotency": "idempotency_key",
+  "queue": "payments",
   "max_retries": 5,
   "backoff_base_seconds": 2,
   "backoff_jitter": "full",
+  "retry_backoff": true,
+  "retry_jitter": true,
+  "soft_time_limit": 30,
+  "time_limit": 60,
   "dispatch_mode": "on_commit",
+  "dlq_strategy": "dlq",
   "dlq_queue": "payments-dlq",
   "alerting_channel": "#payments-oncall"
 }
 ]]></code>
-    <note>All required keys present; enums and patterns satisfied.</note>
+    <note>All required keys present; enums, bounds and the dotted task_name pattern satisfied.</note>
   </example>
   <example valid="false">
     <code lang="json"><![CDATA[
 {
-  "task_name": "apps.payments.tasks.process_refund",
+  "task_name": "SendEmail",
   "max_retries": 999
 }
 ]]></code>
-    <note>Forbidden traits: max_retries&gt;5 or &lt;0; dispatch_mode not in enum; missing business_key/dlq_queue/alerting_channel.</note>
+    <note>Forbidden traits: task_name not dotted snake_case; max_retries&gt;5 or &lt;0; dispatch_mode/idempotency/dlq_strategy not in enum; missing business_key/queue/soft_time_limit/time_limit/dlq_queue/alerting_channel.</note>
   </example>
+  <output-contract>
+    <forbidden>
+      <pattern id="f1">Task without an explicit name= argument (relies on module-path auto-discovery)</pattern>
+      <pattern id="f2">Task without a declared idempotency strategy</pattern>
+      <pattern id="f3">Task without both soft_time_limit and time_limit</pattern>
+      <pattern id="f4">Worker started with no -Q queue arg (consumes the default queue only)</pattern>
+      <pattern id="f5">Bare .delay() inside @transaction.atomic without on_commit / delay_on_commit</pattern>
+      <pattern id="f6">Model instances passed as task arguments instead of primitive ids</pattern>
+      <pattern id="f7">CELERY_TASK_ALWAYS_EAGER=True in production settings</pattern>
+      <pattern id="f8">Flower exposed without authentication</pattern>
+    </forbidden>
+    <allowed-transformations>
+      <transformation>Lowercase + dot-normalise task names.</transformation>
+      <transformation>Default retry_backoff and retry_jitter to true when omitted.</transformation>
+      <transformation>Derive time_limit as soft_time_limit + 30 when only the soft limit is given.</transformation>
+    </allowed-transformations>
+  </output-contract>
   <reference path="scripts/validate-django-celery.py">Validator script (stdlib-only, --help + --self-test).</reference>
 </text>

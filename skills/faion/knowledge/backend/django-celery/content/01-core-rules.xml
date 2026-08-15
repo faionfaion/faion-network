@@ -1,34 +1,50 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="Django + Celery Background Jobs Core Rules" version="1.0.0" est_tokens="1100" depth="essential">
-  <summary>7 testable rules grounding the django-celery methodology. Each rule pairs a binary check with sourced rationale; the final rule is the skip-this-methodology gate referenced by the decision tree.</summary>
+<text id="01-core-rules" title="Django + Celery Background Jobs Core Rules" version="1.1.0" est_tokens="1500" depth="essential">
+  <summary>11 testable rules grounding the django-celery methodology. Each rule pairs a binary check with sourced rationale; the run-the-checklist and skip-this-methodology gates are the leaves the decision tree always keeps reachable.</summary>
   <section title="Rule set">
     <rule id="on-commit-dispatch" testable="true" depth="essential">
-      <statement>Tasks dispatched from a transaction MUST use transaction.on_commit (or task.apply_async via on_commit hook). Bare .delay() inside @atomic is forbidden.</statement>
+      <statement>Tasks dispatched from a transaction MUST use transaction.on_commit (or task.delay_on_commit on Celery 5.4+). Bare .delay() inside @atomic is forbidden.</statement>
       <rationale source="Django docs; internal — race-condition postmortems.">.delay() can execute before the commit completes, causing 'task fired but row does not exist' incidents.</rationale>
     </rule>
+    <rule id="explicit-task-name" testable="true" depth="essential">
+      <statement>Every @shared_task or @app.task carries an explicit dotted `name='app.module.task'` argument; never rely on the auto-discovered name, which is derived from the module path.</statement>
+      <rationale source="Celery docs — task names; practitioner experience.">Auto-discovered names break silently on module rename or app move; already-queued jobs deserialise against a NotRegistered task and dead-letter without an alert.</rationale>
+    </rule>
     <rule id="idempotent-key" testable="true" depth="essential">
-      <statement>Every task accepts a business id (order_id, refund_id) and is idempotent under that key. Retrying with the same key is a no-op or returns the same result.</statement>
-      <rationale source="Celery docs; payment-integration playbook.">Celery guarantees at-least-once delivery; non-idempotent tasks cause duplicate charges/emails on retry.</rationale>
+      <statement>Every task accepts a business id (order_id, refund_id) and is idempotent under that key. The strategy is declared explicitly — idempotency_key, db_upsert, check_before_act or natural_key — and retrying with the same key is a no-op or returns the same result.</statement>
+      <rationale source="Celery docs; distributed-systems literature; payment-integration playbook.">Celery guarantees at-least-once delivery; non-idempotent tasks double-bill, double-email or corrupt counters on retry. Naming the strategy makes the guard reviewable instead of assumed.</rationale>
     </rule>
     <rule id="bounded-retry" testable="true" depth="essential">
-      <statement>Tasks declare max_retries (≤5) and use exponential backoff with full jitter. Tasks without a retry policy use a project-wide default.</statement>
-      <rationale source="AWS Architecture Blog — exponential backoff + jitter.">Unbounded retries pin worker slots forever on a sick downstream; full jitter avoids retry storms.</rationale>
+      <statement>Tasks declare max_retries (≤5), retry_backoff (exponential) and retry_jitter (full) explicitly on the decorator. Never rely on Celery's silent defaults; tasks without an own policy inherit a documented project-wide default.</statement>
+      <rationale source="AWS Architecture Blog — exponential backoff + jitter; Celery docs.">Unbounded retries pin worker slots forever on a sick downstream; full jitter avoids retry storms. The default policy differs across Celery versions, so an implicit policy is unreviewable.</rationale>
+    </rule>
+    <rule id="time-limits-required" testable="true" depth="essential">
+      <statement>Every task sets both soft_time_limit and time_limit. soft raises SoftTimeLimitExceeded inside the task; time_limit hard-kills the worker process. Default sizing: soft = p95 latency × 2, hard = soft + 30s.</statement>
+      <rationale source="Celery operations guidance.">Without time limits a hung task pins a worker indefinitely; the pool starves and unrelated tasks back up behind it.</rationale>
+    </rule>
+    <rule id="named-queues-not-default" testable="true" depth="essential">
+      <statement>Tasks declare an explicit queue via `@shared_task(queue='emails')` or task_routes; workers start with `-Q &lt;queue&gt;`. Never run a worker on the default queue only.</statement>
+      <rationale source="Celery routing docs.">All-tasks-on-default mixes priorities; one slow report job starves time-sensitive email tasks sharing the pool. One queue = one SLA.</rationale>
     </rule>
     <rule id="dead-letter-after-max" testable="true" depth="essential">
-      <statement>After max_retries the task acks to a dead-letter queue with the original payload + last exception. DLQ has an on-call alert.</statement>
-      <rationale source="Internal — DLQ design canon.">Silent drops hide failures for days; DLQ + alert ensures human attention.</rationale>
+      <statement>After max_retries the task acks to a dead-letter queue — or writes a structured failure record — carrying the original payload + last exception. The DLQ has an on-call alert that fires within minutes.</statement>
+      <rationale source="Internal — DLQ design canon; reliability engineering.">Silent terminal failures accumulate invisibly for days; DLQ + alert gives operators one place to triage and replay.</rationale>
     </rule>
     <rule id="no-orm-in-args" testable="true" depth="essential">
-      <statement>Task arguments are JSON-serialisable primitives or model ids — never ORM instances or Decimals without conversion.</statement>
-      <rationale source="Celery docs — serialisation.">Pickling ORM objects breaks across migrations and across worker versions.</rationale>
+      <statement>Task arguments are JSON-serialisable primitives or model ids — never ORM instances or Decimals without conversion. The task re-fetches fresh state by id.</statement>
+      <rationale source="Celery docs — serialisation.">Pickling ORM objects breaks across migrations and across worker versions, and a serialised instance is stale by the time the worker runs it.</rationale>
     </rule>
     <rule id="task-per-app" testable="true" depth="essential">
       <statement>Each Django app owns its tasks.py; cross-app effects go via the contracts module, not by importing another app's task.</statement>
       <rationale source="Modular monolith; decomposition-django.">Cross-app task imports replicate the tight coupling decomposition was meant to fix.</rationale>
     </rule>
+    <rule id="run-the-checklist" testable="true" depth="essential">
+      <statement>When the Applies-If preconditions hold and no Skip-If trigger applies, walk content/04-procedure.xml end-to-end and run scripts/validate-django-celery.py before declaring the task done.</statement>
+      <rationale source="F-066 v3 B5.6 — mandatory run leaf.">Decision-tree leaves must reference a rule id. The run leaf maps "preconditions met, all gates green" to the canonical execution path.</rationale>
+    </rule>
     <rule id="skip-this-methodology" testable="true" depth="essential">
-      <statement>If task volume &lt; 100/day OR no broker is set up OR job dispatch must be sub-second, skip this methodology.</statement>
-      <rationale source="Skip-rule for B5.6 decision tree.">Celery overhead is wasted at low volume and unsuitable for tight-latency dispatch.</rationale>
+      <statement>If task volume &lt; 100/day OR no broker is set up OR job dispatch must be sub-second OR the runner is not Celery (RQ, Dramatiq, Huey, Airflow, Prefect), skip this methodology.</statement>
+      <rationale source="Skip-rule for B5.6 decision tree.">Celery overhead is wasted at low volume, unsuitable for tight-latency dispatch, and the conventions here do not transfer to a different runner.</rationale>
     </rule>
   </section>
   <see-also>

@@ -1,36 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Django + Celery Background Jobs Procedure" version="1.0.0" est_tokens="900" depth="essential">
-  <summary>6-step procedure applying the django-celery methodology end-to-end. Each step lists inputs, action, output, and optional decision gate.</summary>
+<text id="04-procedure" title="Django + Celery Background Jobs Procedure" version="1.1.0" est_tokens="1300" depth="essential">
+  <summary>8-step procedure applying the django-celery methodology end-to-end. Each step lists inputs, action, output, and optional decision gate.</summary>
   <section title="Procedure">
-    <step n="1" name="define-task-contract">
-      <input>linked service + business id</input>
-      <action>Write task signature: (business_id, *, **kwargs); document idempotency invariant in docstring.</action>
-      <output>tasks.py stub</output>
+    <step n="1" name="inventory-tasks">
+      <input>async-eligible operations across the codebase</input>
+      <action>List every task: name, trigger, payload shape, frequency, latency budget, failure consequence.</action>
+      <output>task inventory table</output>
     </step>
-    <step n="2" name="wire-dispatch">
+    <step n="2" name="define-task-contract">
+      <input>task inventory + linked service + business id</input>
+      <action>Write task signature: (business_id, *, **kwargs) with an explicit dotted name= on the decorator; pick the idempotency strategy (idempotency_key | db_upsert | check_before_act | natural_key) and document the invariant in the docstring.</action>
+      <output>tasks.py stub with name + idempotency design</output>
+    </step>
+    <step n="3" name="wire-dispatch">
       <input>service code</input>
-      <action>Replace bare .delay() with transaction.on_commit dispatch.</action>
+      <action>Replace bare .delay() with transaction.on_commit dispatch (or delay_on_commit on Celery 5.4+).</action>
       <output>service.py diff</output>
       <decision-gate>If dispatch is outside any transaction, document why in the call site.</decision-gate>
     </step>
-    <step n="3" name="add-retry-policy">
-      <input>task stub</input>
-      <action>Set autoretry_for + max_retries + retry_backoff + retry_jitter on the decorator.</action>
-      <output>tasks.py with decorator</output>
+    <step n="4" name="add-retry-and-time-limits">
+      <input>task stub + latency budgets + failure consequence</input>
+      <action>Set autoretry_for + max_retries + retry_backoff + retry_jitter on the decorator; set soft_time_limit from p95 measurements and time_limit = soft + 30s.</action>
+      <output>tasks.py with a complete policy decorator</output>
     </step>
-    <step n="4" name="configure-dlq">
-      <input>celery app config</input>
-      <action>Define DLQ in CELERY_TASK_QUEUES and route on_failure to DLQ; wire alert on DLQ depth.</action>
-      <output>celery_app.py + monitor config</output>
+    <step n="5" name="design-queue-topology">
+      <input>task list + priority + isolation needs</input>
+      <action>Assign tasks to named queues (emails, reports, webhooks); decide the worker pool and concurrency per queue and wire task_routes plus the worker `-Q` flags.</action>
+      <output>queue topology spec</output>
+      <decision-gate>If queue count &gt; worker count, consolidate; if one queue dominates, split.</decision-gate>
     </step>
-    <step n="5" name="test-idempotency">
+    <step n="6" name="configure-dlq">
+      <input>celery app config + per-task DLQ strategy + alerting endpoints</input>
+      <action>Define the DLQ in CELERY_TASK_QUEUES (or a failure-record table) and route on_failure to it; wire the PagerDuty/Slack alert on DLQ depth and growth.</action>
+      <output>celery_app.py + monitor config + alert pipeline</output>
+    </step>
+    <step n="7" name="test-idempotency">
       <input>task + business id</input>
       <action>Call the task twice with the same business_key; assert single side-effect.</action>
       <output>test_idempotent.py green</output>
     </step>
-    <step n="6" name="staging-soak">
+    <step n="8" name="staging-soak">
       <input>deployed config</input>
-      <action>Run for ≥24h on staging at production traffic shape; observe DLQ, retry rate, p95 latency.</action>
+      <action>Run for ≥24h on staging at production traffic shape; observe DLQ, retry rate, queue depth, task age, p95 latency.</action>
       <output>soak report</output>
     </step>
   </section>

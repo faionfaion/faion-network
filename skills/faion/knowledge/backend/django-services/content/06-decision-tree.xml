@@ -1,13 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Django Services Layer Decision Tree" version="1.0.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from content/01-core-rules.xml. The skip-this-methodology branch is always reachable.</summary>
+<text id="06-decision-tree" title="Django Services Layer Decision Tree" version="1.1.0" est_tokens="900" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from content/01-core-rules.xml. The skip-this-methodology and run-the-checklist branches are always reachable.</summary>
   <decision-tree>
-    <root-question id="q-root">Does the change perform writes across ≥2 models or trigger side effects?</root-question>
+    <root-question id="q-root">Does the change perform writes across ≥2 models, trigger side effects, or carry logic reused by more than one caller?</root-question>
     <branch when="operation_kind == read_only">
       <conclusion ref="skip-this-methodology" verdict="skip — write a selector"/>
     </branch>
     <branch when="operation_kind == single_model_crud AND side_effects == 0">
       <conclusion ref="skip-this-methodology" verdict="skip — inline ORM call"/>
+    </branch>
+    <branch when="architecture == cqrs OR architecture == hexagonal">
+      <conclusion ref="skip-this-methodology" verdict="skip — explicit handlers already in use"/>
+    </branch>
+    <branch when="service_accepts_request_or_queryset == true">
+      <conclusion ref="services-accept-primitives" verdict="block — pass primitives, not the request"/>
+    </branch>
+    <branch when="service_returns_http_object == true">
+      <conclusion ref="services-return-primitives" verdict="block — return primitives, not HttpResponse"/>
+    </branch>
+    <branch when="service_imports_http == true">
+      <conclusion ref="no-http-types-inside-services" verdict="block — remove HTTP imports"/>
+    </branch>
+    <branch when="orm_call_outside_services == true">
+      <conclusion ref="services-own-writes-selectors-reads" verdict="block — route DB writes through services"/>
+    </branch>
+    <branch when="module_organised_by_caller == true">
+      <conclusion ref="module-per-aggregate" verdict="block — reorganise by aggregate"/>
     </branch>
     <branch when="write_count &gt;= 2 AND atomic == false">
       <conclusion ref="atomic-on-multi-write" verdict="wrap in @transaction.atomic"/>
@@ -21,8 +39,14 @@
     <branch when="kw_only == false OR type_hints_complete == false">
       <conclusion ref="kw-only-typed" verdict="make args kw-only and fully typed"/>
     </branch>
+    <branch when="input_not_validated_at_boundary == true">
+      <conclusion ref="validate-input-once" verdict="validate with a serializer or pydantic at the boundary"/>
+    </branch>
+    <branch when="all_gates_green == true">
+      <conclusion ref="run-the-checklist" verdict="approve — walk the procedure and run the validator"/>
+    </branch>
   </decision-tree>
   <example trace="django-services-typical">
-    View POST /orders/ accepts payload, creates Order + OrderLine + AuditLog, then sends confirmation email. Extract into order_create(*, user: User, items: list[dict], notes: str | None = None) -&gt; Order. Wrap in @transaction.atomic because 3 writes. Replace send_email.delay(order.id) with transaction.on_commit(lambda: send_email.delay(order.id)). View becomes a 4-line dispatch.
+    View POST /orders/ accepts payload, creates Order + OrderLine + AuditLog, then sends confirmation email. Extract into order_create(*, user_id: int, items: list[dict], notes: str | None = None) -&gt; Order in apps.orders.services. Wrap in @transaction.atomic because 3 writes. Replace send_email.delay(order.id) with transaction.on_commit(lambda: send_email.delay(order.id)). View becomes a 4-line dispatch; import-linter confirms no HTTP import in services and no ORM mutation outside them → all_gates_green=true → approve.
   </example>
 </text>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="Python Type Hints Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping Python version + repo state to a typing-rollout configuration. Leaves reference rules from 01-core-rules.xml.</summary>
+<text id="06-decision-tree" title="Python Type Hints Decision Tree" version="1.2.0" est_tokens="900" depth="essential">
+  <summary>Routing tree mapping Python version + repo state to a typing-rollout configuration, plus the per-data-shape branches that pick between Pydantic, dataclass/TypedDict, PEP 695 generics and object. Leaves reference rules from 01-core-rules.xml.</summary>
 
   <decision-tree>
     <root-question id="q-py-version">What Python version does `pyproject.toml requires-python` declare?</root-question>
@@ -31,6 +31,25 @@
       <branch when="published == false">
         <conclusion ref="annotate-boundary" verdict="mode=greenfield or legacy depending on coverage; PEP 695 generic syntax allowed in new files"/>
       </branch>
+    </branch>
+    <branch when="checker == pyright">
+      <conclusion ref="strict-at-boundary" verdict="install `[tool.pyright] typeCheckingMode = &quot;strict&quot;` from templates/pyright.toml; relax per-module for named legacy modules only, never globally"/>
+    </branch>
+
+    <branch when="data_shape_crosses_io_boundary == true">
+      <conclusion ref="pydantic-at-io" verdict="Pydantic v2 BaseModel, parsed at the edge (HTTP body, queue message, external row)"/>
+    </branch>
+
+    <branch when="data_shape_crosses_io_boundary == false AND shape_is_internal_record == true">
+      <conclusion ref="typeddict-vs-pydantic" verdict="dataclass (frozen, slots) or TypedDict — zero runtime validation cost; never a second definition of a shape Pydantic already owns"/>
+    </branch>
+
+    <branch when="shape_is_generic_algorithm == true AND python_version &gt;= 3.12">
+      <conclusion ref="pep695-type-params" verdict="declare with PEP 695 `def f[T](...)`; do not add a module-level TypeVar"/>
+    </branch>
+
+    <branch when="shape_is_unknown == true">
+      <conclusion ref="no-bare-any" verdict="annotate `object` and narrow explicitly; `Any` only as last resort with a justifying comment"/>
     </branch>
   </decision-tree>
 

@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-009, Python/Django: 3 slug collisions resolved merge-then-archive.**
+  `django-celery` and `django-services` survive in `backend/` under
+  `domain-boundaries.md` Rule 1; **`python-type-hints` survives in `dev/`** —
+  the policy's Rule 5, because typing craft binds on a project that never
+  deploys. Two of the 28 backend↔dev pairs resolve *away* from `backend`, which
+  is the evidence that the boundary is being applied rather than assumed.
+
+  **Each survivor's `scripts/validate-<slug>.py` was widened in the same step as
+  its `02-output-contract.xml`.** Leaving the generated validator behind would
+  let a contract and the gate that enforces it drift apart silently — the
+  methodology would claim a field the gate never checks.
+
+  One item is authored rather than merged, and is marked as such:
+  `dev/python-type-hints/templates/pyright.toml`. The pyright configuration
+  existed only as prose inside a rule while the output contract already offered
+  `checker: "pyright"` with no file behind it. A contract offering a choice with
+  nothing to hand back is a hole, not a style question.
+
+  One translation was needed rather than a copy: the loser's `module_path`
+  pattern `^[a-z_]+/services/[a-z_]+\.py$` is a file path, while the survivor's
+  field is a dotted module path. It was translated to the equivalent dotted form
+  with the file form documented in the field description — copying it verbatim
+  would have produced a rule that rejects every valid value.
+
 - **CR-009, PHP/Laravel and Ruby/Rails: 8 slug collisions resolved
   merge-then-archive, survivor `backend/` in all eight** under
   `domain-boundaries.md` Rule 1. Every survivor gained a canonical

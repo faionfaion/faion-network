@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="Python Type Hints Adoption Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>5-step procedure for incremental typing adoption: from an untyped module to a CI-gated typed file.</summary>
+<text id="04-procedure" title="Python Type Hints Adoption Procedure" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7-step procedure for incremental typing adoption: from an untyped module to a CI-gated typed file with a validated IO boundary and no bare Any.</summary>
 
   <section title="Procedure">
 
@@ -15,6 +15,7 @@
       <action>Copy `templates/mypy.toml` into `pyproject.toml`. Adjust `python_version` to detected value. For mode=legacy, replace `strict = true` with `files = ["src/api/handlers.py", ...]` allowlist seeded with the public-API manifest. For mode=greenfield, keep `strict = true`. For mode=library, add `disallow_any_generics = true`.</action>
       <output>committed `pyproject.toml [tool.mypy]` block</output>
       <decision-gate>If repo mixes Pydantic v1 and Pydantic v2 — abort and remediate v1 first; this methodology assumes v2.</decision-gate>
+      <decision-gate>If `checker = pyright`, install `templates/pyright.toml` instead: `typeCheckingMode = "strict"` with the same per-module legacy relaxations. Never relax globally.</decision-gate>
     </step>
 
     <step n="3" name="wire-ci">
@@ -30,7 +31,20 @@
       <decision-gate>If a single file hits &gt;30 errors and contains heavy dynamic metaprogramming → mark it `# mypy: ignore-errors` at top with a justifying comment and escalate to a refactor task; do not deep-type metaprogramming code.</decision-gate>
     </step>
 
-    <step n="5" name="extend-allowlist">
+    <step n="5" name="type-the-io-boundary">
+      <input>the file's IO boundary: HTTP handlers, queue consumers, external-store reads</input>
+      <action>Author a Pydantic v2 `BaseModel` for each request/response body, queue message, and externally-sourced row; parse at the edge so business code receives a typed, validated object. Use `templates/pydantic-schema.py` as the starting shape. Keep internal already-validated data on `@dataclass(frozen=True, slots=True)` or `TypedDict` — never construct a Pydantic model inside a per-iteration loop.</action>
+      <output>IO validated; `pydantic_at_io = true` in the spec</output>
+      <decision-gate>If a shape already has a Pydantic model, do not add a parallel `TypedDict` for it — see `typeddict-vs-pydantic`.</decision-gate>
+    </step>
+
+    <step n="6" name="eliminate-any">
+      <input>file passing the checker but still containing `Any`</input>
+      <action>Replace each `Any` with the concrete type, a `Protocol`, or `object` plus explicit narrowing at the point of use. Any remaining `Any` carries a same-line justifying comment. Confirm every public signature is annotated — an unannotated public def is an implicit `Any`.</action>
+      <output>`no_bare_any = true`; public surface fully typed</output>
+    </step>
+
+    <step n="7" name="extend-allowlist">
       <input>green file + current strict_files allowlist</input>
       <action>Append the file path to `[tool.mypy] files = [...]` (legacy mode) or rely on global strict (greenfield mode). Commit. Re-run CI to confirm. Repeat from step 4 on the next file.</action>
       <output>growing strict-typed surface; CI gate never regresses</output>

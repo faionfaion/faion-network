@@ -1,21 +1,36 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Django + Celery Background Jobs Failure Modes" version="1.0.0" est_tokens="800" depth="essential">
-  <summary>4 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+<text id="03-failure-modes" title="Django + Celery Background Jobs Failure Modes" version="1.1.0" est_tokens="1200" depth="essential">
+  <summary>7 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
   <section title="Antipatterns">
     <antipattern id="delay-inside-atomic" severity="high">
       <symptom>Task fires but the row it needs does not exist yet; intermittent 'object not found' errors.</symptom>
       <root-cause source="Internal — failure-mode audit">Bare .delay() called inside @transaction.atomic instead of on_commit.</root-cause>
       <fix>Wrap dispatch in transaction.on_commit(lambda: task.delay(...)) or use task.delay_on_commit if available.</fix>
     </antipattern>
+    <antipattern id="implicit-task-name" severity="high">
+      <symptom>After a refactor that moves `tasks.py`, already-queued jobs deserialise to NotRegistered and dead-letter without an alert.</symptom>
+      <root-cause source="Practitioner experience">@shared_task without a name= argument; the module path was baked into the queued payload.</root-cause>
+      <fix>Add an explicit `name=` to every task. Run a one-off script to replay the DLQ jobs under the new name.</fix>
+    </antipattern>
     <antipattern id="non-idempotent-charge" severity="high">
-      <symptom>Duplicate charges on the same order after a transient broker error.</symptom>
-      <root-cause source="Internal — failure-mode audit">Task lacked idempotent-key + business_key check on entry.</root-cause>
-      <fix>Add `if already_processed(business_key): return existing_result`; rerun affected rows once cleaned.</fix>
+      <symptom>Duplicate charges on the same order after a transient broker error; the customer received the same receipt email three times.</symptom>
+      <root-cause source="Internal — failure-mode audit">Task lacked an idempotent-key + business_key check on entry; it retried on a broker disconnect with no guard.</root-cause>
+      <fix>Add `if already_processed(business_key): return existing_result`; persist `processed_at` against the key in a DB table and reject retries that match a processed key; rerun affected rows once cleaned.</fix>
     </antipattern>
     <antipattern id="retry-storm" severity="high">
       <symptom>Downstream API goes flaky; thousands of retries land in the same 50ms window.</symptom>
       <root-cause source="Internal — failure-mode audit">No jitter in retry policy.</root-cause>
       <fix>Switch to full jitter; cap max_retries; add a circuit breaker.</fix>
+    </antipattern>
+    <antipattern id="no-time-limits" severity="high">
+      <symptom>Worker pool exhausted; tasks back up for hours because one task hung on an HTTP call.</symptom>
+      <root-cause source="Practitioner experience">Celery defaults assumed; soft_time_limit + time_limit never set.</root-cause>
+      <fix>Set soft_time_limit = p95 latency × 2 and time_limit = soft + 30s. Verify with a fault-injected hung-call test.</fix>
+    </antipattern>
+    <antipattern id="default-queue-mix" severity="medium">
+      <symptom>Low-priority report jobs starved time-sensitive email tasks.</symptom>
+      <root-cause source="Practitioner experience">All tasks went to the default queue behind a single worker pool.</root-cause>
+      <fix>Declare explicit queues per task. Start workers with `-Q emails` / `-Q reports` and per-queue concurrency settings.</fix>
     </antipattern>
     <antipattern id="silent-drop" severity="medium">
       <symptom>Webhook task fails 5 times and disappears; nobody notices until customers complain.</symptom>

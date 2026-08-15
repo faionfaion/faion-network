@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="Django Celery Tasks Decision Tree" version="1.1.0" est_tokens="500" depth="essential">
+  <summary>Routing tree mapping observable signals from inputs to a rule from 01-core-rules.xml for django-celery.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Is the runner Celery 5+ on Django with broker + workers?</root-question>
+
+    <branch when="runner != celery">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — different runner conventions apply"/>
+    </branch>
+    <branch when="task_count == 0 OR sync_handling_acceptable">
+      <conclusion ref="skip-this-methodology" verdict="SKIP — sync handling is simpler"/>
+    </branch>
+    <branch when="task_lacks_explicit_name == true">
+      <conclusion ref="r1-explicit-task-name" verdict="BLOCK — add name argument"/>
+    </branch>
+    <branch when="task_mutates_state AND no_idempotency == true">
+      <conclusion ref="r2-idempotency-guard" verdict="BLOCK — add idempotency guard"/>
+    </branch>
+    <branch when="soft_time_limit_missing OR time_limit_missing">
+      <conclusion ref="r4-time-limits-required" verdict="BLOCK — set both limits"/>
+    </branch>
+    <branch when="default_queue_only == true">
+      <conclusion ref="r5-named-queues-not-default" verdict="BLOCK — assign explicit queue"/>
+    </branch>
+    <branch when="all_gates_green == true">
+      <conclusion ref="run-the-checklist" verdict="APPROVE — task ready for merge"/>
+    </branch>
+    <branch when="preconditions_unmet == true">
+      <conclusion ref="skip-this-methodology" verdict="skip — preconditions in Applies-If not met"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="django-celery-happy-path">
+    Celery 5 + 12 tasks → first two branches do not match → all tasks named → idempotency_key on mutating tasks → limits set → emails queue → all_gates_green=true → APPROVE.
+  </example>
+</text>
