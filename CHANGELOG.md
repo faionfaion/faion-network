@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **All 443 playbook intents are now distinct — 414 before.** The second
+  stamp is gone: 31 playbooks carried *"Take an software architect / software
+  developer from the trigger condition described in this playbook to the…"*
+  in two variants of 16 and 15. The grammatical error `an software` appears
+  in **both**, which is what identifies them as one generation run rather
+  than two authors.
+
+  Each replacement names a trigger and a done state.
+  `fix-incident/local-dev-env-reset` now opens on a morning disappearing into
+  a toolchain that worked last week and closes when the machine rebuilds from
+  nothing with the sequence written into the README;
+  `optimize-tune/two-hour-refactor-block-on-one-module` opens on the file
+  everybody edits carefully and nobody reads willingly, and closes on one
+  measurable axis with behaviour unchanged.
+
+  **A third stamp is now visible, and it sits in `<success-criteria>`.** It
+  is more diffuse than the first two: 313 distinct blocks across 443
+  playbooks, and 1,066 distinct criterion lines across 1,860 uses — so
+  **43% of all criterion lines are repeats**, the largest identical block
+  shared by 28 playbooks. The line that gives it away is
+  `Every methodology reference loaded cleanly via \`faion get-content\``,
+  present in 31: a success criterion about the *tooling* rather than about
+  what the playbook achieves.
+
+  Recorded, not fixed. Unlike the intents — which were 100% identical inside
+  each group and therefore mechanically identifiable — this one is partial,
+  so separating a genuine shared criterion from a stamped one needs a
+  decision before it needs an edit.
+
 - **65 knowledge summaries expanded past the 15-word bar, each grounded in
   its own core rules rather than its slug.** Under AD-019 retrieval is
   lexical over the summary, so an under-length summary is a document that is
