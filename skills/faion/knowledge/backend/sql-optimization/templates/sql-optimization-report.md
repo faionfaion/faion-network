@@ -1,4 +1,10 @@
-<!-- purpose: Markdown skeleton for the optimization report (per-query before/after). | consumes: see content/02-output-contract.xml inputs | produces: artefact conforming to content/02-output-contract.xml (sql-optimization) | depends-on: content/01-core-rules.xml | token-budget-impact: small (template is loaded only when an artefact is being authored) -->
+<!--
+purpose: Markdown skeleton for the optimization report (per-query before/after).
+consumes: see content/02-output-contract.xml inputs
+produces: artefact conforming to content/02-output-contract.xml (sql-optimization)
+depends-on: content/01-core-rules.xml
+token-budget-impact: small (template is loaded only when an artefact is being authored)
+-->
 # SQL Optimization Report — <date>
 
 ## Summary

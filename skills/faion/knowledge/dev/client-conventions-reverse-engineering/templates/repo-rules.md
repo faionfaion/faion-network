@@ -1,4 +1,10 @@
-<!-- purpose: Guardrail Markdown skeleton with the canonical 6 sections. | consumes: see content/02-output-contract.xml inputs | produces: artefact conforming to content/02-output-contract.xml (client-conventions-reverse-engineering) | depends-on: content/01-core-rules.xml | token-budget-impact: small (template is loaded only when an artefact is being authored) -->
+<!--
+purpose: Guardrail Markdown skeleton with the canonical 6 sections.
+consumes: see content/02-output-contract.xml inputs
+produces: artefact conforming to content/02-output-contract.xml (client-conventions-reverse-engineering)
+depends-on: content/01-core-rules.xml
+token-budget-impact: small (template is loaded only when an artefact is being authored)
+-->
 # Repo Rules (client conventions)
 
 ## Lint / formatter

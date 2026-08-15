@@ -1,4 +1,10 @@
-<!-- purpose: Markdown skeleton naming both axes. | consumes: see content/02-output-contract.xml inputs | produces: artefact conforming to content/02-output-contract.xml (cap-pacelc-walkthrough) | depends-on: content/01-core-rules.xml | token-budget-impact: small (template is loaded only when an artefact is being authored) -->
+<!--
+purpose: Markdown skeleton naming both axes.
+consumes: see content/02-output-contract.xml inputs
+produces: artefact conforming to content/02-output-contract.xml (cap-pacelc-walkthrough)
+depends-on: content/01-core-rules.xml
+token-budget-impact: small (template is loaded only when an artefact is being authored)
+-->
 # CAP / PACELC Walkthrough — <artefact_id>
 
 **Owner:** <@handle>

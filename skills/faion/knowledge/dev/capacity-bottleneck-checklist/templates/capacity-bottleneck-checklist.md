@@ -1,4 +1,10 @@
-<!-- purpose: Markdown skeleton naming the checklist sections. | consumes: see content/02-output-contract.xml inputs | produces: artefact conforming to content/02-output-contract.xml (capacity-bottleneck-checklist) | depends-on: content/01-core-rules.xml | token-budget-impact: small (template is loaded only when an artefact is being authored) -->
+<!--
+purpose: Markdown skeleton naming the checklist sections.
+consumes: see content/02-output-contract.xml inputs
+produces: artefact conforming to content/02-output-contract.xml (capacity-bottleneck-checklist)
+depends-on: content/01-core-rules.xml
+token-budget-impact: small (template is loaded only when an artefact is being authored)
+-->
 # Capacity Bottleneck Checklist — <artefact_id>
 
 **Owner:** <@handle>

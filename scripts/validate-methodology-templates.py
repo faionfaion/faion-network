@@ -29,7 +29,14 @@ KNOWLEDGE = REPO_ROOT / "skills" / "faion" / "knowledge"
 HEADER_KEYS = ("purpose", "consumes", "produces", "depends-on", "token-budget-impact")
 
 # Files whose syntax has no comment form for headers; we allow a __faion_header__ key inside.
-JSON_LIKE = {".json"}
+# Formats with no comment syntax, so the header has to live in the data itself
+# as a `__faion_header__` key. `.jsonl` and `.webmanifest` are here because they
+# ARE JSON and were being checked as if they were not: four `.jsonl` templates
+# carried a perfectly good five-key header written as `#` or `<!-- -->` comment
+# lines, which made the file unparseable as JSONL — a header that costs the
+# artefact its format is worse than a missing one. All 12 `.jsonl` in the corpus
+# parse as of 2026-08-15 and this set is what keeps them that way.
+JSON_LIKE = {".json", ".jsonl", ".webmanifest"}
 
 
 def _templates_listed(agents_md: Path) -> list[str]:
@@ -50,21 +57,40 @@ def _templates_listed(agents_md: Path) -> list[str]:
         if not cols or cols[0].lower() in ("file", "---", ""):
             continue
         cell = cols[0].strip("`")
-        if cell and "/" in cell:
+        # The section regex above already scopes this to `## Templates`. The
+        # prefix test is the second half: a row there may still name something
+        # outside `templates/`, and only a template owes a header. This drops
+        # zero rows in the corpus as of 2026-08-15 — it is a guard against a
+        # future row, not a fix for a present one.
+        if cell.startswith("templates/"):
             files.append(cell)
     return files
 
 
-def _has_header(p: Path) -> bool:
+def _missing_header_keys(p: Path) -> list[str]:
+    """Which of the five header keys are absent, as `key: value` in the first 20 lines.
+
+    The old check was a lowercase SUBSTRING scan wanting 3 of 5 keys anywhere,
+    which a `content/*.xml` file passes by accident — the words "purpose" and
+    "produces" occur in ordinary methodology prose. Requiring `key:` followed by
+    a value is what makes the header a parseable block rather than a vocabulary
+    coincidence, and that is the precondition for the sixth key `variables:`
+    being enforceable instead of advisory (retrieval-content-contracts.md §2.1).
+
+    Tightening it found 19 templates, and 17 of them already carried all five
+    keys — they failed on shape, not on content: eight wrote the whole header on
+    one pipe-separated line, five used `_purpose` instead of `__faion_header__`,
+    four wrote comment syntax into a JSON format. Only two had no header at all.
+    """
     try:
         text = p.read_text(encoding="utf-8", errors="replace")
-    except Exception:
-        return False
-    head = "\n".join(text.splitlines()[:20]).lower()
-    found = sum(1 for k in HEADER_KEYS if k in head)
+    except OSError:
+        return list(HEADER_KEYS)
     if p.suffix in JSON_LIKE:
-        return "__faion_header__" in text
-    return found >= 3  # tolerant: at least 3/5 keys present somewhere in first 20 lines
+        return [] if "__faion_header__" in text else ["__faion_header__"]
+    head = "\n".join(text.splitlines()[:20]).lower()
+    return [k for k in HEADER_KEYS
+            if not re.search(rf"^\s*\W*\s*{re.escape(k)}\s*:\s*\S", head, re.M)]
 
 
 VAR_NAME = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
@@ -152,8 +178,11 @@ def validate_dir(dir_path: Path) -> list[str]:
         if path.stat().st_size < 50:
             errs.append(f"template too small (<50 bytes): {f}")
             continue
-        if not _has_header(path):
-            errs.append(f"template missing 5-line header (purpose/consumes/produces/depends-on/token-budget-impact): {f}")
+        missing = _missing_header_keys(path)
+        if missing:
+            errs.append(
+                f"template header incomplete, missing {', '.join(missing)} "
+                f"as 'key: value' on its own line in the first 20 lines: {f}")
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
         errs.extend(_variable_findings(path, _header_block(text, path.suffix)))

@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Validator 5 now requires a real header block, and the 19 templates that
+  failed were almost all a formatting problem rather than a missing one.** The
+  old check was a lowercase substring scan wanting 3 of 5 keys anywhere in the
+  first 20 lines — which a `content/*.xml` passes by accident, since "purpose"
+  and "produces" occur in ordinary methodology prose. It now requires each key
+  as `key: value` on its own line, which is what makes the header parseable and
+  is the precondition for `variables:` being enforceable rather than advisory
+  (`retrieval-content-contracts.md` §2.1).
+
+  **17 of the 19 already carried all five keys.** Eight wrote the entire header
+  on one pipe-separated line; five used `_purpose`/`_consumes` instead of the
+  documented `__faion_header__`; four wrote comment syntax into a JSON format;
+  one crammed `depends-on` onto the `produces` line and omitted
+  `token-budget-impact` — the same generation stamp already recorded for the 112
+  template headers. **Only two templates had no header at all**, both `.tmpl`
+  under `sdd/`, and both were the only two of the corpus's 41 `.tmpl` files
+  without one.
+
+  **`.jsonl` and `.webmanifest` are now treated as JSON-like**, which is a
+  correctness fix and not a widening: four `.jsonl` templates carried a perfectly
+  good five-key header written as `#` or `<!-- -->` comment lines, and JSONL has
+  no comment syntax, so **those files did not parse as JSONL at all**. A header
+  that costs the artefact its own format is worse than a missing header.
+  `research/continuous-discovery-market-research/templates/signal.jsonl` was the
+  extreme case — 7 lines, **0 of them parseable**, markdown prose under a `.jsonl`
+  name — and has been rebuilt as real rows carrying the `raw_hash` + `source_url`
+  its own output contract requires. All 12 `.jsonl` in the corpus now parse.
+
+  The `templates/` prefix test on the `## Templates` table is included as part
+  of the same change, and honestly: **it drops zero rows today.** It is a guard
+  against a future row, not a fix for a present one.
+
 - **Fixed: the pre-commit validator gate skipped itself on large corpus
   commits.** The hook reported *"validators skipped (this commit touches no
   corpus or script paths)"* on a commit of 443 files under
