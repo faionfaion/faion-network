@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Corrective: completed 52 archive moves that had been committed as copies.**
+  `git mv` stages a deletion *and* an addition. The CR-009 batches were committed
+  with `git commit --only <paths>` to avoid sweeping other agents' concurrent
+  work, and the path lists named the `.archive/` destination but not the
+  `skills/` source — so git recorded the addition and left the deletion staged.
+  HEAD therefore held **both copies of every archived slug**: 2,573 methodology
+  directories against 2,521 on disk.
+
+  The working tree was correct throughout and no content was lost, but HEAD was
+  briefly wrong in the specific way this whole CR is about — a slug resolving to
+  two directories. Worth stating plainly: `--only` is the right tool for
+  committing beside concurrent agents, and the price of it is that **a rename has
+  two paths and both must be named**.
+
 - **CR-009, defect-signal set: the last 10 `backend`↔`dev` collisions resolved
   merge-then-archive, survivor `backend/` in all ten.** This closes the 47-pair
   `backend`↔`dev` population.
