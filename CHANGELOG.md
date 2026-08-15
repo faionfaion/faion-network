@@ -4,6 +4,41 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **`scripts/regen-methodology-validators.py` — rebuilds a methodology's
+  validator from the JSON Schema in its own output contract.** It landed in
+  the wrong commits: the script rode along with the four tool packs and its
+  three worked examples with the methodology harvest, because two `git add`
+  calls were broader than they should have been. Recording that here rather
+  than rewriting history.
+
+  Motivation was a measurement: 966 of 2,578 per-methodology validators
+  check only that required keys are present, and 610 of those sit on a
+  contract already declaring `enum`, `pattern`, `minItems`, `minLength` and
+  bounds the code never enforces. Because validators ship one directory at a
+  time via `get-content`, a shared runtime helper is impossible — so the
+  constraints are inlined into each generated file.
+
+  **The census inverted the premise.** Over 2,601 slugs: 1,372 would gain
+  constraints (1,141 of them a hard declared one), but **761 are refused as
+  would-be-weaker and 102 as unprovable** — in roughly 29% of the corpus
+  *the code already knows more than the contract*. `infra/terraform-state`
+  enforces "rationale must cite an `inputs_used.name`", a cross-field rule
+  no JSON Schema expresses. Refusing is the default, and the generator will
+  not write a slug whose existing validator rejects the contract's own valid
+  example, because then the differential proves nothing.
+
+  A further **318 contracts declare no schema at all**, and 55 spell an enum
+  as pipe-separated prose in a `description` while the code enforces it.
+  Those are content problems: the right repair is to enrich the contract,
+  not the code, and promoting description text to constraints would be
+  inventing content. Rollout stays opt-in per slug.
+
+  Worked example, `architecture/trade-off-build-vs-buy`, against the **old
+  file's own** deliberately-broken fixture: the old validator caught 2 of
+  10 defects, the regenerated one catches 12 — including an ADR id failing
+  its pattern, a score above its maximum, a negative cost below its minimum,
+  an empty required array, and a version that is not semver.
+
 - **Four more tool packs: `deploy/` (free), `env-topology/` (solo),
   `sdd-sync/` (pro), `hetzner/` (pro).** The tool layer is now **12 packs /
   24 tools**, manifest 3,075 → 3,079, `0` validator findings.
