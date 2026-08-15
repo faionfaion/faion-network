@@ -9,16 +9,16 @@
 ## Host
 
 - hostname: faion-net
-- sshd_port: 22022
+- sshd_port: 2222
 
 ## Jail sshd
 
 - backend: nftables
-- port: 22022
+- port: 2222
 - maxretry: 4
 - findtime: 10m
 - bantime: 1h, increment, factor 4
-- ignoreip: 127.0.0.1/8 10.66.66.0/24
+- ignoreip: 127.0.0.1/8 10.10.0.0/24
 - action: telegram-alert
 
 ## Verify

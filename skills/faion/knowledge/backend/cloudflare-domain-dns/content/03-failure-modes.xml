@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="Cloudflare Domain + DNS Failure Modes" version="1.0.0" est_tokens="900" depth="essential">
+<text id="03-failure-modes" title="Cloudflare Domain + DNS Failure Modes" version="1.0.0" est_tokens="1300" depth="essential">
   <summary>Antipatterns observed in real applications. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
@@ -25,7 +25,13 @@
     <antipattern id="mail-behind-proxy" severity="medium">
       <symptom>Inbound SMTP fails; mail loops at Cloudflare edge.</symptom>
       <root-cause source="field observation">Mail subdomain proxied (orange); Cloudflare proxy is HTTP-only.</root-cause>
-      <fix>Set mail records to gray-cloud (DNS only); document rationale in record comment.</fix>
+      <fix>Point MX at a mail host that is not the web origin, and leave its record gray-cloud (DNS only); document the rationale in the record comment. Fixing the loop by un-proxying a record that points at the web origin trades an outage for the origin leak below.</fix>
+    </antipattern>
+
+    <antipattern id="mail-a-record-origin-leak" severity="high">
+      <symptom>Attack traffic arrives at the origin with the Cloudflare proxy still enabled: WAF, rate limits and bot rules are bypassed for every hostname in the zone, and the origin sees connections that never touched the edge. Often first noticed as an origin-level flood while the Cloudflare dashboard shows normal traffic.</symptom>
+      <root-cause source="Cloudflare origin-exposure corpus">An unproxied `mail` A record was added pointing at the web origin, justified as "SMTP must hit origin". The proxy only hides an address that appears in no DNS answer; one gray record publishes it. `dig mail.&lt;zone&gt;` is the first thing an attacker tries, and every other hostname in the zone resolves to the same machine, so the whole zone loses the proxy at once. The same leak arrives via unproxied `ftp`, `cpanel`, `direct` or `origin` records, and via SPF/DMARC TXT records that inline the origin address.</root-cause>
+      <fix>Never publish an A or AAAA record that points at the web origin, proxied or not. Deliver mail through a provider (MX to the provider's hosts) or from a separate mail host with its own address that no web service shares. If mail must be self-hosted on the same machine, that machine is no longer protectable by the proxy — move the web origin, do not publish the record. Then firewall the origin to Cloudflare's published IP ranges (or use Tunnel / Authenticated Origin Pulls) so a leaked address is not enough to reach it. Audit with `dig +short A &lt;name&gt;.&lt;zone&gt;` over the zone's records and confirm none returns the origin address, and check historical exposure in a passive-DNS archive before assuming the address is still private.</fix>
     </antipattern>
 
   </section>

@@ -10,13 +10,13 @@
 
 | project | range | services | nginx vhost |
 |---------|-------|----------|-------------|
-| faion-net-api | 8000-8099 | api(8000) | api.faion.net.conf |
-| faion-net-api-dev | 8100-8199 | api(8001) | api-dev.faion.net.conf |
-| n8n | 8200-8299 | docker(8200) | n8n.faion.net.conf |
+| web-api | 8000-8099 | api(8000) | api.example.com.conf |
+| web-api-staging | 8100-8199 | api(8100) | api-staging.example.com.conf |
+| automation | 8200-8299 | docker(8200) | automation.example.com.conf |
 
 ## Isolation
 
-- per-project user: faion / nero / docker-host
+- per-project user: web-api / automation / docker-host
 - /srv/<project>/ root: yes
 - systemd-user per project: yes
 

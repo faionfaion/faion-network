@@ -2,7 +2,7 @@
 
 ## Summary
 
-**One-sentence:** Dynamic IP banning with fail2ban + nftables backend on Ubuntu 24: SSH brute-force jail, sshd port 22022 awareness, retention (bantime 1h escalating to 1w), Telegram alert action, whitelist for WireGuard.
+**One-sentence:** Dynamic IP banning with fail2ban + nftables backend on Ubuntu 24: SSH brute-force jail, sshd port 2222 awareness, retention (bantime 1h escalating to 1w), Telegram alert action, whitelist for WireGuard.
 
 **One-paragraph:** SSH brute-force scans hit a public VPS every few seconds; the default sshd config + UFW does not stop them, just rate-limits SYN. Fail2ban parses auth.log and bans repeat offenders at the nftables layer. This methodology produces a verified fail2ban configuration with a sshd jail tuned for the host's actual port, escalating bantime, whitelisting for the operator's WireGuard subnet, and a Telegram action that pings on ban.
 
@@ -96,7 +96,7 @@ Bodies of the templates above that the packer does not ship as standalone files,
 [DEFAULT]
 backend = systemd
 banaction = nftables-multiport
-ignoreip = 127.0.0.1/8 10.66.66.0/24
+ignoreip = 127.0.0.1/8 10.10.0.0/24
 bantime = 1h
 bantime.increment = true
 bantime.factor = 4
@@ -105,7 +105,7 @@ maxretry = 4
 
 [sshd]
 enabled = true
-port = 22022
+port = 2222
 filter = sshd
 logpath = %(sshd_log)s
 ```

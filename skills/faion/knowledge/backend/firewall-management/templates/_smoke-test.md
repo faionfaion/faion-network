@@ -9,7 +9,7 @@
 ## Host
 
 - hostname: faion-net
-- sshd_port: 22022
+- sshd_port: 2222
 
 ## Defaults
 
@@ -21,7 +21,7 @@
 
 | from | port | action | comment |
 |------|------|--------|---------|
-| anywhere | 22022/tcp | limit | sshd rate-limit |
+| anywhere | 2222/tcp | limit | sshd rate-limit |
 | Cloudflare IPv4 | 443/tcp | allow | proxy only |
 | Cloudflare IPv6 | 443/tcp | allow | proxy only |
 

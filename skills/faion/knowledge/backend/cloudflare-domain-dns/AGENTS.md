@@ -47,7 +47,7 @@
 |------|-------|---------------|-------------|
 | `content/01-core-rules.xml` | essential | 5 testable rules + skip-this-methodology | 1200 |
 | `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid/forbidden examples | 900 |
-| `content/03-failure-modes.xml` | essential | 4 antipatterns with symptom / root-cause / fix | 900 |
+| `content/03-failure-modes.xml` | essential | 5 antipatterns with symptom / root-cause / fix, incl. the origin-leak via an unproxied mail A record | 1300 |
 | `content/04-procedure.xml` | essential | Step-by-step procedure to apply the methodology | 900 |
 | `content/05-examples.xml` | essential | Worked example from input to verified artefact | 800 |
 | `content/06-decision-tree.xml` | essential | Routing tree on observable signals → rule from 01-core-rules.xml | 700 |

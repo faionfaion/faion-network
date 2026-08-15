@@ -10,8 +10,8 @@
 
 | service | endpoint | timeout | retry | escalate |
 |---------|----------|---------|-------|----------|
-| faion-net-api | http://127.0.0.1:8000/health | 5s | 3 | TG |
-| faion-net-api-dev | http://127.0.0.1:8001/health | 5s | 3 | TG |
+| web-api | http://127.0.0.1:8000/health | 5s | 3 | TG |
+| web-api-staging | http://127.0.0.1:8001/health | 5s | 3 | TG |
 
 ## systemd hooks
 
@@ -19,4 +19,4 @@
 - OnFailure=service-failed@%i.service: yes
 - StartLimitBurst: 3 / StartLimitIntervalSec: 60
 
-**Owner:** @ruslan (founder)  •  **Reviewed:** 2026-05-23
+**Owner:** @handle (founder)  •  **Reviewed:** 2026-05-23

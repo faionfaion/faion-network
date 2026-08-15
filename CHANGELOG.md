@@ -4,6 +4,47 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **SECURITY: removed the operator's own production infrastructure from paid
+  content.** 52 files across 16 `backend/` methodologies were using live
+  faion.net infrastructure as worked examples — not one stray value but a
+  coherent set: the Cloudflare origin IPv4 and IPv6, the WireGuard subnet, the
+  non-standard SSH port, runtime paths, the internal service→port map, and real
+  systemd unit names. All replaced with RFC 5737 / RFC 3849 / RFC 2606
+  documentation values. Re-scanned: **zero occurrences remain anywhere under
+  `skills/`.**
+
+  **The worst part was not the leak, it was that the leak was taught as correct.**
+  `cloudflare-domain-dns` recommended an **unproxied `mail` A record pointing at
+  the web origin**, rationale *"SMTP must hit origin"* — the canonical
+  Cloudflare-origin-bypass: it publishes the origin in public DNS and defeats the
+  WAF for the entire zone while the dashboard still looks green. Replaced with an
+  off-origin mail path, hardened rule `r3-proxy-per-record-justified` (no gray
+  A/AAAA may resolve to the web origin), and a new high-severity antipattern
+  `mail-a-record-origin-leak` covering the sibling leaks (`ftp`/`cpanel`/`direct`
+  records, SPF/DMARC TXT inlining the address) and the passive-DNS check for
+  historical exposure.
+
+  Compounding values that made the set reconstructable: the same WireGuard subnet
+  appears in `fail2ban-setup` as `ignoreip` — **the range exempt from
+  brute-force banning** — and the WireGuard endpoint sits on :443. Origin
+  address, reachable port, and the source range that is never banned, across
+  three documents a customer reads in one sitting.
+
+  Two latent bugs fixed in passing: `multi-project-hosting`'s port registry
+  allocated a port outside its own declared 100-range rule, and `wireguard-vpn`
+  taught **two different subnets** across its contract and its `.conf` templates.
+
+  A last residue was found after the scrub, in the one place that reads worst:
+  `backend/secrets-management` still carried the real service unit, its
+  `/etc/*.env` path and the real 1Password vault name in the contract example and
+  the validator fixture. Also scrubbed.
+
+  For the record on scope: `faion.net` in ~240 other files is the vendor's own
+  `$id:` schema namespace and doc URLs — legitimate, and deliberately not swept.
+  The rule applied was "change it where it stands in for the **reader's** own
+  domain", which is the DNS/TLS/vhost family.
+
+
 - **Corrected a gotcha I added yesterday, and added the one it was hiding.**
 
   I wrote that the `06-decision-tree.xml` depth cap of 5 blocks tree work because

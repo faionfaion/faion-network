@@ -97,8 +97,8 @@ Bodies of the templates above that the packer does not ship as standalone files,
 # Each project owns a 100-range; sub-allocate inside the range freely.
 
 # range       project           services
-8000-8099     faion-net-api     api(8000)
-8100-8199     faion-net-dev     api(8001)
-8200-8299     n8n               docker(8200)
-8300-8399     scanmecard        api(8300), worker(8301)
+8000-8099     web-api           api(8000), worker(8001)
+8100-8199     web-api-staging   api(8100)
+8200-8299     automation        docker(8200)
+8300-8399     scanner-service   api(8300), worker(8301)
 ```

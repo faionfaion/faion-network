@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # add-wg-peer.sh — Add peer to running wg0 interface, generate client config and QR code
 # Usage: bash add-wg-peer.sh <peer-name> <vpn-ip> [full|split]
-# Example: bash add-wg-peer.sh laptop 10.0.0.2 split
+# Example: bash add-wg-peer.sh laptop 10.10.0.2 split
 set -euo pipefail
 
 PEER_NAME="${1:?Usage: $0 <peer-name> <vpn-ip> [full|split]}"
@@ -29,7 +29,7 @@ if [ "$TUNNEL_MODE" = "full" ]; then
     CLIENT_ALLOWED="0.0.0.0/0, ::/0"
     CLIENT_DNS="DNS = 1.1.1.1, 8.8.8.8"
 else
-    CLIENT_ALLOWED="10.0.0.0/24"
+    CLIENT_ALLOWED="10.10.0.0/24"
     CLIENT_DNS=""
 fi
 

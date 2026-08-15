@@ -80,7 +80,7 @@ def validate(obj):
     return errs
 
 
-VALID_FIXTURE = json.loads("{\"artefact_id\": \"faion-net-api\", \"version\": \"1.1.0\", \"last_reviewed\": \"2026-05-23\", \"unit_name\": \"faion-net-api.service\", \"exec_start\": \"/home/faion/Projects/faion-net-be/.venv/bin/uvicorn ...\", \"environment_file\": \"/etc/faion-net-api.env\", \"restart\": \"on-failure\", \"memory_high\": \"1G\", \"memory_max\": \"2G\", \"linger_enabled\": true, \"owner\": \"@ruslan\"}")
+VALID_FIXTURE = json.loads("{\"artefact_id\": \"web-api\", \"version\": \"1.1.0\", \"last_reviewed\": \"2026-05-23\", \"unit_name\": \"web-api.service\", \"exec_start\": \"/home/appuser/projects/web-api/.venv/bin/uvicorn ...\", \"environment_file\": \"/etc/web-api.env\", \"restart\": \"on-failure\", \"memory_high\": \"1G\", \"memory_max\": \"2G\", \"linger_enabled\": true, \"owner\": \"@ruslan\"}")
 INVALID_FIXTURE = json.loads("{\"unit_name\": \"myapp.service\", \"exec_start\": \"/usr/bin/myapp\", \"restart\": \"always\", \"linger_enabled\": false, \"owner\": \"team\"}")
 
 

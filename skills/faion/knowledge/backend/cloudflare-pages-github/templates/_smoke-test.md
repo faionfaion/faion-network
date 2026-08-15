@@ -8,8 +8,8 @@
 
 ## Project
 
-- name: faion-net-fe
-- repo: faionfaion/faion-net-fe
+- name: example-site
+- repo: acme/example-site
 - production_branch: main
 - build_command: npm run build
 - build_output_dir: public/
@@ -22,13 +22,13 @@
 
 ## Custom domain
 
-- domain: faion.net
-- cname: faion-net-fe.pages.dev
+- domain: example.com
+- cname: example-site.pages.dev
 - ssl: full_strict
 
 ## Preview evidence
 
-- PR #: https://github.com/faionfaion/faion-net-fe/pull/42
-- preview_url: https://42.faion-net-fe.pages.dev
+- PR #: https://github.com/acme/example-site/pull/42
+- preview_url: https://42.example-site.pages.dev
 
-**Owner:** @ruslan (founder)  •  **Reviewed:** 2026-05-23
+**Owner:** @handle (founder)  •  **Reviewed:** 2026-05-23

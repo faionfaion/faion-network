@@ -32,7 +32,7 @@
 |----------|--------|--------|
 | Server public IP + UDP port choice | IP + port | provider + operator |
 | Peer device list | [{name, role, allowed_ips}] | operator inventory |
-| Subnet allocation | 10.66.66.0/24 (or chosen) | operator |
+| Subnet allocation | 10.10.0.0/24 (or chosen) | operator |
 
 ## Assumes Loaded
 
@@ -105,12 +105,12 @@ Bodies of the templates above that the packer does not ship as standalone files,
   "version": "1.1.0",
   "last_reviewed": "2026-05-23",
   "server_endpoint": "<ip>:<udp_port>",
-  "server_subnet": "10.66.66.0/24",
+  "server_subnet": "10.10.0.0/24",
   "peers": [
     {
       "name": "<peer>",
       "role": "split|full|site|mobile",
-      "allowed_ips": "10.66.66.<n>/32",
+      "allowed_ips": "10.10.0.<n>/32",
       "keepalive": false
     }
   ],
@@ -123,12 +123,12 @@ Bodies of the templates above that the packer does not ship as standalone files,
 
 ```conf
 # /etc/wireguard/wg0.conf — WireGuard Server
-# VPN subnet: 10.0.0.0/24  |  Server: 10.0.0.1
+# VPN subnet: 10.10.0.0/24  |  Server: 10.10.0.1
 # Replace eth0 with actual default interface: ip route | grep default
 
 [Interface]
 PrivateKey  = SERVER_PRIVATE_KEY_HERE
-Address     = 10.0.0.1/24
+Address     = 10.10.0.1/24
 ListenPort  = 51820
 SaveConfig  = false
 
@@ -139,20 +139,20 @@ PostDown = iptables -D FORWARD -i wg0 -j ACCEPT; iptables -t nat -D POSTROUTING 
 [Peer]
 PublicKey    = LAPTOP_PUBLIC_KEY_HERE
 PresharedKey = LAPTOP_PRESHARED_KEY_HERE
-AllowedIPs   = 10.0.0.2/32
+AllowedIPs   = 10.10.0.2/32
 
 # Peer: Home RPi + LAN (site-to-site)
 [Peer]
 PublicKey           = RPI_PUBLIC_KEY_HERE
 PresharedKey        = RPI_PRESHARED_KEY_HERE
-AllowedIPs          = 10.0.0.3/32, 192.168.1.0/24
+AllowedIPs          = 10.10.0.3/32, 192.168.1.0/24
 PersistentKeepalive = 25
 
 # Peer: Phone (full tunnel)
 [Peer]
 PublicKey           = PHONE_PUBLIC_KEY_HERE
 PresharedKey        = PHONE_PRESHARED_KEY_HERE
-AllowedIPs          = 10.0.0.4/32
+AllowedIPs          = 10.10.0.4/32
 PersistentKeepalive = 25
 ```
 
@@ -165,13 +165,13 @@ PersistentKeepalive = 25
 
 [Interface]
 PrivateKey = CLIENT_PRIVATE_KEY_HERE
-Address    = 10.0.0.2/32
+Address    = 10.10.0.2/32
 
 [Peer]
 PublicKey           = SERVER_PUBLIC_KEY_HERE
 PresharedKey        = CLIENT_PRESHARED_KEY_HERE
 Endpoint            = SERVER_PUBLIC_IP:51820
-AllowedIPs          = 10.0.0.0/24
+AllowedIPs          = 10.10.0.0/24
 PersistentKeepalive = 25
 ```
 
@@ -184,7 +184,7 @@ PersistentKeepalive = 25
 
 [Interface]
 PrivateKey = CLIENT_PRIVATE_KEY_HERE
-Address    = 10.0.0.2/32
+Address    = 10.10.0.2/32
 DNS        = 1.1.1.1, 8.8.8.8
 
 [Peer]
@@ -205,7 +205,7 @@ PersistentKeepalive = 25
 
 [Interface]
 PrivateKey = MOBILE_PRIVATE_KEY_HERE
-Address    = 10.0.0.4/32
+Address    = 10.10.0.4/32
 DNS        = 1.1.1.1
 
 [Peer]
@@ -225,7 +225,7 @@ PersistentKeepalive = 25
 
 [Interface]
 PrivateKey = HOME_GATEWAY_PRIVATE_KEY_HERE
-Address    = 10.0.0.3/32
+Address    = 10.10.0.3/32
 
 # Replace eth0 with LAN interface (ip route | grep default)
 PostUp   = iptables -A FORWARD -i wg0 -o eth0 -j ACCEPT; iptables -A FORWARD -i eth0 -o wg0 -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
@@ -235,7 +235,7 @@ PostDown = iptables -D FORWARD -i wg0 -o eth0 -j ACCEPT; iptables -D FORWARD -i 
 PublicKey           = SERVER_PUBLIC_KEY_HERE
 PresharedKey        = HOME_PRESHARED_KEY_HERE
 Endpoint            = SERVER_PUBLIC_IP:51820
-AllowedIPs          = 10.0.0.0/24
+AllowedIPs          = 10.10.0.0/24
 PersistentKeepalive = 25
 ```
 

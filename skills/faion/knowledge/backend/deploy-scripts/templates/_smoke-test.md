@@ -8,19 +8,19 @@
 
 ## Project
 
-- name: faion-net-api
-- repo: faionfaion/faion-net
-- runtime_dir: /srv/faion-net-api/current
-- workspace_dir: ~/workspace/projects/faion-net/faion-net-be
+- name: example-api
+- repo: acme/example-api
+- runtime_dir: /srv/example-api/current
+- workspace_dir: ~/workspace/projects/example-api
 
 ## Checklist
 
 - [x] `set -euo pipefail` at top
 - [x] pre-deploy lint (ruff) + tests (pytest -x) gate
-- [x] rsync to /srv/faion-net-api/releases/<ts> then mv current -> ts
-- [x] systemd reload faion-net-api
+- [x] rsync to /srv/example-api/releases/<ts> then mv current -> ts
+- [x] systemd reload example-api.service
 - [x] post-deploy smoke (HTTP 200 from /health)
 - [x] current/previous symlink scheme
 - [x] rollback = `cd /srv/.../releases && ln -sfn previous current && systemctl reload`
 
-**Owner:** @ruslan (founder)  •  **Reviewed:** 2026-05-23
+**Owner:** @handle (founder)  •  **Reviewed:** 2026-05-23

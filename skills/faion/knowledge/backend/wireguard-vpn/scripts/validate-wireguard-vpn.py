@@ -80,8 +80,8 @@ def validate(obj):
     return errs
 
 
-VALID_FIXTURE = json.loads("{\"artefact_id\": \"vpn-faion-net\", \"version\": \"1.1.0\", \"last_reviewed\": \"2026-05-23\", \"server_endpoint\": \"46.225.58.119:443\", \"server_subnet\": \"10.66.66.0/24\", \"peers\": [{\"name\": \"laptop\", \"role\": \"split\", \"allowed_ips\": \"10.66.66.2/32\", \"keepalive\": false}], \"ip_forward\": true, \"owner\": \"@ruslan\"}")
-INVALID_FIXTURE = json.loads("{\"server_endpoint\": \"46.225.58.119:443\", \"server_subnet\": \"10.66.66.0/24\", \"peers\": [{\"name\": \"laptop\", \"allowed_ips\": \"0.0.0.0/0\"}], \"ip_forward\": false, \"owner\": \"team\"}")
+VALID_FIXTURE = json.loads("{\"artefact_id\": \"vpn-faion-net\", \"version\": \"1.1.0\", \"last_reviewed\": \"2026-05-23\", \"server_endpoint\": \"203.0.113.10:443\", \"server_subnet\": \"10.10.0.0/24\", \"peers\": [{\"name\": \"laptop\", \"role\": \"split\", \"allowed_ips\": \"10.10.0.2/32\", \"keepalive\": false}], \"ip_forward\": true, \"owner\": \"@ruslan\"}")
+INVALID_FIXTURE = json.loads("{\"server_endpoint\": \"203.0.113.10:443\", \"server_subnet\": \"10.10.0.0/24\", \"peers\": [{\"name\": \"laptop\", \"allowed_ips\": \"0.0.0.0/0\"}], \"ip_forward\": false, \"owner\": \"team\"}")
 
 
 def self_test() -> int:

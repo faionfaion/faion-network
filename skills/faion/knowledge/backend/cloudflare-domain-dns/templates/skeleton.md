@@ -21,7 +21,12 @@
 | A | @ | {ipv4} | ON | HTTPS origin behind proxy |
 | AAAA | @ | {ipv6} | ON | dual-stack origin |
 | CNAME | www | @ | ON | mirror canonical |
-| A | mail | {ipv4} | OFF | SMTP must hit origin |
+| MX | @ | {mx_host} | n/a | mail delivered off-origin (provider or separate mail host) |
+| TXT | @ | v=spf1 include:{mail_provider} -all | n/a | SPF scoped to the mail path |
+
+Do NOT add `A mail -> {ipv4}`. An unproxied record pointing at the web origin publishes
+the origin address and lets an attacker bypass Cloudflare for the whole zone. If you self-host
+mail, give it its own host with its own address and list that host in MX.
 
 ## Verify
 

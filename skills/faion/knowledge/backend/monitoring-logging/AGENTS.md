@@ -96,7 +96,7 @@ Bodies of the templates above that the packer does not ship as standalone files,
 #!/usr/bin/env bash
 set -euo pipefail
 
-SERVICES="faion-net-api faion-net-api-dev valkey-server"
+SERVICES="web-api.service web-worker.service valkey-server.service"
 LINES=()
 
 for svc in $SERVICES; do

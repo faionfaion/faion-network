@@ -80,7 +80,7 @@ def validate(obj):
     return errs
 
 
-VALID_FIXTURE = json.loads("{\"artefact_id\": \"secrets-prod-2026-q2\", \"version\": \"1.1.0\", \"last_reviewed\": \"2026-05-23\", \"secrets\": [{\"name\": \"DB_PASSWORD\", \"class\": \"db\", \"vault\": \"1Password/faion.net\"}], \"consumers\": [{\"unit\": \"faion-net-api.service\", \"env_file\": \"/etc/faion-net-api.env\"}], \"rotation_cadence_days\": 90, \"owner\": \"@ruslan\", \"leak_response_plan\": \"rotate via op, redeploy, post-mortem\"}")
+VALID_FIXTURE = json.loads("{\"artefact_id\": \"secrets-prod-2026-q2\", \"version\": \"1.1.0\", \"last_reviewed\": \"2026-05-23\", \"secrets\": [{\"name\": \"DB_PASSWORD\", \"class\": \"db\", \"vault\": \"1Password/example-vault\"}], \"consumers\": [{\"unit\": \"web-api.service\", \"env_file\": \"/etc/web-api.env\"}], \"rotation_cadence_days\": 90, \"owner\": \"@ruslan\", \"leak_response_plan\": \"rotate via op, redeploy, post-mortem\"}")
 INVALID_FIXTURE = json.loads("{\"secrets\": [{\"name\": \"DB_PASSWORD\"}], \"consumers\": [], \"owner\": \"team\"}")
 
 

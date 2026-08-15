@@ -80,8 +80,8 @@ def validate(obj):
     return errs
 
 
-VALID_FIXTURE = json.loads("{\"artefact_id\": \"tls-faion-net\", \"version\": \"1.1.0\", \"last_reviewed\": \"2026-05-23\", \"domain\": \"faion.net\", \"mode\": \"letsencrypt\", \"cert_path\": \"/etc/letsencrypt/live/faion.net/fullchain.pem\", \"key_path\": \"/etc/letsencrypt/live/faion.net/privkey.pem\", \"expiry_monitor_cron\": \"0 6 * * * /usr/local/bin/check-cert-expiry.sh\", \"renewal_hook\": \"systemctl reload nginx\", \"owner\": \"@ruslan\"}")
-INVALID_FIXTURE = json.loads("{\"domain\": \"faion.net\", \"mode\": \"flexible\", \"owner\": \"team\"}")
+VALID_FIXTURE = json.loads("{\"artefact_id\": \"tls-example-com\", \"version\": \"1.1.0\", \"last_reviewed\": \"2026-05-23\", \"domain\": \"example.com\", \"mode\": \"letsencrypt\", \"cert_path\": \"/etc/letsencrypt/live/example.com/fullchain.pem\", \"key_path\": \"/etc/letsencrypt/live/example.com/privkey.pem\", \"expiry_monitor_cron\": \"0 6 * * * /usr/local/bin/check-cert-expiry.sh\", \"renewal_hook\": \"systemctl reload nginx\", \"owner\": \"@ruslan\"}")
+INVALID_FIXTURE = json.loads("{\"domain\": \"example.com\", \"mode\": \"flexible\", \"owner\": \"team\"}")
 
 
 def self_test() -> int:

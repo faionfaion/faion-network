@@ -80,7 +80,7 @@ def validate(obj):
     return errs
 
 
-VALID_FIXTURE = json.loads("{\"artefact_id\": \"ssh-faion-net-01\", \"version\": \"1.1.0\", \"last_reviewed\": \"2026-05-23\", \"host\": \"faion-net-01\", \"port\": 22022, \"allow_users\": [\"faion\"], \"password_auth\": false, \"permit_root_login\": false, \"second_terminal_verified\": true, \"owner\": \"@ruslan\"}")
+VALID_FIXTURE = json.loads("{\"artefact_id\": \"ssh-faion-net-01\", \"version\": \"1.1.0\", \"last_reviewed\": \"2026-05-23\", \"host\": \"faion-net-01\", \"port\": 2222, \"allow_users\": [\"faion\"], \"password_auth\": false, \"permit_root_login\": false, \"second_terminal_verified\": true, \"owner\": \"@ruslan\"}")
 INVALID_FIXTURE = json.loads("{\"host\": \"faion-net-01\", \"port\": 22, \"allow_users\": [], \"password_auth\": true, \"owner\": \"team\"}")
 
 

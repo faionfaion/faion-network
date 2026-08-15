@@ -10,7 +10,7 @@ set -euo pipefail
 
 # === CONFIGURE THESE ===
 NEW_USER="nero"
-SSH_PORT="22022"
+SSH_PORT="2222"
 TIMEZONE="Europe/Lisbon"
 HOSTNAME="server-name"
 SSH_PUBLIC_KEY="ssh-ed25519 AAAAC3... your_key_here"

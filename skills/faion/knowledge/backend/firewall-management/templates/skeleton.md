@@ -21,7 +21,7 @@
 
 | from | port | action | comment |
 |------|------|--------|---------|
-| anywhere | 22022/tcp | limit | sshd rate-limit |
+| anywhere | 2222/tcp | limit | sshd rate-limit |
 | Cloudflare IPs | 443/tcp | allow | proxy only |
 
 ## Docker binds

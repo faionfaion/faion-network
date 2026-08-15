@@ -98,7 +98,7 @@ Bodies of the templates above that the packer does not ship as standalone files,
   "version": "1.1.0",
   "last_reviewed": "2026-05-23",
   "host": "<host>",
-  "port": 22022,
+  "port": 2222,
   "allow_users": [
     "<unix-user>"
   ],

@@ -8,16 +8,16 @@
 
 ## Project
 
-- name: faion-net-api
-- source: ~/workspace/projects/faion-net/faion-net-be
-- runtime: /srv/faion-net-api/current
+- name: example-api
+- source: ~/workspace/projects/example-api
+- runtime: /srv/example-api/current
 
 ## Discipline
 
 - [x] no live edits in /srv
-- [x] deploy-be.sh is the only boundary
+- [x] deploy.sh is the only boundary
 - [x] git tags per release (v2026-05-23T10:00Z)
 - [x] clean-tree pre-check
-- [x] systemd service points at /srv/faion-net-api/current/.venv/bin/python
+- [x] systemd service points at /srv/example-api/current/.venv/bin/python
 
-**Owner:** @ruslan (founder)  •  **Reviewed:** 2026-05-23
+**Owner:** @handle (founder)  •  **Reviewed:** 2026-05-23

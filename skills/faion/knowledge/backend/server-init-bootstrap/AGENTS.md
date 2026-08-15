@@ -130,7 +130,7 @@ set -euo pipefail
 
 # === CONFIGURE THESE ===
 NEW_USER="nero"
-SSH_PORT="22022"
+SSH_PORT="2222"
 TIMEZONE="Europe/Lisbon"
 HOSTNAME="server-name"
 SSH_PUBLIC_KEY="ssh-ed25519 AAAAC3... your_key_here"
@@ -242,7 +242,7 @@ runcmd:
   - update-locale LANG=en_US.UTF-8
   - ufw default deny incoming
   - ufw default allow outgoing
-  - ufw limit 22022/tcp
+  - ufw limit 2222/tcp
   - ufw allow 80/tcp
   - ufw allow 443/tcp
   - ufw --force enable
@@ -304,7 +304,7 @@ exit "$FAIL"
 # Apply: sudo systemctl reload sshd
 # CRITICAL: Test SSH in a new terminal before closing existing session
 
-Port                     22022
+Port                     2222
 AddressFamily            inet
 ListenAddress            0.0.0.0
 
@@ -347,7 +347,7 @@ maxretry = 3       # 3 failed attempts
 
 [sshd]
 enabled  = true
-port     = 22022   # match your SSH port
+port     = 2222   # match your SSH port
 filter   = sshd
 logpath  = /var/log/auth.log
 maxretry = 3
