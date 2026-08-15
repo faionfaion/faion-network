@@ -4,6 +4,27 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **The `Nielsen Heuristic` group is gone — six summaries written, five of
+  them from the corpus's shortest.** `ux/flexibility-efficiency-a11y`,
+  `help-documentation-a11y`, `match-real-world-a11y`,
+  `recognition-over-recall-a11y` and `visibility-of-system-status-a11y` all
+  carried the literal two-word summary `Nielsen Heuristic`; a sixth,
+  `aesthetic-minimalist`, carried `Apply Nielsen Heuristic`. Five documents
+  with one summary are five identical vectors, and no ranker separates them
+  — the caller gets whichever the hash put first.
+
+  Written against `meta-json-spec.md` §12: unique corpus-wide, complete
+  sentence with terminal punctuation, English, **about the subject rather
+  than the deliverable** (`produces: rubric` already carries that), 26-32
+  words. Each is drawn from that document's own core rules, so the five now
+  differ in the terms that actually distinguish them — async status
+  announced to assistive technology, locale-faithful dates, recently-used
+  resurfacing, accelerators without a novice tax, deflection measured in
+  support tickets.
+
+  Duplicate summary groups 14 → **13**, and every one remaining is a pair
+  CR-007 covers. All six pass `validate-methodology-v2`.
+
 - **CR-007 filed: 12 duplicate playbook pairs, and both prior hypotheses
   about them were wrong.** CR-005 audited knowledge only; nobody had audited
   playbooks, and that is where the duplication turns out to be.
