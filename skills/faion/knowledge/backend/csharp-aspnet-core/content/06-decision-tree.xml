@@ -1,21 +1,91 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="ASP.NET Core Patterns Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from `content/01-core-rules.xml`. Every leaf names either a concrete rule id or `skip-this-methodology` when the case is out of scope. Max depth = 2.</summary>
+<text id="06-decision-tree" title="ASP.NET Core Patterns Decision Tree" version="1.2.0" est_tokens="900" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from `content/01-core-rules.xml`. The first three branches are scope gates; the rest route a concrete defect signal. Every leaf names either a rule id or `skip-this-methodology` when the case is out of scope. Max depth = 2.</summary>
 
   <decision-tree>
-    <root-question id="q-root">Is the service .NET 8/9 with multi-team consumers?</root-question>
-      <branch when="dotnet_version &gt;= 8 AND consumer_teams &gt;= 2">
-        <conclusion ref="r1" verdict="apply rule r1 from content/01-core-rules.xml"/>
-      </branch>
+    <root-question id="q-root">Is the service .NET 8/9 and in scope — and if so, which observable signal best describes the artefact under review?</root-question>
+
       <branch when="dotnet_version &lt; 8">
-        <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: this case is out of scope for this methodology"/>
+        <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: Generic Host, async-by-default and DI assumptions do not hold on .NET Framework 4.x"/>
       </branch>
-      <branch when="endpoints_count &lt; 10">
-        <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: this case is out of scope for this methodology"/>
+      <branch when="endpoints_count &lt; 10 AND consumer_teams &lt; 2">
+        <conclusion ref="skip-this-methodology" verdict="skip-this-methodology: Minimal APIs suffice; three layers around one method is overkill"/>
       </branch>
+      <branch when="signal == dbcontext-in-controller">
+        <question id="q-dbcontext-in-controller">Does a controller access DbContext directly or hold domain logic?</question>
+        <conclusion ref="controller-calls-service-only" verdict="introduce a service layer; the controller calls one service method"/>
+      </branch>
+      <branch when="signal == dbcontext-singleton">
+        <question id="q-dbcontext-singleton">Is DbContext registered as singleton or transient, or injected into a singleton?</question>
+        <conclusion ref="dbcontext-scoped-lifetime" verdict="register as scoped via AddDbContext&lt;T&gt;; resolve a scope for singleton consumers"/>
+      </branch>
+      <branch when="signal == async-without-ct">
+        <question id="q-async-without-ct">Does an async method lack CancellationToken, or fail to pass it to EF Core?</question>
+        <conclusion ref="cancellation-token-threaded" verdict="add CancellationToken as the last parameter; pass it to every EF Core call"/>
+      </branch>
+      <branch when="signal == raw-exception-leaks">
+        <question id="q-raw-exception-leaks">Are raw exceptions, ad-hoc strings or a bespoke error envelope returned to clients?</question>
+        <conclusion ref="problem-details-error-contract" verdict="register a global IExceptionHandler and return RFC 7807 ProblemDetails"/>
+      </branch>
+      <branch when="signal == ef-entity-returned-from-service">
+        <question id="q-ef-entity-returned-from-service">Does a service return a tracked EF entity or a navigation property?</question>
+        <conclusion ref="record-dtos-at-boundary" verdict="map to a record DTO at the boundary; never return navigation properties"/>
+      </branch>
+      <branch when="signal == mapper-drift">
+        <question id="q-mapper-drift">Did a DTO change without the mapping being verified at build time?</question>
+        <conclusion ref="mapper-verified-at-build" verdict="migrate to Mapperly, or add AssertConfigurationIsValid() to a unit test"/>
+      </branch>
+      <branch when="signal == authorize-missing">
+        <question id="q-authorize-missing">Does an action ship without [Authorize] under an opt-in auth policy?</question>
+        <conclusion ref="authorize-by-default" verdict="set RequireAuthenticatedUser() globally; opt out per route with [AllowAnonymous]"/>
+      </branch>
+      <branch when="signal == middleware-order-wrong">
+        <question id="q-middleware-order-wrong">Is UseAuthorization registered before UseAuthentication?</question>
+        <conclusion ref="middleware-order-authn-before-authz" verdict="restore UseExceptionHandler → UseHttpsRedirection → UseAuthentication → UseAuthorization → MapControllers"/>
+      </branch>
+      <branch when="signal == datetime-utcnow">
+        <question id="q-datetime-utcnow">Is DateTime.UtcNow called directly in business logic?</question>
+        <conclusion ref="timeprovider-injected" verdict="inject TimeProvider; use FakeTimeProvider in tests"/>
+      </branch>
+      <branch when="signal == tracking-on-read-query">
+        <question id="q-tracking-on-read-query">Does a read-only query run with change tracking on?</question>
+        <conclusion ref="asnotracking-on-reads" verdict="add AsNoTracking() to the read query"/>
+      </branch>
+      <branch when="signal == lazy-loading-on">
+        <question id="q-lazy-loading-on">Is lazy loading enabled or is a navigation property accessed implicitly?</question>
+        <conclusion ref="eager-include-no-lazy-loading" verdict="disable lazy loading; use .Include()/.ThenInclude() explicitly"/>
+      </branch>
+      <branch when="signal == skip-take-pagination">
+        <question id="q-skip-take-pagination">Is pagination using Skip/Take on a large table?</question>
+        <conclusion ref="keyset-pagination" verdict="switch to keyset pagination ordered by the primary key"/>
+      </branch>
+      <branch when="signal == multi-step-write-no-tx">
+        <question id="q-multi-step-write-no-tx">Are multi-step writes lacking an explicit transaction?</question>
+        <conclusion ref="explicit-transaction-multi-step-writes" verdict="wrap in BeginTransactionAsync / CommitAsync"/>
+      </branch>
+      <branch when="signal == ef-inmemory-tests">
+        <question id="q-ef-inmemory-tests">Are integration tests using EF InMemory?</question>
+        <conclusion ref="testcontainers-not-ef-inmemory" verdict="switch to WebApplicationFactory&lt;Program&gt; + Testcontainers Postgres"/>
+      </branch>
+      <branch when="signal == loose-mocks">
+        <question id="q-loose-mocks">Do tests use MockBehavior.Default and assert no call counts?</question>
+        <conclusion ref="strict-mocks-or-integration-tests" verdict="use MockBehavior.Strict with Verify, or cover it with an integration test"/>
+      </branch>
+      <branch when="signal == mixed-error-styles">
+        <question id="q-mixed-error-styles">Do Result&lt;T&gt; wrappers and thrown domain exceptions both reach controllers?</question>
+        <conclusion ref="no-mixed-error-handling-styles" verdict="pick one style; reject diffs that reintroduce the other"/>
+      </branch>
+      <branch when="signal == none-of-the-above">
+        <conclusion ref="skip-this-methodology" verdict="signal does not match; route to a different methodology or proceed without this one"/>
+      </branch>
+
   </decision-tree>
 
   <example trace="primary-path">
-    Observable: dotnet_version &gt;= 8 AND consumer_teams &gt;= 2 → conclusion: r1.
+    Observable: dotnet_version &gt;= 8 AND signal == async-without-ct → conclusion: cancellation-token-threaded.
   </example>
+
+  <section title="Usage">
+    <p>Apply the tree top-to-bottom against the artefact (PR diff, config, design doc). The two scope gates are evaluated first; then the first matching signal branch is decisive. If several signal branches match, fix in the order listed — later fixes typically depend on earlier ones.</p>
+  </section>
 </text>

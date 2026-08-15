@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="EF Core Data Layer Worked Examples" version="1.2.0" est_tokens="1300" depth="essential">
+  <summary>The entity, its configuration class, and the repository read path worked end to end, with the two query shapes the rules exist to prevent, followed by the manifest this methodology emits.</summary>
+
+  <section title="Entity">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+public sealed class Order
+{
+    private readonly List<OrderItem> _items = new();
+
+    public int Id { get; private set; }
+    public string CustomerName { get; private set; } = "";
+    public decimal Total { get; private set; }
+    public uint RowVersion { get; private set; }          // Postgres xmin
+    public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
+
+    private Order() { }                                    // EF materialization
+
+    public Order(string customerName)
+    {
+        if (string.IsNullOrWhiteSpace(customerName))
+            throw new ArgumentException("customer name required", nameof(customerName));
+        CustomerName = customerName;
+    }
+
+    public void AddItem(OrderItem item)
+    {
+        _items.Add(item);
+        Total += item.Price * item.Quantity;
+    }
+}
+      ]]></code>
+      <note>Private setters and a private parameterless constructor (entity-private-setters); the collection is read-only from outside so `Total` cannot drift from `Items`; the concurrency token lives on the aggregate root (concurrency-token-on-aggregates). No data annotations — every mapping concern is in the configuration class.</note>
+    </example>
+    <antipattern>
+      <description>`public string CustomerName { get; set; }` with `[Required][MaxLength(200)]` above it.</description>
+      <reason>The invariant has no single home, and the mapping is now split between an attribute and a configuration class — annotations also cannot express `HasDefaultValueSql`, owned types or shadow properties (entity-config-per-entity).</reason>
+    </antipattern>
+  </section>
+
+  <section title="Configuration">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+public sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
+{
+    public void Configure(EntityTypeBuilder<Order> builder)
+    {
+        builder.ToTable("orders");
+        builder.HasKey(o => o.Id);
+        builder.Property(o => o.CustomerName).IsRequired().HasMaxLength(200);
+        builder.Property(o => o.Total).HasPrecision(18, 2).HasDefaultValueSql("0");
+        builder.Property(o => o.RowVersion).IsRowVersion();
+        builder.HasIndex(o => o.CustomerName);
+
+        // SetNull rather than Cascade: two cascade paths onto one table is
+        // what SqlServer rejects at migration-apply time.
+        builder.HasMany(o => o.Items)
+            .WithOne(i => i.Order)
+            .HasForeignKey(i => i.OrderId)
+            .OnDelete(DeleteBehavior.SetNull);
+    }
+}
+
+// AppDbContext.OnModelCreating — this call and nothing else:
+//   modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+      ]]></code>
+      <note>One file per entity keeps the diff scoped, and `OnModelCreating` stays a single line (entity-config-per-entity).</note>
+    </example>
+  </section>
+
+  <section title="Repository read path">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+public sealed record OrderDto(int Id, string CustomerName, decimal Total);
+public sealed record PagedResult<T>(
+    IReadOnlyList<T> Items, int TotalCount, int Page, int PageSize);
+
+public async Task<PagedResult<OrderDto>> ListAsync(
+    int page, int pageSize, CancellationToken ct)
+{
+    var query = _db.Orders
+        .AsNoTracking()
+        .Include(o => o.Items)
+        .Include(o => o.Discounts)
+        // Two collection navigations: without this the JOIN returns
+        // orders x items x discounts rows for a single page.
+        .AsSplitQuery()
+        .OrderBy(o => o.Id);
+
+    var total = await query.CountAsync(ct);
+    var items = await query
+        .Skip((page - 1) * pageSize)
+        .Take(pageSize)
+        .Select(o => new OrderDto(o.Id, o.CustomerName, o.Total))
+        .ToListAsync(ct);
+
+    return new PagedResult<OrderDto>(items, total, page, pageSize);
+}
+      ]]></code>
+      <note>AsNoTracking plus a projection, so no change-tracker entries are built (asnotracking-on-reads); AsSplitQuery because two collection Includes are present (splitquery-multi-include); the result is materialized into a PagedResult of DTOs before it crosses the boundary (no-iqueryable-return).</note>
+    </example>
+    <antipattern>
+      <description>`public IQueryable&lt;Order&gt; Query() =&gt; _db.Orders.Include(o =&gt; o.Items).Include(o =&gt; o.Discounts);`</description>
+      <reason>Two defects in one line: the caller can extend or execute the query after the DbContext scope is gone (no-iqueryable-return), and the un-split double Include is a Cartesian explosion — 100 orders × 10 items × 50 discounts is 50k rows for one page (splitquery-multi-include).</reason>
+    </antipattern>
+  </section>
+
+  <section title="Bulk write">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+// One SQL statement, no change tracker, no per-row round trip.
+await _db.Orders
+    .Where(o => o.Status == OrderStatus.Draft && o.CreatedAt < cutoff)
+    .ExecuteDeleteAsync(ct);
+
+await _db.Orders
+    .Where(o => o.CustomerId == customerId)
+    .ExecuteUpdateAsync(s => s.SetProperty(o => o.Region, region), ct);
+      ]]></code>
+      <note>bulk-execute-update-delete: the load-mutate-SaveChanges loop it replaces round-trips one row at a time and materializes every entity into the tracker on the way.</note>
+    </example>
+  </section>
+
+  <section title="Final artefact">
+    <code lang="json"><![CDATA[
+{
+  "dbcontext_name": "BillingDbContext",
+  "provider": "Npgsql",
+  "entities": [
+    {"name": "Invoice", "configuration_class": "InvoiceConfiguration", "is_aggregate_root": true,
+     "concurrency_token_field": "xmin", "has_public_setters": false, "data_annotations_present": false},
+    {"name": "InvoiceLine", "configuration_class": "InvoiceLineConfiguration", "is_aggregate_root": false,
+     "has_public_setters": false, "data_annotations_present": false}
+  ],
+  "repositories": [
+    {"class_name": "InvoiceRepository", "list_uses_asnotracking": true, "returns_iqueryable": false,
+     "multi_collection_split_query": true, "list_return_type": "PagedResult<InvoiceDto>"}
+  ],
+  "migration": {"name": "AddInvoicesTable", "appended": true},
+  "asnotracking_audit": {"read_paths_pass": true},
+  "concurrency_audit": {"aggregates_have_token": true},
+  "audit_interceptor": {"registered": true},
+  "migration_sql_reviewed": true,
+  "forbidden_patterns_found": []
+}
+]]></code>
+  </section>
+</text>

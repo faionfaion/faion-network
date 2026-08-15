@@ -3,19 +3,23 @@
 // produces: repository implementation conforming to asnotracking-on-reads rule
 // depends-on: content/01-core-rules.xml rule asnotracking-on-reads
 // token-budget-impact: ~400 tokens when loaded as context
-// IRepository interface + implementation with paged query and email lookup
-// Replace: TEntity, TDto, property names as needed
+// IRepository interface + implementation with paged query and email lookup.
+// Replace: TEntity, TDto, property names as needed.
+// List methods return PagedResult<TDto> — never IQueryable (no-iqueryable-return).
 
 namespace MyApp.Repositories;
 
+public sealed record ExampleDto(int Id, string Name, string Email);
+public sealed record PagedResult<T>(IReadOnlyList<T> Items, int TotalCount, int Page, int PageSize);
+
 public interface IExampleRepository
 {
-    Task<ExampleEntity?> GetByIdAsync(int id);
-    Task<ExampleEntity?> GetByEmailAsync(string email);
-    Task<PagedResult<ExampleEntity>> GetPagedAsync(int page, int pageSize);
-    Task AddAsync(ExampleEntity entity);
+    Task<ExampleEntity?> GetByIdAsync(int id, CancellationToken ct);
+    Task<ExampleDto?> GetByEmailAsync(string email, CancellationToken ct);
+    Task<PagedResult<ExampleDto>> GetPagedAsync(int page, int pageSize, CancellationToken ct);
+    Task AddAsync(ExampleEntity entity, CancellationToken ct);
     void Remove(ExampleEntity entity);
-    Task SaveChangesAsync();
+    Task SaveChangesAsync(CancellationToken ct);
 }
 
 public class ExampleRepository : IExampleRepository
@@ -27,43 +31,51 @@ public class ExampleRepository : IExampleRepository
         _context = context;
     }
 
-    public async Task<ExampleEntity?> GetByIdAsync(int id)
+    public async Task<ExampleEntity?> GetByIdAsync(int id, CancellationToken ct)
     {
-        // Include only when caller will modify navigation; otherwise project
+        // Tracked on purpose: the caller will mutate and save this aggregate.
         return await _context.Examples
             .Include(e => e.Tags)
-            .FirstOrDefaultAsync(e => e.Id == id);
+            .FirstOrDefaultAsync(e => e.Id == id, ct);
     }
 
-    public async Task<ExampleEntity?> GetByEmailAsync(string email)
+    public async Task<ExampleDto?> GetByEmailAsync(string email, CancellationToken ct)
     {
         // Normalize case — SQL Server is CI by default, Postgres is not
         return await _context.Examples
             .AsNoTracking()
-            .FirstOrDefaultAsync(e => e.Email == email.ToLower());
+            .Where(e => e.Email == email.ToLower())
+            .Select(e => new ExampleDto(e.Id, e.Name, e.Email))
+            .FirstOrDefaultAsync(ct);
     }
 
-    public async Task<PagedResult<ExampleEntity>> GetPagedAsync(int page, int pageSize)
+    public async Task<PagedResult<ExampleDto>> GetPagedAsync(
+        int page, int pageSize, CancellationToken ct)
     {
         var query = _context.Examples
             .AsNoTracking()
+            .Include(e => e.Tags)
+            .Include(e => e.Items)
+            // Two collection navigations: without this the JOIN multiplies rows.
+            .AsSplitQuery()
             .OrderByDescending(e => e.CreatedAt);
 
-        var totalCount = await query.CountAsync();
+        var totalCount = await query.CountAsync(ct);
         var items = await query
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync();
+            .Select(e => new ExampleDto(e.Id, e.Name, e.Email))
+            .ToListAsync(ct);
 
-        return new PagedResult<ExampleEntity>(items, totalCount, page, pageSize);
+        return new PagedResult<ExampleDto>(items, totalCount, page, pageSize);
     }
 
-    public async Task AddAsync(ExampleEntity entity) =>
-        await _context.Examples.AddAsync(entity);
+    public async Task AddAsync(ExampleEntity entity, CancellationToken ct) =>
+        await _context.Examples.AddAsync(entity, ct);
 
     public void Remove(ExampleEntity entity) =>
         _context.Examples.Remove(entity);
 
-    public async Task SaveChangesAsync() =>
-        await _context.SaveChangesAsync();
+    public async Task SaveChangesAsync(CancellationToken ct) =>
+        await _context.SaveChangesAsync(ct);
 }

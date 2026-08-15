@@ -44,11 +44,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 rules: entity-config-per-entity, asnotracking-on-reads, concurrency-token-on-aggregates, bulk-execute-update-delete, savechanges-interceptor-for-audit, migration-sql-review | 1100 |
-| `content/02-output-contract.xml` | essential | JSON Schema for the EF data-layer manifest + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 6 antipatterns with symptom/root-cause/fix | 900 |
-| `content/04-procedure.xml` | essential | 5-step procedure: scope DbContext → entity configurations → repositories → audit interceptor → migration safety | 800 |
-| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 700 |
+| `content/01-core-rules.xml` | essential | 10 rules: entity-config-per-entity, asnotracking-on-reads, no-iqueryable-return, splitquery-multi-include, entity-private-setters, append-only-migrations, concurrency-token-on-aggregates, bulk-execute-update-delete, savechanges-interceptor-for-audit, migration-sql-review | 1800 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the EF data-layer manifest incl. per-entity and per-repository flags + migration append check, with valid/invalid examples | 1100 |
+| `content/03-failure-modes.xml` | essential | 8 antipatterns with symptom/root-cause/fix, incl. lazy-loading-proxies and edited-migration | 1200 |
+| `content/04-procedure.xml` | essential | 7-step procedure: scope DbContext → entities → configurations → repositories → split-query audit → audit interceptor + tokens → migration safety | 1100 |
+| `content/05-examples.xml` | essential | Entity, configuration, repository read path, bulk write, and the two query shapes the rules prevent | 1300 |
+| `content/06-decision-tree.xml` | essential | Scope gate on workload shape + flat defect router mapping signals to a rule from 01-core-rules.xml | 1000 |
 
 ## Task Routing
 
@@ -63,8 +64,9 @@
 
 | File | Purpose |
 |------|---------|
+| `templates/Entity.cs` | POCO entity with private setters, EF parameterless constructor and read-only collections. |
 | `templates/entity-configuration.cs` | `IEntityTypeConfiguration<T>` skeleton for one aggregate. |
-| `templates/repository.cs` | Repository pattern that materialises results before returning. |
+| `templates/repository.cs` | Repository returning `PagedResult<TDto>` with AsNoTracking, AsSplitQuery and CancellationToken threading. |
 | `templates/safe-migration.sh` | Wrapper around `dotnet ef migrations script` for SQL review before apply. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
@@ -245,4 +247,50 @@ echo "Migration looks safe (auto-check). Review SQL before applying to non-dev e
 echo "SQL script: $SCRIPT"
 echo ""
 echo "To apply: dotnet ef database update --project $PROJ"
+```
+
+### `templates/Entity.cs`
+
+```csharp
+using System.Collections.Generic;
+
+namespace Faion.Domain.Orders;
+
+public sealed class Order
+{
+    private readonly List<OrderItem> _items = new();
+
+    public int Id { get; private set; }
+    public string CustomerName { get; private set; } = "";
+    public decimal Total { get; private set; }
+    public IReadOnlyCollection<OrderItem> Items => _items.AsReadOnly();
+
+    private Order() { }
+
+    public Order(string customerName)
+    {
+        if (string.IsNullOrWhiteSpace(customerName))
+            throw new ArgumentException("customer name required", nameof(customerName));
+        CustomerName = customerName;
+    }
+
+    public void AddItem(OrderItem item)
+    {
+        _items.Add(item);
+        Total += item.Price * item.Quantity;
+    }
+}
+
+public sealed class OrderItem
+{
+    public int Id { get; private set; }
+    public string Sku { get; private set; } = "";
+    public decimal Price { get; private set; }
+    public int Quantity { get; private set; }
+    private OrderItem() { }
+    public OrderItem(string sku, decimal price, int quantity)
+    {
+        Sku = sku; Price = price; Quantity = quantity;
+    }
+}
 ```

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="EF Core Data Layer Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>6 antipatterns observed in production EF Core deployments. Each pairs symptom + root cause + concrete fix.</summary>
+<text id="03-failure-modes" title="EF Core Data Layer Failure Modes" version="1.2.0" est_tokens="1200" depth="essential">
+  <summary>8 antipatterns observed in production EF Core deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -38,6 +38,18 @@
       <symptom>Each `Configuration` sets `CreatedAt` defaults; three entities forgot it; rows ship with `0001-01-01` timestamps.</symptom>
       <root-cause source="EF Core interceptors docs">Cross-cutting audit fields configured per-entity instead of via a single interceptor.</root-cause>
       <fix>Add a `SaveChangesInterceptor` that sets `CreatedAt`/`UpdatedAt`/`UpdatedBy` for any entity implementing `IAuditable`. Register once via `optionsBuilder.AddInterceptors(...)`.</fix>
+    </antipattern>
+
+    <antipattern id="lazy-loading-proxies" severity="high">
+      <symptom>`UseLazyLoadingProxies()` is enabled and a controller returns entities; the serializer touches a navigation, EF fires N+1 SQL, and once the request-scoped DbContext is gone the response dies mid-write with `ObjectDisposedException`.</symptom>
+      <root-cause source="EF Core docs — Lazy loading">Lazy loading plus entities-in-responses creates a hidden runtime contract that only holds while the DbContext is alive, which a request-scoped context guarantees it will not be.</root-cause>
+      <fix>Disable `UseLazyLoadingProxies`. Load related data with explicit `Include`/`ThenInclude` or a projection, so every navigation has a visible eager-load path.</fix>
+    </antipattern>
+
+    <antipattern id="edited-migration" severity="high">
+      <symptom>An engineer renames a migration file or edits its `Up()` after merge to fix a typo. Environments diverge: prod applied the old version, staging the new, and neither can be rerun cleanly.</symptom>
+      <root-cause source="EF Core docs — Migrations workflow">The migration was treated as code rather than as an immutable schema-history record keyed in `__EFMigrationsHistory`.</root-cause>
+      <fix>Revert the edit and add a new migration (`FixTypoInOrdersTable`) that applies the correction. Pin the append-only policy in CONTRIBUTING.</fix>
     </antipattern>
 
   </section>

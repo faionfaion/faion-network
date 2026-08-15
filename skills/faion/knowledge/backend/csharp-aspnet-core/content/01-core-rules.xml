@@ -1,33 +1,82 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="ASP.NET Core Patterns Core Rules" version="1.1.0" est_tokens="1200" depth="essential">
-  <summary>5 testable rules grounding the ASP.NET Core Patterns methodology. Each rule pairs a binary check + sourced rationale. Hard rules — user-supplied input cannot override them.</summary>
+<text id="01-core-rules" title="ASP.NET Core Patterns Core Rules" version="1.2.0" est_tokens="2200" depth="essential">
+  <summary>16 testable rules grounding the ASP.NET Core Patterns methodology, plus the skip rule. Each rule pairs a binary check + sourced rationale. Hard rules — user-supplied input cannot override them.</summary>
 
   <section title="Rule set">
-    <rule id="r1" testable="true" depth="essential">
-      <statement>Pass CancellationToken as the last parameter on every async controller action and thread it through service and repository layers down to the EF Core call.</statement>
-      <rationale source="Microsoft ASP.NET Core docs">Without CancellationToken plumbing, client disconnects and request timeouts do not cancel in-flight DB queries, causing thread-pool starvation under load.</rationale>
+    <rule id="controller-calls-service-only" testable="true" depth="essential">
+      <statement>Controllers handle HTTP only: deserialize the request, call exactly one service method, return ActionResult or a typed result. No business logic, no DbContext field, no direct EF Core query in a controller. Services implement an I&lt;X&gt;Service interface and hold the domain logic; repositories expose FindByIdAsync / CreateAsync / UpdateAsync / DeleteAsync and own the queries.</statement>
+      <rationale source="Microsoft ASP.NET Core docs">Direct DbContext access in controllers leaks data-access patterns (N+1, lazy loading), spreads domain logic across the HTTP layer, and makes unit testing impossible without spinning up an HTTP stack. Service isolation gives faster, cleaner tests.</rationale>
     </rule>
-    <rule id="r2" testable="true" depth="essential">
-      <statement>Use [Authorize] and [ProducesResponseType] on every action; configure RequireAuthenticatedUser() globally in Program.cs and opt out per route with [AllowAnonymous].</statement>
-      <rationale source="Microsoft ASP.NET Core docs">Agents copy public endpoints into private controllers and forget [Authorize]; a default-authenticated policy prevents accidental exposure.</rationale>
+    <rule id="dbcontext-scoped-lifetime" testable="true" depth="essential">
+      <statement>Register DbContext as scoped via services.AddDbContext&lt;T&gt;(...) — never singleton, never transient. Never inject a scoped service (DbContext, scoped repository) into a singleton; a singleton that needs one must resolve it through IServiceProvider.CreateScope(). Reject any diff that puts a DbContext in a singleton constructor.</statement>
+      <rationale source="Microsoft dependency-injection docs">DbContext is not thread-safe and each request needs its own instance. A singleton holding a scoped DbContext is a captive dependency: it keeps the context for the process lifetime, causing use-after-dispose and EF state corruption across concurrent requests.</rationale>
     </rule>
-    <rule id="r3" testable="true" depth="essential">
-      <statement>Add MapperConfiguration.AssertConfigurationIsValid() to a unit test; AutoMapper mapping errors surface only at request time otherwise.</statement>
-      <rationale source="AutoMapper docs">Agents add properties to DTOs without updating AutoMapper profiles; tests pass at compile time but prod 500s on first request.</rationale>
+    <rule id="cancellation-token-threaded" testable="true" depth="essential">
+      <statement>Every async method takes CancellationToken as its last parameter, and every async controller action threads it through the service and repository layers down to the EF Core call: ToListAsync(ct), SaveChangesAsync(ct), FindAsync(id, ct). Never call an async EF Core method without a token.</statement>
+      <rationale source="Microsoft ASP.NET Core docs">Without CancellationToken plumbing, a client disconnect or request timeout does not cancel the in-flight DB query. The client gets a fast timeout while a slow query keeps burning a connection and CPU, and the thread pool starves under load.</rationale>
     </rule>
-    <rule id="r4" testable="true" depth="essential">
-      <statement>All read queries MUST use AsNoTracking(); without it EF Core builds a change-tracker for read-only data and burns memory.</statement>
-      <rationale source="EF Core perf docs">Default tracking on read queries is a measurable perf regression at scale; AsNoTracking is the explicit opt-in.</rationale>
+    <rule id="problem-details-error-contract" testable="true" depth="essential">
+      <statement>All error paths return ProblemDetails (RFC 7807) with a consistent shape { type, title, status, detail, instance }, produced by a global IExceptionHandler (.NET 8+) registered with AddProblemDetails() + UseExceptionHandler(). Ad-hoc error strings, custom error-envelope classes, raw exception messages and stack traces are rejected. Status codes are used correctly: 400 validation shape, 422 validation semantics, 404 not found, 500 server.</statement>
+      <rationale source="RFC 7807">A single machine-readable error contract makes client error handling reliable; without it integrators reverse-engineer a format per endpoint. Custom envelopes diverge per endpoint and break client libraries. Hiding stack traces and SQL errors is also a security property.</rationale>
     </rule>
-    <rule id="r5" testable="true" depth="essential">
-      <statement>Return ProblemDetails (RFC 7807) for all error paths via a centralized exception middleware; ad-hoc error strings are rejected.</statement>
-      <rationale source="RFC 7807">Without a single error contract, integrators reverse-engineer per-endpoint formats and the API becomes uncacheable for client libraries.</rationale>
+    <rule id="record-dtos-at-boundary" testable="true" depth="essential">
+      <statement>DTOs are C# record types with required init properties. Request records carry DataAnnotations or FluentValidation rules; response records carry no logic. Public service methods return DTOs — never a tracked EF entity and never a navigation property. If a client needs related data, add a separate request or a BFF-style aggregation.</statement>
+      <rationale source="Microsoft .NET docs">Records give immutability, structural equality and concise syntax; required init guarantees construction-time completeness without mutable setters. Returning tracked entities causes circular JSON serialization, exposes internal columns (HashedPassword), and lets lazy-load exceptions escape past the DbContext scope.</rationale>
+    </rule>
+    <rule id="mapper-verified-at-build" testable="true" depth="essential">
+      <statement>Prefer Mapperly (source-generated) over AutoMapper (reflection-based) for entity↔DTO mapping. Where AutoMapper is already in place, add MapperConfiguration.AssertConfigurationIsValid() to a unit test.</statement>
+      <rationale source="AutoMapper + Mapperly docs">AutoMapper misconfigurations surface only at request time — an agent adds a DTO property, the compile passes, and production 500s on the first request. Mapperly is AOT-compatible and fails at compile time; AssertConfigurationIsValid() is the equivalent gate for an existing AutoMapper codebase.</rationale>
+    </rule>
+    <rule id="middleware-order-authn-before-authz" testable="true" depth="essential">
+      <statement>Program.cs middleware order is UseExceptionHandler → UseHttpsRedirection → UseAuthentication → UseAuthorization → MapControllers. Never place UseAuthorization before UseAuthentication.</statement>
+      <rationale source="Microsoft ASP.NET Core middleware docs">UseAuthorization checks the ClaimsPrincipal that UseAuthentication sets. Reversed, the principal is always anonymous, [Authorize] is silently skipped, and every endpoint is open with no error to observe.</rationale>
+    </rule>
+    <rule id="authorize-by-default" testable="true" depth="essential">
+      <statement>Configure RequireAuthenticatedUser() as the global fallback policy in Program.cs and opt out per route with [AllowAnonymous]. Every action carries [ProducesResponseType] for each status it can return.</statement>
+      <rationale source="Microsoft ASP.NET Core docs">Agents copy public endpoints into private controllers and forget [Authorize]; a default-authenticated policy converts that omission from a silent exposure into an explicit opt-out that shows up in review.</rationale>
+    </rule>
+    <rule id="timeprovider-injected" testable="true" depth="essential">
+      <statement>Inject TimeProvider and call timeProvider.GetUtcNow(); never call DateTime.UtcNow or DateTimeOffset.UtcNow in business logic. Tests inject FakeTimeProvider to drive expiry and scheduling paths.</statement>
+      <rationale source="Microsoft .NET 8 docs">DateTime.UtcNow is a static call that cannot be controlled in tests, making time-dependent tests flaky and undebuggable. TimeProvider is the .NET 8 standard abstraction for testable time.</rationale>
+    </rule>
+    <rule id="asnotracking-on-reads" testable="true" depth="essential">
+      <statement>All read-only queries use AsNoTracking(). Tracking is the explicit choice, taken only where the entity will be mutated and saved in the same unit of work.</statement>
+      <rationale source="EF Core performance docs">Default tracking on a read query builds a change-tracker graph for data nobody will mutate; the memory and CPU cost is a measurable regression at scale. AsNoTracking is the explicit opt-in to the cheap path.</rationale>
+    </rule>
+    <rule id="eager-include-no-lazy-loading" testable="true" depth="essential">
+      <statement>Lazy loading stays off. Load related data explicitly with .Include() / .ThenInclude() in a single query. Never rely on a navigation property materializing on access.</statement>
+      <rationale source="EF Core loading docs">Lazy loading is convenient in a REPL and a footgun in production: implicit access fires an N+1 storm, or throws use-after-dispose once the DbContext is gone. Eager .Include() makes every query visible in code review.</rationale>
+    </rule>
+    <rule id="keyset-pagination" testable="true" depth="essential">
+      <statement>List endpoints over large tables use keyset pagination (WHERE id &gt; @after ORDER BY id LIMIT 20). Never use Skip/Take on tables above ~100k rows.</statement>
+      <rationale source="EF Core pagination docs">Skip/Take compiles to OFFSET/FETCH, which scans and discards every preceding row — latency degrades linearly with page number, so page 1000 loads 20k rows to throw them away. Keyset ("seek") pagination is O(1) because the database seeks directly to the id boundary.</rationale>
+    </rule>
+    <rule id="explicit-transaction-multi-step-writes" testable="true" depth="essential">
+      <statement>Wrap multi-step writes in an explicit transaction: await using var tx = await db.Database.BeginTransactionAsync(ct); … await tx.CommitAsync(ct);. Never rely on SaveChanges for cross-aggregate atomicity.</statement>
+      <rationale source="EF Core transactions docs">SaveChanges is atomic within one call only. Two SaveChanges calls in the same request are not atomic together — if the second fails, the first is already committed and the database is left partially updated.</rationale>
+    </rule>
+    <rule id="testcontainers-not-ef-inmemory" testable="true" depth="essential">
+      <statement>Integration tests use WebApplicationFactory&lt;Program&gt; plus Testcontainers Postgres. EF Core InMemory is not used to test real logic.</statement>
+      <rationale source="EF Core testing docs">InMemory is not relational: it accepts LINQ that never translates to SQL, so tests go green while production goes red. A real database catches N+1 queries, index selection and transaction bugs that InMemory cannot see; WebApplicationFactory exercises the real DI container.</rationale>
+    </rule>
+    <rule id="strict-mocks-or-integration-tests" testable="true" depth="essential">
+      <statement>Unit tests use MockBehavior.Strict and assert call counts, or the behaviour is covered by an integration test instead. Reject tests built on MockBehavior.Default that assert nothing about the interaction.</statement>
+      <rationale source="Moq docs">MockBehavior.Default silently returns default values for unconfigured calls, so a test passes even when production code calls the wrong method or never calls it at all.</rationale>
+    </rule>
+    <rule id="no-mixed-error-handling-styles" testable="true" depth="essential">
+      <statement>One error-handling style per codebase. Reject diffs adding Result&lt;T&gt; wrappers to services in a project that uses exception-based error handling, and the reverse.</statement>
+      <rationale source="Internal — methodology audit">Two styles mean two error paths; every controller must handle both, the global exception handler covers only one of them, and the inconsistency spreads with every new feature.</rationale>
+    </rule>
+    <rule id="skip-this-methodology" testable="true" depth="essential">
+      <statement>Skip this methodology when the preconditions in AGENTS.md "Applies If" cannot be met, or when a more specific methodology covers the exact use case better.</statement>
+      <rationale source="Internal — methodology routing">A methodology applied outside its preconditions creates noise; the decision tree routes obvious non-matches to skip rather than forcing a fit.</rationale>
     </rule>
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

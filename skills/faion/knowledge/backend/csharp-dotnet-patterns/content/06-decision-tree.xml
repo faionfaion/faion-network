@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="06-decision-tree" title="C# Clean Architecture + CQRS Decision Tree" version="1.1.0" est_tokens="700" depth="essential">
-  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml.</summary>
+<text id="06-decision-tree" title="C# Clean Architecture + CQRS Decision Tree" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>Routing tree mapping observable signals to a rule from 01-core-rules.xml. The `aggregates`/`cold_start_budget` branches are the scope gate; the flat `signal ==` branches are a defect router applied to a PR diff once the methodology is in scope.</summary>
 
   <decision-tree>
     <root-question id="q-domain-richness">Does the domain have ≥3 aggregate roots with non-CRUD business rules?</root-question>
@@ -29,6 +29,37 @@
           </branch>
         </branch>
       </branch>
+    </branch>
+    <branch when="aggregates &gt;= 3 AND team_size == 1">
+      <conclusion ref="mediatr-reserved-for-cross-cutting" verdict="adopt aggregate behaviour and layer direction, but skip the mediator — pipeline overhead exceeds its benefit for solo work"/>
+    </branch>
+
+    <branch when="signal == entity_returned_from_api">
+      <conclusion ref="no-entity-in-api" verdict="project to a response record inside the query handler; one DTO per query"/>
+    </branch>
+    <branch when="signal == public_setters_on_aggregate">
+      <conclusion ref="rich-domain-no-setters" verdict="switch to private set + factory method; move the mutation into an intention-revealing method"/>
+    </branch>
+    <branch when="signal == generic_service_class_or_missing_ct">
+      <conclusion ref="cqrs-record-request-per-handler" verdict="split into one record request + one handler whose Handle takes a CancellationToken"/>
+    </branch>
+    <branch when="signal == iqueryable_leaves_application">
+      <conclusion ref="no-iqueryable-from-application" verdict="page and project inside the handler; return materialized DTOs"/>
+    </branch>
+    <branch when="signal == dbcontext_or_httpcontext_in_handler">
+      <conclusion ref="dbcontext-behind-interface" verdict="inject IApplicationDbContext; move transport concerns to the API layer"/>
+    </branch>
+    <branch when="signal == validation_silently_skipped">
+      <conclusion ref="pipeline-behaviour-order" verdict="register behaviours in one explicit block and assert the order in a test"/>
+    </branch>
+    <branch when="signal == mediatr_api_version_mismatch">
+      <conclusion ref="pin-bus-and-mapper-versions" verdict="name the library and pin the major in Directory.Packages.props; prefer source-gen Mediator/Mapperly for a commercial product"/>
+    </branch>
+    <branch when="signal == events_added_but_never_published">
+      <conclusion ref="domain-events-raised-and-cleared" verdict="publish from the SaveChangesAsync override or outbox relay, then clear the aggregate's events"/>
+    </branch>
+    <branch when="signal == only_mocked_bus_tests">
+      <conclusion ref="integration-test-per-feature" verdict="add a WebApplicationFactory + Testcontainers test for the feature"/>
     </branch>
   </decision-tree>
 

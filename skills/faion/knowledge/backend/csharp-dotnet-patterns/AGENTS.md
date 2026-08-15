@@ -25,6 +25,7 @@
 - Lambda/Functions with cold-start budget — DI graph + MediatR add 100-300ms startup; use Minimal API + direct DbContext.
 - Teams unfamiliar with DDD — the pattern's value depends on rich domain models; without that you get a layered anaemic codebase.
 - Pure read-side services (reporting, dashboards) — CQRS is overkill; one project with `SELECT` queries is fine.
+- Solo codebases: adopt the layer direction and the aggregate discipline, but the mediator pipeline costs more than it returns with one author.
 
 ## Prerequisites
 
@@ -45,11 +46,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 6 rules: layer-direction, behaviour-in-entities, one-command-per-folder, validators-on-commands, outbox-for-cross-aggregate, mediatr-reserved-for-cross-cutting | 1100 |
-| `content/02-output-contract.xml` | essential | JSON Schema for the layered-solution manifest + valid/invalid examples | 900 |
-| `content/03-failure-modes.xml` | essential | 7 antipatterns: anaemic-regression, layer-leakage, in-transaction-domain-events, mediatr-overuse, collection-mutated-outside-aggregate, ignore-query-filters-leak, async-void-handler | 900 |
-| `content/04-procedure.xml` | essential | 6-step procedure: solution skeleton → Domain → Application → Infrastructure → API → NetArchTest gate | 800 |
-| `content/06-decision-tree.xml` | essential | Routing tree mapping observable signals to a rule from 01-core-rules.xml | 700 |
+| `content/01-core-rules.xml` | essential | 17 rules: layer-direction, behaviour-in-entities, one-command-per-folder, validators-on-commands, outbox-for-cross-aggregate, mediatr-reserved-for-cross-cutting, cqrs-record-request-per-handler, rich-domain-no-setters, no-entity-in-api, no-iqueryable-from-application, dbcontext-behind-interface, pipeline-behaviour-order, composition-root-per-layer, pin-bus-and-mapper-versions, result-for-expected-failures, domain-events-raised-and-cleared, integration-test-per-feature | 2600 |
+| `content/02-output-contract.xml` | essential | JSON Schema for the layered-solution manifest incl. per-use-case naming + layer_refs + pipeline order, with valid/invalid examples | 1200 |
+| `content/03-failure-modes.xml` | essential | 14 antipatterns: anaemic-regression, layer-leakage, in-transaction-domain-events, mediatr-overuse, collection-mutated-outside-aggregate, ignore-query-filters-leak, async-void-handler, controller-with-logic, entity-as-dto, mediatr-hallucination, public-setters-regression, domain-events-never-dispatched, pipeline-order-by-accident, overstubbed-bus-tests | 1700 |
+| `content/04-procedure.xml` | essential | 7-step procedure: solution skeleton → Domain → Application → Infrastructure → API → tests → NetArchTest gate | 1200 |
+| `content/05-examples.xml` | essential | Solution tree, aggregate, command/validator/handler quartet, pipeline registration + one-line controller, final manifest | 1500 |
+| `content/06-decision-tree.xml` | essential | Scope gate on domain richness + flat defect router mapping signals to a rule from 01-core-rules.xml | 1100 |
 
 ## Task Routing
 
@@ -65,6 +67,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/arch-tests.cs` | NetArchTest fitness suite enforcing layer direction. |
+| `templates/dotnet-cleanarch-lint.sh` | Grep-level lint for the checks NetArchTest cannot see (public setters, entities returned from controllers, commands without validators, `Handle` without a token). |
+| `templates/Aggregate.cs` | Aggregate root with private setters, intention-revealing methods and domain events. |
+| `templates/Handler.cs` | Record command + FluentValidation validator + single MediatR handler. |
+| `templates/feature-folder.md` | Feature-folder layout reference for the four-project solution. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -73,6 +79,14 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | File | Purpose | When to call |
 |------|---------|--------------|
 | `scripts/validate-csharp-dotnet-patterns.py` | Validate the layered-solution manifest against the JSON Schema. | Pre-commit; CI on every methodology PR. |
+
+## Known limits
+
+- **MediatR and AutoMapper became commercial** (v12+ / v10+, paid above $1M revenue, announced 2024). Decide the bus and the mapper before adoption; `Mediator` and Mapperly are the source-generated free equivalents.
+- **Pipeline ordering is invisible** — `IPipelineBehavior<,>` order follows DI registration order, so a mis-registration silently disables validation rather than failing.
+- **Owned types (`OwnsOne`) leak into queries** — EF Core 8 partly fixed this; on EF Core 6/7 they double the JOINs and break `AsNoTracking` projections. Verify the generated SQL.
+- **Controller bloat returns** — teams move logic into commands but keep mapping, auth and header parsing inline. Enforce a line-count budget on actions.
+- **Minimal API + mediator loses the OpenAPI metadata** controllers get for free; it surfaces at Swagger/NSwag integration time.
 
 ## Related
 
@@ -124,4 +138,187 @@ public class LayerTests
             .Should().ResideInNamespace(Application)
             .GetResult().IsSuccessful);
 }
+```
+
+### `templates/Aggregate.cs`
+
+```csharp
+namespace Faion.Domain.Orders;
+
+public sealed class Order
+{
+    private readonly List<object> _events = new();
+
+    public int Id { get; private set; }
+    public string CustomerName { get; private set; } = "";
+    public OrderStatus Status { get; private set; } = OrderStatus.Pending;
+    public string? Carrier { get; private set; }
+    public DateTime? ShippedAt { get; private set; }
+
+    public IReadOnlyList<object> Events => _events.AsReadOnly();
+
+    private Order() { }
+
+    public Order(string customerName)
+    {
+        if (string.IsNullOrWhiteSpace(customerName))
+            throw new ArgumentException("customer name required", nameof(customerName));
+        CustomerName = customerName;
+        Status = OrderStatus.Pending;
+    }
+
+    public void Ship(string carrier, DateTime when)
+    {
+        if (Status != OrderStatus.Pending)
+            throw new InvalidOperationException($"cannot ship order in state {Status}");
+        if (string.IsNullOrWhiteSpace(carrier))
+            throw new ArgumentException("carrier required", nameof(carrier));
+        Status = OrderStatus.Shipped;
+        Carrier = carrier;
+        ShippedAt = when;
+        _events.Add(new OrderShipped(Id, carrier, when));
+    }
+
+    public void Cancel()
+    {
+        if (Status == OrderStatus.Shipped)
+            throw new InvalidOperationException("cannot cancel shipped order");
+        Status = OrderStatus.Cancelled;
+        _events.Add(new OrderCancelled(Id));
+    }
+}
+
+public enum OrderStatus { Pending, Shipped, Cancelled }
+public sealed record OrderShipped(int OrderId, string Carrier, DateTime ShippedAt);
+public sealed record OrderCancelled(int OrderId);
+```
+
+### `templates/Handler.cs`
+
+```csharp
+using MediatR;
+using FluentValidation;
+
+namespace Faion.Application.Orders;
+
+public sealed record ShipOrderCommand(int OrderId, string Carrier) : IRequest<ShipOrderResponse>;
+public sealed record ShipOrderResponse(int OrderId, string Status, DateTime ShippedAt);
+
+public sealed class ShipOrderValidator : AbstractValidator<ShipOrderCommand>
+{
+    public ShipOrderValidator()
+    {
+        RuleFor(x => x.OrderId).GreaterThan(0);
+        RuleFor(x => x.Carrier).NotEmpty().MaximumLength(50);
+    }
+}
+
+public sealed class ShipOrderHandler : IRequestHandler<ShipOrderCommand, ShipOrderResponse>
+{
+    private readonly IOrderRepository _orders;
+    private readonly IUnitOfWork _uow;
+
+    public ShipOrderHandler(IOrderRepository orders, IUnitOfWork uow)
+    {
+        _orders = orders;
+        _uow = uow;
+    }
+
+    public async Task<ShipOrderResponse> Handle(ShipOrderCommand req, CancellationToken ct)
+    {
+        var order = await _orders.GetAsync(req.OrderId, ct)
+            ?? throw new InvalidOperationException($"order {req.OrderId} not found");
+        order.Ship(req.Carrier, DateTime.UtcNow);
+        await _uow.SaveChangesAsync(ct);
+        return new ShipOrderResponse(order.Id, "Shipped", DateTime.UtcNow);
+    }
+}
+
+public interface IOrderRepository { Task<Order?> GetAsync(int id, CancellationToken ct); }
+public interface IUnitOfWork { Task SaveChangesAsync(CancellationToken ct); }
+public sealed class Order { public int Id { get; } public void Ship(string c, DateTime when) { } }
+```
+
+### `templates/feature-folder.md`
+
+```markdown
+# Feature folder layout
+
+```
+src/
+├── Faion.Domain/
+│   └── Orders/
+│       ├── Order.cs                 # aggregate, no public setters
+│       └── Events/OrderShipped.cs   # domain event record
+├── Faion.Application/
+│   └── Orders/
+│       ├── ShipOrderCommand.cs      # IRequest<ShipOrderResponse>
+│       ├── ShipOrderHandler.cs      # IRequestHandler
+│       ├── ShipOrderValidator.cs    # AbstractValidator
+│       └── ShipOrderResponse.cs     # response record
+├── Faion.Infrastructure/
+│   └── Orders/OrderRepository.cs    # EF Core impl of IOrderRepository
+└── Faion.Web/
+    └── Controllers/OrdersController.cs   # one-line mediator dispatch
+```
+
+Reference rules:
+- `Faion.Domain.csproj` has no PackageReference to EF/AspNetCore.
+- `Faion.Web.csproj` references Application + Infrastructure only.
+- Validator registered via `AddValidatorsFromAssemblyContaining<ShipOrderValidator>()`.
+```
+
+### `templates/dotnet-cleanarch-lint.sh`
+
+```bash
+# token-budget-impact: ~450 tokens when loaded as context
+#
+# Usage: dotnet-cleanarch-lint.sh <solution-root>
+# Wire into `dotnet build` via an MSBuild BeforeTargets="Build" target, or into a
+# pre-commit hook. Pair with `dotnet format --verify-no-changes` for style drift.
+set -euo pipefail
+root="${1:?usage: dotnet-cleanarch-lint.sh SOLUTION_ROOT}"
+fail=0
+
+echo "# .NET Clean Arch lint ($root)"
+
+echo "## Controllers returning Domain entities (no-entity-in-api)"
+grep -rEn 'public async Task<(User|Order|Product|Organization|Post)>' "$root/src" \
+  --include='*Controller.cs' | tee /tmp/da.ctrl-ent || true
+[[ -s /tmp/da.ctrl-ent ]] && fail=1
+
+echo "## Aggregates with public setters other than Id (rich-domain-no-setters)"
+grep -rEn 'public (string|int|Guid|DateTime|decimal|bool) \w+ \{ get; set; \}' \
+  "$root"/src/*.Domain --include='*.cs' | grep -v 'Id { get;' \
+  | tee /tmp/da.pub-set || true
+[[ -s /tmp/da.pub-set ]] && fail=1
+
+echo "## Domain project referencing EF Core or AspNetCore (layer-direction)"
+grep -rEn 'Microsoft\.(EntityFrameworkCore|AspNetCore)' "$root"/src/*.Domain \
+  --include='*.csproj' | tee /tmp/da.dom-leak || true
+[[ -s /tmp/da.dom-leak ]] && fail=1
+
+echo "## Application project referencing AspNetCore or EF Core (layer-direction)"
+grep -rEn 'Microsoft\.(AspNetCore|EntityFrameworkCore)' "$root"/src/*.Application \
+  --include='*.csproj' | tee /tmp/da.app-leak || true
+[[ -s /tmp/da.app-leak ]] && fail=1
+
+echo "## Handlers reading HttpContext (dbcontext-behind-interface)"
+grep -rEn 'IHttpContextAccessor|HttpContext' "$root"/src/*.Application --include='*.cs' \
+  | tee /tmp/da.http-in-app || true
+[[ -s /tmp/da.http-in-app ]] && fail=1
+
+echo "## Handle methods without a CancellationToken (cqrs-record-request-per-handler)"
+grep -rEn 'Task<[^>]+> Handle\([^)]*\)' "$root/src" --include='*Handler.cs' \
+  | grep -v 'CancellationToken' | tee /tmp/da.no-ct || true
+[[ -s /tmp/da.no-ct ]] && fail=1
+
+echo "## Commands missing a FluentValidation Validator (validators-on-commands)"
+find "$root/src" -name '*Command.cs' | while read -r f; do
+  base="${f%Command.cs}"
+  [[ -f "${base}CommandValidator.cs" ]] || echo "missing validator: $f"
+done | tee /tmp/da.no-val || true
+[[ -s /tmp/da.no-val ]] && fail=1
+
+exit "$fail"
 ```

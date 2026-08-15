@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="xUnit Testing Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+<text id="02-output-contract" title="xUnit Testing Output Contract" version="1.2.0" est_tokens="1100" depth="essential">
   <summary>JSON Schema for the test-plan manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
   <section title="Schema">
@@ -19,9 +19,25 @@
         "type": "object",
         "required": ["name", "layer", "fact_count"],
         "properties": {
-          "name": {"type": "string", "pattern": "Tests$"},
+          "name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Tests$"},
           "layer": {"enum": ["unit", "integration", "data"]},
-          "fact_count": {"type": "integer", "minimum": 1}
+          "fact_count": {"type": "integer", "minimum": 1},
+          "fixture": {"enum": ["none", "class", "collection", "async-lifetime"]},
+          "all_async_return_task": {"type": "boolean", "const": true},
+          "uses_fluent_assertions": {"type": "boolean", "const": true},
+          "uses_moq": {"type": "boolean"},
+          "methods": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["name", "kind"],
+              "properties": {
+                "name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+_[A-Z][A-Za-z0-9]+_[A-Z][A-Za-z0-9]+$"},
+                "kind": {"enum": ["Fact", "Theory"]},
+                "returns": {"const": "Task"}
+              }
+            }
+          }
         }
       }
     },
@@ -48,9 +64,18 @@
   "test_project": "Billing.Tests",
   "framework": "xunit",
   "test_classes": [
-    {"name": "InvoiceServiceTests", "layer": "unit", "fact_count": 12},
-    {"name": "InvoicesApiTests", "layer": "integration", "fact_count": 8},
-    {"name": "InvoiceRepositoryTests", "layer": "data", "fact_count": 5}
+    {"name": "InvoiceServiceTests", "layer": "unit", "fact_count": 12, "fixture": "none",
+     "all_async_return_task": true, "uses_fluent_assertions": true, "uses_moq": true,
+     "methods": [
+       {"name": "Create_ValidDraft_ReturnsInvoiceDto", "kind": "Fact", "returns": "Task"},
+       {"name": "Create_NonPositiveTotal_Throws", "kind": "Theory", "returns": "Task"}
+     ]},
+    {"name": "InvoicesApiTests", "layer": "integration", "fact_count": 8, "fixture": "class",
+     "all_async_return_task": true, "uses_fluent_assertions": true, "uses_moq": false,
+     "methods": [{"name": "Get_ExistingId_Returns200", "kind": "Fact", "returns": "Task"}]},
+    {"name": "InvoiceRepositoryTests", "layer": "data", "fact_count": 5, "fixture": "collection",
+     "all_async_return_task": true, "uses_fluent_assertions": true, "uses_moq": false,
+     "methods": [{"name": "List_TwoPages_ReturnsSecondPage", "kind": "Fact", "returns": "Task"}]}
   ],
   "coverage": {"line": 78.4, "branch": 65.2, "gate_enforced_in_ci": true},
   "uses_testcontainers": true,
@@ -65,14 +90,18 @@
 {
   "test_project": "billing-tests",
   "framework": "nunit",
-  "test_classes": [],
+  "test_classes": [
+    {"name": "OrdersTests", "layer": "integration", "fact_count": 1, "fixture": "none",
+     "all_async_return_task": false, "uses_fluent_assertions": false, "uses_moq": true,
+     "methods": [{"name": "test1", "kind": "Fact", "returns": "void"}]}
+  ],
   "coverage": {"line": 42.0, "branch": 31.0, "gate_enforced_in_ci": false},
   "uses_testcontainers": false,
   "uses_webapplicationfactory": false,
   "forbidden_patterns_found": ["Thread.Sleep(2000) in OrdersApiTests.WaitsForJob"]
 }
 ]]></code>
-    <note>project name does not end in `Tests`; framework wrong; empty classes; coverage below gate; Testcontainers + WAF off; forbidden Thread.Sleep present.</note>
+    <note>project name does not end in `Tests`; framework wrong; an integration class with no fixture, an `async void` method, a name that is not `Method_State_Expected`, and no FluentAssertions; coverage below gate; Testcontainers + WAF off; forbidden Thread.Sleep present.</note>
   </example>
 
   <section title="Forbidden patterns">
@@ -82,6 +111,11 @@
       <item>`new HttpClient()` in an integration test.</item>
       <item>Shared mutable state on a static field across tests.</item>
       <item>`Assert.Equal(expected, actual)` where actual is a collection or POCO.</item>
+      <item>An `async void` test method.</item>
+      <item>An integration test class with `fixture == "none"`.</item>
+      <item>Duplicated `[Fact]` methods that differ only by input, where a `[Theory]` belongs.</item>
+      <item>`It.IsAny&lt;T&gt;()` in a `Setup` whose argument the test does care about, or a mock with no `Verify`.</item>
+      <item>`Program` left internal while the test project references `WebApplicationFactory&lt;Program&gt;`.</item>
     </list>
   </section>
 

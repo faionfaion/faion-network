@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="EF Core Data Layer Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+<text id="02-output-contract" title="EF Core Data Layer Output Contract" version="1.2.0" est_tokens="1100" depth="essential">
   <summary>JSON Schema for the EF data-layer manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
   <section title="Schema">
@@ -21,7 +21,9 @@
           "name": {"type": "string"},
           "configuration_class": {"type": "string", "pattern": "Configuration$"},
           "is_aggregate_root": {"type": "boolean"},
-          "concurrency_token_field": {"type": "string"}
+          "concurrency_token_field": {"type": "string"},
+          "has_public_setters": {"type": "boolean", "const": false},
+          "data_annotations_present": {"type": "boolean", "const": false}
         }
       },
       "minItems": 1
@@ -29,6 +31,28 @@
     "asnotracking_audit": {"type": "object", "required": ["read_paths_pass"], "properties": {"read_paths_pass": {"type": "boolean", "const": true}}},
     "concurrency_audit": {"type": "object", "required": ["aggregates_have_token"], "properties": {"aggregates_have_token": {"type": "boolean", "const": true}}},
     "audit_interceptor": {"type": "object", "required": ["registered"], "properties": {"registered": {"type": "boolean", "const": true}}},
+    "repositories": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["class_name", "list_uses_asnotracking", "returns_iqueryable"],
+        "properties": {
+          "class_name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Repository$"},
+          "list_uses_asnotracking": {"type": "boolean", "const": true},
+          "returns_iqueryable": {"type": "boolean", "const": false},
+          "multi_collection_split_query": {"type": "boolean", "const": true},
+          "list_return_type": {"type": "string", "pattern": "^PagedResult<"}
+        }
+      }
+    },
+    "migration": {
+      "type": "object",
+      "required": ["name", "appended"],
+      "properties": {
+        "name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+        "appended": {"type": "boolean", "const": true}
+      }
+    },
     "migration_sql_reviewed": {"type": "boolean", "const": true},
     "forbidden_patterns_found": {"type": "array", "items": {"type": "string"}, "maxItems": 0}
   }
@@ -42,9 +66,16 @@
   "dbcontext_name": "BillingDbContext",
   "provider": "Npgsql",
   "entities": [
-    {"name": "Invoice", "configuration_class": "InvoiceConfiguration", "is_aggregate_root": true, "concurrency_token_field": "xmin"},
-    {"name": "InvoiceLine", "configuration_class": "InvoiceLineConfiguration", "is_aggregate_root": false}
+    {"name": "Invoice", "configuration_class": "InvoiceConfiguration", "is_aggregate_root": true,
+     "concurrency_token_field": "xmin", "has_public_setters": false, "data_annotations_present": false},
+    {"name": "InvoiceLine", "configuration_class": "InvoiceLineConfiguration", "is_aggregate_root": false,
+     "has_public_setters": false, "data_annotations_present": false}
   ],
+  "repositories": [
+    {"class_name": "InvoiceRepository", "list_uses_asnotracking": true, "returns_iqueryable": false,
+     "multi_collection_split_query": true, "list_return_type": "PagedResult<InvoiceDto>"}
+  ],
+  "migration": {"name": "AddInvoicesTable", "appended": true},
   "asnotracking_audit": {"read_paths_pass": true},
   "concurrency_audit": {"aggregates_have_token": true},
   "audit_interceptor": {"registered": true},
@@ -59,7 +90,15 @@
 {
   "dbcontext_name": "billing_db",
   "provider": "MariaDB",
-  "entities": [],
+  "entities": [
+    {"name": "invoice", "configuration_class": "InvoiceConfig", "is_aggregate_root": true,
+     "has_public_setters": true, "data_annotations_present": true}
+  ],
+  "repositories": [
+    {"class_name": "InvoiceRepo", "list_uses_asnotracking": false, "returns_iqueryable": true,
+     "multi_collection_split_query": false, "list_return_type": "IQueryable<Invoice>"}
+  ],
+  "migration": {"name": "fix_typo", "appended": false},
   "asnotracking_audit": {"read_paths_pass": false},
   "concurrency_audit": {"aggregates_have_token": false},
   "audit_interceptor": {"registered": false},
@@ -67,7 +106,7 @@
   "forbidden_patterns_found": ["IQueryable<Invoice> returned from InvoiceRepository.Query"]
 }
 ]]></code>
-    <note>dbcontext_name not PascalCase + missing suffix; provider unsupported; no entities; AsNoTracking + concurrency audits failing; interceptor missing; SQL not reviewed.</note>
+    <note>dbcontext_name not PascalCase + missing suffix; provider unsupported; entity camelCase with public setters and data annotations; configuration class name lacks the `Configuration` suffix; repository returns `IQueryable` with no AsNoTracking and no split query; migration edits an already-merged file; AsNoTracking + concurrency audits failing; interceptor missing; SQL not reviewed.</note>
   </example>
 
   <section title="Forbidden patterns">
@@ -77,6 +116,11 @@
       <item>Multiple `.Include().ThenInclude()` chains across &gt;2 levels without `AsSplitQuery()`.</item>
       <item>Load-mutate-`SaveChangesAsync` loops for bulk operations.</item>
       <item>`Task.Run(() =&gt; _context.SaveChangesAsync())`.</item>
+      <item>Data annotations (`[Required]`, `[MaxLength]`) on an entity class.</item>
+      <item>Public setters on an entity property other than through the constructor or a mutating method.</item>
+      <item>A list repository method whose return type is not `PagedResult&lt;TDto&gt;`.</item>
+      <item>An edit or rename of a migration already merged to the deploy branch.</item>
+      <item>`UseLazyLoadingProxies()` in the DbContext options.</item>
     </list>
   </section>
 

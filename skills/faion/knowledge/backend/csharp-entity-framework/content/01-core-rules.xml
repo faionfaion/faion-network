@@ -1,17 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="EF Core Data Layer Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the EF Core data-layer methodology. Each rule pairs a binary check + sourced rationale.</summary>
+<text id="01-core-rules" title="EF Core Data Layer Core Rules" version="1.2.0" est_tokens="1800" depth="essential">
+  <summary>10 testable rules grounding the EF Core data-layer methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
 
     <rule id="entity-config-per-entity" testable="true" depth="essential">
-      <statement>Every entity MUST have a dedicated `IEntityTypeConfiguration&lt;T&gt;` class under `Data/Configurations/`. `OnModelCreating` MUST call `ApplyConfigurationsFromAssembly(...)` and contain no inline `builder.Entity&lt;T&gt;().Property(...)` calls.</statement>
-      <rationale source="Microsoft EF Core docs">Inline configuration in `OnModelCreating` grows unbounded and hides entity-specific mapping detail behind one giant method; per-entity classes keep diffs scoped.</rationale>
+      <statement>Every entity MUST have a dedicated `IEntityTypeConfiguration&lt;T&gt;` class under `Data/Configurations/` covering table name, keys, indexes, max lengths, default-value SQL and cascade behaviour. `OnModelCreating` MUST call `ApplyConfigurationsFromAssembly(...)` and contain no inline `builder.Entity&lt;T&gt;().Property(...)` calls. Data annotations (`[Required]`, `[MaxLength]`) on entities are forbidden.</statement>
+      <rationale source="Microsoft EF Core docs — Configuring entity types">Inline configuration in `OnModelCreating` grows unbounded and hides entity-specific mapping detail behind one giant method; per-entity classes keep diffs scoped. The fluent API also covers the full feature surface (HasDefaultValueSql, owned types, shadow properties) that annotations only partly reach, and annotations split the mapping across an attribute and a class.</rationale>
     </rule>
 
     <rule id="asnotracking-on-reads" testable="true" depth="essential">
-      <statement>Every read-only query path MUST call `AsNoTracking()` (or use a projection that bypasses the change tracker). Repositories MUST NOT return `IQueryable&lt;T&gt;` — materialise with `ToListAsync`/`ToArrayAsync`/`FirstOrDefaultAsync` before crossing the layer boundary.</statement>
-      <rationale source="Microsoft EF Core performance guide">Change tracker bloats memory on read paths; leaked `IQueryable` lets callers execute queries against a disposed context.</rationale>
+      <statement>Every read-only query path MUST call `AsNoTracking()` — or `AsNoTrackingWithIdentityResolution()` when navigation identity matters — and project to a DTO or anonymous type before materialization.</statement>
+      <rationale source="Microsoft EF Core performance guide + Query tracking docs">The change tracker bloats memory and CPU on read paths, and projecting short-circuits entity hydration that nobody will use.</rationale>
+    </rule>
+
+    <rule id="no-iqueryable-return" testable="true" depth="essential">
+      <statement>Repository methods MUST NOT return `IQueryable&lt;T&gt;`. They MUST materialize (`ToListAsync`, `ToArrayAsync`, `FirstOrDefaultAsync`) before crossing the layer boundary, and return `PagedResult&lt;TDto&gt;` — `{Items, TotalCount, Page, PageSize}` — for list queries.</statement>
+      <rationale source="DDD repository pattern + ddd-repositories methodology">Returning `IQueryable` leaks query execution outside the persistence boundary: callers can extend the query past the constraints the repository intended, and the DbContext has to outlive the repository or the query fails on a disposed context.</rationale>
+    </rule>
+
+    <rule id="splitquery-multi-include" testable="true" depth="essential">
+      <statement>Any query whose `.Include()` chain covers ≥ 2 collection navigations MUST add `.AsSplitQuery()`. Single-collection or scalar-only Include chains MAY keep the default single-query mode.</statement>
+      <rationale source="Microsoft EF Core docs — Single vs split queries">Joining over two collection navigations produces a Cartesian product (rows × rows): 100 orders × 10 items × 50 discounts is 50k rows for one page. `AsSplitQuery` issues separate SELECTs and merges client-side.</rationale>
+    </rule>
+
+    <rule id="entity-private-setters" testable="true" depth="essential">
+      <statement>Entities are POCOs with `private set` properties, a private or protected parameterless constructor for EF materialization, and collections exposed as `IReadOnlyCollection&lt;T&gt;` over a private backing field initialised at construction.</statement>
+      <rationale source="DDD Reference + EF Core materialization docs">Public setters let any caller bypass the invariants the constructor enforces; the parameterless constructor is what EF needs to materialize a row without going through them. An externally mutable collection is the same hole in another shape.</rationale>
+    </rule>
+
+    <rule id="append-only-migrations" testable="true" depth="essential">
+      <statement>Migrations are append-only. Once a migration is merged to the deploy branch its `*.cs` file MUST NOT be edited or renamed. Fixes go into a new migration with a verb-prefixed name (`AlterUserAddIsActive`, `BackfillOrderNumber`, `FixTypoInOrdersTable`).</statement>
+      <rationale source="Microsoft EF Core docs — Migrations + team workflow">A migration is a schema-history record, not code. Editing one after deploy makes environments diverge — prod applied the old version, staging the new — and rerun-safety depends on the sequence matching `__EFMigrationsHistory` on every database.</rationale>
     </rule>
 
     <rule id="concurrency-token-on-aggregates" testable="true" depth="essential">

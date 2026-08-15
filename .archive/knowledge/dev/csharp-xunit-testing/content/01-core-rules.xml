@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="01-core-rules" title="xUnit Testing Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
+  <summary>Five testable rules grounding xUnit + Moq + WebApplicationFactory conventions on .NET 8.</summary>
+
+  <section title="Rule set">
+
+    <rule id="async-task-return" testable="true" depth="essential">
+      <statement>Every async test method MUST return `Task` (or `ValueTask`). `async void` is forbidden except for legacy event-handler tests.</statement>
+      <rationale source="xUnit docs — async tests">`async void` exceptions are unobserved by the xUnit runner; failures pass silently or crash the runner.</rationale>
+    </rule>
+
+    <rule id="class-fixture-required" testable="true" depth="essential">
+      <statement>Controller integration tests MUST use `IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt;` (or a derived test factory) and override `ConfigureWebHost` to substitute `DbContext` with SQLite-in-memory or Testcontainers. Production database/external APIs MUST NOT be touched.</statement>
+      <rationale source="ASP.NET Core docs — integration tests">`IClassFixture` shares the factory across tests in the class, amortizing host-startup cost. Substituting DbContext keeps tests deterministic.</rationale>
+    </rule>
+
+    <rule id="theory-for-params" testable="true" depth="essential">
+      <statement>Parametric tests MUST use `[Theory]` + `[InlineData(...)]` (or `[MemberData]`/`[ClassData]` for complex types), not duplicated `[Fact]` methods. Test name MUST include the input/expected output: `Add_TwoPositives_ReturnsSum`.</statement>
+      <rationale source="xUnit docs — Theories">`[Theory]` reports each case as a separate test result; duplicated `[Fact]`s hide which case failed.</rationale>
+    </rule>
+
+    <rule id="precise-mock-matchers" testable="true" depth="essential">
+      <statement>Moq `Setup` arguments MUST use precise matchers (`It.Is&lt;T&gt;(x =&gt; x.Id == 1)`) by default. `It.IsAny&lt;T&gt;()` is allowed only when the test explicitly does not care about the argument.</statement>
+      <rationale source="Moq docs + test-quality reviews">`It.IsAny&lt;T&gt;()` masks divergence between setup and test code; tests pass even when the code calls the mock with wrong args.</rationale>
+    </rule>
+
+    <rule id="fluent-assertions-required" testable="true" depth="essential">
+      <statement>All assertions on non-primitive types (objects, collections, JSON responses) MUST use `FluentAssertions` (`.Should().BeEquivalentTo(...)`). `Assert.Equal` on objects is forbidden.</statement>
+      <rationale source="FluentAssertions docs + observability of failures">`Assert.Equal` produces a single-line `Expected: X; Actual: Y` dump; `Should().BeEquivalentTo` produces a multiline structural diff.</rationale>
+    </rule>
+
+  </section>
+
+  <see-also>
+    <link path="content/02-output-contract.xml"/>
+    <link path="content/03-failure-modes.xml"/>
+    <link path="content/04-procedure.xml"/>
+    <link path="content/06-decision-tree.xml"/>
+  </see-also>
+</text>

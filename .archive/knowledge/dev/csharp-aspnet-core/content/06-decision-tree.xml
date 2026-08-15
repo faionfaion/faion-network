@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="C# / ASP.NET Core Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree from observable signal to a rule id in `01-core-rules.xml`. Every leaf resolves to either a rule id or `skip-this-methodology`.</summary>
+
+  <decision-tree>
+    <root-question id="q-root">Which observable signal best describes the current state of the artefact under review?</root-question>
+
+      <branch when="signal == dbcontext-in-controller">
+        <question id="q-dbcontext-in-controller">Does a controller access DbContext directly?</question>
+        <conclusion ref="r1" verdict="introduce a service layer; controller calls service"/>
+      </branch>
+      <branch when="signal == dbcontext-singleton">
+        <question id="q-dbcontext-singleton">Is DbContext registered as singleton or transient?</question>
+        <conclusion ref="r2" verdict="register as scoped via AddDbContext&lt;T&gt;"/>
+      </branch>
+      <branch when="signal == async-without-ct">
+        <question id="q-async-without-ct">Does an async method lack CancellationToken?</question>
+        <conclusion ref="r3" verdict="add CancellationToken parameter; pass to EF Core calls"/>
+      </branch>
+      <branch when="signal == raw-exception-leaks">
+        <question id="q-raw-exception-leaks">Are raw exceptions returned to clients?</question>
+        <conclusion ref="r4" verdict="register global IExceptionHandler + return ProblemDetails"/>
+      </branch>
+      <branch when="signal == ef-entity-returned-from-service">
+        <question id="q-ef-entity-returned-from-service">Does a service return a tracked EF entity?</question>
+        <conclusion ref="r5" verdict="map to record DTO at the boundary; never return navigation properties"/>
+      </branch>
+      <branch when="signal == datetime-utcnow">
+        <question id="q-datetime-utcnow">Is DateTime.UtcNow called directly in business logic?</question>
+        <conclusion ref="r6" verdict="inject TimeProvider; use FakeTimeProvider in tests"/>
+      </branch>
+      <branch when="signal == ef-inmemory-tests">
+        <question id="q-ef-inmemory-tests">Are integration tests using EF InMemory?</question>
+        <conclusion ref="r7" verdict="switch to WebApplicationFactory + Testcontainers Postgres"/>
+      </branch>
+      <branch when="signal == skip-take-pagination">
+        <question id="q-skip-take-pagination">Is pagination using Skip/Take?</question>
+        <conclusion ref="r8" verdict="switch to keyset pagination"/>
+      </branch>
+      <branch when="signal == lazy-loading-on">
+        <question id="q-lazy-loading-on">Is lazy loading enabled?</question>
+        <conclusion ref="r9" verdict="disable lazy loading; use .Include() explicitly"/>
+      </branch>
+      <branch when="signal == multi-step-write-no-tx">
+        <question id="q-multi-step-write-no-tx">Are multi-step writes lacking an explicit transaction?</question>
+        <conclusion ref="r10" verdict="wrap in BeginTransaction/Commit/Rollback"/>
+      </branch>
+
+    <branch when="signal == none-of-the-above">
+      <conclusion ref="skip-this-methodology" verdict="signal does not match; route to a different methodology or proceed without this one"/>
+    </branch>
+
+  </decision-tree>
+
+  <section title="Usage">
+    <p>Apply the tree top-to-bottom against the artefact (PR diff, config, design doc). The first matching branch is decisive; later branches are not evaluated. If multiple branches match, fix in the order listed — they typically depend on earlier fixes.</p>
+  </section>
+</text>

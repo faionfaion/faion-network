@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="03-failure-modes" title="EF Core Patterns Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
+  <summary>Four EF Core antipatterns. Each pairs symptom + root cause + concrete fix.</summary>
+
+  <section title="Antipatterns">
+
+    <antipattern id="cartesian-explosion" severity="high">
+      <symptom>List query with `Include(o =&gt; o.Items).Include(o =&gt; o.Discounts)` produces a JOIN over two collections. Page load returns 50k rows for 100 orders × 10 items × 50 discounts.</symptom>
+      <root-cause source="EF Core docs — Single vs split queries">Default single-query Include over multiple collections produces Cartesian product.</root-cause>
+      <fix>Append `.AsSplitQuery()`. EF emits separate SELECTs and merges client-side. Document in code why it's split (link to this rule).</fix>
+    </antipattern>
+
+    <antipattern id="tracking-on-reads" severity="medium">
+      <symptom>List endpoint loads 1000 entities, materializes change-tracker entries, and serialises them. Each request leaks ~20MB before GC. Throughput collapses.</symptom>
+      <root-cause source="EF Core docs — Query tracking">Read path didn't use `.AsNoTracking()` + projection.</root-cause>
+      <fix>Add `.AsNoTracking().Select(o =&gt; new OrderDto(o.Id, o.Total))` to the query. Materialize via `ToListAsync(ct)`.</fix>
+    </antipattern>
+
+    <antipattern id="lazy-loading-proxies" severity="high">
+      <symptom>`UseLazyLoadingProxies()` enabled; controller returns entities; serializer touches navigation, EF fires N+1 SQL after the DbContext has been disposed. `ObjectDisposedException` mid-response.</symptom>
+      <root-cause source="EF Core docs — Lazy loading">Lazy loading + entity-in-response forces a hidden runtime contract that breaks when DbContext is request-scoped.</root-cause>
+      <fix>Disable `UseLazyLoadingProxies`. Use explicit `Include` or projection. Make navigations require an explicit eager-load path.</fix>
+    </antipattern>
+
+    <antipattern id="edited-migration" severity="high">
+      <symptom>Engineer renames a migration file or edits its `Up()` after merge to fix a typo. Deployed environments diverge: prod has applied old version, staging has new.</symptom>
+      <root-cause source="EF Core docs — Migrations workflow">Migration treated as code instead of as an immutable schema-history record.</root-cause>
+      <fix>Revert the edit. Add a new migration `FixTypoInOrdersTable` that applies the correction. Pin policy in CONTRIBUTING.</fix>
+    </antipattern>
+
+  </section>
+</text>

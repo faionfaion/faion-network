@@ -1,45 +1,54 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="C# Clean Architecture + CQRS Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>6-step procedure to scaffold a Clean Architecture + CQRS .NET solution end-to-end.</summary>
+<text id="04-procedure" title="C# Clean Architecture + CQRS Procedure" version="1.2.0" est_tokens="1200" depth="essential">
+  <summary>7-step procedure to scaffold a Clean Architecture + CQRS .NET solution end-to-end, from the layer graph to the fitness gate. Each step names the rules it satisfies.</summary>
 
   <section title="Procedure">
 
     <step n="1" name="scaffold-solution">
       <input>Bounded-context map, target framework</input>
-      <action>Create 4 projects: `Domain` (classlib), `Application` (classlib), `Infrastructure` (classlib), `Api` (webapi). Add project references inward only.</action>
+      <action>Create 4 projects: `Domain` (classlib), `Application` (classlib), `Infrastructure` (classlib), `Api` (webapi). Add project references inward only, and pin the mediator + mapper majors in `Directory.Packages.props`, choosing the source-generated free options for a commercial product (`pin-bus-and-mapper-versions`).</action>
       <output>Solution with empty layered projects</output>
-      <decision-gate>If layered solution feels heavy for a CRUD app (&lt;20 endpoints), STOP and apply `csharp-dotnet` umbrella instead.</decision-gate>
+      <decision-gate>If layered solution feels heavy for a CRUD app (&lt;20 endpoints), STOP and apply `csharp-dotnet` umbrella instead. If Domain references EF Core or ASP.NET Core, FAIL and remove the reference before anything else.</decision-gate>
     </step>
 
     <step n="2" name="model-domain">
       <input>Aggregate / entity list</input>
-      <action>For each aggregate add entity with private setters, factory method, behaviour methods, value objects, domain events. Expose collections as `IReadOnlyCollection&lt;T&gt;`.</action>
+      <action>For each aggregate add an entity with `private set` only, a factory method, intention-revealing behaviour methods that enforce invariants, value objects, and domain events raised inside those methods (`rich-domain-no-setters`, `domain-events-raised-and-cleared`). Expose collections as `IReadOnlyCollection&lt;T&gt;`.</action>
       <output>Domain project with aggregates and invariants</output>
       <decision-gate>If domain ends up with only properties + getters, the methodology does not fit — apply `csharp-dotnet` umbrella.</decision-gate>
     </step>
 
     <step n="3" name="add-application-use-cases">
       <input>Use-case catalogue</input>
-      <action>For each use-case create `Application/Features/&lt;Feature&gt;/&lt;UseCase&gt;/{Command|Query,Handler,Validator,Response}.cs`. Wire FluentValidation pipeline behaviour. Domain rules stay in entity calls.</action>
+      <action>For each use-case create `Application/Features/&lt;Feature&gt;/&lt;UseCase&gt;/{Command|Query,Handler,Validator,Response}.cs`: the request is a `record : IRequest&lt;TResponse&gt;`, the handler is the only `IRequestHandler` for it and its `Handle` takes a `CancellationToken`, the validator is an `AbstractValidator&lt;T&gt;` registered via `AddValidatorsFromAssembly`, and the response is a record DTO not shared with any other query (`cqrs-record-request-per-handler`, `edge-validation` via `validators-on-commands`, `no-entity-in-api`). Domain rules stay in entity calls; expected failures return `Result`/`ErrorOr` rather than throwing (`result-for-expected-failures`). Register the pipeline behaviours in one explicit block: Logging → Validation → Authorization → UnitOfWork → Caching (`pipeline-behaviour-order`).</action>
       <output>Application project with one folder per use-case</output>
+      <decision-gate>If a handler injects `DbContext`, reads `HttpContext`, or returns `IQueryable&lt;T&gt;`, refactor before adding the next use-case (`dbcontext-behind-interface`, `no-iqueryable-from-application`).</decision-gate>
     </step>
 
     <step n="4" name="add-infrastructure">
       <input>Persistence + integration deps</input>
-      <action>Implement repository interfaces from Application using EF Core in Infrastructure. Configure entity mappings with `IEntityTypeConfiguration&lt;T&gt;`. Add MassTransit Outbox for cross-aggregate events.</action>
+      <action>Implement the Application's repository interfaces and `IApplicationDbContext` with EF Core in Infrastructure (`dbcontext-behind-interface`). Configure entity mappings with `IEntityTypeConfiguration&lt;T&gt;`. Add MassTransit Outbox for cross-aggregate events, publishing from the `SaveChangesAsync` override and clearing the aggregate's events afterwards. Verify the SQL generated for any `OwnsOne` value object — on EF Core 6/7 owned types double the JOINs and break `AsNoTracking` projections.</action>
       <output>Infrastructure project with EF + Outbox wired</output>
       <decision-gate>If any cross-aggregate event is dispatched without outbox, fail per `outbox-for-cross-aggregate` rule.</decision-gate>
     </step>
 
     <step n="5" name="add-api-composition-root">
       <input>Endpoint list, auth scheme</input>
-      <action>Add controllers (or Minimal API endpoints) that dispatch through MediatR. Composition root (`Program.cs`) registers Application + Infrastructure DI. Reserve MediatR for use-cases with cross-cutting needs.</action>
+      <action>Add controllers (or Minimal API endpoints) whose action body is a single `await _mediator.Send(req, ct)` and a return — no mapping, no auth checks, no header parsing. `Program.cs` is the only composition root and calls `AddApplication()` + `AddInfrastructure()` (`composition-root-per-layer`). Reserve the bus for use-cases with cross-cutting needs. Note that Minimal API + mediator loses the OpenAPI metadata controllers get for free.</action>
       <output>Api project boots and serves endpoints</output>
+      <decision-gate>Reject the PR if a controller action holds any business logic; enforce a line-count budget on actions.</decision-gate>
+    </step>
+
+    <step n="5b" name="test-the-use-case">
+      <input>Handler + DTOs</input>
+      <action>Write an xUnit handler test that mocks the repository and asserts the response, plus at least one `WebApplicationFactory&lt;Program&gt;` + Testcontainers integration test per feature (`integration-test-per-feature`). Assert the pipeline-behaviour order explicitly.</action>
+      <output>Handler test + feature integration test</output>
+      <decision-gate>If the test asserts EF behaviour rather than handler logic, the handler is not isolated — refactor. If the only assertion is a mocked `IMediator.Send` call count, the test does not count.</decision-gate>
     </step>
 
     <step n="6" name="enforce-arch-fitness">
       <input>Solution structure</input>
-      <action>Add NetArchTest test project that asserts: Domain has zero outward refs; Application has no `Microsoft.EntityFrameworkCore`; Infrastructure may reference Domain + Application. Hook into CI.</action>
+      <action>Add a NetArchTest project asserting: Domain has zero outward refs (no EF, no ASP.NET, no SDK); Application has no `Microsoft.EntityFrameworkCore` and no `Microsoft.AspNetCore`; Infrastructure may reference Domain + Application. Add `templates/dotnet-cleanarch-lint.sh` as a pre-commit / MSBuild `BeforeTargets="Build"` gate for the grep-level checks NetArchTest cannot see (public setters, entities returned from controllers, commands without validators). Hook both into CI alongside `dotnet format --verify-no-changes`.</action>
       <output>Green fitness suite + CI gate</output>
       <decision-gate>If NetArchTest fails, BLOCK merge — fix the leakage before any other change.</decision-gate>
     </step>

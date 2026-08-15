@@ -4,13 +4,16 @@
 
 **One-sentence:** Produces a layered ASP.NET Core 8/9 service: feature folders, IXService interfaces, EF Core repos, AutoMapper, ProblemDetails.
 
-**One-paragraph:** Produces a layered ASP.NET Core 8/9 service: feature folders, IXService interfaces, EF Core repos, AutoMapper, ProblemDetails. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness.
+**One-paragraph:** Produces a layered ASP.NET Core 8/9 service: feature folders and IXService interfaces, scoped DbContext, CancellationToken threaded to every EF Core call, ProblemDetails (RFC 7807) from a single global IExceptionHandler, record DTOs mapped at the service boundary, TimeProvider instead of DateTime.UtcNow, AsNoTracking + eager .Include() on reads, keyset pagination, explicit transactions on multi-step writes, and WebApplicationFactory + Testcontainers for integration tests. Mechanism: typed input → bounded transformation → contract-checked output. The artefact carries owner + version + last_reviewed so downstream consumers can verify freshness.
 
 **Ефективно для:**
 
 - Новий ASP.NET Core 8/9 API з feature folders і чіткими шарами controller/service/repo.
 - Async-by-default з CancellationToken прокинутим до DB layer.
 - ProblemDetails (RFC 7807) як єдиний error contract.
+- Ревʼю PR-диффа на captive DbContext, зворотний порядок middleware і повернення tracked-ентіті з сервісу.
+- Дисципліна запитів EF Core: AsNoTracking, eager .Include(), keyset-пагінація, явні транзакції.
+- Інтеграційні тести на WebApplicationFactory + Testcontainers замість EF InMemory.
 
 ## Applies If (ALL must hold)
 
@@ -44,11 +47,12 @@
 
 | File | Depth | What's inside | Est. tokens |
 |------|-------|---------------|-------------|
-| `content/01-core-rules.xml` | essential | 5 testable rules + rationale + source | 1200 |
-| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) + valid/invalid examples + forbidden patterns | 900 |
-| `content/03-failure-modes.xml` | essential | ≥3 antipatterns with symptom + root-cause + fix | 800 |
-| `content/04-procedure.xml` | essential | 5-step procedure with input/action/output per step | 1000 |
-| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 600 |
+| `content/01-core-rules.xml` | essential | 16 testable rules + skip rule, each with rationale + source | 2200 |
+| `content/02-output-contract.xml` | essential | JSON Schema (draft-07) incl. optional `design_profile` + valid/invalid examples + forbidden patterns | 1300 |
+| `content/03-failure-modes.xml` | essential | 12 antipatterns with symptom + detector + root-cause + fix | 1400 |
+| `content/04-procedure.xml` | essential | 7-step procedure with input/action/output per step | 1300 |
+| `content/05-examples.xml` | essential | Controller / service / IExceptionHandler / transaction examples + end-to-end trace | 1400 |
+| `content/06-decision-tree.xml` | essential | Routing tree on observable signals → conclusion(ref=rule-id) | 900 |
 
 ## Task Routing
 
@@ -65,6 +69,8 @@
 | `templates/dotnet-gate.sh` | CI gate script enforcing async hygiene and coverage threshold |
 | `templates/feature-folder-skeleton.cs` | Feature folder skeleton with controller/service/repo/dto |
 | `templates/_smoke-test.cs` | Minimum viable feature: Users CRUD with auth + ProblemDetails |
+| `templates/problem-details-handler.cs` | .NET 8+ IExceptionHandler mapping domain exceptions to RFC 7807 |
+| `templates/prompt-aspnet-slice.txt` | Prompt skeleton for scaffolding one compliant vertical slice |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -176,4 +182,47 @@ public sealed class SampleBackgroundService(ILogger<SampleBackgroundService> log
         }
     }
 }
+```
+
+### `templates/problem-details-handler.cs`
+
+```csharp
+// .NET 8+ IExceptionHandler — maps domain exceptions to RFC 7807 ProblemDetails.
+// Register in Program.cs:
+//   builder.Services.AddProblemDetails();
+//   builder.Services.AddExceptionHandler<ProblemDetailsHandler>();
+//   app.UseExceptionHandler();
+public sealed class ProblemDetailsHandler : IExceptionHandler
+{
+    public async ValueTask<bool> TryHandleAsync(
+        HttpContext ctx, Exception ex, CancellationToken ct)
+    {
+        var pd = ex switch
+        {
+            NotFoundException nf =>
+                new ProblemDetails { Status = 404, Title = nf.Message },
+            ValidationException ve =>
+                new ProblemDetails { Status = 422, Title = "Validation failed",
+                                     Detail = ve.Message },
+            _ => new ProblemDetails { Status = 500, Title = "Server error" }
+        };
+        ctx.Response.StatusCode = pd.Status!.Value;
+        await ctx.Response.WriteAsJsonAsync(pd, ct);
+        return true;
+    }
+}
+```
+
+### `templates/prompt-aspnet-slice.txt`
+
+```text
+Add <Entity> vertical slice in MyApp.Features.<Entities>:
+- Records: Create<Entity>Dto(string Name, ...), <Entity>Dto(int Id, string Name, DateTime CreatedAt)
+- I<Entity>Service { Task<<Entity>Dto> CreateAsync(Create<Entity>Dto, CancellationToken);
+                     Task Delete<Entity>Async(int id, CancellationToken) }
+- <Entity>Service uses AppDbContext, maps to DTO via Mapperly, injects TimeProvider
+- <Entity>sController: POST/DELETE/GET with [Authorize], CreatedAtAction,
+  CancellationToken on all actions, keyset cursor on the list endpoint
+- EF migration Add<Entities>
+- Integration test using WebApplicationFactory<Program> + Testcontainers Postgres
 ```

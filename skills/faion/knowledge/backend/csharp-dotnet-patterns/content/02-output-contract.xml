@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="C# Clean Architecture + CQRS Output Contract" version="1.1.0" est_tokens="900" depth="essential">
+<text id="02-output-contract" title="C# Clean Architecture + CQRS Output Contract" version="1.2.0" est_tokens="1200" depth="essential">
   <summary>JSON Schema for the layered-solution manifest this methodology produces. Validator enforces required keys + per-field constraints.</summary>
 
   <section title="Schema">
@@ -21,7 +21,38 @@
         "Api": {"type": "object", "required": ["references"], "properties": {"references": {"type": "array", "items": {"enum": ["Application", "Infrastructure"]}}}}
       }
     },
-    "use_cases": {"type": "array", "items": {"type": "object", "required": ["feature", "name"], "properties": {"feature": {"type": "string"}, "name": {"type": "string"}}}, "minItems": 1},
+    "use_cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["feature", "name", "command", "handler", "validator", "response_dto"],
+        "properties": {
+          "feature": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+          "name": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+          "command": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+(Command|Query)$"},
+          "handler": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Handler$"},
+          "validator": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+Validator$"},
+          "response_dto": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+(Response|Dto)$"},
+          "aggregate": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]+$"},
+          "aggregate_has_public_setters": {"type": "boolean", "const": false},
+          "handler_accepts_cancellation_token": {"type": "boolean", "const": true}
+        }
+      }
+    },
+    "layer_refs": {
+      "type": "object",
+      "required": ["domain_has_ef_ref", "domain_has_aspnet_ref", "application_has_ef_ref"],
+      "properties": {
+        "domain_has_ef_ref": {"type": "boolean", "const": false},
+        "domain_has_aspnet_ref": {"type": "boolean", "const": false},
+        "application_has_ef_ref": {"type": "boolean", "const": false}
+      }
+    },
+    "pipeline_behaviour_order": {
+      "type": "array",
+      "items": {"enum": ["Logging", "Validation", "Authorization", "UnitOfWork", "Caching"]}
+    },
     "arch_tests_pass": {"type": "boolean", "const": true},
     "outbox_configured": {"type": "boolean", "const": true}
   }
@@ -40,9 +71,18 @@
     "Api": {"references": ["Application", "Infrastructure"]}
   },
   "use_cases": [
-    {"feature": "Invoices", "name": "CreateInvoice"},
-    {"feature": "Invoices", "name": "GetInvoiceById"}
+    {"feature": "Invoices", "name": "CreateInvoice", "command": "CreateInvoiceCommand",
+     "handler": "CreateInvoiceHandler", "validator": "CreateInvoiceValidator",
+     "response_dto": "CreateInvoiceResponse", "aggregate": "Invoice",
+     "aggregate_has_public_setters": false, "handler_accepts_cancellation_token": true},
+    {"feature": "Invoices", "name": "GetInvoiceById", "command": "GetInvoiceByIdQuery",
+     "handler": "GetInvoiceByIdHandler", "validator": "GetInvoiceByIdValidator",
+     "response_dto": "InvoiceDetailDto", "aggregate": "Invoice",
+     "aggregate_has_public_setters": false, "handler_accepts_cancellation_token": true}
   ],
+  "layer_refs": {"domain_has_ef_ref": false, "domain_has_aspnet_ref": false,
+                 "application_has_ef_ref": false},
+  "pipeline_behaviour_order": ["Logging", "Validation", "Authorization", "UnitOfWork", "Caching"],
   "arch_tests_pass": true,
   "outbox_configured": true
 }
@@ -59,12 +99,20 @@
     "Infrastructure": {"references": ["Domain"]},
     "Api": {"references": ["Application"]}
   },
-  "use_cases": [],
+  "use_cases": [
+    {"feature": "ShipOrder", "name": "ShipOrder", "command": "ShipOrderRequest",
+     "handler": "OrderService", "validator": "manual-ifs", "response_dto": "OrderEntity",
+     "aggregate": "OrderDto", "aggregate_has_public_setters": true,
+     "handler_accepts_cancellation_token": false}
+  ],
+  "layer_refs": {"domain_has_ef_ref": true, "domain_has_aspnet_ref": true,
+                 "application_has_ef_ref": true},
+  "pipeline_behaviour_order": ["Validation"],
   "arch_tests_pass": false,
   "outbox_configured": false
 }
 ]]></code>
-    <note>solution_name not PascalCase; Domain depends on Infrastructure (inversion); Application depends on Infrastructure; no use-cases; arch tests failing; outbox missing.</note>
+    <note>solution_name not PascalCase; Domain depends on Infrastructure (inversion); Application depends on Infrastructure; the use-case names a `Request` not a `Command`, a generic `OrderService` not a `Handler`, hand-rolled ifs instead of a Validator, an entity as the response DTO, an aggregate with public setters, and a `Handle` without a CancellationToken; Domain leaks EF + ASP.NET refs; arch tests failing; outbox missing.</note>
   </example>
 
   <section title="Forbidden patterns">
@@ -74,6 +122,13 @@
       <item>`async void` on a MediatR `INotificationHandler&lt;T&gt;`.</item>
       <item>Aggregate collection mutated externally (`user.Posts.Add(post)` instead of `user.AddPost(post)`).</item>
       <item>`IgnoreQueryFilters()` outside an explicitly designated admin repository.</item>
+      <item>`IQueryable&lt;T&gt;` returned from an Application-layer handler or interface.</item>
+      <item>`DbContext` injected directly into a handler instead of `IApplicationDbContext`.</item>
+      <item>`HttpContext` / `IHttpContextAccessor` read inside a handler.</item>
+      <item>A Domain entity used as a controller return type, a MediatR response, or a Swagger schema.</item>
+      <item>A public setter (other than on `Id`) on a Domain aggregate.</item>
+      <item>A `Handle` method without a `CancellationToken` parameter.</item>
+      <item>One DTO shared across two queries with different projections.</item>
     </list>
   </section>
 

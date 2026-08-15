@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="EF Core Data Layer Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>5-step procedure to apply the EF Core data-layer methodology end-to-end.</summary>
+<text id="04-procedure" title="EF Core Data Layer Procedure" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7-step procedure to apply the EF Core data-layer methodology end-to-end, from the DbContext boundary to the reviewed migration. Each step names the rules it satisfies.</summary>
 
   <section title="Procedure">
 
@@ -8,6 +8,13 @@
       <input>Domain entity list, target provider</input>
       <action>Create one `DbContext` per bounded context (not per service). Register as `Scoped`. Add `optionsBuilder.AddInterceptors(...)` for the audit interceptor.</action>
       <output>DbContext class + DI registration</output>
+    </step>
+
+    <step n="1b" name="design-entities">
+      <input>Entity sketch or ERD</input>
+      <action>Define each POCO with `private set` properties, a private parameterless constructor for EF materialization, and collections exposed as `IReadOnlyCollection&lt;T&gt;` over a backing field initialised at construction. Invariants live in the public constructor and the mutating methods (`entity-private-setters`).</action>
+      <output>Entity.cs per aggregate</output>
+      <decision-gate>If the entity carries data annotations, FAIL and move them to the configuration class.</decision-gate>
     </step>
 
     <step n="2" name="add-entity-configurations">
@@ -19,9 +26,16 @@
 
     <step n="3" name="add-repositories-with-asnotracking">
       <input>Entity configurations</input>
-      <action>Implement repositories that materialise results before returning. Read paths call `AsNoTracking()` (or projection). Bulk paths call `ExecuteUpdateAsync`/`ExecuteDeleteAsync`.</action>
-      <output>Repository classes per aggregate</output>
-      <decision-gate>If a repository method returns `IQueryable&lt;T&gt;`, fail per `asnotracking-on-reads` rule.</decision-gate>
+      <action>Implement repositories that materialise results before returning: list methods return `PagedResult&lt;TDto&gt;` built from `AsNoTracking()` + projection + `Skip/Take`, with a `CancellationToken` threaded to every EF call (`no-iqueryable-return`, `asnotracking-on-reads`). Bulk paths call `ExecuteUpdateAsync`/`ExecuteDeleteAsync`. Writes call `SaveChangesAsync(ct)` inside the repository.</action>
+      <output>Repository classes per aggregate + `PagedResult&lt;T&gt;`</output>
+      <decision-gate>If a repository method returns `IQueryable&lt;T&gt;`, fail per `no-iqueryable-return` rule.</decision-gate>
+    </step>
+
+    <step n="3b" name="audit-multi-collection-includes">
+      <input>Repository read paths</input>
+      <action>For every query whose `.Include()` chain covers ≥ 2 collection navigations, append `.AsSplitQuery()` and note in a comment why it is split (`splitquery-multi-include`). Check the generated plan for row multiplication.</action>
+      <output>Audited query set</output>
+      <decision-gate>If the query still shows Cartesian row counts in the plan, refactor to an explicit projection with sub-queries.</decision-gate>
     </step>
 
     <step n="4" name="add-audit-interceptor-and-concurrency-tokens">
@@ -33,9 +47,9 @@
 
     <step n="5" name="generate-and-review-migration">
       <input>Model snapshot, target environment</input>
-      <action>Run `dotnet ef migrations add &lt;Name&gt;`. Run `dotnet ef migrations script` to emit SQL for review. Block destructive operations behind an explicit human checkpoint.</action>
+      <action>Run `dotnet ef migrations add &lt;VerbPrefix&gt;` (`AddOrdersTable`, `AlterOrderAddCarrier`). Run `dotnet ef migrations script` to emit SQL for review and diff it against the last release. Block destructive operations behind an explicit human checkpoint. Never edit or rename a migration that is already on the deploy branch — correct it with a new one (`append-only-migrations`).</action>
       <output>Migration + reviewed SQL file</output>
-      <decision-gate>If migration SQL contains `DROP COLUMN`/`DROP TABLE` and no human approval is logged, BLOCK per `migration-sql-review` rule.</decision-gate>
+      <decision-gate>If migration SQL contains `DROP COLUMN`/`DROP TABLE` and no human approval is logged, BLOCK per `migration-sql-review` rule. If the diff touches an already-merged migration file, BLOCK per `append-only-migrations` rule.</decision-gate>
     </step>
 
   </section>

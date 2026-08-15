@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="C# Clean Architecture + CQRS Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the Clean Architecture + CQRS pattern for .NET 8/9. Each rule pairs a binary check + sourced rationale.</summary>
+<text id="01-core-rules" title="C# Clean Architecture + CQRS Core Rules" version="1.2.0" est_tokens="2600" depth="essential">
+  <summary>17 testable rules grounding the Clean Architecture + CQRS pattern for .NET 8/9 — layering, aggregate design, the CQRS message contract, the MediatR pipeline, and the library-licensing constraints that decide the bus. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
 
     <rule id="layer-direction" testable="true" depth="essential">
-      <statement>Project references point inward only: API → Application → Domain ← Infrastructure. Domain MUST have zero outward references. Application MUST NOT reference Infrastructure or `Microsoft.EntityFrameworkCore`.</statement>
+      <statement>Project references point inward only: API → Application → Domain ← Infrastructure. Domain MUST have zero outward references — no `Microsoft.EntityFrameworkCore`, no `Microsoft.AspNetCore.*`, no external SDK of any kind. Application MUST NOT reference Infrastructure, `Microsoft.EntityFrameworkCore`, or `Microsoft.AspNetCore.*`.</statement>
       <rationale source="Robert C. Martin — Clean Architecture">Inward dependency direction keeps Domain stable; any Application-on-Infrastructure reference collapses the layering and re-introduces a big-ball-of-mud.</rationale>
     </rule>
 
@@ -20,8 +20,8 @@
     </rule>
 
     <rule id="validators-on-commands" testable="true" depth="essential">
-      <statement>Input validation MUST live in a FluentValidation `Validator` on the Command/Query DTO. Domain invariants stay in entity factories. DataAnnotation attributes on DTOs are forbidden.</statement>
-      <rationale source="FluentValidation docs">Three validation surfaces (annotations + validator + entity) drift; a single FluentValidation site keeps the contract testable.</rationale>
+      <statement>Input validation MUST live in a FluentValidation `AbstractValidator&lt;T&gt;` on the Command/Query DTO, registered via `AddValidatorsFromAssembly(...)` and run by a MediatR validation pipeline behaviour BEFORE the handler; the resulting `ValidationException` maps to a 400 `ProblemDetails`. Domain invariants stay in entity factories. DataAnnotation attributes on DTOs and `if (req.Foo == null) throw` inside handlers are forbidden.</statement>
+      <rationale source="FluentValidation docs + ASP.NET Core ModelState">Three validation surfaces (annotations + validator + entity) drift; a single FluentValidation site keeps the contract testable and reusable. Running it in the pipeline rather than the handler is what makes the 400 shape uniform across every use-case.</rationale>
     </rule>
 
     <rule id="outbox-for-cross-aggregate" testable="true" depth="essential">
@@ -31,7 +31,62 @@
 
     <rule id="mediatr-reserved-for-cross-cutting" testable="true" depth="essential">
       <statement>MediatR MUST be reserved for use-cases with cross-cutting needs (validation pipeline, auth pipeline, transaction pipeline, logging). Trivial reads (`GET /health`, simple lookups) MUST NOT be wrapped in Commands/Queries.</statement>
-      <rationale source="MediatR docs + internal perf review">Every dispatch pays handler resolution + pipeline overhead; wrapping `/health` adds latency for no benefit.</rationale>
+      <rationale source="MediatR docs + internal perf review">Every dispatch pays handler resolution + pipeline overhead; wrapping `/health` adds latency for no benefit. On a solo codebase the pipeline overhead exceeds its benefit for most use-cases.</rationale>
+    </rule>
+
+    <rule id="cqrs-record-request-per-handler" testable="true" depth="essential">
+      <statement>Every command/query is a `record` implementing `IRequest&lt;TResponse&gt;` with exactly one `IRequestHandler&lt;TRequest, TResponse&gt;` in `Application/`, and the handler's `Handle` MUST accept a `CancellationToken`. Generic `IService` classes that mix several operations are forbidden, and so are the `Command`/`Handler`/`Validator`/`Response` suffixes being dropped.</statement>
+      <rationale source="MediatR docs + Jimmy Bogard CQRS posts">One handler per message preserves the read/write separation and makes pipeline behaviours attachable in one place. Reading the handler signature tells an agent the full input/output schema; a mixed `Service` class hides it. A `Handle` overload without a token is the reliable signature that the code was generated against MediatR v9.</rationale>
+    </rule>
+
+    <rule id="rich-domain-no-setters" testable="true" depth="essential">
+      <statement>Aggregates and entities MUST have no public setters (only `private set` plus a factory or constructor). State changes go through intention-revealing methods that enforce invariants — `order.Ship(carrier, when)`, never `order.Status = "shipped"`. Domain events are raised inside the aggregate method.</statement>
+      <rationale source="DDD Reference (Vaughn Vernon)">Public setters let a caller bypass every invariant, so the aggregate cannot enforce a rule consistently. Code-gen agents emit `{ get; set; }` because that is the ASP.NET Core training-data norm, which is exactly why this needs a lint rather than a convention.</rationale>
+    </rule>
+
+    <rule id="no-entity-in-api" testable="true" depth="essential">
+      <statement>The API layer MUST NOT return Domain entities. Responses are `record` DTOs defined in `Application/` (or `Web/Contracts/`); entities never appear in a controller signature, a MediatR response, or a Swagger schema. One DTO per query — `GetUsersListItemDto` and `GetUserDetailDto` stay two types even at 80% overlap.</statement>
+      <rationale source="Hexagonal architecture + REST contract stability">Returning an entity couples the persistence shape to the public contract: adding a column or a navigation breaks every client, and Swagger starts advertising `Discriminator` and `RowVersion`. A shared DTO causes over-projection and turns "I added a field" into five broken endpoints.</rationale>
+    </rule>
+
+    <rule id="no-iqueryable-from-application" testable="true" depth="essential">
+      <statement>`IQueryable&lt;T&gt;` MUST NOT cross out of the Application layer. Paging and projection happen inside the handler; the handler returns materialized DTOs.</statement>
+      <rationale source="Internal — drift audit Q1 2026">An agent asked for "flexibility" returns `IQueryable` and the query then executes in the API layer, after the scope that owned the context — or with LINQ the handler never sanctioned.</rationale>
+    </rule>
+
+    <rule id="dbcontext-behind-interface" testable="true" depth="essential">
+      <statement>Application declares `IApplicationDbContext`; Infrastructure owns the concrete `ApplicationDbContext`. Handlers MUST NOT inject `DbContext` directly, and MUST NOT read `HttpContext` or `IHttpContextAccessor` — handlers are transport-agnostic.</statement>
+      <rationale source="Clean Architecture + internal review audit">Injecting DbContext into a handler puts EF in the Application layer through the back door without a csproj reference to catch it. A handler that reads HttpContext cannot be dispatched from a worker, a test, or a queue consumer.</rationale>
+    </rule>
+
+    <rule id="pipeline-behaviour-order" testable="true" depth="essential">
+      <statement>`IPipelineBehavior&lt;,&gt;` registrations are ordered explicitly and in one place: Logging → Validation → Authorization → UnitOfWork → Caching → Handler. The order is asserted by a test, not assumed from DI registration order.</statement>
+      <rationale source="MediatR docs + internal incident review">Pipeline order follows DI registration order, so a mis-registration silently disables validation instead of failing — a validator registered after the handler never runs and nothing in the build says so.</rationale>
+    </rule>
+
+    <rule id="composition-root-per-layer" testable="true" depth="essential">
+      <statement>Each layer exposes one `AddApplication()` / `AddInfrastructure()` extension method; `Program.cs` is the only composition root and calls nothing else.</statement>
+      <rationale source="Microsoft architecture guides">A single composition root keeps agent-driven service registration deterministic and keeps `Program.cs` short enough that a reviewer can see the whole DI graph.</rationale>
+    </rule>
+
+    <rule id="pin-bus-and-mapper-versions" testable="true" depth="essential">
+      <statement>Pin the mediator and mapper major versions in `Directory.Packages.props` and name the library explicitly in every prompt. Prefer source-generated, free alternatives — `Mediator` over MediatR, Mapperly over AutoMapper — in any commercial product: MediatR v12+ and AutoMapper v10+ require a paid license above $1M revenue.</statement>
+      <rationale source="MediatR + AutoMapper licensing announcements 2024">The license change is a business constraint that becomes a rewrite if discovered after adoption. Separately, MediatR / Mediator / Wolverine have incompatible APIs, and an unnamed library is how an agent emits v9 code against a v12 project.</rationale>
+    </rule>
+
+    <rule id="result-for-expected-failures" testable="true" depth="essential">
+      <statement>Use `DomainException` only for invariant violations. Expected failures ("user not found", "already shipped") return a `Result`/`ErrorOr` value, mapped to the HTTP status in the API layer.</statement>
+      <rationale source="Internal — handler review audit">Exceptions for expected outcomes turn every handler into a try/catch cargo cult and hide the real failure paths from the signature.</rationale>
+    </rule>
+
+    <rule id="domain-events-raised-and-cleared" testable="true" depth="essential">
+      <statement>Domain events are added on the aggregate (`user.AddDomainEvent(...)`) inside the method that caused them, published from the `SaveChangesAsync` override or an outbox relay, and CLEARED after publish.</statement>
+      <rationale source="Internal — domain-event incident review">Two failures are both common: adding the event and never overriding SaveChangesAsync to publish it, and publishing without clearing, which re-fires every event on the next save.</rationale>
+    </rule>
+
+    <rule id="integration-test-per-feature" testable="true" depth="essential">
+      <statement>Each feature carries at least one integration test using `WebApplicationFactory&lt;Program&gt;` + a Testcontainers database, in addition to the handler unit test. Mocking `IMediator.Send(...)` and asserting a call count does not satisfy this rule.</statement>
+      <rationale source="Internal — test-fake audit">A stubbed bus asserts that the controller called something; it cannot see handler resolution failures or a pipeline behaviour registered in the wrong order, which are the two bugs this architecture actually produces.</rationale>
     </rule>
 
   </section>
@@ -40,6 +95,7 @@
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
     <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="C# .NET Core Backend Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the .NET Core service umbrella. Each rule pairs a binary check + sourced rationale.</summary>
+<text id="01-core-rules" title="C# .NET Core Backend Core Rules" version="1.2.0" est_tokens="2600" depth="essential">
+  <summary>19 testable rules grounding the .NET Core service umbrella — HTTP surface, DI, EF Core, background work, tests, configuration and security hygiene. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
 
@@ -20,8 +20,8 @@
     </rule>
 
     <rule id="ef-asnotracking-on-reads" testable="true" depth="essential">
-      <statement>EF Core read paths MUST call `AsNoTracking()`. Bulk operations MUST use `ExecuteUpdateAsync`/`ExecuteDeleteAsync`. Repositories MUST NOT return `IQueryable&lt;T&gt;` — materialize with `ToListAsync`/`ToArrayAsync` before crossing the layer boundary.</statement>
-      <rationale source="Microsoft EF Core performance guide">Change tracker bloats memory on read-only paths; leaked `IQueryable` lets controllers execute queries against a disposed context.</rationale>
+      <statement>EF Core read paths MUST call `AsNoTracking()`, and MUST add `AsSplitQuery()` when a query carries more than one collection `Include`. Bulk operations MUST use `ExecuteUpdateAsync`/`ExecuteDeleteAsync`. Repositories MUST NOT return `IQueryable&lt;T&gt;` — materialize with `ToListAsync`/`ToArrayAsync` before crossing the layer boundary, and return `PagedResult&lt;T&gt;` (Items + TotalCount + Page + PageSize) from list methods.</statement>
+      <rationale source="Microsoft EF Core performance guide">Change tracker bloats memory on read-only paths and read queries are ~30% faster without it; two collection `Include`s in one JOIN multiply rows into a Cartesian explosion. Leaked `IQueryable` lets controllers append arbitrary LINQ that bypasses the intended constraints, or execute against a disposed context. `PagedResult` keeps callers from duplicating the count query.</rationale>
     </rule>
 
     <rule id="problemdetails-errors" testable="true" depth="essential">
@@ -34,12 +34,83 @@
       <rationale source="Internal — feature-folder migration retro 2026-Q1">Feature folders keep cohesive changes in one directory; technical-layer trees scatter a single feature across five folders and hide the surface area from the agent.</rationale>
     </rule>
 
+    <rule id="apicontroller-actionresult" testable="true" depth="essential">
+      <statement>Every controller carries `[ApiController]` and `[Route("api/v1/[controller]")]`. Actions that can return a non-200 status return `ActionResult&lt;T&gt;`; `IActionResult` is used only where the response type genuinely varies at runtime. POST actions that create a resource return `CreatedAtAction(...)`.</statement>
+      <rationale source="Microsoft ASP.NET Core docs">`[ApiController]` turns on automatic model-validation binding and ProblemDetails error responses. `ActionResult&lt;T&gt;` lets Swagger infer the success schema without a `ProducesResponseType` per action, and `CreatedAtAction` emits the 201 + Location header clients expect.</rationale>
+    </rule>
+
+    <rule id="constructor-inject-interfaces-only" testable="true" depth="essential">
+      <statement>Constructor-inject interfaces only, never concrete implementations, and register each service interface as Scoped in `Program.cs`. Cap a controller or service at 4-5 constructor dependencies; beyond that, split the responsibility or move to a mediator/handler. Never inject `IServiceProvider` into a controller or service to call `GetService&lt;T&gt;()` inside a method — the one exception is a `BackgroundService`, which must create scopes manually.</statement>
+      <rationale source="Microsoft DI docs + internal review audit">Concrete injection blocks test doubles. The service-locator pattern hides dependencies from the constructor signature, so the container cannot validate them at startup and unit tests cannot mock them. Six or more dependencies is a god-class signal the agent will keep feeding.</rationale>
+    </rule>
+
+    <rule id="record-dtos-not-entities" testable="true" depth="essential">
+      <statement>DTOs are `record` types. Service methods never return an EF Core entity across the service boundary — map to a DTO first.</statement>
+      <rationale source="Microsoft .NET docs">Entities carry EF tracking state and navigation proxies. Returning them leaks persistence concerns into the controller and produces infinite recursion in JSON serialization once a navigation property is loaded. Records give value semantics, immutability and `with`-expressions.</rationale>
+    </rule>
+
+    <rule id="entity-type-configuration-classes" testable="true" depth="essential">
+      <statement>Every entity mapping lives in an `IEntityTypeConfiguration&lt;T&gt;` class applied via `modelBuilder.ApplyConfigurationsFromAssembly(...)` — not in data annotations on the entity.</statement>
+      <rationale source="Microsoft EF Core docs">Configuration classes keep persistence concerns out of the domain entity. Annotations couple the domain model to EF-specific attributes and block reuse outside an EF context.</rationale>
+    </rule>
+
+    <rule id="repository-owns-savechanges" testable="true" depth="essential">
+      <statement>`SaveChangesAsync()` is called only inside the repository or a unit of work — never directly in a service method. The service orchestrates; the repository owns the persistence boundary.</statement>
+      <rationale source="Internal — persistence boundary retro">A service calling SaveChangesAsync bypasses the repository abstraction and makes batching several operations into one unit of work impossible without leaking the EF context up a layer.</rationale>
+    </rule>
+
+    <rule id="channel-and-periodictimer-for-background-work" testable="true" depth="essential">
+      <statement>In-process background work uses `BackgroundService` + a bounded `Channel&lt;T&gt;` registered as Singleton, with a scope created per work item inside `ExecuteAsync`. Periodic work uses `PeriodicTimer.WaitForNextTickAsync(ct)` — never `Thread.Sleep` and never `Task.Delay` in a loop.</statement>
+      <rationale source="Microsoft .NET docs">A Channel gives back-pressure the loop cannot silently drop; a per-item scope keeps the scoped DbContext out of the singleton. `PeriodicTimer` fires on wall-clock interval without drift even after a slow tick, and returns false on cancellation, so shutdown needs no extra coordination.</rationale>
+    </rule>
+
+    <rule id="program-partial-for-webapplicationfactory" testable="true" depth="essential">
+      <statement>`Program.cs` ends with `public partial class Program { }` in any service that has integration tests.</statement>
+      <rationale source="Microsoft testing docs">`WebApplicationFactory&lt;Program&gt;` takes `Program` as a generic argument, so the type must be visible to the test assembly. Without the partial declaration the test project fails to compile with "Cannot find type Program".</rationale>
+    </rule>
+
+    <rule id="moq-interfaces-and-classfixture-tests" testable="true" depth="essential">
+      <statement>Unit tests mock the service interface (`Mock&lt;IUserService&gt;`), pass `mock.Object` to the controller, and assert the shape with `Assert.IsType&lt;T&gt;` before casting to the inner value. Integration tests use `IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt;` and obtain the client via `factory.CreateClient()` — never a bare `HttpClient` pointed at localhost.</statement>
+      <rationale source="xUnit + Microsoft testing docs">Mocking the interface isolates the HTTP-layer assertions (status code, ActionResult type, DTO shape) from the database. `IClassFixture` shares one in-process test server across the class, and `CreateClient()` routes through it without a real socket, which is what makes the suite deterministic and fast.</rationale>
+    </rule>
+
+    <rule id="nullable-enabled-warnings-as-errors" testable="true" depth="essential">
+      <statement>Every project sets `&lt;Nullable&gt;enable&lt;/Nullable&gt;` and `&lt;TreatWarningsAsErrors&gt;true&lt;/TreatWarningsAsErrors&gt;`, and pins the SDK in `global.json` so CI and local builds agree. `CS4014` (un-awaited Task) and the `CS8` nullability warnings are build failures, not noise.</statement>
+      <rationale source="Microsoft .NET docs + internal async review audit">A forgotten `await` on `ToListAsync()` serializes the Task itself (`{"Result":null,...}`) and is invisible without CS4014 as an error. Nullability warnings left as warnings accumulate until they carry no signal.</rationale>
+    </rule>
+
+    <rule id="options-validated-on-start" testable="true" depth="essential">
+      <statement>Configuration is bound through `IOptions&lt;T&gt;` with `.ValidateDataAnnotations().ValidateOnStart()`. Do not read `IConfiguration["Section:Key"]` ad hoc in business code.</statement>
+      <rationale source="Microsoft configuration docs">Binding from appsettings is loose: a typo in a section name yields a default-valued object rather than an exception, so the service starts and misbehaves. ValidateOnStart converts that into a startup failure.</rationale>
+    </rule>
+
+    <rule id="no-task-run-in-request-handlers" testable="true" depth="essential">
+      <statement>Do not call `Task.Run` inside a controller action, a service method on the request path, or a middleware. Offload real background work to a hosted service.</statement>
+      <rationale source="Microsoft ASP.NET Core performance docs">`Task.Run` on the request path steals a thread from the same pool that serves requests, so it adds latency instead of removing it, and the work is lost on shutdown.</rationale>
+    </rule>
+
+    <rule id="secrets-out-of-appsettings" testable="true" depth="essential">
+      <statement>Connection strings, API keys and tokens never land in `appsettings.json`. Use `dotnet user-secrets` locally and environment variables or a managed secret store in production; a pre-commit grep blocks connection strings.</statement>
+      <rationale source="Microsoft secrets docs">`appsettings.json` is committed and distributed to every developer machine and CI environment; a secret placed there is disclosed the moment the repo is cloned, and rotating it means a deploy.</rationale>
+    </rule>
+
+    <rule id="no-permissive-auth-or-cors-workarounds" testable="true" depth="essential">
+      <statement>`[AllowAnonymous]` and wildcard CORS policies are never added to unblock a development error. Every new `[AllowAnonymous]`, `[Authorize(Roles = ...)]` and CORS policy is a named human checkpoint in review.</statement>
+      <rationale source="Internal — security review retro">`[AllowAnonymous]` on a controller disables authorization for it in production builds too, and a `*` CORS origin allows credentialed cross-origin requests. Both survive review unless flagged explicitly, because the diff looks like a one-line config change.</rationale>
+    </rule>
+
+    <rule id="migrations-reviewed-and-in-sync" testable="true" depth="essential">
+      <statement>Entity or configuration changes ship with the matching `dotnet ef migrations add`; CI fails when `Migrations/` is out of sync with the model snapshot. A destructive migration is reviewed as SQL via `dotnet ef migrations script` before it runs, and `dotnet ef database update` is never pointed at a shared or production database by an agent.</statement>
+      <rationale source="Internal — migration retro">Agents edit the entity and forget the migration, so the drift surfaces at deploy. A dropped column that production still reads is an outage, and the only cheap gate is a human reading the generated SQL.</rationale>
+    </rule>
+
   </section>
 
   <see-also>
     <link path="content/02-output-contract.xml"/>
     <link path="content/03-failure-modes.xml"/>
     <link path="content/04-procedure.xml"/>
+    <link path="content/05-examples.xml"/>
     <link path="content/06-decision-tree.xml"/>
   </see-also>
 </text>

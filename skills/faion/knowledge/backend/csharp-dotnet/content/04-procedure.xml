@@ -1,45 +1,53 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="C# .NET Core Backend Procedure" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>6-step procedure to apply the .NET Core service umbrella end-to-end.</summary>
+<text id="04-procedure" title="C# .NET Core Backend Procedure" version="1.2.0" est_tokens="1100" depth="essential">
+  <summary>7-step procedure to apply the .NET Core service umbrella end-to-end. Each step names the rules from `01-core-rules.xml` it satisfies.</summary>
 
   <section title="Procedure">
 
     <step n="1" name="scaffold-project">
       <input>Service name, target framework (net8.0/net9.0)</input>
-      <action>Run `dotnet new webapi -n &lt;Name&gt; -f net8.0`. Replace top-level `Controllers/`, `Services/` with `Features/&lt;Feature&gt;/` folders.</action>
+      <action>Run `dotnet new webapi -n &lt;Name&gt; -f net8.0`. Replace top-level `Controllers/`, `Services/` with `Features/&lt;Feature&gt;/` folders. Set `&lt;Nullable&gt;enable&lt;/Nullable&gt;` and `&lt;TreatWarningsAsErrors&gt;true&lt;/TreatWarningsAsErrors&gt;`, pin the SDK in `global.json`, and append `public partial class Program { }` to `Program.cs` (`nullable-enabled-warnings-as-errors`, `program-partial-for-webapplicationfactory`).</action>
       <output>Empty solution + first feature folder</output>
+      <decision-gate>If the csproj still builds with nullability warnings, STOP — the gate is the build, not review.</decision-gate>
     </step>
 
     <step n="2" name="register-di-and-problem-details">
       <input>Feature list, dependency list</input>
-      <action>In `Program.cs`: register `DbContext` Scoped, services Scoped, hosted services via `AddHostedService&lt;T&gt;()`, `AddProblemDetails()`. Validate Generic Host options at startup.</action>
+      <action>In `Program.cs`: register `DbContext` Scoped, service interfaces Scoped (never the concrete class), hosted services via `AddHostedService&lt;T&gt;()`, `AddProblemDetails()`. Bind configuration through `IOptions&lt;T&gt;` with `.ValidateDataAnnotations().ValidateOnStart()` and keep secrets in `dotnet user-secrets` / environment (`constructor-inject-interfaces-only`, `options-validated-on-start`, `secrets-out-of-appsettings`).</action>
       <output>`Program.cs` with DI graph</output>
       <decision-gate>If any scoped service is referenced from a singleton, STOP and apply `di-lifetimes` rule via `IServiceScopeFactory`.</decision-gate>
     </step>
 
     <step n="3" name="add-controllers-and-services">
       <input>API contract</input>
-      <action>For each endpoint: add `[ApiController]` controller in the feature folder, `async Task&lt;ActionResult&lt;T&gt;&gt;` actions, `CancellationToken ct = default` as the last param threaded into the service.</action>
+      <action>For each endpoint: add an `[ApiController]` + `[Route("api/v1/[controller]")]` controller in the feature folder, `async Task&lt;ActionResult&lt;T&gt;&gt;` actions returning `CreatedAtAction` on create, `CancellationToken ct = default` as the last param threaded into the service. DTOs are records; no EF entity crosses the service boundary; no `Task.Run` on the request path (`apicontroller-actionresult`, `record-dtos-not-entities`, `no-task-run-in-request-handlers`).</action>
       <output>Controller + service per feature</output>
       <decision-gate>Reject any action lacking `CancellationToken` plumbing per `cancellation-token-plumbing` rule.</decision-gate>
     </step>
 
     <step n="4" name="add-ef-data-layer">
       <input>Entity model</input>
-      <action>Add `AppDbContext`, `IEntityTypeConfiguration&lt;T&gt;` per entity, repositories returning materialised lists (never `IQueryable`), `AsNoTracking()` on read paths.</action>
+      <action>Add `AppDbContext`, one `IEntityTypeConfiguration&lt;T&gt;` per entity applied via `ApplyConfigurationsFromAssembly` (never data annotations), repositories returning `PagedResult&lt;T&gt;` of materialised rows (never `IQueryable`), `AsNoTracking()` on read paths and `AsSplitQuery()` on multi-collection includes, with `SaveChangesAsync()` called only inside the repository (`entity-type-configuration-classes`, `ef-asnotracking-on-reads`, `repository-owns-savechanges`).</action>
       <output>DbContext + configurations + repositories</output>
       <decision-gate>If a repository returns `IQueryable`, refactor — leaked queries break the contract per `ef-asnotracking-on-reads` rule.</decision-gate>
     </step>
 
+    <step n="4b" name="add-migration">
+      <input>Entity model diff</input>
+      <action>Run `dotnet ef migrations add &lt;VerbNoun&gt;` in the same change as the entity edit; review destructive operations as SQL via `dotnet ef migrations script` (`migrations-reviewed-and-in-sync`).</action>
+      <output>Migration committed alongside the model change</output>
+      <decision-gate>If `Migrations/` is out of sync with the model snapshot, fail CI. Never point `dotnet ef database update` at a shared or production database.</decision-gate>
+    </step>
+
     <step n="5" name="add-tests">
       <input>Controllers + services + repositories</input>
-      <action>xUnit unit tests with Moq for service-level behaviour; integration tests with `WebApplicationFactory&lt;Program&gt;` and Testcontainers for the data layer.</action>
+      <action>xUnit unit tests mocking the service interface with Moq and asserting the `ActionResult` shape via `Assert.IsType&lt;T&gt;`; integration tests via `IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt;` + `factory.CreateClient()` and Testcontainers for the data layer (`moq-interfaces-and-classfixture-tests`).</action>
       <output>Test project per service + green CI</output>
     </step>
 
     <step n="6" name="add-background-service">
       <input>Async work spec (queue consumer / scheduled job)</input>
-      <action>Implement `BackgroundService` that injects `IServiceScopeFactory`; resolve scoped dependencies via `CreateScope()` per work item; bound any `Channel&lt;T&gt;` with explicit capacity.</action>
+      <action>Implement `BackgroundService` that injects `IServiceScopeFactory`; resolve scoped dependencies via `CreateScope()` per work item; bound any `Channel&lt;T&gt;` with explicit capacity and register it Singleton; drive periodic work with `PeriodicTimer.WaitForNextTickAsync(ct)`, never `Thread.Sleep` or a `Task.Delay` loop (`channel-and-periodictimer-for-background-work`).</action>
       <output>Hosted service registered via `AddHostedService&lt;T&gt;()`</output>
       <decision-gate>If the hosted service constructor names a scoped type, fail the review — `scoped-in-singleton` antipattern.</decision-gate>
     </step>

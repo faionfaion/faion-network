@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="02-output-contract" title="ASP.NET Core Patterns Output Contract" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>JSON Schema (draft-07) for the code artefact this methodology produces. Validator script enforces required keys, field shapes, and forbidden patterns. Output that fails the schema is rejected.</summary>
+<text id="02-output-contract" title="ASP.NET Core Patterns Output Contract" version="1.2.0" est_tokens="1300" depth="essential">
+  <summary>JSON Schema (draft-07) for the code artefact this methodology produces, including the optional `design_profile` block that pins the ten design decisions the rules constrain. Validator script enforces required keys, field shapes, and forbidden patterns. Output that fails the schema is rejected.</summary>
 
   <section title="Schema">
     <code lang="json"><![CDATA[
@@ -60,6 +60,37 @@
         "type": "string"
       }
     },
+    "design_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Optional. When present, pins the design decisions the core rules constrain; every field is checked against the rule that owns it.",
+      "required": [
+        "layering",
+        "dbcontext_lifetime",
+        "cancellation_token_propagated",
+        "error_format",
+        "dto_kind",
+        "time_provider",
+        "test_db_strategy",
+        "pagination",
+        "loading",
+        "transactions"
+      ],
+      "properties": {
+        "layering": {
+          "enum": ["controller-service-repository", "vertical-slice"]
+        },
+        "dbcontext_lifetime": { "const": "scoped" },
+        "cancellation_token_propagated": { "const": true },
+        "error_format": { "const": "problem-details-rfc7807" },
+        "dto_kind": { "const": "record" },
+        "time_provider": { "const": true },
+        "test_db_strategy": { "const": "testcontainers" },
+        "pagination": { "const": "keyset" },
+        "loading": { "const": "eager-include" },
+        "transactions": { "const": "explicit" }
+      }
+    },
     "version": {
       "type": "string",
       "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
@@ -83,10 +114,23 @@
   "build_passes": true,
   "tests_passing": 12,
   "rules_checked": [
-    "r1",
-    "r2",
-    "r3"
+    "controller-calls-service-only",
+    "dbcontext-scoped-lifetime",
+    "cancellation-token-threaded",
+    "problem-details-error-contract"
   ],
+  "design_profile": {
+    "layering": "controller-service-repository",
+    "dbcontext_lifetime": "scoped",
+    "cancellation_token_propagated": true,
+    "error_format": "problem-details-rfc7807",
+    "dto_kind": "record",
+    "time_provider": true,
+    "test_db_strategy": "testcontainers",
+    "pagination": "keyset",
+    "loading": "eager-include",
+    "transactions": "explicit"
+  },
   "version": "1.0.0",
   "last_reviewed": "2026-05-23"
 }
@@ -98,10 +142,22 @@
 {
   "artefact_id": "BAD ID",
   "owner": "",
-  "version": "draft"
+  "version": "draft",
+  "design_profile": {
+    "layering": "controller-only",
+    "dbcontext_lifetime": "singleton",
+    "cancellation_token_propagated": false,
+    "error_format": "raw-exception-message",
+    "dto_kind": "ef-entity",
+    "time_provider": false,
+    "test_db_strategy": "ef-in-memory",
+    "pagination": "skip-take",
+    "loading": "lazy",
+    "transactions": "implicit"
+  }
 }
 ]]></code>
-    <note>artefact_id violates pattern; owner is empty; version not semver; required fields missing.</note>
+    <note>artefact_id violates pattern; owner is empty; version not semver; required fields missing. Every design_profile field is also wrong: DbContext in the controller (controller-calls-service-only), singleton context (dbcontext-scoped-lifetime), no token (cancellation-token-threaded), raw exceptions (problem-details-error-contract), EF entities returned (record-dtos-at-boundary), DateTime.UtcNow (timeprovider-injected), InMemory tests (testcontainers-not-ef-inmemory), Skip/Take (keyset-pagination), lazy loading (eager-include-no-lazy-loading), implicit transactions (explicit-transaction-multi-step-writes).</note>
   </example>
 
   <section title="Forbidden patterns">
@@ -112,6 +168,21 @@
       <item>artefact_id reuses an existing id within the same store</item>
     </list>
   </section>
+
+  <output-contract>
+    <forbidden>
+      <pattern id="f1">design_profile.dbcontext_lifetime is not `scoped` (dbcontext-scoped-lifetime)</pattern>
+      <pattern id="f2">design_profile.cancellation_token_propagated is false (cancellation-token-threaded)</pattern>
+      <pattern id="f3">design_profile.error_format is not `problem-details-rfc7807` (problem-details-error-contract)</pattern>
+      <pattern id="f4">design_profile.dto_kind is `ef-entity` (record-dtos-at-boundary)</pattern>
+      <pattern id="f5">design_profile.time_provider is false (timeprovider-injected)</pattern>
+      <pattern id="f6">design_profile.test_db_strategy is `ef-in-memory` (testcontainers-not-ef-inmemory)</pattern>
+      <pattern id="f7">design_profile.pagination is `skip-take` (keyset-pagination)</pattern>
+      <pattern id="f8">design_profile.loading is `lazy` (eager-include-no-lazy-loading)</pattern>
+      <pattern id="f9">design_profile.transactions is `implicit` (explicit-transaction-multi-step-writes)</pattern>
+      <pattern id="f10">design_profile.layering is neither `controller-service-repository` nor `vertical-slice` (controller-calls-service-only)</pattern>
+    </forbidden>
+  </output-contract>
 
   <reference path="scripts/validate-csharp-aspnet-core.py">Validator script (stdlib-only; --help + --self-test)</reference>
 </text>

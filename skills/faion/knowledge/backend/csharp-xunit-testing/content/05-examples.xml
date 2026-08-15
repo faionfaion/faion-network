@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="xUnit Testing Worked Examples" version="1.2.0" est_tokens="1300" depth="essential">
+  <summary>A service unit test, a controller integration test with a substituted DbContext, and the Program shim they depend on — plus the two shapes the rules exist to prevent, and the test-plan manifest this methodology emits.</summary>
+
+  <section title="Program shim">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+// Bottom of the API project's Program.cs. Without it, top-level statements
+// leave Program internal and WebApplicationFactory<Program> will not compile.
+public partial class Program { }
+      ]]></code>
+      <note>class-fixture-required. This is the first thing to check when a test project fails to build with "Entry point not found".</note>
+    </example>
+  </section>
+
+  <section title="Service unit test">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+public sealed class OrdersServiceTests
+{
+    private readonly Mock<IOrderRepository> _repo = new();
+    private readonly OrdersService _svc;
+
+    public OrdersServiceTests() => _svc = new OrdersService(_repo.Object);
+
+    [Fact]
+    public async Task GetAsync_ExistingOrder_ReturnsDto()
+    {
+        _repo.Setup(r => r.GetAsync(It.Is<int>(id => id == 1),
+                                    It.IsAny<CancellationToken>()))
+             .ReturnsAsync(new Order(1, "Alice", 10m));
+
+        var result = await _svc.GetAsync(1, CancellationToken.None);
+
+        result.Should().BeEquivalentTo(new OrderResponse(1, "Alice", 10m));
+        _repo.Verify(r => r.GetAsync(1, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public async Task GetAsync_NonPositiveId_Throws(int id)
+    {
+        var act = () => _svc.GetAsync(id, CancellationToken.None);
+        await act.Should().ThrowAsync<ArgumentOutOfRangeException>();
+    }
+}
+      ]]></code>
+      <note>Dependencies arrive through the constructor, so xUnit's per-test instance is the whole lifecycle (constructor-injection). Both tests return `Task` (async-task-return). The id matcher is precise and the interaction is verified (precise-mock-matchers). The two invalid inputs are one `[Theory]`, so CI names the failing row (theory-for-params). Structural assertion via FluentAssertions (fluentassertions-not-assert).</note>
+    </example>
+    <antipattern>
+      <description>`public async void GetAsync_ExistingOrder_ReturnsDto()` with `_repo.Setup(r =&gt; r.GetAsync(It.IsAny&lt;int&gt;(), It.IsAny&lt;CancellationToken&gt;()))` and no `Verify`.</description>
+      <reason>Two silent failures in one method: the runner cannot observe an exception on an `async void` signature, so the assertion failing looks like a pass; and the loose matcher means the test still passes when production calls the repository with the wrong id, or never calls it.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Controller integration test">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+public sealed class TestAppFactory : WebApplicationFactory<Program>
+{
+    private readonly SqliteConnection _conn = new("DataSource=:memory:");
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        _conn.Open();   // keep the in-memory DB alive for the fixture's lifetime
+        builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<DbContextOptions<AppDbContext>>();
+            services.AddDbContext<AppDbContext>(opt => opt.UseSqlite(_conn));
+        });
+    }
+}
+
+public sealed class OrdersControllerTests : IClassFixture<TestAppFactory>
+{
+    private readonly HttpClient _client;
+
+    public OrdersControllerTests(TestAppFactory factory) =>
+        _client = factory.CreateClient();
+
+    [Fact]
+    public async Task Get_ExistingId_Returns200()
+    {
+        var response = await _client.GetAsync("/api/v1/orders/1");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var dto = await response.Content.ReadFromJsonAsync<OrderResponse>();
+        dto.Should().BeEquivalentTo(new OrderResponse(1, "Alice", 10m));
+    }
+
+    [Theory]
+    [InlineData(0, HttpStatusCode.NotFound)]
+    [InlineData(99, HttpStatusCode.NotFound)]
+    public async Task Get_MissingId_Returns404(int id, HttpStatusCode expected)
+    {
+        var response = await _client.GetAsync($"/api/v1/orders/{id}");
+        response.StatusCode.Should().Be(expected);
+    }
+}
+      ]]></code>
+      <note>One host per class through `IClassFixture`, so the startup cost is paid once (class-fixture-required). The client comes from `factory.CreateClient()`, so the request goes through the real DI graph and middleware (webapplicationfactory-for-integration). The DbContext is substituted, so the production database is never reachable from a test. Use Testcontainers instead of SQLite wherever the assertion depends on real engine semantics (testcontainers-for-db).</note>
+    </example>
+  </section>
+
+  <section title="Final artefact">
+    <code lang="json"><![CDATA[
+{
+  "test_project": "Billing.Tests",
+  "framework": "xunit",
+  "test_classes": [
+    {"name": "InvoiceServiceTests", "layer": "unit", "fact_count": 12, "fixture": "none",
+     "all_async_return_task": true, "uses_fluent_assertions": true, "uses_moq": true,
+     "methods": [
+       {"name": "Create_ValidDraft_ReturnsInvoiceDto", "kind": "Fact", "returns": "Task"},
+       {"name": "Create_NonPositiveTotal_Throws", "kind": "Theory", "returns": "Task"}
+     ]},
+    {"name": "InvoicesApiTests", "layer": "integration", "fact_count": 8, "fixture": "class",
+     "all_async_return_task": true, "uses_fluent_assertions": true, "uses_moq": false,
+     "methods": [{"name": "Get_ExistingId_Returns200", "kind": "Fact", "returns": "Task"}]}
+  ],
+  "coverage": {"line": 78.4, "branch": 65.2, "gate_enforced_in_ci": true},
+  "uses_testcontainers": true,
+  "uses_webapplicationfactory": true,
+  "forbidden_patterns_found": []
+}
+]]></code>
+  </section>
+</text>

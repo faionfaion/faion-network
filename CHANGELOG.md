@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-009, C#/.NET: 5 slug collisions resolved merge-then-archive, survivor
+  `backend/` in all five.** `csharp-dotnet-patterns` was briefed as a strict
+  subset and was not — 11 rules' worth of unique material, most of it in
+  `agent-integration.md`, a file the brief never mentioned. That is the **fourth
+  falsified "nothing unique" claim** in this CR out of four tested.
+
+  `csharp-aspnet-core` was the case where neither copy was good enough to
+  survive, so the survivor's `01-core-rules.xml` was **rewritten** rather than
+  merged into: the five placeholder `r1`..`r5` ids are gone, replaced by 16
+  subject-specific rules with every downstream reference in the contract, the
+  failure modes, the procedure and the decision tree re-pointed to match.
+
+  **One merge recovered a business constraint that was sitting in a markdown
+  file nobody validates:** MediatR v12+ and AutoMapper v10+ require a paid
+  licence above $1M revenue. It is now the rule `pin-bus-and-mapper-versions`.
+  A methodology that silently recommends a tool with a revenue-triggered licence
+  is a liability, and the corpus had no way to surface it.
+
+  **Deliberately not folded, and it needs a corpus-level decision:** the two
+  `agent-integration.md` files also carry SaaS/vendor catalogues (Azure Container
+  Apps, Serilog+Seq, Hangfire, MassTransit, Sentry) and reference lists. Those
+  are not rules, examples or failure modes, so no canonical content part accepts
+  them. They remain readable in `.archive/`. Either the schema grows a home for
+  vendor catalogues or they stay archived — but inventing a non-canonical part
+  per methodology is how CR-008 happened in the first place.
+
 - **CR-009, Java/Spring: 6 slug collisions resolved merge-then-archive,
   survivor `backend/` in all six.** `java-jpa-hibernate` was the heaviest merge
   in the set — 6→12 rules, 6→15 antipatterns, and the loser's three CR-008

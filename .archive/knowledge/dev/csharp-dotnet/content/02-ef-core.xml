@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="02-ef-core" title="ASP.NET Core: Entity Framework Core Patterns">
+  <summary>EF Core entity definition, IEntityTypeConfiguration, repository interface and implementation, AsNoTracking for reads, and paged queries.</summary>
+
+  <section title="Entity Configuration">
+    <rule>
+      <statement>Define all entity mappings in IEntityTypeConfiguration&lt;T&gt; classes, not via data annotations on the entity. Apply via modelBuilder.ApplyConfigurationsFromAssembly() in DbContext.</statement>
+      <rationale>IEntityTypeConfiguration separates persistence concerns from the domain entity. Data annotations on entities couple the domain model to EF-specific attributes, preventing reuse in non-EF contexts.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Always call AsNoTracking() on read-only repository queries. Use AsSplitQuery() when a query includes multiple collection Includes to avoid Cartesian explosion.</statement>
+      <rationale>EF Core tracks every loaded entity by default, consuming memory proportional to result set size. Read-only queries with AsNoTracking() are ~30% faster and use less memory. Multiple Include()s on collections without AsSplitQuery() produce a JOIN with row multiplication.</rationale>
+    </rule>
+
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+public class UserConfiguration : IEntityTypeConfiguration<User>
+{
+    public void Configure(EntityTypeBuilder<User> builder)
+    {
+        builder.ToTable("users");
+        builder.HasKey(u => u.Id);
+        builder.Property(u => u.Name).IsRequired().HasMaxLength(100);
+        builder.Property(u => u.Email).IsRequired().HasMaxLength(255);
+        builder.HasIndex(u => u.Email).IsUnique();
+        builder.Property(u => u.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+        builder.HasMany(u => u.Roles)
+            .WithMany(r => r.Users)
+            .UsingEntity<Dictionary<string, object>>(
+                "user_roles",
+                j => j.HasOne<Role>().WithMany().HasForeignKey("RoleId"),
+                j => j.HasOne<User>().WithMany().HasForeignKey("UserId")
+            );
+    }
+}
+      ]]></code>
+    </example>
+  </section>
+
+  <section title="Repository Pattern">
+    <rule>
+      <statement>Repository methods that return lists must use AsNoTracking() and expose a PagedResult&lt;T&gt; return type that includes TotalCount, Page, and PageSize. Never return IQueryable from a repository — the query must execute inside the repository.</statement>
+      <rationale>IQueryable leaking out of the repository breaks the repository abstraction: callers can add arbitrary LINQ operators that bypass intended query constraints. PagedResult encapsulates pagination metadata so callers do not duplicate count queries.</rationale>
+    </rule>
+
+    <rule>
+      <statement>Call SaveChangesAsync() only in the repository (or a unit of work), not in service methods. The service orchestrates but the repository owns the persistence boundary.</statement>
+      <rationale>Services calling SaveChangesAsync() directly bypass the repository abstraction and make it impossible to batch multiple operations into a single unit of work without leaking EF context into the service.</rationale>
+    </rule>
+  </section>
+
+  <reference path="templates/entity-config.cs">IEntityTypeConfiguration with indexes, FK cascade, many-to-many</reference>
+</text>

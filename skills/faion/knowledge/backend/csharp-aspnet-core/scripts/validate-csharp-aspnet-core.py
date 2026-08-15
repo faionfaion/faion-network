@@ -31,6 +31,47 @@ SEMVER = re.compile(r"^\d+\.\d+\.\d+$")
 ID_RE = re.compile(r"^[a-z][a-z0-9-]+$")
 FORBIDDEN_OWNERS = {"team", "we", "us", "engineering", ""}
 
+# Optional design_profile block (02-output-contract.xml). When present, every
+# field is pinned by the core rule named in the comment.
+DESIGN_PROFILE_REQUIRED = (
+    'layering', 'dbcontext_lifetime', 'cancellation_token_propagated',
+    'error_format', 'dto_kind', 'time_provider', 'test_db_strategy',
+    'pagination', 'loading', 'transactions',
+)
+DESIGN_PROFILE_EXPECTED = {
+    'dbcontext_lifetime': 'scoped',                  # dbcontext-scoped-lifetime
+    'cancellation_token_propagated': True,           # cancellation-token-threaded
+    'error_format': 'problem-details-rfc7807',       # problem-details-error-contract
+    'dto_kind': 'record',                            # record-dtos-at-boundary
+    'time_provider': True,                           # timeprovider-injected
+    'test_db_strategy': 'testcontainers',            # testcontainers-not-ef-inmemory
+    'pagination': 'keyset',                          # keyset-pagination
+    'loading': 'eager-include',                      # eager-include-no-lazy-loading
+    'transactions': 'explicit',                      # explicit-transaction-multi-step-writes
+}
+DESIGN_PROFILE_LAYERING = {'controller-service-repository', 'vertical-slice'}
+
+
+def _validate_design_profile(profile: object) -> list[str]:
+    """Check the optional design_profile block against the pinned rule values."""
+    if not isinstance(profile, dict):
+        return ["design_profile must be a JSON object"]
+    violations: list[str] = []
+    for key in DESIGN_PROFILE_REQUIRED:
+        if key not in profile:
+            violations.append(f"design_profile missing required key: {key}")
+    layering = profile.get("layering")
+    if layering is not None and layering not in DESIGN_PROFILE_LAYERING:
+        violations.append(
+            f"design_profile.layering must be one of {sorted(DESIGN_PROFILE_LAYERING)}: {layering!r}"
+        )
+    for key, expected in DESIGN_PROFILE_EXPECTED.items():
+        if key in profile and profile[key] != expected:
+            violations.append(
+                f"design_profile.{key} must be {expected!r}, got {profile[key]!r}"
+            )
+    return violations
+
 
 def validate(doc: dict) -> list[str]:
     violations: list[str] = []
@@ -39,6 +80,8 @@ def validate(doc: dict) -> list[str]:
     for key in REQUIRED:
         if key not in doc:
             violations.append(f"missing required key: {key}")
+    if "design_profile" in doc:
+        violations.extend(_validate_design_profile(doc["design_profile"]))
     owner = (doc.get("owner") or "").strip().lower()
     if owner in FORBIDDEN_OWNERS:
         violations.append(f"forbidden owner value: {owner!r} (must be named human or role-with-rotation)")
@@ -69,6 +112,31 @@ def self_test() -> int:
     v = validate(bad)
     if not v:
         print("self-test FAIL: invalid doc passed", file=sys.stderr)
+        return 1
+    # design_profile: complete + compliant block must pass, non-compliant must fail.
+    good_profile = dict(good)
+    good_profile["design_profile"] = {
+        "layering": "controller-service-repository",
+        "dbcontext_lifetime": "scoped",
+        "cancellation_token_propagated": True,
+        "error_format": "problem-details-rfc7807",
+        "dto_kind": "record",
+        "time_provider": True,
+        "test_db_strategy": "testcontainers",
+        "pagination": "keyset",
+        "loading": "eager-include",
+        "transactions": "explicit",
+    }
+    v = validate(good_profile)
+    if v:
+        print(f"self-test FAIL on compliant design_profile: {v}", file=sys.stderr)
+        return 1
+    bad_profile = dict(good_profile)
+    bad_profile["design_profile"] = dict(good_profile["design_profile"],
+                                         dbcontext_lifetime="singleton",
+                                         loading="lazy")
+    if not validate(bad_profile):
+        print("self-test FAIL: non-compliant design_profile passed", file=sys.stderr)
         return 1
     print("self-test ok")
     return 0

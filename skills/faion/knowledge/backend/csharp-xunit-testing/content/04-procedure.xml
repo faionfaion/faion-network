@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="04-procedure" title="xUnit Testing Procedure" version="1.1.0" est_tokens="800" depth="essential">
+<text id="04-procedure" title="xUnit Testing Procedure" version="1.2.0" est_tokens="1100" depth="essential">
   <summary>6-step procedure to scaffold and harden an xUnit test suite end-to-end.</summary>
 
   <section title="Procedure">
@@ -12,16 +12,16 @@
 
     <step n="2" name="write-unit-tests">
       <input>Service / validator / domain code</input>
-      <action>For each branch in the SUT, add a `[Fact]` or `[Theory]` named `MethodUnderTest_State_ExpectedBehaviour`. Use `Mock&lt;T&gt;` per dependency; `FluentAssertions` for assertions.</action>
+      <action>For each branch in the SUT, add a `[Fact]` or, where the branches differ only by input, one `[Theory]` with `[InlineData]` rows (`theory-for-params`), named `MethodUnderTest_State_ExpectedBehaviour`. Async tests return `Task`, never `void` (`async-task-return`). Lay each test out AAA with blank-line separators. Mock each dependency with `Mock&lt;T&gt;` using precise `It.Is&lt;T&gt;(...)` matchers and assert the interaction with `Verify(..., Times.Once)` (`precise-mock-matchers`); assert results with FluentAssertions.</action>
       <output>Unit tests per service</output>
-      <decision-gate>If a branch is uncovered, fail per `one-fact-per-branch` rule.</decision-gate>
+      <decision-gate>If a branch is uncovered, fail per `one-fact-per-branch` rule. If an async test returns `void`, fail per `async-task-return` rule.</decision-gate>
     </step>
 
     <step n="3" name="write-integration-tests">
       <input>HTTP endpoint list, auth scheme</input>
-      <action>Add `public partial class Program { }` to production. Implement `IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt;`. Replace real external deps via `ConfigureTestServices`.</action>
+      <action>Add `public partial class Program { }` to the production project. Implement `IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt;`, or a derived factory overriding `ConfigureWebHost` to swap the DbContext for SQLite-in-memory (`class-fixture-required`). Replace real external deps via `ConfigureTestServices`; the production database and real external APIs are never touched.</action>
       <output>Integration tests per endpoint</output>
-      <decision-gate>If any test instantiates `new HttpClient()`, fail per `webapplicationfactory-for-integration` rule.</decision-gate>
+      <decision-gate>If `Program` is still internal, BLOCK until the partial shim is added — nothing downstream compiles. If any test instantiates `new HttpClient()`, fail per `webapplicationfactory-for-integration` rule.</decision-gate>
     </step>
 
     <step n="4" name="wire-testcontainers-for-data-layer">

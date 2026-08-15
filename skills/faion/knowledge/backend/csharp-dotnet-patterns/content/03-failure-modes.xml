@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="C# Clean Architecture + CQRS Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>7 antipatterns observed in real Clean Architecture deployments. Each pairs symptom + root cause + concrete fix.</summary>
+<text id="03-failure-modes" title="C# Clean Architecture + CQRS Failure Modes" version="1.2.0" est_tokens="1700" depth="essential">
+  <summary>14 antipatterns observed in real Clean Architecture deployments, including the AI-specific ones. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -43,7 +43,49 @@
     <antipattern id="async-void-handler" severity="high">
       <symptom>`INotificationHandler&lt;T&gt;` declared `async void`; one unhandled exception inside the handler tears down the host.</symptom>
       <root-cause source="Stephen Cleary — async best practices">Author used `async void` for "fire-and-forget" semantics.</root-cause>
-      <fix>Return `Task`. The Notification dispatch already runs in the background — no `void` required. Add Roslyn analyzer `VSTHRD100`.</fix>
+      <fix>Return `Task`. The Notification dispatch already runs in the background — no `void` required. Add Roslyn analyzer `VSTHRD100`, and wrap handler bodies that call external services in try/catch + Polly retry.</fix>
+    </antipattern>
+
+    <antipattern id="controller-with-logic" severity="high">
+      <symptom>A controller action spans 50+ lines: validation, EF queries, aggregate construction, mapping, header parsing. Testing it requires a full integration host.</symptom>
+      <root-cause source="ASP.NET Core API design guide">The controller skipped the mediator; persistence and business logic leaked into the transport layer. Teams that move logic out keep DTO mapping and auth inline, so controllers grow back.</root-cause>
+      <fix>Reduce the action to `await _mediator.Send(new ShipOrderCommand(...), ct)` and a return. Enforce a controller line-count budget in review.</fix>
+    </antipattern>
+
+    <antipattern id="entity-as-dto" severity="high">
+      <symptom>`public Task&lt;Order&gt; Get(int id)` returns the EF entity; Swagger exposes `Discriminator`, `RowVersion` and navigation collections.</symptom>
+      <root-cause source="Hexagonal architecture + REST contract stability">The entity was reused as a DTO to skip a step, so the persistence shape became the public contract.</root-cause>
+      <fix>Project to an `OrderResponse` record inside the query handler. Pair every controller change with a DTO + mapping; reject PRs that do not.</fix>
+    </antipattern>
+
+    <antipattern id="mediatr-hallucination" severity="medium">
+      <symptom>A generated handler imports `MediatR.IRequestHandler&lt;TRequest, TResponse&gt;` from a namespace that does not exist, or uses the MediatR v9 API on a v12 project (`Handle(req, _)` instead of `Handle(req, ct)`), or references `IRequestPostProcessor` shapes absent from the target version.</symptom>
+      <root-cause source="LLM training corpus — outdated MediatR samples">The model blended v9 and v12 API shapes, and MediatR / Mediator / Wolverine have incompatible APIs the prompt never disambiguated.</root-cause>
+      <fix>Name the library and version in the prompt; pin the major in `Directory.Packages.props`; reject any handler whose `Handle` does not accept a `CancellationToken`; run `dotnet build` in CI to catch missing types.</fix>
+    </antipattern>
+
+    <antipattern id="public-setters-regression" severity="high">
+      <symptom>New aggregate properties land as `public string Name { get; set; }`; a later diff mutates state without going through a method.</symptom>
+      <root-cause source="Internal — code-gen audit">`{ get; set; }` is the ASP.NET Core training-data norm, so agents emit it by default even after being shown the aggregate pattern.</root-cause>
+      <fix>Force `private set;` + a factory method with a prompt example, and lint the Domain project for public setters other than `Id`.</fix>
+    </antipattern>
+
+    <antipattern id="domain-events-never-dispatched" severity="high">
+      <symptom>`AddDomainEvent` is called on the aggregate but nothing is published — or events re-fire on every subsequent save.</symptom>
+      <root-cause source="Internal — domain-event incident review">The `SaveChangesAsync` override was never added, or it publishes without clearing the event list afterwards.</root-cause>
+      <fix>Publish from the SaveChangesAsync override or an outbox relay, and clear the aggregate's event list after publish. Assert both in a test.</fix>
+    </antipattern>
+
+    <antipattern id="pipeline-order-by-accident" severity="high">
+      <symptom>Validation silently does not run; invalid commands reach the handler and fail deep in the domain.</symptom>
+      <root-cause source="MediatR docs">Behaviours were registered in the order they appeared in the file; `IPipelineBehavior&lt;,&gt;` order follows DI registration order, so the validator landed after the handler.</root-cause>
+      <fix>Register the behaviours in one explicit block with a comment justifying the order, and assert the order in a test.</fix>
+    </antipattern>
+
+    <antipattern id="overstubbed-bus-tests" severity="medium">
+      <symptom>Every test mocks `IMediator.Send(...)` and asserts a call count; the suite is green while handler resolution or a mis-ordered behaviour is broken in production.</symptom>
+      <root-cause source="Internal — test-fake audit">Stubbing the bus is the cheapest way to make a controller test pass, and it tests only that the controller called something.</root-cause>
+      <fix>Require at least one `WebApplicationFactory&lt;Program&gt;` + Testcontainers integration test per feature alongside the handler unit test.</fix>
     </antipattern>
 
   </section>

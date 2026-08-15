@@ -1,27 +1,79 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="ASP.NET Core Patterns Failure Modes" version="1.1.0" est_tokens="800" depth="essential">
-  <summary>4 LLM- and human-driven antipatterns for ASP.NET Core Patterns. Each entry pairs symptom (observable) + root-cause + fix. Detector / repair logic is encoded in `scripts/validate-csharp-aspnet-core.py`.</summary>
+<text id="03-failure-modes" title="ASP.NET Core Patterns Failure Modes" version="1.2.0" est_tokens="1400" depth="essential">
+  <summary>12 LLM- and human-driven antipatterns for ASP.NET Core Patterns. Each entry pairs symptom (observable) + detector + root-cause + fix, and names the rule from `content/01-core-rules.xml` that the fix restores. Detector / repair logic is encoded in `scripts/validate-csharp-aspnet-core.py`.</summary>
 
   <section title="Antipatterns">
     <antipattern id="ap-01" name="Cancellation not threaded" severity="high">
-      <symptom>Async signatures missing CancellationToken.</symptom>
-      <root-cause>Client disconnect leaves DB queries running; thread-pool starves.</root-cause>
-      <fix>Require CT as the last param on every async method; lint rule blocks omission.</fix>
+      <symptom>Async signatures missing CancellationToken; EF Core calls invoked without a token.</symptom>
+      <detector>Roslyn analyzer flags a Task-returning method with no CancellationToken parameter.</detector>
+      <root-cause>Client disconnect leaves DB queries running; thread-pool starves. CT propagation is forgotten in scaffolded methods.</root-cause>
+      <fix>Require CT as the last param on every async method and pass it to every EF Core call; lint rule blocks omission. (cancellation-token-threaded)</fix>
     </antipattern>
     <antipattern id="ap-02" name="Auth scope leakage" severity="high">
       <symptom>[Authorize] missing on new actions.</symptom>
-      <root-cause>Endpoint shipped publicly by accident.</root-cause>
-      <fix>Set RequireAuthenticatedUser() globally; opt out per route with [AllowAnonymous].</fix>
+      <detector>Endpoint answers 200 for an unauthenticated request in the integration suite.</detector>
+      <root-cause>Endpoint shipped publicly by accident — the attribute was never copied along with the action.</root-cause>
+      <fix>Set RequireAuthenticatedUser() globally; opt out per route with [AllowAnonymous]. (authorize-by-default)</fix>
     </antipattern>
     <antipattern id="ap-03" name="Mapper drift" severity="medium">
       <symptom>DTO field added without AutoMapper profile update.</symptom>
-      <root-cause>Runtime 500 on first request; tests passed at compile time.</root-cause>
-      <fix>Add AssertConfigurationIsValid() to unit tests.</fix>
+      <detector>MapperConfiguration.AssertConfigurationIsValid() throws; with Mapperly the build fails.</detector>
+      <root-cause>Runtime 500 on first request; tests passed at compile time because reflection-based mapping is not checked until it runs.</root-cause>
+      <fix>Add AssertConfigurationIsValid() to unit tests, or migrate the mapping to Mapperly. (mapper-verified-at-build)</fix>
     </antipattern>
     <antipattern id="ap-04" name="ProblemDetails skipped" severity="medium">
-      <symptom>Ad-hoc 500 strings returned.</symptom>
-      <root-cause>Clients cannot parse errors; integrators reverse-engineer formats.</root-cause>
-      <fix>Centralize via global exception middleware emitting RFC 7807.</fix>
+      <symptom>Ad-hoc 500 strings or a bespoke error-envelope class returned.</symptom>
+      <detector>Error response body has no `type`/`title`/`status` triple; content-type is not application/problem+json.</detector>
+      <root-cause>Clients cannot parse errors; integrators reverse-engineer a format per endpoint.</root-cause>
+      <fix>Centralize via a global IExceptionHandler emitting RFC 7807; delete custom envelopes. (problem-details-error-contract)</fix>
+    </antipattern>
+    <antipattern id="ap-05" name="DbContext in the controller" severity="high">
+      <symptom>Controller injects DbContext and queries it directly.</symptom>
+      <detector>grep on controllers shows `DbContext.&lt;Set&gt;` or `_db.` usage.</detector>
+      <root-cause>Service layer skipped to ship fast; domain logic now lives in the HTTP layer.</root-cause>
+      <fix>Introduce a service + repository; the controller calls one service method. (controller-calls-service-only)</fix>
+    </antipattern>
+    <antipattern id="ap-06" name="Captive DbContext" severity="high">
+      <symptom>DbContext registered as singleton, or injected into a singleton service constructor.</symptom>
+      <detector>Program.cs uses AddSingleton&lt;DbContext&gt;; or a singleton's constructor takes DbContext.</detector>
+      <root-cause>Engineer misread the lifetime requirements; the singleton pins one context for the process lifetime.</root-cause>
+      <fix>Switch to AddDbContext&lt;&gt;() (scoped); a singleton that needs data resolves a scope via IServiceProvider.CreateScope(). (dbcontext-scoped-lifetime)</fix>
+    </antipattern>
+    <antipattern id="ap-07" name="Tracked entity crosses the boundary" severity="medium">
+      <symptom>Service returns a tracked EF entity to the controller; navigation properties appear in the JSON.</symptom>
+      <detector>Controller serializes an EF entity type; response contains internal columns or cycles.</detector>
+      <root-cause>Mapper layer skipped.</root-cause>
+      <fix>Return a record DTO at the service boundary; never tracked entities, never navigation properties. (record-dtos-at-boundary)</fix>
+    </antipattern>
+    <antipattern id="ap-08" name="EF InMemory tests" severity="medium">
+      <symptom>Tests pass against EF InMemory but fail against Postgres.</symptom>
+      <detector>Test project references Microsoft.EntityFrameworkCore.InMemory.</detector>
+      <root-cause>Engineer wanted fast tests; missed the InMemory caveat that it is not relational.</root-cause>
+      <fix>Switch to WebApplicationFactory&lt;Program&gt; + Testcontainers Postgres. (testcontainers-not-ef-inmemory)</fix>
+    </antipattern>
+    <antipattern id="ap-09" name="Skip/Take pagination" severity="low">
+      <symptom>Skip(N).Take(M) on large tables; latency degrades past page 100.</symptom>
+      <detector>LINQ query contains .Skip( against a table above ~100k rows.</detector>
+      <root-cause>Default LINQ pattern copied unthinkingly.</root-cause>
+      <fix>Switch to keyset pagination ordered by the primary key. (keyset-pagination)</fix>
+    </antipattern>
+    <antipattern id="ap-10" name="Middleware order reversed" severity="high">
+      <symptom>UseAuthorization registered before UseAuthentication in Program.cs.</symptom>
+      <detector>Static read of Program.cs; every [Authorize] endpoint answers as anonymous in tests.</detector>
+      <root-cause>UseAuthorization reads the ClaimsPrincipal that UseAuthentication sets; reversed, the principal is always anonymous and [Authorize] is silently skipped.</root-cause>
+      <fix>Restore the order UseExceptionHandler → UseHttpsRedirection → UseAuthentication → UseAuthorization → MapControllers. (middleware-order-authn-before-authz)</fix>
+    </antipattern>
+    <antipattern id="ap-11" name="Two error-handling styles in one codebase" severity="medium">
+      <symptom>Some services return Result&lt;T&gt;, others throw domain exceptions.</symptom>
+      <detector>Both a Result&lt;T&gt; type and a global IExceptionHandler exist and both are reachable from controllers.</detector>
+      <root-cause>A diff introduced the second style without migrating the first; controllers now handle both paths.</root-cause>
+      <fix>Pick one style and reject diffs that reintroduce the other. (no-mixed-error-handling-styles)</fix>
+    </antipattern>
+    <antipattern id="ap-12" name="Loose mocks that assert nothing" severity="medium">
+      <symptom>Tests use MockBehavior.Default and never assert call counts.</symptom>
+      <detector>No Verify(...) call in a test that mocks a collaborator.</detector>
+      <root-cause>Unconfigured calls silently return defaults, so the test passes even when production code calls the wrong method.</root-cause>
+      <fix>Use MockBehavior.Strict with explicit Verify, or replace the test with a Testcontainers integration test. (strict-mocks-or-integration-tests)</fix>
     </antipattern>
   </section>
 

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="xUnit Testing Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>5 antipatterns observed in real xUnit test suites. Each pairs symptom + root cause + concrete fix.</summary>
+<text id="03-failure-modes" title="xUnit Testing Failure Modes" version="1.2.0" est_tokens="1300" depth="essential">
+  <summary>8 antipatterns observed in real xUnit test suites. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -31,7 +31,25 @@
     <antipattern id="inmemory-db-pretending-to-be-postgres" severity="high">
       <symptom>Tests green on `UseInMemoryDatabase`; prod query against Postgres fails: `operator does not exist: text || jsonb`.</symptom>
       <root-cause source="EF Core docs — InMemory provider warning">InMemory provider lacks Postgres semantics (JSONB, advisory locks, case sensitivity).</root-cause>
-      <fix>Use `Testcontainers.PostgreSql` for data-layer tests; share one container per test collection via `ICollectionFixture`.</fix>
+      <fix>Use `Testcontainers.PostgreSql` for data-layer tests; share one container per test collection via `ICollectionFixture`. Where full fidelity is not needed but relational semantics are (FK cascade, unique index, transactions), SQLite-in-memory via `Microsoft.Data.Sqlite` with an open `DbConnection` is the cheap middle ground — InMemory is not.</fix>
+    </antipattern>
+
+    <antipattern id="async-void-test" severity="high">
+      <symptom>An `async void` test method throws and the run stays green; CI passes while the behaviour is broken. Occasionally the runner dies instead.</symptom>
+      <root-cause source="xUnit docs — async tests">The signature is not awaitable, so the xUnit runner has nothing to observe the exception on.</root-cause>
+      <fix>Change every async test signature to `public async Task ...`; turn on the `xUnit1031` analyzer as warning-as-error so it cannot come back.</fix>
+    </antipattern>
+
+    <antipattern id="parallel-state-collision" severity="high">
+      <symptom>Tests pass in isolation and fail when the suite runs in parallel; a shared `static Faker`, a static cache, or a mutable singleton collides across xUnit threads.</symptom>
+      <root-cause source="xUnit docs — Running tests in parallel">The author treated the test class as a process singleton; xUnit parallelizes at the class boundary by default.</root-cause>
+      <fix>Remove the shared mutable state and move per-class setup to `IClassFixture`. Where serialization is genuinely required, use `[CollectionDefinition(DisableParallelization = true)]`.</fix>
+    </antipattern>
+
+    <antipattern id="web-factory-program-not-public" severity="medium">
+      <symptom>`WebApplicationFactory&lt;Program&gt;` fails to compile: "Program class was not found" or "Entry point not found" on a .NET 6+ top-level-statements project.</symptom>
+      <root-cause source="ASP.NET Core docs — integration tests with top-level statements">Top-level `Program.cs` declares `Program` as internal, so the test assembly cannot see the type.</root-cause>
+      <fix>Add `public partial class Program { }` at the bottom of `Program.cs` and restart test discovery.</fix>
     </antipattern>
 
   </section>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="03-failure-modes" title="C# .NET Core Backend Failure Modes" version="1.1.0" est_tokens="900" depth="essential">
-  <summary>7 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
+<text id="03-failure-modes" title="C# .NET Core Backend Failure Modes" version="1.2.0" est_tokens="1500" depth="essential">
+  <summary>13 antipatterns observed in real deployments. Each pairs symptom + root cause + concrete fix.</summary>
 
   <section title="Antipatterns">
 
@@ -44,6 +44,42 @@
       <symptom>Endpoint throws `AutoMapperMappingException: Missing type map` at first request after deploy.</symptom>
       <root-cause source="AutoMapper docs">`AddAutoMapper(...)` was called without the assembly that contains the `Profile`s.</root-cause>
       <fix>Use `services.AddAutoMapper(typeof(Program).Assembly)` and assert `MapperConfiguration.AssertConfigurationIsValid()` in a unit test.</fix>
+    </antipattern>
+
+    <antipattern id="dbcontext-service-as-singleton" severity="high">
+      <symptom>`InvalidOperationException` on the second concurrent request, or two requests reading each other's tracked entities.</symptom>
+      <root-cause source="Microsoft DI docs">A service that holds `AppDbContext` was registered with `AddSingleton&lt;IUserService, UserService&gt;()`, capturing a Scoped dependency for the process lifetime. `DbContext` is not thread-safe.</root-cause>
+      <fix>Register every DbContext-touching service as `AddScoped&lt;,&gt;()`. Turn on DI scope validation in all environments (`ValidateScopes = true`) so the container fails at startup instead of at first load.</fix>
+    </antipattern>
+
+    <antipattern id="missing-partial-program" severity="medium">
+      <symptom>Test project fails to compile: "Cannot find type Program" from `WebApplicationFactory&lt;Program&gt;`.</symptom>
+      <root-cause source="Microsoft testing docs">`public partial class Program { }` was left off the bottom of `Program.cs`, so the entry point type is not visible to the test assembly.</root-cause>
+      <fix>Add the partial declaration to `Program.cs` and keep it in the scaffolding template so it cannot be dropped again.</fix>
+    </antipattern>
+
+    <antipattern id="service-locator" severity="medium">
+      <symptom>A controller or service injects `IServiceProvider` and calls `GetService&lt;T&gt;()` inside methods; unit tests cannot substitute the dependency and a missing registration surfaces only at first request.</symptom>
+      <root-cause source="Microsoft DI docs">Service locator hides dependencies from the constructor signature, so the container's startup validation never sees them.</root-cause>
+      <fix>Move every dependency to constructor injection. The only permitted `IServiceProvider`/`IServiceScopeFactory` use is scope creation inside a `BackgroundService`.</fix>
+    </antipattern>
+
+    <antipattern id="secrets-in-appsettings" severity="high">
+      <symptom>Connection string or API key visible in `appsettings.json` in the repository.</symptom>
+      <root-cause source="Microsoft secrets docs">appsettings is the path of least resistance, and the agent has no signal that the file is committed.</root-cause>
+      <fix>Move the value to `dotnet user-secrets` locally and to environment variables or a managed secret store in production; add a pre-commit grep for connection strings and rotate whatever was committed.</fix>
+    </antipattern>
+
+    <antipattern id="permissive-auth-workaround" severity="high">
+      <symptom>`[AllowAnonymous]` appears on a controller, or a CORS policy allows `*` with credentials, in a diff whose stated purpose was fixing a local 401.</symptom>
+      <root-cause source="Internal — security review retro">Development friction is resolved with the smallest config change that makes the error go away; the change ships to production unchanged.</root-cause>
+      <fix>Revert the attribute; fix the local auth setup instead. Treat every new `[AllowAnonymous]`, role policy and CORS entry as a named human checkpoint in review.</fix>
+    </antipattern>
+
+    <antipattern id="task-run-on-request-path" severity="medium">
+      <symptom>Throughput drops under load while CPU stays low; `dotnet-counters` shows thread-pool queue growth.</symptom>
+      <root-cause source="Microsoft ASP.NET Core performance docs">`Task.Run` inside a handler was used to "make it async"; it takes a thread from the same pool that serves requests and the work dies on shutdown.</root-cause>
+      <fix>Delete the `Task.Run`. If the work is genuinely background, hand it to a hosted service through a bounded `Channel&lt;T&gt;`.</fix>
     </antipattern>
 
   </section>

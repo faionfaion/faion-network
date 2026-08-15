@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="06-decision-tree" title="EF Core Patterns Decision Tree" version="1.1.0" est_tokens="600" depth="essential">
+  <summary>Routing tree mapping workload + query shape to a rule from 01-core-rules.xml.</summary>
+
+  <decision-tree>
+    <root-question id="q-workload">Read-heavy or write-heavy workload?</root-question>
+
+    <branch when="workload == read_heavy">
+      <question id="q-include">Query needs `Include` over multiple collection navigations?</question>
+      <branch when="multi_collection_include == true">
+        <conclusion ref="splitquery-multi-include" verdict="add .AsSplitQuery() + .AsNoTracking() + DTO projection"/>
+      </branch>
+      <branch when="multi_collection_include == false">
+        <conclusion ref="asnotracking-reads" verdict=".AsNoTracking() + DTO projection; single query is fine"/>
+      </branch>
+    </branch>
+
+    <branch when="workload == write_heavy">
+      <question id="q-aggregate-boundary">Writes cross aggregate boundaries (multiple roots)?</question>
+      <branch when="cross_aggregate == true">
+        <conclusion ref="no-iqueryable-return" verdict="use a unit-of-work that saves multiple repositories within one DbContext transaction"/>
+      </branch>
+      <branch when="cross_aggregate == false">
+        <conclusion ref="fluent-config-only" verdict="single aggregate write; repository.SaveChangesAsync(ct) inside method"/>
+      </branch>
+    </branch>
+
+    <branch when="workload == sproc_heavy">
+      <conclusion ref="fluent-config-only" verdict="skip-this-methodology: stored-procedure-first apps belong to Dapper/raw SQL patterns"/>
+    </branch>
+  </decision-tree>
+
+  <example trace="orders-list-page">
+    workload=read_heavy → multi_collection_include=true (Items + Discounts) → apply splitquery-multi-include: .AsSplitQuery().AsNoTracking().Select(new OrderDto(...)).
+  </example>
+</text>

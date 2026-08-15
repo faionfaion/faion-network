@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<text id="01-core-rules" title="xUnit Testing Core Rules" version="1.1.0" est_tokens="1100" depth="essential">
-  <summary>6 testable rules grounding the xUnit + Moq + WAF testing methodology. Each rule pairs a binary check + sourced rationale.</summary>
+<text id="01-core-rules" title="xUnit Testing Core Rules" version="1.2.0" est_tokens="1800" depth="essential">
+  <summary>10 testable rules grounding the xUnit + Moq + WAF testing methodology. Each rule pairs a binary check + sourced rationale.</summary>
 
   <section title="Rule set">
 
@@ -15,8 +15,28 @@
     </rule>
 
     <rule id="fluentassertions-not-assert" testable="true" depth="essential">
-      <statement>Assertions on collections, complex objects, or extracted fields MUST use FluentAssertions (`actual.Should().BeEquivalentTo(expected)`). Raw `Assert.Equal(list1, list2)` is forbidden for non-trivial structures.</statement>
-      <rationale source="FluentAssertions docs">FluentAssertions' diff is readable; `Assert.Equal` on collections emits unreadable `[1, 2, 3]` differs from `[1, 2, 4]` with no clue which element failed.</rationale>
+      <statement>Assertions on collections, complex objects, JSON responses, or extracted fields MUST use FluentAssertions (`actual.Should().BeEquivalentTo(expected)`). Raw `Assert.Equal(list1, list2)` is forbidden for non-trivial structures; primitives may use `Should().Be(...)`.</statement>
+      <rationale source="FluentAssertions docs">FluentAssertions emits a multiline structural diff; `Assert.Equal` on collections produces a single-line `Expected: X; Actual: Y` dump with no clue which element or field failed.</rationale>
+    </rule>
+
+    <rule id="async-task-return" testable="true" depth="essential">
+      <statement>Every async test method MUST return `Task` (or `ValueTask`). `async void` is forbidden except for legacy event-handler tests.</statement>
+      <rationale source="xUnit docs — async tests">The xUnit runner cannot observe exceptions on a non-awaitable signature, so an `async void` test either passes silently while the assertion failed, or takes the runner down. Enforce with the `xUnit1031` analyzer at warning-as-error.</rationale>
+    </rule>
+
+    <rule id="class-fixture-required" testable="true" depth="essential">
+      <statement>Controller integration tests MUST use `IClassFixture&lt;WebApplicationFactory&lt;Program&gt;&gt;` or a derived test factory that overrides `ConfigureWebHost` to substitute the `DbContext` — SQLite-in-memory for low-fidelity, Testcontainers for high-fidelity. The production database and real external APIs MUST NOT be touched. `Program.cs` MUST expose `public partial class Program { }`.</statement>
+      <rationale source="ASP.NET Core docs — integration tests">`IClassFixture` shares one host across the class, amortizing the startup cost that otherwise dominates the suite, and substituting the DbContext is what makes the tests deterministic. Top-level statements declare `Program` as internal, so without the partial shim the test project cannot compile against `WebApplicationFactory&lt;Program&gt;` at all.</rationale>
+    </rule>
+
+    <rule id="theory-for-params" testable="true" depth="essential">
+      <statement>Parametric tests MUST use `[Theory]` with `[InlineData(...)]`, or `[MemberData]`/`[ClassData]` for complex types — never duplicated `[Fact]` methods. The name carries the input and the expected output: `Add_TwoPositives_ReturnsSum`.</statement>
+      <rationale source="xUnit docs — Theories">`[Theory]` reports each case as its own test result, so CI names the failing case; duplicated `[Fact]`s hide which input broke and drift apart as one is edited.</rationale>
+    </rule>
+
+    <rule id="precise-mock-matchers" testable="true" depth="essential">
+      <statement>Moq `Setup` arguments MUST use precise matchers (`It.Is&lt;T&gt;(x =&gt; x.Id == 1)`) by default, and expected interactions MUST be asserted with `mock.Verify(..., Times.Once)`. `It.IsAny&lt;T&gt;()` is allowed only where the test explicitly does not care about that argument.</statement>
+      <rationale source="Moq docs + test-quality reviews">`It.IsAny&lt;T&gt;()` masks divergence between the setup and the code: the test still passes when production calls the mock with the wrong arguments, or with the right ones the wrong number of times.</rationale>
     </rule>
 
     <rule id="webapplicationfactory-for-integration" testable="true" depth="essential">

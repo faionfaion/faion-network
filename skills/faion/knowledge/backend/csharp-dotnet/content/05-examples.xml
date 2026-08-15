@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="C# .NET Core Backend Worked Examples" version="1.2.0" est_tokens="1600" depth="essential">
+  <summary>Worked examples for the four layers this umbrella scaffolds — controller, EF Core entity configuration, channel-backed background service, and the xUnit unit/integration pair — followed by the manifest the methodology emits.</summary>
+
+  <section title="Controller">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+[ApiController]
+[Route("api/v1/[controller]")]
+[Authorize]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+    private readonly ILogger<UsersController> _logger;
+
+    public UsersController(IUserService userService, ILogger<UsersController> logger)
+    {
+        _userService = userService;
+        _logger = logger;
+    }
+
+    [HttpGet("{id:int}")]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<UserDto>> GetUser(int id, CancellationToken ct = default)
+    {
+        var user = await _userService.GetByIdAsync(id, ct);
+        return user is null ? NotFound() : Ok(user);
+    }
+
+    [HttpPost]
+    [ProducesResponseType(typeof(UserDto), StatusCodes.Status201Created)]
+    public async Task<ActionResult<UserDto>> CreateUser(
+        CreateUserDto dto, CancellationToken ct = default)
+    {
+        var user = await _userService.CreateAsync(dto, ct);
+        return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
+    }
+}
+      ]]></code>
+      <note>Two constructor dependencies, both interfaces (constructor-inject-interfaces-only). ActionResult&lt;T&gt; plus CreatedAtAction on create (apicontroller-actionresult). CancellationToken last on every action (cancellation-token-plumbing). Returns record DTOs, never entities (record-dtos-not-entities).</note>
+    </example>
+  </section>
+
+  <section title="EF Core entity configuration">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+public class UserConfiguration : IEntityTypeConfiguration<User>
+{
+    public void Configure(EntityTypeBuilder<User> builder)
+    {
+        builder.ToTable("users");
+        builder.HasKey(u => u.Id);
+        builder.Property(u => u.Name).IsRequired().HasMaxLength(100);
+        builder.Property(u => u.Email).IsRequired().HasMaxLength(255);
+        builder.HasIndex(u => u.Email).IsUnique();
+        builder.Property(u => u.CreatedAt).HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+        builder.HasMany(u => u.Roles)
+            .WithMany(r => r.Users)
+            .UsingEntity<Dictionary<string, object>>(
+                "user_roles",
+                j => j.HasOne<Role>().WithMany().HasForeignKey("RoleId"),
+                j => j.HasOne<User>().WithMany().HasForeignKey("UserId")
+            );
+
+        // SetNull preserves orders when a user is soft-deleted.
+        builder.HasMany(u => u.Orders)
+            .WithOne(o => o.User)
+            .HasForeignKey(o => o.UserId)
+            .OnDelete(DeleteBehavior.SetNull);
+    }
+}
+
+// Applied once in AppDbContext.OnModelCreating:
+//   modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
+      ]]></code>
+      <note>Mapping lives outside the entity (entity-type-configuration-classes); the domain type stays free of EF attributes.</note>
+    </example>
+  </section>
+
+  <section title="Repository read path">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+public async Task<PagedResult<UserDto>> GetPageAsync(
+    int page, int pageSize, CancellationToken ct)
+{
+    var q = _db.Users
+        .AsNoTracking()
+        .Include(u => u.Roles)
+        .Include(u => u.Orders)
+        .AsSplitQuery()
+        .OrderBy(u => u.Id);
+
+    var total = await q.CountAsync(ct);
+    var items = await q.Skip((page - 1) * pageSize).Take(pageSize)
+        .Select(u => new UserDto(u.Id, u.Name, u.Email))
+        .ToListAsync(ct);
+
+    return new PagedResult<UserDto>(items, total, page, pageSize);
+}
+      ]]></code>
+      <note>AsNoTracking on a read, AsSplitQuery because two collection Includes would otherwise multiply rows, materialised before returning, PagedResult instead of IQueryable (ef-asnotracking-on-reads).</note>
+    </example>
+    <antipattern>
+      <description>`public IQueryable&lt;User&gt; GetAll() =&gt; _db.Users;`</description>
+      <reason>The caller can append arbitrary LINQ that bypasses the repository's constraints, and the query executes after the DbContext scope is gone.</reason>
+    </antipattern>
+  </section>
+
+  <section title="Background service">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+public class BackgroundOrderProcessor : BackgroundService
+{
+    private readonly IServiceScopeFactory _scopeFactory;
+    private readonly ILogger<BackgroundOrderProcessor> _logger;
+    private readonly Channel<int> _channel;
+
+    public BackgroundOrderProcessor(
+        IServiceScopeFactory scopeFactory,
+        ILogger<BackgroundOrderProcessor> logger,
+        Channel<int> channel)
+    {
+        _scopeFactory = scopeFactory;
+        _logger = logger;
+        _channel = channel;
+    }
+
+    protected override async Task ExecuteAsync(CancellationToken ct)
+    {
+        await foreach (var orderId in _channel.Reader.ReadAllAsync(ct))
+        {
+            try
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var svc = scope.ServiceProvider.GetRequiredService<IOrderService>();
+                await svc.ProcessAsync(orderId, ct);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing order {OrderId}", orderId);
+            }
+        }
+    }
+}
+
+// Program.cs:
+//   builder.Services.AddSingleton(_ => Channel.CreateBounded<int>(
+//       new BoundedChannelOptions(1024) { FullMode = BoundedChannelFullMode.Wait }));
+//   builder.Services.AddHostedService<BackgroundOrderProcessor>();
+      ]]></code>
+      <note>Scope created per work item, so the singleton never captures the scoped DbContext (di-lifetimes); the channel is bounded, so back-pressure is explicit (channel-and-periodictimer-for-background-work).</note>
+    </example>
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+// Scheduled cleanup: PeriodicTimer, not Task.Delay in a loop.
+protected override async Task ExecuteAsync(CancellationToken ct)
+{
+    using var timer = new PeriodicTimer(TimeSpan.FromMinutes(15));
+    while (await timer.WaitForNextTickAsync(ct))
+    {
+        using var scope = _scopeFactory.CreateScope();
+        await scope.ServiceProvider
+            .GetRequiredService<ICleanupService>()
+            .RunAsync(ct);
+    }
+}
+      ]]></code>
+      <note>WaitForNextTickAsync holds the wall-clock interval without drift and returns false on cancellation, so shutdown needs no extra coordination.</note>
+    </example>
+  </section>
+
+  <section title="Tests">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+public class UsersControllerTests
+{
+    private readonly Mock<IUserService> _mockService = new();
+    private readonly UsersController _controller;
+
+    public UsersControllerTests() =>
+        _controller = new UsersController(
+            _mockService.Object, Mock.Of<ILogger<UsersController>>());
+
+    [Fact]
+    public async Task GetUser_WhenExists_ReturnsOk()
+    {
+        var dto = new UserDto(1, "John", "j@example.com");
+        _mockService.Setup(s => s.GetByIdAsync(1, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(dto);
+
+        var result = await _controller.GetUser(1);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var returned = Assert.IsType<UserDto>(ok.Value);
+        Assert.Equal(1, returned.Id);
+    }
+
+    [Fact]
+    public async Task GetUser_WhenNotFound_ReturnsNotFound()
+    {
+        _mockService.Setup(s => s.GetByIdAsync(999, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync((UserDto?)null);
+        var result = await _controller.GetUser(999);
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
+}
+
+public class UsersApiTests : IClassFixture<WebApplicationFactory<Program>>
+{
+    private readonly HttpClient _client;
+    public UsersApiTests(WebApplicationFactory<Program> factory) =>
+        _client = factory.CreateClient();
+
+    [Fact]
+    public async Task GetUsers_ReturnsOk() =>
+        Assert.True((await _client.GetAsync("/api/v1/users")).IsSuccessStatusCode);
+}
+
+// Program.cs must end with:  public partial class Program { }
+      ]]></code>
+      <note>Interface mocked, ActionResult shape asserted before the value is read; the integration class shares one in-process server through IClassFixture and CreateClient (moq-interfaces-and-classfixture-tests, program-partial-for-webapplicationfactory).</note>
+    </example>
+  </section>
+
+  <section title="Final artefact">
+    <code lang="json"><![CDATA[
+{
+  "project_name": "BillingApi",
+  "target_framework": "net8.0",
+  "feature_folders": ["Features/Invoices", "Features/Customers", "Features/Payments"],
+  "di_lifetimes": {"DbContext": "Scoped", "BackgroundServices": "Singleton"},
+  "uses_problem_details": true,
+  "nullable_enabled": true,
+  "warnings_as_errors": true,
+  "program_partial_declared": true,
+  "secrets_source": "user-secrets",
+  "cancellation_token_audit": {"controllers_pass": true, "services_pass": true},
+  "forbidden_patterns_found": []
+}
+]]></code>
+  </section>
+</text>

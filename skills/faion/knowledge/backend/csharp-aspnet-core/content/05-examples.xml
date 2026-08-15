@@ -1,0 +1,183 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<text id="05-examples" title="ASP.NET Core Patterns Worked Examples" version="1.2.0" est_tokens="1400" depth="essential">
+  <summary>Worked code examples for the controller, the service, and the global IExceptionHandler, followed by an end-to-end trace and the final artefact this methodology emits.</summary>
+
+  <section title="Controller">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+[ApiController]
+[Route("api/v1/[controller]")]
+[Authorize]
+public class UsersController : ControllerBase
+{
+    private readonly IUserService _userService;
+    private readonly ILogger<UsersController> _logger;
+
+    public UsersController(IUserService userService, ILogger<UsersController> logger)
+    {
+        _userService = userService;
+        _logger = logger;
+    }
+
+    [HttpGet]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<ActionResult<PagedResult<UserDto>>> GetUsers(
+        [FromQuery] int? after = null,
+        [FromQuery] int pageSize = 20,
+        CancellationToken ct = default)
+    {
+        return Ok(await _userService.GetPageAsync(after, pageSize, ct));
+    }
+
+    [HttpPost]
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
+    public async Task<ActionResult<UserDto>> CreateUser(
+        CreateUserDto dto, CancellationToken ct)
+    {
+        var user = await _userService.CreateAsync(dto, ct);
+        return CreatedAtAction(nameof(GetUsers), new { id = user.Id }, user);
+    }
+}
+      ]]></code>
+      <note>CancellationToken on every action (cancellation-token-threaded). No DbContext, no business logic (controller-calls-service-only). Returns a DTO, never an entity (record-dtos-at-boundary). Keyset cursor `after`, not Skip/Take (keyset-pagination).</note>
+    </example>
+  </section>
+
+  <section title="Service">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+public class UserService : IUserService
+{
+    private readonly AppDbContext _db;
+    private readonly IMapper _mapper;
+    private readonly TimeProvider _time;
+
+    public UserService(AppDbContext db, IMapper mapper, TimeProvider time)
+    {
+        _db = db;
+        _mapper = mapper;
+        _time = time;
+    }
+
+    public async Task<UserDto> CreateAsync(CreateUserDto dto, CancellationToken ct)
+    {
+        var user = _mapper.Map<User>(dto);
+        user.CreatedAt = _time.GetUtcNow();
+        _db.Users.Add(user);
+        await _db.SaveChangesAsync(ct);
+        return _mapper.Map<UserDto>(user);
+    }
+
+    public async Task<IReadOnlyList<UserDto>> GetPageAsync(
+        int? after, int pageSize, CancellationToken ct)
+    {
+        var q = _db.Users
+            .AsNoTracking()
+            .Include(u => u.Profile)
+            .OrderBy(u => u.Id);
+        if (after is not null) q = q.Where(u => u.Id > after);
+        var rows = await q.Take(pageSize).ToListAsync(ct);
+        return rows.Select(_mapper.Map<UserDto>).ToList();
+    }
+}
+      ]]></code>
+      <note>TimeProvider injected for testable time (timeprovider-injected). CancellationToken on SaveChangesAsync / ToListAsync. AsNoTracking on the read (asnotracking-on-reads); eager .Include(), no lazy load (eager-include-no-lazy-loading). Returns DTOs, not entities.</note>
+    </example>
+  </section>
+
+  <section title="Global IExceptionHandler">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+public class ProblemDetailsHandler : IExceptionHandler
+{
+    public async ValueTask<bool> TryHandleAsync(
+        HttpContext ctx, Exception ex, CancellationToken ct)
+    {
+        var pd = ex switch
+        {
+            NotFoundException nf =>
+                new ProblemDetails { Status = 404, Title = nf.Message },
+            ValidationException ve =>
+                new ProblemDetails { Status = 422, Title = "Validation failed",
+                                     Detail = ve.Message },
+            _ => new ProblemDetails { Status = 500, Title = "Server error" }
+        };
+        ctx.Response.StatusCode = pd.Status!.Value;
+        await ctx.Response.WriteAsJsonAsync(pd, ct);
+        return true;
+    }
+}
+
+// Program.cs registration and middleware order:
+// builder.Services.AddProblemDetails();
+// builder.Services.AddExceptionHandler<ProblemDetailsHandler>();
+// app.UseExceptionHandler();
+// app.UseHttpsRedirection();
+// app.UseAuthentication();
+// app.UseAuthorization();
+// app.MapControllers();
+      ]]></code>
+      <note>One error contract for every path (problem-details-error-contract); the middleware order is the one middleware-order-authn-before-authz pins.</note>
+    </example>
+    <reference path="templates/problem-details-handler.cs">Standalone IExceptionHandler file</reference>
+  </section>
+
+  <section title="Multi-step write">
+    <example type="good">
+      <code lang="csharp"><![CDATA[
+await using var tx = await _db.Database.BeginTransactionAsync(ct);
+_db.Orders.Add(order);
+await _db.SaveChangesAsync(ct);
+_db.Ledger.Add(entry);
+await _db.SaveChangesAsync(ct);
+await tx.CommitAsync(ct);
+      ]]></code>
+      <note>Two SaveChanges calls are not atomic together without the explicit transaction (explicit-transaction-multi-step-writes).</note>
+    </example>
+  </section>
+
+  <section title="Trace">
+    <p>A feature applied end-to-end: controller→service→repository layering, scoped DbContext, CancellationToken on every async call, ProblemDetails errors from a single IExceptionHandler, record DTOs mapped at the boundary, TimeProvider for clock reads, AsNoTracking + eager .Include() on reads, keyset pagination on the list endpoint, an explicit transaction around the multi-step write, and WebApplicationFactory + Testcontainers Postgres for the integration suite.</p>
+  </section>
+
+  <section title="Final artefact">
+    <code lang="json"><![CDATA[
+{
+  "artefact_id": "users-feature-slice-v1",
+  "owner": "ruslan@faion.net",
+  "file_path": "src/Features/Users/UsersController.cs",
+  "language": "csharp",
+  "build_passes": true,
+  "tests_passing": 12,
+  "rules_checked": [
+    "controller-calls-service-only",
+    "dbcontext-scoped-lifetime",
+    "cancellation-token-threaded",
+    "problem-details-error-contract",
+    "record-dtos-at-boundary",
+    "timeprovider-injected",
+    "asnotracking-on-reads",
+    "eager-include-no-lazy-loading",
+    "keyset-pagination",
+    "explicit-transaction-multi-step-writes",
+    "testcontainers-not-ef-inmemory"
+  ],
+  "design_profile": {
+    "layering": "controller-service-repository",
+    "dbcontext_lifetime": "scoped",
+    "cancellation_token_propagated": true,
+    "error_format": "problem-details-rfc7807",
+    "dto_kind": "record",
+    "time_provider": true,
+    "test_db_strategy": "testcontainers",
+    "pagination": "keyset",
+    "loading": "eager-include",
+    "transactions": "explicit"
+  },
+  "version": "1.0.0",
+  "last_reviewed": "2026-08-15"
+}
+]]></code>
+  </section>
+</text>
