@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-010 filed: 602 KB of hand-written methodology content ships and is never
+  delivered.** 69 directories hold 177 `content/*.xml` files absent from their
+  own `## Content` table — packed by `vfs-pack`, shipped, cached, and never
+  returned by a retrieval call. Median share of an affected document that is
+  unreachable: **40%**, worst case 57%.
+
+  **The cause is a single generation pass, not 69 authoring slips.** All 69
+  already have a complete canonical set, so the unlisted files sit *beside* it:
+  F-066/F-067 generated a canonical wrapper around an existing hand-written body,
+  listed only the wrapper, and left the body on disk. One directory still admits
+  it — `marketing/ops-customer-success-basics`'s canonical `01-core-rules.xml`
+  summary reads *"Migrated testable rules … source=v1-source"*, with the file it
+  migrated from still sitting beside it.
+
+  **The inversion is what makes this urgent: the canonical parts are the
+  scaffolding and the unreachable files are the subject matter.** 172 of the 177
+  files (586 KB) carry content found in no canonical part of the same directory,
+  and **zero are stubs**. `dev/clean-architecture-quality` has no canonical
+  `05-examples.xml` and its three unlisted files *are* its examples;
+  `sdd/key-trends-summary` exists to describe six trends and **all six live in
+  unlisted files**. 26 of the 69 have no canonical `05-examples.xml` at all.
+
+  **This reclassifies CR-008.** 251 non-canonical part names were recorded as a
+  naming defect and deferred as tidiness. The names are not the cost — the cost
+  is that the better half of these documents is the half an agent never sees, at
+  full token price, on a product sold on answer quality. And the numeric-prefix
+  collision the wrapper creates (`01-ga4-setup.xml` beside `01-core-rules.xml`)
+  is what blocks the obvious fix: the canonical slot is already occupied.
+
 - **7 methodologies did not deliver their own canonical parts. Fixed.**
   `03-failure-modes`, `04-procedure` or `05-examples` existed on disk but were
   absent from the `## Content` table, so `get-content` never returned them —
