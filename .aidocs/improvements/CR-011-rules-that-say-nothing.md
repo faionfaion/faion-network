@@ -57,6 +57,31 @@ markers will never find these: the rules parse clean and the sources are genuine
 
 **This is the case a customer detects in ten seconds** by opening two paid documents side by side.
 
+### The clones sit where CR-009 could not have looked
+
+CR-009 measured **slug collisions across domains**. Two documents with *different* slugs in the
+*same* domain and identical content were out of its scope by construction — and that is where most
+of the duplication is.
+
+Measured independently here, using a stricter definition than the audit's (rule *statement* sets,
+skip-gate excluded, ≥3 statements): **14 clusters, 62 documents. 11 of the 14 are entirely within
+one domain.**
+
+```
+pm       wbs-creation                ≡ work-breakdown-structure
+pm       wbs-creation-pm-traditional ≡ work-breakdown-structure-pm-traditional
+product  design-debt-audit           ≡ design-system-drift-audit
+product  design-partner-program-template ≡ design-partner-cadence-playbook
+comms    freelancer-rate-raise-letter-template ≡ graceful-offboard-script
+                                              ≡ freelancer-payment-chase-script-library
+```
+
+`pm/wbs-creation` and `pm/work-breakdown-structure` are one subject under two names, both alive,
+both shipping. **No slug resolves ambiguously, so nothing in CR-009's measurement — or in any
+validator — can see them.** A duplication check keyed on *content* rather than on *name* is the
+only thing that finds this class, which is the argument for the first of the two gates recommended
+in §7.
+
 ## 2. What is shipped to the free tier
 
 **129 rules are literal placeholders** reading *"Stub rule for conclusion 'X' … Replace with the

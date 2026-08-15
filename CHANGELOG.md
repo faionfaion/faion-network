@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-011 amended: the duplicate rule sets sit exactly where CR-009 could not
+  look.** CR-009 measured *slug collisions across domains*. Two documents with
+  different slugs in the same domain and identical content were outside its scope
+  by construction — and that is where most of the duplication turns out to be.
+
+  Measured with a stricter definition than the audit used (rule *statement* sets,
+  skip-gate excluded, ≥3 statements): **14 clusters, 62 documents, and 11 of the
+  14 are entirely within one domain.** `pm/wbs-creation` and
+  `pm/work-breakdown-structure` are one subject under two names, both alive and
+  both shipping — as are their `-pm-traditional` variants.
+
+  **No slug resolves ambiguously here, so nothing in CR-009's measurement and
+  nothing in any validator can see them.** Only a duplication check keyed on
+  content rather than on name finds this class.
+
+
 - **CR-011 filed: 69 methodologies contain no rule about their own subject, and
   the validator cannot tell.**
 
