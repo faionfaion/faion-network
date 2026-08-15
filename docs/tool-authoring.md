@@ -105,8 +105,20 @@ Only when the job is process orchestration. Five deltas:
 
 ## Network tools
 
-The script contract says "deterministic: same inputs, same bytes out". An API tool cannot honour
-that literally. The amendment:
+**The reason these exist is output compression, not API access.** An MCP server hands the model
+the vendor's raw JSON, and the model pays for every byte of it — a zone settings sweep is ~40
+calls and thousands of tokens of envelope the caller never reads. A tool does the calls, parses
+the result, and returns **only what changes a decision**: one summary line, plus findings. That
+is the thing an MCP server structurally cannot do, and it is the whole justification for
+duplicating a capability the vendor already ships.
+
+So: never print a raw response body. Never dump a list the caller has to scan. Decide what the
+answer is and say it. If a caller genuinely needs the full payload, give them `--out {file}` and
+keep it off stdout. A network tool whose stdout is longer than a screen has failed its purpose,
+however correct it is.
+
+The script contract also says "deterministic: same inputs, same bytes out". An API tool cannot
+honour that literally. The amendment:
 
 - Deterministic **given the same remote state**. Never mix in `time.time()`, `random`, or dict
   iteration order.
@@ -125,6 +137,22 @@ that literally. The amendment:
 - `--self-test` **must not touch the network.** It exercises parsing and rules against inline
   fixtures. A self-test that needs a token is a self-test nobody runs.
 - `## Cost` states the request count and the rate limit, not milliseconds.
+
+`meta.json` carries two optional objects that `validate-tools.py` enforces:
+
+```jsonc
+"network":     { "hosts": ["api.vendor.com"], "class": "read" },
+"credentials": { "env_var": "VENDOR_TOKEN", "vendor": "Vendor",
+                 "min_scope": "Zone Read + DNS Read, scoped to one zone" }
+```
+
+What fails, and why: importing `urllib`/`http`/`socket` with no `network` block (a credential
+with nowhere it is forbidden to go); a URL literal naming a host outside `network.hosts`
+(subdomains of a declared host are allowed); declaring `credentials` and never reading the named
+variable; importing `subprocess` in a pack holding a credential (a token in a command string is a
+token in the process table); and defining any `--*token*` / `--*secret*` / `--*password*` /
+`--*api-key*` flag at all. `class: "mutate"` obliges every writing tool to be dry-run until
+`--yes`. There is no `destroy` class, so an irreversible delete has no way to ship.
 
 ## Reviewing someone else's tool
 

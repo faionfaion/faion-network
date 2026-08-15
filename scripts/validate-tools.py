@@ -163,6 +163,61 @@ def non_stdlib_imports(body: str) -> set[str]:
     return {m for m in modules if m not in sys.stdlib_module_names}
 
 
+# Modules that can open a socket. A pack importing one of these is a network
+# pack whether or not it says so, and a network pack that has not declared its
+# hosts is a credential with nowhere it is forbidden to go.
+NETWORK_MODULES = {"urllib", "http", "socket", "ftplib", "smtplib",
+                   "telnetlib", "poplib", "imaplib", "xmlrpc", "asyncio"}
+URL_HOST = re.compile(r"https?://([A-Za-z0-9.\-]+)")
+# A flag whose value would be a secret. Tokens belong in the environment: argv
+# is visible in `ps` and lands in shell history and in agent transcripts.
+SECRET_FLAG = re.compile(r"--[a-z0-9-]*(token|secret|password|passwd|api-key|apikey)")
+
+
+def network_findings(script: Path, body: str, meta: dict) -> list[str]:
+    """Findings for the network and credential contract. Offline packs return []."""
+    out: list[str] = []
+    try:
+        tree = ast.parse(body)
+    except SyntaxError:
+        return out
+
+    imported: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imported.update(a.name.split(".")[0] for a in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            imported.add(node.module.split(".")[0])
+
+    net = meta.get("network")
+    creds = meta.get("credentials")
+    touches_network = bool(imported & NETWORK_MODULES)
+
+    if touches_network and not net:
+        out.append(f"{script.name}: imports a network module but meta.json "
+                   "declares no 'network' — declare the hosts it may contact")
+    if net:
+        allowed = set(net.get("hosts", []))
+        for host in sorted(set(URL_HOST.findall(body))):
+            if host not in allowed and not any(
+                    host.endswith("." + a) for a in allowed):
+                out.append(f"{script.name}: contacts {host!r}, which is not in "
+                           "meta.json network.hosts")
+    if creds:
+        env_var = creds.get("env_var", "")
+        if env_var and env_var not in body:
+            out.append(f"{script.name}: meta.json names credential {env_var} "
+                       "and the script never reads it")
+        if "subprocess" in imported:
+            out.append(f"{script.name}: imports subprocess in a pack holding a "
+                       "credential — a token in a command string is a token in "
+                       "the process table")
+    for flag in sorted(set(SECRET_FLAG.findall(body))):
+        out.append(f"{script.name}: defines a --*{flag}* flag; a secret is read "
+                   "from the environment, never from argv")
+    return out
+
+
 def check_index(packs: dict[str, Path], tools: set[str]) -> list[str]:
     index = TOOLS / "INDEX.xml"
     if not index.is_file():
@@ -196,7 +251,7 @@ def check_index(packs: dict[str, Path], tools: set[str]) -> list[str]:
 
 
 def check_tool(name: str, card: Path, script: Path, card_schema: dict,
-               fail) -> None:
+               fail, meta: dict | None = None) -> None:
     parsed = parse_card(card)
     if parsed["title"] != f"# {name}":
         fail(f"{card.name}: first line must be '# {name}', got {parsed['title']!r}")
@@ -217,6 +272,8 @@ def check_tool(name: str, card: Path, script: Path, card_schema: dict,
     for module in sorted(non_stdlib_imports(body)):
         fail(f"{script.name}: imports {module!r}, which is not in the standard "
              "library — a tool pack ships no dependencies")
+    for finding in network_findings(script, body, meta or {}):
+        fail(finding)
 
     documented = set(FLAG.findall(parsed["inputs"]))
     mentioned = documented | set(FLAG.findall(invoke))
@@ -269,7 +326,7 @@ def check_pack(pack: Path, meta_schema: dict, card_schema: dict) -> tuple[list[s
         if script is None:
             fail(f"{card.name}: no scripts/{name}.py|sh to run")
             continue
-        check_tool(name, card, script, card_schema, fail)
+        check_tool(name, card, script, card_schema, fail, meta)
     for orphan in sorted(by_name):
         fail(f"scripts/{by_name[orphan].name}: no tools/{orphan}{CARD_SUFFIX} — "
              "an agent may never open a script to work out its arguments, so a "

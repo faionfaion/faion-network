@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **A tool may now hold a third-party credential, and the validator polices
+  it.** `tool-pack-meta.schema.json` gains two optional objects: `network`
+  (`hosts[]` + `class: read|mutate`) and `credentials` (`env_var`, `vendor`,
+  `min_scope`). `card.schema.json` is deliberately untouched — a credential
+  is named in `## Inputs` as a plain backticked variable name, which the
+  flag scan ignores because it only matches `--` tokens. That avoids
+  changing the six pinned card sections and the Go that mirrors them.
+
+  `scripts/validate-tools.py` gains five checks, each proven to fire against
+  a negative fixture rather than assumed:
+
+  - importing `urllib`/`http`/`socket`/etc. with no `network` block — a
+    credential with nowhere it is forbidden to go;
+  - a URL literal naming a host outside `network.hosts`. Subdomains of a
+    declared host pass; an undeclared host fails;
+  - declaring `credentials` and never reading the named variable;
+  - importing `subprocess` in a pack holding a credential — a token in a
+    command string is a token in the process table;
+  - defining any `--*token*` / `--*secret*` / `--*password*` / `--*api-key*`
+    flag. Secrets come from the environment; argv is visible in `ps` and
+    lands in shell history and in agent transcripts.
+
+  There is deliberately **no `destroy` class**. `read` issues no non-GET;
+  `mutate` is dry-run until `--yes`. An irreversible delete has no way to be
+  declared, so it has no way to ship.
+
+  `docs/tool-authoring.md` also now states the design rule these tools exist
+  for, which is **output compression, not API access**: an MCP server hands
+  the model the vendor's raw JSON and the model pays for every byte, while a
+  tool makes the calls and returns only what changes a decision. A network
+  tool whose stdout is longer than a screen has failed its purpose however
+  correct it is.
+
 - **New tool pack `static-web/` (tier free), first tool `asset-stamp.py`.**
   Harvested from a working generator in a sibling product rather than
   written from research, so the rationale is a measured incident and not a
