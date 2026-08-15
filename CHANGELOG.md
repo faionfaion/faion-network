@@ -4,6 +4,46 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **All 443 playbooks are tagged, from a vocabulary built after reading them
+  rather than before.** 54 tags, 1,071 uses, mean 2.42 per playbook, zero
+  empty. §13.2 asked for a controlled vocabulary with a minimum-use floor;
+  this is that.
+
+  **The floor is 10 playbooks (~2.3%), and it was enforced against the
+  drafter's own candidates.** Eight proposed tags failed it and did not
+  enter: `paid-ads` (3), `customer-support` (4), `focus-productivity` (5),
+  `design-system` (6), `email-marketing` (8), `client-reporting` (9),
+  `productization` (9), `team-development` (9). Six were folded into a
+  neighbour rather than dropped; two were dropped outright. Below ~10 of 443
+  a tag stops narrowing and starts identifying, which is §13.2's singleton
+  failure in miniature — the knowledge vocabulary's 2,666 single-use tags are
+  what that looks like at scale.
+
+  **The second axis is the interesting part.** `produces` is the single value
+  `plan` for all 443 and the goal is already the directory, so topic alone
+  cannot separate the 151 `operate-ritual` playbooks from each other. A
+  **cadence** axis does: `weekly-ritual` (49), `multi-week-program` (51),
+  `single-session` (36), `daily-ritual` (21), and the monthly/quarterly/annual
+  cycles. A cadence tag is assigned only when the cadence is named in the slug
+  or the summary — never inferred from a stray "weekly" in the body — so the
+  claim is never a guess.
+
+  Verified independently of the report: 54 distinct tags, **zero used fewer
+  than 10 times**, zero tier names, zero duplicate tags within a file, and
+  zero collisions with a goal directory name.
+
+  The same pass rewrote **45 playbook summaries** that were under the
+  15-word bar, from each playbook's own `<scope>` and `<success-criteria>`.
+  21-28 words, 13 distinct opening words. `sunday-roadmap-ritual` went from
+  an arrow diagram to *"An hour on Sunday choosing three outcomes with
+  acceptance criteria, deferring the rest explicitly, and priming Monday's
+  first task with its prompt and spec."*
+
+  **Corpus-wide, one duplicate summary group remains** — the methodology pair
+  `research/ai-assisted-persona-building` ↔ `research/ai-persona-building`,
+  which belongs to the CR-009 triage. The 12 playbook pairs and the five-way
+  `Nielsen Heuristic` group no longer reproduce.
+
 - **CR-009 triaged: all 99 cross-domain slug twins classified, and three of
   the CR's own premises were wrong.** Every pair was read line-by-line with
   the differences localised rather than merely counted.
