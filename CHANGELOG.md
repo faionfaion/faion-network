@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-006 filed: the `sdd/templates` pair, and it is not the duplicate it
+  looked like.** Both directories carry `content_id 180a580e913ae900` and
+  two of their three content files are byte-identical — but their template
+  payloads have nothing in common. `templates` holds the **pre-F-067
+  five-file Markdown pattern** across seven subdirectories, i.e. migration
+  residue that survived inside a methodology; `templates-planning` holds
+  eight real artefacts in the current shape, five of which exist nowhere
+  else in the corpus.
+
+  The reference count cuts the other way: `templates` has **62** inbound
+  wikilinks, `templates-planning` has **zero**. So the better payload is the
+  one nothing points at — though all 62 are a bare `- [[templates]]` bullet
+  at the same line of a `## Related` block, which reads as generated
+  boilerplate rather than 62 decisions.
+
+  Proposed but not executed: merge the eight artefacts into `templates`,
+  drop the legacy subdirectories, retire `templates-planning`. Corpus
+  deletion needs the owner's approval and a re-verification pass, per the
+  precedent CR-005 set.
+
 - **`scripts/regen-methodology-validators.py` — rebuilds a methodology's
   validator from the JSON Schema in its own output contract.** It landed in
   the wrong commits: the script rode along with the four tool packs and its
