@@ -4,6 +4,43 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **`tpl-jinja --migrate`: the whole per-template operation, atomically.** One
+  invocation writes `<name>.md.j2`, `<name>.html.j2` and `<name>.vars.schema.json`,
+  regenerates `<name>.md` from the new `.md.j2`, splits that methodology's
+  `## Templates` row into a source row plus a generated row, and rewrites its inline
+  `## Template Contents` body as the `.md.j2` verbatim — or it does none of them.
+  Everything is computed before any file is opened for writing, then staged and
+  swapped in with `os.replace`, and any failure restores every original byte. Proved
+  by forcing a failure at each of the four points on a scratch copy of a real
+  methodology: 13 files, every byte identical afterwards. Partial application is the
+  one outcome that must be impossible, because a `.md.j2` written without its table
+  row makes `validate-methodology-templates.py` fail with *declared template missing*.
+
+  Four decisions, recorded in `template-jinja-migration.md` §2b. The regenerated `.md`
+  writes `<name>` where the source holds `{{ name }}` — the angle form
+  `faion-solo-framework/scripts/init_project.py` substitutes and its `--check` scans
+  for; a `{{ var }}` there would be neither filled nor reported. The `## Templates`
+  table names **two** files, the source and the deliverable, never the `.html.j2` or
+  the schema: validator 5 header-checks whatever the table names, and only those two
+  carry the five-key header for a human. A template no row names is refused with exit
+  5 (414 of the 2,919 are in that state) rather than given an invented row. A
+  methodology that never inlined the template keeps no inline — both forms ship by
+  path, so 2,505 new inlines would only duplicate delivered bytes.
+
+  `--check` re-derives every generated form from the `.md.j2` and reports what on disk
+  no longer matches, the shape `init_project.py --check` already has. Section parsing
+  is fence-aware: a `## Heading` inside an inlined template body used to end the
+  section it was inside.
+
+  Self-test 41 → 81 checks; 27 targeted mutations each proved red before green.
+  Migrated as a demonstration: `backend/csharp-dotnet-patterns/feature-folder`,
+  `dev/best-practices-2026/audit-report`, `pm/rag-policy-thresholds/skeleton`,
+  `architecture/arch-pattern-hexagonal/hex-layout`,
+  `research/persona-building/persona-lean`. `validate-methodology-templates --all`
+  holds at 2521/0; `tpl-render` on the converted `hex-layout.md.j2` reproduces the
+  pre-Jinja document byte for byte, with the two sensitive slots emitting their
+  placeholders.
+
 - **Ratified §1b: the runtime flow, and the three things it makes load-bearing.**
   Search returns a template id plus variables-with-descriptions; the CLI fills what
   it can unambiguously; the rest goes to the agent to look up or ask; then values go

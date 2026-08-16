@@ -59,7 +59,8 @@
 | `templates/tsconfig-strict.json` | TypeScript 5 strict tsconfig with all recommended flags. |
 | `templates/bp2026-drift.sh` | Drift scanner: compares pinned stack versions in repo vs the 2026 baseline; prints a delta. |
 | `templates/rubric.json` | Weighted baseline rubric — one item per gating rule, with weight and acceptance criterion. |
-| `templates/audit-report.md` | Audit report skeleton: per-rule PASS/WARN/FAIL with evidence, remediation order, extraction record. |
+| `templates/audit-report.md.j2` | Audit report skeleton: per-rule PASS/WARN/FAIL with evidence, remediation order, extraction record. |
+| `templates/audit-report.md` | Audit report skeleton: per-rule PASS/WARN/FAIL with evidence, remediation order, extraction record. Generated from `templates/audit-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -150,7 +151,36 @@ Weighted rubric, one item per gating rule; see the file for the full body. Item 
 of `content/01-core-rules.xml` (`r4-ts-strict-flags`, `r9-ruff-mypy-strict`, `r10-uv-lockfile`,
 `r11-pre-commit-gate`, `r12-aidocs-scaffold`, …), each with `weight` (1-5) and a `check` string.
 
-### `templates/audit-report.md`
+### `templates/audit-report.md.j2`
 
-Markdown skeleton: a per-rule table (Rule / Status / Weight / Evidence / Remediation), a remediation
-order ordered by weight x blast radius, and a constitution-extraction record with the next drift-scan date.
+```jinja
+<!--
+
+purpose: Markdown audit report skeleton — per-rule PASS/WARN/FAIL with evidence and remediation
+consumes: scored rubric from templates/rubric.json
+produces: report
+depends-on: content/04-procedure.xml
+token-budget-impact: ~260 tokens when loaded as context
+-->
+
+
+# 2026 Best-Practices Audit — {{ repo_name }}
+
+Generated {{ date }}; baseline rubric version 2026.1; snapshot version {{ snapshot_version }}.
+
+| Rule | Status | Weight | Evidence | Remediation |
+|------|--------|--------|----------|-------------|
+| r4-ts-strict-flags | PASS | 3 | tsconfig.json:12 | — |
+| r5-react-19-patterns | WARN | 2 | 3 of 7 server components | wrap remaining fetches in Suspense |
+| r9-ruff-mypy-strict | FAIL | 3 | mypy --strict emits 18 errors | fix, or add per-module ignores with an owner |
+
+## Remediation order
+
+Ordered by weight x blast radius; strictness flips first.
+
+1. ...
+
+## Constitution extraction
+
+Rules extracted into `constitution.md` this pass: {{ extracted_rules }}. Next drift scan due: {{ next_scan_due }}.
+```

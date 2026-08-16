@@ -70,7 +70,8 @@
 | `templates/dotnet-cleanarch-lint.sh` | Grep-level lint for the checks NetArchTest cannot see (public setters, entities returned from controllers, commands without validators, `Handle` without a token). |
 | `templates/Aggregate.cs` | Aggregate root with private setters, intention-revealing methods and domain events. |
 | `templates/Handler.cs` | Record command + FluentValidation validator + single MediatR handler. |
-| `templates/feature-folder.md` | Feature-folder layout reference for the four-project solution. |
+| `templates/feature-folder.md.j2` | Feature-folder layout reference for the four-project solution. |
+| `templates/feature-folder.md` | Feature-folder layout reference for the four-project solution. Generated from `templates/feature-folder.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
@@ -239,9 +240,17 @@ public interface IUnitOfWork { Task SaveChangesAsync(CancellationToken ct); }
 public sealed class Order { public int Id { get; } public void Ship(string c, DateTime when) { } }
 ```
 
-### `templates/feature-folder.md`
+### `templates/feature-folder.md.j2`
 
-```markdown
+````jinja
+<!-- purpose: feature-folder layout reference for clean-arch + CQRS .NET solution -->
+<!-- consumes: feature spec -->
+<!-- produces: directory tree skeleton -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~150 tokens when loaded as reference -->
+
+# Feature folder layout
+
 ```
 src/
 ├── Faion.Domain/
@@ -264,29 +273,7 @@ Reference rules:
 - `Faion.Domain.csproj` has no PackageReference to EF/AspNetCore.
 - `Faion.Web.csproj` references Application + Infrastructure only.
 - Validator registered via `AddValidatorsFromAssemblyContaining<ShipOrderValidator>()`.
-```
-src/
-├── Faion.Domain/
-│   └── Orders/
-│       ├── Order.cs                 # aggregate, no public setters
-│       └── Events/OrderShipped.cs   # domain event record
-├── Faion.Application/
-│   └── Orders/
-│       ├── ShipOrderCommand.cs      # IRequest<ShipOrderResponse>
-│       ├── ShipOrderHandler.cs      # IRequestHandler
-│       ├── ShipOrderValidator.cs    # AbstractValidator
-│       └── ShipOrderResponse.cs     # response record
-├── Faion.Infrastructure/
-│   └── Orders/OrderRepository.cs    # EF Core impl of IOrderRepository
-└── Faion.Web/
-    └── Controllers/OrdersController.cs   # one-line mediator dispatch
-```
-
-Reference rules:
-- `Faion.Domain.csproj` has no PackageReference to EF/AspNetCore.
-- `Faion.Web.csproj` references Application + Infrastructure only.
-- Validator registered via `AddValidatorsFromAssemblyContaining<ShipOrderValidator>()`.
-```
+````
 
 ### `templates/dotnet-cleanarch-lint.sh`
 

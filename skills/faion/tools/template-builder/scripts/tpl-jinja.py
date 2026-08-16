@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""tpl-jinja.py — convert one Markdown template into the three-file Jinja form.
+"""tpl-jinja.py — convert one Markdown template into the Jinja form.
 
 `templates/<name>.md` becomes `<name>.md.j2`, `<name>.html.j2` and
 `<name>.vars.schema.json` (.aidocs/conventions/template-jinja-migration.md).
@@ -8,6 +8,22 @@ rendered document at runtime, so the two are siblings a generator wrote
 together rather than one file with a format branch in it.
 
 It proposes. It does not decide, and it writes nothing without --write.
+
+ONE SOURCE, SEVERAL GENERATED FORMS (--migrate). The source of truth is
+`<name>.md.j2` plus `<name>.vars.schema.json`. `<name>.html.j2` and
+`<name>.md` are OUTPUTS of it. The `.md` stays on disk because it is the form
+the one supported instantiator eats — faion-solo-framework/scripts/
+init_project.py substitutes `<token>` by literal string replacement and its
+`--check` scans for the same shape — but it stops being authored: --migrate
+regenerates it from the `.md.j2` so it cannot hold bytes the source does not
+imply. --check re-derives every generated form and diffs it, which is the same
+gate init_project.py --check already is.
+
+--migrate is ATOMIC per template. It writes the three Jinja files, regenerates
+the `.md`, rewrites that methodology's `## Templates` table rows and the inline
+`## Template Contents` body — or it does none of them. A half-migrated template
+makes validate-methodology-templates.py fail with "declared template missing",
+so partial application is the one outcome that must be impossible.
 
 The judgements it refuses to make are the point:
 
@@ -40,20 +56,24 @@ a correct-looking document with someone else's value silently inside it, since
 the project store carries values between artefacts. Refuse rather than guess.
 
 Input:  --template {file.md} [--out-dir {dir}] [--dictionary {file}]
-        [--resolver {file} | --no-resolver] [--write]
+        [--resolver {file} | --no-resolver] [--migrate | --check] [--write]
 Output: the three files, or all three to stdout when dry-running.
 
 Exit: 0 every placeholder resolved · 1 placeholders were left for a human (the
-      normal outcome) · 2 the tool could not run · 3 refused, the placeholders
-      are already HTML-escaped · 4 refused, the source carries a construct this
-      converter will not translate.
+      normal outcome), or --check found drift · 2 the tool could not run · 3
+      refused, the placeholders are already HTML-escaped · 4 refused, the
+      source carries a construct this converter will not translate · 5 refused,
+      --migrate found no `## Templates` row naming this template.
 Zero model calls. Zero network calls.
 """
 from __future__ import annotations
 
 import argparse
+import contextlib
 import importlib.util
+import io
 import json
+import os
 import re
 import sys
 import tempfile
@@ -353,6 +373,78 @@ def find_resolver(explicit: str | None, template: Path | None) -> Path | None:
     return None
 
 
+# ----------------------------------------------------- the generated forms
+#
+# Everything here derives ONE output from `<name>.md.j2` and nothing else. That
+# is what makes --check a real drift test rather than a diff of two unrelated
+# artefacts, and it is why convert() calls the same functions instead of
+# carrying a second copy of the rendering.
+
+# What the regenerated `.md` writes where the `.md.j2` holds a variable.
+#
+# `<name>`, the corpus's incumbent angle convention — because it is the shape
+# the one supported instantiator understands. faion-solo-framework/scripts/
+# init_project.py substitutes by literal `text.replace("<token>", value)` and
+# its `--check` scans for that same spelling. A `{{ name }}` left in the `.md`
+# would be invisible to BOTH: never substituted, and never reported as
+# unsubstituted, which is a document that ships with a hole and nothing to say
+# so.
+#
+# template-builder.md §1 rejected `<Angle>` as the BUILDER's INPUT, where a
+# hand-written `<one paragraph>` cannot be told apart from a variable. That
+# argument does not reach this file, because here the angle tokens are OUTPUT:
+# every one of them is generated from a declared schema property, so it is
+# always a snake_case name the schema carries. The ambiguity §1 measured is a
+# property of hand authoring, and nothing here is hand-authored.
+ANGLE_FOR_VAR = r"<\1>"
+
+
+def md_from_j2(md_j2: str) -> str:
+    """The standalone Markdown form. Pure.
+
+    Whole-file, header included: the header cannot hold a `{{ }}` (the
+    `variables:` run the schema now owns is stripped before this runs), so
+    there is no region to protect and no split to get wrong.
+    """
+    return SPACED.sub(ANGLE_FOR_VAR, md_j2)
+
+
+def html_from_j2(md_j2: str, stem: str) -> str:
+    """The self-contained HTML form. Pure.
+
+    Each variable is held as an opaque sentinel through the Markdown render and
+    put back as `{{ name }}` afterwards, so the two templates cannot drift and
+    no value is anywhere near this code path — at render time autoescape is
+    what makes a value text (§0), and here there are no values at all.
+    """
+    _, body = CORE.split_header(md_j2)
+    marks: list[str] = []
+
+    def mark(match: re.Match) -> str:
+        marks.append("{{ " + match.group(1) + " }}")
+        return f"\x01{len(marks) - 1}\x01"
+
+    marked = SPACED.sub(mark, body)
+    return CORE.md_to_html(marked.strip("\n") + "\n", title_of(body, stem),
+                           marks or None)
+
+
+# The five keys validate-methodology-templates.py demands of every file the
+# `## Templates` table names, and the exact shape it demands them in. Copied
+# rather than imported because a tool pack ships alone — but copied from the
+# GATE, so a regenerated `.md` that would fail it is refused before it is
+# written rather than discovered by the pre-commit hook.
+GATE_HEADER_KEYS = ("purpose", "consumes", "produces", "depends-on",
+                    "token-budget-impact")
+
+
+def gate_header_keys(text: str) -> set[str]:
+    """Which of the five keys the gate would find in this file."""
+    head = "\n".join(text.splitlines()[:20]).lower()
+    return {key for key in GATE_HEADER_KEYS
+            if re.search(rf"^\s*\W*\s*{re.escape(key)}\s*:\s*\S", head, re.M)}
+
+
 # --------------------------------------------------------------- the plan
 
 def convert(text: str, stem: str, *, dictionary: dict,
@@ -454,21 +546,7 @@ def convert(text: str, stem: str, *, dictionary: dict,
     else:
         header = text[:offset]
     md_j2 = header + new_body
-
-    # The HTML is built from THIS Markdown structure, with each variable held
-    # as an opaque sentinel through the render and put back as `{{ name }}`
-    # afterwards. So the two templates cannot drift, and no value is anywhere
-    # near this code path — at render time autoescape is what makes a value
-    # text (§0), and here there are no values at all.
-    marks: list[str] = []
-
-    def mark(match: re.Match) -> str:
-        marks.append("{{ " + match.group(1) + " }}")
-        return f"\x01{len(marks) - 1}\x01"
-
-    marked = SPACED.sub(mark, new_body)
-    title = title_of(new_body, stem)
-    html_j2 = CORE.md_to_html(marked.strip("\n") + "\n", title, marks or None)
+    html_j2 = html_from_j2(md_j2, stem)
 
     hrefs = sorted({m.group(2) for m in LINK.finditer(new_body)
                     if "{{" in m.group(2)})
@@ -498,6 +576,7 @@ def convert(text: str, stem: str, *, dictionary: dict,
     unclear = [i for i in items if i["verdict"] == "unclear"]
     return {"where": where, "stem": stem, "items": items, "declarations": decls,
             "md_j2": md_j2, "html_j2": html_j2, "schema": schema,
+            "md": md_from_j2(md_j2), "source": text,
             "notes": notes, "unclear": len(unclear),
             "resolutions": resolutions, "resolved": len(resolutions),
             "parameters": sum(1 for i in items if i["verdict"] == "parameter"),
@@ -535,6 +614,25 @@ def verify(plan: dict, mods) -> list[str]:
         else:
             for finding in JINJA.external_references(rendered):
                 problems.append(f"html.j2: {finding}")
+
+    # Both files the `## Templates` table will name are header-checked by
+    # validate-methodology-templates.py. A key the source carried and a
+    # generated form lost is a validator failure this tool would have caused,
+    # so it is caught here — before anything is written — rather than by the
+    # pre-commit hook after 2,500 templates have moved.
+    had = gate_header_keys(plan.get("source", ""))
+    for label, text in (("md", plan.get("md", "")),
+                        ("md.j2", plan["md_j2"])):
+        lost = sorted(had - gate_header_keys(text))
+        if lost:
+            problems.append(
+                f"{label}: the source carried {', '.join(lost)} in its first 20 "
+                "lines and this form does not — validate-methodology-templates "
+                "would report the header incomplete")
+    if "{{" in plan.get("md", ""):
+        problems.append("md: a `{{` survived into the standalone Markdown, "
+                        "where the framework's substituter neither fills it "
+                        "nor reports it")
     return problems
 
 
@@ -554,6 +652,297 @@ def write_plan(plan: dict, out_dir: Path, write: bool) -> list[Path]:
     paths["html_j2"].write_text(plan["html_j2"], encoding="utf-8")
     paths["schema"].write_text(JINJA.dumps(plan["schema"]), encoding="utf-8")
     return [paths["md_j2"], paths["html_j2"], paths["schema"]]
+
+
+# --------------------------------------------------------------- migration
+#
+# WHAT THE `## Templates` TABLE NAMES AFTER A MIGRATION, and why.
+#
+# Two rows: `templates/<name>.md.j2` (the source) and `templates/<name>.md`
+# (the generated deliverable). Not `.html.j2`, not `.vars.schema.json`.
+#
+# validate-methodology-templates.py header-checks whatever the table names, and
+# the five-key header exists for a HUMAN opening the file. Both named rows have
+# one for free: the header rides through the conversion into the `.md.j2` and
+# back out into the `.md`. The other two forms have no reader to serve — the
+# `.html.j2` is a rendered document with no comment header at all, and the
+# schema is JSON, which would need a `__faion_header__` key restating what its
+# own `title` and `description` already say. Naming them would mean inventing a
+# header for two machine artefacts to satisfy a gate written for readable
+# templates.
+#
+# Delivery does not depend on the table either way: `packablePath` ships
+# EVERYTHING under a `templates/` path segment un-extension-gated (F036/AD-024),
+# so all four files reach a user's disk whether or not a row names them. The
+# table is a reading guide, and the rule is "name what a human opens".
+
+SUBSECTION = re.compile(r"^### `([^`]+)`[ \t]*$")
+FENCE_RUN = re.compile(r"(`{3,})")
+FENCE_LINE = re.compile(r"^\s*(`{3,}|~{3,})")
+GENERATED_NOTE = ("Generated from `templates/{stem}.md.j2` by "
+                  "`tpl-jinja --migrate`; do not hand-edit.")
+
+
+def outside_fence(text: str):
+    """(offset, line) for every line NOT inside a fenced code block.
+
+    Both sections this module edits are found by heading, and an inlined
+    template body is full of headings — `## Identity`, `### Steps` — inside its
+    fence. A plain `^## ` regex ends the `## Template Contents` section at the
+    first of them, which made a second --migrate on the same methodology parse
+    a section that stops in the middle of a code block. Nothing about that is
+    hypothetical: it is the first thing --check caught.
+    """
+    offset = 0
+    fence: str | None = None
+    for line in text.split("\n"):
+        found = FENCE_LINE.match(line)
+        run = found.group(1) if found else None
+        if fence is None:
+            if run:
+                fence = run
+            else:
+                yield offset, line
+        elif run and run[0] == fence[0] and len(run) >= len(fence):
+            fence = None
+        offset += len(line) + 1
+
+
+def section_span(text: str, heading: str) -> tuple[int, int] | None:
+    """(body start, body end) for `## <heading>`, or None. Fence-aware."""
+    start = None
+    for offset, line in outside_fence(text):
+        if start is None:
+            if line.strip() == f"## {heading}":
+                start = offset + len(line) + 1
+            continue
+        if line.startswith("## "):
+            return start, offset
+    return (start, len(text)) if start is not None else None
+
+
+class MigrationRefused(Exception):
+    """--migrate will not touch this template. `.code` is the exit."""
+
+    def __init__(self, code: int, message: str) -> None:
+        super().__init__(message)
+        self.code = code
+
+
+def _cells(line: str) -> list[str]:
+    return [c.strip() for c in line.strip().strip("|").split("|")]
+
+
+def _row(cells: list[str]) -> str:
+    return "| " + " | ".join(cells) + " |"
+
+
+def retable(text: str, stem: str) -> str:
+    """The AGENTS.md with this template's `## Templates` row split in two.
+
+    Pure. Raises MigrationRefused(5) when no row names `templates/<stem>.md`:
+    a template no row names is not documented today (the shape CR-010 describes),
+    and ADDING a row is a delivery decision a converter must not make on its own.
+    Refusing leaves the template exactly as it was, in the report, for a human.
+    """
+    span = section_span(text, "Templates")
+    if span is None:
+        raise MigrationRefused(
+            5, f"{stem}.md: the methodology's AGENTS.md has no `## Templates` "
+               "section, so there is no row to point at the new source. Adding "
+               "the section is a documentation decision, not a conversion")
+    body = text[span[0]:span[1]]
+    source_name = f"templates/{stem}.md.j2"
+    target_name = f"templates/{stem}.md"
+    lines = body.split("\n")
+    index = None
+    for position, line in enumerate(lines):
+        if not line.strip().startswith("|"):
+            continue
+        cells = _cells(line)
+        if cells and cells[0].strip("`") == target_name:
+            index = position
+            break
+        if cells and cells[0].strip("`") == source_name:
+            return text            # already migrated; idempotent
+    if index is None:
+        raise MigrationRefused(
+            5, f"{stem}.md: no `## Templates` row names it, so it is not a "
+               "declared template of this methodology. Converting it would "
+               "leave the source undeclared and the row absent — decide "
+               "whether it should be declared first")
+    cells = _cells(lines[index])
+    note = GENERATED_NOTE.format(stem=stem)
+    source_cells = list(cells)
+    source_cells[0] = f"`{source_name}`"
+    generated_cells = list(cells)
+    generated_cells[0] = f"`{target_name}`"
+    if note not in generated_cells[-1]:
+        generated_cells[-1] = (generated_cells[-1] + " " + note).strip()
+    lines[index:index + 1] = [_row(source_cells), _row(generated_cells)]
+    return text[:span[0]] + "\n".join(lines) + text[span[1]:]
+
+
+def fence_for(body: str) -> str:
+    """A fence longer than any the body already opens.
+
+    A `.md.j2` full of shell and JSON examples routinely carries ``` runs of
+    its own, and inlining it inside a three-backtick fence would end the block
+    at the first of them — the inline would silently show a third of the file.
+    """
+    longest = max((len(m.group(1)) for m in FENCE_RUN.finditer(body)),
+                  default=0)
+    return "`" * max(3, longest + 1)
+
+
+def inline_block(stem: str, md_j2: str) -> str:
+    """The `### templates/<stem>.md.j2` subsection, source verbatim."""
+    fence = fence_for(md_j2)
+    body = md_j2 if md_j2.endswith("\n") else md_j2 + "\n"
+    return (f"### `templates/{stem}.md.j2`\n\n"
+            f"{fence}jinja\n{body}{fence}\n")
+
+
+def reinline(text: str, stem: str, md_j2: str) -> str:
+    """The AGENTS.md with this template's inline body regenerated. Pure.
+
+    NO-OP when the methodology has no `## Template Contents` section, or has
+    one that never inlined this template. The section exists for files the
+    packer does not ship standalone; `.md.j2` and `.md` both ship by path, so
+    CREATING an inline would duplicate bytes already delivered — 2,505 times,
+    into the file every retrieval loads first. Where an inline already exists
+    it is regenerated, from the `.md.j2` and by the same call that writes the
+    `.md.j2`, so the pair cannot drift.
+    """
+    span = section_span(text, "Template Contents")
+    if span is None:
+        return text
+    body = text[span[0]:span[1]]
+    marks = [(offset, SUBSECTION.match(line).group(1))
+             for offset, line in outside_fence(body)
+             if SUBSECTION.match(line)]
+    wanted = (f"templates/{stem}.md", f"templates/{stem}.md.j2")
+    for position, (offset, name) in enumerate(marks):
+        if name not in wanted:
+            continue
+        end = marks[position + 1][0] if position + 1 < len(marks) else len(body)
+        tail = body[end:]
+        new_body = body[:offset] + inline_block(stem, md_j2)
+        if tail and not new_body.endswith("\n\n"):
+            new_body += "\n"
+        new_body += tail
+        return text[:span[0]] + new_body + text[span[1]:]
+    return text
+
+
+def migration_texts(plan: dict, agents_md: str) -> dict[str, str]:
+    """Every file body this migration writes, keyed by role. Pure.
+
+    Computing ALL of it before any I/O is what makes the operation atomic in
+    the case that actually happens: a template with no table row, or an inline
+    that cannot be parsed, fails here — with nothing on disk touched, because
+    nothing on disk has been opened for writing yet.
+    """
+    stem = plan["stem"]
+    staged = retable(agents_md, stem)
+    return {"md_j2": plan["md_j2"],
+            "html_j2": plan["html_j2"],
+            "schema": JINJA.dumps(plan["schema"]),
+            "md": plan["md"],
+            "agents": reinline(staged, stem, plan["md_j2"])}
+
+
+def migration_paths(stem: str, template: Path, out_dir: Path,
+                    agents_md: Path) -> dict[str, Path]:
+    return {"md_j2": out_dir / f"{stem}.md.j2",
+            "html_j2": out_dir / f"{stem}.html.j2",
+            "schema": out_dir / f"{stem}.vars.schema.json",
+            "md": template,
+            "agents": agents_md}
+
+
+def apply_atomic(files: dict[Path, str], fault=None) -> list[Path]:
+    """Write every file, or leave every one of them exactly as it was.
+
+    Two phases. Phase one stages each new body beside its target, so a full
+    disk or a read-only tree is discovered before anything is replaced. Phase
+    two swaps them in with os.replace, which is atomic per file; the batch is
+    made atomic by holding every original's bytes and putting them back if any
+    swap raises. A file this call created is removed rather than restored.
+
+    `fault` is the self-test's way in: it is called as fault(phase, path) at
+    every point a real failure could occur, and raising from it must leave the
+    tree untouched. A rollback nobody has ever executed is a rollback that does
+    not work.
+    """
+    targets = sorted(files)
+    originals: dict[Path, bytes | None] = {}
+    staged: dict[Path, Path] = {}
+    done: list[Path] = []
+    try:
+        for path in targets:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            originals[path] = path.read_bytes() if path.exists() else None
+            tmp = path.with_name(path.name + ".faion-migrate-tmp")
+            tmp.write_text(files[path], encoding="utf-8")
+            staged[path] = tmp
+            if fault is not None:
+                fault("stage", path)
+        for path in targets:
+            if fault is not None:
+                fault("replace", path)
+            os.replace(staged.pop(path), path)
+            done.append(path)
+    except BaseException:
+        for path in done:
+            original = originals[path]
+            if original is None:
+                path.unlink()
+            else:
+                path.write_bytes(original)
+        for tmp in staged.values():
+            tmp.unlink(missing_ok=True)
+        raise
+    return targets
+
+
+def check_findings(md_j2: str, stem: str, on_disk: dict[str, str],
+                   schema: dict | None) -> list[str]:
+    """Every generated form re-derived from the `.md.j2` and diffed. Pure.
+
+    This is the drift gate, and it is the same shape as
+    init_project.py --check: regenerate, compare, exit 1 on a difference. It
+    checks only what the `.md.j2` DETERMINES — the `.md`, the `.html.j2` and
+    the inline. The schema is not derivable from the source (a property's
+    `description` is the question put to the author, and the placeholder text
+    it was drafted from is gone), so the schema is a SECOND source of truth and
+    is checked for agreement, never regenerated.
+    """
+    findings: list[str] = []
+    expected = {"md": md_from_j2(md_j2), "html_j2": html_from_j2(md_j2, stem)}
+    for role, want in expected.items():
+        have = on_disk.get(role)
+        if have is None:
+            findings.append(f"{role}: not on disk beside the source")
+        elif have != want:
+            findings.append(f"{role}: on disk does not match what "
+                            f"{stem}.md.j2 generates — it was hand-edited, or "
+                            "the generator changed")
+    agents = on_disk.get("agents")
+    if agents is not None and reinline(agents, stem, md_j2) != agents:
+        findings.append("agents: the inline `## Template Contents` body does "
+                        f"not match {stem}.md.j2")
+    if schema is not None:
+        used = JINJA.template_variables(md_j2)
+        declared = set(schema.get("properties") or {})
+        for name in sorted(used - declared):
+            findings.append(f"schema: {name} is used by the template and the "
+                            "schema does not declare it — the render refuses "
+                            "by name")
+        for name in sorted(declared - used):
+            findings.append(f"schema: {name} is declared and the template "
+                            "never references it")
+    return findings
 
 
 def report(plan: dict) -> str:
@@ -853,9 +1242,300 @@ def resolver_checks() -> list[str]:
     return failures
 
 
+RENAMING_FIXTURE = """<!--
+purpose: p
+produces: markdown
+-->
+# Doc
+
+- Owner: [Owner Name]
+"""
+
+AGENTS_FIXTURE = """# fixture-methodology
+
+## Summary
+
+A fixture.
+
+## Templates
+
+| File | Purpose |
+|------|---------|
+| `templates/other.sh` | A shell scaffold. |
+| `templates/fixture.md` | The runbook skeleton. |
+
+Files the packer does not ship standalone have their bodies inlined under \
+`## Template Contents` at the end of this file - read them there.
+
+## Related
+
+- [[something]]
+
+## Template Contents
+
+Bodies of the templates above.
+
+### `templates/other.sh`
+
+```sh
+echo hi
+```
+
+### `templates/fixture.md`
+
+```markdown
+the stale inlined copy
+```
+"""
+
+AGENTS_NO_ROW = AGENTS_FIXTURE.replace(
+    "| `templates/fixture.md` | The runbook skeleton. |\n", "")
+AGENTS_NO_SECTION = AGENTS_FIXTURE.replace("## Templates", "## Artefacts", 1)
+AGENTS_NO_INLINE = AGENTS_FIXTURE.split("## Template Contents")[0]
+AGENTS_OTHER_INLINE = AGENTS_FIXTURE.replace(
+    "### `templates/fixture.md`\n\n```markdown\nthe stale inlined copy\n```\n",
+    "")
+
+
+def _tree(root: Path, agents: str, template: str) -> tuple[Path, Path]:
+    """A scratch methodology dir: AGENTS.md plus templates/fixture.md."""
+    (root / "templates").mkdir(parents=True, exist_ok=True)
+    agents_md = root / "AGENTS.md"
+    agents_md.write_text(agents, encoding="utf-8")
+    md = root / "templates" / "fixture.md"
+    md.write_text(template, encoding="utf-8")
+    return agents_md, md
+
+
+def _untouched(agents_md: Path, md: Path, agents: str, template: str,
+               label: str) -> list[str]:
+    """Nothing moved. The single most important assertion in --migrate."""
+    out: list[str] = []
+    if not md.is_file():
+        out.append(f"{label}: the source .md is gone")
+    elif md.read_text(encoding="utf-8") != template:
+        out.append(f"{label}: the source .md was rewritten anyway")
+    if agents_md.read_text(encoding="utf-8") != agents:
+        out.append(f"{label}: AGENTS.md was rewritten anyway")
+    strays = sorted(p.name for p in md.parent.iterdir()
+                    if p.name != "fixture.md")
+    if strays:
+        out.append(f"{label}: left {', '.join(strays)} behind")
+    return out
+
+
+def migrate_checks() -> list[str]:
+    """--migrate: the table rule, the inline rule, and atomicity.
+
+    Atomicity is the one that matters. A half-migrated template makes
+    validate-methodology-templates.py fail with "declared template missing",
+    so every failure path below asserts that the tree is exactly as it was.
+    """
+    failures: list[str] = []
+    plan = _convert(CLEAN_FIXTURE)
+
+    # ---- the `## Templates` table rule
+    retabled = retable(AGENTS_FIXTURE, "fixture")
+    if "| `templates/fixture.md.j2` | The runbook skeleton. |" not in retabled:
+        failures.append("retable: the .md row did not gain a .md.j2 source row")
+    if "`templates/fixture.md` | The runbook skeleton. Generated from" \
+            not in retabled:
+        failures.append("retable: the .md row does not say it is generated")
+    if retabled.index("fixture.md.j2`") > retabled.index("| `templates/fixture.md` |"):
+        failures.append("retable: the generated row precedes its source")
+    if "| `templates/other.sh` | A shell scaffold. |" not in retabled:
+        failures.append("retable: another template's row was disturbed")
+    if retable(retabled, "fixture") != retabled:
+        failures.append("retable: a second run changed the table again — a "
+                        "re-migration would duplicate every row")
+    for label, text in (("no row names it", AGENTS_NO_ROW),
+                        ("no ## Templates section", AGENTS_NO_SECTION)):
+        try:
+            retable(text, "fixture")
+            failures.append(f"retable: {label} and it converted anyway — "
+                            "adding a row is a delivery decision")
+        except MigrationRefused as exc:
+            if exc.code != 5:
+                failures.append(f"retable: {label} refused with exit "
+                                f"{exc.code}, expected 5")
+
+    # ---- the inline rule
+    inlined = reinline(AGENTS_FIXTURE, "fixture", plan["md_j2"])
+    if "### `templates/fixture.md.j2`" not in inlined:
+        failures.append("reinline: the inline heading still names the .md")
+    if "the stale inlined copy" in inlined:
+        failures.append("reinline: the stale inlined body survived")
+    if plan["md_j2"] not in inlined:
+        failures.append("reinline: the inline is not the .md.j2 verbatim")
+    if "### `templates/other.sh`" not in inlined or "echo hi" not in inlined:
+        failures.append("reinline: another template's inline was eaten")
+    if reinline(AGENTS_NO_INLINE, "fixture", plan["md_j2"]) != AGENTS_NO_INLINE:
+        failures.append("reinline: a methodology with no ## Template Contents "
+                        "section had one written into it")
+    if reinline(AGENTS_OTHER_INLINE, "fixture", plan["md_j2"]) \
+            != AGENTS_OTHER_INLINE:
+        failures.append("reinline: a section that never inlined this template "
+                        "gained an entry for it")
+    if fence_for("a ``` fence\n") <= "```":
+        failures.append("fence_for: an inlined body carrying ``` would end the "
+                        "block early and show a third of the file")
+
+    # ---- the generated forms
+    regenerated = md_from_j2(plan["md_j2"])
+    if "{{" in regenerated:
+        failures.append("md_from_j2: a Jinja delimiter survived into the .md")
+    if "<service_name>" not in regenerated:
+        failures.append("md_from_j2: a variable did not come back as <angle>, "
+                        "so the framework substituter cannot fill it")
+    if regenerated != plan["md"]:
+        failures.append("the plan's .md is not what md_from_j2 produces")
+    # convert() CALLS html_from_j2, so --check re-deriving the same bytes is
+    # true by construction rather than by test — which is the stronger form.
+    # What is worth asserting is that the derivation keeps the variable: an
+    # .html.j2 that lost it renders from a different value map than its
+    # Markdown sibling, which is the drift §1 forbids.
+    if "<h1>Runbook for {{ service_name }}</h1>" not in plan["html_j2"]:
+        failures.append("html_from_j2: the HTML body lost a variable the "
+                        "Markdown keeps, so the pair no longer renders from "
+                        "one value map")
+    # The `.md` is an OUTPUT, not the original bytes: a placeholder spelt
+    # `[Owner Name]` comes back as the declared name `<owner_name>`. Proving
+    # that on a fixture whose spelling actually changes is the only way to see
+    # it — CLEAN_FIXTURE's `<service_name>` is already its own declared name,
+    # so it regenerates byte-identical and would pass a broken generator too.
+    renaming = _convert(RENAMING_FIXTURE)
+    if renaming["md"] == RENAMING_FIXTURE:
+        failures.append("the regenerated .md is the authored bytes — it is an "
+                        "output now, so a placeholder must come back spelt as "
+                        "the name the schema declares")
+    if "<owner_name>" not in renaming["md"] or "[Owner Name]" in renaming["md"]:
+        failures.append("the regenerated .md did not normalise a placeholder "
+                        "onto its declared name")
+
+    # ---- the header the gate reads, on both files the table will name
+    mods = JINJA.load_jinja()
+    five = "<!--\n" + "\n".join(f"{k}: x" for k in GATE_HEADER_KEYS) + "\n-->\n"
+    if gate_header_keys(five) != set(GATE_HEADER_KEYS):
+        failures.append("gate_header_keys: a five-key header was not read the "
+                        "way validate-methodology-templates reads it")
+    if gate_header_keys("# Doc\n\npurpose of this\n"):
+        failures.append("gate_header_keys: prose was counted as a header key")
+    doctored = dict(plan)
+    doctored["source"] = five + plan["source"]
+    if not any("header incomplete" in p for p in verify(doctored, mods)):
+        failures.append("verify: a generated form that dropped a header key "
+                        "the source carried was not caught — validator 5 would "
+                        "have found it after 2,500 templates had moved")
+    holed = dict(plan)
+    holed["md"] = plan["md_j2"]
+    if not any("`{{` survived" in p for p in verify(holed, mods)):
+        failures.append("verify: a `{{` left in the .md was not caught, and "
+                        "the framework substituter neither fills nor reports it")
+
+    # ---- --check
+    on_disk = {"md": plan["md"], "html_j2": plan["html_j2"],
+               "agents": reinline(retable(AGENTS_FIXTURE, "fixture"),
+                                  "fixture", plan["md_j2"])}
+    if check_findings(plan["md_j2"], "fixture", on_disk, plan["schema"]):
+        failures.append("check: a freshly migrated set reported drift: "
+                        + "; ".join(check_findings(plan["md_j2"], "fixture",
+                                                   on_disk, plan["schema"])))
+    for role in ("md", "html_j2", "agents"):
+        edited = dict(on_disk)
+        edited[role] = edited[role].replace("Identity", "Identity ")
+        if not check_findings(plan["md_j2"], "fixture", edited, None):
+            failures.append(f"check: a hand-edited {role} was not reported")
+    widened = json.loads(json.dumps(plan["schema"]))
+    widened["properties"]["not_used_anywhere"] = {"type": "string",
+                                                  "description": "?"}
+    if not check_findings(plan["md_j2"], "fixture", on_disk, widened):
+        failures.append("check: a schema property the template never "
+                        "references was not reported")
+
+    # ---- atomicity
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp) / "m"
+        agents_md, md = _tree(root, AGENTS_FIXTURE, CLEAN_FIXTURE)
+        texts = migration_texts(plan, agents_md.read_text(encoding="utf-8"))
+        if set(texts) != {"md_j2", "html_j2", "schema", "md", "agents"}:
+            failures.append(f"migration_texts: wrote {sorted(texts)}, expected "
+                            "the five forms")
+        paths = migration_paths("fixture", md, md.parent, agents_md)
+        files = {paths[role]: body for role, body in texts.items()}
+
+        def die(phase: str, want: str, budget: list[int]):
+            def fault(seen: str, _path: Path) -> None:
+                if seen != want:
+                    return
+                budget[0] -= 1
+                if budget[0] < 0:
+                    raise OSError(f"forced failure during {phase}")
+            return fault
+
+        for label, phase, budget in (("staging", "stage", [1]),
+                                     ("the swap", "replace", [1])):
+            try:
+                apply_atomic(files, die(label, phase, budget))
+                failures.append(f"apply_atomic: a failure during {label} did "
+                                "not propagate")
+            except OSError:
+                pass
+            failures.extend(_untouched(agents_md, md, AGENTS_FIXTURE,
+                                       CLEAN_FIXTURE,
+                                       f"rollback after {label}"))
+
+        written = apply_atomic(files)
+        if len(written) != 5 or not all(p.is_file() for p in written):
+            failures.append("apply_atomic: a clean run did not write the five "
+                            "files")
+        if md.read_text(encoding="utf-8") != plan["md"]:
+            failures.append("apply_atomic: the .md on disk is not the form "
+                            "regenerated from the .md.j2")
+        noise = io.StringIO()
+        with contextlib.redirect_stdout(noise), \
+                contextlib.redirect_stderr(noise):
+            drifted = run_check(md.parent / "fixture.md.j2")
+        if drifted != 0:
+            failures.append("--check: a set --migrate just wrote reports "
+                            f"drift: {noise.getvalue().strip()}")
+
+    # ---- steps 3 and 4 fail before anything is written
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp) / "m"
+        agents_md, md = _tree(root, AGENTS_NO_ROW, CLEAN_FIXTURE)
+        try:
+            migration_texts(plan, agents_md.read_text(encoding="utf-8"))
+            failures.append("step 3: a template no row names was migrated")
+        except MigrationRefused:
+            pass
+        failures.extend(_untouched(agents_md, md, AGENTS_NO_ROW, CLEAN_FIXTURE,
+                                   "step 3 refusal"))
+
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp) / "m"
+        agents_md, md = _tree(root, AGENTS_FIXTURE, CLEAN_FIXTURE)
+        original = globals()["reinline"]
+
+        def explode(*_args, **_kwargs):
+            raise OSError("forced failure in step 4")
+
+        globals()["reinline"] = explode
+        try:
+            migration_texts(plan, agents_md.read_text(encoding="utf-8"))
+            failures.append("step 4: the inline rewrite failed and the "
+                            "migration continued")
+        except OSError:
+            pass
+        finally:
+            globals()["reinline"] = original
+        failures.extend(_untouched(agents_md, md, AGENTS_FIXTURE,
+                                   CLEAN_FIXTURE, "step 4 failure"))
+    return failures
+
+
 def self_test() -> list[str]:
     """Every judgement and every guarantee this converter is not allowed to
-    get wrong. Forty-one checks."""
+    get wrong. Eighty-one checks."""
     failures: list[str] = []
     try:
         mods = JINJA.load_jinja()
@@ -950,10 +1630,83 @@ def self_test() -> list[str]:
             values = {n: "x" for n in plan["variables"]}
             if "x" not in JINJA.render_file(env, written[0], values):
                 failures.append("the written md.j2 did not render from disk")
-    return failures + resolver_checks()
+    return failures + resolver_checks() + migrate_checks()
 
 
 # ------------------------------------------------------------------ main
+
+def agents_md_for(template: Path) -> Path:
+    """The methodology AGENTS.md that declares this template."""
+    return template.resolve().parent.parent / "AGENTS.md"
+
+
+def run_check(path: Path) -> int:
+    """--check: regenerate from the `.md.j2` and diff. Writes nothing."""
+    if not path.name.endswith(".md.j2"):
+        print(f"{NAME}: --check reads the SOURCE, so --template must name a "
+              f"`.md.j2`; got {path.name}", file=sys.stderr)
+        return 2
+    stem = path.name[:-len(".md.j2")]
+    agents = agents_md_for(path)
+    try:
+        md_j2 = path.read_text(encoding="utf-8")
+        on_disk: dict[str, str] = {}
+        for role, sibling in (("md", path.with_name(f"{stem}.md")),
+                              ("html_j2", path.with_name(f"{stem}.html.j2"))):
+            if sibling.is_file():
+                on_disk[role] = sibling.read_text(encoding="utf-8")
+        if agents.is_file():
+            on_disk["agents"] = agents.read_text(encoding="utf-8")
+        schema_path = path.with_name(f"{stem}.vars.schema.json")
+        schema = JINJA.load_schema(schema_path) if schema_path.is_file() \
+            else None
+    except (OSError, JINJA.SchemaBroken) as exc:
+        print(f"{NAME}: cannot read: {exc}", file=sys.stderr)
+        return 2
+    findings = check_findings(md_j2, stem, on_disk, schema)
+    for finding in findings:
+        print(f"{NAME}: {path}: {finding}", file=sys.stderr)
+    print(f"{NAME}: --check {path} forms={len(on_disk)} "
+          f"drift={len(findings)}")
+    return 1 if findings else 0
+
+
+def run_migrate(plan: dict, template: Path, out_dir: Path,
+                write: bool) -> int:
+    """--migrate: the whole operation, or none of it."""
+    agents = agents_md_for(template)
+    if not agents.is_file():
+        print(f"{NAME}: {agents}: the methodology has no AGENTS.md, so the "
+              "table row and the inline cannot be updated", file=sys.stderr)
+        return 2
+    try:
+        texts = migration_texts(plan, agents.read_text(encoding="utf-8"))
+    except MigrationRefused as exc:
+        print(f"{NAME}: {exc}", file=sys.stderr)
+        return exc.code
+    except OSError as exc:
+        print(f"{NAME}: cannot read: {exc}", file=sys.stderr)
+        return 2
+    paths = migration_paths(plan["stem"], template, out_dir, agents)
+    files = {paths[role]: body for role, body in texts.items()}
+    if not write:
+        print(report(plan))
+        print(f"{NAME}: --migrate DRY RUN {template} -> "
+              + ", ".join(str(paths[r]) for r in sorted(paths))
+              + "; nothing written without --write")
+        return 1 if plan["unclear"] or plan["notes"] else 0
+    try:
+        apply_atomic(files)
+    except OSError as exc:
+        print(f"{NAME}: {template}: the migration failed and was rolled back: "
+              f"{exc}", file=sys.stderr)
+        return 2
+    print(report(plan))
+    print(f"{NAME}: --migrate {template} variables="
+          f"{len(plan['declarations'])} unclear={plan['unclear']} -> "
+          + ", ".join(str(paths[r]) for r in sorted(paths)))
+    return 1 if plan["unclear"] or plan["notes"] else 0
+
 
 def main() -> int:
     ap = argparse.ArgumentParser(
@@ -973,6 +1726,15 @@ def main() -> int:
     ap.add_argument("--no-resolver", action="store_true",
                     help="do not consult the resolver; every name that is not "
                          "already a dictionary entry stays local")
+    ap.add_argument("--migrate", action="store_true",
+                    help="the whole per-template operation, all or nothing: "
+                         "the three files, the .md regenerated from the new "
+                         ".md.j2, the AGENTS.md `## Templates` rows and the "
+                         "inline `## Template Contents` body")
+    ap.add_argument("--check", action="store_true",
+                    help="regenerate every form from an already-migrated "
+                         ".md.j2 and report anything on disk that differs; "
+                         "writes nothing")
     ap.add_argument("--write", action="store_true",
                     help="write the three files; without it nothing is touched")
     ap.add_argument("--json", action="store_true",
@@ -991,7 +1753,7 @@ def main() -> int:
         failures = self_test()
         for failure in failures:
             print(f"{NAME}: self-test: {failure}", file=sys.stderr)
-        print(f"{NAME}: self-test checks=41 failures={len(failures)}")
+        print(f"{NAME}: self-test checks=81 failures={len(failures)}")
         return 1 if failures else 0
 
     try:
@@ -1007,6 +1769,15 @@ def main() -> int:
     path = Path(args.template)
     out_dir = Path(args.out_dir) if args.out_dir else path.parent
     stem = path.name[:-3] if path.name.endswith(".md") else path.stem
+
+    if args.check:
+        return run_check(path)
+    if args.migrate and args.out_dir \
+            and out_dir.resolve() != path.parent.resolve():
+        print(f"{NAME}: --migrate rewrites the AGENTS.md rows, which name "
+              "`templates/<name>.md.j2` beside the template. An --out-dir "
+              "elsewhere would make those rows point at nothing", file=sys.stderr)
+        return 2
 
     dictionary_path = find_dictionary(args.dictionary, path)
     resolver_path = None if args.no_resolver \
@@ -1039,6 +1810,9 @@ def main() -> int:
         print(f"{NAME}: {path}: the generated templates did not verify; "
               "nothing written", file=sys.stderr)
         return 2
+
+    if args.migrate:
+        return run_migrate(plan, path, out_dir, args.write)
 
     written = write_plan(plan, out_dir, args.write)
     summary = (f"{NAME}: {path} variables={len(plan['declarations'])} "

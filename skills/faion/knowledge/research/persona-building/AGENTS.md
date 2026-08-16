@@ -68,7 +68,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/persona-lean.md` | Lean persona card (1-page) for ad/landing copy |
+| `templates/persona-lean.md.j2` | Lean persona card (1-page) for ad/landing copy |
+| `templates/persona-lean.md` | Lean persona card (1-page) for ad/landing copy Generated from `templates/persona-lean.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/persona-full.md` | Full persona doc with JTBD + pains + day-in-the-life + kill criteria |
 | `templates/persona-negative.md` | Negative persona template (who we do not serve) |
 | `templates/cluster-personas.py` | Cluster transcripts by JTBD tags; print top-K segments |

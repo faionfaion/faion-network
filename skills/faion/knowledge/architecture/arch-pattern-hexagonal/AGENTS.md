@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/hex-layout.md` | Hexagonal layout spec with driving + driven ports and adapters. |
+| `templates/hex-layout.md.j2` | Hexagonal layout spec with driving + driven ports and adapters. |
+| `templates/hex-layout.md` | Hexagonal layout spec with driving + driven ports and adapters. Generated from `templates/hex-layout.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

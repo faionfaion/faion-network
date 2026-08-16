@@ -192,6 +192,40 @@ materialises only each tool's script, its card and its nested helpers, so a data
 and never lands. A tool that needs the dictionary at runtime reads it from the corpus, or embeds it
 with a `--file` override — the standing rule in `skills/faion/tools/AGENTS.md`.
 
+### 2b. How §1a's four forms are actually written — `tpl-jinja --migrate`
+
+One invocation, **atomic per template**: the three Jinja files, the `.md` regenerated from the new
+`.md.j2`, the methodology's `## Templates` rows, and its inline `## Template Contents` body — or none
+of them. Partial application is the outcome that must be impossible, because a `.md.j2` written
+without its row makes `validate-methodology-templates.py` fail with *declared template missing*.
+`--check` re-derives every generated form and diffs it, the shape `init_project.py --check` already
+has. Four decisions fall out of §1a and are recorded here because the waves depend on them.
+
+**What the regenerated `.md` puts where a variable was: `<name>`.** The incumbent angle convention,
+because it is what §1a's instantiator substitutes and what its `--check` scans for. §1 of
+`template-builder.md` rejected `<Angle>` as the *builder's input*, where a hand-written `<one
+paragraph>` cannot be told apart from a variable; that argument does not reach an output generated
+from a declared schema, where every angle token is a schema property name in snake_case. The form is
+lossy in one direction — a placeholder inside a code span and a real variable become the same token
+— and it was equally lossy before the migration, so nothing is given up.
+
+**What the `## Templates` table names: two rows** — `templates/<name>.md.j2` (source) and
+`templates/<name>.md` (generated) — never the `.html.j2` or the schema.
+`validate-methodology-templates.py` header-checks whatever the table names, and the five-key header
+exists for a human opening the file: it rides through the conversion into the `.md.j2` and back out
+into the `.md`, while the `.html.j2` has no comment header at all and the schema would need a
+`__faion_header__` restating its own `title`. Delivery is unaffected either way — `packablePath`
+ships everything under a `templates/` segment — so the table is a reading guide, and the rule is
+*name what a human opens*.
+
+**A template no table row names is refused** (exit 5; 414 of the 2,919 are in that state). Adding a
+row is a documentation decision, and CR-010 is the shape of making one silently.
+
+**A methodology with no `## Template Contents` section keeps none.** The section exists for files the
+packer does not ship standalone, and both `.md` and `.md.j2` ship by path; creating 2,505 inlines
+would duplicate delivered bytes into the file every retrieval loads first. Where an inline already
+exists it is regenerated, as the `.md.j2` source verbatim, by the call that writes the `.md.j2`.
+
 ## 3. The variable dictionary — the point of the whole exercise
 
 ```
