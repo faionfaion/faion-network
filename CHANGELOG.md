@@ -4,6 +4,44 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Headings that differ only after a colon are different sections again.**
+  `clean_label` truncates at `:` — correct for a field label (`**Owner:**
+  <name>` → `Owner`), wrong for a heading, where the part after the colon is the
+  distinguishing information. So `## Feedback Response: Shipped`, `: Not
+  Planned` and `: More Info Needed` all cleaned to one string, three distinct
+  sections compared equal, and the multi-site carve-out let their shared
+  variable through.
+
+  `context_of` now keeps both forms: `heading` stays cleaned for the description
+  ("From section 'Feedback Response'" reads better), `heading_raw` is used for
+  identity. Assertion added and proven red-before-green against the real
+  specimen shape.
+
+- **Final corpus repair under both new rules — damage 72 → 31 templates.**
+  Same-line collapses **41 → 1** (62 of the 63 measured are gone), eaten
+  wikilinks **2 → 0**. 73 templates restored from their pre-migration source and
+  converted once; 45 changed on disk. Declarations 445 → 378 and required 432 →
+  368 over the touched set, which is §5 working rather than a regression.
+
+  **Three corrections to my figures, all found by the agent doing the work.**
+  My "311 union" reproduces but is not the repair set: it counts what a *fresh
+  conversion would refuse*, not what is damaged on disk — actual damage was 72,
+  and 10 damaged templates the finder never reports at all. One of my three
+  wikilink hits was a false positive: `- [{{ link_description }}]()` is an
+  ordinary Markdown link whose label is the variable, and my regex lacked
+  `(?!\()`. Real wikilink damage was 2.
+
+  **The remaining 31 cannot be reached by re-conversion, by construction.** 28
+  had a pre-migration source that was *already hand-written Jinja* with a
+  `variables:` block — an existing `{{name}}` never enters the candidate list,
+  so restoring and re-converting is a no-op. Fixing those means editing content,
+  not re-running a tool.
+
+  One process finding worth keeping: a header spliced back **unwrapped** (`purpose:`
+  instead of `<!-- purpose: -->`) passed every check — validator 5 matches the key
+  regardless of comment markers and `--check` stayed at 0 drift. The wrapper is
+  not validated anywhere.
+
 - **The same-line and wikilink rules reach the corpus: 45 templates re-converted,
   damage 72 → 31.** `e7a757c43` and `3163769d1` fixed the scanner; nothing had
   re-run it over the templates already migrated. Each of the 73 damaged

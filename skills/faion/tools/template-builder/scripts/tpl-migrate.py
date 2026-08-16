@@ -296,10 +296,18 @@ def context_of(text: str, start: int) -> dict:
     line_end = len(text) if line_end < 0 else line_end
     line = text[line_start:line_end]
     lineno = text.count("\n", 0, start) + 1
-    heading = None
+    heading = heading_raw = None
     for prev in reversed(text[:line_start].split("\n")):
         found = HEADING.match(prev)
         if found:
+            # Two forms on purpose. `heading` is cleaned for the DESCRIPTION,
+            # where "From section 'Feedback Response'" reads better than the
+            # full title. `heading_raw` is for IDENTITY, because clean_label
+            # truncates at a colon — so `## Feedback Response: Shipped`,
+            # `: Not Planned` and `: More Info Needed` all cleaned to one
+            # string, three distinct sections compared equal, and the
+            # multi-site carve-out let their shared variable through.
+            heading_raw = found.group(1).strip()
             heading = clean_label(found.group(1))
             break
     before = line[: start - line_start]
@@ -317,7 +325,7 @@ def context_of(text: str, start: int) -> dict:
     if label is None:
         label = clean_label(before)
     return {"line": lineno, "text": line.strip()[:200], "heading": heading,
-            "label": label}
+            "heading_raw": heading_raw, "label": label}
 
 
 def draft_description(name: str, ctx: dict) -> str | None:
@@ -511,7 +519,8 @@ def refuse_multi_site(items: list[dict]) -> list[str]:
         # across the migrated templates are distinct-value columns or list
         # items. The rule is as wide as the evidence and no wider.
         same_line = len({g.get("line") for g in group}) < len(group)
-        if not same_line and len({(g.get("heading") or "") for g in group}) < 2:
+        headings = {(g.get("heading_raw") or g.get("heading") or "") for g in group}
+        if not same_line and len(headings) < 2:
             continue  # every site under one heading, on its own line: one slot
         refused.append(name)
         for g in group:
@@ -804,6 +813,28 @@ token-budget-impact: low
 # The converse: one heading, so one slot repeated. Must still declare.
 # Two distinct values on one line, under a single heading — the carve-out below
 # must not reach this. Real specimen shape from product/roadmap-design.
+# Real specimen shape from pm/feedback-management: three sections whose titles
+# differ only after the colon. clean_label truncates there, so identity must not
+# use it.
+COLON_HEADING_FIXTURE = """<!--
+purpose: p
+consumes: c
+produces: markdown
+depends-on: d
+token-budget-impact: low
+-->
+# Responses
+
+## Feedback Response: Shipped
+- owner: <owner>
+
+## Feedback Response: Not Planned
+- owner: <owner>
+
+## Feedback Response: More Info Needed
+- owner: <owner>
+"""
+
 SAME_LINE_FIXTURE = """<!--
 purpose: p
 consumes: c
@@ -942,6 +973,11 @@ def self_test() -> list[str]:
         failures.append("multi-site: the repeat was not reported as unclear")
     if "{{name}}" in multi["text"]:
         failures.append("multi-site: a refused placeholder was substituted anyway")
+    # Headings that differ only after a colon are DIFFERENT sections.
+    colon = build_plan(COLON_HEADING_FIXTURE, "fixture")
+    if any(d["name"] == "owner" for d in colon["declarations"]):
+        failures.append("multi-site: three `Response: X` sections shared one "
+                        "variable because clean_label truncated at the colon")
     # Two sites on ONE line are distinct values even under one heading.
     online = build_plan(SAME_LINE_FIXTURE, "fixture")
     if any(d["name"] == "date" for d in online["declarations"]):
