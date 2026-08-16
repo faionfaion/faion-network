@@ -4,6 +4,38 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-013 filed: two placeholder classes the converter gets wrong, both silently.**
+  The migration exists to guarantee that a parameter is either declared or refused,
+  never silently passed through. Each of these breaks that guarantee differently,
+  and neither was found by the tool — both came out of verification.
+
+  **Invisible placeholders — 177 templates, 1,663 tokens.** The scanner recognises
+  `{BRACE}` only in ALL-CAPS, so a mixed-case `{owner}` is not flagged `unclear`,
+  it is not seen at all. **1,621 of the 1,663 sit in prose and tables**, only 35 in
+  fenced code — so the "ambiguous with f-strings and Go templates" reasoning that
+  justified the narrow rule holds inside code and nowhere else. The result is a
+  **false clean**: templates reporting `variables=0`, exit 0, drift-free and
+  validator-clean while carrying placeholders nobody can fill, which ship
+  `{Product}` literally to a paying user.
+
+  **Collapsed variables — 197 templates, 305 variables.** A placeholder repeated
+  with a different meaning each time becomes ONE variable bound to every site.
+  `evp-competitive-analysis.md` renders `## Competitor A: {{ name }}` /
+  `B: {{ name }}` / `C: {{ name }}` — fill it once and all three headings show the
+  same company. The existing collision guard cannot catch it: it fires on one name
+  proposed from *different* text, and here the text is identical. This is
+  `variable-dictionary-findings.md` §1 appearing as damage rather than as a
+  refusal.
+
+  Both decisions recorded in the CR, on the asymmetry the resolver already uses: a
+  false negative costs one line in a review queue a human is already reading; a
+  false positive ships a document with the wrong value in it and nothing downstream
+  can detect that.
+
+  The repair restores each template from its **pre-migration** source via
+  `git show` — not by re-running `--migrate`, which is not idempotent and rewrote
+  78 templates backwards earlier today.
+
 - **108 finished-but-undeclared `sdd`, `pm`, `product`, `ba`, `architecture` and
   `sdlc-ai` templates now carry a five-key header, a `## Templates` row and the
   Jinja forms.** Same CR-010 shape as the sibling entries in this section —
