@@ -4,6 +4,51 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **`vars-resolver.json`: the bridge from a raw proposed name to a dictionary
+  entry.** `tpl-jinja.py` drafts names from a placeholder's own text (`name` 500
+  occurrences, `slug` 282, `handle` 238) and the dictionary deliberately carries
+  disambiguated ones (`owner_handle`, `artefact_slug`), so the two lists barely
+  intersect by design. **30 rules** — a raw name plus a regex predicate over the
+  label, heading, line or placeholder text — close that gap: `$ref` coverage over
+  all 2,919 corpus templates goes **332 → 1,738 of ~7,400 proposed declarations
+  (4.5% → 23.1%)**, templates carrying at least one `$ref` **316 → 789**, and the
+  distinct dictionary entries the corpus actually reaches **27 → 44**. New
+  `--resolver {file}` and `--no-resolver` flags; every existing exit code means
+  what it did. The resolver is a **sibling** of the dictionary, not part of it:
+  the dictionary states meaning and stays stable plain draft-07, the resolver is
+  heuristic and will churn. Both ship — `packablePath` admits everything under a
+  `templates/` segment.
+
+  The correctness win is larger than the coverage number. `ba/interface-analysis`
+  and 54 siblings write `- engagement: <name>`, `- owner: <name>` and
+  `- reviewer: <name>` in one file: the converter declared **one** variable
+  `name` for all three, so the engagement, the owner and the reviewer rendered
+  the same value. They now resolve to three entries.
+
+  **The bar is 100% on the checked population**, because the two errors are not
+  symmetric: a false negative costs one line in a review queue a human is already
+  reading, while a false positive is silent — the store fills the `$ref` from
+  another artefact and the document ships with the wrong person's name in it.
+  73 resolutions were read in full context and every distinct source line the
+  rule set matches (79 of them) was read. Three candidates failed the bar and
+  were changed rather than shipped: `date` under a `Date:` label was dropped
+  whole (a session plan's Date is the session's, not the artefact's); `name`
+  under an owner label was tightened to owner-as-a-field-line after it resolved
+  the owner of a next action and of an open question; `<ISO date>` under
+  `Last reviewed` was tightened to the snake_case spelling after it resolved a
+  third party's DPA review date. A fourth, `source` → `evidence_source_ref`, was
+  written, measured at 12 and deleted: the no-enum-widening guard refuses it,
+  and the guard is right — `tpl-migrate` reads that slot's slash-separated list
+  of reference kinds as a closed enum while the entry is deliberately open.
+
+  Six guards are enforced by the tool rather than written per rule, each with a
+  named corpus specimen: target must exist in the dictionary, no enum widening,
+  no array/boolean retype, two rules disagreeing refuse, two slots on one line
+  taking one entry refuse (`**Last updated:** [Date] | **Next review:** [Date]`,
+  where the label parser hands both slots the same label), and a name the
+  template's own header already declares is never renamed. `tpl-jinja --self-test`
+  26 → **41 checks**, each new one verified red-before-green by mutation.
+
 - **`AGENTS.md` counts refreshed and one gotcha added.** Manifest 2,986 → **2,988**,
   tool packs **13 / 29 tools** (was 12/24), the new `skills/faion/templates/` row,
   and the rule that cost the most to learn: **a `.json` reaches a user's disk only

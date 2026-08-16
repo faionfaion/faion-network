@@ -10,7 +10,16 @@ Measurement behind the entry list: [`.aidocs/improvements/variable-dictionary-fi
 | File | What |
 |------|------|
 | `vars-dictionary.schema.json` | Draft-07, `$defs` map, **66 entries**. Every entry carries `type` + `title` + a `description` written as the question put to the author; 9 are `x-faion-sensitive` (each with `x-faion-placeholder`), 9 are `x-faion-compose`, 8 are enums |
+| `vars-resolver.json` | **30 rules**, the bridge from a raw proposed name plus a context predicate to one entry — `handle` under an owner label → `owner_handle`. Read by `tpl-jinja.py` (`--resolver` / `--no-resolver`); every rule carries its `why` and its measured occurrence count |
 | `meta.json` | Tier gate for this directory — `free`, and it has to be: a gated dictionary means a free-tier template cannot render at all. Same argument F031 made for the lexicon |
+
+## Why the resolver is a sibling and not part of the dictionary
+
+The converter proposes names drafted from a placeholder's own text — `name` 500 times, `slug` 282, `handle` 238. The dictionary deliberately carries disambiguated ones. **The two lists barely intersect by design**, which is why a `$ref` landed on only 332 of 7,399 proposed declarations (4.5%) before this file existed and on 1,738 (23.1%) after.
+
+The dictionary states meaning and must stay stable, plain draft-07 that any JSON Schema tool can read. The resolver is heuristic, it will churn, and putting a regex next to a definition would make every retune a change to the contract. Both ship: `packablePath` admits everything under a `templates/` path segment.
+
+**The bar is 100% on the checked population, and it is not negotiable.** A false negative costs one line in a review queue a human is already reading. A false positive is silent — the schema `$ref`s an entry, the store fills it from another artefact, the build succeeds, and the document ships with the wrong person's name in it. Three candidate rules failed the bar during authoring and were dropped or tightened rather than shipped with a caveat; the `precision_bar` block in the file names all three.
 
 ## The rule the whole file exists to enforce
 

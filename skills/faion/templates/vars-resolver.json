@@ -1,0 +1,402 @@
+{
+  "version": 1,
+  "title": "Raw-name + context to dictionary-entry resolver",
+  "description": "tpl-jinja proposes a name drafted from the placeholder's own text; the dictionary carries disambiguated names. The two lists barely intersect BY DESIGN — `name` is the corpus's worst variable precisely because it means 500 different things, and it must never be an entry. This file is the bridge: a raw name plus a context predicate, mapping to one dictionary entry. It is heuristic and it will churn, which is why it is a sibling of vars-dictionary.schema.json and not inside it — the dictionary states meaning and must stay stable, plain draft-07. Both ship: packablePath admits everything under a `templates/` path segment.",
+  "dictionary": "vars-dictionary.schema.json",
+  "designed_by": ".aidocs/conventions/template-jinja-migration.md §3",
+  "measured_against": "2,919 Markdown templates under skills/faion/knowledge/*/*/templates/",
+
+  "the_rule_every_entry_here_serves": "Two uses share a name only when a value carried from one artefact to the other is still correct. A wrong resolution does NOT produce a visible failure — it produces a correctly-built document with someone else's value silently inside it, because the project store carries values between artefacts. So: refuse rather than guess. A candidate that does not resolve falls through to a local declaration and lands in the review queue. That is the designed outcome, not a failure.",
+
+  "precision_bar": {
+    "bar": "100% correct on the checked population. A rule with even one wrong resolution in its sample is tightened until its whole checked population is clean, or dropped.",
+    "why_not_lower": "The two errors are not symmetric. A false negative costs one line in a review queue that a human is already reading — bounded, and already budgeted by §5 ('generated, then adjudicated'). A false positive is silent: the schema $refs an entry, the store fills it from another artefact, the build succeeds, and the document ships with the wrong person's name in it. Nothing downstream can detect that. An unbounded silent cost against a bounded visible one leaves no precision between 100% and refusal worth taking.",
+    "evidence_standard": "Every distinct source line a rule matches was read (79 distinct lines across the whole rule set), plus at least one full-context read — the placeholder with its surrounding lines — per rule. 73 full-context reads in total.",
+    "what_the_bar_actually_caught": "Three rules failed it and were changed rather than shipped with a caveat: `date` under a `Date:` label (a session plan's Date is the session's, not the artefact's) was dropped whole; `name` under an owner label resolved the owner of a NEXT ACTION and of an open question, and was tightened to owner-as-a-field-line; `<ISO date>` under a `Last reviewed` label resolved a third party's DPA review date, and was tightened to the snake_case field spelling."
+  },
+
+  "guards": {
+    "note": "These are enforced by tpl-jinja.py, not written per rule. A guard is a refusal the rule author cannot forget.",
+    "target_must_exist": "A rule whose `entry` is not in the dictionary resolves nothing.",
+    "no_enum_widening": "A local declaration carrying options ($enum) does not resolve to an entry whose enum does not cover them. Silently widening `go|hold|no-op` to any string turns a refusal into an acceptance.",
+    "no_type_change": "An entry typed array or boolean does not take a candidate the converter typed as anything else. `- approved: <yes / no>` is the specimen: the entry is boolean, Jinja renders a Python bool as `True`, and the artefact would ship `approved: True` where its own contract says `yes`.",
+    "ambiguous_refuses": "Two rules matching one candidate with two different entries resolve nothing.",
+    "same_line_duplicate_refuses": "Two candidates on ONE source line resolving to the SAME entry resolve nothing — they would render one value twice. Specimen: `**Last updated:** [Date] | **Next review:** [Date]`, where the label parser hands both slots the label `Last updated`.",
+    "declared_wins": "A candidate whose name the template's own header already declares is never renamed, and a rule never takes a name the header already uses. The author made that naming decision first."
+  },
+
+  "predicate_fields": {
+    "label": "regex, case-insensitive, over the row/bullet/field label beside the placeholder",
+    "heading": "regex over the nearest Markdown heading above it",
+    "line": "regex over the whole source line the placeholder sits on",
+    "raw": "regex over the placeholder's own text as written",
+    "not_line": "regex that must NOT match the source line",
+    "any_of_label_heading": "regex that must match the label OR the heading",
+    "combination": "every field present must match (AND). An absent field is not a constraint."
+  },
+
+  "rules": [
+    {
+      "id": "owner-handle-field",
+      "name": "handle",
+      "entry": "owner_handle",
+      "when": {
+        "any_of_label_heading": "^owner$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?(?:owner|role)`?\\**\\s*:"
+      },
+      "why": "`<@handle>` on an `owner:` field line is the corpus's single most common owner spelling — the dictionary's own $comment counts 189 templates. The `role:<handle>` shape resolves here too: `role:` is literal text the template prints, the variable is the handle, and the heading above it reads `# Owner`.",
+      "evidence": {"occurrences": 232, "distinct_lines": 4, "wrong": 0}
+    },
+    {
+      "id": "owner-full-name-from-full-name",
+      "name": "full_name",
+      "entry": "owner_full_name",
+      "when": {
+        "label": "^owner$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?owner`?\\**\\s*(?:\\([a-z]+\\))?\\s*\\**\\s*:"
+      },
+      "why": "`owner: <Full Name> <email>` is one line with two slots, and the dictionary split owner_full_name from owner_email for exactly this line. Restricted to the owner field line so the RACI-table `| [Full Name] | [Role] |` row and the testimonial `— [Full Name], [Title] at [Company]` do not come with it.",
+      "evidence": {"occurrences": 71, "distinct_lines": 2, "wrong": 0}
+    },
+    {
+      "id": "owner-email-field",
+      "name": "email",
+      "entry": "owner_email",
+      "when": {
+        "label": "^owner$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?owner`?\\**\\s*(?:\\([a-z]+\\))?\\s*\\**\\s*:"
+      },
+      "why": "The email half of the same `owner: <Full Name> <email>` line. Every other `<email>` in the corpus sits beside a different label — approver, contact, on-call lead — and gets nothing.",
+      "evidence": {"occurrences": 96, "distinct_lines": 4, "wrong": 0}
+    },
+    {
+      "id": "owner-full-name-from-name",
+      "name": "name",
+      "entry": "owner_full_name",
+      "when": {
+        "label": "^owner$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?owner`?\\**\\s*(?:\\([a-z]+\\))?\\s*\\**\\s*:"
+      },
+      "why": "`- owner: <name>` in a Context/Metadata block. The line anchor is load-bearing and was added after a hand-check: without it this rule also resolved `1. [Specific action] — Owner: [Name] — Trigger: …` and `- [ ] [Unresolved question 1] — Owner: [Name]`, which are the owner of a next action and the owner of an open question, not the owner of the artefact.",
+      "evidence": {"occurrences": 66, "distinct_lines": 6, "wrong": 0, "dropped_by_tightening": 6}
+    },
+    {
+      "id": "reviewer-name-field",
+      "name": "name",
+      "entry": "reviewer_name",
+      "when": {
+        "label": "^reviewer$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?reviewer`?\\**\\s*(?:\\([a-z]+\\))?\\s*\\**\\s*:"
+      },
+      "why": "The strongest form of the §3 test: 55 templates carry `- owner: <name>` and `- reviewer: <name>` IN THE SAME FILE, which is in-file proof that the two are different people and must be different entries.",
+      "evidence": {"occurrences": 77, "distinct_lines": 3, "wrong": 0}
+    },
+    {
+      "id": "engagement-name-field",
+      "name": "name",
+      "entry": "engagement_name",
+      "when": {
+        "label": "^engagement$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?engagement`?\\**\\s*(?:\\([a-z]+\\))?\\s*\\**\\s*:"
+      },
+      "why": "55 ba templates open with `- engagement: <name>` in the same Context block that carries owner and date. One client runs several engagements, so this is not client_name.",
+      "evidence": {"occurrences": 55, "distinct_lines": 1, "wrong": 0}
+    },
+    {
+      "id": "session-facilitator-field",
+      "name": "name",
+      "entry": "session_facilitator",
+      "when": {
+        "label": "^(facilitator|moderator)$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?(?:facilitator|moderator)`?\\**\\s*\\**\\s*:"
+      },
+      "why": "`Facilitator: [NAME]` and `**Moderator:** [Name]` on a session plan or a test script. `interviewer` is deliberately NOT in this alternation even though the entry's description names it: the three `**Interviewer:** [Name]` occurrences are hr hiring scorecards, where the entry — written for workshop and usability sessions — is a stretch a hand-check refused.",
+      "evidence": {"occurrences": 7, "distinct_lines": 4, "wrong": 0, "dropped_by_tightening": 3}
+    },
+    {
+      "id": "author-name-field",
+      "name": "name",
+      "entry": "author_name",
+      "when": {
+        "label": "^author$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?author`?\\**\\s*(?:\\([a-z]+\\))?\\s*\\**\\s*:"
+      },
+      "why": "`**Author:** [Name]` on a design doc or implementation plan whose owner line names someone else — the split the dictionary records. The `| Author | [name] |` table row is excluded by the field-line anchor.",
+      "evidence": {"occurrences": 3, "distinct_lines": 1, "wrong": 0}
+    },
+    {
+      "id": "owner-full-name-from-named-human",
+      "name": "named_human",
+      "entry": "owner_full_name",
+      "when": {
+        "label": "^owner( \\(string\\))?$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?owner`?\\**\\s*(?:\\([a-z]+\\))?\\s*\\**\\s*:"
+      },
+      "why": "`owner: <named-human>` is one of the ~30 owner spellings the dictionary's $comment enumerates. The placeholder text says outright that the value is a person.",
+      "evidence": {"occurrences": 22, "distinct_lines": 2, "wrong": 0}
+    },
+    {
+      "id": "owner-full-name-from-named-owner",
+      "name": "named_owner",
+      "entry": "owner_full_name",
+      "when": {
+        "label": "^owner( \\(string\\))?$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?owner`?\\**\\s*(?:\\([a-z]+\\))?\\s*\\**\\s*:"
+      },
+      "why": "`- **owner** (string): <named owner>` — the typed-frontmatter dialect of the same slot.",
+      "evidence": {"occurrences": 16, "distinct_lines": 1, "wrong": 0}
+    },
+    {
+      "id": "owner-handle-from-single-named-handle",
+      "name": "single_named_handle",
+      "entry": "owner_handle",
+      "when": {
+        "label": "^owner$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?owner`?\\**\\s*:"
+      },
+      "why": "`- owner: <single-named-handle>` — the placeholder text names both the type (handle) and the constraint (one human), and the dictionary's $comment lists this spelling.",
+      "evidence": {"occurrences": 15, "distinct_lines": 1, "wrong": 0}
+    },
+    {
+      "id": "owner-full-name-from-person",
+      "name": "person",
+      "entry": "owner_full_name",
+      "when": {
+        "label": "^owner$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?owner`?\\**\\s*:"
+      },
+      "why": "The person half of `owner: <role>:<person>` and `**Owner:** [role] / [person]`, both listed in the entry's $comment. Several carry the comment `# person, not team` on the same line.",
+      "evidence": {"occurrences": 34, "distinct_lines": 14, "wrong": 0}
+    },
+    {
+      "id": "owner-role-from-role",
+      "name": "role",
+      "entry": "owner_role",
+      "when": {
+        "label": "^owner$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?owner`?\\**\\s*:"
+      },
+      "why": "The role half of the same two lines. The dictionary is emphatic that this is NOT user_role — one names who maintains the document, the other names the actor in a user story.",
+      "evidence": {"occurrences": 18, "distinct_lines": 3, "wrong": 0}
+    },
+    {
+      "id": "owner-role-inline-after-date",
+      "name": "role",
+      "entry": "owner_role",
+      "when": {"line": "\\*\\*Owner:\\*\\*\\s*\\[role\\]"},
+      "why": "`**Date:** [ISO date] | **Owner:** [role]` — one line, two fields, and the label parser hands the second slot the label `Date`. The line predicate reaches what the label cannot. 17 pm templates, one line shape.",
+      "evidence": {"occurrences": 17, "distinct_lines": 1, "wrong": 0}
+    },
+    {
+      "id": "artefact-slug-from-slug",
+      "name": "slug",
+      "entry": "artefact_slug",
+      "when": {
+        "label": "^artefact.id$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?artefact_id`?\\**\\s*:"
+      },
+      "why": "The single largest win available. `<slug>` on an artefact_id line is the slug COMPONENT of the id — the dictionary keeps artefact_id and artefact_slug apart precisely because §2.3 has no expressions and nothing can derive one from the other, and its $comment names `<slug>` as this entry's corpus spelling. Both shapes resolve consistently: `- artefact_id: <slug>` where the slug is the whole id, and `- artefact_id: <slug>-<client>-<YYYY-MM-DD>` where it is one of three.",
+      "evidence": {"occurrences": 266, "distinct_lines": 6, "wrong": 0}
+    },
+    {
+      "id": "artefact-slug-from-kebab-case-slug",
+      "name": "kebab_case_slug",
+      "entry": "artefact_slug",
+      "when": {
+        "label": "^artefact.id$",
+        "line": "^\\s*(?:[-*+|]\\s*)?\\**\\s*`?artefact_id`?\\**\\s*[:|]"
+      },
+      "why": "`- **artefact_id**: hir-<kebab-case-slug>` and `| artefact_id | <kebab-case slug> |` — the same variable, spelled by a different generation of templates. The dictionary's $comment names all three spellings.",
+      "evidence": {"occurrences": 64, "distinct_lines": 5, "wrong": 0}
+    },
+    {
+      "id": "artefact-slug-under-artefact-id-heading",
+      "name": "kebab_case_slug",
+      "entry": "artefact_slug",
+      "when": {"heading": "^artefact.id$", "line": "^<kebab-case slug>$"},
+      "why": "The spec dialect: `## artefact_id` as a heading with the slot alone on the line beneath it. The heading anchor is load-bearing — the identical line under `## step_id` is a step's slug, not the artefact's, and a hand-check caught it.",
+      "evidence": {"occurrences": 12, "distinct_lines": 1, "wrong": 0, "dropped_by_tightening": 2}
+    },
+    {
+      "id": "client-slug-in-artefact-id",
+      "name": "client",
+      "entry": "client_slug",
+      "when": {
+        "label": "^artefact.id$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?artefact_id`?\\**\\s*:"
+      },
+      "why": "`<slug>-<client>-<YYYY-MM-DD>`: the client component of the composite id is filename-safe, which is client_slug and not client_name. The dictionary counts 64 templates using this slot. `<context>` in the same position is deliberately NOT resolved — see the refusals.",
+      "evidence": {"occurrences": 60, "distinct_lines": 2, "wrong": 0}
+    },
+    {
+      "id": "last-reviewed-date-field",
+      "name": "iso_date",
+      "entry": "last_reviewed_date",
+      "when": {
+        "label": "^last.reviewed",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?last_reviewed`?\\**\\s*(?:\\([a-z]+\\))?\\s*\\**\\s*:"
+      },
+      "why": "`- last_reviewed: <ISO-date>` and `- **last_reviewed** (date): <ISO date>` in document frontmatter. The snake_case anchor is load-bearing and was added after a hand-check: the prose spelling `- Last reviewed: <ISO date>` also occurs under `## DPA reference`, where it is the VENDOR's review date and carrying this document's review date into it would be wrong.",
+      "evidence": {"occurrences": 72, "distinct_lines": 2, "wrong": 0, "dropped_by_tightening": 1}
+    },
+    {
+      "id": "next-review-date-field",
+      "name": "iso_date",
+      "entry": "next_review_date",
+      "when": {
+        "label": "^next.review$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?next[ _]review`?\\**\\s*(?:\\([a-z]+\\))?\\s*\\**\\s*:"
+      },
+      "why": "`- Next review: <ISO date>`. Split from due_date in the dictionary: a review date is a maintenance obligation on the document, a due date is a delivery obligation on the work.",
+      "evidence": {"occurrences": 3, "distinct_lines": 1, "wrong": 0}
+    },
+    {
+      "id": "document-version-field",
+      "name": "semver",
+      "entry": "document_version",
+      "when": {
+        "label": "^version",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?version`?\\**\\s*(?:\\([a-z]+\\))?\\s*\\**\\s*:"
+      },
+      "why": "`<semver>` on a `version:` field line, in every case beside last_reviewed and owner in the same block — the DOCUMENT's version, which is what the entry asks for. A template needing the version of the software it describes declares a local variable, and the entry's $comment says so.",
+      "evidence": {"occurrences": 84, "distinct_lines": 3, "wrong": 0}
+    },
+    {
+      "id": "decision-statement-under-decision-heading",
+      "name": "single_declarative_sentence",
+      "entry": "decision_statement",
+      "when": {"heading": "^decision$"},
+      "why": "`<single declarative sentence>` alone under `# Decision` — the exact slot the entry's $comment names, and the placeholder text states the shape the description demands. The other `decision` spelling in the corpus, `<go|hold|no-op>`, is refused; see the refusals.",
+      "evidence": {"occurrences": 19, "distinct_lines": 1, "wrong": 0}
+    },
+    {
+      "id": "trigger-kind-field",
+      "name": "event_threshold_schedule",
+      "entry": "trigger_kind",
+      "when": {"label": "^kind$", "heading": "^trigger$"},
+      "why": "`- kind: <event | threshold | schedule>` under `# Trigger`. The entry's enum is verbatim these three values, so the no-enum-widening guard is satisfied rather than bypassed — the dictionary closed the vocabulary because the corpus closed it.",
+      "evidence": {"occurrences": 19, "distinct_lines": 1, "wrong": 0}
+    },
+    {
+      "id": "trigger-url-field",
+      "name": "url",
+      "entry": "trigger_url",
+      "when": {
+        "label": "^trigger.url$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?trigger_url`?\\**\\s*:"
+      },
+      "why": "`trigger_url: <URL>` in skeleton frontmatter — the URL that says why the document exists, split in the dictionary from the evidence URLs that say why its claims are true.",
+      "evidence": {"occurrences": 19, "distinct_lines": 1, "wrong": 0}
+    },
+    {
+      "id": "trigger-url-under-trigger-heading",
+      "name": "url",
+      "entry": "trigger_url",
+      "when": {
+        "label": "^url$",
+        "heading": "^trigger$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?url`?\\**\\s*:"
+      },
+      "why": "The same value written a second time in the same skeleton: `- url:  <URL>` under `# Trigger`, beside `- kind:`. Bare `url` anywhere else in the corpus resolves to nothing.",
+      "evidence": {"occurrences": 19, "distinct_lines": 1, "wrong": 0}
+    },
+    {
+      "id": "evidence-root-field",
+      "name": "link",
+      "entry": "evidence_root",
+      "when": {
+        "label": "^evidence.root$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?evidence_root`?\\**\\s*:"
+      },
+      "why": "`evidence_root: <link>` in frontmatter — the directory, split in the dictionary from the per-claim source_url leaves, because a value carried either way points a reader at the wrong level.",
+      "evidence": {"occurrences": 11, "distinct_lines": 1, "wrong": 0}
+    },
+    {
+      "id": "evidence-quote-citation-field",
+      "name": "verbatim_quote",
+      "entry": "evidence_quote",
+      "when": {
+        "label": "^citation$",
+        "heading": "^evidence$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?citation`?\\**\\s*:"
+      },
+      "why": "`citation: <verbatim quote>` indented under `- source:` inside `## Evidence`. The placeholder text is the entry's description in three words.",
+      "evidence": {"occurrences": 12, "distinct_lines": 1, "wrong": 0}
+    },
+    {
+      "id": "next-action-owner-in-action-line",
+      "name": "owner",
+      "entry": "next_action_owner",
+      "when": {"heading": "^(next action|actions)$"},
+      "why": "`- <YYYY-MM-DD> — <owner> — <next-action>` and `- [owner] — [imperative sentence] — [date]`, both quoted verbatim in the entry's $comment as the reason it was split from owner_full_name. The documents carrying these lines already name an owner in their header, which is the in-file proof that these are two people.",
+      "evidence": {"occurrences": 39, "distinct_lines": 3, "wrong": 0}
+    },
+    {
+      "id": "notes-optional-under-notes-heading",
+      "name": "optional",
+      "entry": "notes",
+      "when": {"heading": "^notes$"},
+      "why": "`<optional>` alone under `## Notes` — the slot the entry was written for, and the reason it carries a default of empty string.",
+      "evidence": {"occurrences": 20, "distinct_lines": 1, "wrong": 0}
+    },
+    {
+      "id": "last-updated-date-field",
+      "name": "date",
+      "entry": "last_reviewed_date",
+      "when": {
+        "label": "^last.updated$",
+        "line": "^\\s*(?:[-*+]\\s*)?\\**\\s*`?last[ _]updated`?\\**\\s*:"
+      },
+      "why": "`**Last Updated:** [Date]` as a document field. This is the ONLY sense of `date` that resolves; see the refusals for why the other four do not. The two occurrences on a `**Last updated:** [Date] | **Next review:** [Date]` line are caught by the same-line-duplicate guard, not by this predicate — the label parser gives both slots the label `Last updated`.",
+      "evidence": {"occurrences": 3, "distinct_lines": 1, "wrong": 0}
+    }
+  ],
+
+  "refusals": [
+    {
+      "name": "name",
+      "occurrences": 500,
+      "why": "Resolved only under an explicit owner / reviewer / engagement / author / facilitator field label. The other ~200 are competitor rows, component names, persona names, story-map cells and sign-off tables where the row is the subject. §3 says there must never be a `name` entry, and there is not: the rules above resolve five DIFFERENT entries from it."
+    },
+    {
+      "name": "date",
+      "occurrences": 212,
+      "why": "The rule that failed the bar. `**Date:** [Date]` at the head of a document looked like artefact_date at 71 occurrences, and a hand-check found `Date: [DATE]` on a brainstorm session plan, where the value is when the SESSION runs, not when the artefact was produced. The two dates differ by weeks and the store would carry the wrong one silently. Only the `Last updated:` sense resolves."
+    },
+    {
+      "name": "decision",
+      "occurrences": 193,
+      "why": "188 of these are `- decision: <go|hold|no-op>`, an enum. decision_statement is 'one declarative sentence naming the choice'; a sentence carried into that slot breaks the contract of every document whose validator reads `decision:` expecting one of three tokens. The no-enum-widening guard would refuse it even if a rule were written."
+    },
+    {
+      "name": "yes_no",
+      "occurrences": 73,
+      "why": "`- approved: <yes / no>` looks like the `approved` entry and the entry's own $comment invites it. Refused BY HAND, and worth stating precisely because no guard catches it: tpl-migrate types `<yes / no>` boolean, so the entry's type matches and the machinery would let it through. The reason is downstream — Jinja renders a Python bool as `True`, so the artefact would ship `approved: True` where its own contract says `yes`. The entry's $comment says 'the renderer decides how to spell it'; the renderer does not, yet. Until it does, this is a rule that must not exist."
+    },
+    {
+      "name": "exclusion",
+      "occurrences": 15,
+      "why": "`- [exclusion]` under `## Out of Scope` maps to out_of_scope, which is type array — one answer for the whole section, not one per bullet. $ref'ing it into a single-bullet slot renders a list where a phrase belongs. Refused by the no-type-change guard."
+    },
+    {
+      "name": "context",
+      "occurrences": 36,
+      "why": "15 sit in `<slug>-<context>-<YYYY-MM-DD>`, the same position as `<client>`. The dictionary's client_slug $comment refuses this explicitly: those converge 'only when the value really is the client', and where `<context>` means a workstream the template declares a local variable. A resolver cannot tell which from the line."
+    },
+    {
+      "name": "name_handle",
+      "occurrences": 15,
+      "why": "`<name @handle>` is one placeholder holding two variables — the composite-identifier class of findings §6. Resolving it to owner_full_name silently drops the handle from the rendered line."
+    },
+    {
+      "name": "source",
+      "occurrences": 111,
+      "why": "76 of them are the `[source]` column of the `| [input-1] | [format] | [source] |` row — a column, not a variable, and §2.3 has no loops. The other candidate, `- source: <URL / transcript_id / ticket / dashboard>` under `## Evidence`, is the exact slot evidence_source_ref was written for, and a rule for it WAS written, measured at 12 and then deleted: the no-enum-widening guard refuses it, because tpl-migrate reads that slash-separated list of reference KINDS as a closed enum of four values while the entry is deliberately an open string. The guard is right on its own terms and the rule was wrong to try. The fix is upstream — `alternatives()` should not read 'one of these kinds' as a vocabulary — and it is a tpl-migrate change, not a resolver exception."
+    },
+    {
+      "names": ["input_name", "input_1", "input_1_name", "input_2_name", "format", "fmt", "old_artefact_id", "value", "item", "id", "description", "title", "type", "x", "y", "list"],
+      "occurrences": 900,
+      "why": "Per-row and column-header names, findings §1 and §5. A dictionary entry cannot reach a repeating row at any precision, and these are the names the corpus writes AS columns. They stay in the review queue, which is where the change request about §2.3's ban on loops belongs."
+    }
+  ]
+}
