@@ -1,3 +1,9 @@
+<!-- purpose: Competitor EVP benchmarking worksheet across the five pillars -->
+<!-- consumes: Glassdoor/Levels.fyi reviews, competitor careers pages, LinkedIn JDs, Indeed reviews -->
+<!-- produces: filled EVP competitive-analysis markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~350 tokens filled -->
+
 # EVP Competitive Analysis
 
 ## Our Company
@@ -10,7 +16,7 @@
 | Work Environment | | | |
 | Culture / Purpose | | | |
 
-## Competitor A: [Name]
+## Competitor A: <name>
 
 | EVP Pillar | Strength (1-5) | Source | Notes |
 |------------|----------------|--------|-------|
@@ -20,11 +26,11 @@
 | Work Environment | | Indeed reviews | |
 | Culture / Purpose | | Company blog | |
 
-## Competitor B: [Name]
-[Same format]
+## Competitor B: <name>
+<same_format>
 
-## Competitor C: [Name]
-[Same format]
+## Competitor C: <name>
+<same_format>
 
 ## Positioning Summary
 
@@ -37,7 +43,7 @@
 ## Differentiation Strategy
 
 - Claim loudly in JDs and outreach: [leading pillars with proof]
-- Acknowledge honestly if asked: [table-stakes areas]
+- Acknowledge honestly if asked: <table_stakes_areas>
 - Do not compete on: [trailing areas — focus on what you can fix or neutralize]
 
 ---

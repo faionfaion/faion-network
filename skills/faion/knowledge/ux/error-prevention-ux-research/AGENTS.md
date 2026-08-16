@@ -67,6 +67,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/error-prevention.json` | JSON skeleton conforming to the output contract |
+| `templates/error-prevention-audit.md.j2` | Error prevention audit scoring constraints, confirmation quality and error points |
+| `templates/error-prevention-audit.md` | Error prevention audit scoring constraints, confirmation quality and error points Generated from `templates/error-prevention-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-error-prevention.py --self-test` |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

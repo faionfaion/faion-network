@@ -68,6 +68,8 @@
 |------|---------|
 | `templates/output-skeleton.md.j2` | Minimal skeleton conforming to the output contract |
 | `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract Generated from `templates/output-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/synthesis.md.j2` | Diary study synthesis report with themes, temporal patterns and recommendations |
+| `templates/synthesis.md` | Diary study synthesis report with themes, temporal patterns and recommendations Generated from `templates/synthesis.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

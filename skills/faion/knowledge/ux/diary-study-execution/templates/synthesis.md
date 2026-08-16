@@ -1,9 +1,15 @@
+<!-- purpose: Diary study synthesis report with themes, temporal patterns and recommendations -->
+<!-- consumes: collected diary entries, participation data, exit interview notes -->
+<!-- produces: diary study synthesis report (markdown) -->
+<!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
+<!-- token-budget-impact: ~450 tokens filled -->
+
 # Diary Study Synthesis
 
-**Study:** [Name]
-**Duration:** [X days/weeks]
-**Participants:** [N]
-**Total entries:** [N] ([N] usable after quality filtering)
+**Study:** <name>
+**Duration:** <x_days_weeks>
+**Participants:** <participants>
+**Total entries:** <total_entries> (<total_entries> usable after quality filtering)
 
 ---
 
@@ -11,21 +17,21 @@
 
 | Participant | Entries | Avg/Day | Completion | % Usable |
 |-------------|---------|---------|------------|----------|
-| P01 | [N] | [N] | [%] | [%] |
-| P02 | [N] | [N] | [%] | [%] |
+| P01 | <p01> | <p01> | [%] | [%] |
+| P02 | <p02> | <p02> | [%] | [%] |
 
 ---
 
 ## Themes
 
-### Theme 1: [Name]
+### Theme 1: <name>
 
 **Description:** [What this theme represents]
 **Frequency:** [N entries across N participants]
 
 **Evidence quotes (verbatim):**
-- "[Quote]" — P01, Day 3
-- "[Quote]" — P04, Day 7
+- "<quote>" — P01, Day 3
+- "<quote>" — P04, Day 7
 
 **Implication:** [Product or design action this theme suggests]
 
@@ -34,8 +40,8 @@
 ## Temporal Patterns
 
 - Early (Days 1-[X]): [What was happening — behaviors, attitudes]
-- Middle (Days [X]-[Y]): [Changes from early phase]
-- Late (Days [Y]-[Z]): [Habit formation, fatigue, or evolution]
+- Middle (Days [X]-<y>): [Changes from early phase]
+- Late (Days <y>-<z>): [Habit formation, fatigue, or evolution]
 
 ---
 
@@ -43,7 +49,7 @@
 
 | Context | Frequency | Experience Quality |
 |---------|-----------|-------------------|
-| [Situation/location/time] | [%] | [Positive / Negative / Mixed] |
+| <situation_location_time> | [%] | <positive_negative_mixed> |
 
 ---
 
@@ -53,14 +59,14 @@
 |--------|-------|
 | Average satisfaction (1-5) | [X] |
 | % entries with problems | [%] |
-| Top trigger for product use | [Trigger] |
-| Most common context | [Context] |
+| Top trigger for product use | <trigger> |
+| Most common context | <context> |
 
 ---
 
 ## Key Insights
 
-1. **[Insight]**
+1. **<insight>**
    - Evidence: [theme, quote with participant+day, temporal data]
    - Action: [specific product/design action]
 
@@ -69,11 +75,11 @@
 ## Recommendations (prioritized)
 
 1. [Recommendation — most impactful, with evidence link]
-2. [Recommendation]
+2. <recommendation>
 
 ---
 
 ## Selected Verbatim Quotes
 
-- "[Quote]" — P03, Day 5
-- "[Quote]" — P07, Day 11
+- "<quote>" — P03, Day 5
+- "<quote>" — P07, Day 11

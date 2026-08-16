@@ -67,6 +67,10 @@
 |------|---------|
 | `templates/validation-methods.json` | JSON skeleton conforming to the output contract |
 | `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-validation-methods.py --self-test` |
+| `templates/niche-scorecard.md.j2` | Weighted 5-criteria niche viability score with a GO/caution/pass decision |
+| `templates/niche-scorecard.md` | Weighted 5-criteria niche viability score with a GO/caution/pass decision Generated from `templates/niche-scorecard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/validation-report.md.j2` | Problem-validation evidence log and PROCEED/PIVOT/KILL decision (Problem Validation lens) |
+| `templates/validation-report.md` | Problem-validation evidence log and PROCEED/PIVOT/KILL decision (Problem Validation lens) Generated from `templates/validation-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

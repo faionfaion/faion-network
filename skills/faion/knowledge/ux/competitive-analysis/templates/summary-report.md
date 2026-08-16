@@ -1,9 +1,15 @@
+<!-- purpose: Stakeholder-facing synthesis of the competitive analysis — findings, comparison, recommendations -->
+<!-- consumes: comparison-matrix.md, per-competitor profiles -->
+<!-- produces: filled competitive-analysis summary-report markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~350 tokens filled -->
+
 # Competitive Analysis Summary
 
-**Date:** [Date]
-**Scope:** [What was analyzed]
-**Competitors:** [List]
-**Analyst:** [Name]
+**Date:** <date>
+**Scope:** <what_was_analyzed>
+**Competitors:** <list>
+**Analyst:** <name>
 
 ## Executive Summary
 
@@ -53,4 +59,4 @@
 
 - Competitor profiles (separate files per competitor)
 - Annotated screenshots (attached)
-- Next review date: [Date]
+- Next review date: <date>

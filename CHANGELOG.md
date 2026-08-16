@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **82 finished-but-undeclared `ux` and `hr` templates now carry a five-key
+  header, a `## Templates` row and the Jinja forms.** Distinct from the 78
+  below: those already had a complete header and lacked only the row; these
+  had **neither**, so nothing in the corpus pointed at them and search could
+  not reach them even though the documents themselves were complete (median
+  ~1.2 KB, full tables and sections). Reproduced the brief's count
+  independently on disk: **82**, over 43 methodology dirs (76 `ux`, 6 `hr`).
+  Every one of the 43 already had a `## Templates` section, so each row was an
+  append and no section was created. `consumes` / `produces` / `depends-on`
+  were written from each methodology's Prerequisites table and its
+  `content/02-output-contract.xml`, never guessed; where a template genuinely
+  rests on one file the field names that file alone rather than padding the
+  list.
+
+  `--migrate` ran **exactly once per template**: exit 0 on the templates whose
+  placeholders all resolved, exit 1 (the normal outcome — prose, per-row-table
+  repeats and `{X}` no-name spans correctly left for a human) on the rest.
+  **Zero refusals: no exit 2, 3, 4 or 5 anywhere in the 82.** Verified
+  afterwards: `--check` **drift=0 on all 82**, `validate-methodology-v2`
+  **43/43 pass, 0 failures**, `validate-tools` **0 findings**,
+  `validate-vars-dictionary` exit 0, and `check-validators.sh --check-fast`
+  reports **no new failures** against the baseline.
+
+  **Repeating the caveat the entry below records, because it bit again:**
+  `validate-methodology-templates.py --all` counts methodology **directories**,
+  not templates. It reads **2521 pass / 0 fail / 2521 total** both before and
+  after, and that total cannot move by declaring templates. The load-bearing
+  evidence here is drift=0 and a clean v2 — not the unchanged 2521.
+
 - **78 undeclared templates with a complete five-key header now have a
   `## Templates` row and are migrated to Jinja.** These were never a
   `--migrate` refusal (that needs a row to point at) — they were simply never

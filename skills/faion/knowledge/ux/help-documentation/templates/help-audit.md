@@ -1,12 +1,18 @@
-# Help Audit: [Product/Feature]
+<!-- purpose: Help-coverage audit worksheet scoring existing help content by feature -->
+<!-- consumes: support-ticket top-50, help content inventory (Prerequisites) -->
+<!-- produces: filled help-audit markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~250 tokens filled -->
 
-**Reviewer:** [Name]
+# Help Audit: <product_feature>
+
+**Reviewer:** <reviewer_name>
 
 ## Help Coverage by Feature
 
 | Feature | Help Available? | Type | Current? | Task-Focused? | Notes |
 |---------|-----------------|------|----------|---------------|-------|
-| [Feature] | Y/N | [Tooltip/FAQ/Article/Tour] | Y/N | Y/N | |
+| <feature> | Y/N | [Tooltip/FAQ/Article/Tour] | Y/N | Y/N | |
 
 ## Common User Questions (from support tickets or search logs)
 
@@ -18,17 +24,17 @@
 
 | Content | Accurate? | Steps Concrete? | Under 500 words? | Last Reviewed |
 |---------|-----------|-----------------|------------------|---------------|
-| [Article title] | Y/N | Y/N | Y/N | [Date / Unknown] |
+| <article_title> | Y/N | Y/N | Y/N | <date_unknown> |
 
 ## Gaps Identified
 
 | Gap | Impact | Recommendation |
 |-----|--------|----------------|
 | [Feature with no help] | H/M/L | [Type of help needed] |
-| [Outdated article] | H/M/L | [Update / Review] |
+| <outdated_article> | H/M/L | <update_review> |
 
 ## Priority Improvements
 
 1. [Top priority — highest impact gap]
-2. [Second priority]
-3. [Third priority]
+2. <second_priority>
+3. <third_priority>

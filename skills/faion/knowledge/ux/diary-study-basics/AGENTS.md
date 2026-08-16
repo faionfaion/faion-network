@@ -68,6 +68,12 @@
 |------|---------|
 | `templates/output-skeleton.md.j2` | Minimal skeleton conforming to the output contract |
 | `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract Generated from `templates/output-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/entry-daily.md.j2` | Daily interval-contingent diary entry form handed to a participant |
+| `templates/entry-daily.md` | Daily interval-contingent diary entry form handed to a participant Generated from `templates/entry-daily.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/entry-event.md.j2` | Event-contingent diary entry form completed when a trigger occurs |
+| `templates/entry-event.md` | Event-contingent diary entry form completed when a trigger occurs Generated from `templates/entry-event.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/study-plan.md.j2` | Diary study plan covering design, recruitment, timeline and quality measures |
+| `templates/study-plan.md` | Diary study plan covering design, recruitment, timeline and quality measures Generated from `templates/study-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

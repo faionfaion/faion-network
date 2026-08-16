@@ -61,6 +61,8 @@
 
 | File | Purpose |
 |------|---------|
+| `templates/flexibility-audit.md.j2` | Flexibility audit of shortcuts, customization and alternative paths with screen-reader checks |
+| `templates/flexibility-audit.md` | Flexibility audit of shortcuts, customization and alternative paths with screen-reader checks Generated from `templates/flexibility-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/flexibility-efficiency.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/flexibility-efficiency.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/flexibility-efficiency.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/flexibility-efficiency.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

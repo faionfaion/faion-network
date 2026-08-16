@@ -1,4 +1,10 @@
-# EVP Messaging Framework: [Company Name]
+<!-- purpose: Pillar-to-copy messaging framework worksheet for EVP external publication -->
+<!-- consumes: EVP competitive-analysis, EVP discovery-survey results, named proof points -->
+<!-- produces: filled EVP messaging-framework markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~365 tokens filled -->
+
+# EVP Messaging Framework: <company_name>
 
 ## Core EVP Statement
 [1-2 sentence master statement — filled from evp-statement.txt]
@@ -8,7 +14,7 @@
 **Pillar 1: [e.g., Growth]**
 - Key message: [main point in one sentence]
 - Proof points: [3 named programs, budgets, or data points]
-- Proof point sources: [internal doc / HRIS field / policy link]
+- Proof point sources: <proof_point_sources>
 - Target audience: [who cares most about this pillar]
 
 **Pillar 2: [e.g., Impact]**
@@ -47,4 +53,4 @@
 - [ ] All proof points verified from named source
 - [ ] Reviewed by 5-person employee panel
 - [ ] Legal review complete (no misleading claims)
-- [ ] External publication approved by [role]
+- [ ] External publication approved by <role>

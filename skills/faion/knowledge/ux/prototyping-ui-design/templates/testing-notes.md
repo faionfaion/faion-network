@@ -1,11 +1,17 @@
+<!-- purpose: Per-participant prototype testing notes and evidence capture -->
+<!-- consumes: prototype variant link, testing plan (participants/tasks/method) -->
+<!-- produces: filled testing-notes markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~200 tokens filled -->
+
 # Prototype Testing Notes
 
 **Participant:** [ID — never use real names]
-**Date:** [Date]
-**Facilitator:** [Name]
+**Date:** <date>
+**Facilitator:** <session_facilitator>
 **Prototype version:** [vX.X]
 
-## Task 1: [Task Description]
+## Task 1: <task_description>
 
 **Success:** Yes / No / Partial
 **Completion path:** [What the user actually did]
@@ -15,24 +21,24 @@
 - [Where they hesitated or backtracked]
 - [What they said aloud]
 
-**Quote:** "[Direct user quote]"
+**Quote:** "<direct_user_quote>"
 
 **Issues found:**
 | Issue | Severity (H/M/L) | Location |
 |-------|------------------|----------|
-| [Issue] | H/M/L | [Screen] |
+| <issue> | H/M/L | <screen> |
 
-## Task 2: [Task Description]
+## Task 2: <task_description>
 
 [Same structure as Task 1]
 
 ## Overall Feedback
 
-- Liked: [What worked well]
+- Liked: <what_worked_well>
 - Disliked: [What did not work]
-- Confused by: [What was unclear]
+- Confused by: <what_was_unclear>
 
 ## Post-Session Rating
 
-**Overall ease (1-5):** [Rating]
+**Overall ease (1-5):** <rating>
 **Key quote:** "[Most useful quote from the session]"

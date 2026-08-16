@@ -1,4 +1,10 @@
-## Segment: [Name]
+<!-- purpose: Single-segment profile card — needs, pains, messaging, reach and sizing -->
+<!-- consumes: audience-segmentation analysis (one identified segment) -->
+<!-- produces: filled segment-profile-card markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~220 tokens filled -->
+
+## Segment: <name>
 
 ### In One Sentence
 [Who they are and what they need]
@@ -6,26 +12,26 @@
 ### Profile
 - Role: [X]
 - Company: [Size, type]
-- Location: [Geography]
-- Budget: [Range]
+- Location: <geography>
+- Budget: <range>
 
 ### Behaviours
-- Tool usage: [Current stack]
-- Buying process: [How they decide]
-- Information sources: [Where they learn]
+- Tool usage: <current_stack>
+- Buying process: <how_they_decide>
+- Information sources: <where_they_learn>
 
 ### Needs
-1. [Primary need]
-2. [Secondary need]
-3. [Tertiary need]
+1. <primary_need>
+2. <secondary_need>
+3. <tertiary_need>
 
 ### Pain Points
-1. [Pain 1]
-2. [Pain 2]
+1. <pain_1>
+2. <pain_2>
 
 ### Messaging That Works
 - Hook: "[Attention grabber in their language]"
-- Promise: "[What we offer]"
+- Promise: "<what_we_offer>"
 - Proof: "[Evidence type they trust — reviews, case studies, trial, etc.]"
 
 ### How to Reach Them
@@ -34,8 +40,8 @@
 - Communities: [X]
 
 ### Segment Sizing
-- Total potential: [N] — Source: [X]
-- Addressable: [N]
+- Total potential: <total_potential> — Source: [X]
+- Addressable: <addressable>
 - Reachable with current budget: [N]
 
 ### Linked persona

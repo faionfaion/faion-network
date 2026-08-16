@@ -1,7 +1,13 @@
+<!-- purpose: Scoping plan for a competitive analysis engagement -->
+<!-- consumes: competitor candidate list, evaluation criteria -->
+<!-- produces: competitive analysis plan markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~350 tokens filled -->
+
 # Competitive Analysis Plan
 
 **Product/Feature:** [What we're analyzing]
-**Date:** [Date]
+**Date:** <date>
 **Analyst:** [Name]
 
 ## Objective
@@ -23,9 +29,9 @@ Maximum: 5 direct + 3 indirect + 2 aspirational = 8 total
 
 | Criterion | Why It Matters |
 |-----------|----------------|
-| [Criterion 1] | [Reason] |
-| [Criterion 2] | [Reason] |
-| [Criterion 3] | [Reason] |
+| <criterion_1> | [Reason] |
+| <criterion_2> | [Reason] |
+| <criterion_3> | [Reason] |
 
 ## User Flows to Analyze
 
@@ -50,6 +56,6 @@ Maximum: 5 direct + 3 indirect + 2 aspirational = 8 total
 
 ## Timeline
 
-- Research: [Date range]
-- Analysis and patterns: [Date]
-- Report: [Date]
+- Research: <date_range>
+- Analysis and patterns: <date>
+- Report: <date>

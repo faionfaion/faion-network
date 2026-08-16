@@ -1,4 +1,10 @@
-# Component: [Name]
+<!-- purpose: Per-component spec pinning variants, sizes, states and a11y rules -->
+<!-- consumes: design system reference, UI inventory -->
+<!-- produces: component spec markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~250 tokens filled -->
+
+# Component: <name>
 
 ## Purpose
 
@@ -17,9 +23,9 @@
 
 | Size | Padding | Font Size | Use Case |
 |------|---------|-----------|----------|
-| Small | [X]px [Y]px | [N]px | Dense UIs |
-| Medium | [X]px [Y]px | [N]px | Default |
-| Large | [X]px [Y]px | [N]px | Primary CTAs |
+| Small | [X]px [Y]px | <small>px | Dense UIs |
+| Medium | [X]px [Y]px | <medium>px | Default |
+| Large | [X]px [Y]px | <large>px | Primary CTAs |
 
 ## States
 
@@ -34,8 +40,8 @@
 ## Usage Rules
 
 - One primary variant per view
-- [Additional rule]
-- [Additional rule]
+- <additional_rule>
+- <additional_rule>
 
 ## Accessibility
 

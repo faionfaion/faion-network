@@ -69,6 +69,14 @@
 |------|---------|
 | `templates/competitive-analysis.json` | JSON skeleton conforming to the output contract |
 | `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-competitive-analysis.py --self-test` |
+| `templates/analysis-plan.md.j2` | Scoping plan for a competitive analysis engagement |
+| `templates/analysis-plan.md` | Scoping plan for a competitive analysis engagement Generated from `templates/analysis-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/competitor-profile.md.j2` | Per-competitor observation profile filled during a competitive analysis |
+| `templates/competitor-profile.md` | Per-competitor observation profile filled during a competitive analysis Generated from `templates/competitor-profile.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/feature-matrix.md.j2` | Feature-by-feature comparison matrix against direct competitors |
+| `templates/feature-matrix.md` | Feature-by-feature comparison matrix against direct competitors Generated from `templates/feature-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/summary-report.md.j2` | Synthesised findings and Must/Should/Could/Avoid recommendations |
+| `templates/summary-report.md` | Synthesised findings and Must/Should/Could/Avoid recommendations Generated from `templates/summary-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

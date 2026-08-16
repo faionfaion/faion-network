@@ -1,18 +1,24 @@
+<!-- purpose: Daily interval-contingent diary entry form handed to a participant -->
+<!-- consumes: study plan entry structure, participant onboarding brief -->
+<!-- produces: filled daily diary entry (markdown) -->
+<!-- depends-on: content/01-core-rules.xml, content/04-procedure.xml -->
+<!-- token-budget-impact: ~150 tokens filled -->
+
 # Daily Diary Entry
 
-**Date:** [Auto-filled]
-**Time:** [Auto-filled]
+**Date:** <auto_filled>
+**Time:** <auto_filled>
 
-## What happened today with [product/behavior]?
+## What happened today with <product_behavior>?
 
-[Open text field]
+<open_text_field>
 
 ## Where were you when using it?
 
 - [ ] Home
 - [ ] Work
 - [ ] Commuting
-- [ ] Other: [field]
+- [ ] Other: <field>
 
 ## How would you rate the experience?
 
@@ -22,16 +28,16 @@
 
 ## Any problems or frustrations?
 
-[Open text field]
+<open_text_field>
 
 ## Any pleasant surprises?
 
-[Open text field]
+<open_text_field>
 
 ## Photo (optional)
 
-[Upload field]
+<upload_field>
 
 ## Anything else you want to share?
 
-[Open text field]
+<open_text_field>

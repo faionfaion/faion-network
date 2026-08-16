@@ -65,6 +65,8 @@
 | `templates/voice-spec.json` | Skeleton voice-spec |
 | `templates/dialogue-template.md.j2` | Dialogue-authoring template |
 | `templates/dialogue-template.md` | Dialogue-authoring template Generated from `templates/dialogue-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/prompt-spec.md.j2` | Single voice prompt spec with reprompt variants and A/B copy |
+| `templates/prompt-spec.md` | Single voice prompt spec with reprompt variants and A/B copy Generated from `templates/prompt-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

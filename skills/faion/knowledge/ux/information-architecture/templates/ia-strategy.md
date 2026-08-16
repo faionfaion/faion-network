@@ -1,21 +1,27 @@
-# Information Architecture Strategy: [Product]
+<!-- purpose: IA strategy document — research summary, organization scheme, navigation, labeling, validation plan -->
+<!-- consumes: approved IA framework, content inventory (Prerequisites) -->
+<!-- produces: filled ia-strategy markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~400 tokens filled -->
 
-**Version:** [N]
-**Date:** [Date]
+# Information Architecture Strategy: <product>
+
+**Version:** <version>
+**Date:** <date>
 
 ## Research Summary
 
 ### User Insights
 
-- Primary user goal: [Goal]
-- Secondary goals: [Goals]
+- Primary user goal: <goal>
+- Secondary goals: <goals>
 - Common mental models: [How users think about this content domain]
 
 ### Content Insights
 
-- Total content items: [N]
-- Content types: [List]
-- Key relationships: [How content connects]
+- Total content items: <total_content_items>
+- Content types: <list>
+- Key relationships: <how_content_connects>
 
 ### Business Requirements
 
@@ -25,23 +31,23 @@
 
 ## Organization Approach
 
-**Primary scheme:** [Topic / Task / Audience / Chronological]
+**Primary scheme:** <primary_scheme>
 **Rationale:** [Why this scheme matches user mental models]
 
 ### Category Structure
 
 **L1 Categories (4-7 max):**
-1. [Category] — [one-sentence scope]
-   - [L2 subcategory]
-   - [L2 subcategory]
-2. [Category]
-   - [L2 subcategory]
+1. <category> — [one-sentence scope]
+   - <l2_subcategory>
+   - <l2_subcategory>
+2. <category>
+   - <l2_subcategory>
 
 ## Navigation Design
 
 - **Global navigation:** [Items visible on every page]
 - **Section navigation:** [How navigation works within L1 sections]
-- **Contextual links:** [Related content strategy]
+- **Contextual links:** <related_content_strategy>
 
 ## Labeling Guidelines
 
@@ -53,11 +59,11 @@
 
 ## Search Strategy
 
-- Primary search: [Full-text / filtered / faceted]
-- Filters: [Available filter dimensions]
+- Primary search: <primary_search>
+- Filters: <available_filter_dimensions>
 
 ## Validation Plan
 
-- [ ] Open card sort: [N] participants, [N] cards
+- [ ] Open card sort: <open_card_sort> participants, <open_card_sort> cards
 - [ ] Label validation: 5 users, test category label interpretation
 - [ ] Tree test (Treejack): [N] tasks, [N] participants

@@ -68,6 +68,10 @@
 |------|---------|
 | `templates/consistency-standards.json` | JSON skeleton conforming to the output contract |
 | `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-consistency-standards.py --self-test` |
+| `templates/button-component.md.j2` | Worked example of a fully-specified button component (variants, sizes, states, usage rules) |
+| `templates/button-component.md` | Worked example of a fully-specified button component (variants, sizes, states, usage rules) Generated from `templates/button-component.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/consistency-audit.md.j2` | Five-layer (internal/external/visual/functional/verbal) consistency audit worksheet |
+| `templates/consistency-audit.md` | Five-layer (internal/external/visual/functional/verbal) consistency audit worksheet Generated from `templates/consistency-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

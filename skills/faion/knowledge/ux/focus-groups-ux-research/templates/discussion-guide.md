@@ -1,11 +1,17 @@
+<!-- purpose: Moderator script and topic guide for running a focus-group session -->
+<!-- consumes: research topic, participant segment (Prerequisites: input brief) -->
+<!-- produces: filled discussion-guide markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~600 tokens filled -->
+
 # Focus Group Discussion Guide
 
-**Topic:** [Research topic]
-**Date:** [Date]
+**Topic:** <research_topic>
+**Date:** <date>
 **Duration:** 90 minutes
 **Moderator:** [Name]
 **Observer:** [Name — takes notes, does not participate]
-**Segment:** [Current users / Competitor users / Non-users]
+**Segment:** <segment>
 
 ## Pre-Session Checklist
 - [ ] Room setup or Zoom link confirmed
@@ -19,7 +25,7 @@
 ## Welcome and Ground Rules (5 min)
 
 **Script:**
-"Welcome everyone. I'm [name] and I'll be leading our discussion today about [topic].
+"Welcome everyone. I'm [name] and I'll be leading our discussion today about <topic>.
 There are no right or wrong answers — I want to hear all perspectives.
 Please speak one at a time so we can capture everything.
 Any questions before we start?"
@@ -39,7 +45,7 @@ Any questions before we start?"
 
 ## Topic 1: [Name] (20 min)
 
-**Written first (2 min):** "Before we discuss, write one word or phrase that comes to mind when you think about [topic area]."
+**Written first (2 min):** "Before we discuss, write one word or phrase that comes to mind when you think about <topic_area>."
 [Collect cards/screen submissions before anyone speaks]
 
 **Opening question:** "[Broad, open question — no right answer]"
@@ -62,7 +68,7 @@ Any questions before we start?"
 
 **Materials:** [What you are showing — screenshots, prototype, concept description]
 
-"I'm going to show you [concept]. Take two minutes to look at it quietly, then share your first reactions."
+"I'm going to show you <concept>. Take two minutes to look at it quietly, then share your first reactions."
 [Silent review before discussion]
 
 **Questions:**

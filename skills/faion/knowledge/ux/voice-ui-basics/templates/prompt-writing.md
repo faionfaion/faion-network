@@ -1,10 +1,16 @@
-# Prompt: [Prompt Name]
+<!-- purpose: Single voice prompt with a 3-level reprompt chain and anti-pattern checklist -->
+<!-- consumes: closed intent set, target platform word-length limit -->
+<!-- produces: filled prompt-writing markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~260 tokens filled -->
+
+# Prompt: <prompt_name>
 
 ## Context
 
 - Where in flow: [Position in dialogue — initial / slot-fill / confirmation / error]
 - User state: [What happened before this prompt]
-- Goal: [What information or action we need from user]
+- Goal: <goal>
 
 ## Primary Prompt
 
@@ -18,7 +24,7 @@
 ## Reprompts (3-level chain)
 
 **1st reprompt** (shorter, same intent):
-"[First reprompt]"
+"<first_reprompt>"
 
 **2nd reprompt** (with examples):
 "[Second reprompt — offer 2-3 examples of valid responses]"
@@ -29,7 +35,7 @@
 ## Design Rationale
 
 - [Why this wording was chosen over alternatives]
-- [Trade-offs considered]
+- <trade_offs_considered>
 
 ## Anti-patterns to Avoid
 

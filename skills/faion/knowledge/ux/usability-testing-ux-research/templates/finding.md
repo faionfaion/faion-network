@@ -1,4 +1,10 @@
-# Finding: [Title]
+<!-- purpose: Single usability finding with severity rating and recommended fix -->
+<!-- consumes: session observations and evidence from a usability test session -->
+<!-- produces: filled finding markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~250 tokens filled -->
+
+# Finding: <title>
 
 **Severity:** Critical / High / Medium / Low
 **Task:** [Which task this appeared in]

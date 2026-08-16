@@ -68,6 +68,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/feature-discovery.json` | JSON skeleton conforming to the output contract |
+| `templates/discovery-board.md.j2` | Per-period feature discovery board collecting candidates and Kano categorisation |
+| `templates/discovery-board.md` | Per-period feature discovery board collecting candidates and Kano categorisation Generated from `templates/discovery-board.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/feature-request-log.md.j2` | Single feature request record with impact assessment |
+| `templates/feature-request-log.md` | Single feature request record with impact assessment Generated from `templates/feature-request-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-feature-discovery.py --self-test` |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

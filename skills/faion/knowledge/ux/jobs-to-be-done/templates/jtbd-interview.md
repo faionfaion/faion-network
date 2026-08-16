@@ -1,3 +1,9 @@
+<!-- purpose: Switch-interview script and forces-of-progress (push/pull/habit/fear) capture sheet -->
+<!-- consumes: recruited switcher, timeline of their switch (Prerequisites: switch interviews) -->
+<!-- produces: filled jtbd-interview notes, feeds the switch-interview transcripts -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~250 tokens filled -->
+
 # JTBD Interview: {Person}
 
 ## Context
@@ -8,7 +14,7 @@
 ## Timeline Questions
 
 **First thought:**
-"Tell me about when you first started thinking about [category]."
+"Tell me about when you first started thinking about <category>."
 Notes: {X}
 
 **Situation:**

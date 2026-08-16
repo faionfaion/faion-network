@@ -1,6 +1,12 @@
-# Flexibility Audit: [Feature/Product]
+<!-- purpose: Flexibility audit of shortcuts, alternative paths and batch operations -->
+<!-- consumes: power-user interview notes, repetitive-task analytics, existing shortcut inventory -->
+<!-- produces: flexibility audit (markdown) -->
+<!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
+<!-- token-budget-impact: ~350 tokens filled -->
 
-**Reviewer:** [Name]
+# Flexibility Audit: <feature_product>
+
+**Reviewer:** <reviewer_name>
 
 ## Shortcuts
 
@@ -12,7 +18,7 @@
 
 | Task | Paths Available | Primary | Secondary (accelerator) |
 |------|-----------------|---------|------------------------|
-| [Task] | [Count] | [Guided click path] | [Shortcut / right-click / command palette] |
+| <task> | <count> | <guided_click_path> | [Shortcut / right-click / command palette] |
 
 ## Batch Operations
 
@@ -24,7 +30,7 @@
 
 | Element | Customizable? | Default Good for Novice? | Notes |
 |---------|---------------|--------------------------|-------|
-| [Element] | Y/N | Y/N | |
+| <element> | Y/N | Y/N | |
 
 ## Power User Features
 
@@ -38,4 +44,4 @@
 
 | Issue | User Type Affected | Recommendation |
 |-------|-------------------|----------------|
-| [Issue] | Novice / Expert / Both | [Fix] |
+| <issue> | Novice / Expert / Both | <fix> |

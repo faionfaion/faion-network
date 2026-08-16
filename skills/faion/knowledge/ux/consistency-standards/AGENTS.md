@@ -70,6 +70,10 @@
 | `templates/consistency-standards.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/consistency-standards.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/consistency-standards.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/consistency-standards.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/component-spec.md.j2` | Per-component spec pinning variants, sizes, states and a11y rules |
+| `templates/component-spec.md` | Per-component spec pinning variants, sizes, states and a11y rules Generated from `templates/component-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/consistency-audit.md.j2` | Cross-screen audit of visual, functional, terminology and platform consistency |
+| `templates/consistency-audit.md` | Cross-screen audit of visual, functional, terminology and platform consistency Generated from `templates/consistency-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

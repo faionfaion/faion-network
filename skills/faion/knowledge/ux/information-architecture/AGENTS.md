@@ -70,6 +70,12 @@
 | `templates/information-architecture.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/information-architecture.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/information-architecture.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/information-architecture.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/ia-strategy.md.j2` | IA strategy document — research summary, organization scheme, navigation, labeling, validation plan |
+| `templates/ia-strategy.md` | IA strategy document — research summary, organization scheme, navigation, labeling, validation plan Generated from `templates/ia-strategy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/sitemap.md.j2` | Sitemap document with tree structure and page inventory |
+| `templates/sitemap.md` | Sitemap document with tree structure and page inventory Generated from `templates/sitemap.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/taxonomy.md.j2` | Content taxonomy worksheet — content types, categories, tags, naming conventions |
+| `templates/taxonomy.md` | Content taxonomy worksheet — content types, categories, tags, naming conventions Generated from `templates/taxonomy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

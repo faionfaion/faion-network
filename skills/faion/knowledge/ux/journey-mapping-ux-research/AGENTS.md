@@ -70,6 +70,10 @@
 | `templates/journey-mapping.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/journey-mapping.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/journey-mapping.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/journey-mapping.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/journey-map.md.j2` | Cross-functional customer journey map — goals, actions, emotions, and pain points per stage |
+| `templates/journey-map.md` | Cross-functional customer journey map — goals, actions, emotions, and pain points per stage Generated from `templates/journey-map.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/stage-detail.md.j2` | Single-stage detail worksheet expanding one journey-map stage |
+| `templates/stage-detail.md` | Single-stage detail worksheet expanding one journey-map stage Generated from `templates/stage-detail.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

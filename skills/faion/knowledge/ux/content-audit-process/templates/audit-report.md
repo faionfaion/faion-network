@@ -1,12 +1,18 @@
+<!-- purpose: Summary report of the six-step content audit — inventory, quality, performance, action plan -->
+<!-- consumes: crawl access, analytics data, SEO data -->
+<!-- produces: content audit report markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~450 tokens filled -->
+
 # Content Audit Report
 
-**Date:** [Date]
-**Scope:** [What was audited]
-**Auditor:** [Name]
+**Date:** <date>
+**Scope:** <what_was_audited>
+**Auditor:** <name>
 
 ## Executive Summary
 
-**Total content pieces:** [Number]
+**Total content pieces:** <number>
 **Date range:** [Oldest to newest]
 **Key finding:** [Most important insight in one sentence]
 
@@ -15,9 +21,9 @@
 ### By Type
 | Type | Count | % of Total |
 |------|-------|------------|
-| [Type 1] | | |
-| [Type 2] | | |
-| **Total** | **[N]** | **100%** |
+| <type_1> | | |
+| <type_2> | | |
+| **Total** | **<total>** | **100%** |
 
 ### By Age
 | Age | Count | % of Total |
@@ -48,10 +54,10 @@
 | **Overall** | |
 
 ### Problem Areas
-1. [Area]: [Issue]
+1. <area>: <issue>
 
 ### Strengths
-1. [Strength]
+1. <strength>
 
 ## Performance Insights
 

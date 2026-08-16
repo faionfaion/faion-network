@@ -74,6 +74,8 @@
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 | `templates/card-sort-plan.md.j2` | Card sort study plan — method, participants, card set, analysis thresholds |
 | `templates/card-sort-plan.md` | Card sort study plan — method, participants, card set, analysis thresholds Generated from `templates/card-sort-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/results-report.md.j2` | Card-sort results report — clusters, borderline items, outliers, proposed IA |
+| `templates/results-report.md` | Card-sort results report — clusters, borderline items, outliers, proposed IA Generated from `templates/results-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

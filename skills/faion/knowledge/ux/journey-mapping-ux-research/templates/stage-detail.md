@@ -1,7 +1,13 @@
-# Stage Detail: [Stage Name]
+<!-- purpose: Single-stage detail worksheet expanding one journey-map stage -->
+<!-- consumes: parent journey map, persona document (Prerequisites) -->
+<!-- produces: filled stage-detail markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~200 tokens filled -->
 
-**Journey:** [Parent journey name]
-**Persona:** [Persona]
+# Stage Detail: <stage_name>
+
+**Journey:** <parent_journey_name>
+**Persona:** <persona>
 
 ## User Goal
 
@@ -9,14 +15,14 @@
 
 ## Actions
 
-- [Action 1]
-- [Action 2]
-- [Action 3]
+- <action_1>
+- <action_2>
+- <action_3>
 
 ## Touchpoints
 
-- [Channel/location 1]
-- [Channel/location 2]
+- <channel_location_1>
+- <channel_location_2>
 
 ## User Thoughts (verbatim or paraphrased from research)
 
@@ -32,12 +38,12 @@
 ## Pain Points
 
 - [Pain point 1 — friction, confusion, or failure]
-- [Pain point 2]
+- <pain_point_2>
 
 ## Opportunities
 
-- [Concrete improvement idea]
-- [Second improvement]
+- <concrete_improvement_idea>
+- <second_improvement>
 
 ## Metrics
 

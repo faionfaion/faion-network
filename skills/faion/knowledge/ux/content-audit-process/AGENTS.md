@@ -69,6 +69,10 @@
 |------|---------|
 | `templates/content-audit-process.json` | JSON skeleton conforming to the output contract |
 | `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-content-audit-process.py --self-test` |
+| `templates/audit-report.md.j2` | Summary report of the six-step content audit — inventory, quality, performance, action plan |
+| `templates/audit-report.md` | Summary report of the six-step content audit — inventory, quality, performance, action plan Generated from `templates/audit-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/audit-spreadsheet.md.j2` | Column schema for the content audit inventory spreadsheet |
+| `templates/audit-spreadsheet.md` | Column schema for the content audit inventory spreadsheet Generated from `templates/audit-spreadsheet.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

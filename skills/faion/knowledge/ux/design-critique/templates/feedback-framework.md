@@ -1,3 +1,9 @@
+<!-- purpose: Reference framework and worked example for writing goal-anchored critique feedback -->
+<!-- consumes: none -->
+<!-- produces: feedback framework reference markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~350 tokens filled -->
+
 # Feedback Framework: Observation → Principle → Impact → Suggestion
 
 Use this structure for every piece of critique feedback. All four elements are required except Suggestion (optional).
@@ -5,9 +11,9 @@ Use this structure for every piece of critique feedback. All four elements are r
 ## Structure
 
 **Observation:** I notice that [specific, describable element or behavior]
-**Principle/Goal:** Our goal is [stated design goal] / Research shows [principle]
-**Impact:** This might [positive or negative consequence] because [mechanism]
-**Suggestion (optional):** What if we [specific alternative]?
+**Principle/Goal:** Our goal is <stated_design_goal> / Research shows <principle>
+**Impact:** This might <impact> because <mechanism>
+**Suggestion (optional):** What if we <specific_alternative>?
 
 ---
 

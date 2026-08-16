@@ -1,13 +1,19 @@
-# Card Sort Plan: [Project]
+<!-- purpose: Card-sort study plan — method, participants, card set, analysis thresholds, timeline -->
+<!-- consumes: content inventory (30-60 items), target user definition, recruiter capacity -->
+<!-- produces: filled card-sort study-plan markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~260 tokens filled -->
 
-**Date:** [Date]
-**Researcher:** [Name]
+# Card Sort Plan: <project>
+
+**Date:** <date>
+**Researcher:** <name>
 
 ## Objectives
 
 What questions will this sort answer?
-1. [Question 1]
-2. [Question 2]
+1. <question_1>
+2. <question_2>
 
 ## Method
 
@@ -19,9 +25,9 @@ What questions will this sort answer?
 ## Participants
 
 - **Number:** [X] — open sort needs 15-20; closed needs 30+
-- **Profile:** [Target user description]
+- **Profile:** <target_user_description>
 - **Segments:** [Any distinct groups to recruit separately]
-- **Recruitment:** [How recruited]
+- **Recruitment:** <how_recruited>
 
 ## Cards
 
@@ -31,13 +37,13 @@ What questions will this sort answer?
 | 2 | [Label] | |
 | ... | | |
 
-Total: [N] cards (must be 30-60)
+Total: <total> cards (must be 30-60)
 
 ## Categories (Closed Sort Only)
 
-- [Category 1]
-- [Category 2]
-- [Category 3]
+- <category_1>
+- <category_2>
+- <category_3>
 - Doesn't Fit (always include)
 
 ## Analysis Plan
@@ -47,7 +53,7 @@ Total: [N] cards (must be 30-60)
 
 ## Timeline
 
-- Prep and card validation: [Date]
-- Sessions: [Date range]
-- Analysis: [Date]
-- Report: [Date]
+- Prep and card validation: <date>
+- Sessions: <date_range>
+- Analysis: <date>
+- Report: <date>

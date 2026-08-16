@@ -69,6 +69,12 @@
 | `templates/output-skeleton.md.j2` | Minimal skeleton conforming to the output contract |
 | `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract Generated from `templates/output-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
+| `templates/walkthrough-plan.md.j2` | Session plan capturing the four prerequisites a cognitive walkthrough needs before it can run |
+| `templates/walkthrough-plan.md` | Session plan capturing the four prerequisites a cognitive walkthrough needs before it can run Generated from `templates/walkthrough-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/evaluation-form.md.j2` | Per-step, per-evaluator Q1-Q4 cognitive-walkthrough evaluation form |
+| `templates/evaluation-form.md` | Per-step, per-evaluator Q1-Q4 cognitive-walkthrough evaluation form Generated from `templates/evaluation-form.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/cw-findings.md.j2` | Synthesis findings report — per-step issues tagged to Q1-Q4, prioritised actions |
+| `templates/cw-findings.md` | Synthesis findings report — per-step issues tagged to Q1-Q4, prioritised actions Generated from `templates/cw-findings.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -1,7 +1,13 @@
-# Consistency Audit: [Product]
+<!-- purpose: Cross-screen audit of visual, functional, terminology and platform consistency -->
+<!-- consumes: design system reference, glossary of approved terms, UI inventory, platform style guide links -->
+<!-- produces: consistency audit markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~350 tokens filled -->
 
-**Date:** [Date]
-**Reviewer:** [Name]
+# Consistency Audit: <product>
+
+**Date:** <date>
+**Reviewer:** <reviewer_name>
 **Scope:** [Which screens/features reviewed]
 
 ## Visual Consistency
@@ -18,13 +24,13 @@
 
 | Action | Consistent? | Where Different | Recommended Standard |
 |--------|-------------|-----------------|----------------------|
-| [Action] | Y/N | [Screens where different] | [Standard behavior] |
+| <action> | Y/N | <screens_where_different> | <standard_behavior> |
 
 ## Terminology Consistency
 
 | Concept | Terms Found | Canonical Term | Pages to Update |
 |---------|-------------|----------------|-----------------|
-| [Concept] | [Term1, Term2, Term3] | [Chosen canonical] | [List pages] |
+| <concept> | [Term1, Term2, Term3] | <chosen_canonical> | [List pages] |
 
 ## Platform Convention Compliance
 
@@ -36,7 +42,7 @@
 
 ## Summary
 
-- Total inconsistencies found: [N]
+- Total inconsistencies found: <total_inconsistencies_found>
 - Critical (breaks platform conventions): [N]
 - High (internal functional inconsistency): [N]
 - Medium (visual variation): [N]

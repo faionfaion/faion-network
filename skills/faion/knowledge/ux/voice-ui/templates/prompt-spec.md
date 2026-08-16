@@ -1,4 +1,10 @@
-# Prompt Spec: [Prompt Name]
+<!-- purpose: Single voice prompt spec with reprompt variants and A/B copy -->
+<!-- consumes: dialogue-first sample conversations, intent/slot definitions -->
+<!-- produces: filled prompt spec markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~150 tokens filled -->
+
+# Prompt Spec: <prompt_name>
 
 ## Context
 
@@ -19,9 +25,9 @@
 ## A/B Test Variants
 
 - A: "[Version A]"
-- B: "[Version B]"
+- B: "<version_b>"
 
 ## Design Rationale
 
 - [Why this wording]
-- [Trade-offs considered]
+- <trade_offs_considered>

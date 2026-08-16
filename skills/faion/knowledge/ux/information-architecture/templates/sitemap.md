@@ -1,7 +1,13 @@
-# Sitemap: [Site Name]
+<!-- purpose: Sitemap document with tree structure and page inventory -->
+<!-- consumes: approved IA framework, content inventory (Prerequisites) -->
+<!-- produces: filled sitemap markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~150 tokens filled -->
 
-**Version:** [N]
-**Date:** [Date]
+# Sitemap: <site_name>
+
+**Version:** <version>
+**Date:** <date>
 
 ## Legend
 
@@ -33,4 +39,4 @@ Home (*)
 | Page | Path | Priority | Template | Owner |
 |------|------|----------|----------|-------|
 | Home | / | High | Homepage | [Team] |
-| [Page] | /[path] | High/Med/Low | [Template] | [Team] |
+| <page> | /<path> | High/Med/Low | <template> | [Team] |

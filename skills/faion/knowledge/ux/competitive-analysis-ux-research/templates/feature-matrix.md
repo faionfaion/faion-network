@@ -1,17 +1,23 @@
+<!-- purpose: Feature-by-feature comparison matrix against direct competitors -->
+<!-- consumes: competitor candidate list, evaluation criteria -->
+<!-- produces: feature comparison matrix markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~250 tokens filled -->
+
 # Feature Comparison Matrix
 
-**Date:** [Date]
-**Scope:** [Product area analyzed]
+**Date:** <date>
+**Scope:** <product_area_analyzed>
 
-| Feature | Our Product | [Competitor A] | [Competitor B] | [Competitor C] |
+| Feature | Our Product | [Competitor A] | <competitor_b> | <competitor_c> |
 |---------|-------------|----------------|----------------|----------------|
 | **Core Features** |
-| [Feature 1] | Yes | Yes | No | Yes |
-| [Feature 2] | No | Yes | Yes | Partial |
-| [Feature 3] | Yes | No | Yes | Yes |
+| <feature_1> | Yes | Yes | No | Yes |
+| <feature_2> | No | Yes | Yes | Partial |
+| <feature_3> | Yes | No | Yes | Yes |
 | **User Experience** |
-| [UX dimension 1] | Fair | Excellent | Poor | Good |
-| [UX dimension 2] | Good | Good | Fair | Excellent |
+| <ux_dimension_1> | Fair | Excellent | Poor | Good |
+| <ux_dimension_2> | Good | Good | Fair | Excellent |
 | **Technical** |
 | Mobile app | Yes | Yes | No | Yes |
 | Accessibility level | AA | A | None | AAA |
@@ -24,8 +30,8 @@ For UX dimensions: Excellent / Good / Fair / Poor
 
 ## Gaps (we lack, competitors have)
 
-- [Feature]: [X of Y competitors offer this — table stakes?]
+- <feature>: [X of Y competitors offer this — table stakes?]
 
 ## Opportunities (nobody does well)
 
-- [UX dimension]: [All competitors rated Fair or Poor — differentiation opportunity]
+- <ux_dimension>: [All competitors rated Fair or Poor — differentiation opportunity]

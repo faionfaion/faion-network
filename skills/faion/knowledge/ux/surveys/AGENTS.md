@@ -64,6 +64,8 @@
 |------|---------|
 | `templates/survey-config.json` | Skeleton survey-config artefact |
 | `templates/item-bank.csv` | Reusable item bank with neutral wording |
+| `templates/survey-plan.md.j2` | Sampling, channel and analysis plan for one survey fielding |
+| `templates/survey-plan.md` | Sampling, channel and analysis plan for one survey fielding Generated from `templates/survey-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

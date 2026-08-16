@@ -1,7 +1,13 @@
-# Card Sort Results: [Project]
+<!-- purpose: Card-sort results report — agreement matrix, placement results, label and IA recommendations -->
+<!-- consumes: card-sort session data (similarity matrix, closed-sort placement counts) -->
+<!-- produces: filled card-sort results-report markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~360 tokens filled -->
 
-**Date:** [Date]
-**Participants:** [N]
+# Card Sort Results: <project>
+
+**Date:** <date>
+**Participants:** <participants>
 **Type:** Open / Closed
 
 ## Summary
@@ -12,29 +18,29 @@
 
 | Category Name | Frequency (N participants) | Cards Consistently Included |
 |---------------|----------------------------|----------------------------|
-| [Name] | [X of Y] | [Cards] |
+| <name> | [X of Y] | <cards> |
 
 ## Agreement Matrix Highlights
 
 Items grouped together >70% of the time (definite):
-- [Card A] + [Card B]: [X]%
+- [Card A] + <card_b>: [X]%
 
 Items 40-70% (ambiguous, investigate):
-- [Card C] + [Card D]: [X]%
+- <card_c> + <card_d>: [X]%
 
 Items <40% (keep separate):
-- [Card E]: no clear home
+- <card_e>: no clear home
 
 ## Placement Results (Closed Sort)
 
 | Card | Category 1 | Category 2 | Category 3 | Doesn't Fit |
 |------|------------|------------|------------|-------------|
-| [Card] | [X%] | [Y%] | [Z%] | [W%] |
+| <card> | <x> | <y> | <z> | <w> |
 
 ## Key Insights
 
 ### Strong Agreements (clear mental model)
-- [Finding]
+- <finding>
 
 ### Disagreements (ambiguous placement)
 - [Finding — needs tree testing to resolve]
@@ -50,10 +56,10 @@ Items <40% (keep separate):
 
 | Current Label | User-Generated Label | Frequency |
 |---------------|----------------------|-----------|
-| [Internal term] | [User term] | [X of Y used this] |
+| <internal_term> | <user_term> | [X of Y used this] |
 
 ## Next Steps
 
 - [ ] Tree test the proposed structure to validate findability
 - [ ] Investigate ambiguous cards with qualitative follow-up
-- [ ] [Other action]
+- [ ] <other_action>

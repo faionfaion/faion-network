@@ -68,6 +68,10 @@
 |------|---------|
 | `templates/pain-point-research.json` | JSON skeleton conforming to the output contract |
 | `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-pain-point-research.py --self-test` |
+| `templates/pain-log.md.j2` | Ranked pain log scored via the Pain Intensity Matrix with root-cause via 5 Whys |
+| `templates/pain-log.md` | Ranked pain log scored via the Pain Intensity Matrix with root-cause via 5 Whys Generated from `templates/pain-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/reddit-mining.md.j2` | Reddit-specific pain-point mining worksheet, one of the four required source tiers |
+| `templates/reddit-mining.md` | Reddit-specific pain-point mining worksheet, one of the four required source tiers Generated from `templates/reddit-mining.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

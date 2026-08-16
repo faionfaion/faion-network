@@ -1,7 +1,13 @@
+<!-- purpose: Scoping plan for a competitive-UX analysis — competitors, criteria, flows, schedule -->
+<!-- consumes: competitor short-list, weighted rubric criteria -->
+<!-- produces: filled competitive-analysis plan markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~350 tokens filled -->
+
 # Competitive Analysis Plan
 
 **Product / Feature:** [What we're analyzing]
-**Date:** [Date]
+**Date:** <date>
 **Analyst:** [Name]
 
 ## Objective
@@ -21,8 +27,8 @@
 | Criterion | Why it matters for our decision |
 |-----------|--------------------------------|
 | [Onboarding steps to core task] | [We want to reduce time to value] |
-| [Error handling quality] | [High support ticket volume on our errors] |
-| [Mobile experience] | [60% of our traffic is mobile] |
+| <error_handling_quality> | [High support ticket volume on our errors] |
+| <mobile_experience> | [60% of our traffic is mobile] |
 
 ## User Flows to Analyze
 
@@ -39,7 +45,7 @@
 
 ## Schedule
 
-- Research (using products): [Date range]
-- Documentation and synthesis: [Date]
-- Report shared with team: [Date]
-- Quarterly review scheduled: [Date]
+- Research (using products): <date_range>
+- Documentation and synthesis: <date>
+- Report shared with team: <date>
+- Quarterly review scheduled: <date>

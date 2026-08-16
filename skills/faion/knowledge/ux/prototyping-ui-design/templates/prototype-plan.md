@@ -1,15 +1,21 @@
-# Prototype Plan: [Feature/Product]
+<!-- purpose: Scope-and-fidelity plan for one prototype iteration -->
+<!-- consumes: falsifiable hypothesis, prototyping tool URL, time-box (1-3hr) -->
+<!-- produces: filled prototype plan markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~270 tokens filled -->
+
+# Prototype Plan: <feature_product>
 
 **Version:** [X.X]
-**Date:** [Date]
-**Designer:** [Name]
+**Date:** <date>
+**Designer:** <name>
 
 ## Objectives
 
 What specific questions will this prototype answer? (1-3 maximum)
 
 1. [Question 1 — testable with this prototype]
-2. [Question 2]
+2. <question_2>
 
 ## Fidelity
 
@@ -20,8 +26,8 @@ What specific questions will this prototype answer? (1-3 maximum)
 
 ### Included
 
-- [Screen/Flow 1]
-- [Key interaction]
+- <screen_flow_1>
+- <key_interaction>
 
 ### NOT Included (document explicitly)
 
@@ -30,17 +36,17 @@ What specific questions will this prototype answer? (1-3 maximum)
 
 ## User Flows to Prototype
 
-### Flow 1: [Name]
+### Flow 1: <name>
 
-1. [Start screen]
-2. [Action]
-3. [Result screen]
+1. <start_screen>
+2. <action>
+3. <result_screen>
 
 ## Interactive Elements
 
 | Element | Interaction | Expected Behavior |
 |---------|-------------|-------------------|
-| [Element] | Click/Tap/Swipe | [What happens] |
+| <element> | Click/Tap/Swipe | <what_happens> |
 
 ## Testing Plan
 

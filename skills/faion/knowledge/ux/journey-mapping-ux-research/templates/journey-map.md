@@ -1,32 +1,38 @@
-# Customer Journey Map: [Journey Name]
+<!-- purpose: Cross-functional customer journey map — goals, actions, emotions, and pain points per stage -->
+<!-- consumes: persona document, behavioural analytics, support tickets (Prerequisites) -->
+<!-- produces: filled journey-map markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~350 tokens filled -->
 
-**Persona:** [Persona name]
+# Customer Journey Map: <journey_name>
+
+**Persona:** <persona_name>
 **Journey:** [What is being mapped]
-**Scope:** [Start point] to [End point]
-**Date:** [Date]
+**Scope:** <start_point> to <end_point>
+**Date:** <date>
 **Research basis:** [Sources: interviews, analytics, support data, etc.]
 
 ## Journey Overview
 
-| Row | Stage 1: [Name] | Stage 2: [Name] | Stage 3: [Name] | Stage 4: [Name] |
+| Row | Stage 1: <name> | Stage 2: <name> | Stage 3: <name> | Stage 4: <name> |
 |-----|-----------------|-----------------|-----------------|-----------------|
-| **User Goal** | [Goal] | [Goal] | [Goal] | [Goal] |
+| **User Goal** | <goal> | <goal> | <goal> | <goal> |
 | **Actions** | [What they do] | [What they do] | [What they do] | [What they do] |
-| **Touchpoints** | [Channels] | [Channels] | [Channels] | [Channels] |
-| **Thoughts** | [What they think] | [What they think] | [What they think] | [What they think] |
-| **Emotions** | [Feeling + 1-5] | [Feeling + 1-5] | [Feeling + 1-5] | [Feeling + 1-5] |
-| **Pain Points** | [Friction] | [Friction] | [Friction] | [Friction] |
+| **Touchpoints** | <channels> | <channels> | <channels> | <channels> |
+| **Thoughts** | <what_they_think> | <what_they_think> | <what_they_think> | <what_they_think> |
+| **Emotions** | <feeling_1_5> | <feeling_1_5> | <feeling_1_5> | <feeling_1_5> |
+| **Pain Points** | <friction> | <friction> | <friction> | <friction> |
 | **Opportunities** | [Improvement] | [Improvement] | [Improvement] | [Improvement] |
-| **Metrics** | [KPI] | [KPI] | [KPI] | [KPI] |
+| **Metrics** | <kpi> | <kpi> | <kpi> | <kpi> |
 
 ## Key Pain Points (prioritized by impact)
 
 | Stage | Pain Point | Impact | Evidence | Opportunity |
 |-------|------------|--------|----------|-------------|
-| [Stage] | [Pain] | H/M/L | [Research source] | [Improvement] |
+| <stage> | <pain> | H/M/L | <research_source> | [Improvement] |
 
 ## Prioritized Actions
 
 1. [Highest impact opportunity — owner, stage]
-2. [Second priority]
-3. [Third priority]
+2. <second_priority>
+3. <third_priority>

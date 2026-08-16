@@ -1,7 +1,13 @@
+<!-- purpose: Per-step, per-evaluator Q1-Q4 cognitive-walkthrough evaluation form -->
+<!-- consumes: walkthrough plan's correct-action-sequence step, interface screenshots -->
+<!-- produces: filled per-step evaluation-form markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~290 tokens filled -->
+
 # Cognitive Walkthrough Evaluation
 
-**Task:** [Task name]
-**Step [N]:** [Action description — exact text from planning template]
+**Task:** <task_name>
+**Step <step>:** [Action description — exact text from planning template]
 
 ---
 
@@ -45,7 +51,7 @@
 
 | Issue | Question | Severity | Suggestion |
 |-------|----------|----------|------------|
-| [Issue description] | Q1 / Q2 / Q3 / Q4 | H / M / L | [One-line fix] |
+| <issue_description> | Q1 / Q2 / Q3 / Q4 | H / M / L | [One-line fix] |
 
 ---
 

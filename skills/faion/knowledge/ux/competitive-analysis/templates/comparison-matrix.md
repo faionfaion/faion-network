@@ -1,8 +1,14 @@
+<!-- purpose: Feature-by-feature comparison matrix across competitors, bucketed into Must/Should/Could/Avoid -->
+<!-- consumes: per-competitor feature and UX-quality observations -->
+<!-- produces: filled feature comparison-matrix markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~330 tokens filled -->
+
 # Feature Comparison Matrix
 
-**Analysis scope:** [Feature / product area]
-**Date:** [Date]
-**Competitors:** [List]
+**Analysis scope:** <feature_product_area>
+**Date:** <date>
+**Competitors:** <list>
 
 ## Legend
 
@@ -16,8 +22,8 @@
 | Feature | Our Product | Competitor A | Competitor B | Competitor C |
 |---------|-------------|--------------|--------------|--------------|
 | **Core Features** | | | | |
-| [Feature 1] | Yes | Yes | No | Partial |
-| [Feature 2] | No | Yes | Yes | Partial |
+| <feature_1> | Yes | Yes | No | Partial |
+| <feature_2> | No | Yes | Yes | Partial |
 | **User Experience** | | | | |
 | Guest checkout | No | Yes | Yes | Yes |
 | Error recovery quality | Fair | Good | Excellent | Poor |

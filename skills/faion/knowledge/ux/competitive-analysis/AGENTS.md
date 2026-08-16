@@ -70,6 +70,14 @@
 | `templates/competitive-analysis.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/competitive-analysis.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/competitive-analysis.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/competitive-analysis.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/analysis-plan.md.j2` | Scoping plan for a competitive-UX analysis — competitors, criteria, flows, schedule |
+| `templates/analysis-plan.md` | Scoping plan for a competitive-UX analysis — competitors, criteria, flows, schedule Generated from `templates/analysis-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/comparison-matrix.md.j2` | Feature-by-feature comparison matrix across competitors, bucketed into Must/Should/Could/Avoid |
+| `templates/comparison-matrix.md` | Feature-by-feature comparison matrix across competitors, bucketed into Must/Should/Could/Avoid Generated from `templates/comparison-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/competitor-profile.md.j2` | Single-competitor UX profile — key screens, flows, ratings, strengths/weaknesses |
+| `templates/competitor-profile.md` | Single-competitor UX profile — key screens, flows, ratings, strengths/weaknesses Generated from `templates/competitor-profile.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/summary-report.md.j2` | Stakeholder-facing synthesis of the competitive analysis — findings, comparison, recommendations |
+| `templates/summary-report.md` | Stakeholder-facing synthesis of the competitive analysis — findings, comparison, recommendations Generated from `templates/summary-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -1,25 +1,31 @@
-# Error Prevention Audit: [Feature]
+<!-- purpose: Error prevention audit of form fields, destructive actions and cross-field validation -->
+<!-- consumes: inventory of destructive actions, form-validation rules, bug-ticket sample on mis-clicks -->
+<!-- produces: error prevention audit (markdown) -->
+<!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
+<!-- token-budget-impact: ~350 tokens filled -->
 
-**Date:** [Date]
-**Reviewer:** [Name]
+# Error Prevention Audit: <feature>
+
+**Date:** <date>
+**Reviewer:** <reviewer_name>
 
 ## Form Fields Analysis
 
 | Field | Input Type | Constraints Applied | Validation Timing | Smart Default? | Format Guidance? | Gap |
 |-------|------------|---------------------|-------------------|----------------|------------------|-----|
-| [Field] | text/select/picker | [Constraints] | blur/change/submit | Y/N | Y/N | [Gap description] |
+| <field> | text/select/picker | <constraints> | blur/change/submit | Y/N | Y/N | <gap_description> |
 
 ## Destructive Actions
 
 | Action | Confirmation? | Undo Available? | Consequence Stated? | Risk | Recommendation |
 |--------|---------------|-----------------|---------------------|------|----------------|
-| [Action] | Y/N | Y/N | Y/N | H/M/L | [Fix] |
+| <action> | Y/N | Y/N | Y/N | H/M/L | <fix> |
 
 ## Common Error Points (from analytics/support data)
 
 | Error Type | Frequency | Root Cause | Prevention Fix |
 |------------|-----------|------------|----------------|
-| [Error] | [Count/month] | [Why it happens] | [Specific prevention] |
+| <error> | <count_month> | [Why it happens] | <specific_prevention> |
 
 ## Cross-field Validation
 
@@ -30,5 +36,5 @@
 ## Priority Recommendations
 
 1. **High** — [Specific fix with file/component reference]
-2. **Medium** — [Specific fix]
-3. **Low** — [Specific fix]
+2. **Medium** — <specific_fix>
+3. **Low** — <specific_fix>

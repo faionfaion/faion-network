@@ -69,6 +69,10 @@
 |------|---------|
 | `templates/card-sorting.json` | JSON skeleton conforming to the output contract |
 | `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-card-sorting.py --self-test` |
+| `templates/card-sort-plan.md.j2` | Card-sort study plan — method, participants, card set, analysis thresholds, timeline |
+| `templates/card-sort-plan.md` | Card-sort study plan — method, participants, card set, analysis thresholds, timeline Generated from `templates/card-sort-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/results-report.md.j2` | Card-sort results report — agreement matrix, placement results, label and IA recommendations |
+| `templates/results-report.md` | Card-sort results report — agreement matrix, placement results, label and IA recommendations Generated from `templates/results-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -64,6 +64,10 @@
 | `templates/help-documentation.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/help-documentation.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/help-documentation.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/help-documentation.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/help-audit.md.j2` | Help-coverage audit worksheet with deflection-focused gaps and zero-result search queries |
+| `templates/help-audit.md` | Help-coverage audit worksheet with deflection-focused gaps and zero-result search queries Generated from `templates/help-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/help-content.md.j2` | Task-oriented help article template with a mandatory Result section closing the confirmation loop |
+| `templates/help-content.md` | Task-oriented help article template with a mandatory Result section closing the confirmation loop Generated from `templates/help-content.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

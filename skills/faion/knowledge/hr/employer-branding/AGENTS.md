@@ -69,6 +69,10 @@
 | `templates/employer-branding.md` | Working spec skeleton with 5-line header Generated from `templates/employer-branding.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in version for smoke testing |
 | `templates/_smoke-test.md` | Minimum viable filled-in version for smoke testing Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/content-calendar.md.j2` | 4-week employer-brand social/careers content calendar with per-post EVP mapping |
+| `templates/content-calendar.md` | 4-week employer-brand social/careers content calendar with per-post EVP mapping Generated from `templates/content-calendar.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/testimonial-brief.md.j2` | Employee testimonial intake, drafting and consent-tracking brief |
+| `templates/testimonial-brief.md` | Employee testimonial intake, drafting and consent-tracking brief Generated from `templates/testimonial-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

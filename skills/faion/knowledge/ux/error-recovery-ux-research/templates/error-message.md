@@ -1,4 +1,10 @@
-# Error Message Design: [Error Type]
+<!-- purpose: Per-error message design spec covering context, content and visual treatment -->
+<!-- consumes: error class inventory entry, tone / voice guide -->
+<!-- produces: error message design spec (markdown) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~400 tokens filled -->
+
+# Error Message Design: <error_type>
 
 ## Error Context
 
@@ -19,8 +25,8 @@
 
 ## Visual Design
 
-- **Placement:** [Inline next to field / Banner / Modal / Full page]
-- **Style:** [Error icon + red border / Banner color / Modal type]
+- **Placement:** <placement>
+- **Style:** <style>
 - **Timing:** [When to show: on blur / on submit / on system failure]
 - **Dismissal:** [How it goes away: when user corrects / user dismisses / automatically]
 
@@ -28,8 +34,8 @@
 
 | Button/Link | Action |
 |-------------|--------|
-| [Primary action] | [What it does] |
-| [Secondary action] | [What it does] |
+| <primary_action> | [What it does] |
+| <secondary_action> | [What it does] |
 
 ## Assembled Message Example
 

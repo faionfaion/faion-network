@@ -1,25 +1,31 @@
-## Audience Segmentation: [Product]
+<!-- purpose: Full audience-segmentation working analysis — dimensions, segments, attractiveness scoring, target strategy -->
+<!-- consumes: input brief, source-of-truth refs (analytics, surveys, interviews) -->
+<!-- produces: filled segmentation-analysis markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~460 tokens filled -->
+
+## Audience Segmentation: <product>
 
 ### Dimensions Selected
-1. **Primary:** [Variable] — Why: [Reason — cite data source]
-2. **Secondary:** [Variable] — Why: [Reason — cite data source]
+1. **Primary:** <variable> — Why: [Reason — cite data source]
+2. **Secondary:** <variable> — Why: [Reason — cite data source]
 
 ### Segments Identified
 
-#### Segment 1: [Name]
+#### Segment 1: <name>
 
 **Profile:**
 - [Demographic or firmographic 1]
 - [Demographic or firmographic 2]
-- [Behavioural characteristic]
+- <behavioural_characteristic>
 
 **Needs:**
-- [Primary need]
-- [Secondary need]
+- <primary_need>
+- <secondary_need>
 
 **Current solutions:** [What they use now]
 
-**Estimated size:** [N people/companies] — Source: [LinkedIn audience / paid-ads reach / list rental]
+**Estimated size:** <n_people_companies> — Source: <estimated_size>
 **Reachability:** [Where and how to find them]
 **Willingness to pay:** $[X]/month — Source: [Survey / interview / competitor pricing]
 
@@ -37,29 +43,29 @@
 
 ---
 
-#### Segment 2: [Name]
+#### Segment 2: <name>
 [Repeat structure above]
 
 ### Segment Comparison
 
 | Segment | Size | WTP | Reachability | Fit | Weighted Score | Priority |
 |---------|------|-----|--------------|-----|----------------|---------|
-| [Seg 1] | | | | | | 1 |
-| [Seg 2] | | | | | | 2 |
+| <seg_1> | | | | | | 1 |
+| <seg_2> | | | | | | 2 |
 
 ### Do-Not-Target Segment
-**Profile:** [Description]
+**Profile:** <description>
 **Reasons:** [Low LTV / high CAC / high support cost — with evidence]
 
 ### Target Strategy
-- [ ] Concentrated — Focus on [Segment X]
-- [ ] Differentiated — Target [Seg X] and [Seg Y]
+- [ ] Concentrated — Focus on <segment_x>
+- [ ] Differentiated — Target <seg_x> and <seg_y>
 
 ### Implications
 
 **Product:** [Feature priority, features to defer]
 **Marketing:** [Channel focus, messaging angle]
-**Pricing:** [Tier structure]
+**Pricing:** <tier_structure>
 
 ### Review schedule
-Next re-score: [Quarter] using same rubric weights.
+Next re-score: <quarter> using same rubric weights.

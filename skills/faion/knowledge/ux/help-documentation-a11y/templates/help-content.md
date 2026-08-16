@@ -1,4 +1,10 @@
-# How to [Task Name]
+<!-- purpose: Task-oriented help article template with a mandatory Result section closing the confirmation loop -->
+<!-- consumes: task name, task inventory (Prerequisites) -->
+<!-- produces: filled help-content markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~180 tokens filled -->
+
+# How to <task_name>
 
 **Difficulty:** Beginner / Intermediate / Advanced
 **Prerequisites:** [What user needs before starting]
@@ -9,15 +15,15 @@
 
 ## Steps
 
-### Step 1: [Action]
+### Step 1: <action>
 
 [Detailed instruction. One action per step.]
 
-### Step 2: [Action]
+### Step 2: <action>
 
 [Detailed instruction.]
 
-### Step 3: [Action]
+### Step 3: <action>
 
 [Detailed instruction.]
 

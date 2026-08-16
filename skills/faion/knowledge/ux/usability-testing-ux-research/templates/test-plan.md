@@ -1,14 +1,20 @@
-# Usability Test Plan: [Product/Feature]
+<!-- purpose: Objectives, methodology, participants and tasks plan for one usability study -->
+<!-- consumes: product/feature under test, recruitment screener -->
+<!-- produces: filled usability test plan markdown (the "Test plan with tasks" prerequisite) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~355 tokens filled -->
+
+# Usability Test Plan: <product_feature>
 
 **Version:** [X.X]
-**Date:** [Date]
-**Researcher:** [Name]
+**Date:** <date>
+**Researcher:** <name>
 
 ## Objectives
 
 What questions will this study answer?
-1. [Question 1]
-2. [Question 2]
+1. <question_1>
+2. <question_2>
 
 ## Methodology
 
@@ -22,25 +28,25 @@ What questions will this study answer?
 - **Number:** [X] participants
 - **Profile:** [Description of target users]
 - **Segments:** [List distinct segments if multiple]
-- **Recruitment:** [How recruited]
-- **Compensation:** [Incentive]
+- **Recruitment:** <how_recruited>
+- **Compensation:** <incentive>
 
 ## Test Environment
 
-- **Location:** [Where]
+- **Location:** <where>
 - **Equipment:** [Devices, recording tools]
 - **Prototype/Product:** [What they will test, version/link]
 
 ## Tasks
 
-### Task 1: [Name]
+### Task 1: <name>
 **Scenario:** [Context for user]
 **Task:** [What to accomplish — no solution hints]
 **Success criteria:** [How to measure success]
-**Time limit:** [X minutes]
+**Time limit:** <x_minutes>
 
-### Task 2: [Name]
-[Same structure]
+### Task 2: <name>
+<same_structure>
 
 ## Metrics
 
@@ -55,7 +61,7 @@ What questions will this study answer?
 
 | Date | Time | Participant |
 |------|------|-------------|
-| [Date] | [Time] | P1 |
+| <date> | <time> | P1 |
 
 ## Deliverables
 

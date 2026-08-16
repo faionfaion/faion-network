@@ -1,14 +1,20 @@
-# Contextual Inquiry Guide: [Study Name]
+<!-- purpose: Field session guide — opening script, focus areas and observation/inference log -->
+<!-- consumes: input brief -->
+<!-- produces: contextual inquiry observation guide markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~300 tokens filled -->
 
-**Date:** [Date]
-**Participant:** [ID]
-**Location:** [Where]
-**Duration:** [Expected duration]
-**Researcher:** [Name]
+# Contextual Inquiry Guide: <study_name>
+
+**Date:** <date>
+**Participant:** <id>
+**Location:** <where>
+**Duration:** <expected_duration>
+**Researcher:** <name>
 
 ## Focus Areas
 1. [Primary focus area — specific aspect of work to observe]
-2. [Secondary focus area]
+2. <secondary_focus_area>
 
 ## Opening Script
 "I'm here to learn how you do your work. You're the expert.

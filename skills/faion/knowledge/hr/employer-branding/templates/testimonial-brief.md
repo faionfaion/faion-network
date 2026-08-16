@@ -1,3 +1,9 @@
+<!-- purpose: Employee testimonial intake, drafting and consent-tracking brief -->
+<!-- consumes: raw employee interview answers, EVP pillar list -->
+<!-- produces: filled employer-brand testimonial-brief markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~400 tokens filled -->
+
 # Employee Testimonial Brief
 
 ## Employee Information (HR-only, not published)
@@ -16,7 +22,7 @@
 
 ## Raw Input from Employee (required)
 
-**Why did you join [Company]?**
+**Why did you join <company>?**
 [Employee's own words — do not paraphrase]
 
 **What surprised you most in the first 90 days?**

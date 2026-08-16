@@ -1,45 +1,51 @@
-# Content Audit: [Page / Feature]
+<!-- purpose: Element-level content audit worksheet for a minimalist cleanup pass -->
+<!-- consumes: current UI inventory, feature usage analytics -->
+<!-- produces: filled content-audit markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~350 tokens filled -->
 
-**Date:** [Date]
-**Reviewer:** [Name]
+# Content Audit: <page_feature>
+
+**Date:** <date>
+**Reviewer:** <reviewer_name>
 **Primary task for this page:** [Define the single primary task before classifying anything]
 
 ## Element Analysis
 
 | Element | Purpose | Does user need for primary task? | Priority | Action |
 |---------|---------|----------------------------------|----------|--------|
-| [Element] | [Why it exists] | Y / Rarely / Never | P1 / P2 / P3 / Remove | Keep / Hide / Remove |
+| <element> | [Why it exists] | Y / Rarely / Never | P1 / P2 / P3 / Remove | Keep / Hide / Remove |
 
 ## Visual Elements
 
 | Element | Functional? | Purely decorative? | Recommended action |
 |---------|-------------|-------------------|--------------------|
-| [Hero image] | N — no information | Y | Remove or replace with functional image |
-| [Icon set] | Y — navigation aid | N | Keep |
+| <hero_image> | N — no information | Y | Remove or replace with functional image |
+| <icon_set> | Y — navigation aid | N | Keep |
 
 ## Information Density
 
 | Section | Element count | Appropriate for task? | Notes |
 |---------|--------------|----------------------|-------|
-| [Section name] | [Count] | Y / N | [Why too dense or appropriate] |
+| <section_name> | <count> | Y / N | <y_n> |
 
 ## Visual Hierarchy Assessment
 
 | Element | Current weight | Expected weight | Fix needed? |
 |---------|---------------|-----------------|-------------|
-| [Primary CTA] | Same as secondary | Dominant | Yes — increase contrast and size |
-| [Secondary link] | Too prominent | Subordinate | Yes — reduce to text link |
+| <primary_cta> | Same as secondary | Dominant | Yes — increase contrast and size |
+| <secondary_link> | Too prominent | Subordinate | Yes — reduce to text link |
 
 ## Progressive Disclosure Candidates
 
 | Content | Currently shown | Should be hidden behind | Rationale |
 |---------|----------------|------------------------|-----------|
-| [Advanced settings] | Always visible | "Advanced options" toggle | Only 5% of users need this |
+| <advanced_settings> | Always visible | "Advanced options" toggle | Only 5% of users need this |
 
 ## Recommendations
 
 | Action | Element | Rationale | Priority |
 |--------|---------|-----------|----------|
-| Remove | [Decorative banner] | No information value, competes with primary CTA | High |
-| Hide | [Rarely-used filters] | Used by <10% of sessions, adds visual noise | Medium |
-| Shrink | [Secondary nav] | Correct to keep but over-emphasized | Low |
+| Remove | <decorative_banner> | No information value, competes with primary CTA | High |
+| Hide | <rarely_used_filters> | Used by <10% of sessions, adds visual noise | Medium |
+| Shrink | <secondary_nav> | Correct to keep but over-emphasized | Low |

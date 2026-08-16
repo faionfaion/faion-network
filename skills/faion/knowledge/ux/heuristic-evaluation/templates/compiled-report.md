@@ -1,7 +1,13 @@
-# Heuristic Evaluation Compiled Report: [Product]
+<!-- purpose: Compiled multi-evaluator heuristic-evaluation report, deduplicated and averaged by severity -->
+<!-- consumes: individual filled evaluation-form.md.j2 forms, one per evaluator -->
+<!-- produces: filled compiled-report markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~450 tokens filled -->
 
-**Date:** [Date]
-**Evaluators:** [Names]
+# Heuristic Evaluation Compiled Report: <product>
+
+**Date:** <date>
+**Evaluators:** <names>
 **Scope:** [What was evaluated — screens, flows, version]
 
 ## Executive Summary
@@ -53,7 +59,7 @@
 
 | Heuristic | Issues | % of Total |
 |-----------|--------|------------|
-| [Heuristic] | [X] | [X%] |
+| <heuristic> | [X] | <x> |
 
 ## Recommendations
 

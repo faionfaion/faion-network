@@ -1,10 +1,16 @@
-# Taxonomy: [Site Name]
+<!-- purpose: Content taxonomy worksheet — content types, categories, tags, naming conventions -->
+<!-- consumes: content inventory, brand and labelling rules (Prerequisites) -->
+<!-- produces: filled taxonomy markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~250 tokens filled -->
+
+# Taxonomy: <site_name>
 
 ## Content Types
 
 | Type | Description | Required Attributes |
 |------|-------------|---------------------|
-| [Type] | [What it is] | [Field list] |
+| <type> | [What it is] | <field_list> |
 
 ## Categories
 
@@ -12,14 +18,14 @@
 
 | Category | Description | Parent |
 |----------|-------------|--------|
-| [Category 1] | [Scope description] | None |
-| [Subcategory 1a] | [Scope description] | Category 1 |
+| <category_1> | [Scope description] | None |
+| <subcategory_1a> | [Scope description] | Category 1 |
 
 ### Tags
 
 | Tag Group | Tags | Applied To |
 |-----------|------|------------|
-| [Group] | [tag1, tag2, tag3] | [Content type] |
+| <group> | [tag1, tag2, tag3] | <content_type> |
 
 ## Naming Conventions
 
@@ -31,6 +37,6 @@ Rules:
 
 | Do Not Use | Use Instead | Why |
 |------------|-------------|-----|
-| Miscellaneous | [Specific scope name] | Everything needs a defined home |
+| Miscellaneous | <specific_scope_name> | Everything needs a defined home |
 | Resources | [Guides and Templates] | Too vague |
 | Solutions | [What problem it solves] | Corporate-speak |

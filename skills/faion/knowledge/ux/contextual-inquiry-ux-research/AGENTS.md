@@ -69,6 +69,10 @@
 | `templates/output-skeleton.md.j2` | Minimal skeleton conforming to the output contract |
 | `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract Generated from `templates/output-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
+| `templates/observation-guide.md.j2` | Field session guide — opening script, focus areas and observation/inference log |
+| `templates/observation-guide.md` | Field session guide — opening script, focus areas and observation/inference log Generated from `templates/observation-guide.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/session-notes.md.j2` | Per-session raw notes worksheet — observations, quotes and labelled inferences |
+| `templates/session-notes.md` | Per-session raw notes worksheet — observations, quotes and labelled inferences Generated from `templates/session-notes.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

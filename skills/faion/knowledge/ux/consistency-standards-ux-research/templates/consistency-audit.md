@@ -1,8 +1,14 @@
-# Consistency Audit: [Product]
+<!-- purpose: Five-layer (internal/external/visual/functional/verbal) consistency audit worksheet -->
+<!-- consumes: UI surface inventory, industry convention reference -->
+<!-- produces: consistency audit markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~350 tokens filled -->
 
-**Date:** [Date]
-**Reviewer:** [Name]
-**Scope:** [Pages or features reviewed]
+# Consistency Audit: <product>
+
+**Date:** <date>
+**Reviewer:** <reviewer_name>
+**Scope:** <scope>
 
 ## Visual Consistency
 
@@ -13,8 +19,8 @@
 | Typography — headings | Y/N | [List variations] | [Standard] |
 | Typography — body | Y/N | [List variations] | [Standard] |
 | Spacing | Y/N | [List variations] | [8px base unit] |
-| Colors | Y/N | [List variations] | [Token names] |
-| Icons | Y/N | [List variations] | [Icon set name] |
+| Colors | Y/N | [List variations] | <token_names> |
+| Icons | Y/N | [List variations] | <icon_set_name> |
 
 ## Functional Consistency
 
@@ -29,8 +35,8 @@
 
 | Concept | Terms Found | Recommended Term |
 |---------|-------------|------------------|
-| [Concept 1] | [Term A, Term B] | [Chosen term] |
-| [Concept 2] | [Term A, Term B] | [Chosen term] |
+| <concept_1> | [Term A, Term B] | [Chosen term] |
+| <concept_2> | [Term A, Term B] | [Chosen term] |
 
 ## Platform Convention Compliance
 

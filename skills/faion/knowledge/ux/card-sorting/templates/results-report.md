@@ -1,7 +1,13 @@
-# Card Sort Results: [Project]
+<!-- purpose: Card-sort results report — clusters, borderline items, outliers, proposed IA -->
+<!-- consumes: card-sort session data (co-occurrence matrix, open-sort category names) -->
+<!-- produces: filled card-sort results-report markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~340 tokens filled -->
 
-**Date:** [Date]
-**Participants:** [N]
+# Card Sort Results: <project>
+
+**Date:** <date>
+**Participants:** <participants>
 **Type:** Open / Closed
 
 ## Summary
@@ -12,13 +18,13 @@
 
 | Card A | Card B | Co-occurrence | Proposed Category |
 |--------|--------|---------------|-------------------|
-| [Card] | [Card] | [X]% | [Category name] |
+| [Card] | [Card] | [X]% | <category_name> |
 
 ## Borderline Items (40-70% co-occurrence)
 
 | Card | Split Between | Co-occurrence | Recommendation |
 |------|---------------|---------------|----------------|
-| [Card] | [Cat A] / [Cat B] | [X]% / [Y]% | [Investigate further / test both] |
+| [Card] | [Cat A] / <cat_b> | [X]% / <y>% | [Investigate further / test both] |
 
 ## Outlier Cards (<40% co-occurrence with any partner)
 
@@ -30,16 +36,16 @@
 
 | Category Name | Frequency | Cards Most Commonly Included |
 |---------------|-----------|------------------------------|
-| [Name] | [N participants] | [Cards] |
+| <name> | <n_participants> | <cards> |
 
 ## Proposed IA Structure
 
-L1: [Category name]
-  L2: [Subcategory] — [N% agreement from sort data]
-  L2: [Subcategory] — [N% agreement from sort data]
+L1: <category_name>
+  L2: <subcategory> — [N% agreement from sort data]
+  L2: <subcategory> — [N% agreement from sort data]
 
-L1: [Category name]
-  L2: [Subcategory]
+L1: <category_name>
+  L2: <subcategory>
 
 ## Recommended Next Steps
 

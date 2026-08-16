@@ -70,6 +70,12 @@
 | `templates/usability-testing.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/usability-testing.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/usability-testing.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/usability-testing.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/test-plan.md.j2` | Objectives, methodology, participants and tasks plan for one usability study |
+| `templates/test-plan.md` | Objectives, methodology, participants and tasks plan for one usability study Generated from `templates/test-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/session-script.md.j2` | Moderator script for one usability testing session |
+| `templates/session-script.md` | Moderator script for one usability testing session Generated from `templates/session-script.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/finding.md.j2` | Single usability finding with severity rating and recommended fix |
+| `templates/finding.md` | Single usability finding with severity rating and recommended fix Generated from `templates/finding.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

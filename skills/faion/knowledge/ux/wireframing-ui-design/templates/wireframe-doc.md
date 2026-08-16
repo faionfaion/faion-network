@@ -1,8 +1,14 @@
-# Wireframe: [Page/Screen Name]
+<!-- purpose: Full-page wireframe with annotations, states, interactions and responsive notes -->
+<!-- consumes: screen or flow brief, layout grid spec, content inventory -->
+<!-- produces: filled wireframe-doc markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~350 tokens filled -->
+
+# Wireframe: <page_screen_name>
 
 **Version:** [X.X]
-**Date:** [Date]
-**Designer:** [Name]
+**Date:** <date>
+**Designer:** <name>
 **Status:** Draft / Review / Approved
 
 ## Purpose
@@ -42,11 +48,11 @@
 
 | Element | Trigger | Action | Result |
 |---------|---------|--------|--------|
-| [Element] | Click / Hover / Focus | [What happens] | [Outcome / next state] |
+| <element> | Click / Hover / Focus | <what_happens> | <outcome_next_state> |
 
 ## Responsive Considerations
 
-- **Desktop (1280px+):** [Layout notes]
+- **Desktop (1280px+):** <layout_notes>
 - **Tablet (768px):** [Layout notes — column collapses, nav changes]
 - **Mobile (375px):** [Layout notes — stacked layout, touch targets]
 

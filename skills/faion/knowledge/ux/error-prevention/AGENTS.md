@@ -67,6 +67,8 @@
 
 | File | Purpose |
 |------|---------|
+| `templates/error-prevention-audit.md.j2` | Error prevention audit of form fields, destructive actions and cross-field validation |
+| `templates/error-prevention-audit.md` | Error prevention audit of form fields, destructive actions and cross-field validation Generated from `templates/error-prevention-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/error-prevention.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/error-prevention.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/error-prevention.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/error-prevention.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

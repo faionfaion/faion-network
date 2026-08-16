@@ -1,4 +1,10 @@
-# Component: [Name]
+<!-- purpose: Reusable component spec — variants, states and usage notes at wireframe fidelity -->
+<!-- consumes: layout grid spec, content inventory -->
+<!-- produces: filled component-wireframe markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~250 tokens filled -->
+
+# Component: <name>
 
 ## Purpose
 
@@ -6,18 +12,18 @@
 
 ## Variants
 
-### Variant 1: [Name]
+### Variant 1: <name>
 
 [Wireframe or description]
 
-- When to use: [Context]
-- When NOT to use: [Anti-context]
+- When to use: <context>
+- When NOT to use: <anti_context>
 
-### Variant 2: [Name]
+### Variant 2: <name>
 
 [Wireframe or description]
 
-- When to use: [Context]
+- When to use: <context>
 
 ## States
 
@@ -40,6 +46,6 @@
 
 ## Usage Notes
 
-- Use when: [Context]
-- Do not use when: [Anti-context]
+- Use when: <context>
+- Do not use when: <anti_context>
 - Accessibility: [Keyboard behavior, ARIA role]

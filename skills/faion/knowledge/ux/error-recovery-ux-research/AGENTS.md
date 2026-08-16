@@ -67,6 +67,10 @@
 | File | Purpose |
 |------|---------|
 | `templates/error-recovery.json` | JSON skeleton conforming to the output contract |
+| `templates/error-audit.md.j2` | Error handling audit scoring message components, placement and recovery sufficiency |
+| `templates/error-audit.md` | Error handling audit scoring message components, placement and recovery sufficiency Generated from `templates/error-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/error-message.md.j2` | Per-error message design spec covering context, content and visual treatment |
+| `templates/error-message.md` | Per-error message design spec covering context, content and visual treatment Generated from `templates/error-message.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-error-recovery.py --self-test` |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

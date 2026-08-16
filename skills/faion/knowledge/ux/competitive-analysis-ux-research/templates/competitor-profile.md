@@ -1,9 +1,15 @@
-# Competitor Profile: [Company Name]
+<!-- purpose: Per-competitor observation profile filled during a competitive analysis -->
+<!-- consumes: account access to the competitor product -->
+<!-- produces: competitor profile markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~230 tokens filled -->
 
-**Website:** [URL]
+# Competitor Profile: <company_name>
+
+**Website:** <url>
 **Type:** Direct / Indirect / Aspirational
-**Analyzed:** [Date]
-**Analyst:** [Name]
+**Analyzed:** <date>
+**Analyst:** <name>
 
 ## Overview
 
@@ -30,9 +36,9 @@
 ### [Flow: e.g., Sign-up]
 
 **Steps:**
-1. [Step 1]
-2. [Step 2]
-3. [Step 3]
+1. <step_1>
+2. <step_2>
+3. <step_3>
 
 **Friction points:**
 - [Where users would likely struggle]
@@ -42,13 +48,13 @@
 
 ## Strengths
 
-- [Strength 1]
-- [Strength 2]
+- <strength_1>
+- <strength_2>
 
 ## Weaknesses
 
-- [Weakness 1]
-- [Weakness 2]
+- <weakness_1>
+- <weakness_2>
 
 ## Opportunities for Us
 

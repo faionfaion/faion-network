@@ -1,3 +1,9 @@
+<!-- purpose: Column-definition reference for building a per-page content audit spreadsheet -->
+<!-- consumes: none -->
+<!-- produces: content audit spreadsheet column reference markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~200 tokens filled -->
+
 # Content Audit Spreadsheet — Column Definitions
 
 | Column | Description | Example |
@@ -22,4 +28,4 @@
 | Priority | How urgent | High / Medium / Low |
 | Redirect To | Target URL if removing | /new-url |
 | Notes | Additional context | "Needs new screenshots" |
-| Owner | Who is responsible for action | [Name] |
+| Owner | Who is responsible for action | <name> |

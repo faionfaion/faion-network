@@ -70,6 +70,8 @@
 | `templates/aesthetic-minimalist.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/aesthetic-minimalist.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/aesthetic-minimalist.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/aesthetic-minimalist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/content-audit.md.j2` | Element-level content audit worksheet for a minimalist cleanup pass |
+| `templates/content-audit.md` | Element-level content audit worksheet for a minimalist cleanup pass Generated from `templates/content-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

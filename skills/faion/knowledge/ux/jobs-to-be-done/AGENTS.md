@@ -68,6 +68,12 @@
 |------|---------|
 | `templates/jobs-to-be-done.json` | JSON skeleton conforming to the output contract |
 | `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-jobs-to-be-done.py --self-test` |
+| `templates/job-map.md.j2` | 8-stage JTBD job map documenting customer goals, pain, and opportunity per stage |
+| `templates/job-map.md` | 8-stage JTBD job map documenting customer goals, pain, and opportunity per stage Generated from `templates/job-map.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/job-statement.md.j2` | JTBD job-statement artefact — functional, emotional and social dimensions plus competitors |
+| `templates/job-statement.md` | JTBD job-statement artefact — functional, emotional and social dimensions plus competitors Generated from `templates/job-statement.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/jtbd-interview.md.j2` | Switch-interview script and forces-of-progress capture sheet |
+| `templates/jtbd-interview.md` | Switch-interview script and forces-of-progress capture sheet Generated from `templates/jtbd-interview.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

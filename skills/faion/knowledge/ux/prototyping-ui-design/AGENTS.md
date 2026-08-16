@@ -68,6 +68,10 @@
 |------|---------|
 | `templates/prototyping.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/prototyping.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/prototyping.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/prototype-plan.md.j2` | Scope-and-fidelity plan for one prototype iteration |
+| `templates/prototype-plan.md` | Scope-and-fidelity plan for one prototype iteration Generated from `templates/prototype-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/testing-notes.md.j2` | Per-participant prototype testing notes and evidence capture |
+| `templates/testing-notes.md` | Per-participant prototype testing notes and evidence capture Generated from `templates/testing-notes.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

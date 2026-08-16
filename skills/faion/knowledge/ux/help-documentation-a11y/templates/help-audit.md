@@ -1,31 +1,37 @@
-# Help Audit: [Product/Feature]
+<!-- purpose: Help-coverage audit worksheet with deflection-focused gaps and zero-result search queries -->
+<!-- consumes: help surface inventory, support-ticket sample (Prerequisites) -->
+<!-- produces: filled help-audit markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~250 tokens filled -->
 
-**Date:** [Date]
-**Reviewer:** [Name]
+# Help Audit: <product_feature>
+
+**Date:** <date>
+**Reviewer:** <reviewer_name>
 
 ## Help Availability
 
 | Location | Help Available? | Type | Quality (1-5) |
 |----------|-----------------|------|---------------|
-| [Page/Feature] | Y/N | Tooltip/Inline/How-to/FAQ | [Rating] |
+| <page_feature> | Y/N | Tooltip/Inline/How-to/FAQ | <rating> |
 
 ## Common User Questions
 
 | Question | Answer Available? | Findable via Search? | Notes |
 |----------|-------------------|----------------------|-------|
-| [Question] | Y/N | Y/N | [Notes] |
+| <question> | Y/N | Y/N | <notes> |
 
 ## Help Content Quality
 
 | Content | Current? | Accurate? | Plain Language? | Task-focused? |
 |---------|----------|-----------|-----------------|---------------|
-| [Content] | Y/N | Y/N | Y/N | Y/N |
+| <content> | Y/N | Y/N | Y/N | Y/N |
 
 ## Gaps Identified
 
 | Gap | Impact | Priority | Recommendation |
 |-----|--------|----------|----------------|
-| [Gap] | H/M/L | H/M/L | [Fix] |
+| <gap> | H/M/L | H/M/L | <fix> |
 
 ## Zero-Results Search Queries
 
@@ -34,5 +40,5 @@
 ## Priority Improvements
 
 1. [Top priority — highest impact gap]
-2. [Second priority]
-3. [Third priority]
+2. <second_priority>
+3. <third_priority>

@@ -70,6 +70,8 @@
 | `templates/heuristic-evaluation.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/heuristic-evaluation.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/heuristic-evaluation.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/heuristic-evaluation.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/compiled-report.md.j2` | Compiled multi-evaluator heuristic-evaluation report, deduplicated and averaged by severity |
+| `templates/compiled-report.md` | Compiled multi-evaluator heuristic-evaluation report, deduplicated and averaged by severity Generated from `templates/compiled-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 | `templates/evaluation-form.md.j2` | Heuristic evaluation form — scope, per-issue findings with severity, summary table |

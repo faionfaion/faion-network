@@ -69,6 +69,12 @@
 | `templates/employee-value-proposition.md` | Working spec skeleton with 5-line header Generated from `templates/employee-value-proposition.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in version for smoke testing |
 | `templates/_smoke-test.md` | Minimum viable filled-in version for smoke testing Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/evp-competitive-analysis.md.j2` | Competitor EVP benchmarking worksheet across the five pillars |
+| `templates/evp-competitive-analysis.md` | Competitor EVP benchmarking worksheet across the five pillars Generated from `templates/evp-competitive-analysis.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/evp-discovery-survey.md.j2` | Employee survey instrument for EVP pillar-importance ratings and retention questions |
+| `templates/evp-discovery-survey.md` | Employee survey instrument for EVP pillar-importance ratings and retention questions Generated from `templates/evp-discovery-survey.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/evp-messaging-framework.md.j2` | Pillar-to-copy messaging framework worksheet for EVP external publication |
+| `templates/evp-messaging-framework.md` | Pillar-to-copy messaging framework worksheet for EVP external publication Generated from `templates/evp-messaging-framework.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

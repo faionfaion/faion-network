@@ -1,4 +1,10 @@
-# Error Message Design: [Error Type]
+<!-- purpose: Per-error message design spec covering content, visual treatment and timing -->
+<!-- consumes: error catalogue entry, microcopy guidelines, component inventory for inline errors -->
+<!-- produces: error message design spec (markdown) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~400 tokens filled -->
+
+# Error Message Design: <error_type>
 
 ## Error Details
 
@@ -21,7 +27,7 @@
 
 - **Placement:** [Where to show — inline next to field / top banner / modal]
 - **Style:** [Error indicator — red border + icon + text / banner color]
-- **Timing:** [When to show — on blur / on submit / immediately on type]
+- **Timing:** <timing>
 - **Dismiss:** [Auto / manual — errors require manual dismissal]
 
 ## Actions Available

@@ -1,29 +1,35 @@
+<!-- purpose: Diary study plan covering design, recruitment, timeline and quality measures -->
+<!-- consumes: input brief, research questions, participant criteria (Prerequisites) -->
+<!-- produces: diary study plan (markdown) -->
+<!-- depends-on: content/01-core-rules.xml, content/04-procedure.xml -->
+<!-- token-budget-impact: ~450 tokens filled -->
+
 # Diary Study Plan
 
-**Study name:** [Name]
-**Duration:** [Start date] to [End date] ([X] days/weeks)
-**Researcher:** [Name]
+**Study name:** <name>
+**Duration:** <start_date> to <end_date> ([X] days/weeks)
+**Researcher:** <name>
 
 ## Research Questions
 
-1. [Primary question]
-2. [Secondary question]
-3. [Secondary question]
+1. <primary_question>
+2. <secondary_question>
+3. <secondary_question>
 
 ## Participants
 
-**Target:** [N] participants
+**Target:** <target> participants
 **Criteria:**
 - [Criterion 1 — behavior or usage pattern]
 - [Criterion 2 — commitment/tech access]
 
-**Recruitment source:** [Where/how]
+**Recruitment source:** <where_how>
 **Incentive:** [Amount and tranche structure: 30% week 1, 70% at end]
 
 ## Study Design
 
 **Type:** Interval / Event / Signal contingent
-**Frequency:** [How often]
+**Frequency:** <how_often>
 **Platform:** [App / SMS / Email / etc.]
 
 ## Diary Entry Structure
@@ -32,8 +38,8 @@
 
 | Question | Format | Why |
 |----------|--------|-----|
-| [Question 1] | [Text / Photo / Rating] | [Purpose] |
-| [Question 2] | [Format] | [Purpose] |
+| <question_1> | <text_photo_rating> | [Purpose] |
+| <question_2> | <format> | [Purpose] |
 
 ### Optional Fields
 
@@ -59,6 +65,6 @@
 
 ## Quality Measures
 
-- Minimum entries expected: [N]
+- Minimum entries expected: <minimum_entries_expected>
 - Completion threshold: 60% — flag below this for check-in
 - Copy-paste detection: text similarity above 0.9 flags entry for review

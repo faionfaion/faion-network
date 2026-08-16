@@ -69,6 +69,8 @@
 |------|---------|
 | `templates/problem-validation.json` | JSON skeleton conforming to the output contract |
 | `templates/_smoke-test.json` | Smallest filled-in fixture used by `validate-problem-validation.py --self-test` |
+| `templates/validation-report.md.j2` | Problem-validation report with a scored evidence log and a PROCEED/PIVOT/KILL decision |
+| `templates/validation-report.md` | Problem-validation report with a scored evidence log and a PROCEED/PIVOT/KILL decision Generated from `templates/validation-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

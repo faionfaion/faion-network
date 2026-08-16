@@ -1,14 +1,20 @@
+<!-- purpose: Event-contingent diary entry form completed when a trigger occurs -->
+<!-- consumes: study plan entry structure, participant onboarding brief -->
+<!-- produces: filled event diary entry (markdown) -->
+<!-- depends-on: content/01-core-rules.xml, content/04-procedure.xml -->
+<!-- token-budget-impact: ~150 tokens filled -->
+
 # Event Entry
 
-**When this happened:** [DateTime picker]
+**When this happened:** <date_time_picker>
 
-## What triggered using [product]?
+## What triggered using <product>?
 
-[Open text field]
+<open_text_field>
 
 ## What were you trying to accomplish?
 
-[Open text field]
+<open_text_field>
 
 ## Did you accomplish it?
 
@@ -19,7 +25,7 @@
 
 ## Describe what happened:
 
-[Open text field]
+<open_text_field>
 
 ## How did you feel during this experience?
 
@@ -31,4 +37,4 @@
 
 ## Capture the moment (optional):
 
-[Photo/screenshot upload]
+<photo_screenshot_upload>

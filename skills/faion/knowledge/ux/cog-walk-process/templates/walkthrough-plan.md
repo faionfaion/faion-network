@@ -1,12 +1,18 @@
+<!-- purpose: Session plan capturing the four prerequisites a cognitive walkthrough needs before it can run -->
+<!-- consumes: user/persona description, task definition, interface prototype or build -->
+<!-- produces: filled cognitive-walkthrough plan markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~230 tokens filled -->
+
 # Cognitive Walkthrough Plan
 
-**Date:** [Date]
-**Facilitator:** [Name]
+**Date:** <date>
+**Facilitator:** <session_facilitator>
 **Evaluators:** [Names — include agent evaluators]
 
 ## User Profile
 
-**Persona:** [Name or description]
+**Persona:** <persona>
 **Experience level:** First-time user
 **Prior knowledge:** [What they already know — be specific about tools used, domain familiarity]
 **Goal:** [What they are trying to achieve]
@@ -27,15 +33,15 @@
 ## Interface
 
 **Type:** Prototype / Staging / Production
-**Link:** [URL or Figma prototype link]
+**Link:** <link>
 
 ## Scope
 
 **Screens included:**
-- [Screen 1]
-- [Screen 2]
+- <screen_1>
+- <screen_2>
 
 **Out of scope:**
-- [Error paths]
-- [Alternative flows]
-- [Expert shortcuts]
+- <error_paths>
+- <alternative_flows>
+- <expert_shortcuts>

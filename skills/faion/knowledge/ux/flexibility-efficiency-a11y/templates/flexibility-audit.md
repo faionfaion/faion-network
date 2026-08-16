@@ -1,25 +1,31 @@
-# Flexibility Audit: [Feature]
+<!-- purpose: Flexibility audit of shortcuts, customization and alternative paths with screen-reader checks -->
+<!-- consumes: target screen, persona list, workflow inventory -->
+<!-- produces: flexibility audit (markdown) -->
+<!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
+<!-- token-budget-impact: ~300 tokens filled -->
 
-**Date:** [Date]
-**Reviewer:** [Name]
+# Flexibility Audit: <feature>
+
+**Date:** <date>
+**Reviewer:** <reviewer_name>
 
 ## Shortcuts
 
 | Action | Shortcut Exists? | Discoverable? | Follows Platform Convention? | Screen Reader Safe? |
 |--------|------------------|---------------|------------------------------|---------------------|
-| [Action] | Y/N | Y/N | Y/N | Y/N |
+| <action> | Y/N | Y/N | Y/N | Y/N |
 
 ## Customization Options
 
 | Element | Customizable? | Default Adequate? | Notes |
 |---------|---------------|-------------------|-------|
-| [Element] | Y/N | Y/N | [Notes] |
+| <element> | Y/N | Y/N | <notes> |
 
 ## Alternative Paths
 
 | Task | Paths Available | Primary Path | Secondary Paths |
 |------|-----------------|--------------|-----------------|
-| [Task] | [Count] | [Primary] | [Others] |
+| <task> | <count> | <primary> | <others> |
 
 ## Power User Features
 
@@ -34,4 +40,4 @@
 
 | Issue | User Type Affected | Priority | Recommendation |
 |-------|-------------------|----------|----------------|
-| [Issue] | Novice/Expert/Both | H/M/L | [Fix] |
+| <issue> | Novice/Expert/Both | H/M/L | <fix> |

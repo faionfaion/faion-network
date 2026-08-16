@@ -1,4 +1,10 @@
-# How to [Task Name]
+<!-- purpose: Task-oriented help article template ("how to X") -->
+<!-- consumes: task name, prerequisites, troubleshooting cases (Prerequisites: help content inventory) -->
+<!-- produces: filled help-article markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~200 tokens filled -->
+
+# How to <task_name>
 
 **Difficulty:** Beginner / Intermediate / Advanced
 **Prerequisites:** [What the user needs before starting, if any]
@@ -8,14 +14,14 @@
 
 ## Steps
 
-### Step 1: [Action verb + object]
+### Step 1: <action_verb_object>
 [Concrete instruction. Avoid "click the button" — say which button by its exact label.]
 
-### Step 2: [Action verb + object]
-[Instruction]
+### Step 2: <action_verb_object>
+<instruction>
 
-### Step 3: [Action verb + object]
-[Instruction]
+### Step 3: <action_verb_object>
+<instruction>
 
 ## Result
 [What the user should see or have when complete]
@@ -25,12 +31,12 @@
 **Problem:** [Common issue users encounter]
 **Solution:** [Specific fix — not "check your settings"]
 
-**Problem:** [Second common issue]
-**Solution:** [Fix]
+**Problem:** <second_common_issue>
+**Solution:** <fix>
 
 ## Related Topics
 - [Link to related article 1]
 - [Link to related article 2]
 
 ---
-*Last reviewed: [Date] — [Reviewer name]*
+*Last reviewed: <date> — <reviewer_name>*

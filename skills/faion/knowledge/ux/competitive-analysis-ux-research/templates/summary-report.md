@@ -1,9 +1,15 @@
+<!-- purpose: Synthesised findings and Must/Should/Could/Avoid recommendations -->
+<!-- consumes: competitor profiles, feature comparison matrix -->
+<!-- produces: competitive analysis summary report markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~350 tokens filled -->
+
 # Competitive Analysis Summary
 
-**Date:** [Date]
-**Scope:** [Product area analyzed]
-**Competitors:** [List]
-**Analyst:** [Name]
+**Date:** <date>
+**Scope:** <product_area_analyzed>
+**Competitors:** <list>
+**Analyst:** <name>
 
 ## Executive Summary
 

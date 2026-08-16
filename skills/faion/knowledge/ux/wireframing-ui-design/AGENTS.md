@@ -68,6 +68,10 @@
 | `templates/wireframing.json` | JSON skeleton conforming to the output-contract schema. |
 | `templates/wireframing.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/wireframing.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/wireframing.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/component-wireframe.md.j2` | Reusable component spec — variants, states and usage notes at wireframe fidelity |
+| `templates/component-wireframe.md` | Reusable component spec — variants, states and usage notes at wireframe fidelity Generated from `templates/component-wireframe.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/wireframe-doc.md.j2` | Full-page wireframe with annotations, states, interactions and responsive notes |
+| `templates/wireframe-doc.md` | Full-page wireframe with annotations, states, interactions and responsive notes Generated from `templates/wireframe-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

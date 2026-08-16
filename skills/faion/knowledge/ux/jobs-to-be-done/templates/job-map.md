@@ -1,3 +1,9 @@
+<!-- purpose: 8-stage JTBD job map documenting customer goals, pain, and opportunity per stage -->
+<!-- consumes: switch interviews, primary user segment (Prerequisites) -->
+<!-- produces: filled job-map markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~300 tokens filled -->
+
 # Job Map: {Core Job}
 
 ## Stage 1: Define
@@ -42,5 +48,5 @@
 
 ## Priority Stages (by pain severity)
 1. Stage {X} — highest pain
-2. Stage {Y} — medium pain
-3. Stage {Z} — lower pain
+2. Stage <y> — medium pain
+3. Stage <z> — lower pain

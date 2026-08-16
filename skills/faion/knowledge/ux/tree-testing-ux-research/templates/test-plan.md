@@ -1,7 +1,13 @@
+<!-- purpose: Task, sample and success-criteria plan for one tree-testing run -->
+<!-- consumes: proposed IA tree (text hierarchy), input brief -->
+<!-- produces: filled tree-testing plan markdown -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~390 tokens filled -->
+
 # Tree Testing Plan
 
-**Project:** [Name]
-**Date:** [Date]
+**Project:** <name>
+**Date:** <date>
 **IA Version:** [Version number — must match the tree used in the test tool]
 **Tool:** [Optimal Workshop Treejack / UXtweak / Maze]
 
@@ -34,8 +40,8 @@ Home
 ## Participants
 - **Target:** 50 (single tree) / 30 per arm (A/B)
 - **Criteria:** [Familiarity with product category — describe real user characteristics]
-- **Recruitment:** [Platform]
-- **Incentive:** [Amount]
+- **Recruitment:** <platform>
+- **Incentive:** <amount>
 
 ## Success Criteria
 - Overall success rate: &gt;80%

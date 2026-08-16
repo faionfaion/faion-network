@@ -67,6 +67,10 @@
 
 | File | Purpose |
 |------|---------|
+| `templates/error-audit.md.j2` | Error handling audit of message wording, placement and recovery paths |
+| `templates/error-audit.md` | Error handling audit of message wording, placement and recovery paths Generated from `templates/error-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/error-message-design.md.j2` | Per-error message design spec covering content, visual treatment and timing |
+| `templates/error-message-design.md` | Per-error message design spec covering content, visual treatment and timing Generated from `templates/error-message-design.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/error-recovery.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/error-recovery.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/error-recovery.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/error-recovery.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |

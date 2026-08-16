@@ -1,27 +1,33 @@
-# Error Handling Audit: [Feature]
+<!-- purpose: Error handling audit of message wording, placement and recovery paths -->
+<!-- consumes: error catalogue, support-ticket sample with error keywords, microcopy guidelines -->
+<!-- produces: error handling audit (markdown) -->
+<!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
+<!-- token-budget-impact: ~350 tokens filled -->
 
-**Date:** [Date]
-**Reviewer:** [Name]
-**Scope:** [Which screens / flows]
+# Error Handling Audit: <feature>
+
+**Date:** <date>
+**Reviewer:** <reviewer_name>
+**Scope:** <which_screens_flows>
 
 ## Error Messages Reviewed
 
 | Error | Current Message | Issues | Improved Message |
 |-------|-----------------|--------|------------------|
-| [Error] | [Current text] | [Problems: vague / blame / no action] | [Rewritten version] |
+| [Error] | <current_text> | [Problems: vague / blame / no action] | <rewritten_version> |
 
 ## Error Placement
 
 | Context | Current Placement | Correct Placement | Fix Needed? |
 |---------|------------------|-------------------|-------------|
-| [Form field error] | [Top of form only] | [Inline + summary] | Yes |
-| [System error] | [Inline] | [Banner or modal] | Yes |
+| <form_field_error> | [Top of form only] | <inline_summary> | Yes |
+| <system_error> | <inline> | [Banner or modal] | Yes |
 
 ## Recovery Options
 
 | Error | Recovery Path | Clear to User? | Additional Options Needed |
 |-------|---------------|----------------|---------------------------|
-| [Error] | [Current path] | Y/N | [Suggestions] |
+| [Error] | <current_path> | Y/N | <suggestions> |
 
 ## Accessibility
 
@@ -33,4 +39,4 @@
 
 1. **Severity 3+:** [Most critical error to fix — blocks user task]
 2. **Severity 2:** [Second priority — significant friction]
-3. **Severity 1:** [Polish — cosmetic or minor copy improvement]
+3. **Severity 1:** <severity_1>

@@ -1,8 +1,14 @@
-# Interview Scorecard: [Candidate Name] — [Role]
+<!-- purpose: Per-interview competency scorecard with behavioral-anchor evidence and hire recommendation -->
+<!-- consumes: role competency table, candidate interview transcript/notes -->
+<!-- produces: filled interview scorecard markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~470 tokens filled -->
 
-**Interviewer:** [Name]
-**Interview date:** [YYYY-MM-DD]
-**Interview stage:** [Phone Screen / Technical / Behavioral / Final]
+# Interview Scorecard: <candidate_name> — <role>
+
+**Interviewer:** <name>
+**Interview date:** <interview_date>
+**Interview stage:** <interview_stage>
 **Competencies covered:** [list 2-3 from the role's competency table]
 
 ---

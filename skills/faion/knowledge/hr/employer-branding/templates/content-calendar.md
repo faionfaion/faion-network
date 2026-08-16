@@ -1,9 +1,15 @@
+<!-- purpose: 4-week employer-brand social/careers content calendar with per-post EVP mapping -->
+<!-- consumes: named EVP pillars, employee spotlight material, open-role postings -->
+<!-- produces: filled employer-brand content-calendar markdown -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~490 tokens filled -->
+
 # 4-Week Employer Brand Content Calendar
 
 ## Week 1: Employee Spotlight
 
 **Channel:** LinkedIn
-**EVP Pillar:** [Growth / Purpose / Flexibility — pick one]
+**EVP Pillar:** <evp_pillar>
 **Hook:** (≤10 words to stop the scroll)
 **Body:** (≤200 words, first-person employee voice, past-tense story)
 **CTA:** (one action: "See open roles" / "Read more" / "Meet the team")
@@ -41,9 +47,9 @@
 
 ## Week 4: Open Role Promo
 
-**Channel:** LinkedIn + Indeed + [others]
+**Channel:** LinkedIn + Indeed + <others>
 **EVP Pillar:** (role-specific — match to audience)
-**Role:** [Job title + link]
+**Role:** <job_title_link>
 **Hook:** ("What you'll build" not "We're hiring")
 **Body:** (≤100 words: what they'll do, one EVP proof point, link)
 **CTA:** "Apply now" + UTM-tagged URL

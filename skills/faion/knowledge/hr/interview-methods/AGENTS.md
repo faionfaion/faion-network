@@ -69,6 +69,8 @@
 | `templates/interview-methods.md` | Working spec skeleton with 5-line header Generated from `templates/interview-methods.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in version for smoke testing |
 | `templates/_smoke-test.md` | Minimum viable filled-in version for smoke testing Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/interview-scorecard.md.j2` | Per-interview competency scorecard with behavioral-anchor evidence and hire recommendation |
+| `templates/interview-scorecard.md` | Per-interview competency scorecard with behavioral-anchor evidence and hire recommendation Generated from `templates/interview-scorecard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

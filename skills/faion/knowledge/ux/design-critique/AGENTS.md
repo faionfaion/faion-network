@@ -70,6 +70,10 @@
 | `templates/design-critique.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/design-critique.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/design-critique.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/design-critique.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/critique-session.md.j2` | Session worksheet for a goal-anchored design critique — context, goals, critique notes, action items |
+| `templates/critique-session.md` | Session worksheet for a goal-anchored design critique — context, goals, critique notes, action items Generated from `templates/critique-session.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/feedback-framework.md.j2` | Reference framework and worked example for writing goal-anchored critique feedback |
+| `templates/feedback-framework.md` | Reference framework and worked example for writing goal-anchored critique feedback Generated from `templates/feedback-framework.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

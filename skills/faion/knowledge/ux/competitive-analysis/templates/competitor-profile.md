@@ -1,9 +1,15 @@
-# Competitor Profile: [Company Name]
+<!-- purpose: Single-competitor UX profile — key screens, flows, ratings, strengths/weaknesses -->
+<!-- consumes: hands-on product access, screen-capture toolchain -->
+<!-- produces: filled competitor-profile markdown (one per competitor) -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~350 tokens filled -->
 
-**Website:** [URL]
+# Competitor Profile: <company_name>
+
+**Website:** <url>
 **Type:** Direct / Indirect / Aspirational
-**Analyzed:** [Date]
-**Analyzer:** [Name]
+**Analyzed:** <date>
+**Analyzer:** <name>
 
 ## Overview
 
@@ -34,11 +40,11 @@
 ### [Flow Name — e.g., Sign up to first value]
 
 **Steps:**
-1. [Step 1]
-2. [Step 2]
-3. [Step 3]
+1. <step_1>
+2. <step_2>
+3. <step_3>
 
-**Time to value:** [approximate]
+**Time to value:** <approximate>
 **Friction points:** [where users would struggle]
 **Good practices:** [what they do well]
 
@@ -55,12 +61,12 @@
 ## Strengths
 
 - [Strength 1 — specific, not generic]
-- [Strength 2]
+- <strength_2>
 
 ## Weaknesses
 
-- [Weakness 1 — specific]
-- [Weakness 2]
+- <weakness_1_specific>
+- <weakness_2>
 
 ## Opportunities for Us
 
