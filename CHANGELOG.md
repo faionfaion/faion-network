@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **`AGENTS.md` counts refreshed and one gotcha added.** Manifest 2,986 → **2,988**,
+  tool packs **13 / 29 tools** (was 12/24), the new `skills/faion/templates/` row,
+  and the rule that cost the most to learn: **a `.json` reaches a user's disk only
+  from under a `templates/` path segment.** Validators read the disk; the packer
+  decides delivery, so a data file in a tidier-looking directory is invisible to
+  every user while the whole gate stays green.
+
 - **133 legacy templates un-escaped, unblocking `tpl-jinja.py` on all of them**
   — `&lt;name&gt;` back to `<name>` across every `templates/*.md` where the
   whole file had been HTML-entity-escaped (`template-jinja-migration.md` §6
