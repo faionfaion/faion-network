@@ -214,6 +214,21 @@ def build_schema(decls: list[dict], *, schema_id: str, title: str,
     and carries a local definition otherwise. That is the §3 rule made
     mechanical: convergence is a dictionary entry existing, never this tool
     deciding that two names mean the same thing.
+
+    **A hand-authored description outranks the dictionary's.** When the source
+    template already declared this variable with its own `description`, the
+    `$ref` is wrapped in `allOf` and the local text is kept beside it, so the
+    entry still supplies type and enum while the specific wording survives.
+
+    That rule was written after the first migration wave silently replaced three
+    of them. `severity` in `dev/bug-report-quality-rubric` read *"Technical
+    impact if nothing is done. Data loss or corruption is critical however few
+    users hit it"* and became the dictionary's *"How bad is this finding if
+    nothing is done about it?"* — accurate, generic, and strictly less useful.
+    Under §1b the description is the WIRE FORMAT: it is the sentence an agent
+    puts to a human, so overwriting a specific one with a generic one is a
+    product regression, not a tidy-up. The dictionary exists to disambiguate
+    NAMES; it was never meant to overwrite better copy.
     """
     properties: dict = {}
     required: list[str] = []
@@ -221,7 +236,15 @@ def build_schema(decls: list[dict], *, schema_id: str, title: str,
     for decl in decls:
         name = decl["name"]
         if dictionary and name in dictionary and dictionary_ref:
-            properties[name] = {"$ref": f"{dictionary_ref}#/$defs/{name}"}
+            ref = {"$ref": f"{dictionary_ref}#/$defs/{name}"}
+            authored = (decl.get("description") or "").strip()
+            if authored and authored != (dictionary[name].get("description") or "").strip():
+                # draft-07 ignores keywords sibling to `$ref`, so the reference
+                # goes under `allOf` where it still applies and `description`
+                # is read normally.
+                properties[name] = {"allOf": [ref], "description": authored}
+            else:
+                properties[name] = ref
             refs += 1
         else:
             properties[name] = property_for(decl)

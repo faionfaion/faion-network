@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **A hand-authored description now outranks the dictionary's.** Found by
+  verifying wave 1 rather than by reading the report: three variables silently
+  lost their specific wording because their names resolved to dictionary
+  entries, so the schema `$ref`d the entry and dropped the local text.
+  `severity` in `dev/bug-report-quality-rubric` read *"Technical impact if
+  nothing is done. Data loss or corruption is critical however few users hit
+  it"* and became *"How bad is this finding if nothing is done about it?"* —
+  accurate, generic, and strictly less useful.
+
+  Under §1b the description **is the wire format**: it is the sentence an agent
+  puts to a human. Replacing a specific one with a generic one is a product
+  regression, not a tidy-up. The dictionary exists to disambiguate NAMES; it was
+  never meant to overwrite better copy.
+
+  `build_schema` now emits `allOf: [{$ref}]` plus the authored `description`, so
+  the entry still supplies type and enum while the wording survives — draft-07
+  ignores keywords sibling to `$ref`, which is why the reference moves under
+  `allOf` rather than sitting beside it. A description identical to the
+  dictionary's still collapses to a bare `$ref`. Three assertions added to
+  `--self-test`, proven red-before-green.
+
+  Blast radius in wave 1 was 3 variables in 2 templates, both restored from HEAD
+  and re-migrated. It mattered to fix now rather than later: **45 of the 56
+  templates carrying hand-authored `variables:` blocks are still ahead** in waves
+  2 and 3, and those blocks hold the best-written parameter copy in the corpus.
+
 - **`tpl-jinja --migrate`: the whole per-template operation, atomically.** One
   invocation writes `<name>.md.j2`, `<name>.html.j2` and `<name>.vars.schema.json`,
   regenerates `<name>.md` from the new `.md.j2`, splits that methodology's

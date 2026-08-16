@@ -1101,6 +1101,27 @@ RESOLVE_FIXTURE = """# Runbook
 - [exclusion]
 """
 
+# A source that already declares the variable a resolver rule would also reach,
+# with its own wording. The dictionary must supply the type and keep the name
+# canonical; the authored sentence must survive, because under §1b it is the
+# question an agent puts to a human.
+AUTHORED_DESC = ("Whose pager does this page — the handle the rota names, not "
+                 "the service owner.")
+
+RESOLVE_FIXTURE_AUTHORED = """<!--
+purpose: p
+produces: markdown
+variables:
+  - name: owner_handle
+    type: string
+    required: true
+    description: %s
+-->
+# Runbook
+
+- owner: <@handle>
+""" % AUTHORED_DESC
+
 TAKEN_FIXTURE = """<!--
 purpose: p
 produces: markdown
@@ -1179,9 +1200,41 @@ def resolver_checks() -> list[str]:
                         "become owner_handle")
     if "handle" in props:
         failures.append("resolver: the raw name survived the resolution")
-    if props.get("owner_handle") != {
-            "$ref": "../vars-dictionary.schema.json#/$defs/owner_handle"}:
+    # The invariant is that the reference is PRESENT, not that it sits at the
+    # top level: a hand-authored description moves the `$ref` under `allOf` so
+    # the specific wording can survive beside it (see build_schema).
+    _oh = props.get("owner_handle") or {}
+    _want = {"$ref": "../vars-dictionary.schema.json#/$defs/owner_handle"}
+    if _oh != _want and _want not in (_oh.get("allOf") or []):
         failures.append("resolver: a resolved name did not $ref the dictionary")
+    # ...and when the SOURCE authored its own description for a name the
+    # dictionary also defines, the authored sentence wins and the reference
+    # survives beside it. Asserted against build_schema directly: this is a
+    # rule about schema emission, and routing it through the resolver would
+    # test the resolver's guards instead.
+    _sch = JINJA.build_schema(
+        [{"name": "owner_handle", "type": "string", "required": True,
+          "default": None, "sensitive": False, "placeholder": None,
+          "options": None, "description": AUTHORED_DESC}],
+        schema_id="x.vars.schema.json", title="t", description="d",
+        dictionary=MINI_DICTIONARY, dictionary_ref="../vars-dictionary.schema.json")
+    _authored = _sch["properties"].get("owner_handle") or {}
+    if _authored.get("description") != AUTHORED_DESC:
+        failures.append("build_schema: a hand-authored description was replaced "
+                        f"by the dictionary's generic one: {_authored!r}")
+    if _want not in (_authored.get("allOf") or []):
+        failures.append("build_schema: keeping the authored description dropped "
+                        "the dictionary reference")
+    # The converse: no authored description, so a bare $ref and nothing else.
+    _bare = JINJA.build_schema(
+        [{"name": "owner_handle", "type": "string", "required": True,
+          "default": None, "sensitive": False, "placeholder": None,
+          "options": None, "description": MINI_DICTIONARY["owner_handle"]["description"]}],
+        schema_id="x.vars.schema.json", title="t", description="d",
+        dictionary=MINI_DICTIONARY, dictionary_ref="../vars-dictionary.schema.json")
+    if _bare["properties"].get("owner_handle") != _want:
+        failures.append("build_schema: a description identical to the "
+                        "dictionary's should collapse to a bare $ref")
     if plan["resolved"] != 1:
         failures.append(f"resolver: resolved={plan['resolved']}, expected 1 — "
                         "a guard let something through")
