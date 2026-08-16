@@ -71,6 +71,10 @@
 | `templates/onboarding-intro.md` | Junior BA onboarding intro to BABOK structure. Generated from `templates/onboarding-intro.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum filled-in routing record. |
 | `templates/_smoke-test.md` | Minimum filled-in routing record. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/ba-coverage-checklist.md.j2` | BA knowledge-area coverage checklist for a project |
+| `templates/ba-coverage-checklist.md` | BA knowledge-area coverage checklist for a project Generated from `templates/ba-coverage-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/ba-plan.md.j2` | Business Analysis plan envelope per BABOK KA-1 |
+| `templates/ba-plan.md` | Business Analysis plan envelope per BABOK KA-1 Generated from `templates/ba-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

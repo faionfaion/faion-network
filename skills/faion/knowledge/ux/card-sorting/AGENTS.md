@@ -72,6 +72,8 @@
 | `templates/card-sorting.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/card-sorting.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/card-sort-plan.md.j2` | Card sort study plan — method, participants, card set, analysis thresholds |
+| `templates/card-sort-plan.md` | Card sort study plan — method, participants, card set, analysis thresholds Generated from `templates/card-sort-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

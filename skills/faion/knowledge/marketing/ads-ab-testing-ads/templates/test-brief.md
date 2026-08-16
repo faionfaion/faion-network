@@ -4,26 +4,26 @@
 <!-- depends-on: content/01-core-rules.xml, content/06-decision-tree.xml -->
 <!-- token-budget-impact: ~400-1200 tokens when loaded as context -->
 
-# A/B Test Brief: [Test Name]
+# A/B Test Brief: <test_name>
 
 ## Hypothesis
 
-We believe [variant description] will outperform [control description] because [specific reasoning based on data or theory].
+We believe <variant_description> will outperform <control_description> because [specific reasoning based on data or theory].
 
 ## Variables
 
 | Element | Control | Variant |
 |---------|---------|---------|
-| Changed element | [Current] | [New] |
-| Held constant | [List everything identical] | [Same] |
+| Changed element | <current> | <new> |
+| Held constant | [List everything identical] | <same> |
 
 ## Test Parameters
 
-- Platform: [Meta Experiments / Google Ads Experiments / Manual]
+- Platform: <platform>
 - Audience: [Name — identical for both]
 - Budget: $[X] per variant per day
 - Duration: [X] days (minimum)
-- Primary metric: [CTR / Conversions / CPA]
+- Primary metric: <ctr_conversions_cpa>
 - Secondary metric (guardrail): [Must not regress by more than X%]
 - Required sample: [X] impressions per variant / [X] conversions per variant
 - Significance method: [Bayesian P>0.95 / Frequentist 95% CI]
@@ -31,6 +31,6 @@ We believe [variant description] will outperform [control description] because [
 
 ## Baseline
 
-- Current [primary metric]: [X%/$X]
-- Minimum detectable effect: [Y%]
-- Expected outcome: [Variant wins / Unsure / Directional only]
+- Current <primary_metric>: <x_x>
+- Minimum detectable effect: <y>
+- Expected outcome: <expected_outcome>

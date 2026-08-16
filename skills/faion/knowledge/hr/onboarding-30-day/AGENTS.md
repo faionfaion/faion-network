@@ -69,6 +69,8 @@
 | `templates/onboarding-30-day.md` | Working spec skeleton with 5-line header Generated from `templates/onboarding-30-day.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in version for smoke testing |
 | `templates/_smoke-test.md` | Minimum viable filled-in version for smoke testing Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/30-day-plan.md.j2` | 30-day onboarding plan skeleton — week-by-week checklist with one named milestone |
+| `templates/30-day-plan.md` | 30-day onboarding plan skeleton — week-by-week checklist with one named milestone Generated from `templates/30-day-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -69,6 +69,8 @@
 | `templates/_smoke-test.md` | Minimum viable filled-in tool-strategy ADR Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/decision-matrix.md.j2` | Pre-existing template carried into the figma-vs-adobe-strategy-2026 methodology |
+| `templates/decision-matrix.md` | Pre-existing template carried into the figma-vs-adobe-strategy-2026 methodology Generated from `templates/decision-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

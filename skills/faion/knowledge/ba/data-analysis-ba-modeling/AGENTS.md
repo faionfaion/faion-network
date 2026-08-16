@@ -71,6 +71,10 @@
 | `templates/_smoke-test.json` | Minimum viable data-dictionary fixture |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/data-quality-assessment.md.j2` | DQ baseline skeleton scoring six dimensions per entity |
+| `templates/data-quality-assessment.md` | DQ baseline skeleton scoring six dimensions per entity Generated from `templates/data-quality-assessment.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/data-requirements.md.j2` | data requirements skeleton (per-feature entity + field shortlist) |
+| `templates/data-requirements.md` | data requirements skeleton (per-feature entity + field shortlist) Generated from `templates/data-requirements.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

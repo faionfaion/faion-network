@@ -4,12 +4,12 @@
 <!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
 <!-- token-budget-impact: ~450 tokens loaded as template context -->
 
-# Decision Analysis: [Decision Topic]
+# Decision Analysis: <decision_topic>
 
 **Version:** 1.0
-**Date:** [Date — criteria locked]
-**Analyst:** [Name]
-**Decision Maker:** [Name]
+**Date:** <date_criteria_locked>
+**Analyst:** <name>
+**Decision Maker:** <name>
 **Weight-setter:** [Name, timestamp] — weights locked before scoring
 
 ## 1. Decision Context
@@ -17,19 +17,19 @@
 **Decision Statement:** [What specific decision needs to be made]
 
 **Objectives:**
-- [Objective 1]
+- <objective_1>
 
 **Constraints:**
-- [Constraint 1]
+- <constraint_1>
 
 **Background:** [Why this decision is needed now]
 
 ## 2. Options Considered
 
-### Option 1: [Name]
+### Option 1: <name>
 - **Description:** [What this option involves]
-- **Pros:** [Verifiable benefits]
-- **Cons:** [Verifiable drawbacks]
+- **Pros:** <verifiable_benefits>
+- **Cons:** <verifiable_drawbacks>
 
 ### Option 2: Do Nothing / Status Quo
 - **Description:** Maintain current state
@@ -39,7 +39,7 @@
 
 | Criterion | Weight | Direction | Definition | Score scale |
 |-----------|--------|-----------|------------|-------------|
-| [Criterion] | [X%] | higher_better/lower_better | [What it means] | [5=best for this direction] |
+| <criterion> | [X%] | higher_better/lower_better | [What it means] | [5=best for this direction] |
 
 Total weights must sum to 100%. Max 7 criteria.
 
@@ -47,7 +47,7 @@ Total weights must sum to 100%. Max 7 criteria.
 
 | Criterion | Wt | Option 1 | Option 2 | Option 3 | Evidence |
 |-----------|----|----------|----------|----------|----------|
-| [Crit 1] | X% | [Score] | [Score] | [Score] | [URL, fetched YYYY-MM-DD] |
+| <crit_1> | X% | <score> | <score> | <score> | [URL, fetched YYYY-MM-DD] |
 | **Weighted Total** | 100% | **X.XX** | **X.XX** | **X.XX** | |
 
 ## 5. Sensitivity Analysis
@@ -56,20 +56,20 @@ Run: `python sensitivity.py matrix.json`
 
 | Option | Robustness % | Mean | SD |
 |--------|-------------|------|----|
-| [Option 1] | [X%] | [X.XX] | [X.XX] |
+| <option_1> | [X%] | [X.XX] | [X.XX] |
 
 If top option robustness < 70%: escalate to human before committing.
 
 ## 6. Recommendation
 
-**Recommended Option:** [Option X]
+**Recommended Option:** <option_x>
 **Rationale:** [At most 80 words]
 **Robustness:** [X% Monte Carlo trials]
 **Top Risks:**
-1. [Risk] — Mitigation: [Plan]
+1. <risk> — Mitigation: <plan>
 
 **Pre-mortem:** Assume in 12 months this was the wrong call. Why?
-- [Pre-mortem finding]
+- <pre_mortem_finding>
 
 ## 7. Approval
 
@@ -77,4 +77,4 @@ If top option robustness < 70%: escalate to human before committing.
 |------|------|----------|------|
 | Decision Maker | | Approve/Reject | |
 
-**Final Decision:** [What was decided]
+**Final Decision:** <what_was_decided>

@@ -72,6 +72,8 @@
 | `templates/heuristic-evaluation.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/heuristic-evaluation.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/evaluation-form.md.j2` | Heuristic evaluation form — scope, per-issue findings with severity, summary table |
+| `templates/evaluation-form.md` | Heuristic evaluation form — scope, per-issue findings with severity, summary table Generated from `templates/evaluation-form.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml, content/06-decision-tree.xml -->
 <!-- token-budget-impact: ~400-1200 tokens when loaded as context -->
 
-# Test Results: [Test Name]
+# Test Results: <test_name>
 
 ## Summary
 
@@ -26,14 +26,14 @@
 ## Statistical Validity
 
 - Confidence level: [X%]
-- Method: [Bayesian / Frequentist]
+- Method: <bayesian_frequentist>
 - [Significant / Not significant / Test extended to reach significance]
 - Sample size met: [Yes / No — state actual vs. required]
 
 ## Learnings
 
 - What happened: [Factual description of outcome]
-- Why we think this: [Hypothesis about mechanism]
+- Why we think this: <hypothesis_about_mechanism>
 
 ## Next Steps
 

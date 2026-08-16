@@ -7,7 +7,7 @@
 # Retention Loop Design
 
 ## Loop Name
-[Name]
+<name>
 
 ## Loop Type
 - [ ] Content  [ ] Social  [ ] Progress  [ ] Stored Value  [ ] Workflow  [ ] Network
@@ -19,17 +19,17 @@
 - Internal (emotion/need): [what drives return?]
 
 ### Action
-- Primary action: [what user does]
-- Friction level: [Low / Medium / High]
+- Primary action: <what_user_does>
+- Friction level: <low_medium_high>
 
 ### Reward
-- Type: [Tribe / Hunt / Self]
+- Type: <tribe_hunt_self>
 - Variable element: [what changes each time?]
-- Immediate feedback: [what user sees]
+- Immediate feedback: <what_user_sees>
 
 ### Investment
 - What user puts in: [data / time / social capital]
-- How it improves next experience: [personalization / value accrual]
+- How it improves next experience: <personalization_value_accrual>
 
 ## Metrics
 - Daily retention target: ____%
@@ -38,5 +38,5 @@
 
 ## Implementation Plan
 1. [First mechanism to build]
-2. [Second mechanism]
+2. <second_mechanism>
 3. [Triggers to configure]

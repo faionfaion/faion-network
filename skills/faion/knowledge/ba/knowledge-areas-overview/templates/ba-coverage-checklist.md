@@ -3,11 +3,11 @@
 <!-- produces: artefact conforming to content/02-output-contract.xml (decision-record) -->
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-800 tokens when loaded as context -->
-# BA Coverage Checklist: [Project Name]
+# BA Coverage Checklist: <project_name>
 
-**Date:** [Date]
-**BA:** [Name]
-**Project phase:** [Initiation | Requirements | Design | Build | Test | Deploy]
+**Date:** <date>
+**BA:** <name>
+**Project phase:** <project_phase>
 
 ## Knowledge Area Coverage
 

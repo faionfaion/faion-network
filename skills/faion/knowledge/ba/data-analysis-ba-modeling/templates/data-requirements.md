@@ -4,10 +4,10 @@
 <!-- depends-on: content/01-core-rules.xml r5 (version pin) -->
 <!-- token-budget-impact: ~200 tokens -->
 
-# Data Requirements: [Feature/Project Name]
+# Data Requirements: <feature_project_name>
 
 **Version:** 1.0
-**Analyst:** [Name]
+**Analyst:** <name>
 
 ## Data Overview
 
@@ -21,15 +21,15 @@
 
 ## Detailed Requirements
 
-### [Entity 1]: [Name]
+### <entity_1>: <name>
 
-**Description:** [Business description]
+**Description:** <business_description>
 
 **Attributes:**
 
 | Attribute | Type | Size | Required | Description | Validation |
 |-----------|------|------|----------|-------------|------------|
-| [Name] | [Type] | [Size] | Y/N | [Description] | [Rule] |
+| [Name] | [Type] | [Size] | Y/N | [Description] | <rule> |
 
 **Derived Data:**
 
@@ -41,19 +41,19 @@
 
 | Entity | Quality Rule | Threshold |
 |--------|--------------|-----------|
-| [Entity] | [Rule description] | [e.g. < 1% null values] |
+| [Entity] | <rule_description> | [e.g. < 1% null values] |
 
 ## Data Volumes
 
 | Entity | Current | Expected (1yr) | Expected (3yr) |
 |--------|---------|----------------|----------------|
-| [Entity] | [Count] | [Count] | [Count] |
+| [Entity] | <count> | <count> | <count> |
 
 ## Data Integration
 
 | Source System | Target System | Data | Frequency | Method |
 |---------------|---------------|------|-----------|--------|
-| [System] | [System] | [Data elements] | [Batch/Real-time] | [API/ETL/CDC] |
+| [System] | [System] | <data_elements> | <batch_real_time> | <api_etl_cdc> |
 
 ## Data Security
 

@@ -63,6 +63,8 @@
 | `templates/config-instance.json` | JSON instance of a filled config artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/weekly-report.md.j2` | Weekly DORA report skeleton — four keys plus reliability, with a per-metric commentary section |
+| `templates/weekly-report.md` | Weekly DORA report skeleton — four keys plus reliability, with a per-metric commentary section Generated from `templates/weekly-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

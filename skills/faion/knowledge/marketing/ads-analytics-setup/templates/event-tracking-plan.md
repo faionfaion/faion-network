@@ -4,9 +4,9 @@
 <!-- depends-on: content/01-core-rules.xml, content/06-decision-tree.xml -->
 <!-- token-budget-impact: ~400-1200 tokens when loaded as context -->
 
-# Event Tracking Plan: [Product Name]
+# Event Tracking Plan: <product_name>
 
-## Business Model: [saas | ecom | leadgen | content]
+## Business Model: <business_model>
 
 ## Page Events (automatic via enhanced measurement)
 

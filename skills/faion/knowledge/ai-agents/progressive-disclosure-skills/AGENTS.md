@@ -59,6 +59,8 @@
 |---|---|
 | `templates/progressive-disclosure-skills-spec.md.j2` | Markdown wrapper for the JSON spec. |
 | `templates/progressive-disclosure-skills-spec.md` | Markdown wrapper for the JSON spec. Generated from `templates/progressive-disclosure-skills-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/skill-body.md.j2` | skill body scaffold; loads on trigger match, defers details to references/ |
+| `templates/skill-body.md` | skill body scaffold; loads on trigger match, defers details to references/ Generated from `templates/skill-body.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

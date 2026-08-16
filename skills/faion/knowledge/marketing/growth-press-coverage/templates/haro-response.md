@@ -10,7 +10,7 @@ Query: [Paste the original query text here]
 
 ---
 
-Hi [Journalist name],
+Hi <journalist_name>,
 
 [Direct answer to their question in 2-3 sentences. Lead with the insight, not credentials.]
 
@@ -22,8 +22,8 @@ Happy to provide a longer quote or further detail for your piece.
 
 [Your name]
 [Title, Company]
-[Email] | [Phone]
-[Company URL]
+<email> | <phone>
+<company_url>
 
 ---
 

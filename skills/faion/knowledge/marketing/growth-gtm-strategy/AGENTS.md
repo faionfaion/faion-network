@@ -67,6 +67,10 @@
 | `templates/spec-skeleton.md` | Go-to-Market Strategy skeleton — fill per artefact, do not commit free-form output. Generated from `templates/spec-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in Go-to-Market Strategy. |
 | `templates/_smoke-test.md` | Minimum viable filled-in Go-to-Market Strategy. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/competitive-map.md.j2` | growth-gtm-strategy — competitive map |
+| `templates/competitive-map.md` | growth-gtm-strategy — competitive map Generated from `templates/competitive-map.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/gtm-one-pager.md.j2` | growth-gtm-strategy — gtm one pager |
+| `templates/gtm-one-pager.md` | growth-gtm-strategy — gtm one pager Generated from `templates/gtm-one-pager.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -6,7 +6,7 @@ depends-on: content/02-output-contract.xml (PACE spec)
 token-budget-impact: ~400 tokens
 -->
 
-# Social Media Calendar — [Month]
+# Social Media Calendar — <month>
 
 ## Content Pillars
 1. [Pillar 1] — [X posts, X%]
@@ -20,7 +20,7 @@ token-budget-impact: ~400 tokens
 |-----|----------|------|--------|-------|--------|
 | Mon | [Platform] | Thread | [Pillar 1] | [Topic] | Planned |
 | Mon | [Platform] | Carousel | [Pillar 2] | [Topic] | Planned |
-| Tue | [Platform] | Tweets (3) | [Pillar 3] | [Topics] | Planned |
+| Tue | [Platform] | Tweets (3) | [Pillar 3] | <topics> | Planned |
 | Tue | [Platform] | Reel | [Pillar 1] | [Topic] | Planned |
 | Wed | [Platform] | Quote tweet + 2 | [Pillar 2] | [Topic] | Planned |
 | Wed | [Platform] | Text post | [Pillar 3] | [Topic] | Planned |

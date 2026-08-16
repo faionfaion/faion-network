@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Engagement and Retention Dashboard — Week of [DATE]
+# Engagement and Retention Dashboard — Week of <date>
 
 ## Retention Rates
 
@@ -28,8 +28,8 @@
 
 | Loop | Participation | Completion | Impact |
 |------|---------------|------------|--------|
-| [Loop 1] | | | |
-| [Loop 2] | | | |
+| <loop_1> | | | |
+| <loop_2> | | | |
 
 ## Churn Analysis
 

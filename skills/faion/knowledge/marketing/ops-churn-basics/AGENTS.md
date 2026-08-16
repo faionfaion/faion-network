@@ -67,6 +67,8 @@
 | `templates/report-skeleton.md` | Churn Basics skeleton — fill per artefact, do not commit free-form output. Generated from `templates/report-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in Churn Basics. |
 | `templates/_smoke-test.md` | Minimum viable filled-in Churn Basics. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/churn-report.md.j2` | ops-churn-basics — churn report |
+| `templates/churn-report.md` | ops-churn-basics — churn report Generated from `templates/churn-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

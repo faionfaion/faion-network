@@ -4,10 +4,10 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200 tokens -->
 
-# Interface Catalog: [System Name]
+# Interface Catalog: <system_name>
 
 **Version:** [X.X]
-**Date:** [Date]
+**Date:** <date>
 **Author:** [Name]
 
 ## Interface Summary
@@ -34,8 +34,8 @@
 
 | ID | Spec | Source of Truth |
 |----|------|----------------|
-| IF-001 | [link to interface-spec.md] | [OpenAPI URL] |
-| IF-002 | [link to interface-spec.md] | [Data dictionary] |
+| IF-001 | [link to interface-spec.md] | <open_api_url> |
+| IF-002 | [link to interface-spec.md] | <data_dictionary> |
 
 ## Drift Check
 

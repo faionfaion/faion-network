@@ -67,6 +67,10 @@
 | `templates/report-skeleton.md` | Statistical Significance: Application skeleton — fill per artefact, do not commit free-form output. Generated from `templates/report-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in Statistical Significance: Application. |
 | `templates/_smoke-test.md` | Minimum viable filled-in Statistical Significance: Application. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/power-analysis.md.j2` | statistics-application — power analysis |
+| `templates/power-analysis.md` | statistics-application — power analysis Generated from `templates/power-analysis.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/significance-check.md.j2` | statistics-application — significance check |
+| `templates/significance-check.md` | statistics-application — significance check Generated from `templates/significance-check.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -8,7 +8,7 @@ token-budget-impact: ~300 tokens
 
 # Build in Public Monthly Update Template
 
-[Month] update on [Product]:
+<month> update on <product>:
 
 Revenue: $X,XXX MRR (+XX% from last month)
 Users: X,XXX

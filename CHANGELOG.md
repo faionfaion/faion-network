@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **78 undeclared templates with a complete five-key header now have a
+  `## Templates` row and are migrated to Jinja.** These were never a
+  `--migrate` refusal (that needs a row to point at) — they were simply never
+  named by any row, so `packablePath` shipped them (F036/AD-024) while
+  retrieval never surfaced them, the CR-010 shape. Reproduced the header-scan
+  independently: 78, matching the count given, of the 414 undeclared `.md`
+  templates (295 have no header at all, 3 partial, 38 are `_smoke-test*`
+  worked examples — none of those touched). All 78 methodologies already
+  carried a `## Templates` section, so every row was an append, never a new
+  section. `--migrate` ran exit 0 on 15, exit 1 (placeholders correctly left
+  for a human — prose, per-row-table repeats, name collisions) on the other
+  63; zero refusals (no exit 2-5). `--check` drift=0 on all 78 afterwards.
+
+  **One number in the brief does not reproduce.**
+  `validate-methodology-templates.py --all` reports **pass/fail per
+  methodology DIRECTORY**, not per template — total is fixed at the corpus's
+  2,521 `AGENTS.md` count regardless of how many templates a dir declares.
+  Measured before (`git stash -u`) and after: **2521 pass / 0 fail / 2521
+  total, unchanged both times.** A "pass count rises by 78" cannot happen
+  through this script; the real proof here is 0 fail before and after, plus
+  `--check` drift=0 and a clean `validate-methodology-v2` on all 54 touched
+  dirs.
+
 - **638 of 639 sensitive slots were listed as `required` in shipped schemas.** Under
   §1b the schema **is** the wire format, so this was not cosmetic: a client reading
   it asks a human for exactly the values the server must refuse to accept — the one

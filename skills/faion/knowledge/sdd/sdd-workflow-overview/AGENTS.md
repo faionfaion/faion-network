@@ -67,6 +67,8 @@
 | `templates/sdd-workflow-overview.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/sdd-workflow-overview.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/quick-spec.md.j2` | 15-minute quick spec — problem, requirements, design sketch, tasks, acceptance |
+| `templates/quick-spec.md` | 15-minute quick spec — problem, requirements, design sketch, tasks, acceptance Generated from `templates/quick-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

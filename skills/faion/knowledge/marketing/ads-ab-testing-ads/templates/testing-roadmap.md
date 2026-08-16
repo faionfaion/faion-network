@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml, content/06-decision-tree.xml -->
 <!-- token-budget-impact: ~400-1200 tokens when loaded as context -->
 
-# Testing Roadmap: Q[X] [Year]
+# Testing Roadmap: Q[X] <year>
 
 ## Month 1
 
@@ -29,12 +29,12 @@
 
 ## Test Backlog
 
-- [ ] [Test idea 1]
-- [ ] [Test idea 2]
-- [ ] [Test idea 3]
+- [ ] <test_idea_1>
+- [ ] <test_idea_2>
+- [ ] <test_idea_3>
 
 ## Learning Library
 
 | Test | Winner | Lift | Learning |
 |------|--------|------|---------|
-| [Name] | [Control/Variant] | [X%] | [One-sentence takeaway] |
+| <name> | <control_variant> | <x> | [One-sentence takeaway] |

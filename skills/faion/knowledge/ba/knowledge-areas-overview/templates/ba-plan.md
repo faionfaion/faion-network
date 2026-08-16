@@ -3,11 +3,11 @@
 <!-- produces: artefact conforming to content/02-output-contract.xml (decision-record) -->
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-800 tokens when loaded as context -->
-# Business Analysis Plan: [Project Name]
+# Business Analysis Plan: <project_name>
 
 **Version:** [X.X]
-**Date:** [Date]
-**BA Lead:** [Name]
+**Date:** <date>
+**BA Lead:** <name>
 
 ## Project Overview
 
@@ -16,8 +16,8 @@
 ## BA Scope
 
 ### In Scope
-- [BA activity 1]
-- [BA activity 2]
+- <ba_activity_1>
+- <ba_activity_2>
 
 ### Out of Scope
 - [BA activity explicitly excluded]
@@ -50,6 +50,6 @@
 
 ## Resources
 
-- BA Lead: [Name]
-- BA Analyst: [Name]
+- BA Lead: <name>
+- BA Analyst: <name>
 - SMEs: [Names and domains]

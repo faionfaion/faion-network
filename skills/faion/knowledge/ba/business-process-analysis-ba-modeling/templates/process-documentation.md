@@ -4,12 +4,12 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~350 tokens loaded as template context -->
 
-# Process Documentation: [Process Name]
+# Process Documentation: <process_name>
 
 **Version:** [X.X]
-**Date:** [Date]
-**Process Owner:** [Name]
-**Analyst:** [Name]
+**Date:** <date>
+**Process Owner:** <name>
+**Analyst:** <name>
 **Stage:** 2 / 5 — Current State
 
 ## Process Overview
@@ -22,20 +22,20 @@
 
 ## Scope
 
-**In Scope:** [activities included]
-**Out of Scope:** [explicit exclusions]
+**In Scope:** <activities_included>
+**Out of Scope:** <explicit_exclusions>
 
 ## Actors
 
 | Actor | Role | Department |
 |-------|------|------------|
-| [Actor 1] | [Role] | [Dept] |
+| <actor_1> | <role> | <dept> |
 
 ## Process Steps (cite source for every row)
 
 | Step | Activity | Actor | System | Input | Output | Rules | Source |
 |------|----------|-------|--------|-------|--------|-------|--------|
-| 1 | [Activity] | [Who] | [Named system only] | [Input] | [Output] | [Rules] | [file:line or ticket-ID] |
+| 1 | <activity> | <who> | [Named system only] | <input> | <output> | <rules> | [file:line or ticket-ID] |
 
 _Any step with blank Source is marked unverified and excluded from Stage 3 analysis._
 
@@ -51,11 +51,11 @@ _Any step with blank Source is marked unverified and excluded from Stage 3 analy
 
 | System | Steps | Purpose |
 |--------|-------|---------|
-| [Named system only] | [Steps] | [Purpose] |
+| [Named system only] | <steps> | <purpose> |
 
 ## Metrics (cite source or write "Data not available")
 
 | Metric | Value | Source |
 |--------|-------|--------|
-| Cycle time | [Value or Data not available] | [Source] |
-| Error rate | [Value or Data not available] | [Source] |
+| Cycle time | <cycle_time> | [Source] |
+| Error rate | <error_rate> | [Source] |

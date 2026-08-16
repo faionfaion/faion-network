@@ -70,6 +70,8 @@
 | `templates/_smoke-test.json` | Minimum viable interface-inventory fixture |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/interface-catalog.md.j2` | solution-wide interface catalog (one-row-per-interface index) |
+| `templates/interface-catalog.md` | solution-wide interface catalog (one-row-per-interface index) Generated from `templates/interface-catalog.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

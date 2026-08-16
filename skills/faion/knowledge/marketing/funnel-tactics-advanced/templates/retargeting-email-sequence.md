@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~400-1000 tokens when loaded as context -->
 
-# Retargeting Email Sequence: [Campaign Name]
+# Retargeting Email Sequence: <campaign_name>
 
 ## Email 1: Immediate (within 24 hours)
 **Subject:** [Personalized — reference their action]
@@ -14,7 +14,7 @@
 **Targets:** 15-20% open rate, 3-5% CTR
 
 ## Email 2: Day 1-3
-**Subject:** [Social proof or urgency angle]
+**Subject:** <subject>
 **Goal:** Build confidence with evidence
 **Copy angle:** Customer success story or testimonial
 **Offer:** Small discount or incentive

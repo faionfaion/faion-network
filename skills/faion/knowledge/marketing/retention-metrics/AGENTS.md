@@ -66,6 +66,10 @@
 | `templates/config-skeleton.md` | Retention Metrics skeleton — fill per artefact, do not commit free-form output. Generated from `templates/config-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in Retention Metrics. |
 | `templates/_smoke-test.md` | Minimum viable filled-in Retention Metrics. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/engagement-dashboard.md.j2` | retention-metrics — engagement dashboard |
+| `templates/engagement-dashboard.md` | retention-metrics — engagement dashboard Generated from `templates/engagement-dashboard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/retention-loop-design.md.j2` | retention-metrics — retention loop design |
+| `templates/retention-loop-design.md` | retention-metrics — retention loop design Generated from `templates/retention-loop-design.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

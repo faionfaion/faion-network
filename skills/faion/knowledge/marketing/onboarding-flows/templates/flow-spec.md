@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~400-1000 tokens when loaded as context -->
 
-# Onboarding Flow Spec: [Product Name]
+# Onboarding Flow Spec: <product_name>
 
 ## Activation Event
 
@@ -24,7 +24,7 @@
 |------|------------|------|----------------------|-----------|
 | 1. [Step name] | [modal/tooltip/page] | [Copy ≤80 chars] | [Event fired] | No |
 | 2. [Step name] | [modal/tooltip/page] | [Copy ≤80 chars] | [Event fired] | No |
-| 3. [Step name] | [modal/tooltip/page] | [Copy ≤80 chars] | [Activation event] | No |
+| 3. [Step name] | [modal/tooltip/page] | [Copy ≤80 chars] | <activation_event> | No |
 
 ## Optional Steps (contextual triggers)
 

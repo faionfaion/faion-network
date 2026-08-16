@@ -70,6 +70,10 @@
 | `templates/_smoke-test.json` | Minimum viable decision-record JSON |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/decision-analysis.md.j2` | decision-record skeleton (decision + options + criteria + scores + sensitivity + signoff) |
+| `templates/decision-analysis.md` | decision-record skeleton (decision + options + criteria + scores + sensitivity + signoff) Generated from `templates/decision-analysis.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/decision-matrix-simple.md.j2` | lightweight 3-option × 3-criteria decision matrix |
+| `templates/decision-matrix-simple.md` | lightweight 3-option × 3-criteria decision matrix Generated from `templates/decision-matrix-simple.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

@@ -69,6 +69,8 @@
 | `templates/decisions-log.jsonl` | Append-only audit log. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/decision-table.md.j2` | per-tool decision-table reference of fix vs flag outcomes by rule class. |
+| `templates/decision-table.md` | per-tool decision-table reference of fix vs flag outcomes by rule class. Generated from `templates/decision-table.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

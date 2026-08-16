@@ -4,20 +4,20 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~400-1000 tokens when loaded as context -->
 
-# A/B Test Spec: [Hypothesis Name]
+# A/B Test Spec: <hypothesis_name>
 
 ## Hypothesis
-If we [change what], then [expected outcome] because [diagnosis-based reason].
+If we <change_what>, then <expected_outcome> because <diagnosis_based_reason>.
 
 ## Control vs. Variant
-- **Control:** [Current version description]
-- **Variant:** [New version description]
+- **Control:** <current_version_description>
+- **Variant:** <new_version_description>
 - **Only change:** [Single variable — enforce this strictly]
 
 ## Success Metrics
-- **Primary:** [Main KPI]
-- **Secondary:** [Supporting metrics]
-- **Target lift:** [Expected improvement %]
+- **Primary:** <main_kpi>
+- **Secondary:** <supporting_metrics>
+- **Target lift:** <expected_improvement>
 
 ## Sample Size and Duration
 - **Min sample per variant:** [Calculate with power calculator at 80% power, p=0.05]
@@ -25,8 +25,8 @@ If we [change what], then [expected outcome] because [diagnosis-based reason].
 - **Statistical significance threshold:** p &lt; 0.05
 
 ## Decision Criteria
-- **Win if:** variant outperforms control by [X%] with p &lt; 0.05
-- **Loss if:** control outperforms variant by [X%]
+- **Win if:** variant outperforms control by <x> with p &lt; 0.05
+- **Loss if:** control outperforms variant by <x>
 - **Inconclusive:** run additional 7 days, then call it
 
 ## Post-Test

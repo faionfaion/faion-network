@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Churn Report: [Month YYYY]
+# Churn Report: <month_yyyy>
 
 ## Overview
 
@@ -41,10 +41,10 @@
 
 | Account | Health Score | MRR | Issue | Recommended Action |
 |---------|-------------|-----|-------|-------------------|
-| [Name] | 35 | $X | No login 14d | CS outreach |
+| <name> | 35 | $X | No login 14d | CS outreach |
 
 ## Key Insights
 
 1. [Top finding from this month's data]
 2. [Trend vs last month]
-3. [Recommended next action]
+3. <recommended_next_action>

@@ -6,7 +6,7 @@
 
 # Statistical Significance Check
 
-## Test: [Name]
+## Test: <name>
 
 ## Raw Data
 | Variant     | Sample Size (n) | Conversions (x) | Rate  |

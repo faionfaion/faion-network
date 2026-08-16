@@ -70,6 +70,10 @@
 | `templates/_smoke-test.json` | Minimum viable use-case JSON |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/use-case-diagram.md.j2` | solution-wide UML use-case diagram (mermaid) |
+| `templates/use-case-diagram.md` | solution-wide UML use-case diagram (mermaid) Generated from `templates/use-case-diagram.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/use-case-spec.md.j2` | per-use-case skeleton (actor + goal + pre/post + flows) |
+| `templates/use-case-spec.md` | per-use-case skeleton (actor + goal + pre/post + flows) Generated from `templates/use-case-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

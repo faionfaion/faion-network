@@ -66,6 +66,8 @@
 | `templates/spec.md` | SDD spec.md skeleton with all required sections Generated from `templates/spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/spec-prompt.md.j2` | LLM prompt template + reviewer checklist |
 | `templates/spec-prompt.md` | LLM prompt template + reviewer checklist Generated from `templates/spec-prompt.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/api-spec.md.j2` | API specification skeleton — base URLs, auth, rate limits, endpoints, error codes |
+| `templates/api-spec.md` | API specification skeleton — base URLs, auth, rate limits, endpoints, error codes Generated from `templates/api-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

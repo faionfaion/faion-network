@@ -66,6 +66,8 @@
 | `templates/config-skeleton.md` | Ops Metrics Basics skeleton — fill per artefact, do not commit free-form output. Generated from `templates/config-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in Ops Metrics Basics. |
 | `templates/_smoke-test.md` | Minimum viable filled-in Ops Metrics Basics. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/weekly-review.md.j2` | ops-metrics-basics — weekly review |
+| `templates/weekly-review.md` | ops-metrics-basics — weekly review Generated from `templates/weekly-review.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

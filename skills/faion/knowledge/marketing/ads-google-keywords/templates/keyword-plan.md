@@ -18,7 +18,7 @@ Intent codes: Trans = Transactional, Comm = Commercial, Info = Informational, Na
 
 ## Ad Group Plan
 
-### Ad Group: [Theme]
+### Ad Group: <theme>
 
 **Keywords (Phrase Match)**
 - "keyword 1"
@@ -26,12 +26,12 @@ Intent codes: Trans = Transactional, Comm = Commercial, Info = Informational, Na
 - "keyword 3"
 
 **Keywords (Exact Match — after 30 days data)**
-- [keyword 1]
-- [proven performer]
+- <keyword_1>
+- <proven_performer>
 
 **Negative Keywords**
 - free
-- [irrelevant term]
+- <irrelevant_term>
 
 **Expected Volume**
 - Monthly searches: X,XXX

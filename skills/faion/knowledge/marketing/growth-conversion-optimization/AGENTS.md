@@ -68,6 +68,10 @@
 | `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in instance. |
 | `templates/_smoke-test.md` | Minimum viable filled-in instance. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/ab-test-brief.md.j2` | A/B test brief: hypothesis, sample, duration, significance, named owner |
+| `templates/ab-test-brief.md` | A/B test brief: hypothesis, sample, duration, significance, named owner Generated from `templates/ab-test-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/cro-audit.md.j2` | site-wide CRO audit template (top-of-funnel through activation) |
+| `templates/cro-audit.md` | site-wide CRO audit template (top-of-funnel through activation) Generated from `templates/cro-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

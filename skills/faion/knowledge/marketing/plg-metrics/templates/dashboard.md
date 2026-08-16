@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~400-1000 tokens when loaded as context -->
 
-# PLG Metrics Dashboard — [Month YYYY]
+# PLG Metrics Dashboard — <month_yyyy>
 
 ## Acquisition
 

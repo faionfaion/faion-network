@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Weekly Review: [DATE]
+# Weekly Review: <date>
 
 ## Key Metrics
 

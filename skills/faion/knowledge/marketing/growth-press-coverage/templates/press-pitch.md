@@ -6,19 +6,19 @@
 
 # Press Pitch Template
 
-Subject: [Startup name] [action verb] [specific newsworthy thing]
+Subject: <startup_name> <action_verb> <specific_newsworthy_thing>
 
 ---
 
-Hey [First name],
+Hey <first_name>,
 
-[Personalized opener — reference ONE specific article by title, cite a non-obvious insight from it. Do NOT write "Loved your piece". Example: "Your piece on [specific angle] in [article] made me think about [specific connection]."]
+[Personalized opener — reference ONE specific article by title, cite a non-obvious insight from it. Do NOT write "Loved your piece". Example: "Your piece on <specific_angle> in <article> made me think about <specific_connection>."]
 
 Quick pitch:
 
-[Company name], a [2-word description], just [the news in one sentence]. We've [impressive stat or milestone]. The story: [unique angle — why this is surprising, contrarian, or culturally relevant].
+<company_name>, a [2-word description], just [the news in one sentence]. We've [impressive stat or milestone]. The story: [unique angle — why this is surprising, contrarian, or culturally relevant].
 
-This ties into the [trend/beat topic] theme you've been covering.
+This ties into the <trend_beat_topic> theme you've been covering.
 
 I can offer:
 - Founder interview
@@ -28,10 +28,10 @@ I can offer:
 Worth a quick call this week?
 
 [Your name]
-Founder, [Company]
-[Email] | [Phone]
+Founder, <company>
+<email> | <phone>
 
-Press kit: [URL]
+Press kit: <url>
 
 ---
 

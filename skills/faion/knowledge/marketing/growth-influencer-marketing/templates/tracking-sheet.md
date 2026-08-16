@@ -4,14 +4,14 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Influencer Tracking Sheet — [Campaign Name / Quarter]
+# Influencer Tracking Sheet — <campaign_name_quarter>
 
 ## Pipeline
 
 | Handle | Platform | Followers | ER% | Niche | Contact | Status | Rate | Code | Notes |
 |--------|----------|-----------|-----|-------|---------|--------|------|------|-------|
-| @[handle] | Instagram | [50K] | [4.2%] | [niche] | [email/DM] | Outreach sent | $[X] | [CODE] | |
-| @[handle] | YouTube | [100K] | [5.1%] | [niche] | [DM] | Negotiating | $[X] | [CODE] | |
+| @[handle] | Instagram | [50K] | [4.2%] | [niche] | <email_dm> | Outreach sent | $[X] | [CODE] | |
+| @[handle] | YouTube | [100K] | [5.1%] | [niche] | <dm> | Negotiating | $[X] | [CODE] | |
 
 ## Status Legend
 
@@ -29,4 +29,4 @@
 
 | Handle | Outreach date | Follow-up 1 | Follow-up 2 |
 |--------|---------------|-------------|-------------|
-| @[handle] | [Date] | [Date +5d] | [Date +12d] |
+| @[handle] | <date> | <date_5d> | <date_12d> |

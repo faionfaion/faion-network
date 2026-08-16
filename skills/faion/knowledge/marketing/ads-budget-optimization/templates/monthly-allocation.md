@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml, content/06-decision-tree.xml -->
 <!-- token-budget-impact: ~400-1200 tokens when loaded as context -->
 
-# Budget Allocation: [Month Year]
+# Budget Allocation: <month_year>
 
 ## Total Budget: $[X]
 
@@ -26,8 +26,8 @@
 | Brand         | $X         | X% |
 
 ## Rationale
-- Increasing Meta because [reason]
-- Decreasing LinkedIn because [reason]
+- Increasing Meta because <reason>
+- Decreasing LinkedIn because <reason>
 
 ## Targets
 - Target CPA: $X

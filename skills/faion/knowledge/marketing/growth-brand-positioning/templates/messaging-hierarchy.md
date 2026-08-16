@@ -19,9 +19,9 @@
 
 ## Level 3: Key Messages (pick 3 only)
 
-1. **[Message 1 label]:** [One sentence] — [Supporting proof point]
-2. **[Message 2 label]:** [One sentence] — [Supporting proof point]
-3. **[Message 3 label]:** [One sentence] — [Supporting proof point]
+1. **<message_1_label>:** [One sentence] — <supporting_proof_point>
+2. **<message_2_label>:** [One sentence] — <supporting_proof_point>
+3. **<message_3_label>:** [One sentence] — <supporting_proof_point>
 
 ## Proof Points
 
@@ -36,7 +36,7 @@
 
 - [Preferred term for your category]
 - [Customer-language terms from interviews]
-- [Brand voice descriptors]
+- <brand_voice_descriptors>
 
 ### Words We Avoid
 
@@ -46,5 +46,5 @@
 
 ## Version Control
 
-Last reviewed: [YYYY-MM-DD]
+Last reviewed: <last_reviewed>
 Changed: [What changed and why]

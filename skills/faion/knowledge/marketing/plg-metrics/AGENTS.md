@@ -68,6 +68,8 @@
 | `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in instance. |
 | `templates/_smoke-test.md` | Minimum viable filled-in instance. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/dashboard.md.j2` | PLG metrics dashboard layout: activation / TTV / conversion / PQL / NRR panes |
+| `templates/dashboard.md` | PLG metrics dashboard layout: activation / TTV / conversion / PQL / NRR panes Generated from `templates/dashboard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

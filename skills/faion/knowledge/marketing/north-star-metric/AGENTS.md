@@ -70,6 +70,8 @@
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/nsm-definition.md.j2` | North Star Metric definition sheet — calculation, justification, current state, input metrics |
+| `templates/nsm-definition.md` | North Star Metric definition sheet — calculation, justification, current state, input metrics Generated from `templates/nsm-definition.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

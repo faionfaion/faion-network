@@ -67,6 +67,10 @@
 | `templates/spec-skeleton.md` | Brand Positioning skeleton — fill per artefact, do not commit free-form output. Generated from `templates/spec-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in Brand Positioning. |
 | `templates/_smoke-test.md` | Minimum viable filled-in Brand Positioning. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/messaging-hierarchy.md.j2` | growth-brand-positioning — messaging hierarchy |
+| `templates/messaging-hierarchy.md` | growth-brand-positioning — messaging hierarchy Generated from `templates/messaging-hierarchy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/positioning-canvas.md.j2` | growth-brand-positioning — positioning canvas |
+| `templates/positioning-canvas.md` | growth-brand-positioning — positioning canvas Generated from `templates/positioning-canvas.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

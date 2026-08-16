@@ -67,6 +67,8 @@
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/okr-template.md.j2` | Quarterly OKR sheet — objectives with kill conditions, measurable key results, check-in log |
+| `templates/okr-template.md` | Quarterly OKR sheet — objectives with kill conditions, measurable key results, check-in log Generated from `templates/okr-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

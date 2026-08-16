@@ -4,30 +4,30 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200 tokens -->
 
-# Decision Matrix: [Topic]
+# Decision Matrix: <topic>
 
 **Decision:** [What is being decided]
 **Date:** [Date — criteria locked before scoring]
-**Weight-setter:** [Name]
+**Weight-setter:** <name>
 
 ## Options
-1. [Option 1]
-2. [Option 2]
+1. <option_1>
+2. <option_2>
 3. Do nothing / status quo
 
 ## Criteria and Weights (max 7)
 | Criterion | Weight | Direction | Why Important |
 |-----------|--------|-----------|---------------|
-| [Criterion] | [%] | higher/lower_better | [Reason] |
+| <criterion> | [%] | higher/lower_better | <reason> |
 
 ## Evaluation (score 5 = best for this criterion's direction)
 
 | Criterion | Wt | Opt 1 | Opt 2 | Status quo | Evidence |
 |-----------|----|-------|-------|-----------|---------|
-| | | | | | [URL] |
+| | | | | | <url> |
 | **Total** | | **X.XX** | **X.XX** | **X.XX** | |
 
 ## Decision
-**Selected:** [Option]
+**Selected:** <option>
 **Reason:** [Brief rationale, evidence-based]
 **Archived at:** `.aidocs/<feature>/decisions/<date>-<topic>.md`

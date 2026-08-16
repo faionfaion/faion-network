@@ -71,6 +71,10 @@
 | `templates/_smoke-test.md` | Minimum viable filled spec Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/keyword-plan.md.j2` | legacy template for ads-google-keywords — keyword-plan |
+| `templates/keyword-plan.md` | legacy template for ads-google-keywords — keyword-plan Generated from `templates/keyword-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/negative-keyword-list.md.j2` | legacy template for ads-google-keywords — negative-keyword-list |
+| `templates/negative-keyword-list.md` | legacy template for ads-google-keywords — negative-keyword-list Generated from `templates/negative-keyword-list.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

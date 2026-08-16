@@ -66,6 +66,8 @@
 | `templates/checklist-skeleton.md` | Statistical Significance: Basics skeleton — fill per artefact, do not commit free-form output. Generated from `templates/checklist-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in Statistical Significance: Basics. |
 | `templates/_smoke-test.md` | Minimum viable filled-in Statistical Significance: Basics. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/sample-size-table.md.j2` | statistics-basics — sample size table |
+| `templates/sample-size-table.md` | statistics-basics — sample size table Generated from `templates/sample-size-table.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

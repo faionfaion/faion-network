@@ -68,6 +68,10 @@
 | `templates/_smoke-test.yaml` | Minimum viable filled config |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/event-tracking-plan.md.j2` | legacy template for ads-analytics-setup — event-tracking-plan |
+| `templates/event-tracking-plan.md` | legacy template for ads-analytics-setup — event-tracking-plan Generated from `templates/event-tracking-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/utm-conventions.md.j2` | legacy template for ads-analytics-setup — utm-conventions |
+| `templates/utm-conventions.md` | legacy template for ads-analytics-setup — utm-conventions Generated from `templates/utm-conventions.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

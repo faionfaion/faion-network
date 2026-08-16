@@ -68,6 +68,8 @@
 | `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in instance. |
 | `templates/_smoke-test.md` | Minimum viable filled-in instance. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/funnel-analysis.md.j2` | funnel analysis document for recording step metrics, drops, and ICE-scored hypotheses |
+| `templates/funnel-analysis.md` | funnel analysis document for recording step metrics, drops, and ICE-scored hypotheses Generated from `templates/funnel-analysis.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

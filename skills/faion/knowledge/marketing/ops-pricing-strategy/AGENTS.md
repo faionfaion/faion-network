@@ -65,6 +65,8 @@
 | `templates/ops-pricing-strategy.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/ops-pricing-strategy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/pricing-strategy-doc.md.j2` | Pricing strategy doc skeleton — value analysis, competitor scan, model choice, validation plan |
+| `templates/pricing-strategy-doc.md` | Pricing strategy doc skeleton — value analysis, competitor scan, model choice, validation plan Generated from `templates/pricing-strategy-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

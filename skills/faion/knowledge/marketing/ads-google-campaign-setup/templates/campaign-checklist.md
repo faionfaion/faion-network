@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml, content/06-decision-tree.xml -->
 <!-- token-budget-impact: ~400-1200 tokens when loaded as context -->
 
-# Campaign Launch Checklist: [Campaign Name]
+# Campaign Launch Checklist: <campaign_name>
 
 ## Pre-Launch
 
@@ -17,20 +17,20 @@
 
 - [ ] Campaign type: Search
 - [ ] Networks: Search only (Display and Partners disabled)
-- [ ] Locations: geoTargetConstants/[id] format
-- [ ] Languages: [list]
+- [ ] Locations: geoTargetConstants/<id> format
+- [ ] Languages: <list>
 - [ ] Budget: $[X]/day ([X * 1,000,000] micros)
 - [ ] Bidding: Maximize Conversions (no Target CPA)
 - [ ] Status: PAUSED
 - [ ] start_date set: [date]
-- [ ] end_date set: [date or never]
-- [ ] Naming: [Product]_[Type]_[Goal]_[Date] format
+- [ ] end_date set: <end_date_set>
+- [ ] Naming: <product>_<type>_<goal>_[Date] format
 
 ## Ad Groups
 
-- [ ] AG1: [Theme] — [N] keywords
-- [ ] AG2: [Theme] — [N] keywords
-- [ ] AG3: [Theme] — [N] keywords
+- [ ] AG1: <theme> — <ag1> keywords
+- [ ] AG2: <theme> — <ag2> keywords
+- [ ] AG3: <theme> — <ag3> keywords
 
 ## Ads
 

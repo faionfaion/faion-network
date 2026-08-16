@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~400-1000 tokens when loaded as context -->
 
-# CRO Audit: [Page/Funnel]
+# CRO Audit: <page_funnel>
 
 ## Current State
 
@@ -24,26 +24,26 @@
 ## Research Findings
 
 **Heatmaps:**
-- [Finding 1]
-- [Finding 2]
+- <finding_1>
+- <finding_2>
 
 **Session Recordings:**
-- [Finding 1]
-- [Finding 2]
+- <finding_1>
+- <finding_2>
 
 **User Feedback / Exit Surveys:**
-- [Finding 1]
-- [Finding 2]
+- <finding_1>
+- <finding_2>
 
 ## Opportunities (PIE Score)
 
 | Opportunity | Potential | Importance | Ease | Score |
 |-------------|-----------|------------|------|-------|
-| [Opp 1]     | X         | X          | X    | X.X   |
-| [Opp 2]     | X         | X          | X    | X.X   |
+| <opp_1>     | X         | X          | X    | X.X   |
+| <opp_2>     | X         | X          | X    | X.X   |
 
 ## Recommended Tests (ranked by PIE)
 
-1. [Test 1] — [Expected impact]
-2. [Test 2] — [Expected impact]
-3. [Test 3] — [Expected impact]
+1. <test_1> — <expected_impact>
+2. <test_2> — <expected_impact>
+3. <test_3> — <expected_impact>

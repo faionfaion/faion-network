@@ -15,8 +15,8 @@
 
 ## Competitive Alternatives
 
-1. [Direct competitor] — [key weakness from customer perspective]
-2. [Indirect competitor / different solution] — [key weakness]
+1. <direct_competitor> — [key weakness from customer perspective]
+2. [Indirect competitor / different solution] — <key_weakness>
 3. [Status quo / doing nothing] — [cost of inaction]
 
 ## Unique Capabilities
@@ -42,13 +42,13 @@
 
 ## Internal Positioning Statement
 
-For [target customer]
-who [situation/need]
-[Product] is the [category]
-that [key benefit]
-unlike [alternatives]
-we [unique differentiator].
+For <target_customer>
+who <situation_need>
+<product> is the <category>
+that <key_benefit>
+unlike <alternatives>
+we <unique_differentiator>.
 
 ## External One-Liner
 
-[Product] helps [audience] to [outcome] by [unique approach].
+<product> helps <audience> to <outcome> by <unique_approach>.

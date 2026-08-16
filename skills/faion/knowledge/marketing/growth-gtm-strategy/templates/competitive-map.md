@@ -4,25 +4,25 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Competitive Landscape: [Product]
+# Competitive Landscape: <product>
 
 ## Positioning Map
 
 Two dimensions that matter most to your ICP (e.g., price vs. feature depth, ease of use vs. customization):
 
-|                   | [Low Dimension 2] | [High Dimension 2] |
+|                   | <low_dimension_2> | <high_dimension_2> |
 |-------------------|-------------------|---------------------|
-| **High Dim 1** | [Competitor A] | [Competitor B / US] |
-| **Low Dim 1** | [Competitor C] | [Competitor D] |
+| **High Dim 1** | [Competitor A] | <competitor_b_us> |
+| **Low Dim 1** | <competitor_c> | <competitor_d> |
 
-**Our position:** [Quadrant] because [one-sentence reason tied to ICP preference].
+**Our position:** <quadrant> because [one-sentence reason tied to ICP preference].
 
 ## Key Competitors
 
 | Competitor | Strengths | Weaknesses | Where We Win |
 |------------|-----------|------------|--------------|
 | [Name] | [List] | [List] | [Why ICP chooses us over them] |
-| [Name] | [List] | [List] | [Why] |
+| [Name] | [List] | [List] | <why> |
 
 ## Sources
 

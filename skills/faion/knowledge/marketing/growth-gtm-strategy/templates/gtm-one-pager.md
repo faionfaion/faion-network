@@ -16,28 +16,28 @@
 
 ## Value Proposition
 
-For: [ICP]
-Who: [specific problem]
+For: <icp>
+Who: <specific_problem>
 Our: [product name]
-Is: [category]
+Is: <category>
 That: [key benefit — outcome, not feature]
-Unlike: [specific competitor or category]
-We: [unique differentiator]
+Unlike: <unlike>
+We: <unique_differentiator>
 
 [Mark any unverified claims as ASSUMPTION]
 
 ## Competitive Advantage
 
 1. [Differentiator 1 — why hard to copy]
-2. [Differentiator 2]
-3. [Differentiator 3]
+2. <differentiator_2>
+3. <differentiator_3>
 
 ## Channels (max 3, each with funnel role)
 
 | Channel | Funnel Role | Why This Channel | Status |
 |---------|-------------|------------------|--------|
-| [Channel 1] | Awareness/Consideration/Conversion | [ICP behavior data] | Active |
-| [Channel 2] | [Role] | [Reasoning] | Active |
+| <channel_1> | Awareness/Consideration/Conversion | <icp_behavior_data> | Active |
+| <channel_2> | <role> | <reasoning> | Active |
 
 ## Sales Motion
 
@@ -57,15 +57,15 @@ Rationale: ACV $[X]/year, estimated CAC $[X], payback [X] months.
 
 | Phase | Milestone | Gate to proceed |
 |-------|-----------|-----------------|
-| Private Beta | [N] users, [retention target] | [Metric threshold] |
-| Public Beta | Open waitlist, early pricing | [Conversion target] |
-| GA | Full launch, paid acquisition | [CAC/LTV validated] |
+| Private Beta | <private_beta> users, <retention_target> | <metric_threshold> |
+| Public Beta | Open waitlist, early pricing | <conversion_target> |
+| GA | Full launch, paid acquisition | <cac_ltv_validated> |
 
 ## Success Metrics (90 days)
 
-- [ ] [Metric 1]: [Target] — [How measured]
-- [ ] [Metric 2]: [Target]
-- [ ] [Metric 3]: [Target]
+- [ ] <metric_1>: <target> — <how_measured>
+- [ ] <metric_2>: <target>
+- [ ] <metric_3>: <target>
 
 ## Open Assumptions (requires validation)
 

@@ -72,6 +72,8 @@
 | `templates/proposal-from-discovery-template.json` | JSON schema for the output contract. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/proposal-from-discovery-template.md.j2` | canonical markdown skeleton for the Proposal From Discovery Template artefact |
+| `templates/proposal-from-discovery-template.md` | canonical markdown skeleton for the Proposal From Discovery Template artefact Generated from `templates/proposal-from-discovery-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200 tokens -->
 
-# Use Case Diagram: [System Name]
+# Use Case Diagram: <system_name>
 
 ## System Boundary
 
@@ -14,13 +14,13 @@
 
 | Actor | Type | Description |
 |-------|------|-------------|
-| [Actor 1] | Primary | [Goal they achieve] |
-| [Actor 2] | Secondary | [Role they play] |
-| [External System] | System | [Data or service provided] |
+| <actor_1> | Primary | <goal_they_achieve> |
+| <actor_2> | Secondary | <role_they_play> |
+| <external_system> | System | <system> |
 
 ## Use Cases by Actor
 
-### [Actor 1]
+### <actor_1>
 - UC-001: [Use Case Name]
 - UC-002: [Use Case Name]
 
@@ -28,7 +28,7 @@
 - UC-003: [Use Case Name]
 
 ### Shared
-- UC-004: [Use Case Name] — [Actor 1] and [Actor 2]
+- UC-004: [Use Case Name] — <actor_1> and <actor_2>
 
 ## Relationships
 

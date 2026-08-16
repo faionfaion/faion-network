@@ -4,11 +4,11 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# K-Factor Experiment: [Name]
+# K-Factor Experiment: <name>
 
 ## Hypothesis
 IF we [change to invite flow / landing page / incentive],
-THEN K-factor will increase by [X%]
+THEN K-factor will increase by <x>
 BECAUSE [mechanism: more share moments / higher conversion / shorter cycle].
 
 ## Target Metric
@@ -18,7 +18,7 @@ BECAUSE [mechanism: more share moments / higher conversion / shorter cycle].
 ## Variants
 | Variant | Description |
 |---------|-------------|
-| Control | [Current state] |
+| Control | <current_state> |
 | Treatment | [Proposed change — one change only] |
 
 ## Sample Size

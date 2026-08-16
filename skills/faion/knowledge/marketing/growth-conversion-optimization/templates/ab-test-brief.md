@@ -4,21 +4,21 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~400-1000 tokens when loaded as context -->
 
-# A/B Test Brief: [Test Name]
+# A/B Test Brief: <test_name>
 
 ## Hypothesis
 
-We believe that [change]
-will cause [effect]
-because [rationale].
+We believe that <change>
+will cause <effect>
+because <rationale>.
 
-We will measure this by [metric]
-and consider it successful if [target].
+We will measure this by <metric>
+and consider it successful if <target>.
 
 ## Variants
 
-- **Control:** [Current state description]
-- **Variant:** [Change description]
+- **Control:** <current_state_description>
+- **Variant:** <change_description>
 
 ## Metrics
 

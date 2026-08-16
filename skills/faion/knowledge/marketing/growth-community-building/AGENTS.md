@@ -64,6 +64,10 @@
 | `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/community-guidelines.md.j2` | Markdown skeleton for a community's published guidelines page. |
+| `templates/community-guidelines.md` | Markdown skeleton for a community's published guidelines page. Generated from `templates/community-guidelines.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/launch-checklist.md.j2` | Community launch checklist scaffolding for the Seed → Nurture → Scale → Monetize stages. |
+| `templates/launch-checklist.md` | Community launch checklist scaffolding for the Seed → Nurture → Scale → Monetize stages. Generated from `templates/launch-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

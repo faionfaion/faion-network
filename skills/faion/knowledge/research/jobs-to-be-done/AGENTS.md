@@ -71,6 +71,8 @@
 | `templates/jobs-to-be-done.schema.json` | JSON Schema seed + filled fixture for the report artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/job-statement.md.j2` | Job statement skeleton — situation, motivation, outcome across functional, emotional and social dimensions |
+| `templates/job-statement.md` | Job statement skeleton — situation, motivation, outcome across functional, emotional and social dimensions Generated from `templates/job-statement.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

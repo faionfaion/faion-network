@@ -68,6 +68,10 @@
 | `templates/_smoke-test.yaml` | Minimum viable filled config |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/ad-copy.md.j2` | legacy template for ads-google-campaign-setup — ad-copy |
+| `templates/ad-copy.md` | legacy template for ads-google-campaign-setup — ad-copy Generated from `templates/ad-copy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/campaign-checklist.md.j2` | legacy template for ads-google-campaign-setup — campaign-checklist |
+| `templates/campaign-checklist.md` | legacy template for ads-google-campaign-setup — campaign-checklist Generated from `templates/campaign-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

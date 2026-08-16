@@ -12,9 +12,9 @@ token-budget-impact: ~300 tokens
 [One sentence: why this community exists and who it is for]
 
 ## Our Values
-1. **[Value 1]** — [One-sentence description]
-2. **[Value 2]** — [One-sentence description]
-3. **[Value 3]** — [One-sentence description]
+1. **<value_1>** — [One-sentence description]
+2. **<value_2>** — [One-sentence description]
+3. **<value_3>** — [One-sentence description]
 
 ## The Rules
 1. No self-promotion without adding value first
@@ -35,4 +35,4 @@ token-budget-impact: ~300 tokens
 - Second offense: 24-hour mute
 - Third offense: removal from community
 
-Questions about moderation? Contact [moderator name/channel].
+Questions about moderation? Contact <moderator_name_channel>.

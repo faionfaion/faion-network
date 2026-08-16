@@ -65,6 +65,8 @@
 | `templates/_smoke-test.json` | Minimum viable filled-in example (passes the validator). |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/content-calendar.md.j2` | Markdown skeleton for a per-month cross-platform content calendar. |
+| `templates/content-calendar.md` | Markdown skeleton for a per-month cross-platform content calendar. Generated from `templates/content-calendar.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

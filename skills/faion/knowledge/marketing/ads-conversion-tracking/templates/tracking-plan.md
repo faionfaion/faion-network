@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml, content/06-decision-tree.xml -->
 <!-- token-budget-impact: ~400-1200 tokens when loaded as context -->
 
-# Conversion Tracking Plan: [Site/App]
+# Conversion Tracking Plan: <site_app>
 
 ## Macro Conversions (Primary Goals)
 

@@ -68,6 +68,12 @@
 | `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in instance. |
 | `templates/_smoke-test.md` | Minimum viable filled-in instance. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/ab-test-spec.md.j2` | A/B test specification template with sample-size + significance gate |
+| `templates/ab-test-spec.md` | A/B test specification template with sample-size + significance gate Generated from `templates/ab-test-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/ice-scoring-worksheet.md.j2` | ICE prioritisation worksheet with threshold bands (>= 24 / 18-23 / < 18) |
+| `templates/ice-scoring-worksheet.md` | ICE prioritisation worksheet with threshold bands (>= 24 / 18-23 / < 18) Generated from `templates/ice-scoring-worksheet.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/retargeting-email-sequence.md.j2` | retargeting email sequence with day-1 / day-3 / day-7 / day-14 cap |
+| `templates/retargeting-email-sequence.md` | retargeting email sequence with day-1 / day-3 / day-7 / day-14 cap Generated from `templates/retargeting-email-sequence.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

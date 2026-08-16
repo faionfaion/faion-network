@@ -1,57 +1,35 @@
 <!--
+
 purpose: API specification skeleton — base URLs, auth, rate limits, endpoints, error codes
 consumes: endpoint inventory + auth decision + rate-limit policy
 produces: Markdown artefact conforming to content/02-output-contract.xml
 depends-on: content/01-core-rules.xml
 token-budget-impact: ~300-900 tokens when loaded as context
-variables:
-  - name: api_name
-    type: string
-    required: true
-    description: The API's name as callers will refer to it in support threads and in their own code. Match the SDK package name if one exists; two names for one API doubles your search surface.
-  - name: prod_base_url
-    type: string
-    required: true
-    description: Production base URL including the version segment. Version in the path, not only in a header - the first thing an integrator copies is this line, and it has to still work next year.
-  - name: staging_base_url
-    type: string
-    required: true
-    description: Staging base URL. If there is no staging environment, say so here explicitly rather than omitting the line - integrators will otherwise test against production, and you will find out how.
-  - name: auth_method
-    type: text
-    required: true
-    description: How a caller authenticates, in one or two sentences - the scheme, where the credential goes, and how long it lives. Expiry is the detail people leave out and then get paged about.
-  - name: free_tier_rpm
-    type: integer
-    required: true
-    description: Requests per minute allowed on the free tier. A real number - limits described as "reasonable" get discovered by being hit, in production, at somebody else's peak hour.
-  - name: pro_tier_rpm
-    type: integer
-    required: true
-    description: Requests per minute on the paid tier. The gap between this and the free number is the upgrade argument, so make sure it is one you would actually make out loud.
 -->
-# {{api_name}} API Specification
+
+
+# <api_name> API Specification
 
 ## Overview
 [Brief description of what this API does]
 
 ## Base URL
-- Production: {{prod_base_url}}
-- Staging: {{staging_base_url}}
+- Production: <prod_base_url>
+- Staging: <staging_base_url>
 
 ## Authentication
-{{auth_method}}
+<auth_method>
 
 ## Rate Limits
 
 | Tier | Requests/minute | Requests/day |
 |------|-----------------|--------------|
-| Free | {{free_tier_rpm}} | [N] |
-| Pro | {{pro_tier_rpm}} | [N] |
+| Free | <free_tier_rpm> | <free> |
+| Pro | <pro_tier_rpm> | <pro> |
 
 ## Endpoints
 
-### [METHOD] /path/to/endpoint
+### <method> /path/to/endpoint
 
 **Description:** [What this endpoint does]
 

@@ -68,6 +68,8 @@
 | `templates/_smoke-test.yaml` | Minimum viable filled config |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/tracking-plan.md.j2` | legacy template for ads-conversion-tracking — tracking-plan |
+| `templates/tracking-plan.md` | legacy template for ads-conversion-tracking — tracking-plan Generated from `templates/tracking-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

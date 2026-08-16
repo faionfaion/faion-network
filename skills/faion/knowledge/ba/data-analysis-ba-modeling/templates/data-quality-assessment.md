@@ -4,43 +4,43 @@
 <!-- depends-on: content/01-core-rules.xml r2 -->
 <!-- token-budget-impact: ~250 tokens -->
 
-# Data Quality Assessment: [Data Domain]
+# Data Quality Assessment: <data_domain>
 
-**Assessor:** [Name]
-**Data Source:** [Source system]
-**Sample Size:** [N records — minimum 100 or 10% of volume]
-**Assessment Date:** [Date]
+**Assessor:** <name>
+**Data Source:** <source_system>
+**Sample Size:** <sample_size>
+**Assessment Date:** <date>
 
 ## Quality Dimensions
 
 ### Accuracy
 - **Metric:** Error rate vs. authoritative source
-- **Finding:** [X%] of records have incorrect values
+- **Finding:** <x> of records have incorrect values
 - **Examples:** [Specific examples of errors found]
 
 ### Completeness
 - **Metric:** Missing value percentage
-- **Finding:** [Field X] has [Y%] null values
+- **Finding:** <field_x> has <y> null values
 - **Impact:** [Downstream impact of missing data]
 
 ### Consistency
 - **Metric:** Cross-system conflict count
-- **Finding:** [X%] of records have conflicting values across systems
+- **Finding:** <x> of records have conflicting values across systems
 - **Discrepancies:** [Types of inconsistencies found]
 
 ### Timeliness
 - **Metric:** Average data age
-- **Finding:** Average data age is [X hours/days]
+- **Finding:** Average data age is <x_hours_days>
 - **Impact:** [Impact of stale data on operations]
 
 ### Validity
 - **Metric:** Business rule violation rate
-- **Finding:** [X%] of records violate defined rules
+- **Finding:** <x> of records violate defined rules
 - **Violations:** [Types and examples of violations]
 
 ### Uniqueness
 - **Metric:** Duplicate rate
-- **Finding:** [X%] duplicate records
+- **Finding:** <x> duplicate records
 - **Impact:** [Downstream impact of duplicates]
 
 ## Summary
@@ -58,4 +58,4 @@
 
 | Issue | Recommendation | Priority | Effort |
 |-------|----------------|----------|--------|
-| [Issue] | [Action] | H/M/L | H/M/L |
+| <issue> | <action> | H/M/L | H/M/L |

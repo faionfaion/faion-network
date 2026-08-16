@@ -9,8 +9,8 @@
 ## Commission
 
 - [X]% commission on [first payment / all payments]
-- [Y]-day cookie duration
-- Payouts monthly, minimum $[Z], 30 days after sale
+- <y>-day cookie duration
+- Payouts monthly, minimum $<z>, 30 days after sale
 
 ## Rules
 

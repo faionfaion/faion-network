@@ -67,6 +67,12 @@
 | `templates/spec-skeleton.md` | Influencer Marketing skeleton — fill per artefact, do not commit free-form output. Generated from `templates/spec-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in Influencer Marketing. |
 | `templates/_smoke-test.md` | Minimum viable filled-in Influencer Marketing. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/campaign-brief.md.j2` | growth-influencer-marketing — campaign brief |
+| `templates/campaign-brief.md` | growth-influencer-marketing — campaign brief Generated from `templates/campaign-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/campaign-report.md.j2` | growth-influencer-marketing — campaign report |
+| `templates/campaign-report.md` | growth-influencer-marketing — campaign report Generated from `templates/campaign-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/tracking-sheet.md.j2` | growth-influencer-marketing — tracking sheet |
+| `templates/tracking-sheet.md` | growth-influencer-marketing — tracking sheet Generated from `templates/tracking-sheet.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -71,6 +71,8 @@
 | `templates/pricing-research.schema.json` | JSON Schema seed + filled fixture for the report artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/pricing-research-report.md.j2` | Pricing research report — value analysis, competitor scan, Van Westendorp, recommended tiers |
+| `templates/pricing-research-report.md` | Pricing research report — value analysis, competitor scan, Van Westendorp, recommended tiers Generated from `templates/pricing-research-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

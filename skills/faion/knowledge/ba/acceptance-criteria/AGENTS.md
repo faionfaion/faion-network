@@ -68,6 +68,8 @@
 | `templates/_smoke-test.json` | Minimum viable filled artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/ac-bdd.md.j2` | Given/When/Then acceptance-criteria skeleton for one story |
+| `templates/ac-bdd.md` | Given/When/Then acceptance-criteria skeleton for one story Generated from `templates/ac-bdd.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

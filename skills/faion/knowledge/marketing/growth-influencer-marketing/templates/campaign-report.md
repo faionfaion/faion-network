@@ -4,11 +4,11 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Influencer Campaign Report — [Campaign Name]
+# Influencer Campaign Report — <campaign_name>
 
-**Date range:** [Start] — [End]
+**Date range:** <start> — <end>
 **Objective:** [One sentence]
-**Total budget:** $[Amount]
+**Total budget:** $<amount>
 
 ---
 
@@ -25,10 +25,10 @@
 | Metric | Result | Goal | Status |
 |--------|--------|------|--------|
 | Total reach | [X] | [X] | [Hit/Miss] |
-| Avg engagement rate | [X%] | [5%] | [Hit/Miss] |
+| Avg engagement rate | <x> | [5%] | [Hit/Miss] |
 | Total conversions | [X] | [X] | [Hit/Miss] |
 | Cost per conversion | $[X] | $[X] | [Hit/Miss] |
-| ROI | [Xx] | [2x] | [Hit/Miss] |
+| ROI | <roi> | [2x] | [Hit/Miss] |
 
 ## Top-Performing Content
 
@@ -37,14 +37,14 @@
 
 ## Worst-Performing Content
 
-- [Link]
+- <link>
 - Why it underperformed: [1-2 sentences]
 
 ## Learnings
 
-1. [Actionable learning 1]
-2. [Actionable learning 2]
-3. [Actionable learning 3]
+1. <actionable_learning_1>
+2. <actionable_learning_2>
+3. <actionable_learning_3>
 
 ## Recommendations for Next Campaign
 

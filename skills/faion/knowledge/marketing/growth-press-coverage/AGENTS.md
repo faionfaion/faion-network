@@ -66,6 +66,12 @@
 | `templates/playbook-step-skeleton.md` | Press & PR Coverage skeleton — fill per artefact, do not commit free-form output. Generated from `templates/playbook-step-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in Press & PR Coverage. |
 | `templates/_smoke-test.md` | Minimum viable filled-in Press & PR Coverage. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/founder-bio.md.j2` | growth-press-coverage — founder bio |
+| `templates/founder-bio.md` | growth-press-coverage — founder bio Generated from `templates/founder-bio.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/haro-response.md.j2` | growth-press-coverage — haro response |
+| `templates/haro-response.md` | growth-press-coverage — haro response Generated from `templates/haro-response.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/press-pitch.md.j2` | growth-press-coverage — press pitch |
+| `templates/press-pitch.md` | growth-press-coverage — press pitch Generated from `templates/press-pitch.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

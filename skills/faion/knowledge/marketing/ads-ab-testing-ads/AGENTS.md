@@ -71,6 +71,12 @@
 | `templates/_smoke-test.md` | Minimum viable filled spec Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/test-brief.md.j2` | legacy template for ads-ab-testing-ads — test-brief |
+| `templates/test-brief.md` | legacy template for ads-ab-testing-ads — test-brief Generated from `templates/test-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/test-results.md.j2` | legacy template for ads-ab-testing-ads — test-results |
+| `templates/test-results.md` | legacy template for ads-ab-testing-ads — test-results Generated from `templates/test-results.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/testing-roadmap.md.j2` | legacy template for ads-ab-testing-ads — testing-roadmap |
+| `templates/testing-roadmap.md` | legacy template for ads-ab-testing-ads — testing-roadmap Generated from `templates/testing-roadmap.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

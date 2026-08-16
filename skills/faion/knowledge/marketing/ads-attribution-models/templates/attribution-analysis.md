@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml, content/06-decision-tree.xml -->
 <!-- token-budget-impact: ~400-1200 tokens when loaded as context -->
 
-# Attribution Analysis: [Date Range]
+# Attribution Analysis: <date_range>
 
 ## Conversion Summary
 
@@ -28,7 +28,7 @@ Overlap: X%
 
 ## Insights
 
-- [Channel] gets more credit under [model] because [reason]
+- [Channel] gets more credit under <model> because <reason>
 - Consider increasing/decreasing spend on [channel]
 
 ## Budget Allocation Recommendation
@@ -40,9 +40,9 @@ Overlap: X%
 
 Recommendation:
 - Reallocate $X from [channel] to [channel]
-- Expected impact: [estimate]
+- Expected impact: <estimate>
 
 ## Recommendations
 
-1. [Recommendation]
-2. [Recommendation]
+1. <recommendation>
+2. <recommendation>

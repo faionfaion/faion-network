@@ -63,6 +63,8 @@
 | `templates/config-instance.json` | JSON instance of a filled config artefact |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
+| `templates/cost-report.md.j2` | Monthly cloud cost report skeleton — spend, per-team split, waste, and named optimisation actions |
+| `templates/cost-report.md` | Monthly cloud cost report skeleton — spend, per-team split, waste, and named optimisation actions Generated from `templates/cost-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

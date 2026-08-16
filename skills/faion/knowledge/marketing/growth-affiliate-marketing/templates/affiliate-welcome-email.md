@@ -4,9 +4,9 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-Subject: Welcome to the [Company] Affiliate Program
+Subject: Welcome to the <company> Affiliate Program
 
-Hey [Name],
+Hey <name>,
 
 Welcome aboard — excited to have you as a partner!
 
@@ -14,7 +14,7 @@ Here's everything you need to get started:
 
 **Your affiliate link:** [LINK]
 
-**Dashboard access:** [URL] (login: [email])
+**Dashboard access:** <url> (login: <email>)
 
 **Quick start:**
 1. Grab your link above
@@ -30,11 +30,11 @@ Here's everything you need to get started:
 
 **Payout:**
 - Commission: [X]% on [first/all] payments
-- Cookie: [Y] days
-- Paid monthly on the [date], minimum $[Z]
+- Cookie: <y> days
+- Paid monthly on the <date>, minimum $<z>
 - 30-day holdback on refund window
 
-**Support:** Reply to this email or reach me at [contact].
+**Support:** Reply to this email or reach me at <contact>.
 
 Our top affiliates earn $[X]+/month. Let me know how I can help you get there.
 
