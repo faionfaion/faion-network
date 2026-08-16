@@ -68,6 +68,8 @@
 | `templates/scorecard.yaml` | 5-dimension scorecard with per-dimension weight. |
 | `templates/decision-record.md.j2` | ADR-style decision with context, options, decision, consequences, reversal. |
 | `templates/decision-record.md` | ADR-style decision with context, options, decision, consequences, reversal. Generated from `templates/decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/adr.md.j2` | PM tool-selection ADR — evaluation scorecard, decision, consequences, migration plan. |
+| `templates/adr.md` | PM tool-selection ADR — evaluation scorecard, decision, consequences, migration plan. Generated from `templates/adr.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

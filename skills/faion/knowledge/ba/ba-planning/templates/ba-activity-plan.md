@@ -1,7 +1,15 @@
-# BA Activity Plan: [Initiative Name]
+<!--
+purpose: Weekly BA activity plan — daily elicitation activities, actual-vs-planned effort, dependencies, blockers, stakeholder-register diff.
+consumes: the BA approach document's plan version (see templates/ba-approach-document.md)
+produces: weekly activity-plan artefact
+depends-on: content/02-output-contract.xml
+token-budget-impact: ~210 tokens when filled
+-->
 
-**Week of:** [Date]
-**Business Analyst:** [Name]
+# BA Activity Plan: <initiative_name>
+
+**Week of:** <date>
+**Business Analyst:** <name>
 **Plan Version:** [X.X] (from BA Approach Document)
 
 ## Planned Activities
@@ -18,17 +26,17 @@
 
 | Activity | Planned Effort | Actual Effort | Variance | Notes |
 |----------|---------------|---------------|----------|-------|
-| [Activity] | [Hours] | [Hours] | [+/-] | [Notes] |
+| [Activity] | <hours> | <hours> | [+/-] | <notes> |
 
 ## Dependencies
 
 - [Dependency 1 — what is needed and from whom]
-- [Dependency 2]
+- <dependency_2>
 
 ## Blockers
 
 - [Issue 1 — impact and escalation status]
-- [Issue 2]
+- <issue_2>
 
 ## Stakeholder Register Diff This Week
 

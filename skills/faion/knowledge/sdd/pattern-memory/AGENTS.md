@@ -63,6 +63,14 @@
 | `templates/pattern-memory.md.j2` | Markdown skeleton with the required fields. |
 | `templates/pattern-memory.md` | Markdown skeleton with the required fields. Generated from `templates/pattern-memory.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
+| `templates/mistakes-file.md.j2` | .aidocs/memory/mistakes.md skeleton — recurring-error entries with frequency, root cause, fix, detection method, first/last seen. |
+| `templates/mistakes-file.md` | .aidocs/memory/mistakes.md skeleton — recurring-error entries with frequency, root cause, fix, detection method, first/last seen. Generated from `templates/mistakes-file.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/pattern-entry.md.j2` | Single pattern entry — confidence, category, context, pattern, code example, anti-pattern, rationale. |
+| `templates/pattern-entry.md` | Single pattern entry — confidence, category, context, pattern, code example, anti-pattern, rationale. Generated from `templates/pattern-entry.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/pattern-minimal.md.j2` | Minimal one-line pattern stub for low-confidence, newly observed patterns. |
+| `templates/pattern-minimal.md` | Minimal one-line pattern stub for low-confidence, newly observed patterns. Generated from `templates/pattern-minimal.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/patterns-file.md.j2` | .aidocs/memory/patterns.md skeleton — category sections for pattern-entry.md inserts, CLAUDE.md-synced. |
+| `templates/patterns-file.md` | .aidocs/memory/patterns.md skeleton — category sections for pattern-entry.md inserts, CLAUDE.md-synced. Generated from `templates/patterns-file.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

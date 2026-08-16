@@ -69,6 +69,8 @@
 | `templates/spec-requirements.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/spec-requirements.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/spec-requirements.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/spec-requirements.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/spec-template.md.j2` | Feature spec skeleton with numbered FR-NNN/NFR-NNN requirements, INVEST user stories, Given/When/Then acceptance criteria. |
+| `templates/spec-template.md` | Feature spec skeleton with numbered FR-NNN/NFR-NNN requirements, INVEST user stories, Given/When/Then acceptance criteria. Generated from `templates/spec-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

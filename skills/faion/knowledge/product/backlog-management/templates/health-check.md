@@ -1,7 +1,15 @@
-# Backlog Health Check: [Product]
+<!--
+purpose: DEEP/INVEST backlog health check — bucket and type breakdown plus health metrics against targets.
+consumes: backlog snapshot (bucket counts, item ages, AC coverage, source-link coverage)
+produces: a backlog health check report
+depends-on: content/01-core-rules.xml (r6-180d-archive and the DEEP/INVEST target thresholds)
+token-budget-impact: ~250 tokens when filled
+-->
+
+# Backlog Health Check: <product>
 
 ## Snapshot
-- **Date:** [Date]
+- **Date:** <date>
 - **Total items:** [X]
 - **Ready items:** [X]
 - **Stale items (180+ days):** [X]
@@ -35,5 +43,5 @@
 | Items without source link | [X] | 0 | OK/Needs work |
 
 ## Actions Needed
-- [ ] [Action 1]
-- [ ] [Action 2]
+- [ ] <action_1>
+- [ ] <action_2>

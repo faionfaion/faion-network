@@ -72,6 +72,10 @@
 | `templates/retro-notes.md` | Per-milestone retro: went-well, went-wrong, decisions, action items. Generated from `templates/retro-notes.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/post-mortem.md.j2` | Blameless post-mortem: timeline, root cause, contributing factors, actions. |
 | `templates/post-mortem.md` | Blameless post-mortem: timeline, root cause, contributing factors, actions. Generated from `templates/post-mortem.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/lesson-record.md.j2` | Single lesson-learned record — situation, impact, 5-whys root cause, recommendation. |
+| `templates/lesson-record.md` | Single lesson-learned record — situation, impact, 5-whys root cause, recommendation. Generated from `templates/lesson-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/session-agenda.md.j2` | Lessons-learned session agenda and facilitation script. |
+| `templates/session-agenda.md` | Lessons-learned session agenda and facilitation script. Generated from `templates/session-agenda.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

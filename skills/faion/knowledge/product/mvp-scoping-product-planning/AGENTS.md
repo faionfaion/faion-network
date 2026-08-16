@@ -62,6 +62,10 @@
 |------|---------|
 | `templates/mvp-scoping.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/mvp-scoping.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/mvp-scoping.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/mvp-quick-check.md.j2` | 5-question MVP sanity check with a capacity check. |
+| `templates/mvp-quick-check.md` | 5-question MVP sanity check with a capacity check. Generated from `templates/mvp-quick-check.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/mvp-scope-doc.md.j2` | Full MVP scope document. |
+| `templates/mvp-scope-doc.md` | Full MVP scope document. Generated from `templates/mvp-scope-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

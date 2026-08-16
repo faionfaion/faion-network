@@ -1,18 +1,26 @@
-# PM Tool Migration: [Source] → [Target]
+<!--
+purpose: PM-tool migration project plan — scope, phase timeline, risk register, rollback triggers, success criteria.
+consumes: scope brief, stakeholder roster and historical reference data (see Prerequisites)
+produces: migration project plan artefact
+depends-on: nothing
+token-budget-impact: ~300 tokens when filled
+-->
 
-**Objective:** [Goal] | **Sponsor:** [Name] | **PM:** [Name]
+# PM Tool Migration: <source> → <target>
+
+**Objective:** <goal> | **Sponsor:** <name> | **PM:** <name>
 
 ## Scope
 
 ### In Scope
-- Active projects: [N]
+- Active projects: <active_projects>
 - Issues from last [N] years
-- Attachments under [N] MB
+- Attachments under <attachments_under> MB
 - Key automations
 
 ### Out of Scope
 - Archived projects
-- Issues closed over [N] years ago
+- Issues closed over <issues_closed_over> years ago
 - Custom plugins without target equivalents
 - Time-tracking data
 

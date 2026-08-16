@@ -65,6 +65,8 @@
 | `templates/quality-gates-confidence.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/quality-gates-confidence.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/quality-gates-confidence.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/quality-gates-confidence.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/gate-report.md.j2` | Six-level quality-gate report (L1 lint through L6 human review) with per-gate score, overall confidence, decision, and failure detail. |
+| `templates/gate-report.md` | Six-level quality-gate report (L1 lint through L6 human review) with per-gate score, overall confidence, decision, and failure detail. Generated from `templates/gate-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

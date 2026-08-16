@@ -1,7 +1,13 @@
-# EVM Report — [Project Name] — Period [N]
+<!-- purpose: EVM period dashboard — key metrics, variances, forecasts, 3-period trend, at-risk work packages. -->
+<!-- consumes: PV/EV/AC actuals and cost baseline collected for the reporting period -->
+<!-- produces: EVM dashboard artefact -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~350 tokens when filled -->
 
-**Date:** [Date]
-**Prepared By:** [Name]
+# EVM Report — <project_name> — Period <evm_report_period>
+
+**Date:** <date>
+**Prepared By:** <name>
 **BAC:** $[X]
 
 ## Key Metrics
@@ -37,16 +43,16 @@ Thresholds: [0.95, 1.05] = Green | [0.85, 0.95) = Yellow | <0.85 = Red
 
 | Period | SPI | CPI | Status |
 |--------|-----|-----|--------|
-| [N-2]  | | | |
-| [N-1]  | | | |
+| <n_2>  | | | |
+| <n_1>  | | | |
 | [N]    | | | |
 
 ## Work Packages at Risk (CPI < 0.90 or SPI < 0.90 for 2+ periods)
 
 | WP ID | Name | SPI | CPI | Root-Cause Hypothesis | Proposed Action |
 |-------|------|-----|-----|-----------------------|-----------------|
-| [WP]  | | | | | |
+| <wp>  | | | | | |
 
-## Overall Status: [GREEN / YELLOW / RED]
+## Overall Status: <green_yellow_red>
 
 [2-3 sentences on overall health, key variances, and recommended action.]

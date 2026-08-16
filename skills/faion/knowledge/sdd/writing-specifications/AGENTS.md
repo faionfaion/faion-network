@@ -65,6 +65,12 @@
 | `templates/writing-specifications.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/writing-specifications.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/writing-specifications.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/writing-specifications.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/spec-component.md.j2` | UI component specification — props/interface, states, behavior (FR-X), accessibility, non-goals. |
+| `templates/spec-component.md` | UI component specification — props/interface, states, behavior (FR-X), accessibility, non-goals. Generated from `templates/spec-component.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/spec-full.md.j2` | Full spec.md — problem statement, goals/non-goals, success criteria, functional and non-functional requirements (FR-X/NFR-X), constraints, out-of-scope, dependencies. |
+| `templates/spec-full.md` | Full spec.md — problem statement, goals/non-goals, success criteria, functional and non-functional requirements (FR-X/NFR-X), constraints, out-of-scope, dependencies. Generated from `templates/spec-full.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/spec-mvs.md.j2` | Minimum viable specification — problem, goals, non-goals, FR-X requirements with Given/When/Then, out-of-scope. |
+| `templates/spec-mvs.md` | Minimum viable specification — problem, goals, non-goals, FR-X requirements with Given/When/Then, out-of-scope. Generated from `templates/spec-mvs.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

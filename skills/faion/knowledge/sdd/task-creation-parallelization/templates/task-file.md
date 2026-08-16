@@ -1,3 +1,11 @@
+<!--
+purpose: Full TASK_XXX file — SDD references, dependency tree, requirements/AD coverage, acceptance criteria, files to change, context estimate, subtasks.
+consumes: design.md, impl-plan.md, spec.md per Prerequisites
+produces: artefact conforming to content/02-output-contract.xml (items entry)
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~1000-1600 tokens when loaded as context
+-->
+
 # TASK_XXX: {Title}
 <!-- SUMMARY: {One sentence describing business value} -->
 
@@ -98,7 +106,7 @@ TASK_YYY ({title})
 ## Dependencies
 
 **Depends on (FS):**
-- TASK_YYY [FS] - {reason}
+- TASK_YYY <fs> - {reason}
 
 **Blocks:**
 - TASK_ZZZ - {reason}

@@ -63,6 +63,10 @@
 | `templates/linear-issue-tracking.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/linear-issue-tracking.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/linear-issue-tracking.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/linear-issue-tracking.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/issue-bug.md.j2` | Linear bug issue template — environment, repro steps, severity. |
+| `templates/issue-bug.md` | Linear bug issue template — environment, repro steps, severity. Generated from `templates/issue-bug.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/issue-feature.md.j2` | Linear feature issue template — problem, solution, user stories, acceptance criteria, metrics. |
+| `templates/issue-feature.md` | Linear feature issue template — problem, solution, user stories, acceptance criteria, metrics. Generated from `templates/issue-feature.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -47,7 +47,16 @@
 
 | File | Purpose |
 |------|---------|
-| TBD | TBD |
+| `templates/backlog-item.md.j2` | Single backlog item — RICE score, MoSCoW classification, acceptance criteria, dependencies. |
+| `templates/backlog-item.md` | Single backlog item — RICE score, MoSCoW classification, acceptance criteria, dependencies. Generated from `templates/backlog-item.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/confidence-check.md.j2` | Phase-gate confidence check — weighted checklist, verdict (Proceed/Clarify/Stop), open questions, recommended actions. |
+| `templates/confidence-check.md` | Phase-gate confidence check — weighted checklist, verdict (Proceed/Clarify/Stop), open questions, recommended actions. Generated from `templates/confidence-check.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/constitution.md.j2` | Project constitution — vision, tech stack, architecture patterns, code standards, git workflow, project structure, quality gates, principles. |
+| `templates/constitution.md` | Project constitution — vision, tech stack, architecture patterns, code standards, git workflow, project structure, quality gates, principles. Generated from `templates/constitution.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/implementation-plan.md.j2` | Full implementation plan — task summary, dependency graph, execution waves, per-task detail, quality gates, FR/AD coverage, risks. |
+| `templates/implementation-plan.md` | Full implementation plan — task summary, dependency graph, execution waves, per-task detail, quality gates, FR/AD coverage, risks. Generated from `templates/implementation-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/roadmap.md.j2` | Now/Next/Later product roadmap — milestones, not-planned items, dependencies, change log. |
+| `templates/roadmap.md` | Now/Next/Later product roadmap — milestones, not-planned items, dependencies, change log. Generated from `templates/roadmap.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

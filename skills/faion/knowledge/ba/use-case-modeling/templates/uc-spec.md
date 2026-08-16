@@ -1,22 +1,30 @@
-# Use Case: [UC-XXX] [Verb + Noun]
+<!--
+purpose: Full use-case specification — actor, goal, pre/postconditions, main/alternate/exception flows, business rules.
+consumes: a business-need spec and actor list (see Prerequisites)
+produces: use-case specification artefact
+depends-on: content/02-output-contract.xml
+token-budget-impact: ~430 tokens when filled
+-->
+
+# Use Case: <uc_xxx> <verb_noun>
 
 **Version:** [X.X]
-**Status:** [Draft | Review | Approved]
+**Status:** <draft_review_approved>
 **Source:** [interview line, SoW section, screenshot ID]
 **Regulation anchors:** [21CFR11.10(e), IEC62304-5.2.2, or none]
 
 ## Overview
 
 - **ID:** UC-[XXX]
-- **Name:** [Verb + Noun]
+- **Name:** <verb_noun>
 - **Description:** [One sentence: what the actor achieves and why]
-- **Primary Actor:** [Name] (type: human | system | time)
+- **Primary Actor:** <name> (type: human | system | time)
 - **Secondary Actors:** [Other actors, or none]
 
 ## Preconditions
 
 - [Verifiable condition before use case starts]
-- [Another precondition]
+- <another_precondition>
 
 ## Postconditions
 
@@ -40,19 +48,19 @@
 
 ## Alternative Flows
 
-### AF-1: [Name]
-**Trigger:** At step [X], [condition].
+### AF-1: <name>
+**Trigger:** At step [X], <condition>.
 
 | Step | Actor Action | System Response |
 |------|--------------|-----------------|
-| [Xa] | [Action] | [Response] |
+| [Xa] | <action> | <response> |
 
-**Return:** Step [N] of main flow.
+**Return:** Step <return> of main flow.
 
 ## Exception Flows
 
-### EX-1: [Name]
-**Trigger:** At step [X], [error condition].
+### EX-1: <name>
+**Trigger:** At step [X], <error_condition>.
 
 | Step | System Response |
 |------|-----------------|
@@ -66,7 +74,7 @@
 
 ## Related Use Cases
 
-- [UC-XXX]: [includes | extends | generalization]
+- <uc_xxx>: <includes_extends_generalization>
 
 ## Non-Functional Requirements
 

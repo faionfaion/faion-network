@@ -69,6 +69,8 @@
 | `templates/codemod.ts` | jscodeshift codemod skeleton. |
 | `templates/codemod-pr.md.j2` | PR body template documenting the codemod. |
 | `templates/codemod-pr.md` | PR body template documenting the codemod. Generated from `templates/codemod-pr.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/migration-pr-body.md.j2` | PR body documenting an automated codemod migration — from/to symbol, scope, tool, stats, risk, reviewer notes. |
+| `templates/migration-pr-body.md` | PR body documenting an automated codemod migration — from/to symbol, scope, tool, stats, risk, reviewer notes. Generated from `templates/migration-pr-body.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

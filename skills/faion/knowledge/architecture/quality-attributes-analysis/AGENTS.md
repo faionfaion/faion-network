@@ -69,6 +69,10 @@
 | `templates/skeleton.md` | Markdown skeleton with required sections (overview / decisions / tradeoffs / fitness functions / open questions). Generated from `templates/skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled-in instance. |
 | `templates/_smoke-test.md` | Minimum viable filled-in instance. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/scenario-template.md.j2` | One quality-attribute scenario — six-part (source/stimulus/environment/artifact/response/response-measure) plus a wired fitness function. |
+| `templates/scenario-template.md` | One quality-attribute scenario — six-part (source/stimulus/environment/artifact/response/response-measure) plus a wired fitness function. Generated from `templates/scenario-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/utility-tree.md.j2` | ATAM-style utility tree — quality attributes scored (Importance, Difficulty), active (H,H) drivers, sensitivity points, trade-offs. |
+| `templates/utility-tree.md` | ATAM-style utility tree — quality attributes scored (Importance, Difficulty), active (H,H) drivers, sensitivity points, trade-offs. Generated from `templates/utility-tree.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

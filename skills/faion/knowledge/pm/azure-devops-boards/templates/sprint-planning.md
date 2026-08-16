@@ -1,7 +1,15 @@
+<!--
+purpose: Sprint planning document — capacity, committed backlog, risks, DoD.
+consumes: team capacity roster and the backlog items selected for the sprint
+produces: sprint planning artefact
+depends-on: nothing
+token-budget-impact: ~230 tokens when filled
+-->
+
 # Sprint [N] Planning
 
 **Sprint Goal:** [One sentence describing the primary objective]
-**Duration:** [Start date] - [End date]
+**Duration:** <start_date> - <end_date>
 
 ## Capacity
 
@@ -11,7 +19,7 @@
 | @dev2 | 8 | 6 | Frontend |
 | **Total** | **18 days** | | |
 
-**Total Capacity:** [XX] hours
+**Total Capacity:** <total_capacity> hours
 
 ## Sprint Backlog
 
@@ -20,13 +28,13 @@
 | 123 | Story A | 5 | @dev1 | 20 |
 | 124 | Story B | 3 | @dev2 | 12 |
 
-**Total Committed:** [XX] points / [XX] hours
+**Total Committed:** <total_committed> points / <total_committed> hours
 
 ## Risks
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
-| [Risk] | H/M/L | [Action] |
+| <risk> | H/M/L | <action> |
 
 ## Definition of Done
 

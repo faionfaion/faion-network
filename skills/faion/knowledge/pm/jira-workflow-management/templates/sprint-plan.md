@@ -1,15 +1,21 @@
+<!-- purpose: Sprint planning document — capacity, committed items, risks, sprint-level DoD. -->
+<!-- consumes: team capacity roster and backlog items selected for the sprint -->
+<!-- produces: sprint plan artefact -->
+<!-- depends-on: nothing -->
+<!-- token-budget-impact: ~230 tokens when filled -->
+
 # Sprint [N] Planning
 
 **Sprint Goal:** [One sentence — what value will be delivered by the end of this sprint?]
 
-**Dates:** [Start] → [End]
+**Dates:** <start> → <end>
 
 ## Capacity
 
 | Team member | Working days | Availability % | Capacity (pts) |
 |-------------|-------------|----------------|----------------|
 | [Name]      | [N]         | [%]            | [N]            |
-| Total       |             |                | [N]            |
+| Total       |             |                | <total>            |
 
 **Velocity (3-sprint avg):** [N] story points
 
@@ -17,9 +23,9 @@
 
 | Key | Summary | Points | Assignee | Epic |
 |-----|---------|--------|----------|------|
-| PROJ-123 | [Description] | [N] | [@name] | [Epic] |
+| PROJ-123 | <description> | <proj_123> | [@name] | <epic> |
 
-**Total committed:** [N] points
+**Total committed:** <total_committed> points
 
 ## Risks
 

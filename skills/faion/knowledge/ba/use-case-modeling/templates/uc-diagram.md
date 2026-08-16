@@ -1,4 +1,12 @@
-# Use Case Diagram: [System Name]
+<!--
+purpose: Use-case diagram artefact — system boundary, actors, use cases per actor, includes/extends/generalization relationships.
+consumes: a business-need spec and actor list (see Prerequisites)
+produces: use-case diagram artefact
+depends-on: content/02-output-contract.xml
+token-budget-impact: ~250 tokens when filled
+-->
+
+# Use Case Diagram: <system_name>
 
 ## System Boundary
 
@@ -8,21 +16,21 @@
 
 | Actor | Type | Description |
 |-------|------|-------------|
-| [Actor 1] | human | [Goal-bearing role description] |
-| [Actor 2] | system | [External system description] |
-| [Actor 3] | time | [Scheduled trigger description] |
+| <actor_1> | human | [Goal-bearing role description] |
+| <actor_2> | system | <external_system_description> |
+| <actor_3> | time | <scheduled_trigger_description> |
 
 ## Use Cases by Actor
 
-### [Actor 1]
-- UC-001: [Verb + Noun]
-- UC-002: [Verb + Noun]
+### <actor_1>
+- UC-001: <verb_noun>
+- UC-002: <verb_noun>
 
 ### [Actor 2]
-- UC-003: [Verb + Noun]
+- UC-003: <verb_noun>
 
 ### Shared
-- UC-004: [Verb + Noun] — [Actor 1] and [Actor 2]
+- UC-004: <verb_noun> — <actor_1> and <actor_2>
 
 ## Relationships
 

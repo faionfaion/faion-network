@@ -63,6 +63,12 @@
 | `templates/backlog-management.json` | JSON Schema for the output contract (machine-validatable). |
 | `templates/backlog-management.md.j2` | Markdown skeleton with the required fields. |
 | `templates/backlog-management.md` | Markdown skeleton with the required fields. Generated from `templates/backlog-management.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/backlog-item.md.j2` | Single backlog item — type-tagged story with Given/When/Then acceptance criteria. |
+| `templates/backlog-item.md` | Single backlog item — type-tagged story with Given/When/Then acceptance criteria. Generated from `templates/backlog-item.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/grooming-agenda.md.j2` | Weekly grooming session agenda. |
+| `templates/grooming-agenda.md` | Weekly grooming session agenda. Generated from `templates/grooming-agenda.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/health-check.md.j2` | DEEP/INVEST backlog health check. |
+| `templates/health-check.md` | DEEP/INVEST backlog health check. Generated from `templates/health-check.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

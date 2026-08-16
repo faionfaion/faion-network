@@ -67,6 +67,8 @@
 | `templates/template-design.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/template-design.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/template-design.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/template-design.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/design.md.j2` | Canonical design.md skeleton this methodology owns — architectural decisions, components, data flow/models, API endpoints, files, testing strategy, risks, FR coverage. |
+| `templates/design.md` | Canonical design.md skeleton this methodology owns — architectural decisions, components, data flow/models, API endpoints, files, testing strategy, risks, FR coverage. Generated from `templates/design.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

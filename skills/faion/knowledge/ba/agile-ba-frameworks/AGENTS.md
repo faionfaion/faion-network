@@ -65,6 +65,8 @@
 |------|---------|
 | `templates/agile-ba-frameworks.json` | Skeleton artefact with required fields |
 | `templates/_smoke-test.json` | Minimum viable filled artefact |
+| `templates/sprint-ba-activities.md.j2` | Per-sprint BA activity checklist — refinement, planning, in-sprint, review and retrospective duties. |
+| `templates/sprint-ba-activities.md` | Per-sprint BA activity checklist — refinement, planning, in-sprint, review and retrospective duties. Generated from `templates/sprint-ba-activities.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

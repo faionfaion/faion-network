@@ -64,6 +64,8 @@
 |------|---------|
 | `templates/change-report.md.j2` | Side-by-side ECO 2021 vs ECO 2026 with delta column. |
 | `templates/change-report.md` | Side-by-side ECO 2021 vs ECO 2026 with delta column. Generated from `templates/change-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/study-plan.md.j2` | PMP 2026 study plan — domain-weighted hours allocation, weekly schedule, practice targets. |
+| `templates/study-plan.md` | PMP 2026 study plan — domain-weighted hours allocation, weekly schedule, practice targets. Generated from `templates/study-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

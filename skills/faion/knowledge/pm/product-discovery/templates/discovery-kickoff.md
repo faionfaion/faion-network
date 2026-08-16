@@ -1,8 +1,14 @@
-# Discovery: [Feature/Product Name]
+<!-- purpose: Discovery kickoff brief — opportunity, team, risk questions, assumptions to test, schedule. -->
+<!-- consumes: the idea brief and risk hypothesis list (see Prerequisites) -->
+<!-- produces: discovery kickoff artefact -->
+<!-- depends-on: nothing -->
+<!-- token-budget-impact: ~280 tokens when filled -->
+
+# Discovery: <feature_product_name>
 
 ## Context
 **Opportunity:** [What we are exploring]
-**Trigger:** [Why now]
+**Trigger:** <why_now>
 **Timebox:** [X weeks — max 4]
 
 ## Team
@@ -20,16 +26,16 @@
 
 | Assumption | Risk Type | Risk Level | Test Method | Owner |
 |------------|-----------|------------|-------------|-------|
-| [Assumption 1] | Value | High | [Method] | [Name] |
-| [Assumption 2] | Feasibility | Medium | [Method] | [Name] |
+| <assumption_1> | Value | High | [Method] | [Name] |
+| <assumption_2> | Feasibility | Medium | [Method] | [Name] |
 
 ## Success Criteria
 Discovery is successful when we can answer:
-- [ ] [Question 1]
-- [ ] [Question 2]
-- [ ] [Question 3]
+- [ ] <question_1>
+- [ ] <question_2>
+- [ ] <question_3>
 
 ## Schedule
-- Week 1: [Activities]
-- Week 2: [Activities]
+- Week 1: <activities>
+- Week 2: <activities>
 - Week [X]: Decision meeting — proceed / pivot / kill

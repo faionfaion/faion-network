@@ -1,3 +1,11 @@
+<!--
+purpose: RICE scoring table across all candidate features for a cycle, with cut-line tiers and a strategic override lane.
+consumes: candidate feature list plus reach/effort estimates for the cycle (see Prerequisites)
+produces: a RICE scoring table
+depends-on: content/01-core-rules.xml (r2-confidence-floor, r3-effort-ceiling)
+token-budget-impact: ~450 tokens when filled
+-->
+
 ## RICE Prioritization: {Product} — {Quarter/Release}
 
 ### Scoring
@@ -17,8 +25,8 @@
 
 ### Cut Line
 Items above {RICE score X} → Now
-Items {X} to {Y} → Next
-Items below {Y} → Later
+Items {X} to <y> → Next
+Items below <y> → Later
 
 ### Strategic Override Lane
 {Feature 1} — strategic bet; added to Now regardless of RICE score. Reason: {why}

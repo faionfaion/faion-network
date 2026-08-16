@@ -1,3 +1,11 @@
+<!--
+purpose: Feature task overview — dependency graph, per-task wave/status table, requirements coverage, pattern registry.
+consumes: design.md, impl-plan.md per Prerequisites
+produces: artefact conforming to content/02-output-contract.xml (items, wave structure)
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~500-800 tokens when loaded as context
+-->
+
 # {feature-NNN-name}: Task Overview
 
 | Field | Value |
@@ -5,8 +13,8 @@
 | **Feature** | {feature-NNN-name} |
 | **Spec** | `.aidocs/{status}/{feature}/spec.md` |
 | **Design** | `.aidocs/{status}/{feature}/design.md` |
-| **Total tasks** | {N} |
-| **Waves** | {W} |
+| **Total tasks** | <total_tasks> |
+| **Waves** | <w> |
 
 ## Dependency Graph
 

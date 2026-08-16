@@ -71,6 +71,10 @@
 | `templates/field-map.yaml` | Source → target field map with type coercions and defaults. |
 | `templates/cutover-runbook.md.j2` | Hour-by-hour runbook with rollback decision points. |
 | `templates/cutover-runbook.md` | Hour-by-hour runbook with rollback decision points. Generated from `templates/cutover-runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/cutover-checklist.md.j2` | Hour-by-hour cutover checklist for a PM-tool migration, T-24h through T+30d. |
+| `templates/cutover-checklist.md` | Hour-by-hour cutover checklist for a PM-tool migration, T-24h through T+30d. Generated from `templates/cutover-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/migration-project-plan.md.j2` | PM-tool migration project plan — scope, phase timeline, risk register, rollback triggers, success criteria. |
+| `templates/migration-project-plan.md` | PM-tool migration project plan — scope, phase timeline, risk register, rollback triggers, success criteria. Generated from `templates/migration-project-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

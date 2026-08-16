@@ -1,3 +1,11 @@
+<!--
+purpose: Hour-by-hour cutover checklist for a PM-tool migration, T-24h through T+30d.
+consumes: agreed cutover window and rollback triggers from the migration project plan
+produces: cutover checklist artefact
+depends-on: nothing
+token-budget-impact: ~330 tokens when filled
+-->
+
 # Migration Cutover Checklist
 
 ## T-24 Hours
@@ -34,7 +42,7 @@
 - [ ] Plan immediate remediation
 
 ## T+1 Week
-- [ ] User adoption metrics: [target over 80%]
+- [ ] User adoption metrics: <target_over_80>
 - [ ] Complete any missing migrations (edge cases)
 - [ ] Conduct migration retrospective
 - [ ] Schedule source decommission review (no earlier than T+30 days)

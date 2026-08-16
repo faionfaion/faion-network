@@ -1,13 +1,21 @@
-# MVP Scope: [Product Name]
+<!--
+purpose: Full MVP scope document — problem statement, core value, Must/Should/Won't feature scope, constraints, learning goals, and kill criterion.
+consumes: riskiest assumption, reachable segment and build capacity estimate (see Prerequisites)
+produces: an MVP scope document
+depends-on: content/02-output-contract.xml
+token-budget-impact: ~500 tokens when filled
+-->
+
+# MVP Scope: <product_name>
 
 ## Problem Statement
-For [target user]
-Who [problem]
-Our MVP proves [hypothesis]
-By delivering [outcome]
+For <target_user>
+Who <problem>
+Our MVP proves <hypothesis>
+By delivering <outcome>
 
 ## Core Value
-**Primary job to be done:** [Job]
+**Primary job to be done:** <job>
 **Success criteria:** [How we will measure]
 
 ## Feature Scope
@@ -15,39 +23,39 @@ By delivering [outcome]
 ### Must Have (MVP)
 | Feature | Description | Est. Days | Acceptance Criteria |
 |---------|-------------|-----------|---------------------|
-| [Feature] | [Brief] | [Days] | [How to verify] |
+| [Feature] | [Brief] | <days> | [How to verify] |
 
 ### Should Have (Post-MVP)
 | Feature | Description | Why Wait |
 |---------|-------------|----------|
-| [Feature] | [Brief] | [Reason] |
+| [Feature] | [Brief] | <reason> |
 
 ### Won't Have (Out of Scope)
 | Feature | Reason |
 |---------|--------|
-| [Feature] | [Why explicitly excluded] |
+| [Feature] | <why_explicitly_excluded> |
 
 ## Constraints
 - **Timeline:** [X] weeks
-- **Team:** [Resources available]
+- **Team:** <resources_available>
 - **Tech:** [Stack, limitations]
 - **Budget:** [If applicable]
 
 ## Non-Functional Requirements
-- Performance: [Baseline]
-- Security: [Minimum]
-- Scalability: [Current needs only]
+- Performance: <baseline>
+- Security: <minimum>
+- Scalability: <current_needs_only>
 
 ## Learning Goals
-1. [Question 1]
-2. [Question 2]
+1. <question_1>
+2. <question_2>
 
 **Metrics:**
-- [Metric 1]: target [value]
-- [Metric 2]: target [value]
+- <metric_1>: target <value>
+- <metric_2>: target <value>
 
 ## Kill Criterion
-If [metric] < [value] by [date], pivot or kill.
+If <metric> < <value> by <date>, pivot or kill.
 
 ## Definition of Done
 - [ ] All Must Have features complete
@@ -56,5 +64,5 @@ If [metric] < [value] by [date], pivot or kill.
 - [ ] Analytics in place for learning goals
 
 ## Next Steps After MVP
-If validated → [Next action]
-If not validated → [Pivot plan]
+If validated → <next_action>
+If not validated → <pivot_plan>

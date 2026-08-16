@@ -1,11 +1,19 @@
-# Implementation Plan: [Feature Name]
+<!--
+purpose: Full implementation plan — dependency graph, wave analysis, phased tasks, critical path, risk assessment, testing plan, rollout strategy.
+consumes: design.md, spec.md, constitution.md, contracts.md per Prerequisites
+produces: artefact conforming to content/02-output-contract.xml (components/tasks/graph)
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~1400-2200 tokens when loaded as context
+-->
+
+# Implementation Plan: <feature_name>
 
 **Version:** 1.0
 **Design:** `{FEATURE_DIR}/design.md`
 **Status:** Draft
-**Author:** [Name]
+**Author:** <author_name>
 **Date:** YYYY-MM-DD
-**Project:** [project-name]
+**Project:** <project_name>
 
 ---
 
@@ -81,7 +89,7 @@ TASK-003 (Model) → TASK-004 (Service) → TASK-005 (Handler) → TASK-006 (Tes
 
 ## Phase 1: Infrastructure
 
-### TASK-001: [Task Title]
+### TASK-001: <task_title>
 
 **Wave:** 1
 **Complexity:** simple / normal / complex
@@ -95,13 +103,13 @@ TASK-003 (Model) → TASK-004 (Service) → TASK-005 (Handler) → TASK-006 (Tes
 **Blocks:** TASK-003
 
 **Acceptance Criteria:**
-- [ ] [Verifiable condition 1]
-- [ ] [Verifiable condition 2]
+- [ ] <verifiable_condition_1>
+- [ ] <verifiable_condition_2>
 
 **Files:**
 | Action | File | Description |
 |--------|------|-------------|
-| CREATE | `path/to/file.py` | [description] |
+| CREATE | `path/to/file.py` | <description> |
 
 **Tests:**
 - [ ] Unit: [what to test]
@@ -123,7 +131,7 @@ TASK-001 → TASK-003 → TASK-004 → TASK-005 → TASK-006
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|------------|--------|------------|
-| [Risk] | Low/Med/High | Low/Med/High | [Concrete action] |
+| <risk> | Low/Med/High | Low/Med/High | <concrete_action> |
 
 **Contingency Buffer:** 20% added to all token estimates
 

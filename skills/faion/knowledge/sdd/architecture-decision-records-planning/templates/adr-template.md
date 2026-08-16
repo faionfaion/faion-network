@@ -1,6 +1,14 @@
+<!--
+purpose: Nygard-format single-decision ADR — context, decision, alternatives considered, consequences.
+consumes: Feature spec.md context, design.md architecture context, alternatives shortlist (see Prerequisites)
+produces: artefact conforming to content/02-output-contract.xml (ADR)
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~350-600 tokens when loaded as context
+-->
+
 # ADR-{NNN}: {Decision Title}
 
-**Status:** Proposed | Accepted | Deprecated | Superseded by ADR-{NNN}
+**Status:** Proposed | Accepted | Deprecated | Superseded by ADR-<status>
 **Date:** YYYY-MM-DD
 **Deciders:** {List of people or roles involved}
 
@@ -43,4 +51,4 @@ Keep under 100 words. This is the choice, not the justification.}
 
 ## Related Decisions
 
-- ADR-{NNN}: {Related decision title}
+- ADR-<adr>: {Related decision title}

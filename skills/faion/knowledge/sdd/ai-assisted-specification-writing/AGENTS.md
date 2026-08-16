@@ -68,6 +68,8 @@
 | `templates/spec-prompt.md` | LLM prompt template + reviewer checklist Generated from `templates/spec-prompt.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/api-spec.md.j2` | API specification skeleton — base URLs, auth, rate limits, endpoints, error codes |
 | `templates/api-spec.md` | API specification skeleton — base URLs, auth, rate limits, endpoints, error codes Generated from `templates/api-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/spec-md.md.j2` | Full feature specification skeleton — problem statement, user stories, functional/non-functional requirements, edge cases, dependencies, risks, open questions. |
+| `templates/spec-md.md` | Full feature specification skeleton — problem statement, user stories, functional/non-functional requirements, edge cases, dependencies, risks, open questions. Generated from `templates/spec-md.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

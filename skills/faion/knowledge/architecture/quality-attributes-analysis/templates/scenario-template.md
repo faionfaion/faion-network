@@ -1,4 +1,12 @@
-# Quality Attribute Scenario: [Short Title]
+<!--
+purpose: One quality-attribute scenario — six-part (source/stimulus/environment/artifact/response/response-measure) plus a wired fitness function.
+consumes: nothing beyond the (H,H) driver being scenario-ized
+produces: quality-attribute scenario artefact
+depends-on: content/02-output-contract.xml
+token-budget-impact: ~180 tokens when filled
+-->
+
+# Quality Attribute Scenario: <short_title>
 
 **Quality Attribute:** [Performance / Availability / Security / Maintainability / Scalability / ...]
 **ISO/IEC 25010 Characteristic:** [e.g., Performance Efficiency — Time Behaviour]
@@ -20,7 +28,7 @@
 - [ ] Tool: [k6 / chaos-mesh / zap / locust / ArchUnit / ...]
 - [ ] Wired to: [CI pipeline / pre-prod / weekly scheduled run]
 - [ ] Threshold: [exact number from Response Measure above]
-- [ ] Owner: [engineer name]
+- [ ] Owner: <engineer_name>
 
 ## Source / Rationale
 

@@ -1,29 +1,35 @@
+<!-- purpose: User-facing release notes — highlights, new features, improvements, bug fixes, breaking changes. -->
+<!-- consumes: the shipped release scope and its changelog entries -->
+<!-- produces: release notes artefact -->
+<!-- depends-on: nothing -->
+<!-- token-budget-impact: ~280 tokens when filled -->
+
 # Release Notes: v[X.Y.Z]
-**Released:** [Date]
+**Released:** <date>
 
 ## Highlights
 [1-2 sentence summary of the most significant change]
 
 ## New Features
 
-### [Feature Name]
+### <feature_name>
 [What it does and why it matters to users]
 
-**How to use:** [Brief instructions]
+**How to use:** <brief_instructions>
 
 ## Improvements
-- [Improvement 1]
-- [Improvement 2]
+- <improvement_1>
+- <improvement_2>
 
 ## Bug Fixes
-- Fixed [issue description]
-- Resolved [issue description]
+- Fixed <issue_description>
+- Resolved <issue_description>
 
 ## Breaking Changes
 [If any — include migration instructions. Delete section if none.]
 
 ## Known Issues
-- [Issue 1] — Workaround: [Solution]
+- <issue_1> — Workaround: <solution>
 
 ## Coming Soon
 [One teaser of what is next]

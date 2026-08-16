@@ -1,8 +1,16 @@
-# Sprint [N] BA Activities: [Team Name]
+<!--
+purpose: Per-sprint BA activity checklist — refinement, planning, in-sprint, review and retrospective duties.
+consumes: nothing beyond the team's sprint cadence
+produces: sprint BA activity checklist artefact
+depends-on: content/02-output-contract.xml
+token-budget-impact: ~210 tokens when filled
+-->
+
+# Sprint [N] BA Activities: <team_name>
 
 ## Pre-Sprint (Refinement)
 
-- [ ] Refine top [N] backlog items to "ready" state
+- [ ] Refine top <refine_top> backlog items to "ready" state
 - [ ] Write acceptance criteria for stories entering next sprint
 - [ ] Create models or wireframes for complex stories
 - [ ] Identify and document dependencies with other teams or systems

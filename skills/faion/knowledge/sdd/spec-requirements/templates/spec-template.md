@@ -1,10 +1,18 @@
+<!--
+purpose: Feature spec skeleton with numbered FR-NNN/NFR-NNN requirements, INVEST user stories, Given/When/Then acceptance criteria.
+consumes: spec-structure layout, discovery output, NFR catalogue, priority rubric per Prerequisites
+produces: artefact conforming to content/02-output-contract.xml (requirements, frs_count, nfrs_count)
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~700-1100 tokens when loaded as context
+-->
+
 # Feature: {Feature Name}
 
 ## Business Value Statement
 
-{WHO} currently cannot {WHAT} because {WHY}.
-This results in {IMPACT}.
-By implementing {SOLUTION}, we will {BENEFIT}.
+<who> currently cannot <what> because <why>.
+This results in <impact>.
+By implementing <solution>, we will <benefit>.
 
 ---
 

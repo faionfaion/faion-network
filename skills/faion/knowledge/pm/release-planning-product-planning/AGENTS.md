@@ -68,6 +68,10 @@
 |------|---------|
 | `templates/release-planning.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/release-planning.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/release-planning.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/release-notes.md.j2` | User-facing release notes — highlights, new features, improvements, bug fixes, breaking changes. |
+| `templates/release-notes.md` | User-facing release notes — highlights, new features, improvements, bug fixes, breaking changes. Generated from `templates/release-notes.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/release-plan.md.j2` | Release plan — goal, contents, readiness, risks, rollback, communication and timeline. |
+| `templates/release-plan.md` | Release plan — goal, contents, readiness, risks, rollback, communication and timeline. Generated from `templates/release-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

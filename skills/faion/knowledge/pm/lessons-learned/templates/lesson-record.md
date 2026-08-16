@@ -1,6 +1,12 @@
+<!-- purpose: Single lesson-learned record — situation, impact, 5-whys root cause, recommendation. -->
+<!-- consumes: an incident or retro observation with a quantified impact -->
+<!-- produces: lesson-learned record -->
+<!-- depends-on: nothing -->
+<!-- token-budget-impact: ~230 tokens when filled -->
+
 # Lesson: [Action-Oriented Title, under 80 chars]
 
-**ID:** LL-[NNN] | **Project:** [Name] | **Date:** [Date]
+**ID:** LL-<id> | **Project:** <name> | **Date:** <date>
 **Category:** planning / execution / technical / team / vendor / stakeholder / security
 **Impact Level:** high / medium / low
 
@@ -26,7 +32,7 @@
 
 ## Recommendation
 
-**Action:** [Verb + specific change]
+**Action:** <verb_specific_change>
 **Owner role:** [PM / Tech Lead / Engineering / etc.]
 **Where applied:** planning / kickoff / review / standup / template / checklist
 
@@ -37,4 +43,4 @@
 
 ## Last Validated
 
-[Date] — [Validator name/role]
+<date> — <validator_name_role>

@@ -63,6 +63,8 @@
 |------|---------|
 | `templates/domain-rubric.md.j2` | 8-row rubric: domain, score, evidence, recommended action. |
 | `templates/domain-rubric.md` | 8-row rubric: domain, score, evidence, recommended action. Generated from `templates/domain-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/domain-assessment.md.j2` | PMBoK performance-domain health assessment — 8-domain rubric with gate, focus areas. |
+| `templates/domain-assessment.md` | PMBoK performance-domain health assessment — 8-domain rubric with gate, focus areas. Generated from `templates/domain-assessment.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

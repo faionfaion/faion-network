@@ -63,6 +63,12 @@
 | `templates/backlog-management.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/backlog-management.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/backlog-management.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/backlog-management.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/backlog-health-check.md.j2` | Backlog health check snapshot against Now/Next/Icebox age-cap targets. |
+| `templates/backlog-health-check.md` | Backlog health check snapshot against Now/Next/Icebox age-cap targets. Generated from `templates/backlog-health-check.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/backlog-item.md.j2` | Single backlog item with verbatim raw request and refined story. |
+| `templates/backlog-item.md` | Single backlog item with verbatim raw request and refined story. Generated from `templates/backlog-item.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/grooming-agenda.md.j2` | Weekly grooming session agenda. |
+| `templates/grooming-agenda.md` | Weekly grooming session agenda. Generated from `templates/grooming-agenda.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

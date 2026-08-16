@@ -66,6 +66,12 @@
 |------|---------|
 | `templates/gitlab-board-config.yaml` | Board config: lists, labels, milestones, iterations, token scope. |
 | `templates/scoped-labels.yaml` | Standard scoped-label taxonomy (status::, type::, priority::). |
+| `templates/issue-bug.md.j2` | GitLab Bug issue template — repro steps, severity, workflow labels. |
+| `templates/issue-bug.md` | GitLab Bug issue template — repro steps, severity, workflow labels. Generated from `templates/issue-bug.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/issue-feature.md.j2` | GitLab Feature issue template — problem, solution, user stories, acceptance criteria. |
+| `templates/issue-feature.md` | GitLab Feature issue template — problem, solution, user stories, acceptance criteria. Generated from `templates/issue-feature.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/mr-default.md.j2` | GitLab default merge-request description template. |
+| `templates/mr-default.md` | GitLab default merge-request description template. Generated from `templates/mr-default.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

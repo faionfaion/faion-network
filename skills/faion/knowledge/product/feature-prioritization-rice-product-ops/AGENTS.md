@@ -62,6 +62,10 @@
 |------|---------|
 | `templates/feature-prioritization-rice.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/feature-prioritization-rice.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/feature-prioritization-rice.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/rice-decision-record.md.j2` | Per-feature RICE decision record with scoring, rank and sequencing check. |
+| `templates/rice-decision-record.md` | Per-feature RICE decision record with scoring, rank and sequencing check. Generated from `templates/rice-decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/rice-scoring-table.md.j2` | RICE scoring table across all candidate features for a cycle. |
+| `templates/rice-scoring-table.md` | RICE scoring table across all candidate features for a cycle. Generated from `templates/rice-scoring-table.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

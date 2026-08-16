@@ -1,9 +1,17 @@
-# Discovery: [Feature/Product Name]
+<!--
+purpose: Discovery cycle kickoff — four-risk assumption map, core questions, success criteria and week-by-week schedule.
+consumes: an idea or feature brief and the risk severity rubric (see Prerequisites)
+produces: a discovery kickoff document
+depends-on: content/01-core-rules.xml (r1-four-risk-types, r2-severity-first, r6-timebox-cycle)
+token-budget-impact: ~400 tokens when filled
+-->
+
+# Discovery: <feature_product_name>
 
 ## Context
 - **Opportunity:** [What we're exploring]
 - **Trigger:** [Why now — analytics signal, stakeholder request, strategy shift]
-- **Timebox:** [Start date] to [End date — max 4 weeks]
+- **Timebox:** <start_date> to [End date — max 4 weeks]
 
 ## Team
 - Product: [Name]
@@ -14,8 +22,8 @@
 
 | Assumption | Risk Type | Severity | Validation Method | Owner |
 |------------|-----------|----------|-------------------|-------|
-| [Assumption 1] | value/usability/feasibility/business | hi/md/lo | [Method] | [Name] |
-| [Assumption 2] | value/usability/feasibility/business | hi/md/lo | [Method] | [Name] |
+| <assumption_1> | value/usability/feasibility/business | hi/md/lo | [Method] | [Name] |
+| <assumption_2> | value/usability/feasibility/business | hi/md/lo | [Method] | [Name] |
 
 Sorted by: severity desc, then effort asc.
 
@@ -28,8 +36,8 @@ Sorted by: severity desc, then effort asc.
 ## Success Criteria
 Discovery is complete when we can answer:
 - [ ] [Question 1 — maps to hi-severity assumption]
-- [ ] [Question 2]
-- [ ] [Question 3]
+- [ ] <question_2>
+- [ ] <question_3>
 
 ## Schedule
 - Week 1: [Activities — e.g. 5 customer interviews]

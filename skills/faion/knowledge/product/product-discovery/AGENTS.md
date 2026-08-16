@@ -63,6 +63,10 @@
 |------|---------|
 | `templates/product-discovery.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/product-discovery.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/product-discovery.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/discovery-kickoff.md.j2` | Discovery cycle kickoff with four-risk assumption map. |
+| `templates/discovery-kickoff.md` | Discovery cycle kickoff with four-risk assumption map. Generated from `templates/discovery-kickoff.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/experiment-report.md.j2` | Single discovery experiment report. |
+| `templates/experiment-report.md` | Single discovery experiment report. Generated from `templates/experiment-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

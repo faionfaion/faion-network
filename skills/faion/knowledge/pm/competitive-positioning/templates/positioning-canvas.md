@@ -1,3 +1,11 @@
+<!--
+purpose: Product positioning canvas (April-Dunford style) — category, alternatives, differentiators, value chain, proof points.
+consumes: alternatives list, customer win/loss notes and category candidates (see Prerequisites)
+produces: positioning canvas artefact
+depends-on: content/02-output-contract.xml
+token-budget-impact: ~380 tokens when filled
+-->
+
 ---
 unique_attributes:
   - <attribute-1>   # must be supported by >=10% MAU or tagged as "future-bet"
@@ -5,46 +13,46 @@ unique_attributes:
   - <attribute-3>   # max 3 unique attributes; map every roadmap initiative to exactly one
 ---
 
-# Positioning Canvas: [Product]
+# Positioning Canvas: <product>
 
 ## Competitive Alternatives
 What would customers do if this product didn't exist?
 
-1. [Alternative 1] — [their positioning]
-2. [Alternative 2] — [their positioning]
+1. <alternative_1> — <their_positioning>
+2. <alternative_2> — <their_positioning>
 3. Status quo — [what they do today without any tool]
 
 ## Unique Attributes
 | Attribute | Competitors Have? | Telemetry Validation | Defensible? |
 |-----------|-------------------|----------------------|-------------|
-| [Attribute 1] | No | [% of MAU or "future-bet"] | Yes |
-| [Attribute 2] | Partially | [% of MAU or "future-bet"] | Yes |
+| <attribute_1> | No | [% of MAU or "future-bet"] | Yes |
+| <attribute_2> | Partially | [% of MAU or "future-bet"] | Yes |
 
 ## Value Translation
 | Attribute | Feature Benefit | Business Benefit | Ultimate Outcome |
 |-----------|-----------------|------------------|-----------------|
-| [Attr 1] | [first-level benefit] | [second-level benefit] | [outcome] |
+| <attr_1> | <first_level_benefit> | <second_level_benefit> | <outcome> |
 
 ## Best-Fit Customer
-**Profile:** [description]
+**Profile:** <description>
 **Key characteristics:**
-- [Characteristic 1]
-- [Characteristic 2]
+- <characteristic_1>
+- <characteristic_2>
 
 **Why they care:** [Why our value matters specifically to this segment]
 
 ## Market Category
-**Category:** [name]
+**Category:** <name>
 **Type:** Existing | Subcategory | New
 **Rationale:** [why this framing helps customers understand what the product is]
 
 ## Positioning Statement
-For [target customer]
-who [need/situation],
-[Product name] is [market category]
-that [key benefit].
-Unlike [alternatives],
-we [unique differentiator].
+For <target_customer>
+who <need_situation>,
+<product_name> is <market_category>
+that <key_benefit>.
+Unlike <alternatives>,
+we <unique_differentiator>.
 
 ## Proof Points
 1. [Evidence of claim — cite telemetry, win/loss data, or customer quote]

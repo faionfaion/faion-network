@@ -69,6 +69,8 @@
 |------|---------|
 | `templates/spec-advanced-guidelines.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/spec-advanced-guidelines.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/spec-advanced-guidelines.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/spec-full-template.md.j2` | Full 14-section spec skeleton — metadata, personas, user stories, FR/NFR, acceptance criteria, out of scope, dependencies, open questions. |
+| `templates/spec-full-template.md` | Full 14-section spec skeleton — metadata, personas, user stories, FR/NFR, acceptance criteria, out of scope, dependencies, open questions. Generated from `templates/spec-full-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

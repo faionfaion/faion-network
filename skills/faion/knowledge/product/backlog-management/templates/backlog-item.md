@@ -1,3 +1,11 @@
+<!--
+purpose: Single backlog item — type-tagged story with Given/When/Then acceptance criteria, ready for triage or grooming.
+consumes: an intake source (support ticket, sales note, dashboard signal, or founder idea)
+produces: a backlog item
+depends-on: content/02-output-contract.xml (ready_items field shape: type, story, AC, estimate, source)
+token-budget-impact: ~150 tokens when filled
+-->
+
 # [Action-Oriented Title]
 
 ## Type
@@ -5,21 +13,21 @@
 
 ## User Story
 **As a** [named persona — not "the user"]
-**I want** [specific action]
-**So that** [measurable benefit]
+**I want** <specific_action>
+**So that** <measurable_benefit>
 
 ## Context
 [Background: why this exists, source link to customer quote / ticket / dashboard]
 
-**Source:** [URL or reference]
+**Source:** <source>
 
 ## Acceptance Criteria
-- [ ] Given [context], when [action], then [observable result]
-- [ ] Given [context], when [action], then [observable result]
-- [ ] Given [error condition], when [action], then [recovery result]
+- [ ] Given <context>, when <action>, then <observable_result>
+- [ ] Given <context>, when <action>, then <observable_result>
+- [ ] Given <error_condition>, when <action>, then <recovery_result>
 
 ## Out of Scope
-- [Explicit exclusion 1]
+- <explicit_exclusion_1>
 
 ## Dependencies
 - [Dependency if any — or "none"]
@@ -28,4 +36,4 @@
 [XS/S/M/L/XL]
 
 ## Priority
-[P1/P2/P3] — [One-line rationale]
+<p1_p2_p3> — [One-line rationale]

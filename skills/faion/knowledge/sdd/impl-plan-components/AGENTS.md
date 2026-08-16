@@ -69,6 +69,8 @@
 | `templates/impl-plan-components.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/impl-plan-components.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/impl-plan-components.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/impl-plan-components.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/impl-plan-template.md.j2` | Full implementation plan — dependency graph, wave analysis, phased tasks, critical path, risk assessment, testing plan, rollout strategy. |
+| `templates/impl-plan-template.md` | Full implementation plan — dependency graph, wave analysis, phased tasks, critical path, risk assessment, testing plan, rollout strategy. Generated from `templates/impl-plan-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

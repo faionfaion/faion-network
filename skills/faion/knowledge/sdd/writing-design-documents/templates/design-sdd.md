@@ -1,3 +1,11 @@
+<!--
+purpose: Full design.md — component diagram, data flow, API contracts, data models, numbered architectural decisions (AD-X) traced to FR-X.
+consumes: an approved spec.md and constitution.md (see Prerequisites)
+produces: design document artefact
+depends-on: content/02-output-contract.xml
+token-budget-impact: ~700 tokens when filled
+-->
+
 # {feature-NNN-name}: Design
 
 <!-- SUMMARY: {One sentence describing the technical approach} -->
@@ -51,11 +59,11 @@
 **Responsibility:** {one sentence}
 **Inputs:** {what it receives}
 **Outputs:** {what it produces}
-**FR coverage:** FR-{Y}
+**FR coverage:** FR-<y>
 
 ## API Contracts
 
-### {METHOD} {/path}
+### <method> {/path}
 
 **Request:**
 ```json
@@ -90,8 +98,8 @@
 ### AD-1: {Decision title}
 
 **Options considered:**
-- Option A: {description} — Pros: {X}. Cons: {Y}.
-- Option B: {description} — Pros: {X}. Cons: {Y}.
+- Option A: {description} — Pros: {X}. Cons: <y>.
+- Option B: {description} — Pros: {X}. Cons: <y>.
 
 **Decision:** Option {X}
 

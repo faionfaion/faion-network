@@ -1,9 +1,15 @@
+<!-- purpose: Release plan — goal, contents, readiness, risks, rollback, communication and timeline. -->
+<!-- consumes: release scope, readiness checklist, communication plan and rollback runbook (see Prerequisites) -->
+<!-- produces: release plan artefact -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~450 tokens when filled -->
+
 ## Release Plan: v[X.Y.Z]
 
 ### Metadata
-- **Release Date:** [Date]
+- **Release Date:** <date>
 - **Release Manager:** [Name]
-- **Type:** [Major / Minor / Patch / Hotfix]
+- **Type:** <type>
 
 ### Release Goal
 [What this release achieves for users]
@@ -11,38 +17,38 @@
 ### Success Metrics
 | Metric | Current | Target | Tracking |
 |--------|---------|--------|----------|
-| [Metric] | [X] | [Y] | [How] |
+| <metric> | [X] | <y> | <how> |
 
 ### Contents
 
 #### Features
 | Feature | Ticket | Owner | Status |
 |---------|--------|-------|--------|
-| [Feature 1] | [#123] | [Name] | Ready |
-| [Feature 2] | [#456] | [Name] | Ready |
+| <feature_1> | [#123] | [Name] | Ready |
+| <feature_2> | [#456] | [Name] | Ready |
 
 #### Bug Fixes
 | Fix | Ticket | Priority |
 |-----|--------|----------|
-| [Bug 1] | [#789] | High |
+| <bug_1> | [#789] | High |
 
 #### Other Changes
-- [Config change]
-- [Dependency update]
+- <config_change>
+- <dependency_update>
 
 ### Excluded (Next Release)
 | Item | Reason |
 |------|--------|
-| [Feature] | Not ready — [specific reason] |
+| <feature> | Not ready — <specific_reason> |
 
 ### Dependencies
-- [ ] [Dependency 1 resolved]
-- [ ] [Dependency 2 resolved]
+- [ ] <dependency_1_resolved>
+- [ ] <dependency_2_resolved>
 
 ### Risks
 | Risk | Mitigation |
 |------|------------|
-| [Risk 1] | [Specific plan] |
+| <risk_1> | <specific_plan> |
 
 ### Rollback Plan
 [Exact command or steps to rollback; max 3 steps]

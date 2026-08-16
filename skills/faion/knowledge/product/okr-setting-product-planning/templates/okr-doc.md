@@ -1,6 +1,14 @@
-## OKRs: [Team/Product] — [Quarter Year]
+<!--
+purpose: Quarterly OKR document — objectives with leading-indicator key results, scores and per-objective status.
+consumes: strategic outcomes and metric history for the quarter (see Prerequisites)
+produces: an OKR document
+depends-on: content/01-core-rules.xml (r1-max-three-objectives, r2-three-krs, r3-leading-indicators)
+token-budget-impact: ~400 tokens when filled
+-->
 
-### Objective 1: [Inspiring goal statement]
+## OKRs: <team_product> — <quarter_year>
+
+### Objective 1: <inspiring_goal_statement>
 
 **Why this matters:** [Strategic connection in 1-2 sentences]
 
@@ -10,13 +18,13 @@
 | KR 1.2: [Measurable outcome] | [X] | [Y] | — | — |
 | KR 1.3: [Measurable outcome] | [X] | [Y] | — | — |
 
-**Owner:** [Name] | **Status:** On Track / At Risk / Off Track
+**Owner:** <owner_full_name> | **Status:** On Track / At Risk / Off Track
 
 ---
 
-### Objective 2: [Inspiring goal statement]
+### Objective 2: <inspiring_goal_statement>
 
-**Why this matters:** [Strategic connection]
+**Why this matters:** <strategic_connection>
 
 | Key Result | Baseline | Target | Current | Score (0-1) |
 |------------|----------|--------|---------|-------------|
@@ -24,7 +32,7 @@
 | KR 2.2: | | | — | — |
 | KR 2.3: | | | — | — |
 
-**Owner:** [Name] | **Status:** On Track / At Risk / Off Track
+**Owner:** <owner_full_name> | **Status:** On Track / At Risk / Off Track
 
 ---
 
@@ -37,4 +45,4 @@
 
 Scoring: 0.0–0.3 failed, 0.4–0.6 progress, 0.7–1.0 success (0.7 is the ideal target).
 
-**Last Updated:** [Date]
+**Last Updated:** <last_reviewed_date>

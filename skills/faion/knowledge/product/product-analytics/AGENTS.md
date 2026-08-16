@@ -62,6 +62,12 @@
 |------|---------|
 | `templates/product-analytics.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/product-analytics.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/product-analytics.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/analysis-report.md.j2` | Analytics report tied to one decision or hypothesis. |
+| `templates/analysis-report.md` | Analytics report tied to one decision or hypothesis. Generated from `templates/analysis-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/dashboard-spec.md.j2` | Dashboard spec with metrics, charts and segments. |
+| `templates/dashboard-spec.md` | Dashboard spec with metrics, charts and segments. Generated from `templates/dashboard-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/tracking-plan.md.j2` | Tracking plan written before instrumentation. |
+| `templates/tracking-plan.md` | Tracking plan written before instrumentation. Generated from `templates/tracking-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

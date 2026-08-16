@@ -1,8 +1,16 @@
-# User Story: [Title]
+<!--
+purpose: Azure DevOps user-story work item body (persona, criteria, dependencies).
+consumes: persona, capability, benefit and acceptance criteria agreed with the product owner
+produces: user story work-item body
+depends-on: nothing
+token-budget-impact: ~140 tokens when filled
+-->
 
-**As a** [persona],
-**I want** [capability],
-**So that** [benefit].
+# User Story: <title>
+
+**As a** <persona>,
+**I want** <capability>,
+**So that** <benefit>.
 
 ## Acceptance Criteria
 
@@ -22,12 +30,12 @@ Then [result]
 
 ## Technical Notes
 
-[Implementation considerations — optional]
+<implementation_considerations_optional>
 
 ## Dependencies
 
 - Depends on: [#WBS-ID or Story ID]
-- Blocks: [#WBS-ID or Story ID]
+- Blocks: <blocks>
 
 ## Out of Scope
 

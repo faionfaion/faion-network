@@ -68,6 +68,10 @@
 |------|---------|
 | `templates/ado-boards-config.yaml` | YAML skeleton for process + area/iteration + board columns + swimlanes. |
 | `templates/wiql-saved-queries.yaml` | Example saved WIQL queries the team should ship from day 1. |
+| `templates/sprint-planning.md.j2` | Sprint planning document — capacity, committed backlog, risks, DoD. |
+| `templates/sprint-planning.md` | Sprint planning document — capacity, committed backlog, risks, DoD. Generated from `templates/sprint-planning.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/user-story.md.j2` | Azure DevOps user-story work item body (persona, criteria, dependencies). |
+| `templates/user-story.md` | Azure DevOps user-story work item body (persona, criteria, dependencies). Generated from `templates/user-story.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

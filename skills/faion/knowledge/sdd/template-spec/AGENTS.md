@@ -67,6 +67,8 @@
 | `templates/template-spec.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/template-spec.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/template-spec.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/template-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/spec.md.j2` | Canonical spec.md skeleton this methodology owns — problem statement, personas, user stories, FR/NFR, acceptance criteria, out of scope, assumptions, dependencies. |
+| `templates/spec.md` | Canonical spec.md skeleton this methodology owns — problem statement, personas, user stories, FR/NFR, acceptance criteria, out of scope, assumptions, dependencies. Generated from `templates/spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

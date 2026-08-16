@@ -1,10 +1,18 @@
+<!--
+purpose: Single mistake entry — severity, category, Five Whys root-cause chain, concrete prevention step.
+consumes: nothing beyond the failure being documented (post-incident context)
+produces: one entry consistent with content/02-output-contract.xml (five_whys, prevention)
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~200-350 tokens when loaded as context
+-->
+
 ## MIS-{NNN}: {Domain} — {Short Title}
 
 **Severity:** Critical | High | Medium | Low
 **Category:** hallucination-api | hallucination-factual | context-window-loss | instruction-drift | missing-error-handling | edge-cases-missed | scope-creep | skipped-validation | estimation-underrun | data-migration-no-backup | (other)
 **Occurrences:** 1
 **Last seen:** {YYYY-MM-DD}
-**Source:** TASK-{NNN}
+**Source:** TASK-<source>
 
 **What happened:**
 {Specific description — 1-3 sentences. Include file names, error messages, observable impact.}

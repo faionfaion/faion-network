@@ -65,6 +65,10 @@
 |------|---------|
 | `templates/ba-planning.json` | Skeleton artefact with required fields |
 | `templates/_smoke-test.json` | Minimum viable filled artefact |
+| `templates/ba-activity-plan.md.j2` | Weekly BA activity plan — daily elicitation activities, actual-vs-planned effort, dependencies, blockers, stakeholder-register diff. |
+| `templates/ba-activity-plan.md` | Weekly BA activity plan — daily elicitation activities, actual-vs-planned effort, dependencies, blockers, stakeholder-register diff. Generated from `templates/ba-activity-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/ba-approach-document.md.j2` | BA approach document — analysis approach, stakeholder list, elicitation plan, deliverables, governance, replan triggers. |
+| `templates/ba-approach-document.md` | BA approach document — analysis approach, stakeholder list, elicitation plan, deliverables, governance, replan triggers. Generated from `templates/ba-approach-document.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -70,6 +70,10 @@
 | `templates/exception-flows.csv` | Header for exception-flow rows. |
 | `templates/_smoke-test.md.j2` | Minimum viable use case. |
 | `templates/_smoke-test.md` | Minimum viable use case. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/uc-diagram.md.j2` | Use-case diagram artefact — system boundary, actors, use cases per actor, includes/extends/generalization relationships. |
+| `templates/uc-diagram.md` | Use-case diagram artefact — system boundary, actors, use cases per actor, includes/extends/generalization relationships. Generated from `templates/uc-diagram.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/uc-spec.md.j2` | Full use-case specification — actor, goal, pre/postconditions, main/alternate/exception flows, business rules. |
+| `templates/uc-spec.md` | Full use-case specification — actor, goal, pre/postconditions, main/alternate/exception flows, business rules. Generated from `templates/uc-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

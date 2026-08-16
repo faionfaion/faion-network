@@ -1,3 +1,11 @@
+<!--
+purpose: Fully worked TASK_XXX skeleton (metadata, dependency tree, requirements coverage, out of scope, goals, acceptance criteria, risks, testing, implementation log, lessons learned) demonstrating the fill order this guide teaches.
+consumes: templates/TASK_skeleton.md, spec.md, design.md per Prerequisites
+produces: artefact conforming to content/02-output-contract.xml (task_id, fill_steps_completed, sections_present)
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~1300-2000 tokens when loaded as context
+-->
+
 # TASK_XXX: {Title}
 <!-- SUMMARY: {One sentence business value delivered by this task} -->
 
@@ -103,7 +111,7 @@ TASK_ZZZ ({title}) ────────────────────�
 ## Dependencies
 
 **Depends on (FS = Finish-to-Start):**
-- TASK_YYY [FS] — {reason}
+- TASK_YYY <fs> — {reason}
 
 **Blocks:**
 - TASK_ZZZ — {reason}

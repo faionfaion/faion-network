@@ -65,6 +65,14 @@
 | `templates/task-creation-parallelization.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/task-creation-parallelization.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/task-creation-parallelization.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/task-creation-parallelization.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/task-file.md.j2` | Full TASK_XXX file — SDD references, dependency tree, requirements/AD coverage, acceptance criteria, files to change, context estimate, subtasks. |
+| `templates/task-file.md` | Full TASK_XXX file — SDD references, dependency tree, requirements/AD coverage, acceptance criteria, files to change, context estimate, subtasks. Generated from `templates/task-file.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/task-list.md.j2` | Feature task overview — dependency graph, per-task wave/status table, requirements coverage, pattern registry. |
+| `templates/task-list.md` | Feature task overview — dependency graph, per-task wave/status table, requirements coverage, pattern registry. Generated from `templates/task-list.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/task-minimal.md.j2` | Minimal single-task skeleton for a simple, low-complexity TASK. |
+| `templates/task-minimal.md` | Minimal single-task skeleton for a simple, low-complexity TASK. Generated from `templates/task-minimal.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/task-research.md.j2` | Research-task skeleton producing an ADR and updated execution tasks instead of production code. |
+| `templates/task-research.md` | Research-task skeleton producing an ADR and updated execution tasks instead of production code. Generated from `templates/task-research.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

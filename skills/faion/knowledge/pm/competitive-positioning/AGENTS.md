@@ -67,6 +67,8 @@
 | `templates/artefact-skeleton.md.j2` | Markdown skeleton conforming to the output contract |
 | `templates/artefact-skeleton.md` | Markdown skeleton conforming to the output contract Generated from `templates/artefact-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/artefact-instance.json` | JSON instance of a filled artefact |
+| `templates/positioning-canvas.md.j2` | Product positioning canvas (April-Dunford style) — category, alternatives, differentiators, value chain, proof points. |
+| `templates/positioning-canvas.md` | Product positioning canvas (April-Dunford style) — category, alternatives, differentiators, value chain, proof points. Generated from `templates/positioning-canvas.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

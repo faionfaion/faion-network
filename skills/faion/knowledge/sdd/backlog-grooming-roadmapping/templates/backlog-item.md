@@ -1,6 +1,14 @@
+<!--
+purpose: Single backlog item with RICE score, MoSCoW classification, acceptance criteria, dependencies.
+consumes: backlog file, scoring framework (RICE/MoSCoW) per Prerequisites
+produces: one entry of the backlog_items array in content/02-output-contract.xml
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~350 tokens when loaded as context
+-->
+
 # [Feature Name]
 
-<!-- RICE fields are [estimate] until validated with real user data -->
+<!-- RICE fields are <estimate> until validated with real user data -->
 
 ## Metadata
 
@@ -18,7 +26,7 @@ One sentence: what problem does this solve and for whom?
 
 Brief description of the solution approach.
 
-## RICE Score [estimate]
+## RICE Score <estimate>
 
 | Field | Value | Notes |
 |-------|-------|-------|
@@ -41,7 +49,7 @@ Classification reason: _one sentence_
 
 ## Acceptance Criteria
 
-1. Given [context], when [action], then [outcome]
+1. Given <context>, when <action>, then <outcome>
 2. ...
 
 ## Won't Include (this scope)

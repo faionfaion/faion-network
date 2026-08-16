@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **108 finished-but-undeclared `sdd`, `pm`, `product`, `ba`, `architecture` and
+  `sdlc-ai` templates now carry a five-key header, a `## Templates` row and the
+  Jinja forms.** Same CR-010 shape as the sibling entries in this section —
+  neither header nor row, so nothing in the corpus pointed at them. Reproduced
+  the brief's count independently on disk: **108** (41 `sdd`, 27 `pm`, 27
+  `product`, 9 `ba`, 2 `architecture`, 2 `sdlc-ai`). `consumes` / `produces` /
+  `depends-on` were written from each methodology's Prerequisites table and its
+  `content/02-output-contract.xml`, never guessed; templates with no genuine
+  dependency say so plainly (`depends-on: nothing`) rather than padding the
+  field. `--migrate` ran exactly once per template: exit 0 where every
+  placeholder resolved, exit 1 (the normal outcome — prose, per-row-table
+  repeats and name collisions correctly left for a human) on the rest; no
+  refusals in this batch. Two pre-existing gaps in the converter surfaced
+  while migrating templates outside this batch and are left for a separate
+  cleanup pass: mixed-case `{Word}` and lowercase `{snake_case}` placeholders
+  pass through as literal, unrecognized text (neither a declared variable nor
+  an `UNCLEAR` finding), so a handful of already-migrated templates render
+  with unfillable braces still in them.
+
 - **105 finished-but-undeclared `marketing` and `research` templates now carry
   a five-key header, a `## Templates` row and the Jinja forms.** Same shape as
   the two entries below — neither header nor row, so nothing in the corpus

@@ -1,11 +1,19 @@
-# Design: [Feature Name]
+<!--
+purpose: Full technical design doc — spec coverage, architectural decisions, file structure, data models, API contracts, security/performance/testing/migration sections.
+consumes: spec.md, relevant ADRs, constitution.md, contracts.md per Prerequisites
+produces: artefact conforming to content/02-output-contract.xml (design doc)
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~1200-2000 tokens when loaded as context
+-->
+
+# Design: <feature_name>
 
 **Version:** 1.0
 **Spec:** `{FEATURE_DIR}/spec.md`
 **Status:** Draft
 **Author:** [Name]
 **Date:** YYYY-MM-DD
-**Project:** [project-name]
+**Project:** <project_name>
 
 ---
 
@@ -38,11 +46,11 @@
 
 ## Architectural Decisions
 
-### AD-001: [Decision Title]
+### AD-001: <decision_title>
 
 **Context:** [Why this decision is needed]
 
-**Decision:** [What was decided]
+**Decision:** <what_was_decided>
 
 **Rationale:**
 - [Reason 1 — project-specific]
@@ -52,11 +60,11 @@
 | Alternative | Why Rejected |
 |-------------|--------------|
 | [Option A] | [Concrete project-specific reason] |
-| [Option B] | [Concrete project-specific reason] |
+| <option_b> | [Concrete project-specific reason] |
 
 **Consequences:**
-- Positive: [Benefits]
-- Negative: [Trade-offs]
+- Positive: <benefits>
+- Negative: <trade_offs>
 
 **Traces to:** FR-001, FR-002
 
@@ -87,7 +95,7 @@ src/
 
 ## Data Models
 
-### [Model Name]
+### <model_name>
 
 ```typescript
 interface ModelName {
@@ -110,7 +118,7 @@ CREATE TABLE model_name (
 
 ## API Contracts
 
-### [METHOD] /api/[endpoint]
+### <method> /api/<endpoint>
 
 **Summary:** [What this endpoint does]
 **Authentication:** Required
@@ -143,12 +151,12 @@ CREATE TABLE model_name (
 ### Packages
 | Package | Version | Purpose |
 |---------|---------|---------|
-| [name] | ^X.Y.Z | [Why needed] |
+| [name] | ^X.Y.Z | <why_needed> |
 
 ### External Services
 | Service | Purpose | Required |
 |---------|---------|----------|
-| [name] | [Why] | Yes |
+| [name] | <why> | Yes |
 
 ---
 
@@ -165,7 +173,7 @@ CREATE TABLE model_name (
 
 | Concern | Strategy | Target |
 |---------|----------|--------|
-| [Concern] | [Approach] | [Metric from NFR-X] |
+| <concern> | <approach> | [Metric from NFR-X] |
 
 ---
 
@@ -178,7 +186,7 @@ CREATE TABLE model_name (
 - [ ] [API endpoint + expected behavior]
 
 ### E2E Tests
-- [ ] [Critical user flow]
+- [ ] <critical_user_flow>
 
 ---
 

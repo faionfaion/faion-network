@@ -63,6 +63,10 @@
 | `templates/notion-pm.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/notion-pm.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/notion-pm.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/notion-pm.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/sprint-template.md.j2` | Notion sprint page template — goal, metrics, backlog view, daily standups, retro. |
+| `templates/sprint-template.md` | Notion sprint page template — goal, metrics, backlog view, daily standups, retro. Generated from `templates/sprint-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/task-template.md.j2` | Notion task page template — description, context, acceptance criteria, sub-tasks, update log. |
+| `templates/task-template.md` | Notion task page template — description, context, acceptance criteria, sub-tasks, update log. Generated from `templates/task-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

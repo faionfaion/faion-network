@@ -68,6 +68,10 @@
 | `templates/jira-workflow.yaml` | Workflow definition: states, transitions, conditions, validators. |
 | `templates/jql-queries.yaml` | Day-1 saved JQL queries. |
 | `templates/automation-rules.yaml` | Automation rule set. |
+| `templates/definition-of-done.md.j2` | Jira Definition of Done checklist — code, testing, docs, acceptance gates. |
+| `templates/definition-of-done.md` | Jira Definition of Done checklist — code, testing, docs, acceptance gates. Generated from `templates/definition-of-done.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/sprint-plan.md.j2` | Sprint planning document — capacity, committed items, risks, sprint-level DoD. |
+| `templates/sprint-plan.md` | Sprint planning document — capacity, committed items, risks, sprint-level DoD. Generated from `templates/sprint-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

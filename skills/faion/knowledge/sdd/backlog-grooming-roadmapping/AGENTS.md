@@ -63,6 +63,10 @@
 | `templates/backlog-grooming-roadmapping.md.j2` | Markdown skeleton with the required fields. |
 | `templates/backlog-grooming-roadmapping.md` | Markdown skeleton with the required fields. Generated from `templates/backlog-grooming-roadmapping.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
+| `templates/backlog-item.md.j2` | Single backlog item with RICE score, MoSCoW classification, acceptance criteria, dependencies. |
+| `templates/backlog-item.md` | Single backlog item with RICE score, MoSCoW classification, acceptance criteria, dependencies. Generated from `templates/backlog-item.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/roadmap-skeleton.md.j2` | Now/Next/Later roadmap skeleton with a Won't-Do table and an archive log. |
+| `templates/roadmap-skeleton.md` | Now/Next/Later roadmap skeleton with a Won't-Do table and an archive log. Generated from `templates/roadmap-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

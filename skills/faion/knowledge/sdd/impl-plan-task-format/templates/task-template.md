@@ -1,18 +1,26 @@
+<!--
+purpose: Single TASK_NNN skeleton — phase/wave, traces, dependencies, acceptance criteria, files, tests.
+consumes: impl-plan.md, design.md, component map per Prerequisites
+produces: artefact conforming to content/02-output-contract.xml (task)
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~350-500 tokens when loaded as context
+-->
+
 # TASK_{NNN}: {Concise Title in Imperative Voice}
 
-**Phase:** {N}
-**Wave:** {N}
+**Phase:** <phase>
+**Wave:** <wave>
 
 **Description:**
 {2-3 sentences: what needs to be done and why it matters}
 
 **Traces to:**
-- AD-{N}: {Full architectural decision text — do not require reader to open design.md}
-- FR-{N}: {Full requirement text — do not require reader to open spec.md}
+- AD-<ad>: {Full architectural decision text — do not require reader to open design.md}
+- FR-<fr>: {Full requirement text — do not require reader to open spec.md}
 
-**Depends on:** TASK_{NNN} [FS], TASK_{NNN} [SS] (or "None")
+**Depends on:** TASK_{NNN} <fs>, TASK_{NNN} <ss> (or "None")
 
-**Blocks:** TASK_{NNN}, TASK_{NNN}
+**Blocks:** TASK_<blocks>, TASK_<blocks>
 
 **Complexity:** simple | normal | complex
 **Context Estimate:** ~{X}k tokens

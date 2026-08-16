@@ -1,6 +1,14 @@
+<!--
+purpose: Single prioritised backlog item with RICE score, MoSCoW classification, dependencies, and next steps.
+consumes: Backlog dump, sizing rubric per Prerequisites
+produces: one backlog entry consistent with content/02-output-contract.xml
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~350 tokens when loaded as context
+-->
+
 # BACKLOG: {Item Title}
 
-**ID:** BL-{NNN}
+**ID:** BL-<id>
 **Status:** Idea | Validated | Specified | Designed | Ready
 **Priority:** P0 | P1 | P2 | P3
 **Created:** YYYY-MM-DD

@@ -1,3 +1,8 @@
+<!-- purpose: GitLab Feature issue template — problem, solution, user stories, acceptance criteria. -->
+<!-- consumes: nothing -->
+<!-- produces: GitLab feature issue body -->
+<!-- depends-on: nothing -->
+<!-- token-budget-impact: ~130 tokens when filled -->
 <!-- .gitlab/issue_templates/Feature.md -->
 ## Feature Summary
 
@@ -6,7 +11,7 @@
 ## Proposed Solution
 
 ## User Stories
-- As a [role], I want [capability] so that [benefit]
+- As a <role>, I want <capability> so that <benefit>
 
 ## Acceptance Criteria
 - [ ] Criterion 1

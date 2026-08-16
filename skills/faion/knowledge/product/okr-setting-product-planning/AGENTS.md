@@ -62,6 +62,10 @@
 |------|---------|
 | `templates/okr-setting.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/okr-setting.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/okr-setting.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/okr-doc.md.j2` | Quarterly OKR document with objectives and leading-indicator KRs. |
+| `templates/okr-doc.md` | Quarterly OKR document with objectives and leading-indicator KRs. Generated from `templates/okr-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/weekly-checkin.md.j2` | Weekly OKR check-in. |
+| `templates/weekly-checkin.md` | Weekly OKR check-in. Generated from `templates/weekly-checkin.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

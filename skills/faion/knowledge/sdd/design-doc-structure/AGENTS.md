@@ -68,6 +68,8 @@
 |------|---------|
 | `templates/design-doc-structure.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/design-doc-structure.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/design-doc-structure.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/design-template.md.j2` | Full technical design doc — spec coverage, architectural decisions, file structure, data models, API contracts, security/performance/testing/migration sections. |
+| `templates/design-template.md` | Full technical design doc — spec coverage, architectural decisions, file structure, data models, API contracts, security/performance/testing/migration sections. Generated from `templates/design-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

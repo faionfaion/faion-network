@@ -1,3 +1,9 @@
+<!-- purpose: Notion task page template — description, context, acceptance criteria, sub-tasks, update log. -->
+<!-- consumes: nothing -->
+<!-- produces: Notion task page artefact -->
+<!-- depends-on: nothing -->
+<!-- token-budget-impact: ~150 tokens when filled -->
+
 # {Task Title}
 
 ## Description
@@ -12,7 +18,7 @@
 - [ ] Criterion 3
 
 ## Technical Notes
-[Implementation details]
+<implementation_details>
 
 ## Resources
 - [Link 1]()

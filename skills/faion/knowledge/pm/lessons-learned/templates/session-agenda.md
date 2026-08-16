@@ -1,7 +1,13 @@
-# Lessons Learned Session: [Project Name]
+<!-- purpose: Lessons-learned session agenda and facilitation script. -->
+<!-- consumes: nothing -->
+<!-- produces: session agenda artefact -->
+<!-- depends-on: nothing -->
+<!-- token-budget-impact: ~200 tokens when filled -->
 
-**Date:** [Date] | **Duration:** 75 min | **Facilitator:** [Name]
-**Participants:** [Names]
+# Lessons Learned Session: <project_name>
+
+**Date:** <date> | **Duration:** 75 min | **Facilitator:** <name>
+**Participants:** <names>
 
 ## Ground Rules
 

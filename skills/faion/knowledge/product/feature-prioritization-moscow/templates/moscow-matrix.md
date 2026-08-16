@@ -1,9 +1,17 @@
-# MoSCoW: [Project/Release]
+<!--
+purpose: MoSCoW worksheet — Must/Should/Could/Won't buckets with per-requirement effort, capacity %, and sign-off.
+consumes: cycle feature list, cycle capacity, and the named tiebreaker rule (see Prerequisites)
+produces: a MoSCoW prioritisation worksheet
+depends-on: content/01-core-rules.xml (r2-must-cap: Must ≤60% of capacity)
+token-budget-impact: ~350 tokens when filled
+-->
+
+# MoSCoW: <project_release>
 
 ## Context
 
-- **Release:** [Name/Date]
-- **Capacity:** [Person-days/weeks]
+- **Release:** <name_date>
+- **Capacity:** <person_days_weeks>
 - **Constraints:** [Any limitations]
 
 ## Must Have (60% target)
@@ -52,7 +60,7 @@
 
 ## Sign-off
 
-- **Date:** [Date]
-- **Decided by:** [Person/Group]
+- **Date:** <date>
+- **Decided by:** <person_group>
 - **Must items locked:** Yes/No
 - **Won't items locked:** Yes/No

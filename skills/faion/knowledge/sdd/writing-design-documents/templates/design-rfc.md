@@ -1,10 +1,18 @@
+<!--
+purpose: RFC-style design proposal — motivation, proposal, alternatives considered, drawbacks, open questions, phased implementation plan.
+consumes: Approved spec.md, constitution.md per Prerequisites
+produces: artefact conforming to content/02-output-contract.xml (design, RFC variant)
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~600-1000 tokens when loaded as context
+-->
+
 # RFC-{NNN}: {Title}
 
 **Status:** Draft / Under Review / Accepted / Rejected / Superseded
 **Author:** {name}
 **Created:** {YYYY-MM-DD}
 **Last updated:** {YYYY-MM-DD}
-**Supersedes:** RFC-{NNN} (if applicable)
+**Supersedes:** RFC-<supersedes> (if applicable)
 **Superseded by:** — (filled if rejected/superseded)
 
 ## Abstract

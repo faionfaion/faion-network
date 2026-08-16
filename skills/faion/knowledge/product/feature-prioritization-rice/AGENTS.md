@@ -62,10 +62,12 @@
 | `templates/feature-prioritization-rice.json` | JSON Schema for the output contract (machine-validatable). |
 | `templates/feature-prioritization-rice.md.j2` | Markdown skeleton with the required fields. |
 | `templates/feature-prioritization-rice.md` | Markdown skeleton with the required fields. Generated from `templates/feature-prioritization-rice.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-
-Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 | `templates/rice-scorecard.md.j2` | RICE scorecard skeleton — scores, per-feature rationale, strategic veto, post-ship actuals |
 | `templates/rice-scorecard.md` | RICE scorecard skeleton — scores, per-feature rationale, strategic veto, post-ship actuals Generated from `templates/rice-scorecard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/rice-decision-record.md.j2` | Per-feature RICE decision record with scoring, rank and co-signs. |
+| `templates/rice-decision-record.md` | Per-feature RICE decision record with scoring, rank and co-signs. Generated from `templates/rice-decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+
+Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Scripts
 

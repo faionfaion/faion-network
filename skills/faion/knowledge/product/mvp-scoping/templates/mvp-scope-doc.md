@@ -1,17 +1,25 @@
-## MVP Scope: [Product Name]
+<!--
+purpose: Full MVP scope document — problem statement, core value, Must/Should/Won't feature scope, constraints, and definition of done.
+consumes: AHA-moment statement, must-have user journey, build budget and readiness checklist (see Prerequisites)
+produces: an MVP scope document
+depends-on: content/02-output-contract.xml (aha_moment, must_have_journey, build_window, cut_list, readiness_checklist)
+token-budget-impact: ~500 tokens when filled
+-->
+
+## MVP Scope: <product_name>
 
 ### Problem Statement
-For [target user]
+For <target_user>
 Who [specific problem they have]
-Our MVP will prove that [hypothesis]
-By delivering [core outcome]
-In [X] weeks with [team / constraints]
+Our MVP will prove that <hypothesis>
+By delivering <core_outcome>
+In [X] weeks with <team_constraints>
 
 ### Core Value
-- **Primary job to be done:** [Job]
-- **Value test:** If this is removed, the product is useless because [reason]
+- **Primary job to be done:** <job>
+- **Value test:** If this is removed, the product is useless because <reason>
 - **Learning goal:** [What we want to learn]
-- **Kill signal:** If [specific evidence] within [timeframe], shut down and pivot
+- **Kill signal:** If <specific_evidence> within <timeframe>, shut down and pivot
 
 ### Feature Scope
 
@@ -23,20 +31,20 @@ In [X] weeks with [team / constraints]
 #### Should Have (post-MVP priority)
 | Feature | Description | Why Wait |
 |---------|-------------|----------|
-| [Feature] | [Brief] | [Specific reason] |
+| [Feature] | [Brief] | <specific_reason> |
 
 #### Won't Have (explicit exclusions)
 | Feature | Reason |
 |---------|--------|
-| [Feature] | [Why explicitly excluded] |
+| [Feature] | <why_explicitly_excluded> |
 
 ### Constraints
 - **Timebox:** [X] weeks
-- **Team:** [Resources available]
+- **Team:** <resources_available>
 - **Tech:** [Stack, known limitations]
 
 ### Non-Functional Minimums
-- Performance: [Acceptable baseline]
+- Performance: <acceptable_baseline>
 - Security: [Minimum required — auth, data handling]
 - Observability: [Analytics in place for learning goals]
 
@@ -48,5 +56,5 @@ In [X] weeks with [team / constraints]
 - [ ] Kill signal threshold defined and tracked
 
 ### Next Steps After MVP
-- If validated (hypothesis confirmed): [Specific next action]
-- If invalidated (kill signal triggered): [Pivot plan]
+- If validated (hypothesis confirmed): <specific_next_action>
+- If invalidated (kill signal triggered): <pivot_plan>

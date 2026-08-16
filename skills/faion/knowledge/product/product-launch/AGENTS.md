@@ -71,6 +71,8 @@
 | `templates/product-launch.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/product-launch.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/launch-plan.md.j2` | Launch plan skeleton — timeline, asset checklist, channels, metrics, rollback narrative |
 | `templates/launch-plan.md` | Launch plan skeleton — timeline, asset checklist, channels, metrics, rollback narrative Generated from `templates/launch-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/launch-day-checklist.md.j2` | Launch-day runbook with DRI-approved announcement sequence. |
+| `templates/launch-day-checklist.md` | Launch-day runbook with DRI-approved announcement sequence. Generated from `templates/launch-day-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -63,6 +63,8 @@
 |------|---------|
 | `templates/focus-area-rubric.md.j2` | 5×7 matrix: Focus Area × Domain, populated with artefact references. |
 | `templates/focus-area-rubric.md` | 5×7 matrix: Focus Area × Domain, populated with artefact references. Generated from `templates/focus-area-rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/lifecycle-matrix.md.j2` | PMBoK 8 lifecycle matrix — Focus Area x Performance Domain artefact map with tailoring rationale. |
+| `templates/lifecycle-matrix.md` | PMBoK 8 lifecycle matrix — Focus Area x Performance Domain artefact map with tailoring rationale. Generated from `templates/lifecycle-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

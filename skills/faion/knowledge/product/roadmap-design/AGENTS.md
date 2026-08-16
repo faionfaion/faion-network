@@ -71,6 +71,12 @@
 | `templates/roadmap-design.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/roadmap-design.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/roadmap-design.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/roadmap-diff.py` | Diffs two roadmap snapshots (moved / added / dropped) for the monthly review beat in r9. |
+| `templates/external-roadmap.md.j2` | Customer-facing roadmap derived from the internal source of truth. |
+| `templates/external-roadmap.md` | Customer-facing roadmap derived from the internal source of truth. Generated from `templates/external-roadmap.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/now-next-later.md.j2` | Internal Now/Next/Later roadmap (medium-uncertainty format). |
+| `templates/now-next-later.md` | Internal Now/Next/Later roadmap (medium-uncertainty format). Generated from `templates/now-next-later.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/quarterly-outcome.md.j2` | Quarterly outcome-themed roadmap (high-uncertainty format). |
+| `templates/quarterly-outcome.md` | Quarterly outcome-themed roadmap (high-uncertainty format). Generated from `templates/quarterly-outcome.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -66,6 +66,8 @@
 |------|---------|
 | `templates/acceptance-criteria.json` | Skeleton artefact with required fields |
 | `templates/_smoke-test.json` | Minimum viable filled artefact |
+| `templates/ac-checklist.md.j2` | Checklist-form acceptance criteria — functional, validation, error-handling, performance and security criteria for one story. |
+| `templates/ac-checklist.md` | Checklist-form acceptance criteria — functional, validation, error-handling, performance and security criteria for one story. Generated from `templates/ac-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 | `templates/ac-bdd.md.j2` | Given/When/Then acceptance-criteria skeleton for one story |

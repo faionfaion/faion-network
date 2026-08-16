@@ -1,4 +1,12 @@
-## MVP Quick Check: [Product/Feature]
+<!--
+purpose: 5-question MVP sanity check with verdict — fast gut-check before the full scope doc.
+consumes: a candidate MVP feature list and the build-window estimate
+produces: an MVP quick-check verdict
+depends-on: content/01-core-rules.xml (AHA-moment + build-window rules the quick check screens for)
+token-budget-impact: ~150 tokens when filled
+-->
+
+## MVP Quick Check: <product_feature>
 
 ### The 5 Questions
 
@@ -21,5 +29,5 @@
 
 ### Verdict
 [ ] Scope is right — proceed
-[ ] Too big — cut these: [Specific features]
-[ ] Too small — add this to deliver value: [Specific missing piece]
+[ ] Too big — cut these: <specific_features>
+[ ] Too small — add this to deliver value: <specific_missing_piece>

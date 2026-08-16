@@ -1,3 +1,11 @@
+<!--
+purpose: Full implementation plan — task summary, dependency graph, execution waves, per-task detail, quality gates, FR/AD coverage, risks.
+consumes: nothing — canonical SDD implementation-plan skeleton, filled directly by the author from an approved design.md
+produces: implementation-plan artefact (canonical SDD template; this methodology's own content/02-output-contract.xml is an unfilled migration stub, so conformance to it cannot be claimed)
+depends-on: nothing
+token-budget-impact: ~900-1400 tokens when loaded as context
+-->
+
 # Implementation Plan: {Feature Name}
 
 **Version:** 1.0
@@ -7,7 +15,7 @@
 
 ## Overview
 
-- **Total tasks:** {N}
+- **Total tasks:** <total_tasks>
 - **Complexity:** Low | Medium | High
 - **Est. tokens:** ~{X}k total
 - **Critical path:** TASK_001 -> TASK_003 -> TASK_005

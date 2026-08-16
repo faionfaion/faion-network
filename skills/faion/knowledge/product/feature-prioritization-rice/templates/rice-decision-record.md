@@ -1,4 +1,12 @@
-# RICE Decision Record: [Feature Name]
+<!--
+purpose: Per-feature RICE decision record — scoring, calculation, rank, decision and required co-signs.
+consumes: a scored candidate feature (reach/impact/confidence/effort) from the RICE round (see content/02-output-contract.xml rows)
+produces: a RICE decision record
+depends-on: content/02-output-contract.xml (rows: reach, impact, confidence, effort, source, rice_score)
+token-budget-impact: ~300 tokens when filled
+-->
+
+# RICE Decision Record: <feature_name>
 
 ## Scoring
 
@@ -10,21 +18,21 @@
 | Effort | [X] person-months | [Design + dev + QA + 30% buffer; engineer co-signed] |
 
 ## Calculation
-RICE = ([R] × [I] × [C]) / [E] = [Score]
+RICE = (<r> × <i> × <c>) / <e> = <score>
 
 ## Rank
-#[X] out of [Y] candidates this quarter
+#[X] out of <y> candidates this quarter
 
 ## Decision
-- [ ] Prioritized for [quarter/sprint]
+- [ ] Prioritized for <quarter_sprint>
 - [ ] Backlogged for later — reason: [...]
 - [ ] Rejected — reason: [...]
 
 ## Additional Considerations
 - **Dependencies:** [Any features that must ship first]
 - **Strategic alignment:** [How this fits current quarter's focus]
-- **Risks:** [What could make R or I wrong]
+- **Risks:** <risks>
 
 ## Co-signs Required
-- [ ] Engineering co-signed Effort estimate: [Name]
-- [ ] PM co-signed Impact=3 (if applicable): [Name]
+- [ ] Engineering co-signed Effort estimate: <name>
+- [ ] PM co-signed Impact=3 (if applicable): <name>

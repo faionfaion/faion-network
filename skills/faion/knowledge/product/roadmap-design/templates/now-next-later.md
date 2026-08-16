@@ -1,4 +1,12 @@
-## Product Roadmap: [Product Name]
+<!--
+purpose: Internal Now/Next/Later roadmap — medium-uncertainty format with themed initiatives, confidence labels, an explicit not-doing list and success metrics.
+consumes: strategic outcomes/OKRs and the uncertainty assessment over the horizon (see Prerequisites)
+produces: an internal roadmap (source of truth)
+depends-on: content/01-core-rules.xml (r2-three-horizons, r3-confidence-labels, r10-not-doing-list)
+token-budget-impact: ~450 tokens when filled
+-->
+
+## Product Roadmap: <product_name>
 
 **Vision:** [1-2 sentence long-term vision]
 **Current focus:** [What we are optimising for this period]
@@ -7,12 +15,12 @@
 
 ## NOW (Current Quarter)
 
-**Theme: [Theme Name]** — drives: [Objective ID/name]
-- [Initiative 1] — Status: In Progress | Confidence: High
-- [Initiative 2] — Status: Planned | Confidence: High
+**Theme: <theme_name>** — drives: <objective_id_name>
+- <initiative_1> — Status: In Progress | Confidence: High
+- <initiative_2> — Status: Planned | Confidence: High
 
-**Theme: [Theme Name]** — drives: [Objective ID/name]
-- [Initiative 1] — Status: Planned | Confidence: High
+**Theme: <theme_name>** — drives: <objective_id_name>
+- <initiative_1> — Status: Planned | Confidence: High
 
 **Why now:** [Strategic rationale in 1-2 sentences]
 
@@ -20,12 +28,12 @@
 
 ## NEXT (Next Quarter)
 
-**Theme: [Theme Name]** — drives: [Objective ID/name]
-- [Initiative 1] — Confidence: High
-- [Initiative 2] — Confidence: Medium
+**Theme: <theme_name>** — drives: <objective_id_name>
+- <initiative_1> — Confidence: High
+- <initiative_2> — Confidence: Medium
 
-**Theme: [Theme Name]** — drives: [Objective ID/name]
-- [Initiative 1] — Confidence: Medium
+**Theme: <theme_name>** — drives: <objective_id_name>
+- <initiative_1> — Confidence: Medium
 
 **Depends on:** [What must complete in Now first]
 
@@ -34,23 +42,23 @@
 ## LATER (Future — no commitment)
 
 **Exploring:**
-- [Idea 1]
-- [Idea 2]
+- <idea_1>
+- <idea_2>
 
 **Watching:**
-- [Market trend]
-- [Technology development]
+- <market_trend>
+- <technology_development>
 
 **Explicitly Not Doing:**
-- [Exclusion 1] — Reason: [Why]
-- [Exclusion 2] — Reason: [Why]
+- <exclusion_1> — Reason: <why>
+- <exclusion_2> — Reason: <why>
 
 ---
 
 ### Success Metrics
 | Objective | Metric | Target |
 |-----------|--------|--------|
-| [Goal 1] | [Metric] | [Target] |
-| [Goal 2] | [Metric] | [Target] |
+| <goal_1> | [Metric] | [Target] |
+| <goal_2> | [Metric] | [Target] |
 
-**Last updated:** [Date] | **Next review:** [Date]
+**Last updated:** <date> | **Next review:** <date>

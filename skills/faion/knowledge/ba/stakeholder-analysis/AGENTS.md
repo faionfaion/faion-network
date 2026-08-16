@@ -72,6 +72,8 @@
 | `templates/comms-plan.md` | Communications plan with cadence + channel + owner. Generated from `templates/comms-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable 3-stakeholder register. |
 | `templates/_smoke-test.md` | Minimum viable 3-stakeholder register. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/stakeholder-profile.md.j2` | Individual stakeholder profile — characteristics, power/interest quadrant, needs, concerns, comms preferences, engagement history. |
+| `templates/stakeholder-profile.md` | Individual stakeholder profile — characteristics, power/interest quadrant, needs, concerns, comms preferences, engagement history. Generated from `templates/stakeholder-profile.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

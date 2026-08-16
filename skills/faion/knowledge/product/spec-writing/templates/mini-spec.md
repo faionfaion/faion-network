@@ -1,8 +1,16 @@
+<!--
+purpose: One-page mini-spec — problem, solution, requirements, acceptance criteria, open questions.
+consumes: problem brief and target user persona (see Prerequisites)
+produces: mini-spec artefact
+depends-on: nothing
+token-budget-impact: ~200 tokens when filled
+-->
+
 # [Feature Name] Mini-Spec
 
 **One-liner:** [What it does in one sentence]
-**Owner:** [Name]
-**Target sprint/date:** [Sprint or date]
+**Owner:** <owner_full_name>
+**Target sprint/date:** <target_sprint_date>
 **Status:** Draft / Approved
 
 ## Problem
@@ -17,12 +25,12 @@
 - [ ] FR-3: [The system shall ...]
 
 ## Not Included
-- [Explicit exclusion 1]
-- [Explicit exclusion 2]
+- <explicit_exclusion_1>
+- <explicit_exclusion_2>
 
 ## Acceptance Criteria
-- [ ] Given [context], when [action], then [result] (FR-1)
-- [ ] Given [context], when [action], then [result] (FR-2)
+- [ ] Given <context>, when <action>, then <result> (FR-1)
+- [ ] Given <context>, when <action>, then <result> (FR-2)
 
 ## Open Questions
 - [Question 1 — owner: name]

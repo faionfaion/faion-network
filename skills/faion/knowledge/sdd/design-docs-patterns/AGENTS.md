@@ -64,6 +64,8 @@
 | `templates/design-docs-patterns.md.j2` | Markdown skeleton with the required fields. |
 | `templates/design-docs-patterns.md` | Markdown skeleton with the required fields. Generated from `templates/design-docs-patterns.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum viable filled-in fixture passing the schema. |
+| `templates/design-doc-lightweight.md.j2` | Lightweight Google-style design doc — overview, context, goals/non-goals, design, alternatives, cross-cutting concerns, open questions. |
+| `templates/design-doc-lightweight.md` | Lightweight Google-style design doc — overview, context, goals/non-goals, design, alternatives, cross-cutting concerns, open questions. Generated from `templates/design-doc-lightweight.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

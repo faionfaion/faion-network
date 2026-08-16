@@ -68,6 +68,8 @@
 |------|---------|
 | `templates/evm-report.md.j2` | Period report: PV, EV, AC, CPI, SPI, EAC, TCPI table + variance narrative. |
 | `templates/evm-report.md` | Period report: PV, EV, AC, CPI, SPI, EAC, TCPI table + variance narrative. Generated from `templates/evm-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/evm-dashboard.md.j2` | EVM period dashboard — key metrics, variances, forecasts, 3-period trend, at-risk work packages. |
+| `templates/evm-dashboard.md` | EVM period dashboard — key metrics, variances, forecasts, 3-period trend, at-risk work packages. Generated from `templates/evm-dashboard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

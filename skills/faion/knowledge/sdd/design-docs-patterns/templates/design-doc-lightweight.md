@@ -1,7 +1,15 @@
-# Design Doc: [Feature Name]
+<!--
+purpose: Lightweight Google-style design doc — overview, context, goals/non-goals, design, alternatives, cross-cutting concerns, open questions.
+consumes: decision title, scope classification, alternatives shortlist per Prerequisites
+produces: artefact conforming to content/02-output-contract.xml (format: Google-lite)
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~700-1200 tokens when loaded as context
+-->
 
-**Author:** [Name]
-**Reviewers:** [Names] — deadline: [YYYY-MM-DD]
+# Design Doc: <feature_name>
+
+**Author:** <author_name>
+**Reviewers:** <names> — deadline: <reviewers>
 **Status:** Draft | In Review | Approved | Implemented
 **Last Updated:** YYYY-MM-DD
 **Spec Reference:** [Link to spec.md or ticket]
@@ -59,8 +67,8 @@ ComponentA → ComponentB → Database
 
 | Option | Pros | Cons | Chosen? |
 |--------|------|------|---------|
-| [Proposed approach] | [Honest pros] | [Honest cons] | Yes |
-| [Alternative 1] | [Pros] | [Cons — why not chosen] | No |
+| <proposed_approach> | <honest_pros> | <honest_cons> | Yes |
+| <alternative_1> | [Pros] | [Cons — why not chosen] | No |
 | [Alternative 2 / do nothing] | [Pros] | [Cons — why status quo fails] | No |
 
 [Add 1-2 sentences per alternative explaining the "why not chosen" rationale for future reference.]
@@ -85,8 +93,8 @@ ComponentA → ComponentB → Database
 
 ## Open Questions
 
-- [ ] [Unresolved question 1] — Owner: [Name]
-- [ ] [Unresolved question 2] — Owner: [Name]
+- [ ] <unresolved_question_1> — Owner: <name>
+- [ ] <unresolved_question_2> — Owner: <name>
 
 ---
 
@@ -94,4 +102,4 @@ ComponentA → ComponentB → Database
 
 - [Link to spec.md]
 - [Related design docs or ADRs]
-- [Relevant external documentation]
+- <relevant_external_documentation>

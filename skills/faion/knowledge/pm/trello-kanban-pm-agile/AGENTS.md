@@ -63,6 +63,10 @@
 | `templates/trello-kanban.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/trello-kanban.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/trello-kanban.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/trello-kanban.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/card-bug.md.j2` | Trello bug card — description, repro steps, environment, severity, root cause. |
+| `templates/card-bug.md` | Trello bug card — description, repro steps, environment, severity, root cause. Generated from `templates/card-bug.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/card-feature.md.j2` | Trello feature card — user story, acceptance criteria, design links, DoD. |
+| `templates/card-feature.md` | Trello feature card — user story, acceptance criteria, design links, DoD. Generated from `templates/card-feature.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

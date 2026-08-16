@@ -1,4 +1,12 @@
-# Implementation Plan: [Feature Name]
+<!--
+purpose: Implementation plan — wave summary, ordered task rows with token budgets tracing back to AD-X/FR-X, risk assessment, rollback plan.
+consumes: an approved design.md, token budget cap and model roster (see Prerequisites)
+produces: implementation plan artefact
+depends-on: content/02-output-contract.xml
+token-budget-impact: ~440 tokens when filled
+-->
+
+# Implementation Plan: <feature_name>
 
 <!-- Requires: spec.md (Approved) + design.md (Approved) before writing -->
 
@@ -31,7 +39,7 @@
 
 ---
 
-### TASK-001: [Action Verb + Target]
+### TASK-001: <action_verb_target>
 
 - **Complexity:** Simple / Normal / Complex
 - **Tokens:** ~Xk
@@ -52,7 +60,7 @@
 
 ---
 
-### TASK-002: [Action Verb + Target]
+### TASK-002: <action_verb_target>
 
 - **Complexity:** Normal
 - **Tokens:** ~Xk

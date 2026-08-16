@@ -1,4 +1,12 @@
-# Spec: [Feature Name]
+<!--
+purpose: Full 14-section spec skeleton — metadata, personas, user stories, FR/NFR, acceptance criteria, out of scope, dependencies, open questions.
+consumes: Base spec draft, NFR catalogue, AC quality rubric per Prerequisites
+produces: artefact conforming to content/02-output-contract.xml (spec, advanced blocks)
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~900-1500 tokens when loaded as context
+-->
+
+# Spec: <feature_name>
 
 <!-- Full spec: use for complex features with multiple user types or significant NFRs -->
 <!-- Minimal spec: skip to just Overview + 1-2 stories + basic AC for simple CRUD -->
@@ -22,23 +30,23 @@ _2-3 sentence summary of what this feature does and why it matters._
 
 ## 2. Problem Statement
 
-- **Who:** [target user group]
+- **Who:** <target_user_group>
 - **Problem:** [what problem they face]
-- **Impact:** [business or user cost if unsolved]
-- **Solution:** [high-level approach]
+- **Impact:** <impact>
+- **Solution:** <high_level_approach>
 - **Success Metric:** [how to measure the feature succeeded]
 
 ---
 
 ## 3. User Personas
 
-### Persona 1: [Name]
+### Persona 1: <name>
 - **Role:** ...
 - **Goals:** ...
 - **Pain points:** ...
 - **Usage context:** (mobile / desktop / API / ...)
 
-### Persona 2: [Name]
+### Persona 2: <name>
 - **Role:** ...
 - **Goals:** ...
 - **Pain points:** ...
@@ -49,52 +57,52 @@ _2-3 sentence summary of what this feature does and why it matters._
 
 | ID | Story | Priority | AC |
 |----|-------|----------|----|
-| US-001 | As [Persona 1], I want to [...] so that [...] | Must | AC-001, AC-002 |
-| US-002 | As [Persona 2], I want to [...] so that [...] | Should | AC-003 |
+| US-001 | As <persona_1>, I want to [...] so that [...] | Must | AC-001, AC-002 |
+| US-002 | As <persona_2>, I want to [...] so that [...] | Should | AC-003 |
 
 ---
 
 ## 5. Functional Requirements
 
-### FR-001: [Requirement name]
+### FR-001: <requirement_name>
 Traces to: US-001
 
-**SHALL** [specific observable behavior].
+**SHALL** <specific_observable_behavior>.
 
-### FR-002: [Requirement name]
+### FR-002: <requirement_name>
 Traces to: US-001
 
-**SHALL** [specific observable behavior].
+**SHALL** <specific_observable_behavior>.
 
 ---
 
 ## 6. Non-Functional Requirements
 
-### NFR-001: [NFR name]
-- **Requirement:** [Feature] SHALL [behavior] [quantifiable target].
+### NFR-001: <nfr_name>
+- **Requirement:** <feature> SHALL <behavior> <quantifiable_target>.
 - **Measurement:** [how to measure]
 - **Priority:** Must / Should / Could
-- **Validation:** [test method]
+- **Validation:** <test_method>
 
 ---
 
 ## 7. Acceptance Criteria
 
-### AC-001: [Happy path]
+### AC-001: <happy_path>
 Traces to: FR-001
 
 **Given** [...],
 **When** [...],
 **Then** [...].
 
-### AC-002: [Error case]
+### AC-002: <error_case>
 Traces to: FR-001
 
 **Given** [...],
 **When** [...],
 **Then** [...].
 
-### AC-003: [Edge case]
+### AC-003: <edge_case>
 Traces to: FR-002
 
 **Given** [...],

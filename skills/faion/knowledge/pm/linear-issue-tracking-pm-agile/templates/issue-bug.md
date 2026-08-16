@@ -1,4 +1,10 @@
-## Bug: [Brief Description]
+<!-- purpose: Linear bug issue template — environment, repro steps, severity. -->
+<!-- consumes: nothing -->
+<!-- produces: Linear bug issue body -->
+<!-- depends-on: nothing -->
+<!-- token-budget-impact: ~120 tokens when filled -->
+
+## Bug: <brief_description>
 
 ### Environment
 - Version: 2.1.0
@@ -14,10 +20,10 @@
 [What should happen]
 
 ### Actual Behavior
-[What actually happens]
+<what_actually_happens>
 
 ### Evidence
-- Screenshot: [attached]
+- Screenshot: <attached>
 - Error log: `ErrorMessage: details here`
 
 ### Severity

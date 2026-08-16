@@ -70,6 +70,8 @@
 | `templates/story-row.csv` | Header for individual story rows. |
 | `templates/_smoke-test.md.j2` | Minimum viable story map. |
 | `templates/_smoke-test.md` | Minimum viable story map. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/user-story.md.j2` | One user story from the story map — As-a/I-want/So-that, Given-When-Then acceptance criteria, INVEST check, release/priority/size. |
+| `templates/user-story.md` | One user story from the story map — As-a/I-want/So-that, Given-When-Then acceptance criteria, INVEST check, release/priority/size. Generated from `templates/user-story.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

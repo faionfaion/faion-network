@@ -62,6 +62,8 @@
 | `templates/feature-prioritization-moscow.json` | JSON Schema for the output contract (machine-validatable). |
 | `templates/feature-prioritization-moscow.md.j2` | Markdown skeleton with the required fields. |
 | `templates/feature-prioritization-moscow.md` | Markdown skeleton with the required fields. Generated from `templates/feature-prioritization-moscow.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/moscow-matrix.md.j2` | MoSCoW worksheet with per-requirement effort and capacity %. |
+| `templates/moscow-matrix.md` | MoSCoW worksheet with per-requirement effort and capacity %. Generated from `templates/moscow-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

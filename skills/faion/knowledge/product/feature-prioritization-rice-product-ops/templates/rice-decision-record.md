@@ -1,3 +1,11 @@
+<!--
+purpose: Per-feature RICE decision record — scoring, calculation, rank, decision and dependency sequencing check.
+consumes: a scored candidate feature from the RICE round (see Prerequisites)
+produces: a RICE decision record
+depends-on: content/01-core-rules.xml (r2-confidence-floor, r5-decision-record)
+token-budget-impact: ~300 tokens when filled
+-->
+
 ## RICE Decision: {Feature Name}
 
 ### Scoring
@@ -10,10 +18,10 @@
 | Effort | {X} person-months | Design: {Xd}, Dev: {Xd}, QA: {Xd}, Docs: {Xd} |
 
 ### Calculation
-RICE = ({R} × {I} × {C}) / {E} = **{Score}**
+RICE = (<r> × <i> × <c>) / <e> = **{Score}**
 
 ### Rank
-#{X} out of {Y} candidates
+#{X} out of <y> candidates
 
 ### Decision
 [ ] Prioritize for {quarter/sprint}

@@ -1,3 +1,9 @@
+<!-- purpose: PM tool-selection ADR — evaluation scorecard, decision, consequences, migration plan. -->
+<!-- consumes: the 5-dimension scorecard results and 3-vendor bake-off findings -->
+<!-- produces: tool-selection ADR artefact -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~380 tokens when filled -->
+
 # ADR-NNN: PM Tool Selection
 
 ## Status
@@ -10,37 +16,37 @@ Accepted
 
 ## Decision
 
-We will [adopt / migrate to] **[Tool Name]** as our primary project management tool.
+We will <we_will> **<tool_name>** as our primary project management tool.
 
 ## Evaluation Summary
 
 | Tool | Score | 3-Year TCO | Notes |
 |------|-------|------------|-------|
 | [Tool A] | [X.X]/10 | $[N] | [Key differentiator] |
-| [Tool B] | [X.X]/10 | $[N] | [Key differentiator] |
-| [Tool C] | [X.X]/10 | $[N] | [Key differentiator] |
+| <tool_b> | [X.X]/10 | $[N] | [Key differentiator] |
+| <tool_c> | [X.X]/10 | $[N] | [Key differentiator] |
 
 ## Key Factors
 
-1. **[Factor 1]**: [Why it matters and how the chosen tool performs]
-2. **[Factor 2]**: [Why it matters and how the chosen tool performs]
-3. **[Factor 3]**: [Why it matters and how the chosen tool performs]
+1. **<factor_1>**: [Why it matters and how the chosen tool performs]
+2. **<factor_2>**: [Why it matters and how the chosen tool performs]
+3. **<factor_3>**: [Why it matters and how the chosen tool performs]
 
 ## Consequences
 
 ### Positive
-- [Benefit 1]
-- [Benefit 2]
+- <benefit_1>
+- <benefit_2>
 
 ### Negative
-- [Trade-off 1]
-- [Trade-off 2]
+- <trade_off_1>
+- <trade_off_2>
 
 ## Migration Plan
 
-- Phase 1: Pilot with [team] ([duration])
-- Phase 2: Migrate remaining teams ([duration])
-- Phase 3: Sunset current tool ([duration])
+- Phase 1: Pilot with <team> (<duration>)
+- Phase 2: Migrate remaining teams (<duration>)
+- Phase 3: Sunset current tool (<duration>)
 
 ## Review Date
 

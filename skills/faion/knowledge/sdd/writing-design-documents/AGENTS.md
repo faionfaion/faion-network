@@ -65,6 +65,16 @@
 | `templates/writing-design-documents.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/writing-design-documents.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/writing-design-documents.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/writing-design-documents.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/design-adr.md.j2` | Single ADR-style design decision — context, decision, options considered, rationale, consequences. |
+| `templates/design-adr.md` | Single ADR-style design decision — context, decision, options considered, rationale, consequences. Generated from `templates/design-adr.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/design-mini.md.j2` | Minimal design skeleton for single-task, <30k-token features with no multi-component interaction. |
+| `templates/design-mini.md` | Minimal design skeleton for single-task, <30k-token features with no multi-component interaction. Generated from `templates/design-mini.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/design-rfc.md.j2` | RFC-style design proposal — motivation, proposal, alternatives considered, drawbacks, open questions, phased implementation plan. |
+| `templates/design-rfc.md` | RFC-style design proposal — motivation, proposal, alternatives considered, drawbacks, open questions, phased implementation plan. Generated from `templates/design-rfc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/design-sdd.md.j2` | Full SDD-shaped design doc — architecture, component design, API contracts, data models, numbered architectural decisions (AD-X) traced to FR-X, open questions. |
+| `templates/design-sdd.md` | Full SDD-shaped design doc — architecture, component design, API contracts, data models, numbered architectural decisions (AD-X) traced to FR-X, open questions. Generated from `templates/design-sdd.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/design-tdd.md.j2` | Technical Design Document — background, requirements, detailed design, APIs, data storage, error handling, security, trade-offs, testing strategy, rollout plan. |
+| `templates/design-tdd.md` | Technical Design Document — background, requirements, detailed design, APIs, data storage, error handling, security, trade-offs, testing strategy, rollout plan. Generated from `templates/design-tdd.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

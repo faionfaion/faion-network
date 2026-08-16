@@ -1,4 +1,12 @@
-## OKR Check-in: Week [X] of [Quarter]
+<!--
+purpose: Weekly OKR check-in — per-objective KR progress, confidence, blockers and this-week actions.
+consumes: current OKR document (objectives, KRs, baselines/targets)
+produces: a weekly OKR check-in
+depends-on: content/01-core-rules.xml (r4-confidence-band, r5-weekly-checkin)
+token-budget-impact: ~300 tokens when filled
+-->
+
+## OKR Check-in: Week [X] of <quarter>
 
 ### Overall Progress
 - On Track: [X] KRs
@@ -7,16 +15,16 @@
 
 ### By Objective
 
-#### O1: [Name]
+#### O1: <name>
 | KR | Progress | Confidence | Notes |
 |----|----------|------------|-------|
 | KR 1.1 | [X]% | High / Med / Low | [Updates] |
 | KR 1.2 | [X]% | High / Med / Low | [Updates] |
 
 **Blockers:** [Any blockers]
-**Help needed:** [Specific requests]
+**Help needed:** <specific_requests>
 
-#### O2: [Name]
+#### O2: <name>
 | KR | Progress | Confidence | Notes |
 |----|----------|------------|-------|
 | KR 2.1 | [X]% | High / Med / Low | [Updates] |
@@ -27,4 +35,4 @@
 
 ### Risks and Concerns
 - [Risk 1 with likelihood and impact]
-- [Risk 2]
+- <risk_2>

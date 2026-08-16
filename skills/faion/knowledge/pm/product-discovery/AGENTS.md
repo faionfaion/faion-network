@@ -68,6 +68,10 @@
 |------|---------|
 | `templates/product-discovery.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/product-discovery.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/product-discovery.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/discovery-kickoff.md.j2` | Discovery kickoff brief — opportunity, team, risk questions, assumptions to test, schedule. |
+| `templates/discovery-kickoff.md` | Discovery kickoff brief — opportunity, team, risk questions, assumptions to test, schedule. Generated from `templates/discovery-kickoff.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/experiment-report.md.j2` | Discovery experiment report — hypothesis, setup, results, learnings, decision. |
+| `templates/experiment-report.md` | Discovery experiment report — hypothesis, setup, results, learnings, decision. Generated from `templates/experiment-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

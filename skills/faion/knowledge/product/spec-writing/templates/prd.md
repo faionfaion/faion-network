@@ -1,8 +1,16 @@
+<!--
+purpose: Full PRD — problem statement, goals/non-goals, user stories, functional and non-functional requirements, acceptance criteria.
+consumes: problem brief, target user persona and acceptance criteria rubric (see Prerequisites)
+produces: PRD artefact
+depends-on: nothing
+token-budget-impact: ~520 tokens when filled
+-->
+
 # [Feature Name] Specification
 
 ## Metadata
 - **Author:** [Name]
-- **Created:** [Date]
+- **Created:** <date>
 - **Status:** Draft / Review / Approved
 - **Stakeholders:** [Names and roles]
 
@@ -20,8 +28,8 @@
 
 ### Pain Points
 1. [Specific pain 1 — link to evidence: ticket / interview / metric]
-2. [Specific pain 2]
-3. [Specific pain 3]
+2. <specific_pain_2>
+3. <specific_pain_3>
 
 ### Impact of Not Solving
 [What happens if we don't build this.]
@@ -33,12 +41,12 @@
 ### Success Metrics
 | Metric | Current | Target |
 |--------|---------|--------|
-| [Metric 1] | [X] | [Y] |
-| [Metric 2] | [X] | [Y] |
+| <metric_1> | [X] | [Y] |
+| <metric_2> | [X] | [Y] |
 
 ### Goals
 1. [Goal 1 — must be measurable]
-2. [Goal 2]
+2. <goal_2>
 
 ### Non-Goals
 - [Explicitly not X — reason]
@@ -48,10 +56,10 @@
 
 ## User Stories
 
-### Primary User: [Persona Name]
+### Primary User: <persona_name>
 
-**US-1:** As a [persona], I want to [action] so that [measurable benefit].
-**US-2:** As a [persona], I want to [action] so that [measurable benefit].
+**US-1:** As a <persona>, I want to <action> so that <measurable_benefit>.
+**US-2:** As a <persona>, I want to <action> so that <measurable_benefit>.
 
 ---
 
@@ -70,17 +78,17 @@
 | ID | Requirement | Measurable Criterion |
 |----|-------------|----------------------|
 | NFR-1 | Performance | [e.g. p95 latency < 200ms] |
-| NFR-2 | Security | [specific requirement + source] |
+| NFR-2 | Security | <specific_requirement_source> |
 
 ---
 
 ## Acceptance Criteria
 
 ### FR-1
-- [ ] Given [context], when [action], then [observable result]
+- [ ] Given <context>, when <action>, then <observable_result>
 
 ### FR-2
-- [ ] Given [context], when [action], then [observable result]
+- [ ] Given <context>, when <action>, then <observable_result>
 
 ---
 
@@ -88,7 +96,7 @@
 
 | Item | Reason | Future? |
 |------|--------|---------|
-| [Feature] | [Why not included] | Yes/No/Maybe |
+| <feature> | [Why not included] | Yes/No/Maybe |
 
 ---
 
@@ -96,14 +104,14 @@
 
 | Question | Owner | Status |
 |----------|-------|--------|
-| [Question 1] | [Name] | Open |
-| [Question 2] | [Name] | Resolved: [Answer] |
+| <question_1> | [Name] | Open |
+| <question_2> | [Name] | Resolved: <answer> |
 
 ---
 
 ## Appendix
 
 ### Related Documents
-- Design doc: [Link]
-- Research: [Link]
-- Prior art: [Link]
+- Design doc: <link>
+- Research: <link>
+- Prior art: <link>

@@ -1,3 +1,11 @@
+<!--
+purpose: BA approach document — analysis approach, stakeholder list, elicitation plan, deliverables, governance, replan triggers.
+consumes: recent task context and a named downstream owner (see Prerequisites)
+produces: BA approach document artefact
+depends-on: content/02-output-contract.xml
+token-budget-impact: ~420 tokens when filled
+-->
+
 ---
 engagement_id: ENG-001
 approach: Plan-Driven  # Plan-Driven | Change-Driven | Hybrid
@@ -6,10 +14,10 @@ approver: name@domain
 last_reviewed: 2026-01-01
 ---
 
-# Business Analysis Approach: [Initiative Name]
+# Business Analysis Approach: <initiative_name>
 
 **Version:** [X.X]
-**Date:** [Date]
+**Date:** <date>
 **Business Analyst:** [Name]
 
 ## 1. Initiative Overview
@@ -18,7 +26,7 @@ last_reviewed: 2026-01-01
 
 ## 2. Analysis Approach
 
-**Selected Approach:** [Plan-Driven / Change-Driven / Hybrid]
+**Selected Approach:** <selected_approach>
 **Rationale:** [Decision rule applied: clarity level, change frequency, regulatory requirements]
 
 **Per-Artifact Classification (Hybrid only):**
@@ -42,7 +50,7 @@ Hidden stakeholders reviewed: [ ] legal [ ] infosec [ ] procurement [ ] works co
 
 | Activity | Technique | Participants | Timing | Deliverable |
 |----------|-----------|--------------|--------|-------------|
-| [Activity] | Interview/Workshop/Survey/Observation/Doc Analysis | [Who] | [When] | [Output] |
+| <activity> | Interview/Workshop/Survey/Observation/Doc Analysis | <who> | [When] | <output> |
 
 ## 5. Deliverables
 
@@ -62,7 +70,7 @@ Hidden stakeholders reviewed: [ ] legal [ ] infosec [ ] procurement [ ] works co
 
 | Risk/Constraint | Impact | Mitigation |
 |-----------------|--------|------------|
-| [Item] | H/M/L | [Action] |
+| <item> | H/M/L | <action> |
 
 ## 8. Replan Triggers
 

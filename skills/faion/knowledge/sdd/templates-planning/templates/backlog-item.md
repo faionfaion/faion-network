@@ -1,3 +1,11 @@
+<!--
+purpose: Single backlog item — RICE score, MoSCoW classification, acceptance criteria, dependencies.
+consumes: nothing — canonical SDD backlog-item skeleton, filled directly by the author
+produces: backlog item artefact (canonical SDD template; this methodology's own content/02-output-contract.xml is an unfilled migration stub, so conformance to it cannot be claimed)
+depends-on: nothing
+token-budget-impact: ~250-400 tokens when loaded as context
+-->
+
 ## BL-{NNN}: {Title}
 
 **Priority:** P0 | P1 | P2 | P3
@@ -37,7 +45,7 @@
 ## Dependencies
 
 - Requires: BL-{XXX}
-- Blocks: BL-{YYY}
+- Blocks: BL-<yyy>
 
 ## Notes
 

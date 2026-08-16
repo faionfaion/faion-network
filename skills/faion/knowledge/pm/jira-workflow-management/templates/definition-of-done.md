@@ -1,4 +1,10 @@
-# Definition of Done — [Project Name]
+<!-- purpose: Jira Definition of Done checklist — code, testing, docs, acceptance gates. -->
+<!-- consumes: nothing -->
+<!-- produces: Definition of Done checklist artefact -->
+<!-- depends-on: nothing -->
+<!-- token-budget-impact: ~160 tokens when filled -->
+
+# Definition of Done — <project_name>
 
 Apply to every Story/Bug before transitioning to Done.
 

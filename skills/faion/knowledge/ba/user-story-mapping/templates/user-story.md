@@ -1,7 +1,15 @@
-# User Story: [ID]
+<!--
+purpose: One user story from the story map — As-a/I-want/So-that, Given-When-Then acceptance criteria, INVEST check, release/priority/size.
+consumes: a use-case spec or journey definition (see Prerequisites)
+produces: user story artefact
+depends-on: content/02-output-contract.xml
+token-budget-impact: ~230 tokens when filled
+-->
 
-**Title:** [Short descriptive title]
-**Epic:** [Parent epic]
+# User Story: <id>
+
+**Title:** <short_descriptive_title>
+**Epic:** <parent_epic>
 **Activity:** [From story map backbone]
 **Task:** [From story map task band]
 **Persona ID:** [persona_id — required for RTM]
@@ -9,26 +17,26 @@
 
 ## Story
 
-**As a** [user type/persona]
-**I want** [goal/desire]
-**So that** [benefit/value]
+**As a** <user_type_persona>
+**I want** <goal_desire>
+**So that** <benefit_value>
 
 ## Acceptance Criteria
 
-**Scenario 1: [Happy path]**
-- Given [context]
-- When [action]
-- Then [expected result]
+**Scenario 1: <happy_path>**
+- Given <context>
+- When <action>
+- Then <expected_result>
 
-**Scenario 2: [Alternative path]**
-- Given [context]
-- When [action]
-- Then [expected result]
+**Scenario 2: <alternative_path>**
+- Given <context>
+- When <action>
+- Then <expected_result>
 
-**Scenario 3: [Error/exception path]**
-- Given [context]
-- When [action]
-- Then [expected result]
+**Scenario 3: <error_exception_path>**
+- Given <context>
+- When <action>
+- Then <expected_result>
 
 ## INVEST Check
 
@@ -41,7 +49,7 @@
 
 ## Details
 
-- **Release:** [R1/R2/R3]
+- **Release:** <r1_r2_r3>
 - **Priority:** [Must/Should/Could/Won't]
-- **Size:** [Story points or T-shirt]
-- **Dependencies:** [Related story IDs]
+- **Size:** <size>
+- **Dependencies:** <related_story_ids>

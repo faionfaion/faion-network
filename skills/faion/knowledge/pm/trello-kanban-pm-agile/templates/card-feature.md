@@ -1,7 +1,13 @@
+<!-- purpose: Trello feature card — user story, acceptance criteria, design links, DoD. -->
+<!-- consumes: nothing -->
+<!-- produces: Trello feature card body -->
+<!-- depends-on: nothing -->
+<!-- token-budget-impact: ~150 tokens when filled -->
+
 ## Feature: {Title}
 
 ### User Story
-As a [user type], I want [capability] so that [benefit].
+As a <user_type>, I want <capability> so that <benefit>.
 
 ### Acceptance Criteria
 - [ ] Users can...

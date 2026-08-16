@@ -1,8 +1,14 @@
-# Performance Domain Assessment — [Project Name]
+<!-- purpose: PMBoK performance-domain health assessment — 8-domain rubric with gate, focus areas. -->
+<!-- consumes: qualitative domain scores with cited evidence per PMBoK domain -->
+<!-- produces: domain assessment artefact -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~280 tokens when filled -->
 
-**Date:** [Date]
-**Assessor:** [Name]
-**Gate:** [Kickoff | Mid-point | Pre-launch | Close]
+# Performance Domain Assessment — <project_name>
+
+**Date:** <date>
+**Assessor:** <name>
+**Gate:** <gate>
 
 | Domain | Health | Key Issues | Actions |
 |--------|--------|------------|---------|
@@ -16,8 +22,8 @@
 | Uncertainty | Green/Yellow/Red | [Active risk register? Y/N] | [Imperative action] |
 
 ## Two Weakest Domains (Focus for Next Gate)
-1. [Domain] — [why weak, what to do]
-2. [Domain] — [why weak, what to do]
+1. <domain> — [why weak, what to do]
+2. <domain> — [why weak, what to do]
 
 <!-- Rules:
 - Health must cite specific artefacts or metrics, not general impressions

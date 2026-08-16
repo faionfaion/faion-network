@@ -1,14 +1,20 @@
-# PMBoK 8 Lifecycle Matrix: [Project Name]
+<!-- purpose: PMBoK 8 lifecycle matrix — Focus Area x Performance Domain artefact map with tailoring rationale. -->
+<!-- consumes: the project's artefact inventory mapped against Focus Areas x Domains -->
+<!-- produces: lifecycle matrix artefact -->
+<!-- depends-on: content/02-output-contract.xml -->
+<!-- token-budget-impact: ~350 tokens when filled -->
 
-Approach: [predictive | agile | hybrid]
+# PMBoK 8 Lifecycle Matrix: <project_name>
+
+Approach: <predictive_agile_hybrid>
 
 | Focus Area | Governance | Scope | Schedule | Finance | Stakeholders | Resources | Risk |
 |------------|-----------|-------|----------|---------|--------------|-----------|------|
-| Initiating | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] |
-| Planning | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] |
-| Executing | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] |
-| MnC | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] |
-| Closing | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] |
+| Initiating | <initiating> | <initiating> | <initiating> | <initiating> | <initiating> | <initiating> | <initiating> |
+| Planning | <planning> | <planning> | <planning> | <planning> | <planning> | <planning> | <planning> |
+| Executing | <executing> | <executing> | <executing> | <executing> | <executing> | <executing> | <executing> |
+| MnC | <mn_c> | <mn_c> | <mn_c> | <mn_c> | <mn_c> | <mn_c> | <mn_c> |
+| Closing | <closing> | <closing> | <closing> | <closing> | <closing> | <closing> | <closing> |
 
 <!-- Instructions:
 - Fill cells with artefact name (e.g. "project charter", "sprint backlog", "EVM dashboard")

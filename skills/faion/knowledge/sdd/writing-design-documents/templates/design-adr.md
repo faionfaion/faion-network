@@ -1,6 +1,14 @@
+<!--
+purpose: Single ADR-style design decision — context, decision, options considered, rationale, consequences.
+consumes: Approved spec.md, constitution.md per Prerequisites
+produces: artefact conforming to content/02-output-contract.xml (design, ADR variant)
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~400-650 tokens when loaded as context
+-->
+
 # ADR-{NNN}: {Decision title}
 
-**Status:** Proposed / Accepted / Deprecated / Superseded by ADR-{NNN}
+**Status:** Proposed / Accepted / Deprecated / Superseded by ADR-<status>
 **Date:** {YYYY-MM-DD}
 **Feature:** {feature-NNN-name or "cross-cutting"}
 
@@ -59,5 +67,5 @@ Cons:
 
 ## Related
 
-- ADR-{NNN}: {related decision}
+- ADR-<adr>: {related decision}
 - Constitution section: {relevant section}
