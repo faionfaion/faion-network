@@ -88,6 +88,33 @@ here needs judgement.
 | Forgot `regen-fragment-index.py` | `INDEX.xml: pack 'x-tools' is on disk and not in the index` — but **only on a full run**. Passing a pack path skips the index check, so a scoped run is never proof |
 | Forgot `regen-tier-manifest.py` | Nothing catches it. The pack ships ungated and inherits the skill-level tier silently. The one step with no safety net |
 
+## Declaring a dependency
+
+Default: don't. The stdlib-only rule is what makes a pack materialise and run on a stranger's
+machine, and `validate-tools.py` has zero baseline entries because of it.
+
+When a tool genuinely cannot be stdlib-only, the pack **declares** the module in `meta.json` and
+the validator then checks imports against stdlib plus that list — the gate stays meaningful, an
+undeclared third-party import still fails, and the dependency is visible in the manifest instead
+of hidden in a source file:
+
+```jsonc
+"dependencies": [{ "module": "jinja2", "package": "Jinja2>=3.0",
+                   "why": "one sentence a reviewer can argue with" }]
+```
+
+Declaring is not a licence to crash. Two things then bind, both enforced:
+
+- **Import it inside a guard**, in every script *and* every `scripts/lib/` helper. A module-level
+  import makes the module's absence a traceback before the tool can print anything, and the rule
+  the stdlib constraint protects is that the tool *runs* on a user's machine. The tool must fail
+  with the install line from `package` and exit `2`, never half-work.
+- **Something must import it.** A declared module nothing imports is a dead allowlist entry, which
+  is how an allowlist quietly becomes a rubber stamp.
+
+`template-builder/` is the worked example: `scripts/lib/tpljinja.py` holds the one guarded import
+and both `tpl-jinja` and `tpl-render` go through it.
+
 ## Writing a `.sh` tool
 
 Only when the job is process orchestration. Five deltas:

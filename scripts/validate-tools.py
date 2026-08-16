@@ -26,7 +26,11 @@ Checked here:
     no agent can reach, a documented flag the script does not define is
     an invocation that fails
   * every exit status the script can return is documented on the card
-  * the script contract: a shebang, and stdlib imports only
+  * the script contract: a shebang, and imports drawn from the standard
+    library plus whatever `meta.json` declares under `dependencies` — an
+    undeclared third-party import still fails, a declared one must be
+    imported inside a guard so its absence is a message rather than a
+    traceback, and a declared one nothing imports is a dead allowlist entry
   * `tools/INDEX.xml` agrees with the tree (`scripts/regen-fragment-index.py`)
 
 Usage:
@@ -149,18 +153,80 @@ def script_exits(script: Path, body: str) -> set[int]:
     return codes
 
 
-def non_stdlib_imports(body: str) -> set[str]:
+def imported_modules(body: str, top_level_only: bool = False) -> set[str]:
+    """Every top-level package name this script imports.
+
+    `top_level_only` restricts the scan to imports at module scope — the ones
+    that run at import time and therefore crash before any code can turn a
+    missing module into a message.
+    """
     try:
         tree = ast.parse(body)
     except SyntaxError:
         return set()
+    nodes = tree.body if top_level_only else list(ast.walk(tree))
     modules: set[str] = set()
-    for node in ast.walk(tree):
+    for node in nodes:
         if isinstance(node, ast.Import):
             modules.update(alias.name.split(".")[0] for alias in node.names)
         elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
             modules.add(node.module.split(".")[0])
-    return {m for m in modules if m not in sys.stdlib_module_names}
+    return modules
+
+
+def non_stdlib_imports(body: str, declared: set[str] | None = None) -> set[str]:
+    """Imports that are neither in the standard library nor declared.
+
+    The stdlib-only rule exists so a pack materialises and runs on a
+    stranger's machine. A blanket exemption for one dependency would have
+    given that up for everyone, so instead a pack DECLARES what it needs in
+    meta.json and the check runs against stdlib plus that list. An undeclared
+    third-party import still fails, and the dependency is now visible in the
+    manifest rather than hidden in a source file
+    (.aidocs/conventions/template-jinja-migration.md §4).
+    """
+    allowed = set(declared or ())
+    return {m for m in imported_modules(body)
+            if m not in sys.stdlib_module_names and m not in allowed}
+
+
+def declared_modules(meta: dict | None) -> set[str]:
+    entries = (meta or {}).get("dependencies") or []
+    return {d.get("module") for d in entries if isinstance(d, dict)
+            and d.get("module")}
+
+
+def dependency_findings(pack: Path, meta: dict) -> list[str]:
+    """The two ways a declared dependency stops meaning anything.
+
+    A declaration is not a licence to crash: the rule the stdlib constraint
+    protects is that the tool RUNS on a user's machine, so a declared module
+    must be imported inside a guard — a module-level import turns its absence
+    into a traceback before the tool can print the install line. And a
+    dependency nothing imports is a declaration that has outlived its script,
+    which is how an allowlist quietly becomes a rubber stamp.
+
+    Both scan every `.py` under `scripts/`, helpers included: a bare import in
+    `scripts/lib/` crashes exactly as hard as one at the top level, and it is
+    the more likely place to hide.
+    """
+    declared = declared_modules(meta)
+    if not declared:
+        return []
+    out: list[str] = []
+    imported: set[str] = set()
+    for script in sorted((pack / "scripts").rglob("*.py")):
+        body = script.read_text(encoding="utf-8", errors="replace")
+        imported |= imported_modules(body)
+        for module in sorted(declared & imported_modules(body, top_level_only=True)):
+            out.append(f"{script.relative_to(pack)}: imports the declared "
+                       f"dependency {module!r} at module level — its absence "
+                       "would be a traceback, not the actionable install "
+                       "message meta.json promises. Import it inside a guard")
+    for module in sorted(declared - imported):
+        out.append(f"meta.json declares dependency {module!r} and no script in "
+                   "the pack imports it")
+    return out
 
 
 # Modules that can open a socket. A pack importing one of these is a network
@@ -288,9 +354,10 @@ def check_tool(name: str, card: Path, script: Path, card_schema: dict,
     body = script.read_text(encoding="utf-8")
     if not body.startswith("#!"):
         fail(f"{script.name}: no shebang")
-    for module in sorted(non_stdlib_imports(body)):
-        fail(f"{script.name}: imports {module!r}, which is not in the standard "
-             "library — a tool pack ships no dependencies")
+    for module in sorted(non_stdlib_imports(body, declared_modules(meta))):
+        fail(f"{script.name}: imports {module!r}, which is neither in the "
+             "standard library nor declared in meta.json `dependencies` — a "
+             "tool pack ships no undeclared dependencies")
     for finding in network_findings(script, body, meta or {}):
         fail(finding)
 
@@ -361,6 +428,9 @@ def check_pack(pack: Path, meta_schema: dict, card_schema: dict) -> tuple[list[s
     if env_var and scripts_text and env_var not in scripts_text:
         fail(f"meta.json names credential {env_var} and no script in the pack "
              "reads it")
+
+    for finding in dependency_findings(pack, meta):
+        fail(finding)
 
     return findings, meta.get("slug"), names
 

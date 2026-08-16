@@ -4,6 +4,40 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **The Jinja converter and renderer ship** — `tpl-jinja.py` turns one Markdown
+  template into `<name>.md.j2`, `<name>.html.j2` and `<name>.vars.schema.json`;
+  `tpl-render.py` renders a pair from a value map. Both in the existing
+  `template-builder` pack, because a new pack would have forked the scanner and
+  the header parser. 52 self-test checks between them; `tpl-build`, `tpl-params`
+  and `tpl-migrate` still pass their 65.
+
+  **"Never double-render" is structural, not a convention.** `render_file` is the
+  only path `main` uses, so template source can come only from a file on disk.
+  `SandboxedEnvironment` everywhere, `StrictUndefined` in both environments,
+  `autoescape=True` for HTML and `False` for Markdown — escaping a `.md` would
+  put entities in a plain-text file. Verified end-to-end on a real conversion,
+  not only in the self-test: a `</h1><script>alert(1)</script>{{7*7}}` value
+  renders escaped in HTML, verbatim in Markdown, with `{{7*7}}` left literal in
+  both and zero external references in the HTML.
+
+- **`validate-tools.py` checks imports against stdlib plus declared dependencies**
+  rather than stdlib alone, and `tool-pack-meta.schema.json` gained a
+  `dependencies` array (`module`/`package`/`why`, still closed). This is how Jinja
+  enters a pack without a blanket exemption: the gate keeps its zero baseline
+  entries, an undeclared third-party import still fails, and the dependency
+  becomes visible in the manifest instead of hidden in a source file. It got
+  *stronger* — a declared dependency now owes a package and a reason, and
+  declaring one nothing imports fails as a dead allowlist entry. Scanning is
+  recursive, so `scripts/lib/` is covered.
+
+- **Two findings from the dry run over all 2,919 templates.** ~60% need a human,
+  consistent with the ratified estimate. And the dictionary buys almost nothing
+  *yet*: only 198 of 2,495 templates get a single `$ref`, because the converter
+  proposes raw names (`name`, `date`, `email`) from local text while the
+  dictionary deliberately carries the disambiguated ones. That is review-queue
+  work, not tool work, and it is the same point §3 makes — the raw names are
+  exactly the ones that must never be entries.
+
 - **Both spellings of the template header version stamp parse again** — a bug I
   introduced earlier in this session and then measured wrong. `_take_header_run`
   appended the RAW source line for a bare version marker while every other branch
