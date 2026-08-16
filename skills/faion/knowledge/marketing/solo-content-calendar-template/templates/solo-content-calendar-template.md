@@ -6,16 +6,16 @@ depends-on: content/02-output-contract.xml + templates/solo-content-calendar-tem
 token-budget-impact: ~250 tokens.
 -->
 
-# Solo Content Calendar Template — &lt;artefact_id&gt;
+# Solo Content Calendar Template — <artefact_id>
 
-- **operator** (string): &lt;named accountable owner&gt;
-- **rows** (array): &lt;exactly 12 rows with week_iso + pain_ref + asset_type + channel + status&gt;
-- **primary_channel** (enum): &lt;seo|newsletter|x|linkedin|build-in-public&gt;
-- **quarterly_review_date** (date): &lt;ISO date for retirement audit&gt;
-- **friday_gate_enabled** (boolean): &lt;must be true&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **operator** (string): <named accountable owner>
+- **rows** (array): <exactly 12 rows with week_iso + pain_ref + asset_type + channel + status>
+- **primary_channel** (enum): <seo|newsletter|x|linkedin|build-in-public>
+- **quarterly_review_date** (date): <ISO date for retirement audit>
+- **friday_gate_enabled** (boolean): <must be true>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

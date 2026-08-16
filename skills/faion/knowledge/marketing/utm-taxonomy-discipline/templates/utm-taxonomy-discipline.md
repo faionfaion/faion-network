@@ -6,17 +6,17 @@ depends-on: content/02-output-contract.xml + templates/utm-taxonomy-discipline.j
 token-budget-impact: ~250 tokens.
 -->
 
-# UTM Taxonomy Discipline — &lt;artefact_id&gt;
+# UTM Taxonomy Discipline — <artefact_id>
 
-- **operator** (string): &lt;named taxonomy owner&gt;
-- **source_vocabulary** (array): &lt;≤12 kebab-case values&gt;
-- **medium_vocabulary** (array): &lt;≤6 kebab-case values&gt;
-- **campaign_id_pattern** (string): &lt;regex (yyyymmdd-asset-slug shape)&gt;
-- **validation_regex** (string): &lt;full URL regex&gt;
-- **link_builder_url** (string): &lt;tool URL&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **operator** (string): <named taxonomy owner>
+- **source_vocabulary** (array): <≤12 kebab-case values>
+- **medium_vocabulary** (array): <≤6 kebab-case values>
+- **campaign_id_pattern** (string): <regex (yyyymmdd-asset-slug shape)>
+- **validation_regex** (string): <full URL regex>
+- **link_builder_url** (string): <tool URL>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

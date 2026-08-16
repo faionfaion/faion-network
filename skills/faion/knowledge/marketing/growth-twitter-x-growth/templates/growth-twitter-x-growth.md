@@ -6,18 +6,18 @@ depends-on: content/02-output-contract.xml + templates/growth-twitter-x-growth.j
 token-budget-impact: ~250 tokens.
 -->
 
-# Growth Twitter X Growth — &lt;artefact_id&gt;
+# Growth Twitter X Growth — <artefact_id>
 
-- **operator** (string): &lt;named X account owner&gt;
-- **unique_angle** (string): &lt;one-sentence positioning&gt;
-- **daily_post_target** (integer): &lt;3-5&gt;
-- **weekly_thread_target** (integer): &lt;1-2&gt;
-- **daily_reply_target** (integer): &lt;20-30 to accounts >5x size&gt;
-- **reply_target_list** (array): &lt;≥20 accounts with handle + size_multiple&gt;
-- **kpi_set** (object): &lt;{impressions, replies_from_strangers, link_clicks, qualified_follows}&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **operator** (string): <named X account owner>
+- **unique_angle** (string): <one-sentence positioning>
+- **daily_post_target** (integer): <3-5>
+- **weekly_thread_target** (integer): <1-2>
+- **daily_reply_target** (integer): <20-30 to accounts >5x size>
+- **reply_target_list** (array): <≥20 accounts with handle + size_multiple>
+- **kpi_set** (object): <{impressions, replies_from_strangers, link_clicks, qualified_follows}>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

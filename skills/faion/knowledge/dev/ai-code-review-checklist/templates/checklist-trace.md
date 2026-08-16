@@ -6,7 +6,7 @@ depends-on: PR open + lockfile + repo conventions.
 token-budget-impact: ~180 tokens when copied.
 -->
 
-# AI Code Review trace — &lt;pr_ref&gt;
+# AI Code Review trace — <pr_ref>
 
 - ai_pct_lines:
 - reviewer_email:

@@ -6,18 +6,18 @@ depends-on: content/02-output-contract.xml + templates/twitter-x-monetization-th
 token-budget-impact: ~250 tokens.
 -->
 
-# Twitter X Monetization Thread To Product — &lt;artefact_id&gt;
+# Twitter X Monetization Thread To Product — <artefact_id>
 
-- **operator** (string): &lt;named funnel owner&gt;
-- **audience_signal** (object): &lt;{evidence_urls, avg_impressions, validated_topic}&gt;
-- **thread** (object): &lt;7-tweet shape with email-gate CTA in tweet 7&gt;
-- **email_gate_offer** (object): &lt;{type, url, value_one_liner}&gt;
-- **welcome_sequence** (array): &lt;≥5 emails with day-offset&gt;
-- **paid_product** (object): &lt;{url, sku, price}&gt;
-- **kpi_set** (object): &lt;{thread_impressions, email_signups, paid_conversions, ltv}&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **operator** (string): <named funnel owner>
+- **audience_signal** (object): <{evidence_urls, avg_impressions, validated_topic}>
+- **thread** (object): <7-tweet shape with email-gate CTA in tweet 7>
+- **email_gate_offer** (object): <{type, url, value_one_liner}>
+- **welcome_sequence** (array): <≥5 emails with day-offset>
+- **paid_product** (object): <{url, sku, price}>
+- **kpi_set** (object): <{thread_impressions, email_signups, paid_conversions, ltv}>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

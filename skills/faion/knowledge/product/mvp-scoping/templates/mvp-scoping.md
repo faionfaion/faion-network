@@ -6,18 +6,18 @@ depends-on: content/02-output-contract.xml + templates/mvp-scoping.json.
 token-budget-impact: ~250 tokens.
 -->
 
-# MVP Scoping — &lt;artefact_id&gt;
+# MVP Scoping — <artefact_id>
 
-- **product_name** (string): &lt;named product&gt;
-- **aha_moment** (string): &lt;single moment statement&gt;
-- **must_have_journey** (array): &lt;ordered step list&gt;
-- **build_window** (object): &lt;ISO start/end ≤4 weeks&gt;
-- **cut_list** (array): &lt;≥3 items each with rationale&gt;
-- **readiness_checklist** (object): &lt;instrumentation + billing + support + docs booleans&gt;
-- **owner** (string): &lt;named owner&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **product_name** (string): <named product>
+- **aha_moment** (string): <single moment statement>
+- **must_have_journey** (array): <ordered step list>
+- **build_window** (object): <ISO start/end ≤4 weeks>
+- **cut_list** (array): <≥3 items each with rationale>
+- **readiness_checklist** (object): <instrumentation + billing + support + docs booleans>
+- **owner** (string): <named owner>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

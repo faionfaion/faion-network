@@ -6,18 +6,18 @@ depends-on: content/02-output-contract.xml + templates/user-interviews.json.
 token-budget-impact: ~250 tokens.
 -->
 
-# User Interviews — &lt;artefact_id&gt;
+# User Interviews — <artefact_id>
 
-- **session_id** (string): &lt;stable id&gt;
-- **respondent** (object): &lt;Pnnn + cold/warm flag&gt;
-- **script_used** (string): &lt;path to Mom Test script&gt;
-- **transcript_path** (string): &lt;path to diarized transcript&gt;
-- **behavioural_ask_outcome** (string): &lt;yes-with-evidence | no | pending&gt;
-- **insights** (array): &lt;≥1 insight with frequency_count ≥1 and citation&gt;
-- **owner** (string): &lt;named researcher&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **session_id** (string): <stable id>
+- **respondent** (object): <Pnnn + cold/warm flag>
+- **script_used** (string): <path to Mom Test script>
+- **transcript_path** (string): <path to diarized transcript>
+- **behavioural_ask_outcome** (string): <yes-with-evidence | no | pending>
+- **insights** (array): <≥1 insight with frequency_count ≥1 and citation>
+- **owner** (string): <named researcher>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

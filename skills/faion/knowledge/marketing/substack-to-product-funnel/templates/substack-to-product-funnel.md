@@ -6,20 +6,20 @@ depends-on: content/02-output-contract.xml + templates/substack-to-product-funne
 token-budget-impact: ~250 tokens.
 -->
 
-# Substack-to-Product Funnel — &lt;artefact_id&gt;
+# Substack-to-Product Funnel — <artefact_id>
 
-- **operator** (string): &lt;named publication owner&gt;
-- **publication_url** (string): &lt;Substack URL&gt;
-- **paid_tier** (object): &lt;{name, monthly_price, annual_price, concrete_benefit}&gt;
-- **recommendation_partners** (array): &lt;≥3 publications with URL + agreement_at&gt;
-- **cross_post_cadence** (object): &lt;{per_month, partner_rotation}&gt;
-- **welcome_sequence** (array): &lt;5 emails; email 4 carries the hard-product CTA&gt;
-- **hard_product_url** (string): &lt;URL&gt;
-- **hard_product_cta_text** (string): &lt;≤140 chars&gt;
-- **kpi_set** (object): &lt;{free_subs, paid_subs, hard_product_conversions, recommendation_inflow}&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **operator** (string): <named publication owner>
+- **publication_url** (string): <Substack URL>
+- **paid_tier** (object): <{name, monthly_price, annual_price, concrete_benefit}>
+- **recommendation_partners** (array): <≥3 publications with URL + agreement_at>
+- **cross_post_cadence** (object): <{per_month, partner_rotation}>
+- **welcome_sequence** (array): <5 emails; email 4 carries the hard-product CTA>
+- **hard_product_url** (string): <URL>
+- **hard_product_cta_text** (string): <≤140 chars>
+- **kpi_set** (object): <{free_subs, paid_subs, hard_product_conversions, recommendation_inflow}>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

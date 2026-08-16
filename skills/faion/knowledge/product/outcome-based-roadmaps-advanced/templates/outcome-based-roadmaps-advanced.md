@@ -6,18 +6,18 @@ depends-on: content/02-output-contract.xml + templates/outcome-based-roadmaps-ad
 token-budget-impact: ~250 tokens.
 -->
 
-# Outcome Based Roadmaps Advanced — &lt;artefact_id&gt;
+# Outcome Based Roadmaps Advanced — <artefact_id>
 
-- **horizon** (object): &lt;ISO start/end across ≥2 quarters&gt;
-- **swim_lanes** (array): &lt;per-product lanes ≥2&gt;
-- **outcomes_by_quarter** (object): &lt;quarter → outcomes[]&gt;
-- **dependency_edges** (array): &lt;from/to/type/rationale objects&gt;
-- **confidence_decay_applied** (boolean): &lt;true means decay applied unless cited&gt;
-- **quarter_reviews** (array): &lt;per closed quarter review entry&gt;
-- **owner** (string): &lt;named owner&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **horizon** (object): <ISO start/end across ≥2 quarters>
+- **swim_lanes** (array): <per-product lanes ≥2>
+- **outcomes_by_quarter** (object): <quarter → outcomes[]>
+- **dependency_edges** (array): <from/to/type/rationale objects>
+- **confidence_decay_applied** (boolean): <true means decay applied unless cited>
+- **quarter_reviews** (array): <per closed quarter review entry>
+- **owner** (string): <named owner>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

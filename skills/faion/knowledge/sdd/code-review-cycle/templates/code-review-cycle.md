@@ -6,19 +6,19 @@ depends-on: content/02-output-contract.xml + templates/code-review-cycle.json.
 token-budget-impact: ~250 tokens.
 -->
 
-# Code Review Cycle — &lt;artefact_id&gt;
+# Code Review Cycle — <artefact_id>
 
-- **pr_id** (string): &lt;PR or branch id&gt;
-- **prescreen_findings** (array): &lt;AI pre-screen list&gt;
-- **reviewer_findings** (array): &lt;parallel reviewer findings&gt;
-- **merged_findings** (array): &lt;deduplicated unified list&gt;
-- **block_count** (integer): &lt;count of BLOCK findings&gt;
-- **reflexion_writeback** (array): &lt;{file, entry} pairs written to memory&gt;
-- **verdict** (string): &lt;merge-ready | block-on-human&gt;
-- **owner** (string): &lt;named human reviewer&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **pr_id** (string): <PR or branch id>
+- **prescreen_findings** (array): <AI pre-screen list>
+- **reviewer_findings** (array): <parallel reviewer findings>
+- **merged_findings** (array): <deduplicated unified list>
+- **block_count** (integer): <count of BLOCK findings>
+- **reflexion_writeback** (array): <{file, entry} pairs written to memory>
+- **verdict** (string): <merge-ready | block-on-human>
+- **owner** (string): <named human reviewer>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

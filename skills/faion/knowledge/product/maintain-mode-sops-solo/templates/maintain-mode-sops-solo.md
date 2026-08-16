@@ -6,18 +6,18 @@ depends-on: content/02-output-contract.xml + templates/maintain-mode-sops-solo.j
 token-budget-impact: ~250 tokens.
 -->
 
-# Maintain Mode SOPs Solo — &lt;artefact_id&gt;
+# Maintain Mode SOPs Solo — <artefact_id>
 
-- **product_name** (string): &lt;named product&gt;
-- **weekly_check** (object): &lt;tasks + duration&gt;
-- **monthly_reconcile** (object): &lt;tasks + duration&gt;
-- **quarterly_upgrade** (object): &lt;tasks + duration&gt;
-- **on_call_rule** (object): &lt;trigger + max_response_window_hours&gt;
-- **sunset_trigger** (string): &lt;MRR / churn condition&gt;
-- **owner** (string): &lt;named human owner&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **product_name** (string): <named product>
+- **weekly_check** (object): <tasks + duration>
+- **monthly_reconcile** (object): <tasks + duration>
+- **quarterly_upgrade** (object): <tasks + duration>
+- **on_call_rule** (object): <trigger + max_response_window_hours>
+- **sunset_trigger** (string): <MRR / churn condition>
+- **owner** (string): <named human owner>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

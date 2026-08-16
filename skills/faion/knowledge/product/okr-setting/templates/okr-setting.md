@@ -6,16 +6,16 @@ depends-on: content/02-output-contract.xml + templates/okr-setting.json.
 token-budget-impact: ~250 tokens.
 -->
 
-# OKR Setting — &lt;artefact_id&gt;
+# OKR Setting — <artefact_id>
 
-- **quarter** (string): &lt;yyyy-Qn&gt;
-- **quarter_dates** (object): &lt;ISO start/end&gt;
-- **objectives** (array): &lt;≤3 objects each with title + owner + KRs[]&gt;
-- **biweekly_checkin** (object): &lt;day_of_week + time + recurrence&gt;
-- **owner** (string): &lt;named owner (overall)&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **quarter** (string): <yyyy-Qn>
+- **quarter_dates** (object): <ISO start/end>
+- **objectives** (array): <≤3 objects each with title + owner + KRs[]>
+- **biweekly_checkin** (object): <day_of_week + time + recurrence>
+- **owner** (string): <named owner (overall)>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

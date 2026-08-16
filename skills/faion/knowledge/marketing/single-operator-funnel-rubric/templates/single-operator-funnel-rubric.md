@@ -6,17 +6,17 @@ depends-on: content/02-output-contract.xml + templates/single-operator-funnel-ru
 token-budget-impact: ~250 tokens.
 -->
 
-# Single Operator Funnel Rubric — &lt;artefact_id&gt;
+# Single Operator Funnel Rubric — <artefact_id>
 
-- **week_iso** (string): &lt;ISO week tag (e.g., 2026-W22)&gt;
-- **operator** (string): &lt;named single owner of the rubric&gt;
-- **stages** (array): &lt;exactly 4 entries: visit, signup, paid, retained&gt;
-- **broken_stage** (enum): &lt;one of visit|signup|paid|retained&gt;
-- **next_action** (string): &lt;single committed investigation for next week&gt;
-- **time_spent_min** (integer): &lt;≤20 minutes&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **week_iso** (string): <ISO week tag (e.g., 2026-W22)>
+- **operator** (string): <named single owner of the rubric>
+- **stages** (array): <exactly 4 entries: visit, signup, paid, retained>
+- **broken_stage** (enum): <one of visit|signup|paid|retained>
+- **next_action** (string): <single committed investigation for next week>
+- **time_spent_min** (integer): <≤20 minutes>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

@@ -6,19 +6,19 @@ depends-on: content/02-output-contract.xml + templates/kill-or-keep-criteria.jso
 token-budget-impact: ~250 tokens.
 -->
 
-# Kill Or Keep Criteria — &lt;artefact_id&gt;
+# Kill Or Keep Criteria — <artefact_id>
 
-- **project_name** (string): &lt;named side-project&gt;
-- **mrr_snapshot** (number): &lt;current MRR in USD&gt;
-- **traffic_snapshot** (number): &lt;current monthly visits&gt;
-- **joy_score** (integer): &lt;1-10 last-7-days self-rating&gt;
-- **opportunity_cost_candidate** (string): &lt;named alternative bet&gt;
-- **evidence_links** (object): &lt;URL/ticket per floor&gt;
-- **verdict** (string): &lt;kill | keep (binary)&gt;
-- **next_action** (string): &lt;concrete action attached to verdict&gt;
-- **template_version** (string): &lt;kill-criteria-template version pinned&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **project_name** (string): <named side-project>
+- **mrr_snapshot** (number): <current MRR in USD>
+- **traffic_snapshot** (number): <current monthly visits>
+- **joy_score** (integer): <1-10 last-7-days self-rating>
+- **opportunity_cost_candidate** (string): <named alternative bet>
+- **evidence_links** (object): <URL/ticket per floor>
+- **verdict** (string): <kill | keep (binary)>
+- **next_action** (string): <concrete action attached to verdict>
+- **template_version** (string): <kill-criteria-template version pinned>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

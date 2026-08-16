@@ -6,17 +6,17 @@ depends-on: content/02-output-contract.xml + templates/serp-intent-classificatio
 token-budget-impact: ~250 tokens.
 -->
 
-# SERP Intent Classification Rubric — &lt;artefact_id&gt;
+# SERP Intent Classification Rubric — <artefact_id>
 
-- **query** (string): &lt;verbatim target query&gt;
-- **primary_intent** (enum): &lt;one of I / C / T / N&gt;
-- **primary_subtype** (string): &lt;e.g., I:how-to, C:vs, T:buy, N:brand&gt;
-- **secondary_intent** (string|null): &lt;null unless ≥30% of top-10 serve a different class&gt;
-- **serp_evidence** (array): &lt;≥2 independent signals with type+value&gt;
-- **recommendation** (enum): &lt;SINGLE_BRIEF | SPLIT | AMBIGUOUS_BLOCK&gt;
-- **classifier** (string): &lt;named human / agent&gt;
-- **classified_at** (date-time): &lt;ISO timestamp&gt;
+- **query** (string): <verbatim target query>
+- **primary_intent** (enum): <one of I / C / T / N>
+- **primary_subtype** (string): <e.g., I:how-to, C:vs, T:buy, N:brand>
+- **secondary_intent** (string|null): <null unless ≥30% of top-10 serve a different class>
+- **serp_evidence** (array): <≥2 independent signals with type+value>
+- **recommendation** (enum): <SINGLE_BRIEF | SPLIT | AMBIGUOUS_BLOCK>
+- **classifier** (string): <named human / agent>
+- **classified_at** (date-time): <ISO timestamp>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

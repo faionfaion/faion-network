@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **133 legacy templates un-escaped, unblocking `tpl-jinja.py` on all of them**
+  — `&lt;name&gt;` back to `<name>` across every `templates/*.md` where the
+  whole file had been HTML-entity-escaped (`template-jinja-migration.md` §6
+  prerequisite). 1,367 `&lt;`/`&gt;` pairs replaced; `tpl-jinja.py` exit-3
+  refusals on these files go 133 → 0. Three lines were genuine `<`/`>`
+  comparison operators wearing the same escaping, not a placeholder pair
+  (`S = &lt;10K reach, ... L = &gt;100K`, a CAC table, an MAU bucket field) —
+  restored to plain `<`/`>` text rather than left escaped, since the escaping
+  was a whole-file artifact, not a placeholder-specific one. All 9 escaped
+  tokens sitting inside inline code spans were un-escaped too, for the same
+  reason: nothing marked them as a deliberate demonstration of the escaped
+  form. Header parse count, `validate-methodology-templates.py` pass count
+  (2521/2521) and the fast validator gate are unchanged before/after.
+
 - **The Jinja converter and renderer ship** — `tpl-jinja.py` turns one Markdown
   template into `<name>.md.j2`, `<name>.html.j2` and `<name>.vars.schema.json`;
   `tpl-render.py` renders a pair from a value map. Both in the existing

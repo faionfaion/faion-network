@@ -6,16 +6,16 @@ depends-on: content/02-output-contract.xml + templates/swipe-file-tweet-hooks.js
 token-budget-impact: ~250 tokens.
 -->
 
-# Swipe File Tweet Hooks — &lt;artefact_id&gt;
+# Swipe File Tweet Hooks — <artefact_id>
 
-- **operator** (string): &lt;named curator&gt;
-- **entries** (array): &lt;≥20 hooks with shape + source + author + baseline&gt;
-- **hook_shapes** (array): &lt;≥5 shape labels&gt;
-- **attribution_policy** (string): &lt;always-cite OR adapt-credit-on-similarity&gt;
-- **storage_path** (string): &lt;file path / repo URL&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **operator** (string): <named curator>
+- **entries** (array): <≥20 hooks with shape + source + author + baseline>
+- **hook_shapes** (array): <≥5 shape labels>
+- **attribution_policy** (string): <always-cite OR adapt-credit-on-similarity>
+- **storage_path** (string): <file path / repo URL>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

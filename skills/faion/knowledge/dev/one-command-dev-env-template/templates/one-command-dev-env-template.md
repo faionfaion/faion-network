@@ -6,27 +6,27 @@ depends-on: content/02-output-contract.xml schema.
 token-budget-impact: ~180 tokens.
 -->
 
-# Dev Env Reset Decision — &lt;artefact_id&gt;
+# Dev Env Reset Decision — <artefact_id>
 
-- **artefact_id**: &lt;kebab-case-slug&gt;
-- **owner**: &lt;handle or email — single named human, never "team"&gt;
+- **artefact_id**: <kebab-case-slug>
+- **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0
 - **last_reviewed**: 2026-05-22
 
 ## Decision
 
-&lt;The actual choice. One short line. Example: "`make dev-up` runs docker compose up + bootstrap script + seed-fixtures.sh".&gt;
+<The actual choice. One short line. Example: "`make dev-up` runs docker compose up + bootstrap script + seed-fixtures.sh".>
 
 ## Rationale
 
-&lt;Two or more sentences. Cite at least one input artefact by name (ticket, runbook, repo path). Example: "Ticket eng-1234 surfaced that new joiners spend 3h on first run. The bootstrap script at scripts/dev-up.sh already handles deps + migrations + seed; wrapping it in make dev-up gives one canonical entry point."&gt;
+<Two or more sentences. Cite at least one input artefact by name (ticket, runbook, repo path). Example: "Ticket eng-1234 surfaced that new joiners spend 3h on first run. The bootstrap script at scripts/dev-up.sh already handles deps + migrations + seed; wrapping it in make dev-up gives one canonical entry point.">
 
 ## Inputs used
 
-- &lt;input_1_name&gt; — &lt;source path or URL&gt;
-- &lt;input_2_name&gt; — &lt;source path or URL&gt;
+- <input_1_name> — <source path or URL>
+- <input_2_name> — <source path or URL>
 
 ## Notes
 
-&lt;Optional: "ready for owner review" or "wrong-tool note" or "supersedes &lt;old_artefact_id&gt;".&gt;
+<Optional: "ready for owner review" or "wrong-tool note" or "supersedes <old_artefact_id>".>

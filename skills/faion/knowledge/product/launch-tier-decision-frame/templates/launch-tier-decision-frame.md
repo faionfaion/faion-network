@@ -6,18 +6,18 @@ depends-on: content/02-output-contract.xml + templates/launch-tier-decision-fram
 token-budget-impact: ~250 tokens.
 -->
 
-# Launch Tier Decision Frame — &lt;artefact_id&gt;
+# Launch Tier Decision Frame — <artefact_id>
 
-- **launch_name** (string): &lt;named launch&gt;
-- **funnel_goal** (string): &lt;enum (signups | paid | waitlist | press | qualitative)&gt;
-- **selected_tier** (integer): &lt;1-4 (soft / friend / ph-day / blitz)&gt;
-- **readiness_score** (object): &lt;capacity + support + rollback subscores&gt;
-- **retreat_cost** (string): &lt;concrete units&gt;
-- **rationale** (string): &lt;≥200 chars&gt;
-- **owner** (string): &lt;named human owner&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **launch_name** (string): <named launch>
+- **funnel_goal** (string): <enum (signups | paid | waitlist | press | qualitative)>
+- **selected_tier** (integer): <1-4 (soft / friend / ph-day / blitz)>
+- **readiness_score** (object): <capacity + support + rollback subscores>
+- **retreat_cost** (string): <concrete units>
+- **rationale** (string): <≥200 chars>
+- **owner** (string): <named human owner>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

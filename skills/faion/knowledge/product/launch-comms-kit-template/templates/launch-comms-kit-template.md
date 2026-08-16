@@ -6,18 +6,18 @@ depends-on: content/02-output-contract.xml + templates/launch-comms-kit-template
 token-budget-impact: ~250 tokens.
 -->
 
-# Launch Comms Kit Template — &lt;artefact_id&gt;
+# Launch Comms Kit Template — <artefact_id>
 
-- **launch_name** (string): &lt;named launch&gt;
-- **positioning_sentence** (string): &lt;≤140 chars canonical sentence&gt;
-- **launch_window** (object): &lt;ISO start/end&gt;
-- **channels** (object): &lt;per-channel draft objects (PH/HN/X/mail/changelog)&gt;
-- **publish_timeline** (array): &lt;per-channel publish_at ISO datetimes&gt;
-- **retro_at** (string): &lt;ISO datetime for T+7 retro&gt;
-- **owner** (string): &lt;named human owner&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **launch_name** (string): <named launch>
+- **positioning_sentence** (string): <≤140 chars canonical sentence>
+- **launch_window** (object): <ISO start/end>
+- **channels** (object): <per-channel draft objects (PH/HN/X/mail/changelog)>
+- **publish_timeline** (array): <per-channel publish_at ISO datetimes>
+- **retro_at** (string): <ISO datetime for T+7 retro>
+- **owner** (string): <named human owner>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

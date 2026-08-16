@@ -6,10 +6,10 @@ depends-on: content/02-output-contract.xml schema.
 token-budget-impact: ~200 tokens.
 -->
 
-# Company Prompt Library Spec — &lt;spec_id&gt;
+# Company Prompt Library Spec — <spec_id>
 
-- **spec_id**: &lt;org-slug&gt;-prompt-library
-- **owner**: &lt;handle or email — single named human, never "team"&gt;
+- **spec_id**: <org-slug>-prompt-library
+- **owner**: <handle or email — single named human, never "team">
 - **version**: 1.0.0
 - **last_reviewed**: 2026-05-22
 - **status**: active
@@ -53,4 +53,4 @@ token-budget-impact: ~200 tokens.
 
 ## Notes
 
-&lt;Supersedes &lt;old_spec_id&gt;; or "ready for owner review"; or open questions.&gt;
+<Supersedes <old_spec_id>; or "ready for owner review"; or open questions.>

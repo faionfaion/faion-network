@@ -6,10 +6,10 @@ depends-on: content/02-output-contract.xml schema.
 token-budget-impact: ~180 tokens.
 -->
 
-# Context Bleed Incident — &lt;incident_id&gt;
+# Context Bleed Incident — <incident_id>
 
 - **incident_id**: cbi-2026-05-22-001
-- **owner**: &lt;handle or pager — single named human, never "team"&gt;
+- **owner**: <handle or pager — single named human, never "team">
 - **bleed_type**: cross-tenant | prior-turn | system-drift | clean
 - **detected_at**: 2026-05-22T10:32:11Z
 - **version**: 1.0.0
@@ -37,4 +37,4 @@ cosine 0.15 (default)
 
 ## Notes
 
-&lt;e.g., "false positive ruled out via canary lineage", "supersedes cbi-2026-05-21-007".&gt;
+<e.g., "false positive ruled out via canary lineage", "supersedes cbi-2026-05-21-007".>

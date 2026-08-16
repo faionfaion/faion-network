@@ -6,20 +6,20 @@ depends-on: content/02-output-contract.xml + templates/design-docs-patterns.json
 token-budget-impact: ~250 tokens.
 -->
 
-# Design Docs Patterns — &lt;artefact_id&gt;
+# Design Docs Patterns — <artefact_id>
 
-- **doc_id** (string): &lt;stable id&gt;
-- **title** (string): &lt;doc title&gt;
-- **scope** (string): &lt;small | team | cross-org&gt;
-- **format** (string): &lt;Google-lite | Amazon-6-pager | Uber-RFC | Stripe-ERD&gt;
-- **sections** (object): &lt;required sections populated&gt;
-- **non_goals** (array): &lt;≥1 non-goal&gt;
-- **alternatives** (array): &lt;≥2 genuine&gt;
-- **review_deadline** (date): &lt;ISO date&gt;
-- **owner** (string): &lt;named author&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **doc_id** (string): <stable id>
+- **title** (string): <doc title>
+- **scope** (string): <small | team | cross-org>
+- **format** (string): <Google-lite | Amazon-6-pager | Uber-RFC | Stripe-ERD>
+- **sections** (object): <required sections populated>
+- **non_goals** (array): <≥1 non-goal>
+- **alternatives** (array): <≥2 genuine>
+- **review_deadline** (date): <ISO date>
+- **owner** (string): <named author>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

@@ -6,19 +6,19 @@ depends-on: content/02-output-contract.xml + templates/single-interview-fast-loo
 token-budget-impact: ~250 tokens.
 -->
 
-# Single Interview Fast Loop Template — &lt;artefact_id&gt;
+# Single Interview Fast Loop Template — <artefact_id>
 
-- **loop_id** (string): &lt;stable id&gt;
-- **decision_under_test** (string): &lt;the one decision the loop informs&gt;
-- **must_asks** (array): &lt;3–5 past-tense questions&gt;
-- **interview_at** (datetime): &lt;ISO datetime&gt;
-- **synthesis_due_at** (datetime): &lt;interview_at + ≤36h&gt;
-- **synthesis_outcome** (string): &lt;decide-yes | decide-no | park | re-interview&gt;
-- **citation_path** (string): &lt;path to transcript in research repo&gt;
-- **owner** (string): &lt;named researcher&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **loop_id** (string): <stable id>
+- **decision_under_test** (string): <the one decision the loop informs>
+- **must_asks** (array): <3–5 past-tense questions>
+- **interview_at** (datetime): <ISO datetime>
+- **synthesis_due_at** (datetime): <interview_at + ≤36h>
+- **synthesis_outcome** (string): <decide-yes | decide-no | park | re-interview>
+- **citation_path** (string): <path to transcript in research repo>
+- **owner** (string): <named researcher>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

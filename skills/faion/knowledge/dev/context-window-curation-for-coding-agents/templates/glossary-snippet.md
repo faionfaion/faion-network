@@ -9,17 +9,17 @@ token-budget-impact: ~150 tokens when included in a bundle.
 # Project glossary (excerpt)
 
 ## Domain
-- &lt;domain term&gt;: &lt;1-line definition&gt;
-- &lt;acronym&gt;: &lt;expansion + 1-line&gt;
+- <domain term>: <1-line definition>
+- <acronym>: <expansion + 1-line>
 
 ## Architecture
-- &lt;service name&gt;: &lt;what it does&gt;
-- &lt;pattern name&gt;: &lt;where it's used + alias&gt;
+- <service name>: <what it does>
+- <pattern name>: <where it's used + alias>
 
 ## File / folder naming
 - `*.spec.ts`: unit test
 - `*.e2e.ts`: end-to-end test
-- `src/&lt;domain&gt;/`: bounded context
+- `src/<domain>/`: bounded context
 - `docs/architecture.png`: source of truth diagram
 
 ## Sample (faion-net)

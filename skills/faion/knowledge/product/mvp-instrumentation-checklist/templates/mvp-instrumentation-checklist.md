@@ -6,19 +6,19 @@ depends-on: content/02-output-contract.xml + templates/mvp-instrumentation-check
 token-budget-impact: ~250 tokens.
 -->
 
-# MVP Instrumentation Checklist — &lt;artefact_id&gt;
+# MVP Instrumentation Checklist — <artefact_id>
 
-- **product_name** (string): &lt;named product&gt;
-- **acquire** (object): &lt;event_name + dashboard_segment&gt;
-- **activate** (object): &lt;event_name + dashboard_segment&gt;
-- **retain** (object): &lt;event_name + dashboard_segment&gt;
-- **revenue** (object): &lt;event_name + dashboard_segment&gt;
-- **dashboard_url** (string): &lt;public URL&gt;
-- **launch_gated** (boolean): &lt;true means checklist gates launch event&gt;
-- **owner** (string): &lt;named human owner&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **product_name** (string): <named product>
+- **acquire** (object): <event_name + dashboard_segment>
+- **activate** (object): <event_name + dashboard_segment>
+- **retain** (object): <event_name + dashboard_segment>
+- **revenue** (object): <event_name + dashboard_segment>
+- **dashboard_url** (string): <public URL>
+- **launch_gated** (boolean): <true means checklist gates launch event>
+- **owner** (string): <named human owner>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

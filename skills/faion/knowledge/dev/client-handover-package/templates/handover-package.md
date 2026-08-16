@@ -6,7 +6,7 @@ depends-on: rotated credentials; named successor.
 token-budget-impact: ~250 tokens when copied.
 -->
 
-# Handover package — &lt;client&gt; — &lt;engagement_end&gt;
+# Handover package — <client> — <engagement_end>
 
 ## 1. Scope summary
 What was delivered, in 3–5 sentences. Reference the engagement contract.
@@ -44,5 +44,5 @@ What was delivered, in 3–5 sentences. Reference the engagement contract.
 - After window: hourly rate $XXX/h, billed monthly
 
 ## Sign-off
-- Consultant: &lt;name@email&gt; — &lt;ISO date&gt;
-- Client: &lt;name@email&gt; — &lt;ISO date&gt;
+- Consultant: <name@email> — <ISO date>
+- Client: <name@email> — <ISO date>

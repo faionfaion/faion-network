@@ -6,17 +6,17 @@ depends-on: content/02-output-contract.xml + templates/problem-validation-2026.j
 token-budget-impact: ~250 tokens.
 -->
 
-# Problem Validation 2026 — &lt;artefact_id&gt;
+# Problem Validation 2026 — <artefact_id>
 
-- **hypothesis** (string): &lt;problem hypothesis under test&gt;
-- **evidence_ledger** (array): &lt;≥10 entries sorted by tier with citation + signal_type&gt;
-- **cold_respondent_count** (integer): &lt;count of non-network respondents (≥3 tier-1/2 required for validated)&gt;
-- **verdict** (string): &lt;one of: validated | hypothesis | invalidated&gt;
-- **next_revalidation_due** (date): &lt;ISO date 90 days from last_reviewed&gt;
-- **owner** (string): &lt;named researcher&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **hypothesis** (string): <problem hypothesis under test>
+- **evidence_ledger** (array): <≥10 entries sorted by tier with citation + signal_type>
+- **cold_respondent_count** (integer): <count of non-network respondents (≥3 tier-1/2 required for validated)>
+- **verdict** (string): <one of: validated | hypothesis | invalidated>
+- **next_revalidation_due** (date): <ISO date 90 days from last_reviewed>
+- **owner** (string): <named researcher>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

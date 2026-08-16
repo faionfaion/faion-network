@@ -6,17 +6,17 @@ depends-on: content/02-output-contract.xml + templates/research-repo-file-naming
 token-budget-impact: ~250 tokens.
 -->
 
-# Research Repo File-Naming Convention — &lt;artefact_id&gt;
+# Research Repo File-Naming Convention — <artefact_id>
 
-- **repo_root** (string): &lt;absolute path to research repo&gt;
-- **folder_tree** (array): &lt;lifecycle folders: recruit/, run/, tag/, synthesise/, archive/&gt;
-- **filename_grammar** (string): &lt;regex for valid filenames&gt;
-- **manifest_schema** (object): &lt;JSON Schema for manifest.json&gt;
-- **anonymisation_policy** (string): &lt;Pnnn rule + scrub regex&gt;
-- **owner** (string): &lt;named researcher&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **repo_root** (string): <absolute path to research repo>
+- **folder_tree** (array): <lifecycle folders: recruit/, run/, tag/, synthesise/, archive/>
+- **filename_grammar** (string): <regex for valid filenames>
+- **manifest_schema** (object): <JSON Schema for manifest.json>
+- **anonymisation_policy** (string): <Pnnn rule + scrub regex>
+- **owner** (string): <named researcher>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

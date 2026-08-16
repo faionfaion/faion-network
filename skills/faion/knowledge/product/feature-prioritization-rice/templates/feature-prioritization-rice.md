@@ -6,18 +6,18 @@ depends-on: content/02-output-contract.xml + templates/feature-prioritization-ri
 token-budget-impact: ~250 tokens.
 -->
 
-# Feature Prioritization RICE — &lt;artefact_id&gt;
+# Feature Prioritization RICE — <artefact_id>
 
-- **scoring_round_id** (string): &lt;round id (e.g. 2026-Q2)&gt;
-- **reach_unit** (string): &lt;named unit&gt;
-- **effort_unit** (string): &lt;named unit&gt;
-- **impact_anchors** (array): &lt;3 cited examples&gt;
-- **rows** (array): &lt;feature objects with reach, impact, confidence, effort, source, rice_score&gt;
-- **cut_line** (number): &lt;score threshold&gt;
-- **owner** (string): &lt;named owner&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **scoring_round_id** (string): <round id (e.g. 2026-Q2)>
+- **reach_unit** (string): <named unit>
+- **effort_unit** (string): <named unit>
+- **impact_anchors** (array): <3 cited examples>
+- **rows** (array): <feature objects with reach, impact, confidence, effort, source, rice_score>
+- **cut_line** (number): <score threshold>
+- **owner** (string): <named owner>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

@@ -6,18 +6,18 @@ depends-on: content/02-output-contract.xml + templates/growth-social-media-strat
 token-budget-impact: ~250 tokens.
 -->
 
-# Growth Social Media Strategy — &lt;artefact_id&gt;
+# Growth Social Media Strategy — <artefact_id>
 
-- **operator** (string): &lt;named owner of the strategy&gt;
-- **primary_platforms** (array): &lt;≤2 platforms with fit-score + audience size&gt;
-- **atomization_loop** (object): &lt;{seed_type, weekly_cuts, channel_mapping}&gt;
-- **weekly_time_budget_hours** (integer): &lt;≤10 for solo&gt;
-- **engagement_quota** (object): &lt;per-platform replies/day&gt;
-- **kpi_set** (object): &lt;{audience_growth, qualified_engagement, pipeline_added}&gt;
-- **review_cadence_weeks** (integer): &lt;default 12&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **operator** (string): <named owner of the strategy>
+- **primary_platforms** (array): <≤2 platforms with fit-score + audience size>
+- **atomization_loop** (object): <{seed_type, weekly_cuts, channel_mapping}>
+- **weekly_time_budget_hours** (integer): <≤10 for solo>
+- **engagement_quota** (object): <per-platform replies/day>
+- **kpi_set** (object): <{audience_growth, qualified_engagement, pipeline_added}>
+- **review_cadence_weeks** (integer): <default 12>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

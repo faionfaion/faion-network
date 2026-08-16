@@ -6,17 +6,17 @@ depends-on: content/02-output-contract.xml + templates/api-first-development.jso
 token-budget-impact: ~250 tokens.
 -->
 
-# API-First Development — &lt;artefact_id&gt;
+# API-First Development — <artefact_id>
 
-- **openapi_spec_path** (string): &lt;path to openapi.yaml&gt;
-- **openapi_version** (string): &lt;must start with 3.1&gt;
-- **endpoints** (array): &lt;list of {path, method, op_id}&gt;
-- **mock_server_url** (string): &lt;Prism mock URL&gt;
-- **contract_test_config** (string): &lt;path to schemathesis.yaml or equivalent&gt;
-- **version** (string): &lt;semver of the API itself&gt;
-- **owner** (string): &lt;named owner&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **openapi_spec_path** (string): <path to openapi.yaml>
+- **openapi_version** (string): <must start with 3.1>
+- **endpoints** (array): <list of {path, method, op_id}>
+- **mock_server_url** (string): <Prism mock URL>
+- **contract_test_config** (string): <path to schemathesis.yaml or equivalent>
+- **version** (string): <semver of the API itself>
+- **owner** (string): <named owner>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

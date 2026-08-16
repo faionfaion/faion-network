@@ -6,18 +6,18 @@ depends-on: content/02-output-contract.xml + templates/design-docs-big-tech.json
 token-budget-impact: ~250 tokens.
 -->
 
-# Design Docs at Big Tech Companies — &lt;artefact_id&gt;
+# Design Docs at Big Tech Companies — <artefact_id>
 
-- **doc_format** (string): &lt;RFC | ERD | 6-Pager | ADR | Custom&gt;
-- **scope** (string): &lt;small | team | cross-org&gt;
-- **audience** (array): &lt;named roles&gt;
-- **page_budget** (integer): &lt;1..10&gt;
-- **review_deadline** (date): &lt;ISO date&gt;
-- **alternatives** (array): &lt;≥2 including 'do nothing'&gt;
-- **owner** (string): &lt;named author&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **doc_format** (string): <RFC | ERD | 6-Pager | ADR | Custom>
+- **scope** (string): <small | team | cross-org>
+- **audience** (array): <named roles>
+- **page_budget** (integer): <1..10>
+- **review_deadline** (date): <ISO date>
+- **alternatives** (array): <≥2 including 'do nothing'>
+- **owner** (string): <named author>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

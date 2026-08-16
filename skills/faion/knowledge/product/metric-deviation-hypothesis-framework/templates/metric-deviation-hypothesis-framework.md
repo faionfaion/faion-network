@@ -6,18 +6,18 @@ depends-on: content/02-output-contract.xml + templates/metric-deviation-hypothes
 token-budget-impact: ~250 tokens.
 -->
 
-# Metric Deviation Hypothesis Framework — &lt;artefact_id&gt;
+# Metric Deviation Hypothesis Framework — <artefact_id>
 
-- **metric_name** (string): &lt;named metric&gt;
-- **baseline** (object): &lt;baseline value + window&gt;
-- **deviation_magnitude** (string): &lt;σ or % vs baseline&gt;
-- **time_window** (object): &lt;ISO start/end&gt;
-- **hypotheses** (array): &lt;≥3 ranked causal hypotheses with detector + probability&gt;
-- **next_checks** (array): &lt;ranked check list with P(falsify) and cost&gt;
-- **owner** (string): &lt;named human owner&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **metric_name** (string): <named metric>
+- **baseline** (object): <baseline value + window>
+- **deviation_magnitude** (string): <σ or % vs baseline>
+- **time_window** (object): <ISO start/end>
+- **hypotheses** (array): <≥3 ranked causal hypotheses with detector + probability>
+- **next_checks** (array): <ranked check list with P(falsify) and cost>
+- **owner** (string): <named human owner>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

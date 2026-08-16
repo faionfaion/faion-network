@@ -6,17 +6,17 @@ depends-on: content/02-output-contract.xml + templates/daily-ship-rubric.json.
 token-budget-impact: ~250 tokens.
 -->
 
-# Daily Ship Rubric — &lt;artefact_id&gt;
+# Daily Ship Rubric — <artefact_id>
 
-- **date** (date): &lt;ISO date&gt;
-- **operator** (string): &lt;named human&gt;
-- **backlog_item** (string): &lt;task id&gt;
-- **gates** (object): &lt;5 binary gates: spec/code/tests/deploy/customer_visible&gt;
-- **verdict** (string): &lt;ship | no-ship&gt;
-- **note** (string): &lt;≤200 char free-text&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **date** (date): <ISO date>
+- **operator** (string): <named human>
+- **backlog_item** (string): <task id>
+- **gates** (object): <5 binary gates: spec/code/tests/deploy/customer_visible>
+- **verdict** (string): <ship | no-ship>
+- **note** (string): <≤200 char free-text>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

@@ -6,16 +6,16 @@ depends-on: content/02-output-contract.xml + templates/multi-product-portfolio-m
 token-budget-impact: ~250 tokens.
 -->
 
-# Multi Product Portfolio Management — &lt;artefact_id&gt;
+# Multi Product Portfolio Management — <artefact_id>
 
-- **operator** (string): &lt;named portfolio owner&gt;
-- **products** (array): &lt;≥3 product objects (name, mode, mrr, traffic, time_budget_hours, capital_allocation_usd)&gt;
-- **cross_product_kill_rule** (string): &lt;explicit rule string&gt;
-- **quarterly_review_at** (string): &lt;ISO datetime&gt;
-- **total_weekly_time_cap** (number): &lt;hours ≤40&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **operator** (string): <named portfolio owner>
+- **products** (array): <≥3 product objects (name, mode, mrr, traffic, time_budget_hours, capital_allocation_usd)>
+- **cross_product_kill_rule** (string): <explicit rule string>
+- **quarterly_review_at** (string): <ISO datetime>
+- **total_weekly_time_cap** (number): <hours ≤40>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

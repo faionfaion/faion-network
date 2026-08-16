@@ -6,27 +6,27 @@ depends-on: content/02-output-contract.xml schema.
 token-budget-impact: ~180 tokens.
 -->
 
-# Cost-Quality Tradeoff Framework — &lt;artefact_id&gt;
+# Cost-Quality Tradeoff Framework — <artefact_id>
 
-- **artefact_id**: cqt-&lt;kebab-case-slug&gt;
-- **owner**: &lt;handle or email — single named human, never "team"&gt;
+- **artefact_id**: cqt-<kebab-case-slug>
+- **owner**: <handle or email — single named human, never "team">
 - **status**: active
 - **version**: 1.0.0
 - **last_reviewed**: 2026-05-22
 
 ## Decision
 
-&lt;The actual choice. Short and specific. Reference the produced shape from 02-output-contract.xml.&gt;
+<The actual choice. Short and specific. Reference the produced shape from 02-output-contract.xml.>
 
 ## Rationale
 
-&lt;Two or more sentences. Cite at least one input artefact by name. Avoid defensive phrases ('obviously', 'clearly').&gt;
+<Two or more sentences. Cite at least one input artefact by name. Avoid defensive phrases ('obviously', 'clearly').>
 
 ## Inputs used
 
-- &lt;input_1_name&gt; — &lt;source path or URL&gt;
-- &lt;input_2_name&gt; — &lt;source path or URL&gt;
+- <input_1_name> — <source path or URL>
+- <input_2_name> — <source path or URL>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review', 'supersedes &lt;old_artefact_id&gt;', or 'wrong-tool note'.&gt;
+<Optional: 'ready for owner review', 'supersedes <old_artefact_id>', or 'wrong-tool note'.>

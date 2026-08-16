@@ -6,19 +6,19 @@ depends-on: content/02-output-contract.xml + templates/shutdown-customer-email-p
 token-budget-impact: ~250 tokens.
 -->
 
-# Shutdown Customer Email Pack — &lt;artefact_id&gt;
+# Shutdown Customer Email Pack — <artefact_id>
 
-- **artefact_id** (string): &lt;kebab-case slug for the shutdown sequence&gt;
-- **owner** (string): &lt;named human signing the emails&gt;
-- **service_off_date** (date): &lt;ISO date the product stops&gt;
-- **announce_email** (object): &lt;subject + body + send_date (T-30)&gt;
-- **refund_email** (object): &lt;subject + body + send_date (T-14) + refund_terms&gt;
-- **final_thanks_email** (object): &lt;subject + body + send_date (T+1)&gt;
-- **real_reason_sentence** (string): &lt;one honest sentence on cause&gt;
-- **refund_or_migration** (object): &lt;{type: refund|migrate, terms: string}&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **artefact_id** (string): <kebab-case slug for the shutdown sequence>
+- **owner** (string): <named human signing the emails>
+- **service_off_date** (date): <ISO date the product stops>
+- **announce_email** (object): <subject + body + send_date (T-30)>
+- **refund_email** (object): <subject + body + send_date (T-14) + refund_terms>
+- **final_thanks_email** (object): <subject + body + send_date (T+1)>
+- **real_reason_sentence** (string): <one honest sentence on cause>
+- **refund_or_migration** (object): <{type: refund|migrate, terms: string}>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

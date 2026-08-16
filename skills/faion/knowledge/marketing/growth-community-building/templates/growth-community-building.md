@@ -6,19 +6,19 @@ depends-on: content/02-output-contract.xml + templates/growth-community-building
 token-budget-impact: ~250 tokens.
 -->
 
-# Growth Community Building — &lt;artefact_id&gt;
+# Growth Community Building — <artefact_id>
 
-- **community_id** (string): &lt;kebab-case slug&gt;
-- **host** (string): &lt;named human accountable for rituals&gt;
-- **platform** (enum): &lt;discord|slack|circle|telegram&gt;
-- **seed_members** (array): &lt;≥50 entries with name + handle + reason&gt;
-- **planted_conversations** (array): &lt;5-10 conversation prompts with author&gt;
-- **rituals** (array): &lt;≥3 with cadence + owner + agenda&gt;
-- **guidelines** (string): &lt;community guidelines markdown&gt;
-- **health_targets** (object): &lt;{dau_mau: 0.25, weekly_active_members_pct: 0.4}&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **community_id** (string): <kebab-case slug>
+- **host** (string): <named human accountable for rituals>
+- **platform** (enum): <discord|slack|circle|telegram>
+- **seed_members** (array): <≥50 entries with name + handle + reason>
+- **planted_conversations** (array): <5-10 conversation prompts with author>
+- **rituals** (array): <≥3 with cadence + owner + agenda>
+- **guidelines** (string): <community guidelines markdown>
+- **health_targets** (object): <{dau_mau: 0.25, weekly_active_members_pct: 0.4}>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

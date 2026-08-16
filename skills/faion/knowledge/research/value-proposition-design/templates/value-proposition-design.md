@@ -6,16 +6,16 @@ depends-on: content/02-output-contract.xml + templates/value-proposition-design.
 token-budget-impact: ~250 tokens.
 -->
 
-# Value Proposition Design — &lt;artefact_id&gt;
+# Value Proposition Design — <artefact_id>
 
-- **customer_profile** (object): &lt;jobs + pains + gains arrays with citations&gt;
-- **value_map** (object): &lt;products + pain_relievers + gain_creators arrays&gt;
-- **alignment_gaps** (array): &lt;pain/gain ids with no matching reliever/creator&gt;
-- **value_prop_statement** (string): &lt;≤140 chars; cites a named job&gt;
-- **owner** (string): &lt;named owner&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **customer_profile** (object): <jobs + pains + gains arrays with citations>
+- **value_map** (object): <products + pain_relievers + gain_creators arrays>
+- **alignment_gaps** (array): <pain/gain ids with no matching reliever/creator>
+- **value_prop_statement** (string): <≤140 chars; cites a named job>
+- **owner** (string): <named owner>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

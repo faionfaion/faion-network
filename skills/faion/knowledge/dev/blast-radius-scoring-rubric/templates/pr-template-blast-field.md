@@ -9,7 +9,7 @@ token-budget-impact: ~120 tokens when copied into a PR body.
 ## Blast radius (required — bot reads this)
 
 **Services touched:** 1 (one module) / 3 (one service) / 5 (multi-service or shared lib) →
-**Users affected:** 1 (&lt;1% MAU) / 3 (≤10% MAU) / 5 (&gt;10% MAU) →
+**Users affected:** 1 (<1% MAU) / 3 (≤10% MAU) / 5 (>10% MAU) →
 **Reversibility:** 1 (feature flag) / 3 (redeploy fix) / 5 (irreversible migration or external side-effect) →
 
 **Total (sum 3-15):**

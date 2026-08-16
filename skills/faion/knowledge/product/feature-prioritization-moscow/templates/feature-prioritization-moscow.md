@@ -6,17 +6,17 @@ depends-on: content/02-output-contract.xml + templates/feature-prioritization-mo
 token-budget-impact: ~250 tokens.
 -->
 
-# Feature Prioritization MoSCoW — &lt;artefact_id&gt;
+# Feature Prioritization MoSCoW — <artefact_id>
 
-- **cycle_id** (string): &lt;sprint / release id&gt;
-- **capacity** (number): &lt;story points or hours&gt;
-- **buckets** (object): &lt;must / should / could / wont arrays&gt;
-- **tiebreaker_rule** (string): &lt;named rule&gt;
-- **must_cap_pct** (number): &lt;0-60&gt;
-- **owner** (string): &lt;named owner&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **cycle_id** (string): <sprint / release id>
+- **capacity** (number): <story points or hours>
+- **buckets** (object): <must / should / could / wont arrays>
+- **tiebreaker_rule** (string): <named rule>
+- **must_cap_pct** (number): <0-60>
+- **owner** (string): <named owner>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

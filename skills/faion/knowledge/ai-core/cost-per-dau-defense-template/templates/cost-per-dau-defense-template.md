@@ -6,10 +6,10 @@ depends-on: content/02-output-contract.xml schema.
 token-budget-impact: ~190 tokens.
 -->
 
-# Cost-Per-DAU Defense — &lt;feature&gt;
+# Cost-Per-DAU Defense — <feature>
 
-- **report_id**: cpd-&lt;feature&gt;-q2-2026
-- **owner**: &lt;handle — single named human, never "team"&gt;
+- **report_id**: cpd-<feature>-q2-2026
+- **owner**: <handle — single named human, never "team">
 - **last_reviewed**: 2026-05-22
 - **version**: 1.0.0
 
@@ -39,4 +39,4 @@ token-budget-impact: ~190 tokens.
 
 ## Notes
 
-&lt;e.g., 'ready for owner review', or 'supersedes cpd-...'.&gt;
+<e.g., 'ready for owner review', or 'supersedes cpd-...'.>

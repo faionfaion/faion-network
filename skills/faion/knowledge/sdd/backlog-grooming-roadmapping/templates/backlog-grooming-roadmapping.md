@@ -6,19 +6,19 @@ depends-on: content/02-output-contract.xml + templates/backlog-grooming-roadmapp
 token-budget-impact: ~250 tokens.
 -->
 
-# Backlog Grooming and Roadmapping — &lt;artefact_id&gt;
+# Backlog Grooming and Roadmapping — <artefact_id>
 
-- **backlog_items** (array): &lt;≥10 with score + rationale + status&gt;
-- **p0_items** (array): &lt;≤3&gt;
-- **scoring_framework** (string): &lt;RICE | MoSCoW&gt;
-- **now_items** (array): &lt;currently in flight&gt;
-- **next_items** (array): &lt;next horizon&gt;
-- **later_items** (array): &lt;later horizon&gt;
-- **last_groomed_at** (datetime): &lt;ISO datetime&gt;
-- **owner** (string): &lt;named PM&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **backlog_items** (array): <≥10 with score + rationale + status>
+- **p0_items** (array): <≤3>
+- **scoring_framework** (string): <RICE | MoSCoW>
+- **now_items** (array): <currently in flight>
+- **next_items** (array): <next horizon>
+- **later_items** (array): <later horizon>
+- **last_groomed_at** (datetime): <ISO datetime>
+- **owner** (string): <named PM>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

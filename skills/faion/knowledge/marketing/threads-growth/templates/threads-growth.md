@@ -6,17 +6,17 @@ depends-on: content/02-output-contract.xml + templates/threads-growth.json.
 token-budget-impact: ~250 tokens.
 -->
 
-# Threads Growth — &lt;artefact_id&gt;
+# Threads Growth — <artefact_id>
 
-- **operator** (string): &lt;named account owner&gt;
-- **daily_post_target** (integer): &lt;≥5&gt;
-- **daily_reply_target** (integer): &lt;≥10 to larger accounts&gt;
-- **adaptation_log** (array): &lt;X/IG source → Threads adapted text&gt;
-- **voice_register** (enum): &lt;casual|playful (formal rejected)&gt;
-- **kpi_set** (object): &lt;{impressions, replies_from_strangers, profile_visits, qualified_follows}&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **operator** (string): <named account owner>
+- **daily_post_target** (integer): <≥5>
+- **daily_reply_target** (integer): <≥10 to larger accounts>
+- **adaptation_log** (array): <X/IG source → Threads adapted text>
+- **voice_register** (enum): <casual|playful (formal rejected)>
+- **kpi_set** (object): <{impressions, replies_from_strangers, profile_visits, qualified_follows}>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

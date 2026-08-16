@@ -6,37 +6,37 @@ depends-on: content/02-output-contract.xml.
 token-budget-impact: ~150 tokens.
 -->
 
-# Architecture Decision — &lt;project&gt;
+# Architecture Decision — <project>
 
-- **artefact_id**: &lt;kebab-case&gt;
-- **owner**: &lt;handle/email — single accountable owner&gt;
+- **artefact_id**: <kebab-case>
+- **owner**: <handle/email — single accountable owner>
 - **version**: 1.0.0
 - **last_reviewed**: 2026-05-22
 
 ## Signals at decision time
 
-- team_size: &lt;n&gt;
-- model_count: &lt;n&gt;
-- traffic_req_s: &lt;n&gt;
-- needs_admin: &lt;true/false&gt;
-- needs_async: &lt;true/false&gt;
-- bounded_contexts: &lt;n&gt;
+- team_size: <n>
+- model_count: <n>
+- traffic_req_s: <n>
+- needs_admin: <true/false>
+- needs_async: <true/false>
+- bounded_contexts: <n>
 
 ## Decisions
 
 | Axis | Choice | Rationale |
 |---|---|---|
-| framework | &lt;django/django-ninja-only/fastapi/flask&gt; | &lt;sentence citing signals&gt; |
-| api_stack | &lt;drf/ninja/vanilla-django/n/a&gt; | &lt;sentence&gt; |
-| layering | &lt;simple/service-layer/clean-arch&gt; | &lt;sentence&gt; |
-| db | &lt;postgres/postgres-managed/mysql/sqlite&gt; | &lt;sentence&gt; |
-| deployment | &lt;paas/vps/kubernetes/serverless&gt; | &lt;sentence&gt; |
+| framework | <django/django-ninja-only/fastapi/flask> | <sentence citing signals> |
+| api_stack | <drf/ninja/vanilla-django/n/a> | <sentence> |
+| layering | <simple/service-layer/clean-arch> | <sentence> |
+| db | <postgres/postgres-managed/mysql/sqlite> | <sentence> |
+| deployment | <paas/vps/kubernetes/serverless> | <sentence> |
 
 ## Dependencies
 
 | Package | Verdict | recent_commits | django_compat | license_ok | no_known_cves |
 |---|---|---|---|---|---|
-| &lt;name&gt; | &lt;adopt/trial/hold/sunset&gt; | &lt;true/false&gt; | &lt;true/false&gt; | &lt;true/false&gt; | &lt;true/false&gt; |
+| <name> | <adopt/trial/hold/sunset> | <true/false> | <true/false> | <true/false> | <true/false> |
 
 ## Re-walk triggers
 

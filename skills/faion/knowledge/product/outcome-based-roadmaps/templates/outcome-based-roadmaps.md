@@ -6,17 +6,17 @@ depends-on: content/02-output-contract.xml + templates/outcome-based-roadmaps.js
 token-budget-impact: ~250 tokens.
 -->
 
-# Outcome Based Roadmaps — &lt;artefact_id&gt;
+# Outcome Based Roadmaps — <artefact_id>
 
-- **quarter** (string): &lt;yyyy-Qn&gt;
-- **outcomes** (array): &lt;≤3 outcome objects with target metrics + opportunities[]&gt;
-- **solutions** (array): &lt;linked to opportunities with confidence + delivery_window_month_range&gt;
-- **public_url** (string): &lt;stakeholder-facing URL&gt;
-- **quarter_review** (object): &lt;shipped/slipped lists + adjustments&gt;
-- **owner** (string): &lt;named owner&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **quarter** (string): <yyyy-Qn>
+- **outcomes** (array): <≤3 outcome objects with target metrics + opportunities[]>
+- **solutions** (array): <linked to opportunities with confidence + delivery_window_month_range>
+- **public_url** (string): <stakeholder-facing URL>
+- **quarter_review** (object): <shipped/slipped lists + adjustments>
+- **owner** (string): <named owner>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

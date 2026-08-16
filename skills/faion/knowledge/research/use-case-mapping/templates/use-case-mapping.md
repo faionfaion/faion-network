@@ -6,19 +6,19 @@ depends-on: content/02-output-contract.xml + templates/use-case-mapping.json.
 token-budget-impact: ~250 tokens.
 -->
 
-# Use Case Mapping — &lt;artefact_id&gt;
+# Use Case Mapping — <artefact_id>
 
-- **use_case_id** (string): &lt;stable id (UC-001..)&gt;
-- **primary_actor** (string): &lt;named role&gt;
-- **goal** (string): &lt;active-verb statement&gt;
-- **preconditions** (array): &lt;system + actor state before flow starts&gt;
-- **main_flow** (array): &lt;numbered steps&gt;
-- **alternative_flows** (array): &lt;≥1 branching scenarios&gt;
-- **postcondition** (string): &lt;observable end state&gt;
-- **owner** (string): &lt;named owner&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **use_case_id** (string): <stable id (UC-001..)>
+- **primary_actor** (string): <named role>
+- **goal** (string): <active-verb statement>
+- **preconditions** (array): <system + actor state before flow starts>
+- **main_flow** (array): <numbered steps>
+- **alternative_flows** (array): <≥1 branching scenarios>
+- **postcondition** (string): <observable end state>
+- **owner** (string): <named owner>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

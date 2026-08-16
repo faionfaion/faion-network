@@ -6,10 +6,10 @@ depends-on: tracker references; lint config; sample bad + good code.
 token-budget-impact: ~180 tokens when copied.
 -->
 
-# Decision-record — &lt;pattern_id&gt;
+# Decision-record — <pattern_id>
 
 ## Identity
-- artefact_id: bplrc-&lt;slug&gt;
+- artefact_id: bplrc-<slug>
 - pattern_id (kebab-case):
 - owner_email (named human):
 

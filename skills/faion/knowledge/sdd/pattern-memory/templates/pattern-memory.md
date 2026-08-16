@@ -6,19 +6,19 @@ depends-on: content/02-output-contract.xml + templates/pattern-memory.json.
 token-budget-impact: ~250 tokens.
 -->
 
-# Pattern Memory — &lt;artefact_id&gt;
+# Pattern Memory — <artefact_id>
 
-- **pattern_id** (string): &lt;stable id (PM-001..)&gt;
-- **title** (string): &lt;pattern name&gt;
-- **confidence** (number): &lt;0.5..0.95&gt;
-- **contexts_used** (array): &lt;≥2 with citation&gt;
-- **rationale** (string): &lt;why it works&gt;
-- **synced_to_claude_md** (boolean): &lt;true when confidence ≥0.8&gt;
-- **occurrence_count** (integer): &lt;≥2&gt;
-- **owner** (string): &lt;named author&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **pattern_id** (string): <stable id (PM-001..)>
+- **title** (string): <pattern name>
+- **confidence** (number): <0.5..0.95>
+- **contexts_used** (array): <≥2 with citation>
+- **rationale** (string): <why it works>
+- **synced_to_claude_md** (boolean): <true when confidence ≥0.8>
+- **occurrence_count** (integer): <≥2>
+- **owner** (string): <named author>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

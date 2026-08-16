@@ -6,17 +6,17 @@ depends-on: content/02-output-contract.xml + templates/growth-linkedin-strategy.
 token-budget-impact: ~250 tokens.
 -->
 
-# Growth LinkedIn Strategy — &lt;artefact_id&gt;
+# Growth LinkedIn Strategy — <artefact_id>
 
-- **operator** (string): &lt;named LinkedIn account owner&gt;
-- **positioning** (object): &lt;{icp, pain, outcome}&gt;
-- **post_rotation** (array): &lt;≥3 typed posts (story/how-to/carousel) for the next week&gt;
-- **daily_engagement_quota** (integer): &lt;≥10 strangers-replied-to per day&gt;
-- **dm_trigger** (string): &lt;exact trigger phrase + CTA&gt;
-- **kpi_set** (object): &lt;{profile_visits, qualified_dms, inbound_calls, conversion_rate}&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **operator** (string): <named LinkedIn account owner>
+- **positioning** (object): <{icp, pain, outcome}>
+- **post_rotation** (array): <≥3 typed posts (story/how-to/carousel) for the next week>
+- **daily_engagement_quota** (integer): <≥10 strangers-replied-to per day>
+- **dm_trigger** (string): <exact trigger phrase + CTA>
+- **kpi_set** (object): <{profile_visits, qualified_dms, inbound_calls, conversion_rate}>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

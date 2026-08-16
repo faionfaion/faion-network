@@ -16,14 +16,14 @@ This repo uses **trunk-based development**. The default branch (`main`) is alway
 
 - All work targets `main`.
 - Feature branches MUST be short-lived: maximum age 2 days from creation to merge.
-- Branch names follow `&lt;type&gt;/&lt;ticket-id&gt;-&lt;slug&gt;` (e.g. `feat/F-066-shadow-router`).
+- Branch names follow `<type>/<ticket-id>-<slug>` (e.g. `feat/F-066-shadow-router`).
 - Branches older than 2 days fail CI on every push until merged or closed.
 - Stale branches (no commits for 7 days) are auto-closed.
 
 ## Commit rules
 
 - Commit at least once per workday.
-- Aim for &lt; 200 LoC per PR median.
+- Aim for < 200 LoC per PR median.
 - Each PR ships with passing tests, lint, typecheck.
 - Incomplete features MUST be wrapped in a feature flag with a `flag_id` field in the PR template; the flag has a cleanup ticket filed at creation.
 

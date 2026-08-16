@@ -6,19 +6,19 @@ depends-on: content/02-output-contract.xml + templates/mistake-memory.json.
 token-budget-impact: ~250 tokens.
 -->
 
-# Mistake Memory — &lt;artefact_id&gt;
+# Mistake Memory — <artefact_id>
 
-- **mistake_id** (string): &lt;stable id (MM-001..)&gt;
-- **severity** (string): &lt;low | medium | high | critical&gt;
-- **what_happened** (string): &lt;≤500 chars&gt;
-- **five_whys** (array): &lt;≥3 levels&gt;
-- **prevention** (string): &lt;concrete action&gt;
-- **ci_rule_created** (boolean): &lt;true on second occurrence&gt;
-- **occurrence_count** (integer): &lt;≥1&gt;
-- **owner** (string): &lt;named author&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **mistake_id** (string): <stable id (MM-001..)>
+- **severity** (string): <low | medium | high | critical>
+- **what_happened** (string): <≤500 chars>
+- **five_whys** (array): <≥3 levels>
+- **prevention** (string): <concrete action>
+- **ci_rule_created** (boolean): <true on second occurrence>
+- **occurrence_count** (integer): <≥1>
+- **owner** (string): <named author>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

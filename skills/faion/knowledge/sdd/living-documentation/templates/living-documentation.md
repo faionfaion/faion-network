@@ -6,18 +6,18 @@ depends-on: content/02-output-contract.xml + templates/living-documentation.json
 token-budget-impact: ~250 tokens.
 -->
 
-# Living Documentation — &lt;artefact_id&gt;
+# Living Documentation — <artefact_id>
 
-- **docs_root** (string): &lt;absolute path to docs/&gt;
-- **docs_framework** (string): &lt;Hugo | Docusaurus | MkDocs | other&gt;
-- **auto_generated_sections** (array): &lt;list of {file, generator, source}&gt;
-- **hand_authored_sections** (array): &lt;list of {file, owner}&gt;
-- **ci_checks** (object): &lt;link-validation + spec-diff + build-success flags&gt;
-- **changelog_source** (string): &lt;commits | manual (only commits allowed)&gt;
-- **owner** (string): &lt;named owner&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **docs_root** (string): <absolute path to docs/>
+- **docs_framework** (string): <Hugo | Docusaurus | MkDocs | other>
+- **auto_generated_sections** (array): <list of {file, generator, source}>
+- **hand_authored_sections** (array): <list of {file, owner}>
+- **ci_checks** (object): <link-validation + spec-diff + build-success flags>
+- **changelog_source** (string): <commits | manual (only commits allowed)>
+- **owner** (string): <named owner>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

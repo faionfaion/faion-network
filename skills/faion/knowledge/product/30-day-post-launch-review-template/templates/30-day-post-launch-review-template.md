@@ -6,18 +6,18 @@ depends-on: content/02-output-contract.xml + templates/30-day-post-launch-review
 token-budget-impact: ~250 tokens.
 -->
 
-# 30 Day Post Launch Review Template — &lt;artefact_id&gt;
+# 30 Day Post Launch Review Template — <artefact_id>
 
-- **launch_id** (string): &lt;named launch&gt;
-- **launch_comms_kit_id** (string): &lt;upstream artefact id&gt;
-- **review_at** (string): &lt;ISO date (T+30)&gt;
-- **funnel_by_channel** (object): &lt;per-channel acquire/activate/retain/revenue counts&gt;
-- **hypothesis_verdicts** (array): &lt;≥1 verdict object (hypothesis_id, verdict, evidence)&gt;
-- **next_bets** (array): &lt;≥3 ranked bets with budget_usd + budget_hours&gt;
-- **owner** (string): &lt;named owner&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **launch_id** (string): <named launch>
+- **launch_comms_kit_id** (string): <upstream artefact id>
+- **review_at** (string): <ISO date (T+30)>
+- **funnel_by_channel** (object): <per-channel acquire/activate/retain/revenue counts>
+- **hypothesis_verdicts** (array): <≥1 verdict object (hypothesis_id, verdict, evidence)>
+- **next_bets** (array): <≥3 ranked bets with budget_usd + budget_hours>
+- **owner** (string): <named owner>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

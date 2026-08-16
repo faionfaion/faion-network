@@ -6,17 +6,17 @@ depends-on: content/02-output-contract.xml + templates/continuous-discovery.json
 token-budget-impact: ~250 tokens.
 -->
 
-# Continuous Discovery — &lt;artefact_id&gt;
+# Continuous Discovery — <artefact_id>
 
-- **outcome** (string): &lt;named outcome / KPI&gt;
-- **touchpoints** (array): &lt;≥1/week, each with date, customer_id, summary&gt;
-- **opportunity_tree** (object): &lt;outcome → opportunities → solutions&gt;
-- **assumption_tests** (array): &lt;≥1 per opportunity, each falsifiable&gt;
-- **decision_log** (array): &lt;≥1/week, each with rationale + cited touchpoint ids&gt;
-- **owner** (string): &lt;named owner&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **outcome** (string): <named outcome / KPI>
+- **touchpoints** (array): <≥1/week, each with date, customer_id, summary>
+- **opportunity_tree** (object): <outcome → opportunities → solutions>
+- **assumption_tests** (array): <≥1 per opportunity, each falsifiable>
+- **decision_log** (array): <≥1/week, each with rationale + cited touchpoint ids>
+- **owner** (string): <named owner>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

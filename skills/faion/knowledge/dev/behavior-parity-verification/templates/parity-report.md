@@ -6,7 +6,7 @@ depends-on: parity_diffs table, normalizer code.
 token-budget-impact: ~200 tokens when copied into a stage write-up.
 -->
 
-# Parity report — &lt;scope&gt; — stage &lt;1|2|3|4&gt;
+# Parity report — <scope> — stage <1|2|3|4>
 
 ## Scope
 - Endpoint or function path:
@@ -33,7 +33,7 @@ Ignored (non-observable): request_id, computed_at_ms, server_version
 |            |              | fixed / accepted-with-justification / open |  |
 
 ## Verdict
-- [ ] promote — diff_rate &lt; 0.5%, no open clusters, error_rate at parity
+- [ ] promote — diff_rate < 0.5%, no open clusters, error_rate at parity
 - [ ] freeze — investigate before promoting
 - [ ] revert — roll back to previous stage
 

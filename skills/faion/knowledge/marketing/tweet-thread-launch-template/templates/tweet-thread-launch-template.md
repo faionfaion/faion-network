@@ -6,18 +6,18 @@ depends-on: content/02-output-contract.xml + templates/tweet-thread-launch-templ
 token-budget-impact: ~250 tokens.
 -->
 
-# Tweet Thread Launch Template — &lt;artefact_id&gt;
+# Tweet Thread Launch Template — <artefact_id>
 
-- **launch_id** (string): &lt;kebab-case slug&gt;
-- **operator** (string): &lt;named launcher&gt;
-- **tweets** (array): &lt;exactly 7 tweets with id + text + media&gt;
-- **demo_gif_url** (string): &lt;<30s gif/mp4 URL&gt;
-- **hook_variants_tested** (array): &lt;≥3 variants with pre-launch impressions&gt;
-- **social_proof_quote** (object): &lt;{quote, handle, consent_logged_at}&gt;
-- **scheduled_for** (date-time): &lt;ISO timestamp&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **launch_id** (string): <kebab-case slug>
+- **operator** (string): <named launcher>
+- **tweets** (array): <exactly 7 tweets with id + text + media>
+- **demo_gif_url** (string): <<30s gif/mp4 URL>
+- **hook_variants_tested** (array): <≥3 variants with pre-launch impressions>
+- **social_proof_quote** (object): <{quote, handle, consent_logged_at}>
+- **scheduled_for** (date-time): <ISO timestamp>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

@@ -6,10 +6,10 @@ depends-on: tracker integration that resolves the cleanup_ticket_id.
 token-budget-impact: ~180 tokens when copied.
 -->
 
-# Flag spec — &lt;flag_id&gt;
+# Flag spec — <flag_id>
 
 ## Identity
-- artefact_id: ff-&lt;slug&gt;
+- artefact_id: ff-<slug>
 - flag_id (== ticket slug):
 - type: release | experiment | ops | permission
 - dark_launch: true | false
@@ -22,9 +22,9 @@ token-budget-impact: ~180 tokens when copied.
 ## Ramp plan
 | pct | gate (observable + threshold) |
 |-----|-------------------------------|
-| 1   | e.g. diff_rate &lt; 0.5 over 24h |
-| 10  | e.g. diff_rate &lt; 0.5 AND error_rate at baseline |
-| 50  | e.g. all clusters classified, sample &gt;= 10000 |
+| 1   | e.g. diff_rate < 0.5 over 24h |
+| 10  | e.g. diff_rate < 0.5 AND error_rate at baseline |
+| 50  | e.g. all clusters classified, sample >= 10000 |
 | 100 | e.g. sign-off recorded |
 
 ## Kill-switch

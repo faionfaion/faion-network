@@ -6,20 +6,20 @@ depends-on: content/02-output-contract.xml + templates/engagement-pattern-memory
 token-budget-impact: ~250 tokens.
 -->
 
-# Engagement Pattern Memory — &lt;artefact_id&gt;
+# Engagement Pattern Memory — <artefact_id>
 
-- **engagement_id** (string): &lt;client / repo identifier&gt;
-- **memory_file_path** (string): &lt;path to memory.md&gt;
-- **repo_conventions** (object): &lt;linting / naming / commit format&gt;
-- **reviewer_preferences** (object): &lt;per-named-reviewer preferences&gt;
-- **deploy_quirks** (array): &lt;non-obvious deploy gotchas&gt;
-- **recurring_traps** (array): &lt;≥1 trap with detector + fix&gt;
-- **glossary** (object): &lt;client-specific terms&gt;
-- **resolved_questions** (array): &lt;questions + resolution dates&gt;
-- **owner** (string): &lt;named contractor&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **engagement_id** (string): <client / repo identifier>
+- **memory_file_path** (string): <path to memory.md>
+- **repo_conventions** (object): <linting / naming / commit format>
+- **reviewer_preferences** (object): <per-named-reviewer preferences>
+- **deploy_quirks** (array): <non-obvious deploy gotchas>
+- **recurring_traps** (array): <≥1 trap with detector + fix>
+- **glossary** (object): <client-specific terms>
+- **resolved_questions** (array): <questions + resolution dates>
+- **owner** (string): <named contractor>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>

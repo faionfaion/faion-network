@@ -10,7 +10,7 @@
 | Reseller X | Reseller | M | Y (region) | ~25% [INFERRED] | job post (https://...) | YYYY-MM-DD |
 | SI Partner Y | SI | M | N | ~20% [INFERRED] | partner portal screenshot | YYYY-MM-DD |
 
-**Reach:** S = &lt;10K reach, M = 10K-100K, L = &gt;100K
+**Reach:** S = <10K reach, M = 10K-100K, L = >100K
 **Exclusivity:** Y = exclusive agreement known, N = non-exclusive
 **Take-rate:** cite public docs for marketplace fees; mark [INFERRED] with inference path for private margins
 

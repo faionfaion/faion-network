@@ -31,7 +31,7 @@ _Scored via channel-fit-scorer.py with channels.yaml. Source for audience/compet
 
 | Channel | CAC Estimate | LTV:CAC | Phase gate | Source |
 |---------|-------------|---------|------------|--------|
-| [Ch 1]  | $X          | X:1     | Phase 2 if &gt;3:1 | [URL, date] |
+| [Ch 1]  | $X          | X:1     | Phase 2 if >3:1 | [URL, date] |
 
 _LTV = $X (from business-model.md v1). All numbers [UNVERIFIED] until Phase-1 test data arrives._
 
@@ -46,7 +46,7 @@ _Sources: SimilarWeb, Meta Ad Library, LinkedIn Ad Library. Competitor inference
 ## Recommended Channel Strategy
 
 **Phase 1** (milestone: first 100 sign-ups):
-- Primary: [Channel] — budget $X, kill criterion: CAC &gt; $X after $500 spend
+- Primary: [Channel] — budget $X, kill criterion: CAC > $X after $500 spend
 - Backup: [Channel 2] — if primary kill criterion fires
 
 **Phase 2** (milestone: $10K MRR):
@@ -57,5 +57,5 @@ _Sources: SimilarWeb, Meta Ad Library, LinkedIn Ad Library. Competitor inference
 
 | Channel | Budget | Milestone gate | Success criteria | Kill criterion |
 |---------|--------|---------------|-----------------|----------------|
-| [Ch 1]  | $X     | 100 sign-ups  | CAC &lt; $X      | CAC &gt; $X after $500 |
+| [Ch 1]  | $X     | 100 sign-ups  | CAC < $X      | CAC > $X after $500 |
 | [Ch 2]  | $X     | 100 sign-ups  | X conversions   | 0 conversions after $300 |

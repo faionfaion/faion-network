@@ -6,12 +6,12 @@ depends-on: scrape run completed; robots/render/tool/drift fields populated.
 token-budget-impact: ~150 tokens when copied.
 -->
 
-# Scrape run — &lt;source&gt; — &lt;run_id&gt;
+# Scrape run — <source> — <run_id>
 
 ## Identity
-- artefact_id: wsr-&lt;slug&gt;
+- artefact_id: wsr-<slug>
 - source:
-- run_id: YYYY-MM-DDTHHMMZ-&lt;random&gt;
+- run_id: YYYY-MM-DDTHHMMZ-<random>
 - user_agent: faion-network/1.0 (+mailto:contact@domain)
 
 ## Robots
@@ -25,7 +25,7 @@ token-budget-impact: ~150 tokens when copied.
 ## Rows
 - rows_seen:
 - rows_valid:
-- raw_path: raw/YYYY-MM-DD/&lt;source&gt;.jsonl
+- raw_path: raw/YYYY-MM-DD/<source>.jsonl
 
 ## Drift
 - drift_score (%):

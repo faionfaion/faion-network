@@ -6,18 +6,18 @@ depends-on: content/02-output-contract.xml + templates/kill-criteria-template.js
 token-budget-impact: ~250 tokens.
 -->
 
-# Kill Criteria Template — &lt;artefact_id&gt;
+# Kill Criteria Template — <artefact_id>
 
-- **bet_name** (string): &lt;named bet / product&gt;
-- **launch_date** (date): &lt;ISO date of launch event&gt;
-- **primary_metric** (string): &lt;single metric (MRR | MAU | signups | joy_score)&gt;
-- **primary_metric_threshold** (number): &lt;numeric floor — below this triggers kill&gt;
-- **baseline_snapshot** (object): &lt;current value of primary metric at write time&gt;
-- **review_dates** (array): &lt;calendared review dates (≥1)&gt;
-- **owner** (string): &lt;named human owner&gt;
-- **version** (string): &lt;semver&gt;
-- **last_reviewed** (date): &lt;ISO date&gt;
+- **bet_name** (string): <named bet / product>
+- **launch_date** (date): <ISO date of launch event>
+- **primary_metric** (string): <single metric (MRR | MAU | signups | joy_score)>
+- **primary_metric_threshold** (number): <numeric floor — below this triggers kill>
+- **baseline_snapshot** (object): <current value of primary metric at write time>
+- **review_dates** (array): <calendared review dates (≥1)>
+- **owner** (string): <named human owner>
+- **version** (string): <semver>
+- **last_reviewed** (date): <ISO date>
 
 ## Notes
 
-&lt;Optional: 'ready for owner review' or links to validator output.&gt;
+<Optional: 'ready for owner review' or links to validator output.>
