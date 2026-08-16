@@ -1293,7 +1293,13 @@ def resolver_checks() -> list[str]:
     if "exclusion" not in props:
         failures.append("guard: an array entry took a one-bullet placeholder — "
                         "the rendered line would be a Python list")
-    if "last_reviewed_date" in props or props.get("date") is None:
+    # Two slots on one line used to be expected to survive as a LOCAL `date`;
+    # CR-013 §2's same-line rule now refuses them outright, one step earlier,
+    # which is the stronger outcome — neither resolved to an entry nor declared
+    # as a shared variable. The resolver's own guard below is kept as defence in
+    # depth: it protects the case where a rule reaches a pair the earlier rule
+    # did not, and removing it would leave that path untested.
+    if "last_reviewed_date" in props or "date" in props:
         failures.append("guard: two slots on one line took one entry, so the "
                         "same value would render twice")
 

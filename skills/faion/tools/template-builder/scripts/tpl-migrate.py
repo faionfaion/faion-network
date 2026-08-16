@@ -492,8 +492,20 @@ def refuse_multi_site(items: list[dict]) -> list[str]:
     for name, group in sites.items():
         if len(group) < 2:
             continue
-        if len({(g.get("heading") or "") for g in group}) < 2:
-            continue  # every site under one heading: one slot, repeated
+        # Two sites on ONE line are always distinct values, so the heading
+        # carve-out below must not reach them. A table row binds its cells to
+        # one variable — `**Last updated:** {{ date }} | **Next review:**
+        # {{ date }}` is two dates, `Design: {{ xd }}, Dev: {{ xd }}, QA:
+        # {{ xd }}` is three estimates — and every one of those sits under a
+        # single heading, so the carve-out shipped them.
+        #
+        # No exception for a legitimate same-line repeat (`{{ slug }}/{{ slug
+        # }}.md`) because the corpus has none: all 63 same-line repeats measured
+        # across the migrated templates are distinct-value columns or list
+        # items. The rule is as wide as the evidence and no wider.
+        same_line = len({g.get("line") for g in group}) < len(group)
+        if not same_line and len({(g.get("heading") or "") for g in group}) < 2:
+            continue  # every site under one heading, on its own line: one slot
         refused.append(name)
         for g in group:
             g["verdict"], g["reason"] = "unclear", "multi-site"
@@ -783,6 +795,21 @@ token-budget-impact: low
 """
 
 # The converse: one heading, so one slot repeated. Must still declare.
+# Two distinct values on one line, under a single heading — the carve-out below
+# must not reach this. Real specimen shape from product/roadmap-design.
+SAME_LINE_FIXTURE = """<!--
+purpose: p
+consumes: c
+produces: markdown
+depends-on: d
+token-budget-impact: low
+-->
+# Roadmap
+
+## Header
+**Last updated:** [date] | **Next review:** [date]
+"""
+
 SAME_HEADING_FIXTURE = """<!--
 purpose: p
 consumes: c
@@ -908,6 +935,10 @@ def self_test() -> list[str]:
         failures.append("multi-site: the repeat was not reported as unclear")
     if "{{name}}" in multi["text"]:
         failures.append("multi-site: a refused placeholder was substituted anyway")
+    # Two sites on ONE line are distinct values even under one heading.
+    online = build_plan(SAME_LINE_FIXTURE, "fixture")
+    if any(d["name"] == "date" for d in online["declarations"]):
+        failures.append("multi-site: two dates in one row shared a variable")
     # ...and a repeat under ONE heading is one slot, so it still declares.
     same = build_plan(SAME_HEADING_FIXTURE, "fixture")
     if not any(d["name"] == "service_name" for d in same["declarations"]):

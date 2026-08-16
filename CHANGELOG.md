@@ -4,6 +4,29 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **The multi-site rule now also refuses two sites on ONE line, and the
+  same-heading carve-out no longer shelters them.** A table row binding its
+  cells to one variable is always distinct values: `**Last updated:**
+  {{ date }} | **Next review:** {{ date }}` is two dates, `Design: {{ xd }},
+  Dev: {{ xd }}, QA: {{ xd }}` is three estimates, `{{ sample_size }} Control,
+  {{ sample_size }} Variant` is two sample sizes. Every one sits under a single
+  heading, so the carve-out shipped them.
+
+  **No exception for a legitimate same-line repeat, because the corpus has
+  none.** All 63 same-line repeats measured across the migrated templates are
+  distinct-value columns or list items — there is no `{{ slug }}/{{ slug }}.md`
+  case to protect. The rule is as wide as the evidence and no wider.
+
+  One existing assertion changed rather than the rule: it expected two same-line
+  slots to survive as a shared LOCAL variable, and they are now refused a step
+  earlier, which is the stronger outcome. The resolver's own same-line guard is
+  kept as defence in depth — it covers a pair this rule does not reach, and
+  deleting its test would leave that path unexercised.
+
+  Proposed refusals across the corpus: 288 templates / 1,546 sites → **309 /
+  1,802**. All five self-tests green (30 / 15 / 27 / 93 / 26), red-before-green
+  proven for the same-line assertion.
+
 - **CR-013 §2 repaired in the corpus — and the rule wired into the converter
   that writes it.** The refusal shipped inside `tpl-migrate.build_plan` only.
   `tpl-jinja --migrate` builds its own plan from `MIGRATE.classify` and never
