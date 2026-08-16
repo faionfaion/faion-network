@@ -4,6 +4,30 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-013 §2 implemented: a placeholder bound to several sites under different
+  headings is now refused, not collapsed.** `hr/employee-value-proposition`
+  rendered `## Competitor A: {{ name }}` / `B: {{ name }}` / `C: {{ name }}` —
+  three companies sharing one variable, so filling it once put the same name in
+  all three headings.
+
+  `find_collisions` could never catch this: it fires when one name is proposed
+  from **different** text, and here the text is identical. That is exactly what
+  made it silent. The new rule groups declared sites by name and refuses any
+  name whose sites span more than one heading; a repeat under a single heading
+  is one slot and still declares.
+
+  It deliberately refuses legitimate repeats too — an owner named under ten
+  headings of one deck now lands in the review queue instead of being guessed
+  at. Same asymmetry as everywhere else in this migration: a false negative
+  costs one line in a queue a human is already reading, a false positive ships a
+  document with the same value in three places and nothing downstream detects
+  it.
+
+  Measured on the corpus before any file was touched: **288 templates, 1,546
+  placeholder sites** move from declared to refused. Four `--self-test`
+  assertions, all proven red-before-green, including the converse — a genuine
+  repeat under one heading must still declare.
+
 - **Only a HAND-AUTHORED description now outranks the dictionary — 1,527 drafted
   overrides removed, 268 authored ones kept.** The third and last consequence of
   the rule I added in `d482c28c1`, and the one with the widest blast radius.

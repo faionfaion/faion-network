@@ -476,6 +476,33 @@ def build_plan(text: str, where: str) -> dict:
         if item["verdict"] == "parameter" and item["name"] in colliding:
             item["verdict"], item["reason"] = "unclear", "collision"
 
+    # CR-013 §2. One name bound to several sites under DIFFERENT headings is
+    # refused, because filling it once fills them all with the same value.
+    #
+    # `find_collisions` cannot catch this: it fires when one name is proposed
+    # from DIFFERENT text, and here the text is identical. That is exactly what
+    # made it silent — `hr/employee-value-proposition` rendered
+    # `## Competitor A: {{ name }}` / `B: {{ name }}` / `C: {{ name }}`, three
+    # companies sharing one variable, with nothing flagged.
+    #
+    # Refusing costs one line in a review queue a human is already reading.
+    # Declaring wrongly ships a document with the same value in three places and
+    # nothing downstream can detect it. That asymmetry is the whole rule, and it
+    # deliberately refuses legitimate repeats too — an owner named under ten
+    # headings of one deck lands in the queue rather than being guessed at.
+    sites: dict[str, list[dict]] = {}
+    for item in items:
+        if item["verdict"] == "parameter" and item["name"]:
+            sites.setdefault(item["name"], []).append(item)
+    for name, group in sites.items():
+        if len(group) < 2:
+            continue
+        if len({(g.get("heading") or "") for g in group}) < 2:
+            continue  # every site under one heading: one slot, repeated
+        for g in group:
+            g["verdict"], g["reason"] = "unclear", "multi-site"
+            g["name"] = None
+
     decls: list[dict] = []
     seen: set[str] = set()
     for item in items:
@@ -717,6 +744,43 @@ print(f"{owner} shipped {RELEASE_TAG}")
 ```
 """
 
+# CR-013 §2: three competitors, identical placeholder text, three headings.
+# `find_collisions` sees no collision because the text is identical — which is
+# exactly how this shipped silently in hr/employee-value-proposition.
+MULTI_SITE_FIXTURE = """<!--
+purpose: p
+consumes: c
+produces: markdown
+depends-on: d
+token-budget-impact: low
+-->
+# EVP benchmark
+
+## Competitor A
+- name: <name>
+
+## Competitor B
+- name: <name>
+
+## Competitor C
+- name: <name>
+"""
+
+# The converse: one heading, so one slot repeated. Must still declare.
+SAME_HEADING_FIXTURE = """<!--
+purpose: p
+consumes: c
+produces: markdown
+depends-on: d
+token-budget-impact: low
+-->
+# Service
+
+## Deploy
+- service: <service name>
+- restart: systemctl restart <service name>
+"""
+
 COLLIDE_FIXTURE = """# Inputs
 
 ## Wiring
@@ -816,6 +880,23 @@ def self_test() -> list[str]:
                         "merged instead of reported")
     if collided["declarations"]:
         failures.append("a collision still produced a declaration")
+
+    # CR-013 §2 — the same placeholder text under different headings is three
+    # slots, not one variable. Identical text means `find_collisions` sees no
+    # collision, which is precisely why this shipped silently.
+    multi = build_plan(MULTI_SITE_FIXTURE, "fixture")
+    if any(d["name"] == "name" for d in multi["declarations"]):
+        failures.append("multi-site: three competitors under three headings "
+                        "collapsed into one `name` variable")
+    if not [i for i in multi["items"] if i.get("reason") == "multi-site"]:
+        failures.append("multi-site: the repeat was not reported as unclear")
+    if "{{name}}" in multi["text"]:
+        failures.append("multi-site: a refused placeholder was substituted anyway")
+    # ...and a repeat under ONE heading is one slot, so it still declares.
+    same = build_plan(SAME_HEADING_FIXTURE, "fixture")
+    if not any(d["name"] == "service_name" for d in same["declarations"]):
+        failures.append("multi-site: a genuine repeat under one heading was "
+                        "refused — the rule is about differing headings")
 
     with tempfile.TemporaryDirectory() as tmp:
         target = Path(tmp) / "t.md"
