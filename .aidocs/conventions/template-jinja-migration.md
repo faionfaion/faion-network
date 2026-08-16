@@ -92,6 +92,59 @@ Drift is answered exactly as §1 answers it: **one generator writes every form i
 they drift only when someone hand-edits an output, which a `--check` that regenerates and compares
 can detect. That is the same shape `init_project.py --check` already has.
 
+## 1b. The runtime flow, and what it makes load-bearing
+
+**Ratified 2026-08-16.** The owner described the actual sequence:
+
+1. Client searches. The server answers **ascetically**: a template id plus the list of variables with
+   their descriptions.
+2. The **CLI fills what it can fill unambiguously** from project context and the project store.
+3. Everything left goes back into the main agent's context — to look up, or to put to the user.
+4. When every variable has a value, the client sends them to the backend.
+5. The **backend renders** the documents from the template.
+
+Three consequences, none of them cosmetic.
+
+### The schema is the wire format, so `description` is product copy
+
+`<name>.vars.schema.json` is not documentation about the template — it **is** what step 1 returns.
+`description` is the sentence an agent shows a human in step 3. A thin one (`"Requirement."`,
+`"Validated."`) is a defect at the protocol level, not an untidy comment. Measured on a 25-template
+sample: **3 of 45 variables** are too thin to ask a human with. That is a review-queue item, not a
+crisis — but it is now a product surface.
+
+### The server MUST dereference `$ref` before answering
+
+**16 of those 45 variables (36%) carry their description only in the dictionary**, because a `$ref`d
+property correctly holds no local `description`. A server that returns the schema verbatim hands the
+client an empty description for a third of its variables, and the agent then asks the user about
+something the corpus already explains.
+
+This is a hard requirement on the render/search endpoint in `faion-net-be`, and it is invisible
+until someone tests with a dictionary-backed variable. Written here because that endpoint does not
+exist yet and this is the note its author needs.
+
+### `$ref` coverage IS the auto-fill rate
+
+Step 2 can only fill a variable it can look up, and a lookup is only meaningful when the name is
+canonical. `owner_handle` can be resolved from the project store; `name` cannot, because nothing
+knows what it names. So the dictionary's coverage — **23.1%** of proposed declarations today — is not
+a tidiness metric. It is the share of variables the user is *not* asked about.
+
+**And this is where §8 of the findings stops being theoretical.** A `sensitive` variable is never
+written to the project store, so it can never be auto-filled in step 2. `owner_full_name` is carried
+by **814 templates**. Under the current rule, the corpus's single most common variable is the one
+question the user is asked every single time, forever — while the backend, which is the surface
+§2.2 was protecting, never needed to see it anyway.
+
+### Sensitive values do not travel in step 4
+
+Step 4 sends values to the backend. A `sensitive` value must not be among them. §2.2's mechanism
+already says what happens instead: the assembler emits the `placeholder`, and the client substitutes
+the real value into the returned document. Whoever writes the endpoint must implement that, because
+the obvious implementation — send everything, render everything — puts a named human on a
+multi-tenant server.
+
 ## 2. Variables live in JSON Schema
 
 ```

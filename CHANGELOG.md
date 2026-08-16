@@ -4,6 +4,36 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Ratified §1b: the runtime flow, and the three things it makes load-bearing.**
+  Search returns a template id plus variables-with-descriptions; the CLI fills what
+  it can unambiguously; the rest goes to the agent to look up or ask; then values go
+  to the backend, which renders.
+
+  **The schema is the wire format.** `<name>.vars.schema.json` is not documentation
+  about a template — it is what the search call returns, and `description` is the
+  sentence an agent puts to a human. Measured on 25 templates: 3 of 45 variables are
+  too thin to ask with (`"Requirement."`, `"Validated."`). A review-queue item, but
+  now a product surface rather than a comment.
+
+  **The server must dereference `$ref` before answering.** 16 of those 45 (36%) carry
+  their description *only* in the dictionary, because a `$ref`d property correctly
+  holds no local `description`. Return the schema verbatim and the client gets empty
+  descriptions for a third of its variables, then asks the user about something the
+  corpus already explains. Invisible until someone tests a dictionary-backed
+  variable; recorded because that endpoint does not exist yet.
+
+  **`$ref` coverage is the auto-fill rate**, not a tidiness metric — a lookup only
+  works when the name is canonical. Which makes §8 concrete: a sensitive variable is
+  never written to the project store, so it can never be auto-filled, and
+  `owner_full_name` is carried by **814 templates**. Under the current rule the
+  corpus's most common variable is the one question the user answers every time,
+  forever — while the backend that §2.2 was protecting never needed to see it.
+
+  Also noted: `doc_id = sha256(path + "\n" + body)[:16]`, over path **and** body, so
+  regenerating a `.md` changes that template's id. Not a break — links resolve by
+  slug and `cv` changes on every publish anyway — but anything holding a bare
+  `doc_id` without its `cv` will not survive the migration.
+
 - **Ratified `template-jinja-migration.md` §1a: rendering happens on the backend,
   and the `.md` survives as a generated output.** Both points came from the owner
   correcting a question I had asked from a false premise.
