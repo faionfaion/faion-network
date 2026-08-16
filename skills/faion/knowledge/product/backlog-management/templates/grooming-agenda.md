@@ -6,7 +6,7 @@ depends-on: content/04-procedure.xml (grooming procedure steps)
 token-budget-impact: ~300 tokens when filled
 -->
 
-# Grooming Session: <date>
+# Grooming Session: [Date]
 
 ## Attendees
 - Product: <name>
@@ -41,4 +41,4 @@ token-budget-impact: ~300 tokens when filled
 - Merged: <items_combined>
 - Deleted: <duplicate_ids_removed>
 
-## Next Session: <date>
+## Next Session: [Date]

@@ -7,7 +7,7 @@
 # Data Requirements: <feature_project_name>
 
 **Version:** 1.0
-**Analyst:** <name>
+**Analyst:** [Name]
 
 ## Data Overview
 
@@ -21,7 +21,7 @@
 
 ## Detailed Requirements
 
-### <entity_1>: <name>
+### <entity_1>: [Name]
 
 **Description:** <business_description>
 

@@ -13,8 +13,8 @@
 - "I usually discover tools through <source>"
 
 **Top discovery sources:**
-1. <channel_1>: [X]% of customers
-2. <channel_2>: [X]% of customers
+1. [Channel 1]: [X]% of customers
+2. [Channel 2]: [X]% of customers
 3. <channel_3>: [X]% of customers
 
 ### Channel Evaluation
@@ -40,7 +40,7 @@
 ### Recommended Channel Strategy
 
 **Phase 1 (0-$10K MRR):** Primary: [Channel]. Test budget: $[X]. Success metric: CAC < $[X].
-**Phase 2 ($10-50K MRR):** Add: <channel_2>. Scale: <channel_1> if LTV:CAC > 3:1.
+**Phase 2 ($10-50K MRR):** Add: [Channel 2]. Scale: [Channel 1] if LTV:CAC > 3:1.
 
 ### Testing Plan
 

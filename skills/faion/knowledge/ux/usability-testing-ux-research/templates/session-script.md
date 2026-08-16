@@ -10,7 +10,7 @@
 
 "Hi [name], thanks for joining today. I'm [name], and I'll be guiding you through this session.
 
-We're testing <product>, not testing you. There are no wrong answers. We want honest feedback
+We're testing [product], not testing you. There are no wrong answers. We want honest feedback
 to improve the product.
 
 I'd like you to think aloud as you work — tell me what you're thinking, what you expect, and
@@ -41,7 +41,7 @@ Do you have any questions before we start?"
 
 ## Post-test Questions (10 min)
 
-1. What was your overall impression of <product>?
+1. What was your overall impression of [product]?
 2. What would you change if you could?
 3. Is there anything you expected to find but didn't?
 4. Would you use this product? Why or why not?

@@ -8,13 +8,13 @@ token-budget-impact: ~340 tokens when filled
 
 # Stakeholder Profile: <name_role>
 
-**Initiative:** <name>
+**Initiative:** [Name]
 **Stakeholder ID:** S-<stakeholder_id>
-**Last Updated:** <last_reviewed_date>
+**Last Updated:** [Date]
 
 ## Basic Information
 
-- **Name:** <name>
+- **Name:** [Name]
 - **Title:** <title>
 - **Department:** <dept>
 - **Category:** Customer / EndUser / Sponsor / DomainSME / ImplementationSME / Tester / Regulator / Supplier
@@ -61,4 +61,4 @@ token-budget-impact: ~340 tokens when filled
 
 | Date | Type | Summary | Follow-up |
 |------|------|---------|-----------|
-| <date> | Interview / Workshop / Email | <brief_summary> | <action> |
+| [Date] | Interview / Workshop / Email | <brief_summary> | <action> |

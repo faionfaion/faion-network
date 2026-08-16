@@ -21,7 +21,7 @@ token-budget-impact: ~200-600 tokens when loaded as context
 |--------|-----------|-----------|-------|
 | Stories | <stories> | <stories> | {+/-N} |
 | Points | <points> | <points> | {+/-N} |
-| Bugs Fixed | <bugs_fixed> | <bugs_fixed> | {+/-N} |
+| Bugs Fixed | {N} | {N} | {+/-N} |
 | Scope Added | — | <scope_added> | — |
 
 ## Completed Items
@@ -36,7 +36,7 @@ token-budget-impact: ~200-600 tokens when loaded as context
 
 ## Quality Metrics
 - Bugs Found: <bugs_found>
-- Bugs Fixed: <bugs_fixed>
+- Bugs Fixed: {N}
 - Escaped Defects (found in prod): {N}
 - Test Coverage Change: {+/-N}%
 

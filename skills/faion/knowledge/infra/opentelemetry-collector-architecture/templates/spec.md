@@ -5,11 +5,11 @@ produces: filled spec artefact validated by scripts/validate-opentelemetry-colle
 depends-on: content/01-core-rules.xml, content/02-output-contract.xml
 token-budget-impact: ~600 tokens for a typical instance
 -->
-# OpenTelemetry Collector Architecture — <artefact_id>
+# OpenTelemetry Collector Architecture — {artefact_id}
 
 | Field | Value |
 |-------|-------|
-| artefact_id | <artefact_id> |
+| artefact_id | {artefact_id} |
 | produces | spec |
 | owner | <owner> |
 | version | <version> |

@@ -5,11 +5,11 @@ produces: filled report artefact validated by scripts/validate-on-call-shift-ret
 depends-on: content/01-core-rules.xml, content/02-output-contract.xml
 token-budget-impact: ~600 tokens for a typical instance
 -->
-# On-Call Shift Retro Cadence — <artefact_id>
+# On-Call Shift Retro Cadence — {artefact_id}
 
 | Field | Value |
 |-------|-------|
-| artefact_id | <artefact_id> |
+| artefact_id | {artefact_id} |
 | produces | report |
 | owner | <owner> |
 | version | <version> |

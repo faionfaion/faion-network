@@ -18,7 +18,7 @@
 
 | Card A | Card B | Co-occurrence | Proposed Category |
 |--------|--------|---------------|-------------------|
-| [Card] | [Card] | [X]% | <category_name> |
+| [Card] | [Card] | [X]% | [Category name] |
 
 ## Borderline Items (40-70% co-occurrence)
 
@@ -40,11 +40,11 @@
 
 ## Proposed IA Structure
 
-L1: <category_name>
+L1: [Category name]
   L2: <subcategory> — [N% agreement from sort data]
   L2: <subcategory> — [N% agreement from sort data]
 
-L1: <category_name>
+L1: [Category name]
   L2: <subcategory>
 
 ## Recommended Next Steps

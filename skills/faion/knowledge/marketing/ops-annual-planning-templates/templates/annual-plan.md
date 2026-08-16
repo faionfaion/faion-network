@@ -4,10 +4,10 @@
 <!-- depends-on: content/01-core-rules.xml (r1-fill-order, r3-not-doing-list-min-3) -->
 <!-- token-budget-impact: ~350-550 tokens when loaded as context -->
 
-# Annual Plan: <year>
+# Annual Plan: [Year]
 
 ## Vision
-[Where you want to be by December <year> — vivid, specific, personal. Human writes this.]
+[Where you want to be by December [Year] — vivid, specific, personal. Human writes this.]
 
 ## Theme
 [One word or phrase that captures the year's direction]
@@ -31,21 +31,21 @@
 
 ## Quarterly Breakdown
 
-### Q1: <theme>
+### Q1: [Theme]
 Goals: [Goal 1 quarterly milestone] | [Goal 2 quarterly milestone]
-Key initiatives: <initiative_1> | <initiative_2>
+Key initiatives: [Initiative 1] | [Initiative 2]
 
-### Q2: <theme>
+### Q2: [Theme]
 Goals: [Goal 1 quarterly milestone] | [Goal 2 quarterly milestone]
-Key initiatives: <initiative_1> | <initiative_2>
+Key initiatives: [Initiative 1] | [Initiative 2]
 
-### Q3: <theme>
+### Q3: [Theme]
 Goals: [Goal 1 quarterly milestone] | [Goal 2 quarterly milestone]
-Key initiatives: <initiative_1> | <initiative_2>
+Key initiatives: [Initiative 1] | [Initiative 2]
 
-### Q4: <theme>
+### Q4: [Theme]
 Goals: [Goal 1 quarterly milestone] | [Goal 2 quarterly milestone]
-Key initiatives: <initiative_1> | <initiative_2>
+Key initiatives: [Initiative 1] | [Initiative 2]
 
 ## Budget
 | Category | Annual | Monthly |

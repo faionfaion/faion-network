@@ -8,7 +8,7 @@ token-budget-impact: ~350 tokens when loaded as context
 
 # [Feature Name]
 
-<!-- RICE fields are <estimate> until validated with real user data -->
+<!-- RICE fields are [estimate] until validated with real user data -->
 
 ## Metadata
 
@@ -26,7 +26,7 @@ One sentence: what problem does this solve and for whom?
 
 Brief description of the solution approach.
 
-## RICE Score <estimate>
+## RICE Score [estimate]
 
 | Field | Value | Notes |
 |-------|-------|-------|

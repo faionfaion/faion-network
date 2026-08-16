@@ -14,7 +14,7 @@ token-budget-impact: ~400 tokens when filled
 
 ---
 
-## Question 1: <behavioral_question_text>
+## Question 1: [Behavioral question text]
 
 **Competency:** [e.g., Ownership]
 
@@ -36,7 +36,7 @@ token-budget-impact: ~400 tokens when filled
 
 ---
 
-## Question 2: <behavioral_question_text>
+## Question 2: [Behavioral question text]
 
 **Competency:** [e.g., Problem-Solving]
 
@@ -51,7 +51,7 @@ token-budget-impact: ~400 tokens when filled
 
 ---
 
-## Question 3: <behavioral_question_text>
+## Question 3: [Behavioral question text]
 
 **Competency:** [e.g., Collaboration]
 

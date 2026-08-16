@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~250 tokens filled -->
 
-# Component: <name>
+# Component: [Name]
 
 ## Purpose
 
@@ -12,18 +12,18 @@
 
 ## Variants
 
-### Variant 1: <name>
+### Variant 1: [Name]
 
 [Wireframe or description]
 
-- When to use: <context>
-- When NOT to use: <anti_context>
+- When to use: [Context]
+- When NOT to use: [Anti-context]
 
-### Variant 2: <name>
+### Variant 2: [Name]
 
 [Wireframe or description]
 
-- When to use: <context>
+- When to use: [Context]
 
 ## States
 
@@ -46,6 +46,6 @@
 
 ## Usage Notes
 
-- Use when: <context>
-- Do not use when: <anti_context>
+- Use when: [Context]
+- Do not use when: [Anti-context]
 - Accessibility: [Keyboard behavior, ARIA role]

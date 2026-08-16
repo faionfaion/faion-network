@@ -7,8 +7,8 @@
 # Usability Test Plan: <product_feature>
 
 **Version:** [X.X]
-**Date:** <date>
-**Researcher:** <name>
+**Date:** [Date]
+**Researcher:** [Name]
 
 ## Objectives
 
@@ -39,13 +39,13 @@ What questions will this study answer?
 
 ## Tasks
 
-### Task 1: <name>
+### Task 1: [Name]
 **Scenario:** [Context for user]
 **Task:** [What to accomplish — no solution hints]
 **Success criteria:** [How to measure success]
 **Time limit:** <x_minutes>
 
-### Task 2: <name>
+### Task 2: [Name]
 <same_structure>
 
 ## Metrics
@@ -61,7 +61,7 @@ What questions will this study answer?
 
 | Date | Time | Participant |
 |------|------|-------------|
-| <date> | <time> | P1 |
+| [Date] | <time> | P1 |
 
 ## Deliverables
 

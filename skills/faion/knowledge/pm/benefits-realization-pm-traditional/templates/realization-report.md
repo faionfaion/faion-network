@@ -7,7 +7,7 @@
 # Benefits Realization Report: <project_name>
 
 **Reporting Period:** <date_range>
-**Report Date:** <date>
+**Report Date:** [Date]
 
 ## Executive Summary
 [2-3 sentences on overall benefits status — RAG and top driver.]
@@ -25,7 +25,7 @@ RAG rubric: GREEN >= 90% of expected; YELLOW 70-89%; RED < 70%.
 
 | Benefit | Root Cause | Evidence | Corrective Action | Owner | Due |
 |---------|------------|----------|-------------------|-------|-----|
-| B-02 | Low adoption | <evidence> | <action> | [Name] | <date> |
+| B-02 | Low adoption | <evidence> | <action> | [Name] | [Date] |
 
 ## Forecast
 [Updated projection for full benefits realization, with assumptions.]
@@ -33,4 +33,4 @@ RAG rubric: GREEN >= 90% of expected; YELLOW 70-89%; RED < 70%.
 ## Sponsor Override (if softening RED)
 **Benefit ID:** <b_nn>
 **Override rationale:** [Explicit reason — must be signed by sponsor]
-**Sponsor:** [Name] **Date:** <date>
+**Sponsor:** [Name] **Date:** [Date]

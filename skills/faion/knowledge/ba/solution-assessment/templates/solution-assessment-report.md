@@ -49,7 +49,7 @@ _Accept requires zero Critical issues and zero Not Met requirements._
 
 | Issue | Severity | Impact | Recommendation |
 |-------|----------|--------|----------------|
-| <issue> | Critical / High / Medium / Low | [Impact] | <action> |
+| <issue> | Critical / High / Medium / Low | [Impact] | [Action] |
 
 ## Limitations
 
@@ -62,10 +62,10 @@ _Accept requires zero Critical issues and zero Not Met requirements._
 **Verdict:** Accept / Accept with conditions / Require changes / Reject
 
 ### Immediate (0-30 days)
-1. <action>
+1. [Action]
 
 ### Short-term (30-90 days)
-1. <action>
+1. [Action]
 
 ### Long-term (90+ days)
-1. <action>
+1. [Action]

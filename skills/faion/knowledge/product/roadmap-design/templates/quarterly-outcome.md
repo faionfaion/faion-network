@@ -20,7 +20,7 @@ token-budget-impact: ~500 tokens when filled
 ### Initiatives by Theme
 
 #### Theme 1: [Name]
-**Drives:** <which_objective>
+**Drives:** [Which objective]
 
 | Initiative | Confidence | Effort | Owner | Measure |
 |------------|------------|--------|-------|---------|
@@ -28,7 +28,7 @@ token-budget-impact: ~500 tokens when filled
 | <init_2> | Medium | L | [Name] | [How to measure success] |
 
 #### Theme 2: [Name]
-**Drives:** <which_objective>
+**Drives:** [Which objective]
 
 | Initiative | Confidence | Effort | Owner | Measure |
 |------------|------------|--------|-------|---------|

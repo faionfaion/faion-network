@@ -13,12 +13,12 @@
 
 | # | Tactic | Source | Impact | Confidence | Ease | ICE | Bucket |
 |---|--------|--------|--------|------------|------|-----|--------|
-| 1 | <name> | <SECTION> | <I> | <c> | <e> | <sum> | <bucket> |
+| 1 | <NAME> | <SECTION> | <I> | <c> | <e> | <sum> | <bucket> |
 | 2 | ... |  |  |  |  |  |  |
 
 ## Per-tactic details
 
-### 1. <name>
+### 1. <NAME>
 
 - **Hypothesis:** <HYPOTHESIS>
 - **Source section:** <SECTION>
@@ -29,7 +29,7 @@
 
 Tactics requiring finance + retention review (free-tier limit changes):
 
-- [ ] <name> — owner: <owner>
+- [ ] <NAME> — owner: <owner>
 
 ## Notes
 

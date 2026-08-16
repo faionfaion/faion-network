@@ -23,12 +23,12 @@ token-budget-impact: ~250 tokens when loaded as context
 **And** <additional_observable_outcome>
 
 ### Scenario 2: <alternative_path_name>
-**Given** <precondition>
+**Given** [precondition]
 **When** <when>
 **Then** [expected outcome for this variation]
 
 ### Scenario 3: <error_scenario_name>
-**Given** <precondition>
+**Given** [precondition]
 **When** [action that triggers the error condition]
 **Then** [error message or system recovery behavior — observable]
 **And** [system state after error — no partial changes, rollback, etc.]

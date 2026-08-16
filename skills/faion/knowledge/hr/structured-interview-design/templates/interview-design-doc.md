@@ -44,7 +44,7 @@ Total weight must equal 100%.
 ### Round 2: Technical / Skills (60 min)
 **Interviewer:** [Name, Title]
 **Format:** Video or on-site
-**Competencies covered:** <competency_1>, <competency_2>
+**Competencies covered:** [Competency 1], <competency_2>
 
 **Questions:**
 1. [Technical question — 20 min]
@@ -84,7 +84,7 @@ Total weight must equal 100%.
 | 2 | Developing — below expectations |
 | 1 | Insufficient — does not meet requirements |
 
-### Behavioral Anchors: <competency_1>
+### Behavioral Anchors: [Competency 1]
 
 | Score | Behavior |
 |-------|----------|

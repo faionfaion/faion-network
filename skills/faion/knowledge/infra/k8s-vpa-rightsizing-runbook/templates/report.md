@@ -5,11 +5,11 @@ produces: filled report artefact validated by scripts/validate-k8s-vpa-rightsizi
 depends-on: content/01-core-rules.xml, content/02-output-contract.xml
 token-budget-impact: ~600 tokens for a typical instance
 -->
-# K8s VPA Rightsizing Runbook — <artefact_id>
+# K8s VPA Rightsizing Runbook — {artefact_id}
 
 | Field | Value |
 |-------|-------|
-| artefact_id | <artefact_id> |
+| artefact_id | {artefact_id} |
 | produces | report |
 | owner | <owner> |
 | version | <version> |

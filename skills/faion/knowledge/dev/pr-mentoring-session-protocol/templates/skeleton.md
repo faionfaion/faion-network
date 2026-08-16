@@ -7,19 +7,19 @@ token-budget-impact: ~500 tokens to fill end-to-end.
 -->
 ---
 version: 0.1.0
-owner: role:<owner_handle>
+owner: role:<handle>
 last_reviewed: YYYY-MM-DD
-trigger_url: <trigger_url>
+trigger_url: <URL>
 ---
 
 # Trigger
 
 - kind: <trigger_kind>
-- url:  <trigger_url>
+- url:  <URL>
 
 # Owner
 
-- role:<owner_handle>
+- role:<handle>
 
 # Inputs
 

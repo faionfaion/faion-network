@@ -20,7 +20,7 @@ Legend: Y = present | N = absent | P = partial / on roadmap
 | Feature | <comp_1> | <comp_2> | <comp_3> | <comp_4> | <comp_5> | Classification |
 |---------|----------|----------|----------|----------|----------|----------------|
 | [Feature A] | Y | Y | Y | Y | Y | Table stakes |
-| <feature_b> | Y | Y | N | P | N | Opportunity |
+| [Feature B] | Y | Y | N | P | N | Opportunity |
 | <feature_c> | N | N | N | N | N | Validate demand |
 | <feature_d> | Y | N | N | N | N | Opportunity |
 
@@ -42,7 +42,7 @@ Legend: Y = present | N = absent | P = partial / on roadmap
 
 For each feature classified as Opportunity or Validate demand, document evidence before claiming whitespace.
 
-### <feature_b>
+### [Feature B]
 
 **Classification:** Opportunity
 

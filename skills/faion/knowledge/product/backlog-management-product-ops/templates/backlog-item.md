@@ -16,15 +16,15 @@ token-budget-impact: ~220 tokens when filled
 
 ### User Story
 **As a** <user_type>
-**I want** <action>
+**I want** {action}
 **So that** <benefit>
 
 ### Context
 {Background: why this matters, who asked, what triggered it}
 
 ### Acceptance Criteria
-- [ ] Given <context>, when <action>, then <result>
-- [ ] Given <context>, when <action>, then <result>
+- [ ] Given <context>, when {action}, then <result>
+- [ ] Given <context>, when {action}, then <result>
 - [ ] {Additional criterion — minimum 3 distinct preconditions}
 
 ### Out of Scope

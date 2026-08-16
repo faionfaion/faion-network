@@ -7,16 +7,16 @@
 ## Week of <date>
 
 ### Problems I Encountered
-1. <problem_description> — Potential idea: <y_n> — Notes: [X]
-2. <problem_description> — Potential idea: <y_n> — Notes: [X]
+1. <problem_description> — Potential idea: [Y/N] — Notes: [X]
+2. <problem_description> — Potential idea: [Y/N] — Notes: [X]
 
 ### Complaints I Saw Online
-1. <source_url> — Summary: [pain in one line] — Potential idea: <y_n>
-2. <source_url> — Summary: [pain in one line] — Potential idea: <y_n>
+1. <source_url> — Summary: [pain in one line] — Potential idea: [Y/N]
+2. <source_url> — Summary: [pain in one line] — Potential idea: [Y/N]
 
 ### Interesting Services on Upwork/Fiverr
-1. <gig_type> — Frequency: <high_medium> — Could be productized: <y_n>
-2. <gig_type> — Frequency: <high_medium> — Could be productized: <y_n>
+1. <gig_type> — Frequency: <high_medium> — Could be productized: [Y/N]
+2. <gig_type> — Frequency: <high_medium> — Could be productized: [Y/N]
 
 ### Market Stacking Observations
 1. [Niche A] x <niche_b> = <potential_angle>

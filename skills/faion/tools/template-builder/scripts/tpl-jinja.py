@@ -504,11 +504,16 @@ def convert(text: str, stem: str, *, dictionary: dict,
             item["verdict"] = "unclear"
             item["reason"] = "per-row-table"
             item["name"] = None
+    # CR-013 §2, the rule itself in tpl-migrate so the report and the file on
+    # disk cannot disagree. A per-row repeat is one slot down a table body; this
+    # is the other shape — the same text under several headings, meaning a
+    # different thing under each.
+    MIGRATE.refuse_multi_site(items)
 
     # Exact dictionary match first (apply_resolver skips those), then the
-    # resolver, then a local declaration. Per-row and collision downgrades run
-    # BEFORE this on purpose: a name the converter already refuses to declare
-    # is not a name the resolver gets a second go at.
+    # resolver, then a local declaration. Per-row, collision and multi-site
+    # downgrades run BEFORE this on purpose: a name the converter already
+    # refuses to declare is not a name the resolver gets a second go at.
     resolutions = apply_resolver(items, resolver or [], dictionary, declared)
 
     new_body = body
@@ -1629,7 +1634,7 @@ def migrate_checks() -> list[str]:
 
 def self_test() -> list[str]:
     """Every judgement and every guarantee this converter is not allowed to
-    get wrong. Eighty-nine checks."""
+    get wrong. Ninety-three checks."""
     failures: list[str] = []
     try:
         mods = JINJA.load_jinja()
@@ -1692,6 +1697,23 @@ def self_test() -> list[str]:
         failures.append("a per-row table placeholder was not reported")
     if "<risk_title>" not in table["md_j2"]:
         failures.append("a per-row table placeholder was rewritten anyway")
+
+    # CR-013 §2 through THIS path, not just through build_plan's report. The
+    # rule shipped inside build_plan alone, which no writer calls, so every
+    # report said "refused" while every file on disk still collapsed.
+    multi = _convert(MIGRATE.MULTI_SITE_FIXTURE)
+    if "name" in multi["schema"]["properties"]:
+        failures.append("multi-site: three competitors under three headings "
+                        "collapsed into one `name` variable")
+    if "{{ name }}" in multi["md_j2"]:
+        failures.append("multi-site: a refused placeholder was substituted "
+                        "anyway")
+    if not any(i["reason"] == "multi-site" for i in multi["items"]):
+        failures.append("multi-site: the repeat was not reported as unclear")
+    same = _convert(MIGRATE.SAME_HEADING_FIXTURE)
+    if "service_name" not in same["schema"]["properties"]:
+        failures.append("multi-site: a genuine repeat under one heading was "
+                        "refused — the rule is about differing headings")
 
     brace = _convert(BRACE_FIXTURE)
     if "product_name" not in brace["schema"]["properties"]:
@@ -1870,7 +1892,7 @@ def main() -> int:
         failures = self_test()
         for failure in failures:
             print(f"{NAME}: self-test: {failure}", file=sys.stderr)
-        print(f"{NAME}: self-test checks=89 failures={len(failures)}")
+        print(f"{NAME}: self-test checks=93 failures={len(failures)}")
         return 1 if failures else 0
 
     try:

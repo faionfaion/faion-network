@@ -12,14 +12,14 @@ token-budget-impact: ~200-500 tokens when loaded as context
 | Workstream | RAG | Owner | Budget % | Notes |
 |------------|-----|-------|----------|-------|
 | <ws1> | G | {owner} | {n}% | |
-| <ws2> | A | {owner} | {n}% | |
+| {ws2} | A | {owner} | {n}% | |
 | <ws3> | G | {owner} | {n}% | |
-| <ws4> | R | {owner} | {n}% | |
+| {ws4} | R | {owner} | {n}% | |
 
 ## Amber / Red rows
 
-- **<ws2> (Amber):** {one sentence cause + action + when reverts to Green}.
-- **<ws4> (Red):** {one sentence cause + escalation needed}.
+- **{ws2} (Amber):** {one sentence cause + action + when reverts to Green}.
+- **{ws4} (Red):** {one sentence cause + escalation needed}.
 
 ## Plan delta
 

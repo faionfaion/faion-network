@@ -26,15 +26,15 @@ Keep under 100 words. This is the choice, not the justification.}
 
 ## Alternatives Considered
 
-### Alternative 1: <name>
-- **Pros:** <benefits>
-- **Cons:** <drawbacks>
-- **Why rejected:** <specific_reason>
+### Alternative 1: {Name}
+- **Pros:** {benefits}
+- **Cons:** {drawbacks}
+- **Why rejected:** {specific reason}
 
-### Alternative 2: <name>
-- **Pros:** <benefits>
-- **Cons:** <drawbacks>
-- **Why rejected:** <specific_reason>
+### Alternative 2: {Name}
+- **Pros:** {benefits}
+- **Cons:** {drawbacks}
+- **Why rejected:** {specific reason}
 
 ## Consequences
 

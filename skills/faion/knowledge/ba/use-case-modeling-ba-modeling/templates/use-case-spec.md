@@ -42,8 +42,8 @@ _(5-9 steps required)_
 
 ## Alternative Flows
 
-### AF-1: <name>
-**Trigger:** At step <trigger>, <condition>.
+### AF-1: [Name]
+**Trigger:** At step [N], <condition>.
 | Step | Actor Action | System Response |
 |------|--------------|-----------------|
 | [N]a | <action> | <response> |
@@ -52,8 +52,8 @@ _(5-9 steps required)_
 
 ## Exception Flows
 
-### EX-1: <name>
-**Trigger:** At step <trigger>, <error_condition>.
+### EX-1: [Name]
+**Trigger:** At step [N], <error_condition>.
 | Step | System Response |
 |------|-----------------|
 | 1    | <error_handling_behavior> |

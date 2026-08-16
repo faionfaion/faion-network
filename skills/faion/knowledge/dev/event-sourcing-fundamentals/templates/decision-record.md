@@ -4,11 +4,11 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~150 tokens when loaded as reference -->
 
-# ADR-NNN — Event Sourcing for <aggregate>
+# ADR-NNN — Event Sourcing for <Aggregate>
 
 ## Context
 
-Aggregate: <aggregate>
+Aggregate: <Aggregate>
 Date: <date>
 Decision-maker: <name>
 

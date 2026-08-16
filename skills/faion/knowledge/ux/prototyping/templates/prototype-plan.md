@@ -8,7 +8,7 @@ token-budget-impact: ~600-1500 tokens once filled
 # Prototype Plan: <feature_product>
 
 **Version:** [X.X]
-**Designer:** <name>
+**Designer:** [Name]
 
 ## Objectives
 
@@ -33,7 +33,7 @@ What testable questions will this prototype answer? (max 3)
 
 ## User Flows
 
-### Flow 1: <name>
+### Flow 1: [Name]
 1. <start_screen>
 2. <step_2>
 3. <end_screen>

@@ -16,13 +16,13 @@
 ### Four Actions
 
 #### Eliminate (remove entirely — costly but low value)
-- <factor>: Why: [reason based on competitive analysis]
+- [Factor]: Why: [reason based on competitive analysis]
 
 #### Reduce (below industry standard — over-engineered)
-- <factor>: From [X] to <y>: <rationale>
+- [Factor]: From [X] to [Y]: <rationale>
 
 #### Raise (above industry standard — underserved need)
-- <factor>: From [X] to <y>: [evidence from buyer interviews or reviews]
+- [Factor]: From [X] to [Y]: [evidence from buyer interviews or reviews]
 
 #### Create (new factors the industry has never offered)
 - <new_factor>: <description> — evidence of demand: <source>

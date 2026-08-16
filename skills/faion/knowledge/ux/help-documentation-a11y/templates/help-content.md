@@ -15,15 +15,15 @@
 
 ## Steps
 
-### Step 1: <action>
+### Step 1: [Action]
 
 [Detailed instruction. One action per step.]
 
-### Step 2: <action>
+### Step 2: [Action]
 
 [Detailed instruction.]
 
-### Step 3: <action>
+### Step 3: [Action]
 
 [Detailed instruction.]
 

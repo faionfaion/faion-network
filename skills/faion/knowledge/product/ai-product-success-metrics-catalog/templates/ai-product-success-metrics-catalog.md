@@ -29,7 +29,7 @@ inputs_used:
 ## Intervention rate
 
 - Definition: percentage of sessions where a human had to step in.
-- Source: <log_table>
+- Source: <log table>
 - Baseline: <%>
 
 ## Hallucination rate
@@ -41,7 +41,7 @@ inputs_used:
 ## Time-to-correction
 
 - Definition: median minutes between a wrong AI output and the corrected one (after user / human intervention).
-- Source: <log_table>
+- Source: <log table>
 - Baseline: <minutes>
 
 ## Retention on AI features

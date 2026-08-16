@@ -44,11 +44,11 @@
 
 For <target_customer>
 who <situation_need>
-<product> is the <category>
+[Product] is the <category>
 that <key_benefit>
 unlike <alternatives>
 we <unique_differentiator>.
 
 ## External One-Liner
 
-<product> helps <audience> to <outcome> by <unique_approach>.
+[Product] helps <audience> to <outcome> by <unique_approach>.

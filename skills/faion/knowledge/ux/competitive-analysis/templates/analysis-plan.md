@@ -7,7 +7,7 @@
 # Competitive Analysis Plan
 
 **Product / Feature:** [What we're analyzing]
-**Date:** <date>
+**Date:** [Date]
 **Analyst:** [Name]
 
 ## Objective
@@ -46,6 +46,6 @@
 ## Schedule
 
 - Research (using products): <date_range>
-- Documentation and synthesis: <date>
-- Report shared with team: <date>
-- Quarterly review scheduled: <date>
+- Documentation and synthesis: [Date]
+- Report shared with team: [Date]
+- Quarterly review scheduled: [Date]

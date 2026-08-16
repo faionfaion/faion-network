@@ -12,7 +12,7 @@
 
 ### Segments Identified
 
-#### Segment 1: <name>
+#### Segment 1: [Name]
 
 **Profile:**
 - [Demographic or firmographic 1]
@@ -43,7 +43,7 @@
 
 ---
 
-#### Segment 2: <name>
+#### Segment 2: [Name]
 [Repeat structure above]
 
 ### Segment Comparison

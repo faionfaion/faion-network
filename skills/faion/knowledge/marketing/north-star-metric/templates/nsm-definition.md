@@ -38,8 +38,8 @@ token-budget-impact: ~250-600 tokens when loaded as context
 
 <url>
 
-## Validation Test Results (last run: <date>)
+## Validation Test Results (last run: [date])
 
 - NSM up → retention up: <yes_no_inconclusive>
 - NSM down → churn up: <yes_no_inconclusive>
-- Next review: <date>
+- Next review: [date]

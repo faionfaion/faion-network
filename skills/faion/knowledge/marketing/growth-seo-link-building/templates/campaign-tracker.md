@@ -16,7 +16,7 @@
 
 ### Prospecting
 - Method: <method>
-- Target sites: <number>
+- Target sites: [number]
 - Qualification criteria: DR [X]+, relevant audience
 
 ### Outreach
@@ -31,12 +31,12 @@
 | ... | ...     | ...   | Date | Yes/No   | Yes/No | ...  |
 
 ### Metrics
-- Sent: <number>
-- Responses: <number>
-- Links secured: <number>
+- Sent: [number]
+- Responses: [number]
+- Links secured: [number]
 - Response rate: [%]
 - Link rate: [%]
-- Avg DR of new links: <number>
+- Avg DR of new links: [number]
 
 ### Learnings
 - What worked:

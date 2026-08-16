@@ -10,13 +10,13 @@ Last updated: <last_updated>
 
 ## Our commitment
 
-<company> is committed to digital accessibility for users with disabilities. We design and build our products to meet recognized standards under WCAG <version> level <level>.
+<company> is committed to digital accessibility for users with disabilities. We design and build our products to meet recognized standards under WCAG <VERSION> level <LEVEL>.
 
 ## Conformance
 
 We measure against:
 
-- WCAG <version> level <level> (design baseline).
+- WCAG <VERSION> level <LEVEL> (design baseline).
 - ADA Title II (United States, public-accommodation surfaces) — effective April 2026.
 - European Accessibility Act / EN 301 549 (European Union) — effective June 2025.
 - AODA (Ontario, Canada) — current.

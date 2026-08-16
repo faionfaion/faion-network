@@ -48,27 +48,27 @@ token-budget-impact: ~560 tokens when filled
 
 ## Functional Requirements
 
-### FR-1: <requirement_title>
+### FR-1: {Requirement title}
 
 {Full description of what the system must do — active voice, present tense}
 
 **Acceptance Criteria:**
-- Given: <precondition>
-- When: <action>
-- Then: <verifiable_result>
+- Given: {precondition}
+- When: {action}
+- Then: {verifiable result}
 
-### FR-2: <requirement_title>
+### FR-2: {Requirement title}
 
 <full_description>
 
 **Acceptance Criteria:**
-- Given: <precondition>
-- When: <action>
-- Then: <verifiable_result>
+- Given: {precondition}
+- When: {action}
+- Then: {verifiable result}
 
 **Edge case:**
 - Given: <error_precondition>
-- When: <action>
+- When: {action}
 - Then: <error_handling_result>
 
 ## Non-Functional Requirements

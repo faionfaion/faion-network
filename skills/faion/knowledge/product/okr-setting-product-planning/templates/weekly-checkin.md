@@ -15,7 +15,7 @@ token-budget-impact: ~300 tokens when filled
 
 ### By Objective
 
-#### O1: <name>
+#### O1: [Name]
 | KR | Progress | Confidence | Notes |
 |----|----------|------------|-------|
 | KR 1.1 | [X]% | High / Med / Low | [Updates] |
@@ -24,7 +24,7 @@ token-budget-impact: ~300 tokens when filled
 **Blockers:** [Any blockers]
 **Help needed:** <specific_requests>
 
-#### O2: <name>
+#### O2: [Name]
 | KR | Progress | Confidence | Notes |
 |----|----------|------------|-------|
 | KR 2.1 | [X]% | High / Med / Low | [Updates] |

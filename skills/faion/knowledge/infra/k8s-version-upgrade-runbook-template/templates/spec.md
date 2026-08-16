@@ -5,11 +5,11 @@ produces: filled spec artefact validated by scripts/validate-k8s-version-upgrade
 depends-on: content/01-core-rules.xml, content/02-output-contract.xml
 token-budget-impact: ~600 tokens for a typical instance
 -->
-# K8s Version Upgrade Runbook Template — <artefact_id>
+# K8s Version Upgrade Runbook Template — {artefact_id}
 
 | Field | Value |
 |-------|-------|
-| artefact_id | <artefact_id> |
+| artefact_id | {artefact_id} |
 | produces | spec |
 | owner | <owner> |
 | version | <version> |

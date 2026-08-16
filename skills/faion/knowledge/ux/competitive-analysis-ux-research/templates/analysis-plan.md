@@ -7,7 +7,7 @@
 # Competitive Analysis Plan
 
 **Product/Feature:** [What we're analyzing]
-**Date:** <date>
+**Date:** [Date]
 **Analyst:** [Name]
 
 ## Objective
@@ -57,5 +57,5 @@ Maximum: 5 direct + 3 indirect + 2 aspirational = 8 total
 ## Timeline
 
 - Research: <date_range>
-- Analysis and patterns: <date>
-- Report: <date>
+- Analysis and patterns: [Date]
+- Report: [Date]

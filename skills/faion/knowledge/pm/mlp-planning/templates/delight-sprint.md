@@ -10,7 +10,7 @@
 
 **Area:** [Part of product — single workflow only]
 **Duration:** [X] days (max 14)
-**Goal:** Add delight to <specific_workflow> to increase <metric> from [X] to <y>
+**Goal:** Add delight to <specific_workflow> to increase <metric> from [X] to [Y]
 
 ### Current Experience
 
@@ -40,5 +40,5 @@ User reaction we aim for: "[What we want them to feel or say]"
 ### Success Criteria
 
 - [ ] <specific_measurable_outcome>
-- [ ] User testing: [X] of <y> participants react positively (smile, exclaim, comment)
+- [ ] User testing: [X] of [Y] participants react positively (smile, exclaim, comment)
 - [ ] Kill-switch metrics remain within threshold after 1-week flag rollout

@@ -9,7 +9,7 @@ token-budget-impact: ~600-1000 tokens when loaded as context
 # RFC-{NNN}: <title>
 
 **Status:** Draft / Under Review / Accepted / Rejected / Superseded
-**Author:** <author_name>
+**Author:** {name}
 **Created:** <created>
 **Last updated:** <last_updated>
 **Supersedes:** RFC-<supersedes> (if applicable)
@@ -37,11 +37,11 @@ token-budget-impact: ~600-1000 tokens when loaded as context
 
 ## Alternatives Considered
 
-### Alternative A: <name>
+### Alternative A: {name}
 
 {Description, pros, cons, why not chosen}
 
-### Alternative B: <name>
+### Alternative B: {name}
 
 {Description, pros, cons, why not chosen}
 

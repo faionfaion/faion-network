@@ -8,7 +8,7 @@
 
 **Version:** [X.X]
 **Date:** <date>
-**Designer:** <name>
+**Designer:** [Name]
 
 ## Objectives
 
@@ -36,7 +36,7 @@ What specific questions will this prototype answer? (1-3 maximum)
 
 ## User Flows to Prototype
 
-### Flow 1: <name>
+### Flow 1: [Name]
 
 1. <start_screen>
 2. <action>

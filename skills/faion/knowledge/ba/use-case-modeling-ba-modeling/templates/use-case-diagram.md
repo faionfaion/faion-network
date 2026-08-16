@@ -14,13 +14,13 @@
 
 | Actor | Type | Description |
 |-------|------|-------------|
-| <actor_1> | Primary | <goal_they_achieve> |
-| <actor_2> | Secondary | <role_they_play> |
+| [Actor 1] | Primary | <goal_they_achieve> |
+| [Actor 2] | Secondary | <role_they_play> |
 | <external_system> | System | <system> |
 
 ## Use Cases by Actor
 
-### <actor_1>
+### [Actor 1]
 - UC-001: [Use Case Name]
 - UC-002: [Use Case Name]
 
@@ -28,7 +28,7 @@
 - UC-003: [Use Case Name]
 
 ### Shared
-- UC-004: [Use Case Name] — <actor_1> and <actor_2>
+- UC-004: [Use Case Name] — [Actor 1] and [Actor 2]
 
 ## Relationships
 

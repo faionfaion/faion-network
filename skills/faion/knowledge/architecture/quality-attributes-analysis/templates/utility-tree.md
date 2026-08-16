@@ -40,12 +40,12 @@ token-budget-impact: ~260 tokens when filled
 
 ## Sensitivity Points
 
-- [Decision A] affects <attribute_x> significantly; small change → large impact
+- [Decision A] affects [attribute X] significantly; small change → large impact
 - ...
 
 ## Trade-offs
 
-- <decision_b> improves <attribute_x> at the cost of <attribute_y> by <amount>
+- <decision_b> improves [attribute X] at the cost of <attribute_y> by <amount>
 - ...
 
 ## Reviewed By

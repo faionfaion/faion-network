@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml + content/02-output-contract.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Kanban Metrics — Week <kanban_metrics_week> / <date_range>
+# Kanban Metrics — Week <kanban_metrics_week> / [Date Range]
 
 ## Flow Metrics
 
@@ -45,7 +45,7 @@
 
 # PI Planning Board Scaffold
 
-## PI <pi> — <date_range>
+## PI <pi> — [Date Range]
 
 ### Program Objectives
 

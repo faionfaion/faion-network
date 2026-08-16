@@ -24,7 +24,7 @@
 
 ## Partner Responsibilities
 
-- Promote <product> only to audiences where the product provides genuine value
+- Promote [Product] only to audiences where the product provides genuine value
 - Disclose the affiliate relationship clearly in all promotional content ("This post contains affiliate links" or equivalent)
 - Use only approved marketing materials and messaging — do not misrepresent the product
 - Do not bid on [Your Company] brand terms in paid search
@@ -52,7 +52,7 @@
 
 ## Approved Messaging
 
-Partners may describe <product> as: [one-sentence approved description]
+Partners may describe [Product] as: [one-sentence approved description]
 
 Partners must not claim: [specific claims to avoid — e.g., specific result guarantees]
 

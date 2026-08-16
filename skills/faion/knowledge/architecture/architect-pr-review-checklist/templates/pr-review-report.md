@@ -13,28 +13,28 @@ verdict: <ship_block_escalate>
 ---
 
 ## 1. Contract
-- public API shape changes documented? <yes_no>
-- backward compatibility preserved? <yes_no>
+- public API shape changes documented? <yes|no>
+- backward compatibility preserved? <yes|no>
 
 ## 2. Dependency direction
-- module boundary respected (inner -> outer only)? <yes_no>
-- forbidden cross-imports introduced? <yes_no>
+- module boundary respected (inner -> outer only)? <yes|no>
+- forbidden cross-imports introduced? <yes|no>
 
 ## 3. Error model
-- error types named and documented? <yes_no>
-- swallowed exceptions / silent recovery present? <yes_no>
+- error types named and documented? <yes|no>
+- swallowed exceptions / silent recovery present? <yes|no>
 
 ## 4. Observability
-- structured logs at module boundaries? <yes_no>
-- metrics + traces aligned with module ownership? <yes_no>
+- structured logs at module boundaries? <yes|no>
+- metrics + traces aligned with module ownership? <yes|no>
 
 ## 5. Security
-- secret / PII echo risk? <yes_no>
-- authn/authz delta documented? <yes_no>
+- secret / PII echo risk? <yes|no>
+- authn/authz delta documented? <yes|no>
 
 ## 6. ADR conformance
-- relevant ADRs respected? <yes_no>
-- new architectural decision documented? <yes_no>
+- relevant ADRs respected? <yes|no>
+- new architectural decision documented? <yes|no>
 
 ## Verdict
 <one paragraph>

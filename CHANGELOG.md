@@ -4,6 +4,47 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **CR-013 §2 repaired in the corpus — and the rule wired into the converter
+  that writes it.** The refusal shipped inside `tpl-migrate.build_plan` only.
+  `tpl-jinja --migrate` builds its own plan from `MIGRATE.classify` and never
+  calls `build_plan`, so the corpus writer was the one caller that never ran the
+  rule: every report said *refused* while every file on disk still collapsed.
+  The rule is now `MIGRATE.refuse_multi_site`, called by both paths, and it runs
+  beside the collision and per-row downgrades — before the resolver, because a
+  name the converter already refuses to declare is not a name the resolver gets
+  a second go at. Four `tpl-jinja --self-test` assertions cover the converter
+  path, proven red-before-green (89 → 93 checks).
+
+  Then the corpus. Each affected template was restored from its **pre-migration**
+  source — `git show <first-commit-that-added-the-.md.j2>~1:<path>` — and
+  converted **once**. 110 of them had their five-key header authored by the
+  migrating commit, so git's pre-image carries none and the header was spliced
+  back onto the pre-migration body before converting.
+
+  | | before | after |
+  |---|--:|--:|
+  | templates carrying a collapsed variable in the shipped `.md.j2` | **240** | **34** |
+  | sites bound to a shared variable | **1,084** | **142** |
+  | declarations over the 283 re-converted sources | 2,376 | **2,046** |
+  | items left unclear over the same sources | 2,394 | **3,340** |
+  | dictionary `$ref`s over the affected templates | 160 | **134** |
+
+  Declarations down and unclear up **is** the fix: §5 leaves a placeholder that
+  cannot be honestly named exactly where it is. 210 templates changed on disk;
+  the other 73 the proposal flagged were never collapsed by the converter, which
+  applies the resolver and the per-row rule the proposal does not.
+
+  Of the 34 still sharing a variable: 25 are **hand-authored** — the author wrote
+  `{{ date }}` in the source and declared it in a `variables:` block, which the
+  converter honours and this rule never sees; 5 are templates whose
+  pre-migration source the converter refuses whole (`{{eval_gate.golden_set_ver}}`
+  and `{{P&L_url}}` are not bare names, `judge-prompt-skeleton` has a flow
+  mapping in its header, `bias-audit-report` and `positioning-canvas` carry
+  `{{x}}` with no declaration) and which therefore keep their current form; 4 are
+  pre-existing damage the proposal cannot see at all — a single-character name
+  (`{{ x }}`), or sites whose heading is itself a placeholder so `context_of`
+  returns `None` for every one of them and they group as "one heading".
+
 - **CR-013 §2 implemented: a placeholder bound to several sites under different
   headings is now refused, not collapsed.** `hr/employee-value-proposition`
   rendered `## Competitor A: {{ name }}` / `B: {{ name }}` / `C: {{ name }}` —

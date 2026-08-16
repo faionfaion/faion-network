@@ -117,7 +117,7 @@ TASK_YYY ({title})
 
 | Action | File | Scope |
 |--------|------|-------|
-| CREATE | `path/to/new_file.py` | <description> |
+| CREATE | `path/to/new_file.py` | {description} |
 | MODIFY | `path/to/existing.py` | <what_changes> |
 
 ---
@@ -137,10 +137,10 @@ TASK_YYY ({title})
 
 ## Subtasks
 
-- [ ] 01. Research: <description>
-- [ ] 02. Implement: <description>
-- [ ] 03. Test: <description>
-- [ ] 04. Verify: <description>
+- [ ] 01. Research: {description}
+- [ ] 02. Implement: {description}
+- [ ] 03. Test: {description}
+- [ ] 04. Verify: {description}
 
 ---
 

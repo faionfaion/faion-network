@@ -16,7 +16,7 @@
 | Work Environment | | | |
 | Culture / Purpose | | | |
 
-## Competitor A: <name>
+## Competitor A: [Name]
 
 | EVP Pillar | Strength (1-5) | Source | Notes |
 |------------|----------------|--------|-------|
@@ -26,11 +26,11 @@
 | Work Environment | | Indeed reviews | |
 | Culture / Purpose | | Company blog | |
 
-## Competitor B: <name>
-<same_format>
+## Competitor B: [Name]
+[Same format]
 
-## Competitor C: <name>
-<same_format>
+## Competitor C: [Name]
+[Same format]
 
 ## Positioning Summary
 

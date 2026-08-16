@@ -5,11 +5,11 @@ produces: filled spec artefact validated by scripts/validate-terraform.py
 depends-on: content/01-core-rules.xml, content/02-output-contract.xml
 token-budget-impact: ~600 tokens for a typical instance
 -->
-# Terraform (Advanced) — <artefact_id>
+# Terraform (Advanced) — {artefact_id}
 
 | Field | Value |
 |-------|-------|
-| artefact_id | <artefact_id> |
+| artefact_id | {artefact_id} |
 | produces | spec |
 | owner | <owner> |
 | version | <version> |

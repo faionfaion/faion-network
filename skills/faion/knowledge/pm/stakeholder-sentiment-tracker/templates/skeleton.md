@@ -15,10 +15,10 @@ rubric_path: "rescue/rubric.yaml"
 run_date: "2026-05-22"
 ---
 
-# Sentiment run — <iso_date>
+# Sentiment run — <ISO date>
 
-## Stakeholder: <name> (<role>)
-- Sources: <count> emails, <count> meeting transcripts (consent: <iso_date>)
+## Stakeholder: <Name> (<role>)
+- Sources: <count> emails, <count> meeting transcripts (consent: <ISO date>)
 - Markers hit: <comma_separated_markers>
 - Class: supportive | cautious | hostile | no-signal
 - Trend (last 6 weeks): <list>
@@ -26,9 +26,9 @@ run_date: "2026-05-22"
 <!-- repeat per stakeholder -->
 
 ## ALARM (only if fired)
-- Stakeholder: <name>
+- Stakeholder: <Name>
 - Reason: 2-week decline | weekly hostile
-- Action plan (filed <iso_date>):
+- Action plan (filed <ISO date>):
   - Hypothesis: <text>
   - Intervention: <intervention>
-  - Deadline: <iso_date>
+  - Deadline: <ISO date>

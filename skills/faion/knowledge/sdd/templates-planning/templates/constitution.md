@@ -21,7 +21,7 @@ token-budget-impact: ~500-800 tokens when loaded as context
 | Layer | Technology | Version | Rationale |
 |-------|------------|---------|-----------|
 | Language | <lang> | {ver} | {why} |
-| Framework | <framework> | {ver} | {why} |
+| Framework | {framework} | {ver} | {why} |
 | Database | <db> | {ver} | {why} |
 | Hosting | <platform> | - | {why} |
 
@@ -45,7 +45,7 @@ token-budget-impact: ~500-800 tokens when loaded as context
 - Config: <location>
 
 ### Testing
-- Framework: <framework>
+- Framework: {framework}
 - Coverage target: {X}%
 - Test location: <path>
 

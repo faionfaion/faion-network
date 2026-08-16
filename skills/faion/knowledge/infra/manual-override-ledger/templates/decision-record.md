@@ -5,11 +5,11 @@ produces: filled decision-record artefact validated by scripts/validate-manual-o
 depends-on: content/01-core-rules.xml, content/02-output-contract.xml
 token-budget-impact: ~600 tokens for a typical instance
 -->
-# Manual Override Ledger — <artefact_id>
+# Manual Override Ledger — {artefact_id}
 
 | Field | Value |
 |-------|-------|
-| artefact_id | <artefact_id> |
+| artefact_id | {artefact_id} |
 | produces | decision-record |
 | owner | <owner> |
 | version | <version> |

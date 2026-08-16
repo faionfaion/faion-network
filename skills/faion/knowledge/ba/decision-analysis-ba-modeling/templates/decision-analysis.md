@@ -8,8 +8,8 @@
 
 **Version:** 1.0
 **Date:** <date_criteria_locked>
-**Analyst:** <name>
-**Decision Maker:** <name>
+**Analyst:** [Name]
+**Decision Maker:** [Name]
 **Weight-setter:** [Name, timestamp] — weights locked before scoring
 
 ## 1. Decision Context
@@ -26,7 +26,7 @@
 
 ## 2. Options Considered
 
-### Option 1: <name>
+### Option 1: [Name]
 - **Description:** [What this option involves]
 - **Pros:** <verifiable_benefits>
 - **Cons:** <verifiable_drawbacks>

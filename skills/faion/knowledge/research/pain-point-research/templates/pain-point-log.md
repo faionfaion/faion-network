@@ -15,7 +15,7 @@
 
 ### Pain Points Found
 
-#### PP-001: <name>
+#### PP-001: [Name]
 - **Source:** <where_found_url>
 - **Category:** [Time Waste / Money Loss / Complexity / Integration / Reliability / Support / Process / Learning]
 - **Quote:** "<exact_verbatim_quote>"
@@ -27,7 +27,7 @@
 - **Score:** <computed>
 - **Root cause (5-Whys):** <analysis>
 
-#### PP-002: <name>
+#### PP-002: [Name]
 [repeat structure]
 
 ### Summary by Category

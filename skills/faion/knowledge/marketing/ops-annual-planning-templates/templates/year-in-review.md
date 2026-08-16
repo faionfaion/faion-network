@@ -8,29 +8,29 @@
 
 ## Wins
 1. **<win_1>**
-   - What: <description>
+   - What: [description]
    - Impact: [measurable outcome — cite a number]
    - Why it mattered: [significance to the business or to you]
 
 2. **<win_2>**
-   - What: <description>
+   - What: [description]
    - Impact: <measurable_outcome>
    - Why it mattered: <significance>
 
 3. **<win_3>**
-   - What: <description>
+   - What: [description]
    - Impact: <measurable_outcome>
    - Why it mattered: <significance>
 
 ## Challenges
 1. **<challenge_1>**
-   - What happened: <description>
+   - What happened: [description]
    - Structural cause: [internal decision or resource gap — not "market conditions"]
    - How I handled it: <response>
    - What I learned: <lesson>
 
 2. **<challenge_2>**
-   - What happened: <description>
+   - What happened: [description]
    - Structural cause: <structural_cause>
    - How I handled it: <response>
    - What I learned: <lesson>

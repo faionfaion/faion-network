@@ -6,7 +6,7 @@ depends-on: content/02-output-contract.xml
 token-budget-impact: ~430 tokens when filled
 -->
 
-# Use Case: <uc_xxx> <verb_noun>
+# Use Case: [UC-XXX] [Verb + Noun]
 
 **Version:** [X.X]
 **Status:** <draft_review_approved>
@@ -16,9 +16,9 @@ token-budget-impact: ~430 tokens when filled
 ## Overview
 
 - **ID:** UC-[XXX]
-- **Name:** <verb_noun>
+- **Name:** [Verb + Noun]
 - **Description:** [One sentence: what the actor achieves and why]
-- **Primary Actor:** <name> (type: human | system | time)
+- **Primary Actor:** [Name] (type: human | system | time)
 - **Secondary Actors:** [Other actors, or none]
 
 ## Preconditions
@@ -48,7 +48,7 @@ token-budget-impact: ~430 tokens when filled
 
 ## Alternative Flows
 
-### AF-1: <name>
+### AF-1: [Name]
 **Trigger:** At step [X], <condition>.
 
 | Step | Actor Action | System Response |
@@ -59,7 +59,7 @@ token-budget-impact: ~430 tokens when filled
 
 ## Exception Flows
 
-### EX-1: <name>
+### EX-1: [Name]
 **Trigger:** At step [X], <error_condition>.
 
 | Step | System Response |
@@ -74,7 +74,7 @@ token-budget-impact: ~430 tokens when filled
 
 ## Related Use Cases
 
-- <uc_xxx>: <includes_extends_generalization>
+- [UC-XXX]: <includes_extends_generalization>
 
 ## Non-Functional Requirements
 

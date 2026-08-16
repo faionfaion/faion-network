@@ -22,29 +22,29 @@ token-budget-impact: ~400-650 tokens when loaded as context
 
 ## Options Considered
 
-### Option A: <name>
+### Option A: {name}
 
-<description>
-
-Pros:
-- <pro>
-- <pro>
-
-Cons:
-- <con>
-- <con>
-
-### Option B: <name>
-
-<description>
+{Description}
 
 Pros:
-- <pro>
+- {pro}
+- {pro}
 
 Cons:
-- <con>
+- {con}
+- {con}
 
-### Option C: <name> (if applicable)
+### Option B: {name}
+
+{Description}
+
+Pros:
+- {pro}
+
+Cons:
+- {con}
+
+### Option C: {name} (if applicable)
 
 {Description, pros, cons}
 

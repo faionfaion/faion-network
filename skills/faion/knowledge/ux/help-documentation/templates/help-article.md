@@ -14,14 +14,14 @@
 
 ## Steps
 
-### Step 1: <action_verb_object>
+### Step 1: [Action verb + object]
 [Concrete instruction. Avoid "click the button" — say which button by its exact label.]
 
-### Step 2: <action_verb_object>
-<instruction>
+### Step 2: [Action verb + object]
+[Instruction]
 
-### Step 3: <action_verb_object>
-<instruction>
+### Step 3: [Action verb + object]
+[Instruction]
 
 ## Result
 [What the user should see or have when complete]

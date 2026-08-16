@@ -9,10 +9,10 @@
 **Session:** Group <session> — <segment_name>
 **Date/Time:** [Date and time]
 **Participants:** [P1 through P8 — use IDs, not names]
-**Note-taker:** <name>
-**Moderator:** <session_facilitator>
+**Note-taker:** [Name]
+**Moderator:** [Name]
 
-## Topic 1: <name>
+## Topic 1: [Name]
 
 | Participant | Key Points | Verbatim Quotes |
 |-------------|------------|-----------------|
@@ -27,7 +27,7 @@
 
 ---
 
-## Topic 2: <name>
+## Topic 2: [Name]
 
 <same_structure>
 

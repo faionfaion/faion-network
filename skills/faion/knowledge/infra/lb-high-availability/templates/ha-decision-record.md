@@ -4,11 +4,11 @@
 <!-- depends-on: content/01-core-rules.xml (two-lb-min, two-az-min, anycast-over-dns-for-9999, drain-on-sigterm) -->
 <!-- token-budget-impact: ~400 tokens when loaded as context -->
 
-# HA Decision: <service_name>
+# HA Decision: <service-name>
 
 ## Context
 
-- **Service:** <service_name>
+- **Service:** <service-name>
 - **SLA target:** 99.99% (~52 min/year)
 - **Customer geography:** US + EU
 - **Current state:** <describe>

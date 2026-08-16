@@ -460,6 +460,47 @@ def find_collisions(items: list[dict]) -> list[str]:
     return collisions
 
 
+def refuse_multi_site(items: list[dict]) -> list[str]:
+    """CR-013 §2. Refuse a name bound to several sites under DIFFERENT headings.
+
+    Filling it once fills them all with the same value.
+
+    `find_collisions` cannot catch this: it fires when one name is proposed from
+    DIFFERENT text, and here the text is identical. That is exactly what made it
+    silent — `hr/employee-value-proposition` rendered
+    `## Competitor A: {{ name }}` / `B: {{ name }}` / `C: {{ name }}`, three
+    companies sharing one variable, with nothing flagged.
+
+    Refusing costs one line in a review queue a human is already reading.
+    Declaring wrongly ships a document with the same value in three places and
+    nothing downstream can detect it. That asymmetry is the whole rule, and it
+    deliberately refuses legitimate repeats too — an owner named under ten
+    headings of one deck lands in the queue rather than being guessed at.
+
+    Lives here and is called by BOTH proposal paths — `build_plan` and
+    `tpl-jinja`'s converter. It sat inline in `build_plan` for one commit, which
+    made the corpus writer the one caller that never ran it, so the rule was
+    true of every report and of no file on disk.
+
+    Returns the names it refused, in body order.
+    """
+    sites: dict[str, list[dict]] = {}
+    for item in items:
+        if item["verdict"] == "parameter" and item["name"]:
+            sites.setdefault(item["name"], []).append(item)
+    refused: list[str] = []
+    for name, group in sites.items():
+        if len(group) < 2:
+            continue
+        if len({(g.get("heading") or "") for g in group}) < 2:
+            continue  # every site under one heading: one slot, repeated
+        refused.append(name)
+        for g in group:
+            g["verdict"], g["reason"] = "unclear", "multi-site"
+            g["name"] = None
+    return refused
+
+
 def build_plan(text: str, where: str) -> dict:
     """The whole proposal for one template. Raises TplError on a bad source."""
     source = CORE.parse_source(text, where)
@@ -476,32 +517,7 @@ def build_plan(text: str, where: str) -> dict:
         if item["verdict"] == "parameter" and item["name"] in colliding:
             item["verdict"], item["reason"] = "unclear", "collision"
 
-    # CR-013 §2. One name bound to several sites under DIFFERENT headings is
-    # refused, because filling it once fills them all with the same value.
-    #
-    # `find_collisions` cannot catch this: it fires when one name is proposed
-    # from DIFFERENT text, and here the text is identical. That is exactly what
-    # made it silent — `hr/employee-value-proposition` rendered
-    # `## Competitor A: {{ name }}` / `B: {{ name }}` / `C: {{ name }}`, three
-    # companies sharing one variable, with nothing flagged.
-    #
-    # Refusing costs one line in a review queue a human is already reading.
-    # Declaring wrongly ships a document with the same value in three places and
-    # nothing downstream can detect it. That asymmetry is the whole rule, and it
-    # deliberately refuses legitimate repeats too — an owner named under ten
-    # headings of one deck lands in the queue rather than being guessed at.
-    sites: dict[str, list[dict]] = {}
-    for item in items:
-        if item["verdict"] == "parameter" and item["name"]:
-            sites.setdefault(item["name"], []).append(item)
-    for name, group in sites.items():
-        if len(group) < 2:
-            continue
-        if len({(g.get("heading") or "") for g in group}) < 2:
-            continue  # every site under one heading: one slot, repeated
-        for g in group:
-            g["verdict"], g["reason"] = "unclear", "multi-site"
-            g["name"] = None
+    refuse_multi_site(items)
 
     decls: list[dict] = []
     seen: set[str] = set()
