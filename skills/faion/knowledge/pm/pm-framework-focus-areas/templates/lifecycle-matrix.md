@@ -10,11 +10,11 @@ Approach: <predictive_agile_hybrid>
 
 | Focus Area | Governance | Scope | Schedule | Finance | Stakeholders | Resources | Risk |
 |------------|-----------|-------|----------|---------|--------------|-----------|------|
-| Initiating | <initiating> | <initiating> | <initiating> | <initiating> | <initiating> | <initiating> | <initiating> |
-| Planning | <planning> | <planning> | <planning> | <planning> | <planning> | <planning> | <planning> |
-| Executing | <executing> | <executing> | <executing> | <executing> | <executing> | <executing> | <executing> |
-| MnC | <mn_c> | <mn_c> | <mn_c> | <mn_c> | <mn_c> | <mn_c> | <mn_c> |
-| Closing | <closing> | <closing> | <closing> | <closing> | <closing> | <closing> | <closing> |
+| Initiating | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] |
+| Planning | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] |
+| Executing | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] |
+| MnC | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] |
+| Closing | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] | [artefact or null] |
 
 <!-- Instructions:
 - Fill cells with artefact name (e.g. "project charter", "sprint backlog", "EVM dashboard")

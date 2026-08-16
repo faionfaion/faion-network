@@ -25,7 +25,7 @@ token-budget-impact: ~350 tokens when filled
 
 | Benefit | Projected | Actual | Variance | Sample n | Status |
 |---------|-----------|--------|----------|----------|--------|
-| [Benefit] | <value> | <value> | [+/-X%] | [n] | Achieved / Partial / Not Achieved |
+| [Benefit] | [Value] | [Value] | [+/-X%] | [n] | Achieved / Partial / Not Achieved |
 
 ## Adoption Metrics
 

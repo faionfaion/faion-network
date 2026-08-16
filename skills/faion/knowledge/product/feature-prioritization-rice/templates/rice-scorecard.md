@@ -41,4 +41,4 @@ token-budget-impact: ~300-800 tokens when loaded as context
 
 | Feature | Actual Reach | Actual Effort | Variance Note |
 |---------|-------------|---------------|---------------|
-| [Feature A] | <actual> | <actual> | [what was wrong in the estimate] |
+| [Feature A] | [actual] | [actual] | [what was wrong in the estimate] |

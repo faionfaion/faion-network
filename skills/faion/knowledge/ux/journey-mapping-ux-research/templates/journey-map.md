@@ -14,16 +14,16 @@
 
 ## Journey Overview
 
-| Row | Stage 1: <name> | Stage 2: <name> | Stage 3: <name> | Stage 4: <name> |
+| Row | Stage 1: [Name] | Stage 2: [Name] | Stage 3: [Name] | Stage 4: [Name] |
 |-----|-----------------|-----------------|-----------------|-----------------|
-| **User Goal** | <goal> | <goal> | <goal> | <goal> |
+| **User Goal** | [Goal] | [Goal] | [Goal] | [Goal] |
 | **Actions** | [What they do] | [What they do] | [What they do] | [What they do] |
-| **Touchpoints** | <channels> | <channels> | <channels> | <channels> |
-| **Thoughts** | <what_they_think> | <what_they_think> | <what_they_think> | <what_they_think> |
-| **Emotions** | <feeling_1_5> | <feeling_1_5> | <feeling_1_5> | <feeling_1_5> |
-| **Pain Points** | <friction> | <friction> | <friction> | <friction> |
+| **Touchpoints** | [Channels] | [Channels] | [Channels] | [Channels] |
+| **Thoughts** | [What they think] | [What they think] | [What they think] | [What they think] |
+| **Emotions** | [Feeling + 1-5] | [Feeling + 1-5] | [Feeling + 1-5] | [Feeling + 1-5] |
+| **Pain Points** | [Friction] | [Friction] | [Friction] | [Friction] |
 | **Opportunities** | [Improvement] | [Improvement] | [Improvement] | [Improvement] |
-| **Metrics** | <kpi> | <kpi> | <kpi> | <kpi> |
+| **Metrics** | [KPI] | [KPI] | [KPI] | [KPI] |
 
 ## Key Pain Points (prioritized by impact)
 

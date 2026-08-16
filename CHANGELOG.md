@@ -4,6 +4,60 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **The same-line and wikilink rules reach the corpus: 45 templates re-converted,
+  damage 72 → 31.** `e7a757c43` and `3163769d1` fixed the scanner; nothing had
+  re-run it over the templates already migrated. Each of the 73 damaged
+  `.md.j2` files had its **pre-migration** `.md` restored with
+  `git show <first-j2-commit>~1:<path>` and was converted **once** — the CR-013
+  trap is re-running `--migrate` on a generated `.md`, which carries no
+  `variables:` block and re-proposes from scratch.
+
+  Measured on the `.md.j2`, which is the artefact that carries the defect — a
+  variable bound at 2+ sites under 2+ headings, bound twice on one line, or a
+  `- [{{ x }}]` bullet that used to be `[[slug]]`:
+
+  | | before | after |
+  |---|--:|--:|
+  | damaged templates | 72 | **31** |
+  | multi-heading (templates / variables) | 32 / 49 | 30 / 47 |
+  | same-line (templates / variables) | 41 / 63 | **1 / 1** |
+  | eaten wikilinks | 2 | **0** |
+
+  Declarations fell 445 → 378 over the 45 touched templates, and unclear rose by
+  the same placeholders. That is §5 working: a placeholder that cannot be
+  honestly named is left as literal text.
+
+  **The 31 that remain are not reachable by this repair, and the reason is one
+  fact about the converter.** `refuse_multi_site` runs over what
+  `MIGRATE.candidates` *proposes* — `<angle>`, `[bracket]`, `{brace}`. An
+  already-`{{name}}` placeholder never enters that list: `tpl-jinja` reads it
+  through `CORE.scan_placeholders`, checks it has a declaration, and copies it
+  across. **28 of the 31 are templates whose pre-migration source was already
+  hand-written Jinja**, so restoring and re-converting it is a no-op by
+  construction — `okr-setting/okr-template` still binds one `{{ date }}` twice on
+  one line, and no repair of the corpus can change that while the rule is a
+  proposal-time rule. The other 3 (`feedback-management/response-templates`,
+  `pattern-memory/mistakes-file`, `templates-planning/roadmap`) are proposed and
+  still pass: `clean_label` truncates `## Feedback Response: Shipped` and
+  `## …: Not Planned` to the same string, so three distinct sections read as one
+  heading and the carve-out applies. Both belong to the tool, not the corpus.
+
+  **Two counts in the brief do not reproduce.** The finder over `build_plan`
+  reports 308 multi-site + 3 wikilink; only **73** templates were damaged, and 10
+  of those 73 the finder does not report at all (its proposal must reach
+  `verdict=parameter`, and `{{ x }}` in `data-quality-assessment` is refused
+  earlier as `no-context`). Of the 3 wikilink hits, **1 is a false positive** —
+  `notion-pm/task-template` carries `- [{{ link_description }}]()`, an ordinary
+  Markdown link whose label is the variable. The finder does not fall after the
+  repair (311 → 311) and should not: a refused placeholder is left literal, so
+  the next proposal sees it and refuses it again.
+
+  17 templates needed their five-key header spliced back from the current
+  `.md.j2` — git's pre-image predates the header, because the migrating commit
+  authored it. The first pass wrote the header *unwrapped*, `split_header`
+  having stripped the comment markers; caught by comparing header presence
+  against `HEAD`, not by any validator.
+
 - **Cross-links: `meta.json` is declared canonical, the prose copy stays, and the
   drift check is now actually wired into the gate.** *Second half authored by the
   concurrent session; verified and landed here.*

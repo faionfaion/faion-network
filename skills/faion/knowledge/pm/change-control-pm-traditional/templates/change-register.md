@@ -20,7 +20,7 @@
 
 | Metric | Original Baseline | Approved CR Impact | Current Baseline |
 |--------|-------------------|--------------------|-----------------|
-| Schedule | <x_days> | +<x_days> | <x_days> |
+| Schedule | [X days] | +[X days] | [X days] |
 | Cost | $[X] | +$[X] | $[X] |
 
 Run `scripts/cr_drift.sh` to recompute from the register table.

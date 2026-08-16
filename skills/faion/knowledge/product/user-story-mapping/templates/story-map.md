@@ -15,7 +15,7 @@
 
 | Activity 1 | Activity 2 | Activity 3 | Activity 4 |
 |------------|------------|------------|------------|
-| <verb_phrase> | <verb_phrase> | <verb_phrase> | <verb_phrase> |
+| [Verb phrase] | [Verb phrase] | [Verb phrase] | [Verb phrase] |
 
 ## Walking Skeleton
 One task per activity, end-to-end. Every column must be covered.

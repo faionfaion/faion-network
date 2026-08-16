@@ -5,7 +5,7 @@
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 # finops-devops-cost-rightsizing Report
 
-Period: <period> → <period>
+Period: <YYYY-MM-DD> → <YYYY-MM-DD>
 
 ## Findings
 | ID | Severity | Summary |

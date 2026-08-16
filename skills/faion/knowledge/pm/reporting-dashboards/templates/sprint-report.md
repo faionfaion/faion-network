@@ -19,8 +19,8 @@ token-budget-impact: ~200-600 tokens when loaded as context
 ## Delivery Summary
 | Metric | Committed | Completed | Delta |
 |--------|-----------|-----------|-------|
-| Stories | <stories> | <stories> | {+/-N} |
-| Points | <points> | <points> | {+/-N} |
+| Stories | {N} | {N} | {+/-N} |
+| Points | {N} | {N} | {+/-N} |
 | Bugs Fixed | {N} | {N} | {+/-N} |
 | Scope Added | — | <scope_added> | — |
 

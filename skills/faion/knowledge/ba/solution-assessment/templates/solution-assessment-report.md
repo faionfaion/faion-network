@@ -33,7 +33,7 @@ _Accept requires zero Critical issues and zero Not Met requirements._
 
 | Metric | Baseline | Target | Actual | Sample n | Variance | Status |
 |--------|----------|--------|--------|----------|----------|--------|
-| <metric> | <value> | <value> | <value> | [n] | [+/-X%] | On Track / At Risk / Off Track / Exceeded |
+| <metric> | [Value] | [Value] | [Value] | [n] | [+/-X%] | On Track / At Risk / Off Track / Exceeded |
 
 ## User Feedback
 

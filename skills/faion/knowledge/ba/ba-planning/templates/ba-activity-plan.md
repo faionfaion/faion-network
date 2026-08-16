@@ -26,7 +26,7 @@ token-budget-impact: ~210 tokens when filled
 
 | Activity | Planned Effort | Actual Effort | Variance | Notes |
 |----------|---------------|---------------|----------|-------|
-| [Activity] | <hours> | <hours> | [+/-] | <notes> |
+| [Activity] | [Hours] | [Hours] | [+/-] | <notes> |
 
 ## Dependencies
 

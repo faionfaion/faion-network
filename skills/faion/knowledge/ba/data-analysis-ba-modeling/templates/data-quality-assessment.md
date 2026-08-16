@@ -15,7 +15,7 @@
 
 ### Accuracy
 - **Metric:** Error rate vs. authoritative source
-- **Finding:** <x> of records have incorrect values
+- **Finding:** [X%] of records have incorrect values
 - **Examples:** [Specific examples of errors found]
 
 ### Completeness
@@ -25,7 +25,7 @@
 
 ### Consistency
 - **Metric:** Cross-system conflict count
-- **Finding:** <x> of records have conflicting values across systems
+- **Finding:** [X%] of records have conflicting values across systems
 - **Discrepancies:** [Types of inconsistencies found]
 
 ### Timeliness
@@ -35,12 +35,12 @@
 
 ### Validity
 - **Metric:** Business rule violation rate
-- **Finding:** <x> of records violate defined rules
+- **Finding:** [X%] of records violate defined rules
 - **Violations:** [Types and examples of violations]
 
 ### Uniqueness
 - **Metric:** Duplicate rate
-- **Finding:** <x> duplicate records
+- **Finding:** [X%] duplicate records
 - **Impact:** [Downstream impact of duplicates]
 
 ## Summary

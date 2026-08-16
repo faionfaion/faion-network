@@ -28,7 +28,7 @@ token-budget-impact: ~230 tokens when filled
 | 123 | Story A | 5 | @dev1 | 20 |
 | 124 | Story B | 3 | @dev2 | 12 |
 
-**Total Committed:** <total_committed> points / <total_committed> hours
+**Total Committed:** [XX] points / [XX] hours
 
 ## Risks
 

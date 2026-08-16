@@ -24,7 +24,7 @@
 | <guardrail> | [X] | [Y] | [+/-Z] | N/A |
 
 ## Statistical Details
-- Sample size: <sample_size> Control, <sample_size> Variant
+- Sample size: [N] Control, [N] Variant
 - Confidence level: [X%]
 - P-value: [X]
 - Practical significance: [business impact in concrete terms]

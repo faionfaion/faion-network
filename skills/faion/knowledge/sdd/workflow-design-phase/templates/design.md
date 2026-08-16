@@ -30,7 +30,7 @@ spec_ref: .aidocs/features/<status>/<feature>/spec.md
 - Chosen: <one sentence>.
 - Rejected: <option A>, <option_b>.
 - Rationale: <2-3 sentences>.
-- Satisfies: FR-<satisfies>, NFR-<satisfies>.
+- Satisfies: FR-<N>, NFR-<N>.
 - Trade-off: <one sentence>.
 
 ## File Table
@@ -58,4 +58,4 @@ spec_ref: .aidocs/features/<status>/<feature>/spec.md
 
 | FR | AD |
 |----|-----|
-| FR-<fr> | AD-<fr> |
+| FR-<N> | AD-<N> |

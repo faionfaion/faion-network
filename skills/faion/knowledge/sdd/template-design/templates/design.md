@@ -114,13 +114,13 @@ Reference: `contracts.md` section {X}
 
 | Component | Test File | Coverage Target |
 |-----------|-----------|----------------|
-| <component> | test_<component>.py | <target>% |
+| {component} | test_{component}.py | <target>% |
 
 ### Integration Tests
 
 | Flow | Test File | Description |
 |------|-----------|-------------|
-| <flow> | test_<flow>_integration.py | <description> |
+| {flow} | test_{flow}_integration.py | <description> |
 
 ---
 

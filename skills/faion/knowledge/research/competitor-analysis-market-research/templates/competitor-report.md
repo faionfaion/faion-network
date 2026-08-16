@@ -21,7 +21,7 @@
 
 **Website:** [URL] | **Pricing page:** [URL, captured YYYY-MM-DD]
 
-**Product:** Core features: <list> | Unique: <list> | Missing: <list>
+**Product:** Core features: [List] | Unique: [List] | Missing: [List]
 
 **Pricing:**
 | Tier | Price | Features |

@@ -48,4 +48,4 @@ See `content/06-decision-tree.xml`.
 ...
 
 ## Related
-- [<slug>]
+- [[slug]]
