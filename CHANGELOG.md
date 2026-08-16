@@ -4,6 +4,32 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Both spellings of the template header version stamp parse again** — a bug I
+  introduced earlier in this session and then measured wrong. `_take_header_run`
+  appended the RAW source line for a bare version marker while every other branch
+  appends the un-wrapped text, so `parse_header` was handed
+  `<!-- __faion_header_v1__ -->` and raised on line 1. The block-comment branch of
+  `split_header` had the same defect for `<!-- __faion_header__` on the opener
+  line. In both cases the header was parsed **correctly** and then thrown away on
+  its own first line.
+
+  Taken as a BLANK line rather than dropped, because three constraints meet:
+  `split_header` slices the body with `len(taken)` so the run must stay 1:1 with
+  source lines; `parse_header` refuses a bare identifier; and the raw line is what
+  broke. Blank satisfies all three and loses nothing — the stamp is read by
+  nothing in `scripts/`, `docs/` or the pack. `splice_variables` is unaffected: it
+  takes only the COUNT and re-unwraps the source itself, which is why the fix is
+  safe where it looked coupled.
+
+  **Measured, not reported: 251 templates recovered** (189 block form + 62
+  one-line form). Corpus header parses go 2,416 → 2,605 of 2,919; failures 503 →
+  314, of which 311 are "no header found" — a different class — leaving **3** real
+  parse errors. The converter agent attributed 251 to the one-line form alone;
+  that form is 62, and the other 189 are a separate code path it had not found.
+
+  Regression assertions added to `tpl-build --self-test` for both spellings,
+  proven red-before-green: reverting the block fix reproduces the exact raise.
+
 - **The corpus-wide variable dictionary lands** — `skills/faion/templates/vars-dictionary.schema.json`,
   Draft-07, **66 entries**, each with a type, a title and a `description` written as the question put
   to the author. 9 are sensitive (each with a placeholder), 9 are LLM-composed, 8 are enums. Every

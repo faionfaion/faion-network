@@ -278,6 +278,33 @@ def self_test() -> list[str]:
         failures.append("OK fixture: a sensitive parameter did not emit its "
                         "placeholder")
 
+    # Both spellings of the version stamp parse. Each one shipped broken: the
+    # header was read correctly and then thrown away on its own first line,
+    # silently turning 251 corpus templates into "no parseable header" — a
+    # failure that looks like bad content and is not. Assert the marker is
+    # gone from the header, that the five keys survive it, and that it is not
+    # pushed back into the body.
+    for label, fixture in (
+        ("one-line run",
+         "<!-- __faion_header_v1__ -->\n<!-- purpose: p -->\n"
+         "<!-- consumes: c -->\n<!-- produces: r -->\n"
+         "<!-- depends-on: d -->\n<!-- token-budget-impact: t -->\n\n# Body\n"),
+        ("block opener",
+         "<!-- __faion_header__\npurpose: p\nconsumes: c\nproduces: r\n"
+         "depends-on: d\ntoken-budget-impact: t\n-->\n\n# Body\n"),
+    ):
+        try:
+            head, body = CORE.split_header(fixture)
+            parsed = CORE.parse_header(head)
+            if parsed.get("purpose") != "p":
+                failures.append(f"{label} marker: purpose lost, got {parsed!r}")
+            if "__faion_header" in head:
+                failures.append(f"{label} marker: left in the header text")
+            if "__faion_header" in body:
+                failures.append(f"{label} marker: pushed into the body")
+        except CORE.TplError as exc:
+            failures.append(f"{label} marker: raised instead of parsing: {exc}")
+
     # A required parameter with no default and no value is refused BY NAME.
     try:
         build(MISSING_REQUIRED_FIXTURE)

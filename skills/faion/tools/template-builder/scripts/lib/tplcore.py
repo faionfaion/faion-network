@@ -110,7 +110,24 @@ def _take_header_run(lines: list[str], unwrap) -> list[str]:
         # stop-on-non-header rule exists to prevent. After the first key line the
         # rule is unchanged, so a human note under the header still ends the run.
         if not seen_key and _MARKER_ONLY.match(inner):
-            taken.append(line)
+            # Taken as a BLANK line, not as its own text and not as the raw
+            # source line. Three constraints meet here and only this satisfies
+            # all of them:
+            #   * `split_header` slices the body with `len(taken)`, so the run
+            #     must stay 1:1 with source lines — dropping the entry would
+            #     put the marker back at the top of the body.
+            #   * `parse_header` refuses a bare identifier ("not a supported
+            #     construct"), so appending `inner` fails too.
+            #   * appending the RAW line is what shipped, and it fed
+            #     `<!-- __faion_header_v1__ -->` to `parse_header`, which
+            #     raised on all 62 marker templates in the corpus — the header
+            #     was parsed correctly and then thrown away on its first line.
+            # A blank line is accepted by `parse_header`, keeps the count, and
+            # loses nothing: the marker is a version stamp read by nothing in
+            # scripts/, docs/ or this pack.
+            # `splice_variables` is unaffected — it takes only the COUNT from
+            # this run and re-unwraps `lines[:taken]` from the source itself.
+            taken.append("")
             continue
         if _HEADER_KEY_STRICT.match(inner):
             seen_key = True
@@ -171,7 +188,18 @@ def split_header(text: str) -> tuple[str, str]:
         # space past the marker; `<!--\npurpose: x` puts it at column 0. Undent
         # only the first line and the two forms agree.
         first, _, rest = body[width:end].partition("\n")
-        head = _undent(first) + ("\n" + rest if rest else "")
+        first = _undent(first)
+        # The same version stamp the one-line run handles above, in the form
+        # the corpus actually uses more often: `<!-- __faion_header__` on the
+        # opener's own line with the keys at column 0 beneath it. 189 Markdown
+        # templates are written this way against 62 in the one-line form, and
+        # every one of them parsed its header correctly and then raised on
+        # line 1. Blanked rather than dropped so the two branches agree, and
+        # because the stamp carries nothing — `splice_variables` writes the
+        # original text back verbatim, so blanking it here never edits a file.
+        if _MARKER_ONLY.match(first.strip()):
+            first = ""
+        head = first + ("\n" + rest if rest else "")
         if not _HEADER_KEY_LINE.search(head):
             return "", body
         return head, body[end + len(closer):]
