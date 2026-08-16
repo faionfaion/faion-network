@@ -46,6 +46,10 @@ PROGRESS_DIR = (
 
 META_KEYS = ("slug", "tier", "group", "domain", "summary")
 
+# Cross-link keys are structured, not scalar: they must survive load_meta_json's
+# str() coercion intact or the index ships the repr of a list.
+LINK_KEYS = ("assumes_loaded", "related")
+
 # Sub-paths to ignore inside knowledge/.
 SKIP_DIR_PARTS = {"templates", "scripts", "content", "__pycache__"}
 
@@ -63,7 +67,12 @@ def load_meta_json(p: Path) -> dict[str, str] | None:
         return None
     if not isinstance(data, dict):
         return None
-    return {k: ("" if data.get(k) is None else str(data.get(k))) for k in META_KEYS}
+    out: dict = {k: ("" if data.get(k) is None else str(data.get(k))) for k in META_KEYS}
+    for k in LINK_KEYS:
+        value = data.get(k)
+        if isinstance(value, list) and value:
+            out[k] = value
+    return out
 
 
 def methodology_entry(leaf_dir: Path) -> dict[str, str] | None:
@@ -141,8 +150,10 @@ def render_l2_index(domain: str, entries: list[dict[str, str]]) -> str:
     out.append(
         f"  <description>L2 index of methodologies in the {escape(domain)} "
         f"domain. The retriever reads this after picking {escape(domain)} "
-        f"from L1 domains.xml. Entries list slug + tier + summary; open the "
-        f"leaf meta.json / content/*.xml for full payload.</description>"
+        f"from L1 domains.xml. Entries list slug + tier + summary, plus any "
+        f"&lt;assumes&gt; from the leaf's meta.json — a methodology to load "
+        f"first, and why. Open the leaf meta.json / content/*.xml for full "
+        f"payload.</description>"
     )
     for e in entries:
         slug = escape(e.get("slug", ""))
@@ -155,6 +166,26 @@ def render_l2_index(domain: str, entries: list[dict[str, str]]) -> str:
             f'  <methodology slug="{slug}" tier="{tier}" path="{path}">'
         )
         out.append(f"    <summary>{summary}</summary>")
+        # Prerequisites only, from meta.json. A link earns a place in the index
+        # if it changes WHAT gets retrieved: `assumes_loaded` does, because the
+        # answer is "load that one too", and the retriever must know before it
+        # opens anything. `related` does not — it is a "read next" pointer,
+        # useful once the leaf has been read, and every slug it names is
+        # already an entry in this same index with its own summary. Carrying it
+        # here measured +23% on every L2 index to restate what the index
+        # already says; it stays in meta.json and renders in the leaf's
+        # AGENTS.md, which is where it is read.
+        #
+        # `why` is kept deliberately. A bare prerequisite slug forces the agent
+        # to open the prerequisite to find out whether it applies, which costs
+        # far more than the prose does.
+        for entry in e.get("assumes_loaded") or []:
+            if not isinstance(entry, dict) or not entry.get("slug"):
+                continue
+            why = escape(str(entry.get("why", "")).replace("\n", " ").strip())
+            out.append(
+                f'    <assumes slug="{escape(str(entry["slug"]))}">{why}</assumes>'
+            )
         out.append("  </methodology>")
     out.append("</index>")
     return "\n".join(out) + "\n"

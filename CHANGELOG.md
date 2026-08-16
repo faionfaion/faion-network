@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Cross-links move into `meta.json` as validated data.** *Authored by a
+  concurrent session; found uncommitted in the working tree, verified and landed
+  here rather than left to rot.* `scripts/sync-crosslinks-to-meta.py` lifts the
+  `## Assumes Loaded` table and `## Related` list into
+  `"assumes_loaded": [{slug, why}]` and `"related": [slug]` — **2,378
+  methodologies gained `related`, 1,008 gained `assumes_loaded`.**
+
+  **The point is the gate, not the move.** `validate-methodology-v2.py` now
+  resolves every crosslink slug against disk (`_slug_exists`, memoised). Wiki
+  links were read by nothing — no code in `faion-cli`, `faion-net-be` or
+  `faion-net-fe` parses `[[…]]`, and `remap-dangling-wikilinks.py` says so
+  itself — which is why the F-067 rename left a corpus full of dangling links
+  that a script had to repair afterwards. A validated relation fails loudly
+  instead. `meta-schema.json` admits both keys with closed shapes.
+
+  Delivery is unaffected and the design says why: `meta.json` never ships
+  (`isNonContent` excludes it by basename ahead of every admission rule), but
+  `regen-domains-xml.py` reads it into the L2 `INDEX.xml` that does — so a "read
+  this next" pointer now reaches the retriever while it is still choosing a
+  leaf, instead of sitting in a file you only open after choosing.
+
+  Verified before landing: full gate exit 0 with no new failures, templates
+  validator 2521/0, tools 0 findings, dictionary validator clean, manifest
+  unchanged (the new keys carry no tier).
+
+  **Open, and deliberately so: the prose links were added, not moved.** All
+  8,283 `[[…]]` remain in `AGENTS.md` alongside the new `meta.json` copy. That is
+  the right order — build the machine copy, verify it, then drop the prose — but
+  it leaves two sources of truth for one graph, which is the failure mode that
+  produced 187 template/inline drifts in this same corpus. Removing the prose
+  copy should not wait long, and should follow the deferred CR-009 slug renames
+  rather than precede them.
+
 - **`[[wikilink]]` is no longer eaten by the placeholder scanner.** `BRACKET`
   matched the inner `[slug]` of `[[slug]]`, so `- [[slug]]` became
   `- [{{ slug }}]`. Two consequences, the second worse: the link was destroyed

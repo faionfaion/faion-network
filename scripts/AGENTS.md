@@ -10,7 +10,8 @@ Corpus validators and generators. Run from the repo root; every script resolves 
 | `check-validators.sh --fast\|--check-fast\|--check-all\|--write-baseline` | The same validators in gateable form: `FAIL` lines normalised to `<id>\t<path>` and diffed against `validator-baseline.txt`. New line blocks, disappeared line is reported as a fix. What `pre-commit` runs |
 | `validator-baseline.txt` | The committed failure SET (21 lines). The gate is the set, never a count — a count waves through a swap. Refresh with `check-validators.sh --write-baseline` |
 | `install-hooks.sh [--quiet]` | Points `core.hooksPath` at `.githooks`. Idempotent; refuses to overwrite a foreign `hooksPath`. Called by `init.sh` and by `check-validators.sh` |
-| `validate-methodology-v2.py <dir>` | One methodology dir (positional, no `--all`) |
+| `validate-methodology-v2.py <dir>` | One methodology dir (positional, no `--all`). Also resolves the `meta.json` cross-link graph — `CROSSLINK_UNRESOLVED` / `CROSSLINK_SELF` / `CROSSLINK_SHAPE`. Slug existence is probed per slug and memoised, never by globbing the tree, because the full sweep pays this 2,520 times |
+| `sync-crosslinks-to-meta.py [--report] [--write]` | Lifts `[[slug]]` out of `## Assumes Loaded` / `## Related` in leaf `AGENTS.md` into `meta.json` (`assumes_loaded`, `related`). Dry-run by default, idempotent, strips self-references, skips fenced code blocks (`[[tool.mypy.overrides]]` is TOML, `[[ -f "$f" ]]` is bash). Refuses to write if any target does not resolve |
 | `validate-methodology-decision-tree.py --all` | Mandatory `06-decision-tree.xml` |
 | `validate-methodology-templates.py --all` · `validate-methodology-scripts.py --all` | `templates/` and `scripts/` per methodology |
 | `validate-playbook-v3.py --all` | Playbooks (v3 layout); `--self-test` available |
@@ -32,6 +33,7 @@ Corpus validators and generators. Run from the repo root; every script resolves 
 
 - **The do-not-run list is gone because the scripts are gone.** 13 dead files were deleted 2026-08-14: three frontmatter index builders that wrote `count="0"` over live indexes, six finished migration one-shots, and four validators whose target file type no longer exists anywhere in the corpus.
 - **`slug-rename-map.json` is not migration residue.** The old list filed it as migrator input; `repair-playbook-bridge.py` reads it at runtime and aborts without it. Same for `remap-dangling-wikilinks.py`, whose `REMAP` literal is parsed as data even though the script itself has converged.
+- **`remap-dangling-wikilinks.py` repairs the old home, `sync-crosslinks-to-meta.py` fills the new one.** Both are kept: the remapper is still the only thing that rewrites a stale `[[slug]]` in prose, and its `REMAP` dict is read as data by `repair-playbook-bridge.py`. Cross-link truth now lives in `meta.json`, so after any slug rename run the sync, not just the remapper — and let the validator, not a later archaeology pass, tell you what broke.
 - `validate-domain-index.py` (singular, L2 per-domain) and `validate-domains-index.py` (plural, L1) are **not** a duplicate pair. Both are gate validators; the one-letter difference is the only thing distinguishing them.
 - Anything writing `skills/tier-manifest.json` or an `INDEX.xml` mutates thousands of paths at once (manifest v14: 3,075 entries). Diff before committing.
 - Validators exit 1 on failure and are the gate for corpus work; `f066-validate-all.sh` swallows detail (`tail -3`), so rerun the failing validator directly.

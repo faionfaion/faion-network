@@ -34,12 +34,15 @@ jump directly to the failure site.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import re
 import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
+
+KNOWLEDGE_ROOT = Path(__file__).resolve().parent.parent / "skills" / "faion" / "knowledge"
 
 # F-067: metadata source is meta.json (sibling of AGENTS.md).
 REQUIRED_META_KEYS = (
@@ -167,6 +170,78 @@ def _present(value: object) -> bool:
     return True
 
 
+@functools.lru_cache(maxsize=1)
+def _domain_dirs() -> tuple[Path, ...]:
+    try:
+        return tuple(sorted(d for d in KNOWLEDGE_ROOT.iterdir() if d.is_dir()))
+    except OSError:
+        return ()
+
+
+@functools.lru_cache(maxsize=None)
+def _slug_exists(slug: str) -> bool:
+    """Does `<domain>/<slug>/AGENTS.md` exist under any domain?
+
+    Probed per slug rather than by materialising every slug on disk. The
+    validator is invoked once per directory — the pre-commit hook runs it over
+    the slugs a commit touches, and the full sweep runs it 2,520 times — so a
+    whole-tree glob per process would be paid 2,520 times to answer three
+    questions each. This costs ~22 stats per distinct slug, memoised.
+
+    A slug lives in exactly one domain by convention, so the directory name
+    alone is the identifier — the same assumption `remap-dangling-wikilinks.py`
+    and the L2 index generator already make.
+    """
+    return any((d / slug / "AGENTS.md").is_file() for d in _domain_dirs())
+
+
+def validate_crosslinks(meta: dict, location: Path, report: Report) -> None:
+    """`assumes_loaded` and `related` must name methodologies that exist.
+
+    These were `[[wikilinks]]` in AGENTS.md prose until they moved here, and
+    nothing resolved them — which is how the F-067 rename left a corpus full of
+    inert bracketed strings that `remap-dangling-wikilinks.py` had to repair
+    after the fact. The check exists so the next rename fails loudly instead.
+    """
+    own = meta.get("slug")
+
+    related = meta.get("related", [])
+    if related and not isinstance(related, list):
+        report.fail(location, "CROSSLINK_SHAPE", "'related' must be an array of slugs")
+        related = []
+    for entry in related:
+        if not isinstance(entry, str):
+            report.fail(location, "CROSSLINK_SHAPE",
+                        f"'related' entry must be a slug string, got {type(entry).__name__}")
+        elif entry == own:
+            report.fail(location, "CROSSLINK_SELF", f"'related' points at itself: '{entry}'")
+        elif not _slug_exists(entry):
+            report.fail(location, "CROSSLINK_UNRESOLVED",
+                        f"'related' slug does not resolve to a methodology: '{entry}'")
+
+    assumes = meta.get("assumes_loaded", [])
+    if assumes and not isinstance(assumes, list):
+        report.fail(location, "CROSSLINK_SHAPE",
+                    "'assumes_loaded' must be an array of {slug, why} objects")
+        assumes = []
+    for entry in assumes:
+        if not isinstance(entry, dict):
+            report.fail(location, "CROSSLINK_SHAPE",
+                        f"'assumes_loaded' entry must be an object, got {type(entry).__name__}")
+            continue
+        slug = entry.get("slug")
+        if not entry.get("why"):
+            report.fail(location, "CROSSLINK_SHAPE",
+                        f"'assumes_loaded' entry '{slug}' has no 'why' — a prerequisite "
+                        "without a reason is unactionable")
+        if slug == own:
+            report.fail(location, "CROSSLINK_SELF",
+                        f"'assumes_loaded' points at itself: '{slug}'")
+        elif not _slug_exists(slug):
+            report.fail(location, "CROSSLINK_UNRESOLVED",
+                        f"'assumes_loaded' slug does not resolve to a methodology: '{slug}'")
+
+
 def validate_meta(meta_path: Path, agents_path: Path, report: Report) -> None:
     """F-067: validate metadata read from `<dir>/meta.json`."""
     if not meta_path.exists():
@@ -205,6 +280,8 @@ def validate_meta(meta_path: Path, agents_path: Path, report: Report) -> None:
         if pr and not PRODUCES_RE.fullmatch(pr):
             report.fail(location, "F066_PRODUCES",
                         f"produces='{pr}' must match ^[a-z][a-z0-9-]*$")
+
+    validate_crosslinks(meta, location, report)
 
 
 def validate_agents_md_body(agents_path: Path, report: Report) -> None:
