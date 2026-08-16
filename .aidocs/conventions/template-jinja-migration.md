@@ -76,6 +76,28 @@ JSON Schema replaces the YAML-ish subset because it is machine-readable by tools
 it composes with `$ref` (15 contracts already use it), and it removes a hand-written parser that has
 already been the source of two blockers this week.
 
+### 2a. Why these paths and not tidier ones — verified against the packer
+
+**A `.json` reaches a user's disk from under a `templates/` path segment and from nowhere else.**
+`packablePath` in `faion-cli/tools/vfs-pack/pack.go` ships `.md` and `.xml` from anywhere, `.py`/`.sh`
+only from `scripts/`, `.tsv`/`.txt` only from `lexicon/`, and — F036/AD-024 — **everything** under a
+`templates/` segment, deliberately not extension-gated. Everything else is excluded, and `meta.json`
+is excluded everywhere as packer input.
+
+Proven by a test written against the real packer, not by reading it:
+`faion/templates/vars-dictionary.schema.json` → ships; `faion/knowledge/<d>/<s>/templates/x.vars.schema.json`,
+`x.md.j2` and `x.html.j2` → ship; `faion/schemas/vars-dictionary.schema.json` → **does not**.
+
+So the layout in §2 and §3 is load-bearing, not cosmetic. Moving the dictionary into a `schemas/`
+directory — the obvious tidy — makes it invisible on every user's machine while every validator in
+this repo stays green, because validators read the disk and the packer decides delivery. That is
+exactly the shape of CR-010, and it is why this note exists.
+
+The same rule kills the alternative of parking the dictionary inside the tool pack: `syncPack`
+materialises only each tool's script, its card and its nested helpers, so a data file there is packed
+and never lands. A tool that needs the dictionary at runtime reads it from the corpus, or embeds it
+with a `--file` override — the standing rule in `skills/faion/tools/AGENTS.md`.
+
 ## 3. The variable dictionary — the point of the whole exercise
 
 ```

@@ -4,6 +4,52 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **The corpus-wide variable dictionary lands** — `skills/faion/templates/vars-dictionary.schema.json`,
+  Draft-07, **66 entries**, each with a type, a title and a `description` written as the question put
+  to the author. 9 are sensitive (each with a placeholder), 9 are LLM-composed, 8 are enums. Every
+  per-template `*.vars.schema.json` will `$ref` into it. Gated `free` by a new `meta.json`, because a
+  gated dictionary means a free-tier template cannot render — the argument F031 made for the lexicon.
+
+  **66 and not 12, because convergence means MORE names.** `name` occurs 676 times and is the worst
+  variable in the corpus: it resolves to `owner_full_name`, `reviewer_name`, `engagement_name`,
+  `persona_name`, `feature_name` or a per-row slot depending on the line it sits on. It has no entry
+  and must never have one. The strongest splits are argued from templates where **both names appear
+  in the same file**: a `## Sign-off` envelope carrying `owner:` and `reviewer:` together (55
+  templates, verified), a `Sponsor Override (if softening RED)` heading in a document that also names
+  an owner, and `Welcome to the [Company] Affiliate Program` inside a letter addressed to a client.
+
+  **The findings file's headline was corrected before it was committed.** It claimed 4,875
+  placeholders over 712 templates "repeat verbatim". Verbatim repetition is a much rarer degenerate
+  case — **563 placeholders in 102 templates** — and would not have supported the recommendation
+  built on it. What actually blocks the migration is a repeating row *shape*: **5,543 placeholders
+  across 731 templates**, table rows plus repeated-shape list bullets. The number was roughly right
+  and the word was wrong, which matters in a document whose §1 is explicitly framed as argued on
+  evidence. The definition and its reproducer now sit above the number.
+
+- **`regen-tier-manifest.py` walks a seventh root.** A directory under `skills/faion/` that the
+  generator does not name is never read: its `meta.json` resolves in no manifest entry and it
+  inherits a tier silently. Adding a root means adding a case, not only a `meta.json` beside it —
+  now stated in the script's own docstring and in `scripts/AGENTS.md`, which had also gone stale on
+  `recipes/`.
+
+- **Verified against the packer where the dictionary is allowed to live** (`template-jinja-migration.md`
+  §2a). `packablePath` ships **everything** under a `templates/` path segment, un-extension-gated
+  (F036/AD-024), and excludes essentially every other `.json`. A test written against the real packer
+  confirms `faion/templates/vars-dictionary.schema.json` ships and `faion/schemas/…` does not. The
+  obvious tidy — moving it to a `schemas/` dir — would make it invisible on every user's machine
+  while every validator here stayed green, because validators read the disk and the packer decides
+  delivery. That is CR-010's exact shape.
+
+- **Recorded: `sensitive` is doing two jobs and only one of them fits personal data**
+  (`variable-dictionary-findings.md` §8). Eight of the nine sensitive entries are people, including
+  `owner_full_name` — the field **814 templates** carry in ~30 spellings. `tplcore.py` refuses to
+  write a sensitive value to the project store (verified: `store_put` records only
+  `{sensitive, placeholder}`, `save_store` raises otherwise), so the corpus's single most common
+  field is the one a project can never remember. For a credential that is right and is the stronger
+  half of the rule. For a name it is not: the rendered artefact sits in the same directory with that
+  name in plaintext, so refusing to cache it protects nothing and costs the store its dominant use.
+  **Not changed** — §5/§5a are ratified and splitting the flag is a contract change.
+
 - **Ratified `.aidocs/conventions/template-jinja-migration.md`** — templates
   become Jinja, variables become JSON Schema, and every schema draws its names
   from one corpus-wide dictionary. Three changes decided together because each is

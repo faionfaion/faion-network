@@ -13,7 +13,15 @@ query lexicon; it is tier `free` on purpose - a paid lexicon would mean
 free users cannot search in their own language) and
 `skills/faion/recipes/<name>/meta.json` (F027 recipe library: one
 meta.json per recipe dir gates its recipe.json and its card, same
-directory-coverage rule).
+directory-coverage rule) and
+`skills/faion/templates/meta.json` (one meta.json gates the corpus-wide
+variable dictionary; tier `free` for the same reason the lexicon is -
+a gated dictionary would mean a free-tier template cannot render).
+
+A root absent from this list is not gated at all: its meta.json is
+never read, so nothing it holds resolves in the manifest and it
+inherits a tier silently. Adding a directory under `skills/faion/`
+means adding a case below, not only a meta.json beside it.
 
 The manifest `notes` field is never dropped: a version bump keeps the
 previous note verbatim behind a `Prior vN:` prefix.
@@ -36,6 +44,7 @@ FRAGMENTS = ROOT / "skills" / "faion" / "fragments"
 TOOLS = ROOT / "skills" / "faion" / "tools"
 LEXICON = ROOT / "skills" / "faion" / "lexicon"
 RECIPES = ROOT / "skills" / "faion" / "recipes"
+TEMPLATES = ROOT / "skills" / "faion" / "templates"
 BACKUP = ROOT / "skills" / "tier-manifest.json.f067-pre-bak"
 
 TIERS = ("free", "solo", "pro", "geek")
@@ -103,6 +112,7 @@ def collect_entries() -> tuple[list[dict], dict]:
         "meta_tools": 0,
         "meta_lexicon": 0,
         "meta_recipes": 0,
+        "meta_templates": 0,
         "skipped": 0,
     }
 
@@ -166,6 +176,16 @@ def collect_entries() -> tuple[list[dict], dict]:
             else:
                 stats["skipped"] += 1
 
+    # 7. meta.json under templates (the corpus-wide variable dictionary)
+    if TEMPLATES.exists():
+        for meta in TEMPLATES.rglob("meta.json"):
+            e = entry_from_meta(meta)
+            if e:
+                entries.append(e)
+                stats["meta_templates"] += 1
+            else:
+                stats["skipped"] += 1
+
     entries.sort(key=lambda e: (e["tier"] or "", e["path"]))
     return entries, stats
 
@@ -205,6 +225,7 @@ def main() -> int:
         f"meta_tools={stats['meta_tools']}, "
         f"meta_lexicon={stats['meta_lexicon']}, "
         f"meta_recipes={stats['meta_recipes']}, "
+        f"meta_templates={stats['meta_templates']}, "
         f"skipped={stats['skipped']})"
     )
     print(summary)
