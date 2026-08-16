@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Validator 11: `scripts/validate-vars-dictionary.py`.** `skills/faion/templates/`
+  shipped with **no gate at all** — nothing in `scripts/` opened either file. The
+  failure that mattered: a resolver rule naming a renamed or deleted dictionary
+  entry does not raise at runtime, it silently stops resolving, and a template
+  that stops resolving is indistinguishable from one that merely needs review.
+  Same shape as this corpus's other vacuous gates (`content_id` declared a hash
+  and matching 0 of 2,520; a rule check satisfied by all 16,147 rules declaring
+  `testable="true"`), and the same fix: a check that can actually fail.
+
+  Ten assertions — entry name shape, `type`/`title`/`description` present, the
+  240-char cap matching validator 5, sensitive⇒placeholder, enum non-empty and
+  unique, rule fields present, unique rule ids, **every rule's `entry` exists in
+  the dictionary**, every `when` regex compiles, and the resolver's declared
+  `dictionary` path pointing at the file being validated.
+
+  **Mutation-tested, because a gate I have not seen fail is not a gate.** All ten
+  assertions were violated one at a time; all ten failed, the control run passed,
+  zero vacuous checks. Registered in `check-validators.sh` (fast set) and
+  `f066-validate-all.sh`.
+
 - **`vars-resolver.json`: the bridge from a raw proposed name to a dictionary
   entry.** `tpl-jinja.py` drafts names from a placeholder's own text (`name` 500
   occurrences, `slug` 282, `handle` 238) and the dictionary deliberately carries

@@ -28,5 +28,6 @@ run "7. validate-lexicon"                   python3 scripts/validate-lexicon.py
 run "8. validate-recipes"                   python3 scripts/validate-recipes.py
 run "9. validate-fragments"                 python3 scripts/validate-fragments.py
 run "10. validate-tools"                    python3 scripts/validate-tools.py
+run "11. validate-vars-dictionary"          python3 scripts/validate-vars-dictionary.py
 
 echo "report: $REPORT"

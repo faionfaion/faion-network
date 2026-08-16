@@ -34,7 +34,7 @@ Methodology corpus and Claude Code skill base for the `faion` CLI. Auto-loaded i
 ## Commands
 
 ```bash
-bash scripts/f066-validate-all.sh                    # all 10 corpus validators, summary report (~4 min)
+bash scripts/f066-validate-all.sh                    # all 11 corpus validators, summary report (~4 min)
 bash scripts/check-validators.sh --check-fast        # the gate the hook runs: failure SET vs baseline
 bash scripts/install-hooks.sh                        # point core.hooksPath at .githooks (init.sh does it too)
 python3 scripts/validate-methodology-v2.py <dir>     # one methodology dir

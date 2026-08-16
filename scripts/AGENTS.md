@@ -6,7 +6,7 @@ Corpus validators and generators. Run from the repo root; every script resolves 
 
 | Script | Use |
 |--------|-----|
-| `f066-validate-all.sh [report]` | Runs the 10 corpus validators, writes a pass/fail summary (default `/tmp/f066-validate-report.txt`). ~4 min, ~205 s of it validator 3 |
+| `f066-validate-all.sh [report]` | Runs the 11 corpus validators, writes a pass/fail summary (default `/tmp/f066-validate-report.txt`). ~4 min, ~205 s of it validator 3 |
 | `check-validators.sh --fast\|--check-fast\|--check-all\|--write-baseline` | The same validators in gateable form: `FAIL` lines normalised to `<id>\t<path>` and diffed against `validator-baseline.txt`. New line blocks, disappeared line is reported as a fix. What `pre-commit` runs |
 | `validator-baseline.txt` | The committed failure SET (21 lines). The gate is the set, never a count — a count waves through a swap. Refresh with `check-validators.sh --write-baseline` |
 | `install-hooks.sh [--quiet]` | Points `core.hooksPath` at `.githooks`. Idempotent; refuses to overwrite a foreign `hooksPath`. Called by `init.sh` and by `check-validators.sh` |
@@ -17,6 +17,7 @@ Corpus validators and generators. Run from the repo root; every script resolves 
 | `validate-domains-index.py` · `validate-domain-index.py --all` | L1 `domains.xml` and L2 `INDEX.xml` |
 | `validate-playbook-taxonomy.py` · `validate-workflow-v2.py` | Goal taxonomy, workflow shape |
 | `validate-lexicon.py [dir]` | UA→EN lexicon: file hygiene, row shape, byte order, every `en` term attested in the corpus, `src` re-derived and compared to the declared value, the 20% `observed` cap, stopwords disjoint from the prefixes |
+| `validate-vars-dictionary.py [dir]` | Validator 11: the variable dictionary and its resolver. Entry shape, the 240-char description cap, sensitive⇒placeholder, and — the reason it exists — **every resolver rule's `entry` must exist in the dictionary**. A rule naming a renamed entry does not raise at runtime, it silently stops resolving, which is indistinguishable from a template that merely needs review. Mutation-tested: all 10 assertions fail when violated |
 | `validate-fragments.py` · `validate-recipes.py` · `validate-tools.py` | Fragments, recipes, tool packs. All three import `schema_check.py` by absolute path and `ImportError` without it |
 | `schema_check.py` | Shared JSON-Schema subset checker. Not standalone; deleting it kills three gate validators at import time |
 | `regen-tier-manifest.py [--dry-run]` | Rebuilds `skills/tier-manifest.json` from `meta.json` under **seven** roots: `knowledge/`, `playbooks/`, `fragments/<library>/`, `tools/<pack>/`, `lexicon/`, `recipes/<name>/` and `templates/`. A root absent from that list is never read, so it resolves in no manifest entry and inherits a tier silently — adding a dir under `skills/faion/` means adding a case, not only a `meta.json`. `--dry-run` first, always. Keeps the previous `notes` verbatim behind a `Prior notes, verbatim:` prefix; re-running at the same version leaves `notes` untouched |

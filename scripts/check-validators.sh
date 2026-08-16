@@ -49,7 +49,7 @@ BASELINE=scripts/validator-baseline.txt
 #     validator wants YAML frontmatter no playbook AGENTS.md has ever
 #     carried. Gating on a broken validator teaches people to ignore
 #     the gate. It stays out until it is repaired.
-FAST_IDS=(domains-index domain-index decision-tree templates scripts lexicon recipes fragments tools)
+FAST_IDS=(domains-index domain-index decision-tree templates scripts lexicon recipes fragments tools vars-dictionary)
 fast_cmd() {
   case "$1" in
     domains-index) echo "scripts/validate-domains-index.py" ;;
@@ -61,6 +61,7 @@ fast_cmd() {
     recipes)       echo "scripts/validate-recipes.py" ;;
     fragments)     echo "scripts/validate-fragments.py" ;;
     tools)         echo "scripts/validate-tools.py" ;;
+    vars-dictionary) echo "scripts/validate-vars-dictionary.py" ;;
   esac
 }
 
