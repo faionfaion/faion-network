@@ -4,6 +4,59 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **`[[wikilink]]` is no longer eaten by the placeholder scanner.** `BRACKET`
+  matched the inner `[slug]` of `[[slug]]`, so `- [[slug]]` became
+  `- [{{ slug }}]`. Two consequences, the second worse: the link was destroyed
+  (neither a wiki link nor a Markdown link any more), and `slug` was declared
+  **required**, so the template refused to build until a human answered "what
+  slug?" about something that was never a parameter — the exact failure §5
+  exists to prevent. Nothing caught it: `--check` drift stayed 0 and every
+  validator stayed green.
+
+  Fixed by adding `[` to the lookbehind and `]` to the lookahead — a doubled
+  bracket is a link, not a placeholder. Verified against every bracket shape the
+  corpus uses: plain `[Name]`, table cells, task boxes `- [ ]`, footnotes
+  `[^1]`, inline links `[text](url)` and reference links `[ref][id]` all behave
+  exactly as before; only `[[…]]` changes.
+
+  Worth stating why this matters beyond two files: wiki syntax is used **8,283
+  times across 2,378 files** and is read by nothing — no code in `faion-cli`,
+  `faion-net-be` or `faion-net-fe` parses it, and `remap-dangling-wikilinks.py`
+  says so itself ("retrieval never navigates by wikilink"). It is inert text an
+  agent reads, which is precisely why a scanner silently eating it produced no
+  visible failure anywhere.
+
+- **Methodology cross-links moved from `AGENTS.md` prose into `meta.json`, and
+  a validator now resolves them.** `[[slug]]` in `## Assumes Loaded` and
+  `## Related` was read by an agent and by nothing else: no validator opened a
+  link, so a rename broke them in silence — which is exactly what the F-067
+  taxonomy cut did, leaving damage `remap-dangling-wikilinks.py` had to repair
+  after the fact, one hand-written `REMAP` entry at a time.
+
+  `meta.json` gains two optional keys, `assumes_loaded` (`{slug, why}`) and
+  `related` (slugs), populated across 2,378 of 2,520 leaves — 1,702 and 6,322
+  entries. `scripts/sync-crosslinks-to-meta.py` performs the lift and is
+  idempotent. `validate-methodology-v2.py` gains `CROSSLINK_UNRESOLVED`,
+  `CROSSLINK_SELF` and `CROSSLINK_SHAPE`. Schema and
+  `.aidocs/conventions/meta-json-spec.md` §3.2 record the reversal of the older
+  rule that sent prerequisites into body sections.
+
+  **The new check found 43 leaves listing themselves** — harmless while nothing
+  resolved a wikilink, an instruction to load the file you are already reading
+  the moment something does. All 43 dropped.
+
+  **Only `assumes_loaded` reaches the L2 index.** `meta.json` never ships
+  (`isNonContent` excludes it by basename ahead of every admission rule), so
+  delivery is `regen-domains-xml.py` → `INDEX.xml`, which now emits
+  `<assumes slug="…">why</assumes>`. Carrying `related` there too measured
+  **+43%** on every L2 index against **+19%** for prerequisites alone, to
+  restate slugs already listed in that same index with their own summaries. The
+  rule: **a link earns a place in the index only if it changes the selection.**
+  `related` stays in `meta.json` and renders in the leaf.
+
+  Links written inside a *sentence* — `Summary`, `Applies If`, `Skip If`, 125 of
+  them — are untouched. They are prose, not a graph.
+
 - **The multi-site rule now also refuses two sites on ONE line, and the
   same-heading carve-out no longer shelters them.** A table row binding its
   cells to one variable is always distinct values: `**Last updated:**

@@ -80,7 +80,14 @@ ESCAPED = re.compile(r"&lt;([^&<>\n]{1,80})&gt;")
 # `[bracket]`: a Markdown inline link, reference link, task box and footnote
 # are all bracket-shaped, so each is excluded by lookaround rather than by a
 # post-filter that would have to re-find the context.
-BRACKET = re.compile(r"(?<![\]\^])\[([^\[\]\n]{1,80})\](?![\(\[])")
+# `[[wikilink]]` is the corpus's cross-reference convention — 8,283 of them,
+# with their own maintenance script. The inner `[slug]` matched here, so
+# `- [[slug]]` became `- [{{ slug }}]`: the link destroyed AND `slug`
+# declared REQUIRED, so the template refused to build until a human answered
+# "what slug?" about something that was never a parameter. Nothing caught it —
+# drift stayed 0 and every validator stayed green. Hence `[` in the lookbehind
+# and `]` in the lookahead: a doubled bracket is a link, not a placeholder.
+BRACKET = re.compile(r"(?<![\]\^\[])\[([^\[\]\n]{1,80})\](?![\(\[\]])")
 # `{brace}`: as wide as ANGLE and BRACKET, and mixed case on purpose — CR-013
 # §1. The ALL-CAPS-only rule this replaces was justified as *"ambiguous with
 # f-strings, Go templates"*, which is true INSIDE code and nowhere else: of the
