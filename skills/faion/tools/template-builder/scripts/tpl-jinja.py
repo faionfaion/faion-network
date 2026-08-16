@@ -530,12 +530,17 @@ def convert(text: str, stem: str, *, dictionary: dict,
             continue
         seen.add(item["name"])
         if item["name"] in declared:
-            decls.append(dict(declared[item["name"]]))
+            # The SOURCE declared this variable, so its description is a human's
+            # sentence. `authored` is what lets build_schema tell it apart from
+            # the one draft_description() invents — without the flag the rule
+            # fired on every variable and overrode 1,453 curated dictionary
+            # questions with text like "Version. From section 'Context'."
+            decls.append({**declared[item["name"]], "authored": True})
             continue
         decls.append({"name": item["name"], "type": item["type"],
                       "required": item["required"], "default": None,
                       "sensitive": False, "placeholder": None,
-                      "options": item["options"],
+                      "options": item["options"], "authored": False,
                       "description": item["description"]})
     decls.sort(key=lambda d: d["name"])
 
@@ -1236,7 +1241,7 @@ def resolver_checks() -> list[str]:
     _sch = JINJA.build_schema(
         [{"name": "owner_handle", "type": "string", "required": True,
           "default": None, "sensitive": False, "placeholder": None,
-          "options": None, "description": AUTHORED_DESC}],
+          "options": None, "authored": True, "description": AUTHORED_DESC}],
         schema_id="x.vars.schema.json", title="t", description="d",
         dictionary=MINI_DICTIONARY, dictionary_ref="../vars-dictionary.schema.json")
     _authored = _sch["properties"].get("owner_handle") or {}
@@ -1250,12 +1255,27 @@ def resolver_checks() -> list[str]:
     _bare = JINJA.build_schema(
         [{"name": "owner_handle", "type": "string", "required": True,
           "default": None, "sensitive": False, "placeholder": None,
-          "options": None, "description": MINI_DICTIONARY["owner_handle"]["description"]}],
+          "options": None, "authored": True,
+          "description": MINI_DICTIONARY["owner_handle"]["description"]}],
         schema_id="x.vars.schema.json", title="t", description="d",
         dictionary=MINI_DICTIONARY, dictionary_ref="../vars-dictionary.schema.json")
     if _bare["properties"].get("owner_handle") != _want:
         failures.append("build_schema: a description identical to the "
                         "dictionary's should collapse to a bare $ref")
+    # A DRAFTED description must never outrank the dictionary's curated
+    # question. This is the assertion the first version of the rule lacked:
+    # it tested only "the text differs", which every drafted description also
+    # satisfies, so it fired universally.
+    _drafted = JINJA.build_schema(
+        [{"name": "owner_handle", "type": "string", "required": True,
+          "default": None, "sensitive": False, "placeholder": None,
+          "options": None, "authored": False,
+          "description": "Owner. From section 'Context'."}],
+        schema_id="x.vars.schema.json", title="t", description="d",
+        dictionary=MINI_DICTIONARY, dictionary_ref="../vars-dictionary.schema.json")
+    if _drafted["properties"].get("owner_handle") != _want:
+        failures.append("build_schema: a DRAFTED description overrode the "
+                        f"dictionary: {_drafted['properties'].get('owner_handle')!r}")
     if plan["resolved"] != 1:
         failures.append(f"resolver: resolved={plan['resolved']}, expected 1 — "
                         "a guard let something through")

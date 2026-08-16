@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Only a HAND-AUTHORED description now outranks the dictionary — 1,527 drafted
+  overrides removed, 268 authored ones kept.** The third and last consequence of
+  the rule I added in `d482c28c1`, and the one with the widest blast radius.
+
+  The rule tested *"the local description differs from the entry's"*. Every
+  converter-**drafted** description satisfies that too, so it fired on almost
+  every variable and replaced curated dictionary questions with
+  `draft_description()` output. `document_version` shipped
+  `"Version. From section 'Context'."` where the dictionary says *"What semantic
+  version is this revision of the document?"*; `owner_handle` shipped `"Owner."`.
+  Under §1b the description **is** the wire format — the sentence an agent puts
+  to a human — so this was a copy regression across most of the corpus.
+
+  The discriminator already existed and was simply not carried through:
+  `tpl-migrate` marks a declaration `reason="declared"` when its description came
+  from the source's `variables:` block and `"parameter"` when it was drafted.
+  Decls now carry an explicit `authored` flag and `build_schema` gates on that.
+  A new `--self-test` assertion proves a drafted description cannot override,
+  verified red-before-green.
+
+  Repair was surgical, not a re-migration: 1,387 collapsed by matching
+  `draft_description()`'s two heading-bearing shapes exactly, then 140 more that
+  were short capitalised noun phrases with no question mark while the dictionary
+  offered a real one. **268 survived** and reading them shows why the rule exists
+  at all — *"Who owns this rollback button? One named human on the ops rota who
+  can…"* is better than any generic entry could be.
+
+  `--check` **drift=0 across all 2,875**; templates validator 2521/0; tools 0
+  findings; dictionary validator clean.
+
+  **The lesson, since this fix produced three separate regressions** — invisible
+  `sensitive`, 638 wrongly-`required` slots, and now 1,527 overridden
+  descriptions. I asked "is this rule correct?" and never "how many sites will it
+  fire on?". A rule that reads as narrow in its own diff can be universal in
+  effect, and the corpus is where that shows up.
+
 - **158 templates re-converted from their PRE-MIGRATION source; 90 of them were
   reporting a false `exit 0`.** The repair path CR-013 names: `git show
   <migrating commit>~1:<path>` for each affected template, then `--migrate`

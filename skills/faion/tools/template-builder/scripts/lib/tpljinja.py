@@ -237,7 +237,15 @@ def build_schema(decls: list[dict], *, schema_id: str, title: str,
         name = decl["name"]
         if dictionary and name in dictionary and dictionary_ref:
             ref = {"$ref": f"{dictionary_ref}#/$defs/{name}"}
-            authored = (decl.get("description") or "").strip()
+            # ONLY a hand-authored description outranks the dictionary. The
+            # first version of this rule tested "the local text differs from the
+            # entry's", which is true of every converter-DRAFTED description
+            # too — so it fired universally and replaced 1,453 curated questions
+            # with drafted text like "Version. From section 'Context'.". Under
+            # §1b the description is the wire format, so that was a copy
+            # regression across most of the corpus, not a tidy-up.
+            authored = (decl.get("description") or "").strip() \
+                if decl.get("authored") else ""
             if authored and authored != (dictionary[name].get("description") or "").strip():
                 # draft-07 ignores keywords sibling to `$ref`, so the reference
                 # goes under `allOf` where it still applies and `description`
