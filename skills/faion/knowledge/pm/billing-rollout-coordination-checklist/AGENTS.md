@@ -70,6 +70,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[change-request-pricing-rubric]]
 - [[client-status-email-template-agency]]
 - upstream playbook: `role-product-manager/Pricing experiment, hypothesis to result`

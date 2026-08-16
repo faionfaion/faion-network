@@ -30,6 +30,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/claude-code/skills-and-plugins` | How Claude Code skills + plugins relate to hooks. |
@@ -67,6 +69,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-claude-code-hooks.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/infra/`
 - `[[skills]]`

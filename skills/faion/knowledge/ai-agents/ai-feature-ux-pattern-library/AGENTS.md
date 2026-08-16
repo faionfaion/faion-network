@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ai-agents/ai-feature-brief-extension-pack/AGENTS.md` | Hallucination policy section anchors which refusal surfaces are needed. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-output.py` | Validate the UX spec. | After draft, before design review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/ai-agents/`
 - peer: [[ai-feature-brief-extension-pack]] — brief feeds policy into UX choices.

@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/llm-decision-framework` | Provider + RAG choice. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-llamaindex.py` | Validate the pipeline config (loaders, chunk, index, citation policy). | Pre-merge of every LlamaIndex pipeline PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[graph-rag]] — graph-first alternative.
 - [[langchain]] — alternative agent framework.

@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[active-listening]] | RASA discipline applied during the call |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-mom-test.py` | Validate Mom-Test script JSON against the schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[active-listening]]
 - [[stakeholder-communication]]

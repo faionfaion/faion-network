@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `enum-constraints-closed-vocabularies` | Same sampling-time-mask principle, complementary tool for finite-value fields. |
@@ -70,6 +72,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-decimal-as-string-pattern.py` | Validates a JSON file against the price/ID patterns from the catalog | Pre-commit on any schema change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[enum-constraints-closed-vocabularies]]
 - [[field-descriptions-as-prompts]]

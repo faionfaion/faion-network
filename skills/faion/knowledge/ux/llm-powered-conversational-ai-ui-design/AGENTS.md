@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | [[multimodal-vui-design]] | Voice + visual sync rules. |
@@ -67,6 +69,8 @@
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[multimodal-vui-design]]
 - [[ai-design-assistant-patterns]]

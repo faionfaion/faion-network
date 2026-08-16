@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[django-project-structure]]` | Layering choices materialise into folder structure. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-django-decision-tree.py` | Validate the decision record JSON. | After tree walk, before architecture doc is published. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[django-api]] — API stack choice elaborated here.
 - [[django-project-structure]] — layering choice elaborated here.

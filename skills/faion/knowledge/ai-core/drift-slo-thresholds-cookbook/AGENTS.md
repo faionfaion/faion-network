@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/llm-integration` | parent operating context |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-drift-slo-thresholds-cookbook.py` | Enforce the output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[cost-quality-tradeoff-framework]] — adjacent framework.
 - [[eval-contract-template]] — adjacent eval gate.

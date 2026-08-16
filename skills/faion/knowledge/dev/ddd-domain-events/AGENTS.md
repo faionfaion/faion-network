@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ddd-aggregates]] | Events live on aggregates. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ddd-domain-events.py` | Validate event + outbox spec | Pre-commit on spec artefact |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ddd-aggregates]]
 - [[event-sourcing-fundamentals]]

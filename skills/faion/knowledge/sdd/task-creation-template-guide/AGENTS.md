@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/sdd/sdd-planning/impl-plan-task-format` | TASK shape this guide fills. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-task-creation-template-guide.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[impl-plan-task-format]]
 - [[task-creation-principles]]

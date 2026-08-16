@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/sdd/dark-knowledge-extraction-protocol` | this AGENTS.md consumes the dark-knowledge pack as one of its inputs. |
@@ -74,6 +76,8 @@
 | `scripts/validate-agents-md-for-receiving-team.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[dark-knowledge-extraction-protocol]]
 - [[decision-log-reconstruction-from-git]]

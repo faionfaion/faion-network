@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/product/product-manager/agentic-ai-product-development` | Sibling for autonomous-agent products. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-native-product-development.py` | Validate roadmap-line JSON against the contract (pinned model_id, risk_tier present, build justified, inference cost set, refines UX wired). | Before roadmap commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[agentic-ai-product-development]] — sibling for autonomous-agent products.
 - [[ai-feature-de-risking]] — peer methodology for shipping AI features safely.

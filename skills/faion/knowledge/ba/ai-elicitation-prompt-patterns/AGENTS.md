@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ai-assisted-requirements-elicitation]] | Upstream BABOK-grounded methodology this implements |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-elicitation-prompt-patterns.py` | Validate emitted pattern against output-contract schema | CI on each pattern change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-assisted-requirements-elicitation]]
 - [[ai-acceptance-criteria-generator-reviewer]]

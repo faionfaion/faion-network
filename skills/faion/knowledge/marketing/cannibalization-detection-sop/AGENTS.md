@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/marketing/seo-manager` or `pro/marketing/growth-marketer` | Parent role context — SEO / growth discipline. |
@@ -76,6 +78,8 @@
 | `scripts/validate-cannibalization-detection-sop.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[cannibalization-detection-sop]]
 - [[anchor-diversification-rules]]

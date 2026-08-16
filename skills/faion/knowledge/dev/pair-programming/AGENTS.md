@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[mob-programming]]` | 3+ person extension; preconditions overlap. |
@@ -68,6 +70,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-pair-programming.py` | Validates protocol JSON has mode + roster + retro plan. | Pre-session. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `free/dev/software-developer/`
 - `[[mob-programming]]` — 3+ participant variant

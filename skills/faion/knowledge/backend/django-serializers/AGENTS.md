@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `django-service-layer` | serializers call services for writes |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-django-serializers.py` | AST check: no `ModelSerializer` with `fields="__all__"`, no `validate_*` containing ORM calls, explicit fields | pre-commit / CI |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[django-service-layer]] — writes happen in services, not serializers
 - [[django-selectors]] — reads happen in selectors, not serializer methods

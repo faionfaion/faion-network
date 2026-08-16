@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `freelancer-positioning-content-calendar` | Calendar pillars depend on positioning. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-positioning-diff-log.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + monthly review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[freelancer-positioning-content-calendar]]
 - [[objection-bank]]

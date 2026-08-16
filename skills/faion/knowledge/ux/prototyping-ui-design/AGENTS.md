@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/ux/prototype-iteration-log-template` | Log row produced per iteration. |
@@ -74,6 +76,8 @@
 | `templates/testing-notes.md` | Per-participant prototype testing notes and evidence capture Generated from `templates/testing-notes.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[prototype-iteration-log-template]]
 - [[critical-issue-triage-protocol]]

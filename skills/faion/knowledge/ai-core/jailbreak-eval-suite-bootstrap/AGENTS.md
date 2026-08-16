@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[judge-calibration-protocol]]` | Calibrates the LLM-as-judge before it gates merges. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-jailbreak-eval-suite-bootstrap.py` | Validates suite-config.yaml + eval-cases.jsonl conform to the contract (category coverage, judge wiring, thresholds). | Pre-commit on suite-config / cases; CI before runner. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/`
 - `[[judge-calibration-protocol]]` — required upstream

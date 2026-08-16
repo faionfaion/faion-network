@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[data-driven-requirements]] | post-launch metrics replay original evidence |
@@ -71,6 +73,8 @@
 | `templates/solution-assessment-report.md` | Detailed assessment report with KPI table + gap callouts. Generated from `templates/solution-assessment-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[data-driven-requirements]]
 - [[requirements-validation]]

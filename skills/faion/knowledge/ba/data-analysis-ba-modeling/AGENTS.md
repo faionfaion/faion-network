@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[interface-analysis]] | Sibling that maps the integration surface this data lives behind |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `templates/data-requirements.md` | data requirements skeleton (per-feature entity + field shortlist) Generated from `templates/data-requirements.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[interface-analysis]]
 - [[business-process-analysis]]

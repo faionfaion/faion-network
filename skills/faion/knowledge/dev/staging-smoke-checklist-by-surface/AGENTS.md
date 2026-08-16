@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[deploy-notes-template-with-rollback]] | deploy artefact this checklist links into. |
@@ -79,6 +81,8 @@
 | `scripts/validate-staging-smoke-checklist-by-surface.py` | Validate the artefact against `content/02-output-contract.xml` schema. | After draft, before merge; pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[deploy-notes-template-with-rollback]]
 - [[qa-rc-smoke-pack-template]]

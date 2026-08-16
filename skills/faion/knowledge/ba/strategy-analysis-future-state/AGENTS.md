@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[strategy-analysis-business-need]] | Anchors every future-state outcome to a business metric. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-strategy-analysis-future-state.py` | Validates future-state spec against the JSON Schema. | Before sponsor sign-off; pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[strategy-analysis-business-need]]
 - [[strategy-analysis-current-state]]

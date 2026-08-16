@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `langchain-basics` | Sets the foundation rules; this methodology extends them with pattern detail. |
@@ -69,6 +71,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-langchain-chains.py` | Validates a chain config envelope and confirms exceptions_to_handle is set | Pre-commit on chain changes |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[langchain-basics]]
 - [[langchain-agents-architectures]]

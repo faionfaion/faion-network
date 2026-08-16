@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/research/insight-evidence-card-template` | the card layer that consumes these tags |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-interview-insight-tagging-schema.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - `[[insight-evidence-card-template]]`
 - `[[interview-hot-take-template]]`

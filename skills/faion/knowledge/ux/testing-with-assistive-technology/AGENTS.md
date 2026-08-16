@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[wcag-22-compliance]] | test target standard is defined |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-testing-with-assistive-technology.py` | Validate the artefact against the schema | Pre-commit; CI on each artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[wcag-22-compliance]]
 - [[regulatory-compliance-2026]]

@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[integration-testing]]` | Boundary between when to mock and when to use real. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-mocking-strategies.py` | Validates a choice record and flags Mock used for async def + wrong patch target. | Pre-commit gate. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `free/dev/software-developer/`
 - `[[integration-testing]]` — when to keep dependencies real

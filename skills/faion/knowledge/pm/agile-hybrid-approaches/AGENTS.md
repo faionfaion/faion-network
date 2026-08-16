@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `stakeholder-engagement` | Sponsor + delivery alignment underpins mode change. |
@@ -79,6 +81,8 @@
 | `scripts/approach-score.py` | Compute mode recommendation from 6-dim score. | On dimension change. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[agile-ceremonies-setup]]
 - [[scope-management]]

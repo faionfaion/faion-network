@@ -40,6 +40,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[competitor-analysis]] | supplies the market/competitive risks branch of the register |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-risk-assessment.py` | Validate the artefact against `content/02-output-contract.xml` schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[competitor-analysis]]
 - [[business-model-research]]

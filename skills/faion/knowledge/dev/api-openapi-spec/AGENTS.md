@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[api-contract-first]] | Codegen + CI assumes a clean spec from this methodology. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-api-openapi-spec.py` | Validate api-openapi-spec artefact against schema | Pre-commit; CI on each artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[api-contract-first]]
 - [[api-documentation]]

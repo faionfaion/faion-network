@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ai-agents/agent-shape-decision-frame/AGENTS.md` | Shape decision feeds into model choice. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-output.py` | Validate the extended brief. | After draft, before sign-off. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/ai-agents/`
 - peer: [[ai-governance-compliance]] — informs the hallucination-policy section.

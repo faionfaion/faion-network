@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[llm-drift-daily-triage]]` | Consumer of the daily slice; recipe must match its cadence. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-eval-set-stratified-sampling-recipe.py` | Validate a recipe JSON against the schema + rule checks. | After recipe write, before eval harness consumes. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/llm-integration/`
 - `[[llm-drift-daily-triage]]` — downstream consumer

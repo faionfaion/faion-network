@@ -47,6 +47,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - `agents-md-per-module-bootstrap` — nesting and closest-file-wins; this methodology bounds what each of those nested files may contain.
 - `context-window-curation-for-coding-agents` — the per-task bundle, which is a different budget: task-scoped and paid once, not standing and paid per turn.
 - `claude-md-creation-quality` — how to write the body; no cost evidence attached, so pair it with this.

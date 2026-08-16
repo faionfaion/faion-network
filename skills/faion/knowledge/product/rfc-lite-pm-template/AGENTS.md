@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/product/product-planning/spec-writing` | Generic spec craft; this pins the lite shape. |
@@ -75,6 +77,8 @@
 | `scripts/validate-rfc-lite-pm-template.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[spec-writing]]
 - [[outcome-based-roadmaps]]

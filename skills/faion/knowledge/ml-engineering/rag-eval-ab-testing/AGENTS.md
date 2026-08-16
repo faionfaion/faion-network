@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/rag-engineer/rag-eval-pipeline` | Provides the per-config eval runner. |
@@ -71,6 +73,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-rag-eval-ab-testing.py` | Validates AB report JSON. | Pre-commit; CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[rag-eval-pipeline]]
 - [[rag-eval-strategy]]

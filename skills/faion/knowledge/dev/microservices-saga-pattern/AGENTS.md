@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[microservices-inter-service-comm]] | Pick async messaging style before saga design. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-microservices-saga-pattern.py` | Validate the saga definition artefact against the schema | Pre-commit + CI |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[microservices-inter-service-comm]]
 - [[microservices-circuit-breaker]]

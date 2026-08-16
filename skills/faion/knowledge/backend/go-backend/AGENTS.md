@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[go-layout-directory-structure]]` | directory skeleton |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/check-go-layout.py` | Scan a real Go repo for layout invariants: cmd/api/main.go, internal/ subdirs, thin main, interfaces out of `repository/`, forbidden `BindJSON` / `c.JSON(4xx)` / gin.Context-in-goroutine | Pre-commit gate; CI before `go build` |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[go-http-handlers]]
 - [[go-error-handling]]

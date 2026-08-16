@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/pm/project-manager/freelancer-personal-crm-minimal` | Peer methodology — provides client contracts inventory. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-indie-hacker-tax-and-legal-essentials.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[outsource-onboarding-one-pager-template]]
 - [[freelancer-personal-crm-minimal]]

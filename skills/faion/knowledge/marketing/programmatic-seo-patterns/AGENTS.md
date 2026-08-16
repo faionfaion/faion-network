@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/marketing/seo-manager` | SEO baseline (technical + content) must be in place. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-programmatic-seo-patterns.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | Pre-commit hook + CI on every methodology PR |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[growth-paid-acquisition]]
 - [[topic-cluster-architecture-with-eeat]]

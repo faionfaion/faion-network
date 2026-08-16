@@ -41,6 +41,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[pwa-advanced]] | Workflow context: related methodology in the same family |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-pwa-core.py` | Validate the produced artefact against the JSON Schema in `content/02-output-contract.xml` | After subagent returns; pre-commit; CI on each artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[pwa-advanced]]
 - [[seo-for-spas]]

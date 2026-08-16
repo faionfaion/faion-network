@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ai-agents/schema-field-order` | Tool inputSchema field order steers the LLM through the tool call. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-model-context-protocol.py` | Validates a server manifest (or live server via mcp-inspector handshake) against the output contract — tool name uniqueness, schema flatness, health probe presence, auth on remote. | Pre-merge of any MCP server PR; CI gate. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[schema-field-order]] — steer the LLM through tool calls by ordering tool inputSchema fields.
 - [[schema-version-pinning]] — version every tool response payload, not just the server.

@@ -41,6 +41,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer` | parent role skill |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-prompt-ab-power-calculator.py` | Validate power-calc-spec; also computes per-arm n via two-proportion z-test | Pre-commit + before A/B start |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[prompt-pr-review-checklist]]
 - [[prompt-portability-audit]]

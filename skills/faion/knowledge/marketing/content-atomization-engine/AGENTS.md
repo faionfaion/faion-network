@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | brand-voice-consistency-system | Voice doc gates every atomized piece. |
@@ -73,6 +75,8 @@
 | `scripts/validate-content-atomization-engine.py` | Validate Content Atomization Engine output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[brand-voice-consistency-system]]
 - [[ai-content-quality-review]]

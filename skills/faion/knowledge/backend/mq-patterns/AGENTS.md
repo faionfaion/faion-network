@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | none | This methodology has no upstream dependencies. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-mq-patterns.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - Parent: `pro/dev/backend-systems/`
 - [[mq-broker-implementations]]

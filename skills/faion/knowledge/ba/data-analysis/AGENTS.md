@@ -41,6 +41,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `pro/ba/business-analyst/elicitation-techniques` | Source the business question before any query. |
@@ -86,6 +88,8 @@
 | `scripts/validate-data-analysis.py` | Validate the produced artefact against the output-contract schema. | Pre-commit; CI on each artefact change. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[data-driven-requirements]]
 - [[glossary-management-living-doc]]

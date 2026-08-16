@@ -30,6 +30,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/python-developer/python-pytest-setup` | Defines pytest config and discovery conventions. |
@@ -67,6 +69,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-python-pytest-fixtures.py` | Check that fixtures with side effects use yield, no autouse on session-scope without justification. | Pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[python-pytest-setup]]
 - [[python-pytest-async]]

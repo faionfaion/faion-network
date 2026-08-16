@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[agentic-rag-iterative-retrieval]]` | Companion methodology — verifier gates iterative loop. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-agentic-rag-self-correction.py` | Validate self-correction-config | Pre-commit + CI |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[agentic-rag-iterative-retrieval]]
 - [[agentic-rag-query-decomposition]]

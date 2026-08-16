@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[work-breakdown-structure]] | Sibling methodology; this one is the "build" focus, the sibling is the broader frame. |
@@ -84,6 +86,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-wbs-creation.py` | Validate a `WBS` against the JSON Schema + 100% rule + 8-80 leaves | Pre-commit on WBS edits |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[work-breakdown-structure]]
 - [[raci-ai-assisted]]

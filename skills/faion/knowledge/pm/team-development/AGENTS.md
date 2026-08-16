@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[team-morale-pulse-survey]] | Provides eNPS / workload / clarity signal that feeds Tuckman staging. |
@@ -87,6 +89,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-team-development.py` | Validate a `TeamDevelopmentReport` against the JSON Schema | Pre-commit on every report change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[team-morale-pulse-survey]]
 - [[value-stream-management]]

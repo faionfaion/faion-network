@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/marketing/weekly-growth-review-rhythm` | Cadence in which these metrics get reviewed. |
@@ -76,6 +78,8 @@
 | `scripts/validate-product-analytics.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[weekly-growth-review-rhythm]]
 - [[product-discovery]]

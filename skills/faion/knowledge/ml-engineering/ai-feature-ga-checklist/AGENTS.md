@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[eval-driven-development-tdd-for-ai]] | Eval gate |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-feature-ga-checklist.py` | Validate the checklist artefact against the 02-output-contract schema | After subagent returns, before commit/publish |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-feature-observability-four-pillars]]
 - [[ai-feature-progressive-rollout]]

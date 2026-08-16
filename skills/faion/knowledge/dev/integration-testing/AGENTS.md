@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[mocking-strategies]]` | Decide what to mock (third-party APIs) and what to keep real (DB, queue). |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-integration-testing.py` | Verifies pinned image tags, separate tests/unit and tests/integration dirs, transaction rollback fixture present. | Pre-commit gate. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `free/dev/software-developer/`
 - `[[mocking-strategies]]` — what to mock at integration scope

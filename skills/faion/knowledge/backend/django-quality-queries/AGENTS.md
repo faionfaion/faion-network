@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `django-selectors` | optimisation lives in selector functions, not in views |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-django-quality-queries.py` | validates the audit report against the schema | after report is generated, before commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[django-selectors]] — selector functions own the optimisation
 - [[django-quality-logging]] — `django.db.backends` log level affects N+1 detection

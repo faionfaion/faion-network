@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[immersive-design-principles]] | Comfort/presence baseline this builds on |
@@ -73,6 +75,8 @@
 | `scripts/validate-ar-design-patterns.py` | Validate artefact JSON against output schema | Pre-commit / CI on artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[immersive-design-principles]]
 - [[vr-design-patterns]]

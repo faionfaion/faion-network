@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/ci-quality-gate-design` | The CI gate this rule plugs into. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-bug-pattern-to-lint-rule-conversion.py` | Validate a decision-record JSON against schema + threshold rules. | After the record is drafted, before the rule is wired into pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ci-quality-gate-design]] — the gate this rule joins.
 - [[bug-report-quality-rubric]] — incoming triage upstream.

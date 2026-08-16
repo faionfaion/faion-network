@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/fine-tuning-openai-data-prep` | Supplies file IDs. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-fine-tuning-openai-sft.py` | Validate the SFT config (base, epochs, file IDs, hyperparams). | Pre-merge of every SFT job PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[fine-tuning-openai-data-prep]] — upstream.
 - [[fine-tuning-openai-eval]] — downstream eval-gate.

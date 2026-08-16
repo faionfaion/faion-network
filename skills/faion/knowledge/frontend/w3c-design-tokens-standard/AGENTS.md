@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[wcag-22-compliance]] | color tokens must satisfy contrast |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-w3c-design-tokens-standard.py` | Validate w3c-design-tokens-standard artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[wcag-22-compliance]]
 - [[vpat-acr-template]]

@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[freelance-pilot-pricing]] | Reactivation offer often anchors on pilot pricing. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-dormant-lead-reactivation.py` | Validate the sequence spec JSON against the schema | After draft; before send |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[freelance-pilot-pricing]]
 - [[founder-led-qualification-rubric]]

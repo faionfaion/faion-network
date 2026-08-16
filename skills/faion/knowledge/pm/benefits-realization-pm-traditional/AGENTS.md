@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[project-closure]] | closure formalises hand-off to benefits tracking |
@@ -71,6 +73,8 @@
 | `templates/realization-report.md` | Periodic realisation report template with RAG status per benefit Generated from `templates/realization-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[project-closure]]
 - [[earned-value-management]]

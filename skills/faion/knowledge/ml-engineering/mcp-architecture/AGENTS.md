@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/mcp-security` | Security boundary required by MCP architecture. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-mcp-architecture.py` | Validate the architecture spec (primitives, transport, version, auth). | Pre-merge of every MCP spec PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[mcp-security]] — security boundary.
 - [[mcp-client-integration]] — host side.

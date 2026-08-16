@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[python-poetry-setup]]` | Poetry pin + lockfile rules. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-python.py` | Checks Python version, ruff config, mypy strict, services/ layer presence. | Pre-commit gate. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `free/dev/software-developer/`
 - `[[python-poetry-setup]]` — Poetry lockfile rules

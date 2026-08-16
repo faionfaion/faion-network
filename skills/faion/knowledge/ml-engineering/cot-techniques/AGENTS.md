@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[cot-basics]]` | Baseline zero-shot CoT must be in place first. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-cot-techniques.py` | Validates cot-config.json against schema; asserts pattern + voting rule (if self-consistency) + cost guard set. | Pre-commit on config. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/llm-integration/`
 - `[[cot-basics]]`

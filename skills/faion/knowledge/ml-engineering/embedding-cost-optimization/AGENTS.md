@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[embedding-caching]]` | Cache lever. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-embedding-cost-optimization.py` | Validate cost-opt-config | Pre-commit + CI |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[embedding-caching]]
 - [[embedding-applications]]

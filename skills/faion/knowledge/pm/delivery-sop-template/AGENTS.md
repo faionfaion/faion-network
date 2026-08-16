@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[change-control]] | SOP changes routed through CR for version control. |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-delivery-sop-template.py` | Validate the output artefact against the schema | Pre-commit on every artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[change-control]]
 - [[communications-management]]

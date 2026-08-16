@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[django-selectors]]` | The read-side counterpart; this methodology must coexist with it. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-django-service-layer.py` | Validate a service-extraction record (JSON) against the output contract: required keys, signature shape, atomic + full_clean markers. | Pre-commit on the refactor PR; gating CI step. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `free/dev/python-developer/`
 - `[[django-selectors]]` — the read-side sister

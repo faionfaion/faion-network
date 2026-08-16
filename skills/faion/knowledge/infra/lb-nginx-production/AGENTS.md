@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[nginx-configuration]] | Base directives (events, http, server) extended here for LB. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-lb-nginx-production.py` | Validate the Nginx artefact JSON against 02-output-contract schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[nginx-configuration]]
 - [[lb-haproxy-production]]

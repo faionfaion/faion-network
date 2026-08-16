@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | systemd-user-services | MemoryHigh/Max live in systemd unit drop-ins. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-swap-memory-management.py` | Validate MemoryPlan JSON against the schema. | Pre-apply + post-incident. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[systemd-user-services]]
 - [[monitoring-logging]]

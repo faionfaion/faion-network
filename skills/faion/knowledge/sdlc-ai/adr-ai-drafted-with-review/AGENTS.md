@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[adr-consequence-evidence-binding]] | AI drafts using evidence-binding shape |
@@ -73,6 +75,8 @@
 | `scripts/validate-adr-ai-drafted-with-review.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[adr-consequence-evidence-binding]]
 - [[adr-supersession-detection]]

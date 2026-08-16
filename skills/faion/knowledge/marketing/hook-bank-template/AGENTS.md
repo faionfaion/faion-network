@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[icp-fit-scorecard-solo]] | Qualified replies feed back into who you should be writing for. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-hook-bank-template.py` | Validate bank rows + bucket math against 02-output-contract schema | Pre-commit / weekly review |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[icp-fit-scorecard-solo]]
 - [[ih-build-update-template]]

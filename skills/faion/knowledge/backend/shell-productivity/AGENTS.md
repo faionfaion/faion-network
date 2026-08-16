@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | dotfiles-management | Shell configs are part of the dotfiles repo; this methodology delegates storage. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-shell-productivity.py` | Validate ShellPlan JSON against the schema. | Before applying installer to a host. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[dotfiles-management]]
 - [[tmux-power-user]]

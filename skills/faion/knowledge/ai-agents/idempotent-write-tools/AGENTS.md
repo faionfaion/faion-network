@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `handoff-id-payload` | Idempotency keys flow with the task_id through the handoff store. |
@@ -70,6 +72,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-idempotent-write-tools.py` | Validates a tool call body includes idempotency_key and matches the contract | Pre-commit on tool registry changes |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[handoff-id-payload]]
 - [[gateway-fallback-chain]]

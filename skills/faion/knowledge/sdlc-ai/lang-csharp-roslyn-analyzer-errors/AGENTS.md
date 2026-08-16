@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[lint-precommit-floor]] | Hook framework carries the local build check |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-lang-csharp-roslyn-analyzer-errors.py` | Validate the analyzer-config artefact. | pre-merge of analyzer config |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[lint-precommit-floor]]
 - [[mr-codemod-refactor-agent]]

@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/infra/devops-engineer/audit-logging-baseline` | Source of audit log evidence. |
@@ -71,6 +73,8 @@
 | `scripts/validate-soc2-control-to-repo-artifact-map.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/infra/`
 - `[[banking-core-data-residency-rules]]`

@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `pro/ba/business-analyst/requirements-traceability` | Traceability consumes glossary entries linked to requirement IDs. |
@@ -84,6 +86,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-glossary-management-living-doc.py` | Validate the produced artefact against the output-contract schema. | Pre-commit; CI on each artefact change. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[requirements-traceability]]
 - [[elicitation-techniques]]

@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[puppeteer-launch-setup]] | the page handed in came from the safe launch wrapper |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-puppeteer-output-capture.py` | Validate output artefact against the JSON Schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; agent self-check |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[puppeteer-agent-workflow]]
 - [[puppeteer-launch-setup]]

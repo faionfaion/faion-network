@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | weekly-branch-hygiene-checklist | Session commit/rebase discipline. |
@@ -70,6 +72,8 @@
 | `scripts/validate-timeboxed-refactor-session-template.py` | Validate Timeboxed Refactor Session Template output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[weekly-branch-hygiene-checklist]]
 

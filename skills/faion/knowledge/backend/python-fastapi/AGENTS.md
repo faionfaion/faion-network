@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/python-developer/python-async` | Async fundamentals (TaskGroup, asyncio.timeout, no blocking calls). |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-python-fastapi.py` | Check that routes only call services (no ORM in routes), and openapi.json matches snapshot. | Pre-commit and CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[python-async]]
 - [[python-type-hints]]

@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/sdd/definition-of-done-template` | DoD record is one of the inputs the stub references. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-soc2-evidence-generator-cli.py` | Validate the config artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[definition-of-done-template]]
 - [[client-conventions-as-code]]

@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[sprint-capacity-from-complexity-tags]] | quota expressed in slots from this model |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-tech-debt-slot-quota-policy.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[sprint-capacity-from-complexity-tags]]
 - [[pm-tech-lead-grooming-agenda]]

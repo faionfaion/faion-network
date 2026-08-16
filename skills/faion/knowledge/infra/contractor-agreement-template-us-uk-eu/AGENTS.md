@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/comms/hr-recruiter/contractor-hiring-process` | sourcing + screening is assumed; this methodology covers the contract phase |
@@ -83,6 +85,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-contractor-agreement-template-us-uk-eu.py` | Validate produced artefact against the 02-output-contract.xml schema | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[vendor-management-pm]]
 - [[ops-legal-compliance-checklist]]

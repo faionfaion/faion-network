@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[design-tokens-basics]] | Brand colours + logo come from design tokens. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-asset-harvest-checklist.py` | Validate asset-harvest-checklist artefact against schema | Pre-commit; CI on each artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[design-tokens]]
 - [[frontend-design]]

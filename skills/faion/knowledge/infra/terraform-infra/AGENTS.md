@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/infra/AGENTS.md` | parent group context (vocabulary, neighbouring methodologies) |
@@ -72,6 +74,8 @@
 | `templates/_smoke-test.md` | minimum-viable filled-in smoke-test fixture Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `pro/infra/`
 - peer methodology: see other entries in `skills/faion/knowledge/pro/infra/`

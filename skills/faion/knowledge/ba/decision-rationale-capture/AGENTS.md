@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[decision-options-memo-template]] | Source of options + recommendation. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-decision-rationale-capture.py` | Validates the decision record against the JSON Schema. | After decision is made; pre-commit on the decision log. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[decision-options-memo-template]]
 - [[cr-impact-memo-template]]

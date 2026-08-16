@@ -29,6 +29,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[files-reference]]` | Companion catalogue grouped by language; fallback when keyword match fails. |
@@ -63,6 +65,8 @@
 | `scripts/validate-methodologies.py` | Validates dispatch report shape and resolves the picked slug on disk. | After dispatcher emits, before downstream load. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `free/dev/software-developer/`
 - `[[files-reference]]` — language-grouped catalogue

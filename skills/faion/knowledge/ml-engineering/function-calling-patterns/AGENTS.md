@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[claude-tool-use]]` | Claude-specific subset. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-function-calling-patterns.py` | Validates tool-registry entries against schema; asserts each tool has version + schema. | Pre-commit on registry files. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/llm-integration/`
 - `[[claude-tool-use]]`

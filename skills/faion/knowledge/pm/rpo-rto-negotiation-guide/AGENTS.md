@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[regulatory-uncertainty-buffer]] | Regulated systems mandate RPO/RTO floor before negotiation. |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/staleness-check.py` | Flag records whose `refresh_due` passed | Weekly cron |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[regulatory-uncertainty-buffer]]
 - [[rag-policy-thresholds]]

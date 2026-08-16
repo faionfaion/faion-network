@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | ai-slop-detector-checklist | Voice scoring uses the slop rubric voice dimension. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-brand-voice-consistency-system.py` | Validate VoiceDoc JSON against the schema. | On creation + quarterly review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-slop-detector-checklist]]
 - [[audience-to-customer-funnel]]

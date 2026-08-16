@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[caching-invalidation]]` | purge semantics |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-caching-write-patterns.py` | Enforce the Cache Write Patterns (Cache-Aside, Write-Through, Write-Behind) output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[caching-invalidation]]
 - [[caching-stampede-prevention]]

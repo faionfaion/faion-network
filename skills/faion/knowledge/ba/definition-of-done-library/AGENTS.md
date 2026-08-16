@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[contractor-brief-template-self-contained]] | Consumer of the contractor-task DoD. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-definition-of-done-library.py` | Validates the DoD library against the JSON Schema. | After library update; pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[contractor-brief-template-self-contained]]
 - [[use-case-modeling]]

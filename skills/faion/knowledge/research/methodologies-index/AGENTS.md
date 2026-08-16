@@ -40,6 +40,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[methodologies-detail]] | ensures every linked methodology has its detail page authored |
@@ -79,6 +81,8 @@
 | `scripts/validate-methodologies-index.py` | Validate the artefact against `content/02-output-contract.xml` schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[methodologies-detail]]
 - [[frameworks]]

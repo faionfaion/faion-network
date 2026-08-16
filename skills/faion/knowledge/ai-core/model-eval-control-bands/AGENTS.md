@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/ml-engineer/model-evaluation` | Defines the metrics this bands. |
@@ -71,6 +73,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-model-eval-control-bands.py` | Enforce output contract: artefact_id, owner non-plural, rationale references inputs, version + last_reviewed present. | After subagent return, before consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/ml-engineer/`
 - upstream playbook: `role-ml-engineer/Daily eval-suite run + drift triage`

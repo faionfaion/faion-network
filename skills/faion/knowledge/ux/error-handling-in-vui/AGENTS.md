@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[core-vui-design-principles]] | Single-idea + barge-in baseline |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-error-handling-in-vui.py` | Validate artefact JSON against output schema | Pre-commit / CI on artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[core-vui-design-principles]]
 - [[vui-conversation-design]]

@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/multimodal-ai/video-gen-tools` | downstream production layer with VideoGenerationService + multi-provider fallback |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-video-gen-basics.py` | Validate generate() output JSON against 02-output-contract. | Post-generation, before downstream consumes path. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[video-gen-tools]] — production service with multi-provider fallback + retry.
 - [[img-gen-basics]] — image generator providing image-to-video source frames.

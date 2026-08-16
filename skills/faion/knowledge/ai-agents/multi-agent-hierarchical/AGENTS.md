@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ai-agents/multi-agent-basics` | Upstream spec. |
@@ -62,6 +64,8 @@
 | Cycle-check on plan | code (no LLM) | Plan-time graph check; deterministic. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[multi-agent-basics]] — upstream spec.
 - [[multi-agent-design-patterns]] — selects this pattern.

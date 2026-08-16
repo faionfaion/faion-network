@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[lint-precommit-floor]] | Hook framework where autofix may fire |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-autofix-vs-flag-decision-rule.py` | Validate the decision-record artefact. | per-decision append |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[lint-precommit-floor]]
 - [[lint-staged-only-not-whole-tree]]

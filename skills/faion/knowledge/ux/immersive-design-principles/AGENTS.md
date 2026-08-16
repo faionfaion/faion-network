@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[spatial-accessibility]] | Accessibility paths sourced here |
@@ -73,6 +75,8 @@
 | `scripts/validate-immersive-design-principles.py` | Validate artefact JSON against output schema | Pre-commit / CI on artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[enterprise-xr-applications]]
 - [[ar-design-patterns]]

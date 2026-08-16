@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `vector-databases` | DB chosen |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-vector-db-security.py` | Lint security-config | Pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[vector-databases]] · [[vector-db-setup-prod]] · [[vector-db-monitoring]]
 - external: [Qdrant security docs](https://qdrant.tech/documentation/guides/security/) · [OWASP top 10 LLM](https://owasp.org/www-project-top-10-for-large-language-model-applications/)

@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | none | Standalone — no upstream artefacts required. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-javascript-modern.py` | Validate config bundle against schema | After bundle draft, before landing PR |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - - [[code-quality-trends]] — quarterly refresh of these rules.
 - - [[javascript-testing]] — test config sits on top of this bundle.

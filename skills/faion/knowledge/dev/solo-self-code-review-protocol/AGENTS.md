@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[spec-driven-debugging]] | bug-scale SDD shares the AI-pair discipline. |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-solo-self-code-review-protocol.py` | Validate the artefact against `content/02-output-contract.xml` schema. | After draft, before merge; pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[spec-driven-debugging]]
 - [[xp-extreme-programming]]

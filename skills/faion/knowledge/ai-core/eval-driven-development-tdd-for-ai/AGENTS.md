@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ai-feature-observability-four-pillars]] | Drift detection feeds back into eval refresh |
@@ -76,6 +78,8 @@
 | `scripts/validate-eval-driven-development-tdd-for-ai.py` | Validate the playbook-step artefact against the 02-output-contract schema | After subagent returns, before commit/publish |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-feature-observability-four-pillars]]
 - [[ai-call-site-inventory]]

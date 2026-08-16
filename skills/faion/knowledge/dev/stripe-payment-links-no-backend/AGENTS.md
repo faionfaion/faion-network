@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | [[github-repo-bootstrap]] | Spec artefact lives in a repo with a CHANGELOG and owner. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-stripe-payment-links-no-backend.py` | Validates emitted spec against the JSON schema. | Pre-commit; in CI before publishing the spec. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[github-repo-bootstrap]]
 - [[one-command-dev-env-template]]

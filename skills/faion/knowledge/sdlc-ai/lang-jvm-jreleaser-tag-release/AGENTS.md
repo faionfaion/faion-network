@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[gov-conventional-commits-enforced]] | JReleaser changelog needs conventional commits |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-jvm-jreleaser-tag-release.py` | Validate the JReleaser-config artefact. | pre-merge of release config |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[gov-conventional-commits-enforced]]
 - [[lint-precommit-floor]]

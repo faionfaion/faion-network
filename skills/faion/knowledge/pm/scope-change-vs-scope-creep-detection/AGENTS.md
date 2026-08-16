@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[scope-management]] | baseline source + change-control process |
@@ -86,6 +88,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-scope-change-vs-scope-creep-detection.py` | Lint triage records against schema + citation rule | Pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `pro/pm/project-manager/`
 - [[scope-management]]

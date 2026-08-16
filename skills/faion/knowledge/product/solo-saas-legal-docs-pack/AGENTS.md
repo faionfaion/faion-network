@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/product/product-planning/product-launch` | Sequenced with launch; legal must precede billing. |
@@ -73,6 +75,8 @@
 | `scripts/validate-solo-saas-legal-docs-pack.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[product-launch]]
 - [[subscription-lifecycle-edge-cases]]

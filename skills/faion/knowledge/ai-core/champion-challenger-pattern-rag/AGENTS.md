@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ai-feature-eval-set-design]] | upstream context required for this methodology |
@@ -73,6 +75,8 @@
 | `scripts/validate-champion-challenger-pattern-rag.py` | Validate the config artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-feature-eval-set-design]]
 - [[auto-rollback-policy-design]]

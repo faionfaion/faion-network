@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/software-architect/behavioral-patterns` | Creational patterns frequently pair with Strategy/State. |
@@ -73,6 +75,8 @@
 | `scripts/validate-creational-patterns.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[behavioral-patterns]]
 - [[structural-patterns]]

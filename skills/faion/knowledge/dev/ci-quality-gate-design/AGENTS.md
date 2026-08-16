@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/automation-tooling/trunk-based-dev-principles` | TBD makes fast CI mandatory; this design names what fast means. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ci-quality-gate-design.py` | Validate a ci-design JSON against schema + budget rule. | Pre-merge; monthly review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[trunk-based-dev-principles]] — fast CI is one of the four pillars.
 - [[bug-pattern-to-lint-rule-conversion]] — detectors join the BLOCK tier.

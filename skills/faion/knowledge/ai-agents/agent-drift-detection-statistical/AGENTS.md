@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[agent-eval-harness-bootstrap-recipe]]` | Harness to run evals on schedule |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-agent-drift-detection-statistical.py` | Validates an output document against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/ai-agents/`
 - `[[agent-eval-harness-bootstrap-recipe]]`

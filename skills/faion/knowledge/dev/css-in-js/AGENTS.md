@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/software-developer/best-practices-2026` | React 19 / Next 15 baseline this decision plugs into. |
@@ -68,6 +70,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-css-in-js.py` | Validates the output record against `02-output-contract.xml`. | After the methodology runs, before publishing the artifact. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[best-practices-2026]] — see methodology AGENTS.md for context.
 - [[code-review]] — see methodology AGENTS.md for context.

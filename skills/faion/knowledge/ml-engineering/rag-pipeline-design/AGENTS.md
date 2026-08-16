@@ -40,6 +40,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `vector-databases` | DB selection vocabulary |
@@ -85,6 +87,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-rag-pipeline-design.py` | Lint `rag-pipeline.yaml` against schema | Pre-commit + pre-deploy |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[vector-databases]] — DB selection
 - [[reranking]] — second-stage retrieval

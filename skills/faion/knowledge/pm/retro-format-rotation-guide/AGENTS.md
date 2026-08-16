@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[retro-facilitation-multistyle]] | Per-retro facilitation methodology this guide schedules across. |
@@ -76,6 +78,8 @@
 | `scripts/validate-retro-format-rotation-guide.py` | Validate the rotation artefact against 02-output-contract schema | Before each next retro is scheduled |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[retro-facilitation-multistyle]]
 - [[status-report-templates-by-audience]]

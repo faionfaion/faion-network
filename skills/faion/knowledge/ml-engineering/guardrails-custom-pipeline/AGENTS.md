@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `guardrails-concepts` | Defines which rails go into custom layer vs other frameworks. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-guardrails-custom-pipeline.py` | Validate produced `GuardrailResult` JSON against the schema | After integration test; pre-deploy gate |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[guardrails-concepts]] — plan that picks `custom` for the rail
 - [[guardrails-testing]] — adversarial harness this pipeline must survive

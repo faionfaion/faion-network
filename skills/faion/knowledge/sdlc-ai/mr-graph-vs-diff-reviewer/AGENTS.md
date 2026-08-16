@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[mr-codemod-refactor-agent]] | Reviewer evaluates codemod PRs |
@@ -76,6 +78,8 @@
 | `scripts/validate-graph-vs-diff-reviewer.py` | Validate the decision-record artefact. | pre-merge of ADR |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[mr-codemod-refactor-agent]]
 - [[lint-autofix-vs-flag-decision-rule]]

@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[django-models]]` | Model fields + FK graph consumed by SubFactory. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-django-pytest-factories.py` | Validate the factories spec JSON. | After spec emission. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[django-pytest-fixtures]] — fixtures composed on top of the factories.
 - [[django-pytest-mocking]] — when to mute signals vs mock them.

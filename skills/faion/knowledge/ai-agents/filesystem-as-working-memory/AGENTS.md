@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `file-reference-passing` | The offloaded files are passed by reference, not content. |
@@ -71,6 +73,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-filesystem-as-working-memory.py` | Validates an offloaded-envelope against the schema | After every tool wrapper that may offload |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[file-reference-passing]]
 - [[compaction-preserve-refs]]

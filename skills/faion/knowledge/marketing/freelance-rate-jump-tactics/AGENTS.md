@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[freelancer-niche-positioning]] | Upstream — niche must be positioned first. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-freelance-rate-jump-tactics.py` | Validate one spec JSON against the schema | After draft, before publish |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[freelancer-niche-positioning]]
 - [[freelance-pilot-pricing]]

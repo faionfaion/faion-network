@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | none | Foundational. Feeds [[rust-error-handling]] (which decides what `Result::Err` variant owns). |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-rust-ownership.py` | Validate decision-record JSON against schema | After audit completes |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[rust-error-handling]] — `Result::Err` variants own their data; ownership shapes apply.
 - [[rust-testing]] — test fixtures often use `Arc` even when prod code does not — keep them separate.

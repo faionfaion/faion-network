@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[solo-change-order-mini-contract]] | Sibling — CR template references this clause for payment terms. |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/staleness-check.py` | Flag specs whose jurisdiction review > 12 months | Weekly cron |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[solo-change-order-mini-contract]]
 - [[vendor-margin-defense-checklist]]

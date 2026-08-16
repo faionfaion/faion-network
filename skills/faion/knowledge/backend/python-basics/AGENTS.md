@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `none` | Self-contained foundational methodology. |
@@ -67,6 +69,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-python-basics.py` | Lint a module for: typing.List/Optional/Union imports, mutable default args, bare except. | Pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[python-modern-2026]]
 - [[python-type-hints]]

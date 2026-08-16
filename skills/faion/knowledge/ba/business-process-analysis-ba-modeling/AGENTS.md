@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ba-planning]] | Upstream plan that sets BA approach + governance |
@@ -75,6 +77,8 @@
 | `templates/process-documentation.md` | current-state documentation skeleton (lanes + steps + sources) Generated from `templates/process-documentation.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[bpmn-via-ai-then-human-review]]
 - [[interface-analysis]]

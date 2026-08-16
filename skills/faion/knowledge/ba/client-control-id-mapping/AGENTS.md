@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[traceability-auto-maintenance]] | Provides the daily job rebuilding the mapping. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-client-control-id-mapping.py` | Validates the control-mapping record against the JSON Schema. | After mapping update; pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[compliance-checklist-by-domain]]
 - [[traceability-auto-maintenance]]

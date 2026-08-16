@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | none | Standalone — no upstream artefacts required. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-decomposition-react.py` | Validate decomposition plan + 80-line budget | Before applying moves |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - - [[code-decomposition-patterns]] — language-agnostic patterns this specialises.
 - - [[javascript-modern]] — TS-strict + named-exports apply here too.

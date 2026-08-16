@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | [[ai-accessibility-automation-2026]] | Automation pipeline that produces the input scans. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-assisted-accessibility.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-accessibility-automation-2026]]
 - [[ai-design-assistant-patterns]]

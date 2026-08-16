@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | audience-to-customer-funnel | Cohort + conversion event align with funnel stage definitions. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-audience-to-paid-conversion-loop.py` | Validate LoopRunArtefact JSON against the schema. | End of each loop cycle. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[audience-to-customer-funnel]]
 - [[brand-voice-consistency-system]]

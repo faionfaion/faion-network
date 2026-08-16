@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[agent-eval-harness-bootstrap-recipe]]` | judge harness exists and is stable |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-weekly-rag-spotcheck-protocol.py` | Enforce the Weekly RAG Spotcheck Protocol output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[vector-db-tuning-runbook]] — adjacent when recall drops.
 - [[verbatim-to-eval-row-recipe]] — feeds new rows into the spotcheck pool.

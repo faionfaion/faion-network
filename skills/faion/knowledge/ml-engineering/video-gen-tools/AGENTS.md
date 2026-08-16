@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/multimodal-ai/video-gen-basics` | core VideoPromptBuilder + ffprobe validation reused by every adapter. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-video-gen-tools.py` | Validate service.generate() output against 02-output-contract. | Post-generation; before sweeper archives to S3. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[video-gen-basics]] — single-call layer this service builds on.
 - [[img-gen-tools]] — generates anchor frames for image-to-video.

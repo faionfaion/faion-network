@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[django-pytest-fixtures]]` | api_client / authenticated_client / admin_client fixtures. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-django-pytest-integration.py` | Validate the integration spec JSON. | After spec emission. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[django-pytest-fixtures]] — fixtures consumed by integration tests.
 - [[django-pytest-mocking]] — boundary mocks (Celery, external API).

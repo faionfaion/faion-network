@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ai-feature-observability-four-pillars]] | Observability for detection |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-feature-incident-runbook.py` | Validate the playbook-step artefact against the 02-output-contract schema | After subagent returns, before commit/publish |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-post-mortem-template]]
 - [[ai-feature-observability-four-pillars]]

@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `stakeholder-engagement` | Register feeds the engagement cadence. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/register_audit.py` | Audit register for missing evidence + stale rows. | Monthly cron. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[stakeholder-engagement]]
 - [[stakeholder-engagement-advanced]]

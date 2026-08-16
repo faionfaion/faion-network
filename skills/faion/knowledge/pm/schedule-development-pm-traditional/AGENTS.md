@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `wbs-creation` | Provides the work packages that become activities. |
@@ -76,6 +78,8 @@
 | `scripts/cpm.py` | Compute critical path from activity-list CSV. | On schedule change. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[wbs-creation]]
 - [[scope-management]]

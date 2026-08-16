@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[pm-framework-focus-areas]] | PMBoK 8 framework backbone. |
@@ -77,6 +79,8 @@
 | `scripts/validate-hybrid-delivery.py` | Validate the output artefact against the schema | Pre-commit on every artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[pm-framework-focus-areas]]
 - [[performance-domains-overview]]

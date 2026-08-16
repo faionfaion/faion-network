@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[fixed-price-vs-tm-cr-pricing-playbook]]` | change-request flow runs after bid signed |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-fixed-price-risk-loading-model.py` | Enforce the Fixed-Price Risk Loading Model output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[fixed-price-vs-tm-cr-pricing-playbook]] — adjacent change-request playbook.
 - [[compliance-traceability-pack]] — when risk is regulatory.

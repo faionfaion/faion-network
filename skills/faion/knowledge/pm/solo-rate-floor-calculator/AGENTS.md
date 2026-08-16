@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[solo-time-tracking-discipline]] | Billable % input comes from time-tracking data. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-solo-rate-floor-calculator.py` | Validate RateFloor artefact against 02-output-contract schema | Quarterly review or per major engagement |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[solo-time-tracking-discipline]]
 - [[side-project-financial-runway]]

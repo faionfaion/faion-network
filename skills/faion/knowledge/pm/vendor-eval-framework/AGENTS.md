@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/pm/pm-agile` | Parent skill — provides operating context for this methodology. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-vendor-eval-framework.py` | Validate rubric + trial result + rollback gate output (axis count, stakeholder count, rollback criteria present). | Before vendor contract is signed. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[vendor-risk-assessment-template]] — sibling versioned-artefact methodology, runs in parallel for higher-risk vendors.
 - [[vendor-evaluation-scorecard]] — product-tier peer; this geek-tier version adds trial + rollback.

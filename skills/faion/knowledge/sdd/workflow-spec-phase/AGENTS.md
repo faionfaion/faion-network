@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/sdd/sdd-planning/workflows` | Provides the route record that may have dispatched this phase. |
@@ -78,6 +80,8 @@
 | `scripts/validate-workflow-spec-phase.py` | Validate the spec.md frontmatter against the schema in `content/02-output-contract.xml`. | After subagent returns the spec.md, before human owner reviews for Accepted promotion. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[workflow-design-phase]]
 - [[workflows]]

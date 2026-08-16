@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[wbs-creation]] | RACI rows reference WBS-leaf ids. |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/staleness-check.py` | Flag matrices whose `last_reviewed` exceeds 90 days | Weekly cron |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[wbs-creation]]
 - [[team-development]]

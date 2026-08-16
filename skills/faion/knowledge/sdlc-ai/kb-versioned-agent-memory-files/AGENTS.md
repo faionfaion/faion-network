@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[kb-agents-md-context-pyramid]] | Memory complements AGENTS.md context |
@@ -79,6 +81,8 @@
 | `scripts/validate-kb-versioned-agent-memory-files.py` | Validate the memory-bundle structure. | pre-merge of memory change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[kb-agents-md-context-pyramid]]
 - [[kb-ai-assisted-lessons-learned-synthesis]]

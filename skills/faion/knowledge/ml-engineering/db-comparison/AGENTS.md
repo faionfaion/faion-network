@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/rag-engineer/db-chroma` · `db-qdrant` · `db-weaviate` | Per-DB tradeoffs feed the matrix. |
@@ -69,6 +71,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-db-comparison.py` | Verify decision.json fields, fallback present, migration plan non-empty. | Pre sign-off. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[db-chroma]] · [[db-qdrant]] · [[db-weaviate]] · [[rag-architecture]] · [[ai-option-cost-grid-template]]
 

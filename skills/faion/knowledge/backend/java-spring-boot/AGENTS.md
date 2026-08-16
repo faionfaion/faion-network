@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[java-spring]] | Sibling for the core layered pattern. |
@@ -79,6 +81,8 @@
 | `scripts/spring-boot-layering-audit.sh` | Grep-based audit of a target project for `@Transactional` on controllers, field injection, and entities returned from controllers. | Before merging any change to a controller or service. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[java-spring]]
 - [[java-spring-boot-patterns]]

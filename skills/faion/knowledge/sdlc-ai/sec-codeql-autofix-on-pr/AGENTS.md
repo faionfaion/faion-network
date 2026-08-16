@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[sec-secrets-defense-in-depth]] | Complementary secret-scan layer. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-sec-codeql-autofix-on-pr.py` | Validate workflow + branch-protection config against schema. | Pre-merge of workflow file |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[sec-secrets-defense-in-depth]]
 - [[sec-trivy-pinned-supply-chain-scan]]

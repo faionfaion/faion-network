@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/sdd/client-style-guide-importer` | the upstream importer that converts a client style guide into the initial `conventions.yaml`. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-client-conventions-as-code.py` | Validate the config artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[client-style-guide-importer]]
 - [[ai-agent-guardrails-pack]]

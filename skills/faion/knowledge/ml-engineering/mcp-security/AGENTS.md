@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/mcp-architecture` | Source of primitive types graded. |
@@ -74,6 +76,8 @@
 | `scripts/validate-mcp-security.py` | Validate the rubric (servers, consent grade, auth grade, injection grade, audit grade). | Pre-merge of every MCP security rubric PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[mcp-architecture]] — server-side spec.
 - [[mcp-client-integration]] — client-side controls.

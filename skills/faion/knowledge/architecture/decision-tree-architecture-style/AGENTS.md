@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/software-architect/architecture-decision-records` | Result lands as an ADR. |
@@ -73,6 +75,8 @@
 | `scripts/validate-decision-tree-architecture-style.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[architecture-decision-records]]
 - [[adr-reversibility-tagging]]

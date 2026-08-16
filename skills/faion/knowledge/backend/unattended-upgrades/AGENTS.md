@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | monitoring-logging | Failure mail / tg path comes from monitoring plan. |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/upgrade-status.sh` | Summarises last-run + pending updates from journal. | On demand + weekly digest. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[monitoring-logging]]
 - [[systemd-user-services]]

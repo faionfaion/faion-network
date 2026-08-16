@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | brand-voice-consistency-system | Voice doc gates each template. |
@@ -71,6 +73,8 @@
 | `scripts/validate-agency-decline-templates.py` | Validate Agency Decline Templates output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[brand-voice-consistency-system]]
 

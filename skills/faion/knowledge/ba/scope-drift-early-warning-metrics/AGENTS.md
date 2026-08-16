@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[requirements-traceability]] | Provides the requirement → ticket mapping these metrics aggregate over. |
@@ -87,6 +89,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-scope-drift-early-warning-metrics.py` | Validates dashboard artefact against the JSON Schema in 02-output-contract.xml. | After dashboard refresh; pre-commit on the dashboard repo. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[requirements-traceability]]
 - [[scope-creep-parking-lot-protocol]]

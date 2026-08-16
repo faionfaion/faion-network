@@ -40,6 +40,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[embedding-generation]]` | Same-model indexing/query rule applies. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-agentic-rag-iterative-retrieval.py` | Validate iterative-retriever-config | Pre-commit + CI |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[agentic-rag-query-decomposition]]
 - [[agentic-rag-self-correction]]

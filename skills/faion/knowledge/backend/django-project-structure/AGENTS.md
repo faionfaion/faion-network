@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[django-imports]]` | Cross-app alias convention that depends on the apps/ namespace. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-django-project-structure.py` | Validate a layout spec JSON. | After spec emission, before startapp/codegen. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[django-imports]] — apps/ namespace consumed by alias rules.
 - [[django-decision-tree]] — layering tier feeding into this spec.

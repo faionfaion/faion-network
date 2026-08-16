@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[solo-rate-floor-calculator]] | If still doing freelance income, the floor feeds runway. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-side-project-financial-runway.py` | Validate runway artefact against 02-output-contract schema | Quarterly review + before any leave-job decision |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[solo-rate-floor-calculator]]
 - [[solo-mrr-dashboard-template]]

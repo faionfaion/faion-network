@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[slo-definition-template-per-service-class]] | Defines the SLOs this matrix consumes |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-slo-burn-decision-matrix.py` | Validate the artefact against the output-contract schema | Pre-commit; on artefact write |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[slo-definition-template-per-service-class]]
 - [[fast-vs-slow-burn-rule]]

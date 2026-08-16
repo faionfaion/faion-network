@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | [[mcp-resource-vs-tool-vs-prompt]] | Primitive classification depends on transport feasibility. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-mcp-transport-stdio-vs-http.py` | Validates output against the JSON schema. | Pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[mcp-gateway-composition]]
 - [[mcp-resource-vs-tool-vs-prompt]]

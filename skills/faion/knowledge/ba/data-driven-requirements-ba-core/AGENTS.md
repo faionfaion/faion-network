@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[requirements-documentation]] | downstream consumer of evidence-trailed requirements |
@@ -71,6 +73,8 @@
 | `templates/data-driven-spec.md` | Full spec.md skeleton with evidence column per requirement. Generated from `templates/data-driven-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[requirements-documentation]]
 - [[requirements-prioritization]]

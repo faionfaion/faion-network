@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ab-testing-basics]] | Statistical foundations of the lift × confidence threshold. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-experiment-hypothesis-scoring.py` | Validate the scored-hypothesis JSON against the schema | After scoring, before adding to ledger |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ab-testing-basics]]
 - [[experiment-ledger-discipline]]

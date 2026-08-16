@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ai-agents/refusal-field-strict-schema/AGENTS.md` | Verdict shape is a refusal-style strict schema. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-output.py` | Validate verdict shape on every call. | Inline per verdict. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/ai-agents/`
 - peer: [[refusal-field-strict-schema]] — verdict shape pattern.

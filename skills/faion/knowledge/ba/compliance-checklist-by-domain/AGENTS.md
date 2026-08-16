@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[client-control-id-mapping]] | Maps checked items to client controls if a client list exists. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-compliance-checklist-by-domain.py` | Validates the checked checklist against the JSON Schema. | Before sign-off; pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[client-control-id-mapping]]
 - [[definition-of-done-library]]

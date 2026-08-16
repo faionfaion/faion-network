@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[seo-for-spas]] | shared SPA shell concerns; offline page must be indexable when online. |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-pwa-development.py` | Validate the artefact against `content/02-output-contract.xml` schema. | After draft, before merge; pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[seo-for-spas]]
 - [[caching-strategy]]

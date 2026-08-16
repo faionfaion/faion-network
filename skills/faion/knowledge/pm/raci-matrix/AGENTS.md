@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[scope-management]] | WBS work packages provide the task rows |
@@ -73,6 +75,8 @@
 | `scripts/raci-validate.py` | CSV validator checking all four rules with per-violation error output | Pre-merge on matrix changes; CI |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `pro/pm/project-manager/`
 - [[scope-management]]

@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[judge-calibration-protocol]]` | Calibrates the classifier as a judge. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-llm-classifier-design.py` | Validates classifier-config: schema present, model pinned, batch size sane, calibration κ ≥0.7. | Pre-commit on config. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/llm-integration/`
 - `[[judge-calibration-protocol]]`

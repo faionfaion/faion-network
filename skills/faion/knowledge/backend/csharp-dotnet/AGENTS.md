@@ -41,6 +41,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[csharp-aspnet-core]] | Sub-module for controller/middleware patterns. |
@@ -105,6 +107,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 - `Task.Run` inside a handler steals from the request thread pool; it is rarely the right tool.
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[csharp-aspnet-core]]
 - [[csharp-entity-framework]]

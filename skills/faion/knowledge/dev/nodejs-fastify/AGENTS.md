@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | none | Standalone — no upstream artefacts required. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-nodejs-fastify.py` | Validate Fastify service spec + plugin order | After scaffold |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[nodejs-express]] — lower-perf alternative; pick if team already on Express.
 - [[javascript-modern]] — TS strict + named exports.

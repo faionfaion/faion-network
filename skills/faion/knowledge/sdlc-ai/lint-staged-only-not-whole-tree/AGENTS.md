@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[lint-precommit-floor]] | Upstream framework choice |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-staged-only-not-whole-tree.py` | Validate hook-config artefact. | pre-merge of hook config |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[lint-precommit-floor]]
 - [[lint-ruff-and-biome-as-default]]

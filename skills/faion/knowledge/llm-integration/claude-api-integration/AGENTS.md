@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[claude-api-basics]]` | env-auth, retry, cost tracker, x-request-id baseline |
@@ -83,6 +85,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-claude-api-integration.py` | Validates a produced service config against `02-output-contract.xml`. | Pre-commit and CI before merge. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/llm-integration/`
 - `[[claude-api-basics]]`

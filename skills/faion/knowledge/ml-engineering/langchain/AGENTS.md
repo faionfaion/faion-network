@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/llm-decision-framework` | Provider + agent-pattern choice. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-langchain.py` | Validate the graph config (nodes, edges, checkpointer, interrupts). | Pre-merge of every agent PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[llamaindex]] — alternative agent framework.
 - [[llm-decision-framework]] — provider/framework choice.

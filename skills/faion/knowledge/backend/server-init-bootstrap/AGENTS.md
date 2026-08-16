@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | ssh-hardening | Phase 4 hardens sshd; this methodology delegates the exact config. |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/server-status.sh` | Live host status against the 5-phase rule-set. | Post-bootstrap + weekly cron. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ssh-hardening]]
 - [[firewall-management]]

@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ai-agents/strict-mode-required-fields` | Strict-mode constraint applies before renaming — keeps schema submittable. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-semantic-field-naming.py` | Validates the rename rubric output against the `02-output-contract.xml` schema. | After the rename pass, before opening the migration PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[strict-mode-required-fields]] — pairs with rename: rename + nullable encoding go together.
 - [[structured-output-mode-picker]] — renames matter most under strict / FSM-grammar modes.

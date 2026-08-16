@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[java-spring-boot]] | Umbrella for service layering. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/spring-async-audit.sh` | Grep-based audit of a target project for self-invocation, bare `@Async`, `@Async`+`@Transactional`, and missing shutdown drain. | Before merging any change that adds or edits an `@Async` method. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[java-spring-boot]]
 - [[java-spring]]

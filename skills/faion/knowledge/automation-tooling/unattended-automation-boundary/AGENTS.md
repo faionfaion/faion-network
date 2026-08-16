@@ -46,6 +46,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - `cron-automation` — how to write and operate the job once this record says a scheduler is the right surface.
 - `cronjob-overrun-monitoring` — what to watch after an unattended job exists; this methodology decides whether it should.
 - `scheduled-job-decommission-checklist` — the other end of the lifecycle, for the surface this record retired.

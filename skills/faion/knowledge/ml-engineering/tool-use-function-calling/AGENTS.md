@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `structured-output` | Sibling pattern; tool_use is constrained decoding |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-tool-use-function-calling.py` | Lint tools.yaml | Pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[structured-output]] — same primitive
 - [[reasoning-first-architectures]] — reasoning models often gate tool decisions

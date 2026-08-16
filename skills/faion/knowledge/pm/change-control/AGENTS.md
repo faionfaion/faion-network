@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[cost-estimation]] | Cost baseline that change-impact analysis compares against. |
@@ -78,6 +80,8 @@
 | `scripts/validate-change-control.py` | Validate the output artefact against the schema | Pre-commit on every artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[cost-estimation]]
 - [[communications-management]]

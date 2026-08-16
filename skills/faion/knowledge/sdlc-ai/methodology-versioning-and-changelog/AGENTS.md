@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | methodology-contribution-flow-open-authorship | External contributions feed into this versioning loop. |
@@ -74,6 +76,8 @@
 | `scripts/validate-methodology-versioning-and-changelog.py` | Validate the artefact against the JSON Schema in `content/02-output-contract.xml`. | After draft, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[methodology-contribution-flow-open-authorship]]
 - [[shift-log-template]]

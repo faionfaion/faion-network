@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/sdd/sdd/agents-md-for-receiving-team` | downstream consumer: pack is one of the inputs to the receiving-team's AGENTS.md. |
@@ -74,6 +76,8 @@
 | `scripts/validate-dark-knowledge-extraction-protocol.py` | Validate the report artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[agents-md-for-receiving-team]]
 - [[decision-log-reconstruction-from-git]]

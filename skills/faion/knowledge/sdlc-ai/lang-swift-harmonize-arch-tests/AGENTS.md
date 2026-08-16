@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[lint-precommit-floor]] | Hook framework can run swift test on staged files |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-swift-harmonize-arch-tests.py` | Validate the arch-test-config artefact. | pre-merge of arch config |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[lint-precommit-floor]]
 - [[mr-graph-vs-diff-reviewer]]

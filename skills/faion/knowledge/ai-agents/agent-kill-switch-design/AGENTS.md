@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[agent-observability-stack-blueprint]]` | Hooks for kill-event signal |
@@ -63,6 +65,8 @@
 | `scripts/validate-agent-kill-switch-design.py` | Validates an output document against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/ai-agents/`
 - `[[agent-ga-readiness-checklist]]`

@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/automation-tooling/trunk-based-feature-flags` | Routing traffic between implementations is flag-gated. |
@@ -83,6 +85,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-behavior-parity-verification.py` | Validate a parity-report JSON against the schema and threshold rules. | After each ramp stage closes; before promoting to next stage. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[trunk-based-feature-flags]] — flag plumbing that gates the shadow router.
 - [[ci-quality-gate-design]] — same artefact-gate pattern at the CI layer.

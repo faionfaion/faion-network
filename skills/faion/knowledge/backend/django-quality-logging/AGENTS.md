@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `python-code-quality` | logger discipline (no print, no bare except) precedes structlog wiring |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-django-quality-logging.py` | validates the audit report against the schema in `02-output-contract.xml` | after report is generated, before commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[python-code-quality]] — no-print + specific exception baseline
 - [[django-quality-security]] — `check --deploy` shares the same gate

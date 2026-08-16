@@ -41,6 +41,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[continuous-discovery]] | supplies the weekly cadence that this pipeline feeds |
@@ -85,6 +87,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-user-research-at-scale.py` | Validate the artefact against `content/02-output-contract.xml` schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[continuous-discovery]]
 - [[persona-building]]

@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/pm/project-manager/1on1-template-managers` | 1:1 cadence the growth plan attaches to. |
@@ -71,6 +73,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-engineering-ladder-and-growth-plan.py` | Validate produced artefact against the JSON Schema in `02-output-contract.xml`. | Pre-merge and on every artefact refresh. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[1on1-template-managers]]
 - [[cross-role-handoff-protocol]]

@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[sprint-capacity-from-complexity-tags]] | capacity numbers come from complexity tags |
@@ -72,6 +74,8 @@
 | `scripts/validate-pm-tech-lead-grooming-agenda.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[sprint-capacity-from-complexity-tags]]
 - [[tech-debt-slot-quota-policy]]

@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/dev/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies) |
@@ -75,6 +77,8 @@
 | `scripts/validate-observability-in-code.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[observability-as-design-input]]
 - [[perf-regression-alert-recipe]]

@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/infra/devops-engineer/slo-definition-template-per-service-class` | Defines the SLO this recipe alerts against. |
@@ -61,6 +63,8 @@
 | `scripts/validate-multi-burn-rate-slo-recipe.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/infra/`
 - `[[slo-definition-template-per-service-class]]`

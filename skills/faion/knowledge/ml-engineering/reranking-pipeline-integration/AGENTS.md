@@ -29,6 +29,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/rag-engineer/reranking-models` | Decides which reranker. |
@@ -65,6 +67,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-reranking-pipeline-integration.py` | Validates output against the 02-output-contract schema. | Pre-commit; CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[reranking-models]]
 - [[reranking-two-stage]]

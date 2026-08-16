@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[php-laravel-patterns]] | Sub-module for layered architecture. |
@@ -75,6 +77,8 @@
 | `scripts/validate-php-laravel.py` | Validate the Laravel umbrella manifest against the JSON Schema. | Pre-commit; CI on every methodology PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[php-laravel-patterns]]
 - [[php-eloquent]]

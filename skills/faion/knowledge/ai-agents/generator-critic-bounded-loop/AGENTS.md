@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `embedded-scratchpad-field` | Critic output is a scratchpad + score + should_continue triple. |
@@ -70,6 +72,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-generator-critic-bounded-loop.py` | Validates a critic output JSON against the schema | After every critic call |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[embedded-scratchpad-field]]
 - [[confidence-thresholded-cascade]]

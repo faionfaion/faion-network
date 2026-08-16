@@ -46,6 +46,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - `hallucination-attribution-checklist` — attribution for open outputs; this methodology is the closed-set branch of the same question.
 - `hallucination-detection-online` — the runtime scorers, their accuracies and their licences, for the open fields this contract deliberately does not cover.
 - `llm-hallucination-test-patterns` — packages the membership check as a CI test class; this methodology defines the metric it asserts on.

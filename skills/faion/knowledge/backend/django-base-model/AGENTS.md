@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[django-models]]` | Concrete model conventions (Meta options, indexes, constraints) consumed downstream. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-django-base-model.py` | Validate a base-model spec JSON. | After the spec is emitted, before codegen runs. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[django-models]] — concrete model patterns built on top.
 - [[django-pytest-fixtures]] — fixtures that respect soft-delete + tenant context.

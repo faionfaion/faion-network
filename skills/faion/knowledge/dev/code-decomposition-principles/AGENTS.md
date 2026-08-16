@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | none | Standalone — no upstream artefacts required. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-code-decomposition-principles.py` | Validate a decision record against the schema | After draft_decision_record, before posting to PR / owner |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - - [[code-decomposition-patterns]] — once a file is decided 'split', pick the pattern.
 - - [[refactoring-patterns]] — low-level transforms inside each split.

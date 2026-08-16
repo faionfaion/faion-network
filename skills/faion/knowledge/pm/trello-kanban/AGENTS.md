@@ -41,6 +41,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[notion-pm]] | Alternative tool — decision-tree compares them. |
@@ -80,6 +82,8 @@
 | `scripts/validate-trello-kanban.py` | Validate board config artefact against 02-output-contract schema | Pre-publish gate |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[notion-pm]]
 - [[reporting-dashboards]]

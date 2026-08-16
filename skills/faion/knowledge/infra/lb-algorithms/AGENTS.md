@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[lb-layer-selection]] | L4 vs L7 choice constrains which algorithms are even available. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-lb-algorithms.py` | Validate the algorithm-choice artefact JSON against 02-output-contract schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[lb-layer-selection]]
 - [[lb-session-persistence]]

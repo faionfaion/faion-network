@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[user-story-mapping]] | Upstream — story map produces the use-case backlog titles |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `templates/use-case-spec.md` | per-use-case skeleton (actor + goal + pre/post + flows) Generated from `templates/use-case-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[user-story-mapping]]
 - [[acceptance-criteria]]

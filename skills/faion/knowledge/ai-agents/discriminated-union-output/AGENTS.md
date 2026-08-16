@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `enum-constraints-closed-vocabularies` | The discriminator literal is itself an enum value; same masking principle. |
@@ -71,6 +73,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-discriminated-union-output.py` | Validates a sample action JSON against the discriminator + branch fields | Pre-commit on schema changes |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[enum-constraints-closed-vocabularies]]
 - [[inverted-header-content-first]]

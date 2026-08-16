@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/chunking-strategies` | Provides semantic-boundary chunker that feeds the embedder. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-openai-embeddings.py` | Validate an embed-record JSON matches the output contract (custom_id, model, dims, vector_len, source_hash). | Post-embed pipeline; nightly index audit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[openai-chat-completions]] — companion SDK pattern.
 - [[chunking-strategies]] — upstream of every embed call.

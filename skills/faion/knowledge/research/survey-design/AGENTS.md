@@ -40,6 +40,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[persona-building]] | supplies the segments and minimum sample-size targets |
@@ -83,6 +85,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-survey-design.py` | Validate the artefact against `content/02-output-contract.xml` schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[user-research-at-scale]]
 - [[persona-building]]

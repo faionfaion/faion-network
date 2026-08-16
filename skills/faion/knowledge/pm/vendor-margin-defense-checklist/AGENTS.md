@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[work-breakdown-structure]] | SOW deliverables map onto WBS leaves; bleed signals reference WBS ids. |
@@ -84,6 +86,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-vendor-margin-defense-checklist.py` | Validate a `MarginBleedReport` against the JSON Schema | Friday end-of-week pre-send check |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[work-breakdown-structure]]
 - [[solo-change-order-mini-contract]]

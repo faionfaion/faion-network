@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[side-project-financial-runway]] | Runway model feeds the trigger and reversal clause. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-quit-day-job-trigger-contract.py` | Validate the filled contract against 02-output-contract schema | Pre-merge + quarterly review |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[side-project-financial-runway]]
 - [[solo-mrr-dashboard-template]]

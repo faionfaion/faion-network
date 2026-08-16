@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[tool-card-template]]` | tool card carries the boundary class |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-tool-trust-boundary-model.py` | Enforce the Tool Trust Boundary Model output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[tool-card-template]] — boundary class lives on the card.
 - [[tool-call-schema-design-checklist]] — gates each tool through this model.

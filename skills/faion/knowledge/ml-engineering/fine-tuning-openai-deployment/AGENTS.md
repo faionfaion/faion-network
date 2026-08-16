@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/fine-tuning-openai-sft` | Source of model ID + eval scores. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-fine-tuning-openai-deployment.py` | Validate that the deployment playbook step has model_id, eval_gate evidence, rollback signal, ramp schedule. | Pre-merge of every fine-tune deployment PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[fine-tuning-openai-sft]] — supplies model_id.
 - [[fine-tuning-openai-eval]] — supplies eval_gate evidence.

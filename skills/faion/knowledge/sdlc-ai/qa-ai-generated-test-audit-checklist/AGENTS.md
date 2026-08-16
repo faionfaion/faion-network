@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[mr-graph-vs-diff-reviewer]] | Graph-based reviewer catches structural-only assertions at scan time. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-qa-ai-generated-test-audit-checklist.py` | Validate filled checklist artefact against schema + forbidden patterns. | At PR-ready gate |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[mr-graph-vs-diff-reviewer]]
 - [[regression-eval-before-fix-rule]]

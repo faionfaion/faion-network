@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/python-developer/python-modern-2026` | Establishes the 3.12+ baseline this methodology builds on. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-python-typing.py` | Validates output report against the `02-output-contract.xml` schema. | After running the annotation pass, before merging the PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[python-modern-2026]] — Python 3.12+ feature baseline.
 - [[django-coding-standards]] — Django-side annotation rules (django-stubs).

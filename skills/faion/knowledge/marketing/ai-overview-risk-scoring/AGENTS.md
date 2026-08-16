@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ai-overview-monitoring]] | source of presence + position data |
@@ -69,6 +71,8 @@
 | `scripts/validate-ai-overview-risk-scoring.py` | Validate output against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/marketing/`
 - [[ai-overview-monitoring]]

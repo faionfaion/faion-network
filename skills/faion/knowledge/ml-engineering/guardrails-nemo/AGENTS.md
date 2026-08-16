@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `guardrails-concepts` | Plan declares which rails go to NeMo. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-guardrails-nemo.py` | Validate `config.yml` shape (models, rails.input.flows, rails.output.flows, prompts list) | Pre-deploy gate |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[guardrails-concepts]] — plan that picks NeMo
 - [[guardrails-custom-pipeline]] — for the rails NeMo doesn't own

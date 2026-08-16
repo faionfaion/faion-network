@@ -29,6 +29,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `embedded-scratchpad-field` | Same field-order discipline applied to reasoning. |
@@ -67,6 +69,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-inverted-header-content-first.py` | Confirms body field appears before metadata fields in a JSON schema dump | Pre-commit on schema changes |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[embedded-scratchpad-field]]
 - [[field-descriptions-as-prompts]]

@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[qa-ac-to-assertion-mapping]] | per-AC assertions feed into page-object actions |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-page-object-pattern-guide.py` | Validate Page Object Pattern at Scale (Playwright / Cypress) artefact against content/02-output-contract.xml. | After draft, before merge; pre-commit hook. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[qa-ac-to-assertion-mapping]]
 - [[qa-exploratory-charter-template]]

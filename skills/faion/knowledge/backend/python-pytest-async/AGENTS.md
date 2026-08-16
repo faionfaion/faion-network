@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/python-developer/python-pytest-setup` | Defines pytest config conventions. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-python-pytest-async.py` | Check asyncio_mode='auto', no @pytest.fixture on async def, no MagicMock on async callables. | Pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[python-pytest-setup]]
 - [[python-pytest-fixtures]]

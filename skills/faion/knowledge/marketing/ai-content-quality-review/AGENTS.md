@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | brand-voice-consistency-system | Voice doc gates tone. |
@@ -75,6 +77,8 @@
 | `scripts/validate-ai-content-quality-review.py` | Validate AI Content Quality Review output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[brand-voice-consistency-system]]
 - [[content-atomization-engine]]

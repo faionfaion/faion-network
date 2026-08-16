@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ruby-rails]] | Sub-module covering controller / model patterns. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-decomposition-rails.py` | Validate the structural-lint manifest against the JSON Schema. | Pre-commit; CI on every methodology PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ruby-rails]]
 - [[ruby-rails-patterns]]

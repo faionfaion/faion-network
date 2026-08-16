@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[regression-eval-before-fix-rule]] | Same eval-first discipline for bug-fix tickets. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-task-agent-drafts-spec-before-coding.py` | Validate spec artefact + approval-event linkage. | Pre-PR-open by the agent |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[regression-eval-before-fix-rule]]
 - [[mr-codemod-refactor-agent]]

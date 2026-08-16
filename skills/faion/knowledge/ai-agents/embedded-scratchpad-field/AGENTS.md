@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `field-descriptions-as-prompts` | Scratchpad descriptions must name WHAT to think about, not just "think". |
@@ -69,6 +71,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-embedded-scratchpad-field.py` | Validates a schema instance and checks scratchpad placement | Pre-commit on schema changes |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[field-descriptions-as-prompts]]
 - [[inverted-header-content-first]]

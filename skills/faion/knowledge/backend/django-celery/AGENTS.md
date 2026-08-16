@@ -43,6 +43,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[django-services]] | Tasks call services; tasks are not the place for business logic. |
@@ -87,6 +89,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-django-celery.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[django-services]]
 - [[decomposition-django]]

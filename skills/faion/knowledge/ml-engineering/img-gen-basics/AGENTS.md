@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/multimodal-ai/img-gen-tools` | Sibling: production patterns + multi-provider fallback. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-img-gen-basics.py` | Validate img-gen-config: provider, storage URI, RL budget, prompt_builder fields. | Pre-commit + CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[img-gen-tools]]
 - [[openai-api-integration]]

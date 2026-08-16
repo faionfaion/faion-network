@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | build-in-public-content-engine | Provides the engine these templates plug into. |
@@ -71,6 +73,8 @@
 | `scripts/validate-build-log-content-template-pack.py` | Validate Build Log Content Template Pack output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[build-in-public-content-engine]]
 - [[brand-voice-consistency-system]]

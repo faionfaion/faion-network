@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[event-sourcing-aggregate]] | Aggregate must support `from_events` reconstruction. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-event-sourcing-snapshots.py` | Validate snapshot policy spec | Pre-commit on spec artefact |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[event-sourcing-aggregate]]
 - [[event-sourcing-versioning]]

@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[prompt-ab-power-calculator]]` | Power calc spec link required per item. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-prompt-pr-review-checklist.py` | Validate prompt-pr-checklist | Pre-commit on the checklist itself |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[prompt-ab-power-calculator]]
 - [[prompt-portability-audit]]

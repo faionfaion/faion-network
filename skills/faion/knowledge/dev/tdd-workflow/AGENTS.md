@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/software-developer/unit-testing` | AAA pattern this cycle produces. |
@@ -67,6 +69,8 @@
 | `scripts/validate-tdd-workflow.py` | Inspect commit history for red-green-refactor triplets; flag green-only sequences without prior RED. | Pre-commit and PR review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[unit-testing]]
 - [[testing]]

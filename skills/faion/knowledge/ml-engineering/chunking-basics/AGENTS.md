@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/rag-engineer/embedding-models` | Defines the tokenizer / max-input that constrains chunk_size. |
@@ -71,6 +73,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-chunking-basics.py` | Validate emitted chunk list against the schema; flag chunks outside the size band; verify deterministic IDs. | After chunker run, before the embedding step. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[chunking-code-ast]] — code-specific path.
 - [[chunking-document-structure]] — Markdown/HTML structure-aware splitter.

@@ -30,6 +30,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/dev/software-architect/team-topologies-skills` | Team Topologies framing. |
@@ -71,6 +73,8 @@
 | `scripts/validate-service-ownership-map-template.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/infra/`
 - `[[oncall-handoff-protocol]]`

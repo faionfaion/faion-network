@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/automation-tooling/trunk-based-dev-principles` | The umbrella branching model this flag-spec serves. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-trunk-based-feature-flags.py` | Validate a flag-spec JSON against the schema and cleanup-ticket rule. | On PR open; on flag creation; nightly aging scan. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[trunk-based-dev-principles]] — the umbrella branching model.
 - [[behavior-parity-verification]] — dark-launch flag is the shadow router's switch.

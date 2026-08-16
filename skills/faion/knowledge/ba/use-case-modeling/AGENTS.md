@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[stakeholder-analysis]] | Source of named actors with goals. |
@@ -84,6 +86,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-use-case-modeling.py` | Validates use-case spec against the JSON Schema. | Before approver sign-off; pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[user-story-mapping]]
 - [[stakeholder-analysis]]

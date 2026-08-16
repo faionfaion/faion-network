@@ -46,6 +46,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - `multi-agent-design-patterns` — pattern choice for the orchestration graph; this methodology is about the knowledge graph, a different object under the same word.
 - `mcp-resource-vs-tool-vs-prompt` — how retrieved context reaches the agent once the structure is chosen.
 - `architecture-decision-records` — the Graph Design Record is an ADR with a fixed schema; log it the same way.

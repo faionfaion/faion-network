@@ -30,6 +30,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[go-backend]]` | Provides the Pool struct location and config wiring. |
@@ -70,6 +72,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-go-concurrency.py` | Greps for known antipatterns (bare `go func()` without ctx, `wg.Add` inside body, `close()` outside writer). | Pre-commit gate. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `free/dev/software-developer/`
 - `[[go-backend]]` — Pool struct lives in internal/concurrency/

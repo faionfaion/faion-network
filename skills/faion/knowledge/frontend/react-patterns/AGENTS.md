@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[react-hooks]]` | Per-slice hook decision routed by this spec. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-react-patterns.py` | Validate a feature-spec JSON against the contract. | After the spec is emitted, before codegen reads it. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[react-hooks]] — per-slice hook decisions consumed by the state_routing field.
 - [[typescript-react-2026]] — Server / Client boundary that gates which files in the spec are server-default vs client-marked.

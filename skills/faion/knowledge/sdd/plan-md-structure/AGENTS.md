@@ -33,6 +33,8 @@
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[sdd-workflow-overview]] — plan.md is the `plan` phase artefact.
 - [[project-spec-structure]] — project-spec/ holds system-wide contracts; plan.md holds FEATURE-scoped contracts only.
 - [[readiness-checklist]] — readiness gate verifies plan.md tasks are all done.

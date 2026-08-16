@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | none | Standalone — no upstream artefacts required. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-code-decomposition-patterns.py` | Validate a move-list artefact against the schema | After draft_move_list, before execute |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - - [[code-decomposition-principles]] — the size + SRP principles this methodology encodes as patterns.
 - - [[refactoring-patterns]] — the catalog of low-level moves each pattern compiles to.

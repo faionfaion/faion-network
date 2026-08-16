@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/ml-engineer/multi-agent-design-patterns` | Provides topology vocabulary. |
@@ -71,6 +73,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-multi-agent-orchestration-decision-tree.py` | Enforce contract: topology valid, hand-off protocol fields present, judge-actor measured, rollback trigger present. | After subagent return. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-agent-patterns]]
 - [[multi-agent-design-patterns]]

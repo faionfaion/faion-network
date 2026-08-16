@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/data-exfiltration-canary-tokens` | the canary mechanism this recipe leans on |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-context-bleed-detection-recipe.py` | Enforce incident-record contract | After detector returns, before paging on-call |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[data-exfiltration-canary-tokens]] — upstream primitive.
 - [[hallucination-detection-online]] — adjacent online monitor.

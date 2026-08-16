@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/sdd/sdd-planning/workflow-spec-phase` | Provides the spec.md that this phase consumes. |
@@ -79,6 +81,8 @@
 | `scripts/validate-workflow-design-phase.py` | Validate the design.md frontmatter against the schema in `content/02-output-contract.xml`. | After subagent returns the design.md, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[workflow-spec-phase]]
 - [[writing-implementation-plans]]

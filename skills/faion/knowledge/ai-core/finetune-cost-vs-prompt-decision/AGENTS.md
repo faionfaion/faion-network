@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[fine-tune-vs-prompt-decision-tree]]` | Sister methodology, more branches; this one is the artefact. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-finetune-cost-vs-prompt-decision.py` | Validate the JSON record against schema + rules. | Before record is committed to the RFC log. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/`
 - `[[fine-tune-vs-prompt-decision-tree]]`

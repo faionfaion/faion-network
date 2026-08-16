@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[vui-conversation-design]] | Detailed conversation flow guidance builds on these principles |
@@ -73,6 +75,8 @@
 | `scripts/validate-core-vui-design-principles.py` | Validate artefact JSON against output schema | Pre-commit / CI on artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[vui-conversation-design]]
 - [[error-handling-in-vui]]

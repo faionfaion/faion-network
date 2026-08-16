@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | secrets-management | Service-role key handling from secrets plan. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-supabase-rls-audit-checklist.py` | Validate RlsAuditReport JSON against the schema. | After each audit before closing. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[secrets-management]]
 - [[supabase-backup-and-restore-drill]]

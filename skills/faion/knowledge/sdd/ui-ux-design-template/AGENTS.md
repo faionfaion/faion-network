@@ -43,6 +43,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[readiness-checklist]] — item 7 enforces this audit.
 - [[user-flows-template]] — sibling per-feature artefact when user-facing flow exists.
 - [[quality-gates]] — UI → Nielsen + Norman audit gate row.

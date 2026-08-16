@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[lint-precommit-floor]] | Local hooks complement remote merge gating. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-renovate-ai-handoff.py` | Validate the produced config artefact against the JSON Schema. | pre-merge of renovate.json |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[mr-codemod-refactor-agent]]
 - [[mr-error-tracker-draft-pr]]

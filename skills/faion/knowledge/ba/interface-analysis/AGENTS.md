@@ -40,6 +40,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `pro/ba/business-analyst/data-analysis` | Data elements per interface drive from the data dictionary. |
@@ -88,6 +90,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-interface-analysis.py` | Validate the produced artefact against the output-contract schema. | Pre-commit; CI on each artefact change. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[data-analysis]]
 - [[requirements-documentation]]

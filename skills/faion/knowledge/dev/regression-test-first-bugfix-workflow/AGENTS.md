@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/qa-edge-case-spec-template` | The pinned regression spec format this flow may emit on harder cases. |
@@ -72,6 +74,8 @@
 | `scripts/validate-regression-test-first-bugfix-workflow.py` | Validate the workflow record schema, links, and ownership. | Pre-merge on the fix PR + weekly staleness scan. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[qa-edge-case-spec-template]] — pinned spec format this workflow attaches on hard cases.
 - [[django-pytest]] — pytest runner pattern.

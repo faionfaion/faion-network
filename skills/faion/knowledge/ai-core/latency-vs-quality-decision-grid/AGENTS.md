@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[ai-cost-attribution-schema]]` | Cost column comes from the attribution table. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-latency-vs-quality-decision-grid.py` | Validates grid.json against schema; asserts ≥3 sites, every row has SLO + model + owner. | Pre-commit on grid; CI before routing config rolls out. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/`
 - `[[ai-cost-attribution-schema]]` — cost columns flow from here

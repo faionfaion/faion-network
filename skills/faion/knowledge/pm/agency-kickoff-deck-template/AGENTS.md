@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `stakeholder-engagement` | Engagement of partners / sponsors anchors the artefact. |
@@ -72,6 +74,8 @@
 | `scripts/validate-agency-kickoff-deck-template.py` | Schema-validate artefact JSON. | Pre-commit + before review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[agency-annual-plan-template]]
 - [[stakeholder-engagement]]

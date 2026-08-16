@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[csharp-dotnet]] | Umbrella covering CancellationToken plumbing + DI lifetimes. |
@@ -90,6 +92,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 - **Minimal API + mediator loses the OpenAPI metadata** controllers get for free; it surfaces at Swagger/NSwag integration time.
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[csharp-dotnet]]
 - [[csharp-entity-framework]]

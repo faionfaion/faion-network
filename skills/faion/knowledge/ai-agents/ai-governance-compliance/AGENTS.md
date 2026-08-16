@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ai-agents/eu-ai-act-compliance/AGENTS.md` | Sibling — risk classification feeds this pack. |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-output.py` | Validate the governance pack manifest. | After pack assembly, before auditor handoff. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/ai-agents/`
 - upstream: [[eu-ai-act-compliance]] — determines the risk tier this pack is conditional on (r6-risk-tier-first).

@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `llm-decision-framework` | Provider choice mirrors LLM provider posture. |
@@ -68,6 +70,8 @@
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[llm-decision-framework]] — same provider posture as text models
 - [[cost-optimization]] — per-image cost drives Flux schnell vs DALL-E choice

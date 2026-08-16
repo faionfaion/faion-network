@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[figma-ai-ecosystem]] | Broader Figma AI surface — plugins are one slice |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-plugin-ecosystem.py` | Validate the decision-record artefact against the 02-output-contract schema | After subagent returns, before commit/publish |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[figma-ai-ecosystem]]
 - [[ai-generated-layout-review-checklist]]

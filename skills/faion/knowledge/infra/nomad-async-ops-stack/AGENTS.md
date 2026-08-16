@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | solo-deploy-checklist | Deploy ritual under flaky wifi. |
@@ -73,6 +75,8 @@
 | `scripts/validate-nomad-async-ops-stack.py` | Validate Nomad Async Ops Stack output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[solo-deploy-checklist]]
 - [[sentry-alert-routing-for-solos]]

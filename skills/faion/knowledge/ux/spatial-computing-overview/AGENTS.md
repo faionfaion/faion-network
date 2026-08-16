@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[spatial-ux-fundamentals]] | Provides the field-zone vocabulary referenced by content-type fit |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-spatial-computing-overview.py` | Validate decision-record JSON against the schema | Before committing the decision record |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[spatial-design-tools]]
 - [[spatial-ux-fundamentals]]

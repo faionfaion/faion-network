@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `stakeholder-register` | Interview list draws on register. |
@@ -76,6 +78,8 @@
 | `scripts/validate-project-closure-with-lessons-extraction.py` | Schema-validate the closure report. | Pre-publish + before next-project kick-off. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[post-handover-warranty-runbook]]
 - [[stakeholder-engagement]]

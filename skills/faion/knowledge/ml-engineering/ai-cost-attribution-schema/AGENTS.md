@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[latency-vs-quality-decision-grid]]` | Routing config consumes the cost column. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-cost-attribution-schema.py` | Validates a JSONL of attribution records against the schema and asserts no records have blank/generic tenant or feature. | Pre-commit on test fixtures; CI on dashboard data sources. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/llm-integration/`
 - `[[latency-vs-quality-decision-grid]]` — consumes the per-call cost

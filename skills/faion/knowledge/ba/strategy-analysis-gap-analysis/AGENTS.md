@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[strategy-analysis-current-state]] | Source of as-is rows. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-strategy-analysis-gap-analysis.py` | Validates gap-analysis report against the JSON Schema. | After gap-scoring round; pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[strategy-analysis-current-state]]
 - [[strategy-analysis-future-state]]

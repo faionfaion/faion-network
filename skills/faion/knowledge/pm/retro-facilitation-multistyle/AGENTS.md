@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[retro-format-rotation-guide]] | Sibling guide that informs format choice across multiple retros. |
@@ -76,6 +78,8 @@
 | `scripts/validate-retro-facilitation-multistyle.py` | Validate retro instance against 02-output-contract schema | Pre-merge + next retro review |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[retro-format-rotation-guide]]
 - [[status-report-templates-by-audience]]

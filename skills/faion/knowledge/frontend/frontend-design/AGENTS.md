@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/` parent context | vocabulary, neighbouring methodologies |
@@ -84,6 +86,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/render-variants.sh` | Render every variant at desktop + mobile widths and stitch the side-by-side comparison grid | Before the selection step; the screenshot gate depends on it |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[design-tokens-basics]]
 - [[css-in-js-basics]]

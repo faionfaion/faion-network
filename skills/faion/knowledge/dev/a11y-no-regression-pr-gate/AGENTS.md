@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[qa-changed-lines-coverage-dashboard]] | diff-only metrics share the route-map; coordinate paths |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-a11y-no-regression-pr-gate.py` | Validate A11y No-Regression PR Gate artefact against content/02-output-contract.xml. | After draft, before merge; pre-commit hook. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[qa-changed-lines-coverage-dashboard]]
 - [[qa-risk-matrix-method]]

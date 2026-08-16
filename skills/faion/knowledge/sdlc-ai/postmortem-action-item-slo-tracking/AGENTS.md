@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[regression-eval-before-fix-rule]] | Decides whether incident needs eval-replay before fix. |
@@ -77,6 +79,8 @@
 | `scripts/validate-postmortem-action-item-slo-tracking.py` | Validate ledger artefact against schema + forbidden patterns. | Pre-merge of every ledger change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[regression-eval-before-fix-rule]]
 - [[task-agent-drafts-spec-before-coding]]

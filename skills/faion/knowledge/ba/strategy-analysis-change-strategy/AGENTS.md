@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[strategy-analysis-business-need]] | Defines why the change is needed. |
@@ -83,6 +85,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-strategy-analysis-change-strategy.py` | Validates change-strategy spec against the JSON Schema. | Before steering-committee review; pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[strategy-analysis-business-need]]
 - [[strategy-analysis-current-state]]

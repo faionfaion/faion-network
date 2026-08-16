@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[prompt-portability-across-providers]]` | Downstream spec consuming this audit. |
@@ -76,6 +78,8 @@
 | `scripts/validate-prompt-portability-audit.py` | Validate audit report | Pre-commit + before migration spec |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[prompt-portability-across-providers]]
 - [[prompt-pr-review-checklist]]

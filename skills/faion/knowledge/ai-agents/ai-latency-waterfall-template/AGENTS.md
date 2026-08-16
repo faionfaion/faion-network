@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ai-agents/agent-trajectory-eval-method/AGENTS.md` | Trajectory metrics include system_efficiency.latency_ms; waterfall drills into it. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-output.py` | Validate the report. | After authoring, before forwarding to engineering. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/ai-agents/`
 - peer: [[agent-trajectory-eval-method]] — trajectory eval surfaces latency_ms; waterfall drills into it.

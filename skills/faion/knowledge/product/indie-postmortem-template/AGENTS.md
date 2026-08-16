@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/product/product-manager/product-launch` | Launch context that may have triggered the postmortem. |
@@ -69,6 +71,8 @@
 | `scripts/validate-indie-postmortem-template.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[product-launch]]
 - [[feedback-management]]

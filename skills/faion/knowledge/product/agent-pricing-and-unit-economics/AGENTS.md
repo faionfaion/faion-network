@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai-core/ai-agents` | Agent architecture decisions feed COGS computation. |
@@ -76,6 +78,8 @@
 | `scripts/validate-agent-pricing-and-unit-economics.py` | Validate a unit-economics report against rules (margin floor, measured COGS, pricing-model fit, cap present, repricing trigger). | Pre-publish for any pricing change. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-native-product-development]] — sibling methodology providing positioning context.
 - [[agentic-ai-product-development]] — peer methodology consuming the cost-per-task metric.

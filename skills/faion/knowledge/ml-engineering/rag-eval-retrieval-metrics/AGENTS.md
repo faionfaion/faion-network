@@ -29,6 +29,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/rag-engineer/rag-eval-test-set-generation` | Source of labeled relevant chunks. |
@@ -64,6 +66,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-rag-eval-retrieval-metrics.py` | Validates output against the 02-output-contract schema. | Pre-commit; CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[rag-eval-generation-metrics]]
 - [[rag-eval-pipeline]]

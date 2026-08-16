@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[spatial-interaction-patterns]] | Defines the interaction-state-machine vocabulary the report references |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-spatial-accessibility.py` | Validate the audit JSON against the schema | Pre-release gate; pre-submission to App Store / Horizon |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[spatial-interaction-patterns]]
 - [[vr-design-patterns]]

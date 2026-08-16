@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[sdd-promotion-gate-checklist]] | DoD multi-role complements promotion gates |
@@ -71,6 +73,8 @@
 | `scripts/validate-definition-of-done-multi-role.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[sdd-promotion-gate-checklist]]
 - [[release-train-coordination]]

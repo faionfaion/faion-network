@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[project-integration]] | integration baselines are the change reference |
@@ -68,6 +70,8 @@
 | `templates/change-request-form.md` | Change Request Form template: trigger, impact, alternatives, recommendation Generated from `templates/change-request-form.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[project-integration]]
 - [[communications-management]]

@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | firewall-management | UFW must allow the WireGuard UDP port + NAT post-route. |
@@ -85,6 +87,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/wg-status.sh` | Show last-handshake per peer. | Daily health check. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[firewall-management]]
 - [[kernel-tuning]]

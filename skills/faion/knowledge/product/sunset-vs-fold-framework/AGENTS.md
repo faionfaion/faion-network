@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/product/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
@@ -74,6 +76,8 @@
 | `scripts/validate-sunset-vs-fold-framework.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `skills/faion/knowledge/pro/product/`
 - peer methodologies: siblings under the parent skill

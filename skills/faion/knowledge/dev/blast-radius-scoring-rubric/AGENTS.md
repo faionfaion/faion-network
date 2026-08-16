@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/ci-quality-gate-design` | The rubric is one gate among several; CI design assumes blast scoring exists. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-blast-radius-scoring-rubric.py` | Validate a rubric JSON against the schema + override consistency. | On PR open, by the bot, before assigning reviewer. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ci-quality-gate-design]] — the rubric is one gate the CI design composes.
 - [[changelog-automation-conventional-commits]] — categorical signal complementary to blast score.

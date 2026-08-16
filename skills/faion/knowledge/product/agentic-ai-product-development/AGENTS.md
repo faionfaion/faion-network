@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/product/product-manager/agents` | Sibling on agent-as-product patterns. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-agentic-ai-product-development.py` | Validate a filled spec against the output contract (goal predicate, escalation-first, action triggers, agentic metrics). | Before stakeholder sign-off and before any deploy. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-native-product-development]] — conversational-copilot sibling for non-autonomous AI products.
 - [[ai-feature-de-risking]] — peer methodology for shipping AI features safely.

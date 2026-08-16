@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/llm-integration/structured-output-basics` | upstream LLM output is the text payload; needs to be JSON-shaped, then text-extracted before TTS |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-tts-basics.py` | Validate synthesize() output JSON against 02-output-contract schema. | Post-call, before downstream consumes path. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[tts-implementation]] — production layer for long-form, streaming, voice cloning.
 - [[voice-basics]] — wraps TTS into a conversational STT→LLM→TTS loop.

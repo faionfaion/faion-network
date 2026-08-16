@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[inference-cost-unit-economics]] | Cost-per-outcome math |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-feature-build-buy-finetune-decision.py` | Validate the decision-record artefact against the 02-output-contract schema | After subagent returns, before commit/publish |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[inference-cost-unit-economics]]
 - [[ai-feature-progressive-rollout]]

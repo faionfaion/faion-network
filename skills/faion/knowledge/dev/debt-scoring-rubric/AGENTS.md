@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/code-quality/tech-debt-management` | Defines payoff strategies + CI gates the score feeds. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-debt-scoring-rubric.py` | Validate a debt-register JSON against schema + formula consistency. | After scoring session; before publishing the register. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[tech-debt-management]] — payoff strategies the score feeds.
 - [[blast-radius-scoring-rubric]] — shares the blast factor.

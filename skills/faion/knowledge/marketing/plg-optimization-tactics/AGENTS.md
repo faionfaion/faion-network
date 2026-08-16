@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[plg-basics]] | Activation / Aha-moment terminology |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-plg-optimization-tactics.py` | Validate ranked-backlog JSON against the schema in `content/02-output-contract.xml` | After subagent returns; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[plg-basics]]
 - [[plg-metrics]]

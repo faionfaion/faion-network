@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | qa-test-pyramid-vs-trophy-decision | UAT lives at the e2e tier; its budget comes from the pyramid decision. |
@@ -72,6 +74,8 @@
 | `scripts/validate-uat-script-pattern.py` | Validate UAT Script Pattern output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[qa-test-pyramid-vs-trophy-decision]]
 

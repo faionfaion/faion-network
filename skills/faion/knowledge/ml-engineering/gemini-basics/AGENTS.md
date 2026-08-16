@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[gemini-api-integration]]` | Sibling for the safety/Files-API extensions. |
@@ -69,6 +71,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-gemini-basics.py` | Validates gemini-config-basic.json: pinned model + temperature + max_output_tokens. | Pre-commit on starter config. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/llm-integration/`
 - `[[gemini-api-integration]]`

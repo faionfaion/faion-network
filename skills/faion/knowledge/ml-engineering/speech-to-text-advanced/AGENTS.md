@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/multimodal-ai/speech-to-text-basics` | Single-provider Whisper baseline. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-speech-to-text-advanced.py` | Validate advanced-stt-config: provider supports requested capabilities, speaker_hint set if diarisation needed, vocab passed as param not in prompt. | Pre-commit + CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[speech-to-text-basics]]
 - [[openai-api-integration]]

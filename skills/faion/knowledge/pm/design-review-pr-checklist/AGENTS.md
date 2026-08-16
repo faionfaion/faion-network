@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[stakeholder-management]] | Names the designer/design-engineer as required reviewer in the engagement model. |
@@ -76,6 +78,8 @@
 | `scripts/validate-design-review-pr-checklist.py` | Validate the methodology output artefact against the schema in content/02-output-contract.xml | Pre-commit + CI on artefact changes |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[stakeholder-management]]
 - [[release-planning]]

@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[cross-channel-cpa-rollup]] | Weekly rollup defines baseline CPA the checklist compares against. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-daily-ads-anomaly-checklist.py` | Validate the daily-run log JSON against the schema | Daily after run; pre-publish. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[cross-channel-cpa-rollup]]
 - [[paid-ads-creative-library]]

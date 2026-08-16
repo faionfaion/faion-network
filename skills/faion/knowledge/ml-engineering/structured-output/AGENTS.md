@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `tool-use-function-calling` | Adjacent pattern; tool calls use the same constrained decoding |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-structured-output.py` | Lint structured-output config | Pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[tool-use-function-calling]] — sibling pattern
 - external: [OpenAI Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs) · [Anthropic JSON mode](https://docs.anthropic.com/en/docs/build-with-claude/tool-use) · [Pydantic](https://docs.pydantic.dev/)

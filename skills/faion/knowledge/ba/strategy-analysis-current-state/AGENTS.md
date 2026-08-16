@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[strategy-analysis-business-need]] | Frames which slices of the as-is are relevant. |
@@ -78,6 +80,8 @@
 | `scripts/validate-strategy-analysis-current-state.py` | Validates current-state spec against the JSON Schema. | After interview round; pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[strategy-analysis-business-need]]
 - [[strategy-analysis-future-state]]

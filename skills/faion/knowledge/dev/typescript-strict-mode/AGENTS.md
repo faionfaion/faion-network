@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[typescript-patterns]]` | Result + assertion functions consumed in the per-flag fix strategies. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-typescript-strict-mode.py` | Validate a migration spec against the contract. | After the spec is produced; before the first migration PR opens. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[typescript-patterns]] — domain typing patterns the strict flags enforce.
 - [[typescript-react-2026]] — App Router scaffold spec that assumes these flags are enabled.

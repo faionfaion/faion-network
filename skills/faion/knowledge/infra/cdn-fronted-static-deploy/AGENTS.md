@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[edge-and-cdn-strategy]]` | Cache-key design and origin shielding sit upstream of this; that decides the headers this one has to live with. |
@@ -70,6 +72,8 @@
 | `scripts/validate-cdn-fronted-static-deploy.py` | Validates an edge-freshness report: byte disagreement outranks a FRESH self-report, an aged HIT is stale, unstamped asset paths fail, PASS cannot sit over a failing gate, and `site` may not carry an address literal. `--self-test` replays seven fixtures including the 2026-07-28 incident. | After every probe run; in CI once probing is wired. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[edge-and-cdn-strategy]] — the upstream decision: cache keys, shielding, what gets a long `max-age` at all
 - [[build-generator-discipline]] — the build that has to emit the stamped URLs atomically

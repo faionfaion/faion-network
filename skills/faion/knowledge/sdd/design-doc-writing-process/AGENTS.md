@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/sdd/sdd-planning/design-doc-structure` | Layout the process fills. |
@@ -77,6 +79,8 @@
 | `scripts/validate-design-doc-writing-process.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[design-doc-structure]]
 - [[design-doc-examples]]

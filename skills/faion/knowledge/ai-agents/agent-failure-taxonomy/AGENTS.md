@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[agent-postmortem-template]]` | Postmortem records consumed taxonomy labels |
@@ -67,6 +69,8 @@
 | `scripts/validate-agent-failure-taxonomy.py` | Validates an output document against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/ai-agents/`
 - `[[agent-postmortem-template]]`

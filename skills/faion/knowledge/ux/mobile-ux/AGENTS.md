@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/ux/ux-ui-designer/wireframing` | Wireframes are the upstream source of layout decisions. |
@@ -75,6 +77,8 @@
 | `scripts/mobile-audit.sh` | Run Lighthouse mobile audit + summarise Core Web Vitals. | At step 2 (measure) when a URL is reachable. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[wireframing]]
 - [[visibility-of-system-status]]

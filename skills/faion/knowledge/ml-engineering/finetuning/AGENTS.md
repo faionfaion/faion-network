@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/llm-decision-framework` | Decides whether prompt / RAG / fine-tune at all — this is the downstream node. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-finetuning.py` | Validate that the decision record matches the schema. | Pre-merge of every fine-tune ADR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[llm-decision-framework]] — parent decision; emits the 'fine-tune' branch this methodology elaborates.
 - [[fine-tuning-lora]] — concrete LoRA recipe when this guide lands on LoRA/QLoRA.

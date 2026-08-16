@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/marketing/rate-raise-conversation-script` | Anchors pricing language for the outcome-based option. |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-proposal-from-discovery-template.py` | Validate a filled artefact against the schema in `02-output-contract.xml`. | Pre-commit; before sending to client. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[rate-raise-conversation-script]]
 - [[single-page-case-study-generation]]

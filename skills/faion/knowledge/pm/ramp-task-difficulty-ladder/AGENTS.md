@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/sdd/sdd/sdd-document-templates` | Document-as-code conventions; artefact lives in the team's SDD space. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ramp-task-difficulty-ladder.py` | Validate that filled artefact matches the canonical schema, carries evidence links, owner, and not-stale `last_reviewed`. | Pre-merge and quarterly staleness scan. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[stakeholder-sentiment-tracker]] — sibling operating artefact for the same PM space.
 - [[team-charter-working-agreement]] — peer methodology shaping how the team operates around the ladder.

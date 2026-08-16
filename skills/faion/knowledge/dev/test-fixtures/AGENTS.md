@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/software-developer/testing` | Defines the broader test pyramid and AAA structure this fixture layer slots into. |
@@ -66,6 +68,8 @@
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[testing]] — parent multi-language testing playbook.
 - [[unit-testing]] — sibling that consumes these factories.

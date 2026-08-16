@@ -30,6 +30,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/python-developer/python-pytest-setup` | pytest config baseline. |
@@ -66,6 +68,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-python-pytest-parametrize.py` | Check parametrize calls have ids when 4+ cases; detect cartesian explosions. | Pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[python-pytest-setup]]
 - [[python-pytest-fixtures]]

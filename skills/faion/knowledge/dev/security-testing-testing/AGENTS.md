@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | solo-deploy-checklist | Deploy gate consumes this report. |
@@ -70,6 +72,8 @@
 | `templates/security-testing.md` | Markdown skeleton with required fields. Generated from `templates/security-testing.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[solo-deploy-checklist]]
 - [[server-init-bootstrap]]

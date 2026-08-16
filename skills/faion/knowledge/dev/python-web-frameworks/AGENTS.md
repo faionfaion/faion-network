@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/software-developer/best-practices-2026` | Baseline 2026 quality bar the framework must satisfy. |
@@ -70,6 +72,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-python-web-frameworks.py` | Validates the decision-record JSON against `02-output-contract.xml` schema. | After the picker runs, before committing the ADR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[python-typing]] — type-checker baseline regardless of framework.
 - [[django-models]] — load after `framework = django`.

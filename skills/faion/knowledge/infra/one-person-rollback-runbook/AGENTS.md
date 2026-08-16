@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/infra/server-craft/deploy-scripts` | Rollback inverts the deploy script. |
@@ -76,6 +78,8 @@
 | `scripts/validate-one-person-rollback-runbook.py` | Validate artefact against the JSON Schema in content/02-output-contract.xml. Stdlib-only. | On runbook commit; in CI before release tag. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[deploy-scripts]]
 - [[health-checks-autoheal]]

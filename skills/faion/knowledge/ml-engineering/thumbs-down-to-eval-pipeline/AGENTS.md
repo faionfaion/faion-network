@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/regression-eval-set` | Defines the eval set structure this pipeline writes to |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-thumbs-down-to-eval-pipeline.py` | Lint EvalCandidate against schema, enforce PII-clean flag + weekly cap | Pre-commit + nightly batch |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[rag-feature-acceptance-contract]] — eval set referenced by the contract
 - [[retrieval-drift-alerting-recipe]] — drift signal complements this signal-from-users feedback loop

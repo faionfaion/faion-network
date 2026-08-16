@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[lint-ruff-and-biome-as-default]] | Ruff config blocks live in this same pyproject.toml. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-pyproject-single-source.py` | Validate pyproject artefact has required tables + no legacy file companions. | Pre-merge of pyproject.toml |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[lint-ruff-and-biome-as-default]]
 - [[lint-precommit-floor]]

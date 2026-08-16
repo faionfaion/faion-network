@@ -40,6 +40,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | none | Foundational. May feed into `[[code-review-process]]` once the CI gate exists. |
@@ -86,6 +88,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-python-type-hints.py` | Validate a typed-module spec JSON against the schema | After spec generation, before PR merge |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[code-review-process]] — the mypy gate runs inside the review process.
 - [[code-coverage]] — type coverage + line coverage together are stronger than either alone.

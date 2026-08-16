@@ -75,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[ai-pairing-decision-tree]]
 - [[api-monitoring]]
 - [[api-contract-pattern-selection]]

@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/finetuning` | Downstream for fine-tune branch. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-llm-decision-framework.py` | Validate the ADR (scores per option, chosen, rationale, alternatives). | Pre-merge of every LLM ADR PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[finetuning]] — downstream when FT chosen.
 - [[llamaindex]] — downstream when RAG chosen.

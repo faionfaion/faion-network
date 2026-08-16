@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[tailwind-architecture]] | Token output often consumed by Tailwind config. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-design-tokens.py` | Validate the token spec artefact metadata against 02-output-contract schema | Pre-publish gate / pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[tailwind-architecture]]
 - [[ui-component-library]]

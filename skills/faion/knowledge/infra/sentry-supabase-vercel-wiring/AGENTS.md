@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/infra/one-person-rollback-runbook` | Downstream — Sentry alert triggers rollback runbook. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-sentry-supabase-vercel-wiring.py` | Validate wiring artefact against the JSON Schema in content/02-output-contract.xml. Stdlib-only. | After wiring; in CI on any sentry.*.config.ts change. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[one-person-rollback-runbook]]
 - [[supabase-rls-audit-checklist]]

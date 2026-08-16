@@ -66,6 +66,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[tool-card-template]] — produces the artefact this checklist gates.
 - [[tool-trust-boundary-model]] — deeper trust-boundary review.
 - [[verb-object-tool-naming]] — single field methodology this rolls up.

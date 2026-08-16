@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/rag-engineer/rag-architecture` | Pipeline shape this agent slots into. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-agentic-rag-tool-using.py` | Validate emitted JSON trace against output schema, check call cap respected, no web_search outside allow-list. | After each agent run, before answer ships. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[rag-architecture]] — outer RAG pipeline this loop plugs into.
 - [[agentic-rag-iterative-retrieval]] — sibling pattern for single-store iterative refinement.

@@ -28,6 +28,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/rag-engineer/vector-database-setup` | First-stage retrieval is bi-encoder ANN. |
@@ -62,6 +64,8 @@
 | `scripts/validate-reranking-two-stage.py` | Validates output against the 02-output-contract schema. | Pre-commit; CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[reranking-models]]
 - [[reranking-pipeline-integration]]

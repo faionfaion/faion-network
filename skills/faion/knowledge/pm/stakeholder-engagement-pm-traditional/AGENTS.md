@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `stakeholder-register` | Static register populated before engagement scheduling. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/engagement-due.py` | Flag stakeholders overdue per quadrant cadence. | Weekly cron. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[stakeholder-register]]
 - [[stakeholder-engagement-advanced]]

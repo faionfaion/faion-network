@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[embedding-spike-runbook]]` | embedding-side issues triaged first |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-vector-db-tuning-runbook.py` | Enforce the Vector DB Tuning Runbook output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[embedding-spike-runbook]] — incident sibling on the embedding pipeline.
 - [[weekly-rag-spotcheck-protocol]] — feeds recall regression signal.

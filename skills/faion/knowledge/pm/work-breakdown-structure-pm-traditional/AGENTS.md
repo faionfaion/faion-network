@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `scope-management` | Locked scope is the parent of the WBS root. |
@@ -75,6 +77,8 @@
 | `scripts/wbs-check.py` | Lint WBS outline: numbering, owners, 8-80h leaves. | Pre-commit + before steering review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[scope-management]]
 - [[schedule-development]]

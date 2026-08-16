@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[side-project-financial-runway]] | MRR feeds the leave-job runway model. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-solo-mrr-dashboard-template.py` | Validate monthly dashboard artefact against 02-output-contract schema | 5th of every month |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[side-project-financial-runway]]
 - [[solo-burnout-tripwires]]

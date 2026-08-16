@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/rag-engineer/graph-rag-indexing` | Produces the graph + summaries consumed here. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-graph-rag-retrieval.py` | Validates a retrieval result against the 02-output-contract schema. | Pre-commit; CI on every retrieval-result fixture. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[graph-rag-indexing]]
 - [[graph-rag-production]]

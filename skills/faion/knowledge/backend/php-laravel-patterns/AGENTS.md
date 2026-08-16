@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[php-laravel]] | Umbrella for queue / scheduler discipline. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/laravel-anti-pattern-lint.sh` | Count fat controller methods, inline `validate()`, controller-level `DB::transaction`, raw model returns and inline `abort(403)`. | Before and after a layering refactor; CI on Laravel projects. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[php-laravel]]
 - [[php-eloquent]]

@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[contextual-inquiry]] | Source of interview transcripts |
@@ -75,6 +77,8 @@
 | `scripts/validate-personas.py` | Validate artefact JSON against output schema | Pre-commit / CI on artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[contextual-inquiry]]
 - [[diary-studies]]

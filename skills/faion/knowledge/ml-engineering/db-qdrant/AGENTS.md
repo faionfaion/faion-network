@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/rag-engineer/db-comparison` | Why Qdrant over alternatives. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-db-qdrant.py` | Verify search response schema; check payload index present per filter field; check snapshot before schema migration. | Pre-deploy + after each schema change. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[db-chroma]] · [[db-weaviate]] · [[db-comparison]] · [[hybrid-search-implementation]]
 

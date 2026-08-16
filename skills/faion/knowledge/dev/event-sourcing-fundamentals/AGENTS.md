@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ddd-aggregates]] | ES aggregates inherit aggregate rules. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-event-sourcing-fundamentals.py` | Validate ES-decision spec | Pre-commit on spec artefact |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[event-sourcing-aggregate]]
 - [[event-sourcing-projections]]

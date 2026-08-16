@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/llm-integration/openai-chat-completions` | The PromptTemplate renders messages consumed by the SDK call. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-prompt-basics.py` | Validate a rendered-messages JSON record matches the output contract. | Post-render in pipeline; CI on every prompt change. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[prompt-techniques]] — advanced patterns (CoT, self-consistency, ReAct).
 - [[openai-chat-completions]] — downstream consumer of rendered messages.

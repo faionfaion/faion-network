@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[dr-drill-script-template]] | Per-scenario script structure |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-dr-drill-scenario-library.py` | Validate the artefact against the output-contract schema | Pre-commit; on artefact write |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[dr-drill-script-template]]
 - [[on-call-rotation-bootstrap]]

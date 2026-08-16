@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[jailbreak-eval-suite-bootstrap]]` | Suite produces the eval-delta input. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-llm-drift-daily-triage.py` | Validates triage-report.json schema + asserts owner + decision present. | Pre-commit on report PR; CI before posting to Slack. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/`
 - `[[ai-cost-attribution-schema]]`

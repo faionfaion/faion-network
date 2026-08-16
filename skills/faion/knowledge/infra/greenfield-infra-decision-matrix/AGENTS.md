@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[terraform]] | Tool-choice axis references this |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-greenfield-infra-decision-matrix.py` | Validate the artefact against the output-contract schema | Pre-commit; on artefact write |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[headroom-cost-model]]
 - [[edge-and-cdn-strategy]]

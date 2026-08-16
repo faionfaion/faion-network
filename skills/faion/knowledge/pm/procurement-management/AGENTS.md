@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[scope-management]] | SOW acceptance criteria flow from scope baseline |
@@ -78,6 +80,8 @@
 | `scripts/vendor_score.py` | Weighted vendor scoring with sensitivity analysis | On every vendor scoring run; sensitivity check pre-decision |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `pro/pm/project-manager/`
 - [[scope-management]]

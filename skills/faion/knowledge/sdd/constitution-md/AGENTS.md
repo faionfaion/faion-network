@@ -45,6 +45,8 @@
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - `project-spec-structure` — where domain facts, business rules, data model and deploy topology go. The delegation pointer in the constitution's Scope section names this location; the two files fail together if either absorbs the other.
 - `architecture-decision-records` — the history. One ADR per decision, append-only. The constitution holds the standing consequences of those decisions, and it is amended rather than appended.
 - `client-conventions-as-code` — the next step for any rule that turns out to be mechanically checkable: move it into a linter and cite the linter from the rule.

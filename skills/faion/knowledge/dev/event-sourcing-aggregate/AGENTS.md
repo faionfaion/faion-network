@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[event-sourcing-fundamentals]] | Core invariants the aggregate must protect. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-event-sourcing-aggregate.py` | Validate aggregate spec | Pre-commit on spec artefact |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[event-sourcing-fundamentals]]
 - [[event-sourcing-projections]]

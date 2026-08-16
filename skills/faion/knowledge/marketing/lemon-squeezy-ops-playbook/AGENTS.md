@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[gumroad-ops-playbook]] | Sibling MoR — used when Gumroad fits better (smaller catalogue). |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-lemon-squeezy-ops-playbook.py` | Validate LS store config against 02-output-contract schema | Pre-publish gate / pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[gumroad-ops-playbook]]
 - [[pricing-experiment-runbook]]

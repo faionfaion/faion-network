@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `risk-register` | Top-3 risks-moved section reads from the register. |
@@ -75,6 +77,8 @@
 | `scripts/validate-program-weekly-note-template.py` | Schema-validate the note JSON. | Pre-publish. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[risk-register]]
 - [[stakeholder-engagement]]

@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | solo-incident-triage-checklist | Incident triage is the fallback if deploy goes wrong. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-solo-deploy-checklist.py` | Validate DeployChecklist JSON against the schema. | Before pushing to prod + post-deploy audit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[solo-incident-triage-checklist]]
 - [[monitoring-logging]]

@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[trade-off-decision-matrix]] | Weighted matrix is the default method. |
@@ -77,6 +79,8 @@
 | `scripts/validate-trade-off-decision-methods.py` | Validate the produced artefact against the schema in `content/02-output-contract.xml`. | Pre-commit; CI on each artefact change; `--self-test` in dev. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[trade-off-decision-matrix]]
 - [[trade-off-quality-attributes]]

@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/llm-decision-framework` | Confirms GraphRAG vs vector RAG choice. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-graph-rag.py` | Validate pipeline spec (schema, extraction prompt, community params, routing). | Pre-merge of every GraphRAG pipeline PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[llm-decision-framework]] — parent decision; GraphRAG branch elaborated here.
 - [[llm-observability-stack]] — traces extraction + retrieval.

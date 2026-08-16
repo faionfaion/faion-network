@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[reporting-dashboards]] | Downstream consumer of notion query results for status reports. |
@@ -78,6 +80,8 @@
 | `scripts/validate-notion-pm.py` | Validate notion-pm config artefact against 02-output-contract schema | Pre-publish gate / pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[trello-kanban]]
 - [[reporting-dashboards]]

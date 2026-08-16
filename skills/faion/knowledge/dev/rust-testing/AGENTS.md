@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[rust-error-handling]] | Tests are allowed to `.unwrap()`; non-test code is not — clippy gate config shared. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-rust-testing.py` | Validate test-strategy config JSON against schema | After config generation |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[rust-error-handling]] — test code escapes the `.unwrap()` gate via `#[cfg(test)]`.
 - [[code-coverage]] — language-agnostic coverage discipline; this methodology specialises to Rust.

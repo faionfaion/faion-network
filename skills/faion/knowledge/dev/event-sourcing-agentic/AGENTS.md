@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[event-sourcing-fundamentals]] | Core invariants this pipeline must protect. |
@@ -83,6 +85,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-event-sourcing-agentic.py` | Validate pipeline-run record against schema | Pre-commit on artefact |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[event-sourcing-fundamentals]]
 - [[event-sourcing-aggregate]]

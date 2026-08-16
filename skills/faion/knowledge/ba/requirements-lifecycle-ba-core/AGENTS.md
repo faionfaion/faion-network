@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ba-requirements-mgmt]] | lifecycle is the workflow inside the management framework |
@@ -70,6 +72,8 @@
 | `templates/state-transition-matrix.md` | Matrix of allowed transitions per state. Generated from `templates/state-transition-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ba-requirements-mgmt]]
 - [[requirements-traceability]]

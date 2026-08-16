@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `stakeholder-register` | Names sponsors authorised to sign baseline. |
@@ -77,6 +79,8 @@
 | `scripts/rtm_coverage.py` | Check every requirement has an acceptance test and every AC has a requirement. | Weekly + pre-release. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[wbs-creation]]
 - [[stakeholder-register]]

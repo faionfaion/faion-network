@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `integration-testing` | Knows the API endpoints used for seeding test data. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-e2e-testing.py` | Validates that an E2E project directory matches the output contract (POMs exist, no `waitForTimeout`, no CSS selectors). | Pre-commit gate; CI before `npx playwright test`. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `free/dev/software-developer/`
 - `[[integration-testing]]` — API-level seeding endpoints

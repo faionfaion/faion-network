@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[finetune-cost-vs-prompt-decision]]` | Upstream — gates whether to even run this. |
@@ -71,6 +73,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-finetune-kickoff-checklist.py` | Validate the checklist JSON against schema + rules. | Before training submission. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/`
 - `[[finetune-cost-vs-prompt-decision]]` — upstream gate

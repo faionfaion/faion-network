@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/rag-engineer/chunking-basics` | Token measurement, metadata-at-creation, content-based IDs apply here. |
@@ -70,6 +72,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-chunking-document-structure.py` | Verify chunks match schema, header_path present, min_size respected. | After chunker run. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[chunking-basics]] — base invariants.
 - [[chunking-code-ast]] — code path.

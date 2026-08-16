@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[django-imports]]` | ruff `I` config consumed here. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-django-quality-linting.py` | Validate the quality stack spec JSON. | After spec emission, before pyproject / pre-commit updates. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[django-imports]] — ruff isort config consumed here.
 - [[django-pytest-integration]] — coverage gate referenced.

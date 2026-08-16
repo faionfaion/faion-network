@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/ux/stakeholder-walkthrough-script` | Walkthrough script surfaces decisions for the log. |
@@ -74,6 +76,8 @@
 | `scripts/validate-design-decision-log-template.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[stakeholder-walkthrough-script]]
 - [[scope-creep-park-list-template]]

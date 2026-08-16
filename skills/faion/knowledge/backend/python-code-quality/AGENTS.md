@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/python-developer/python-modern-2026` | Toolchain baseline (uv, ruff, target Python version). |
@@ -69,6 +71,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-python-code-quality.py` | Verify Ruff config presence, mypy strict, pre-commit hooks installed, coverage threshold > 0. | Pre-commit and weekly drift scan. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[python-modern-2026]]
 - [[python-basics]]

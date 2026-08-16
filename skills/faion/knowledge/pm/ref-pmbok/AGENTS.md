@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[seven-performance-domains]] | PMBoK 7/8 domain vocabulary |
@@ -72,6 +74,8 @@
 | `scripts/validate-ref-pmbok.py` | Validate edition-pinned output: domain list length 7 or 8, vocabulary compliance | Pre-commit on system-prompt files |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `pro/pm/project-manager/`
 - [[seven-performance-domains]]

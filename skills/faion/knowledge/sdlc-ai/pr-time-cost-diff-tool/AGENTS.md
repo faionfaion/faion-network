@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[regression-eval-before-fix-rule]] | Eval discipline this checker reuses. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-pr-time-cost-diff-tool.py` | Validate produced cost-report artefact against schema. | Pre-PR-comment posting |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[regression-eval-before-fix-rule]]
 - [[postmortem-action-item-slo-tracking]]

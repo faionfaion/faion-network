@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/regression-test-first-bugfix-workflow` | Defines the bug → test → fix flow this spec slots into. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-qa-edge-case-spec-template.py` | Validate that filled artefact matches the canonical schema, carries evidence links, owner, and not-stale `last_reviewed`. | Pre-merge and weekly staleness scan. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[regression-test-first-bugfix-workflow]] — outer flow this spec is the inner artefact of.
 - [[django-pytest]] — common runner the resulting test plugs into.

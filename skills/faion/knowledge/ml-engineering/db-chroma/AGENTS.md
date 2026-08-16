@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/rag-engineer/embedding-generation` | Embedding function semantics. |
@@ -71,6 +73,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-db-chroma.py` | Verify ChromaStore payload schema; check metric set; check IDs are strings. | After upsert / before commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[db-qdrant]] · [[db-weaviate]] · [[db-comparison]] · [[rag-architecture]]
 

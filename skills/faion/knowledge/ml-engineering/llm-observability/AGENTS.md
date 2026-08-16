@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/llm-observability-stack` | Concrete stack implementation. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-llm-observability.py` | Validate the spec (vendor, trace coverage, cost alert, eval cadence). | Pre-merge of every observability spec PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[llm-observability-stack]] — concrete impl.
 - [[cost-optimization]] — cost-watch.

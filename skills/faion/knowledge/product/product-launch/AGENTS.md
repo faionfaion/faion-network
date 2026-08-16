@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/product/product-manager/spec-writing` | Spec is the input artefact this methodology launches. |
@@ -81,6 +83,8 @@
 | `scripts/validate-product-launch.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[spec-writing]]
 - [[roadmap-design]]

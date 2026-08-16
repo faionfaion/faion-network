@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/ai-governance-compliance` | Pre-classification governance — defines who owns the compliance artifact. |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-eu-ai-act-compliance.py` | Validate that the compliance report matches the Article-citation schema. | Pre-merge of every compliance-draft PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-governance-compliance]] — sister methodology covering org-level model governance.
 - [[llm-decision-framework]] — sits upstream; classifier output feeds the risk-budget node.

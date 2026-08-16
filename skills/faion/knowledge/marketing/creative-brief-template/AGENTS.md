@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[paid-ads-creative-library]] | Source of past creative variants for inspiration / dedup |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-creative-brief-template.py` | Validate brief JSON against the output-contract schema | After draft; before designer handoff |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[paid-ads-creative-library]]
 - [[icp-message-mining-from-ai-conversations]]

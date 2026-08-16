@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[cot-techniques]]` | Advanced CoT variants (few-shot CoT, self-consistency, tree-of-thought). |
@@ -70,6 +72,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-cot-basics.py` | Validates a sample CoT output contains both `<reasoning>` and `<answer>` blocks and the answer is non-empty. | Pre-commit on fixtures; eval CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/llm-integration/`
 - `[[cot-techniques]]` — next step (few-shot, self-consistency)

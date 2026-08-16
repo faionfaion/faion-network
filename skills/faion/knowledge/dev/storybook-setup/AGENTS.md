@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/software-developer/typescript-strict-mode` | Story args/argTypes rely on accurate TS types. |
@@ -69,6 +71,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-storybook-setup.py` | Check every component has a .stories.tsx; autodocs tag present; args cover required props. | Pre-commit and on component add. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[typescript-strict-mode]]
 - [[tailwind]]

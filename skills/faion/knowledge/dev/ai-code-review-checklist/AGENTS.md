@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/bug-report-quality-rubric` | Bug-rubric for the surfacing-bug variant; sibling at intake. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-code-review-checklist.py` | Validate the review-decision JSON against schema + verdict consistency. | Pre-merge bot; after reviewer completes the checklist. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[tech-debt-management]] — framing for "AI deferred this" detection.
 - [[bug-pattern-to-lint-rule-conversion]] — convert recurring AI bugs into deterministic detectors.

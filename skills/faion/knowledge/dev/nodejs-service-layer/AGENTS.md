@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[monorepo-turborepo]] | Layered packages may live in workspaces. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-nodejs-service-layer.py` | Validate layered module spec against 02-output-contract schema | Pre-publish gate / pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[go-standard-layout]]
 - [[monorepo-turborepo]]

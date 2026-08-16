@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | [[langchain-basics]] | foundational LangChain runnable + LCEL knowledge |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-langchain-memory.py` | Validates a decision-record against the JSON schema in `02-output-contract.xml`. | Before committing the output; pre-commit hook. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[langchain-workflows]] — LangGraph state machines; memory feeds workflow state.
 - [[llamaindex-chat-engine]] — same problem, different framework — cross-reference when comparing.

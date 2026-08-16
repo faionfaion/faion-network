@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/llm-decision-framework` | Selects Gemini as the provider. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-gemini-api.py` | Validate the client config (model, safety, cache_ttl, structured_output_schema). | Pre-merge of every Gemini-client PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[llm-decision-framework]] — provider choice.
 - [[llm-observability-stack]] — tracing surface.

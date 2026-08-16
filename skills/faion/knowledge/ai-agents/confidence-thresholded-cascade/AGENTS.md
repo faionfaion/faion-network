@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `embedded-scratchpad-field` | Reasoning must come before confidence in the cheap-model schema. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-confidence-thresholded-cascade.py` | Validates a cascade output schema and threshold settings | Pre-commit on any change to the cascade module |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[embedded-scratchpad-field]]
 - [[enum-constraints-closed-vocabularies]]

@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[internal-link-rotation-schedule]] | Sibling methodology; this graph spec produces the audit list it consumes. |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-internal-linking-strategy-graph.py` | Validate graph spec + audit against 02-output-contract schema | Pre-commit / quarterly audit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[internal-link-rotation-schedule]]
 - [[hook-bank-template]]

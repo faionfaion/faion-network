@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/automation-tooling/trunk-based-dev-principles` | Small daily commits feed the changelog. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-changelog-automation-conventional-commits.py` | Validate a changelog-update JSON against the schema + semver rule. | Pre-merge gate; release script. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[trunk-based-dev-principles]] — small commits feed the changelog.
 - [[trunk-based-feature-flags]] — flag-cleanup commits flagged in their own section.

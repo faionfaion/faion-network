@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `solo/marketing/sunset-customer-comms-template` | Adjacent comms template — non-paid sunset variant. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-shutdown-customer-email-pack.py` | Enforce the output contract from `content/02-output-contract.xml`. | After the subagent returns an artefact, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[sunset-customer-comms-template]] — broader sunset variant for non-paid products.
 - [[social-proof-harvest]] — preserves goodwill quotes from sunset survey.

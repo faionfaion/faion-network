@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `risk-management` | Produces the risks that populate the register. |
@@ -76,6 +78,8 @@
 | `scripts/risk-audit.py` | Static-analyse the register: stale rows, missing owners, missing triggers. | Weekly cron. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[risk-management]]
 - [[schedule-development]]

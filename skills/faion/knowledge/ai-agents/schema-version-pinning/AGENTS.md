@@ -29,6 +29,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | none | Self-contained. |
@@ -67,6 +69,8 @@
 | `scripts/validate-schema-version-pinning.py` | Validates spec against the schema. | Pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - Sibling methodologies in `geek/ai/ai-agents/`.
 

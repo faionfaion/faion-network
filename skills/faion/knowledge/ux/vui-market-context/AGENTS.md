@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | none | self-contained methodology |
@@ -72,6 +74,8 @@
 | `scripts/validate-vui-market-context.py` | Validate the artefact against the schema | Pre-commit; CI on each artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[voice-ui]]
 - [[vui-iot-integration]]

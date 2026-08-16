@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/automation-tooling/web-scraping-agentic-workflow` | Umbrella — this is step 3.5 of that workflow. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-web-scraping-pagination.py` | Validate a walk-report JSON against schema + dedupe rule. | After each pagination walk completes. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[web-scraping-agentic-workflow]] — umbrella.
 - [[web-scraping-element-extraction]] — per-page extraction inside the walk.

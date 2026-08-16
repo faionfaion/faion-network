@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/pm/project-manager` | Provides operating context for the charter's decision-rights section. |
@@ -71,6 +73,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-team-charter-working-agreement.py` | Enforce charter output contract (owner is a person, version is semver, every section cites the gap it closes). | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ramp-task-difficulty-ladder]] — peer operating artefact for the same scaling team.
 - [[vendor-risk-assessment-template]] — sibling versioned-artefact methodology that shares the same envelope.

@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/product/product-planning/product-launch` | Major releases that are also launches. |
@@ -74,6 +76,8 @@
 | `templates/release-plan.md` | Release plan — goal, contents, readiness, risks, rollback, communication and timeline. Generated from `templates/release-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[product-launch]]
 - [[roadmap-design]]

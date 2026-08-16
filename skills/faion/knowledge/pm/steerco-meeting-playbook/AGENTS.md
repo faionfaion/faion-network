@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[project-integration]] | Integrated status feeds the snapshot slide |
@@ -80,6 +82,8 @@
 | `scripts/validate-steerco-meeting-playbook.py` | Validate pre-read timestamp + ask-list shape + memo lag | Pre-meeting; pre-merge |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `pro/pm/project-manager/`
 - [[project-integration]]

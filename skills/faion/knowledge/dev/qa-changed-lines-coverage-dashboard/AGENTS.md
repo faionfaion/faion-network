@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[qa-ac-to-assertion-mapping]] | Diff coverage answers "did you test the new code"; AC mapping answers "did you test the right behaviour". |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-qa-changed-lines-coverage-dashboard.py` | Validate the diff-coverage artefact against `content/02-output-contract.xml` schema. | Pre-merge gate; on PR open. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[qa-ac-to-assertion-mapping]]
 - [[qa-risk-matrix-method]]

@@ -66,6 +66,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[core-vui-design-principles]]
 - [[error-handling-in-vui]]
 - [[vui-conversation-design]]

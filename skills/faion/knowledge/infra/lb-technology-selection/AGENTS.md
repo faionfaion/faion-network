@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[lb-layer-selection]] | The layer decision (L4/L7/hybrid) feeds the technology decision. |
@@ -67,6 +69,8 @@
 | `templates/tech-decision-record.md` | ADR skeleton: environment → tech → downstream methodology pointer Generated from `templates/tech-decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[lb-layer-selection]]
 - [[lb-haproxy-production]]

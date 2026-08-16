@@ -30,6 +30,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/python-developer/python-modern-2026` | Defines target Python version and uv tooling. |
@@ -68,6 +70,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-python-pytest-setup.py` | Check strict-markers, coverage threshold > 0, no setup.cfg test config. | Pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[python-pytest-fixtures]]
 - [[python-pytest-mocking]]

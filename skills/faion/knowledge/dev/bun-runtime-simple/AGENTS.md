@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | none | Standalone — no upstream artefacts required. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-bun-runtime-simple.py` | Validate the service-spec artefact + Bun version | After scaffold, before commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - - [[javascript-modern]] — TS-first principles still apply.
 - - [[javascript-testing]] — bun:test is Jest-compatible; same patterns transfer.

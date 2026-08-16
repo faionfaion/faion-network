@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | secrets-management | Service-role key lives in the secrets plan. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-supabase-backup-and-restore-drill.py` | Validate DrillReport JSON against the schema. | After each drill before closing the ticket. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[secrets-management]]
 - [[monitoring-logging]]

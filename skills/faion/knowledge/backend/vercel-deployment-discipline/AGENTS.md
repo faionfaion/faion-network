@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | secrets-management | Secrets-boundary rule consumes the secrets inventory. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-vercel-deployment-discipline.py` | Validate DeploymentPlan JSON against the schema. | Pre-deploy gate + post-deploy audit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[secrets-management]]
 - [[monitoring-logging]]

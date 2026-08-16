@@ -33,6 +33,8 @@
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[sdd-workflow-overview]] — readiness phase slots after tasks, before done/.
 - [[sdd-promotion-gate-checklist]] — sibling methodology for the `backlog→todo` gate. Delegates the `in-progress→done` gate here.
 - [[project-spec-structure]] — item 8 enforces the spec delta-update.

@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[performance-domains-overview]] | Companion: Focus Areas spread across the 7 domains. |
@@ -73,6 +75,8 @@
 | `scripts/validate-pm-framework-focus-areas.py` | Validate the output artefact against the schema | Pre-commit on every artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[performance-domains-overview]]
 - [[pm-certification-alignment-2026]]

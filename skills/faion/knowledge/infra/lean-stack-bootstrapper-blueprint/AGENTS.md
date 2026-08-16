@@ -63,6 +63,8 @@
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - parent skill: `free/infra/`
 
 ## Decision tree

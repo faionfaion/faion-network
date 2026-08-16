@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[embedding-generation]] | Wraps the producer this config tunes. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-embeddings-batch-and-cache.py` | Validate batch+cache config against contract. | Pre-commit; CI gate. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[embedding-generation]] — parent producer methodology.
 - [[embeddings-production-ops]] — runs the resulting config in production.

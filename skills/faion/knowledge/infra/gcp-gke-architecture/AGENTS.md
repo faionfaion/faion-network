@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[gcp]] | upstream context likely already loaded when this methodology fires |
@@ -73,6 +75,8 @@
 | `scripts/validate-gcp-gke-architecture.py` | Validate the artefact against the 02-output-contract schema | CI on each artefact change; pre-commit; before publish step in procedure |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[gcp]]
 - [[gcp-network-architecture]]

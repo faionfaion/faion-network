@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[inc-read-only-investigation-default]] | runbook defaults to read-only |
@@ -72,6 +74,8 @@
 | `scripts/validate-agent-on-call-runbook-template.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[alert-triage-decision-tree]]
 - [[inc-tool-tier-approval-gate]]

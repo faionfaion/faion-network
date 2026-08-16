@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[wcag-22-compliance]] | Source of WCAG SC reference text and severity rubric |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-accessibility-evaluation.py` | Validate audit-report JSON against the schema | Pre-commit / pre-VPAT |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[accessibility-first-design]]
 - [[wcag-22-compliance]]

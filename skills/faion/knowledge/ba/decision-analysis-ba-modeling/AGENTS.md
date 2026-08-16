@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ai-acceptance-criteria-generator-reviewer]] | Sibling rubric pattern this methodology shares discipline with |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `templates/decision-matrix-simple.md` | lightweight 3-option × 3-criteria decision matrix Generated from `templates/decision-matrix-simple.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-acceptance-criteria-generator-reviewer]]
 - [[ba-planning]]

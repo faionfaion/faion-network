@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[tool-call-schema-design-checklist]]` | field-by-field schema gate runs first |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-tool-card-template.py` | Enforce the Tool Card Template output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[tool-call-schema-design-checklist]] — gates the card before publication.
 - [[tool-deprecation-lifecycle]] — sister methodology covering sunset.

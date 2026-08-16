@@ -29,6 +29,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/python-developer/python-typing` | Python typing baseline this snapshot enforces. |
@@ -71,6 +73,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-best-practices-2026.py` | Validates the constitution-snapshot record schema. | After extraction; quarterly. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[python-typing]] — Python typing baseline.
 - [[code-review]] — review pattern that enforces these rules at PR time.

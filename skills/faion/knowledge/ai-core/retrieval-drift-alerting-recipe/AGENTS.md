@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/rag-feature-acceptance-contract` | Recontract triggers reference these drift metrics |
@@ -84,6 +86,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-retrieval-drift-alerting-recipe.py` | Lint drift-alerts.yaml against schema | Pre-commit + pre-deploy |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[rag-feature-acceptance-contract]] — recontract triggers reference these metrics
 - [[router-shadow-deploy-protocol]] — pre-promotion guardrail, complementary to runtime drift

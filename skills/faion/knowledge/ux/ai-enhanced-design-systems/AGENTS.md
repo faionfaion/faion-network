@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | [[ai-design-assistant-patterns]] (ux-ui-designer) | Sibling: AI assistant pattern catalogue. |
@@ -71,6 +73,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-enhanced-design-systems.py` | Validate the artefact against the output contract. | Pre-commit + CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-design-assistant-patterns]]
 - [[design-system-drift-dashboard]]

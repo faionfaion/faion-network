@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ai-agents/autonomous-agents/AGENTS.md` | Provides the broader autonomous-agent vocabulary (planner/executor/critic). |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-agent-patterns.py` | Validate a decision-record file against the JSON Schema. | After subagent returns, before downstream agent reads it. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/ai-agents/`
 - peer: [[ai-agent-patterns]] — overview of all named patterns including framework choices.

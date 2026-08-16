@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | [[langchain-basics]] | Need to know what a Runnable is. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-langchain-observability.py` | Validates tracing-config JSON against schema. | Pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[langchain-production-patterns]] — pairs retries + tracing for full prod hardening.
 - [[max-turns-circuit-breaker]] — tracing without a turn cap is half a safety net.

@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[modern-ba-framework]] | trend items reference framework choices |
@@ -65,6 +67,8 @@
 | `templates/trends-checklist.md` | One-page quarterly trends checklist with adoption decisions. Generated from `templates/trends-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[modern-ba-framework]]
 

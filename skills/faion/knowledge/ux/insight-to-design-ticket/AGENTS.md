@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/ux/critical-issue-triage-protocol` | Triage feeds prioritised insights to this methodology. |
@@ -75,6 +77,8 @@
 | `scripts/validate-insight-to-design-ticket.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[critical-issue-triage-protocol]]
 - [[handoff-spec-template]]

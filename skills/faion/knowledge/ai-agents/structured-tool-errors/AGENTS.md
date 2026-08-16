@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ai-agents/idempotent-write-tools` | Retries are only safe on idempotent tools; this companion methodology guarantees the precondition. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-structured-tool-errors.py` | Validates a sample tool-error JSON body against `02-output-contract.xml` / `error_envelope.json`. | Pre-commit hook on tool definitions; runtime smoke test in tool's test suite. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[idempotent-write-tools]] — `RETRY_LATER` is only safe when the tool is idempotent.
 - [[headless-cli-four-guards]] — `--max-turns` bounds the retry loop in CLI invocations.

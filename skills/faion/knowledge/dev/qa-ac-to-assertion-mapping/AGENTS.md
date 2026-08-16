@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[qa-risk-matrix-method]] | Risk quadrant tells you which AC mappings need the heaviest assertion scrutiny. |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-qa-ac-to-assertion-mapping.py` | Validate ac-mapping.yaml (or its JSON form) against `content/02-output-contract.xml` schema. | Pre-merge gate; on PR open after extract-acs auto-populates. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[qa-risk-matrix-method]]
 - [[qa-exploratory-charter-template]]

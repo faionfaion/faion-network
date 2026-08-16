@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `vector-databases` | DB picked |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-vector-db-setup-dev.py` | Lint dev-setup.yaml | Pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[vector-databases]] · [[vector-db-setup-prod]]
 - external: [Qdrant Docker](https://qdrant.tech/documentation/quick-start/)

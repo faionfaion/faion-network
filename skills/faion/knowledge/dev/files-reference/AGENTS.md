@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[methodologies]]` | sibling dispatcher providing the keyword to slug mapping; this file backstops it with the catalog. |
@@ -65,6 +67,8 @@
 | `scripts/validate-files-reference.py` | Validates that a candidates report matches the output schema and each path resolves on disk. | After the routing agent emits a report, before downstream load. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `free/dev/software-developer/`
 - `[[methodologies]]` — keyword-based dispatcher (companion to this catalog)

@@ -70,6 +70,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[fine-tune-vs-prompt-decision-tree]] — adjacent decision when costs blow.
 - [[vector-db-tuning-runbook]] — adjacent when cost driver is retrieval.
 

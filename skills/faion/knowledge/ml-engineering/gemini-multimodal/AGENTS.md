@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/llm-integration/gemini-api-integration` | Baseline SDK setup, safety, Files API. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-gemini-multimodal.py` | Validate gemini-multimodal-config JSON: modality, polling cap, expiry handling, cache token-floor, auth match. | Pre-commit + CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[gemini-function-calling]]
 - [[gemini-api-integration]]

@@ -72,6 +72,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[agent-context-engineering-corpus-standard]]
 - [[ai-feature-build-buy-finetune-decision]]
 - [[eval-driven-development-tdd-for-ai]]

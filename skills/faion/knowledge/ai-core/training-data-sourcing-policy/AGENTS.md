@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[fine-tune-vs-prompt-decision-tree]]` | team has confirmed fine-tune is the right axis |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-training-data-sourcing-policy.py` | Enforce the Training Data Sourcing Policy output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[fine-tune-vs-prompt-decision-tree]] — gates whether to fine-tune at all.
 - [[data-exfiltration-canary-tokens]] — adjacent leakage detection.

@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/mcp-architecture` | Server-side spec. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-mcp-client-integration.py` | Validate the client config (servers, transport, auth, bridge target). | Pre-merge of every MCP client config PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[mcp-architecture]] — server-side spec.
 - [[mcp-security]] — consent + audit.

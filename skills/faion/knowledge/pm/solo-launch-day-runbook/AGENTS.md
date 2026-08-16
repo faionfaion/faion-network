@@ -41,6 +41,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[solo-time-tracking-discipline]] | Launch-day hours feed time tracking; capture habit applies. |
@@ -86,6 +88,8 @@
 | `scripts/validate-solo-launch-day-runbook.py` | Validate the execution log against 02-output-contract schema | After launch closeout |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[reporting-dashboards]]
 - [[solo-time-tracking-discipline]]

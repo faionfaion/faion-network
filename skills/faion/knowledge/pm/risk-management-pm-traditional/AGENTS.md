@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `wbs-creation` | Provides work packages used as risk anchor points. |
@@ -79,6 +81,8 @@
 | `scripts/emv.py` | Score the Markdown register; exit non-zero on critical untriaged risks. | Weekly cron + pre-steering-review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[risk-register]]
 - [[schedule-development]]

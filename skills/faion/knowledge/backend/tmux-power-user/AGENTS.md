@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | dotfiles-management | tmux.conf is part of the dotfiles repo. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-tmux-power-user.py` | Validate TmuxPlan JSON against the schema. | Pre-apply on each host. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[dotfiles-management]]
 - [[shell-productivity]]

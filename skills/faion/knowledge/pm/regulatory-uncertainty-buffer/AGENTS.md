@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[rag-policy-thresholds]] | Regulatory signals feed amber/red colour transitions. |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/staleness-check.py` | Flag policies whose `last_reviewed` > 90 days | Weekly cron |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[rag-policy-thresholds]]
 - [[proposal-red-team-checklist]]

@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[lint-precommit-floor]] | Hooks can run analyzers locally |
@@ -74,6 +76,8 @@
 | `scripts/validate-lang-php-phpstan9-psalm-taint.py` | Validate the analyzer-config artefact. | pre-merge of analyzer config |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[lint-precommit-floor]]
 - [[sec-codeql-autofix-on-pr]]

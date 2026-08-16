@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | docker-compose-devops | Base Compose V2 rules. |
@@ -67,6 +69,8 @@
 | `templates/docker-compose.md` | Markdown skeleton with required fields. Generated from `templates/docker-compose.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[docker-compose]]
 - [[docker-compose-cicd]]

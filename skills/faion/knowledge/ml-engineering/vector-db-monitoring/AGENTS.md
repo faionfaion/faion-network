@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `vector-databases` | DB chosen |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-vector-db-monitoring.py` | Lint monitoring.yaml | Pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[vector-databases]] · [[vector-db-setup-prod]] · [[retrieval-drift-alerting-recipe]]
 - external: [Qdrant metrics](https://qdrant.tech/documentation/guides/monitoring/) · [Prometheus best practices](https://prometheus.io/docs/practices/alerting/)

@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[testing-patterns]]` | AAA, builder, POM patterns reused |
@@ -62,6 +64,8 @@
 | `scripts/validate-testing-javascript.py` | Validates an output document against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `free/dev/testing-developer/`
 - `[[testing-go]]`

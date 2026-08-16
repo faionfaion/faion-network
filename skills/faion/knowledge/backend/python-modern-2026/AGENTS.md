@@ -30,6 +30,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/python-developer/python-basics` | Foundational syntax and idioms this builds on. |
@@ -67,6 +69,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-python-modern-2026.py` | Validate target-version sync across requires-python, ruff target-version, mypy python_version, .python-version. | Pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[python-basics]]
 - [[python-code-quality]]

@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/code-quality/debt-scoring-rubric` | Upstream — produces the scored register this methodology consumes. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-tech-debt-management.py` | Validate plan JSON against schema + strategy/score consistency. | After plan drafted; quarterly review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[debt-scoring-rubric]] — upstream input.
 - [[ci-quality-gate-design]] — gate the fix joins.

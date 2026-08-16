@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[qa-changed-lines-coverage-dashboard]] | Per-file coverage overrides reflect the matrix quadrants. |
@@ -83,6 +85,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-qa-risk-matrix-method.py` | Validate risk-matrix.yaml + investment-plan against `content/02-output-contract.xml`. | Pre-publish gate before quarterly review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[qa-changed-lines-coverage-dashboard]]
 - [[qa-exploratory-charter-template]]

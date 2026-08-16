@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[communications-management]] | Sets the comms-plan framing this template lives inside. |
@@ -75,6 +77,8 @@
 | `scripts/validate-async-standup-template.py` | Validate a post or digest JSON against the schema | Pre-commit; CI on weekly-digest commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[communications-management]]
 - [[lessons-learned]]

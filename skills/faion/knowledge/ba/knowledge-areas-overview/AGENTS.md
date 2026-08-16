@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `pro/ba/business-analyst/knowledge-areas-detail` | L2 drilldown after routing. |
@@ -83,6 +85,8 @@
 | `scripts/validate-knowledge-areas-overview.py` | Validate the produced artefact against the output-contract schema. | Pre-commit; CI on each artefact change. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[knowledge-areas-detail]]
 - [[methodologies-detail]]

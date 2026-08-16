@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[w3c-design-tokens-standard]] | design tokens enforce contrast inputs |
@@ -75,6 +77,8 @@
 | `scripts/validate-wcag-22-compliance.py` | Validate wcag-22-compliance artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[w3c-design-tokens-standard]]
 - [[vpat-acr-template]]

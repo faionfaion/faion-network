@@ -41,6 +41,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `pro/ba/business-analyst/elicitation-techniques` | SME-side elicitation complements frontline. |
@@ -88,6 +90,8 @@
 | `scripts/validate-frontline-validation-protocol.py` | Validate the produced artefact against the output-contract schema. | Pre-commit; CI on each artefact change. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[elicitation-techniques]]
 - [[business-process-analysis]]

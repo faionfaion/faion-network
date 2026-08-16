@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `vector-databases` | Determines which native hybrid endpoint is available. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-hybrid-search.py` | Validate hybrid-search-config.json | Pre-deploy gate |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[vector-databases]] — native hybrid endpoint inventory
 - [[chunking-strategies]] — BM25 quality depends on chunking

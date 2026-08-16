@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `guardrails-concepts` | Plan tells the harness which rails to test. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-guardrails-testing.py` | Validate `guardrail-test-report.json` | After test run; pre-merge gate |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[guardrails-custom-pipeline]] — system under test
 - [[guardrails-nemo]] — NeMo config under test

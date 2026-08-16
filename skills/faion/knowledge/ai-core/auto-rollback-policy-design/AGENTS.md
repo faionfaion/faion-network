@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[trajectory-eval-otel]] | upstream context required for this methodology |
@@ -73,6 +75,8 @@
 | `scripts/validate-auto-rollback-policy-design.py` | Validate the config artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[trajectory-eval-otel]]
 - [[ai-feature-eval-set-design]]

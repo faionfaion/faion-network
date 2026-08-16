@@ -51,6 +51,8 @@ this methodology exists to prevent.
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - `hierarchical-index-compression` — bounds what one index read costs. This
   methodology bounds how many times that read is paid; both are needed, and
   neither substitutes for the other.

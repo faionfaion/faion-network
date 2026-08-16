@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/sdd/sdd-planning/writing-implementation-plans` | Provides the plan rows that this template renders into task files. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-template-task.py` | Validate the task file artefact against the schema in `content/02-output-contract.xml`. | After subagent emits the task file, before the executor picks it up. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[writing-implementation-plans]]
 - [[workflow-design-phase]]

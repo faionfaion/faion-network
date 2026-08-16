@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ruby-activerecord]] | ORM discipline that Service Objects rely on. |
@@ -77,6 +79,8 @@
 | `scripts/validate-ruby-rails.py` | Validate the Rails-app manifest against the JSON Schema. | Pre-commit; CI on every methodology PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ruby-activerecord]]
 - [[ruby-rails-patterns]]

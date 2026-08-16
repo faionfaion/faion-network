@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[decision-framework]] | Confirms approach (prompt vs RAG vs fine-tune) before the router is built. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-cost-optimization.py` | Validate a cost-plan artefact against the contract in `02-output-contract.xml`. | Pre-commit on the plan file; CI gate before applying router/cache changes. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[decision-framework]] — chooses the approach before this methodology costs it.
 - [[claude-api]] — implements caching + batching primitives this plan configures.

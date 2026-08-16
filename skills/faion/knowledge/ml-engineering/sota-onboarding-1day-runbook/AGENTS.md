@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/llm-integration/gateway-adapter-template` | Adapter wired in stage 2. |
@@ -75,6 +77,8 @@
 | `scripts/validate-sota-onboarding-1day-runbook.py` | Validates output against the 02-output-contract schema. | Pre-commit; CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[model-migration-checklist]]
 - [[model-upgrade-checklist]]

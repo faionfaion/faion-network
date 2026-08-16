@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[solo-burnout-tripwires]] | Weekly review of block violations feeds the broader burnout signal. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-solo-context-switch-protocol.py` | Validate daily block log against 02-output-contract schema | End of day |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[solo-burnout-tripwires]]
 - [[solo-time-tracking-discipline]]

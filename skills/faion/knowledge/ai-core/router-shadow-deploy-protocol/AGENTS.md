@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/rag-feature-acceptance-contract` | Defines the metrics this protocol gates against |
@@ -86,6 +88,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-router-shadow-deploy-protocol.py` | Lint shadow-report.yaml against schema + 3-gate decision | Before promotion meeting |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[rag-feature-acceptance-contract]] — defines the metrics this protocol gates against
 - [[retrieval-drift-alerting-recipe]] — same monitoring stack reused for shadow signal

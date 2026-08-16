@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | brand-voice-consistency-system | Voice dimension scoring consumes the brand voice doc. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-slop-detector-checklist.py` | Validate SlopScore JSON against the schema. | After scoring before publish. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[brand-voice-consistency-system]]
 - [[audience-to-customer-funnel]]

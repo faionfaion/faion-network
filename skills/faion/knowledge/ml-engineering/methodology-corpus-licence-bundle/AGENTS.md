@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/llm-integration/semantic-xml-content` | Authoring shape for `content/*.xml`. |
@@ -79,6 +81,8 @@
 | `scripts/validate-methodology-corpus-licence-bundle.py` | Validate an output artefact against the JSON schema from `content/02-output-contract.xml`. | Pre-merge on the artefact PR + `--self-test` in CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-agent-patterns]] — pattern catalogue this methodology routes through.
 - [[agents-production-deployment]] — production gates this methodology feeds into.

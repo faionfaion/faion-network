@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ai-agents/structured-output-mode-picker` | Confirms strict mode is the right pick for this call. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-strict-mode-required-fields.py` | Validates the strict-mode audit report against the `02-output-contract.xml` schema. | After running the audit pass, before opening the migration PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[semantic-field-naming]] — pair rename + strict encoding in the same PR.
 - [[structured-output-mode-picker]] — decides whether strict mode is even the right pick.

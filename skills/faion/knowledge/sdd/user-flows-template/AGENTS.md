@@ -42,6 +42,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[readiness-checklist]] — item 6 (Playwright pos+neg) requires user-flows.md exists.
 - [[ui-ux-design-template]] — sibling per-feature artefact; ui-ux-design.md covers heuristics, user-flows.md covers behaviour.
 - [[quality-gates]] — user-facing → Playwright gate row.

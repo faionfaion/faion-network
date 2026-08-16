@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[typescript-strict-mode]]` | Strict flags this spec assumes are enabled. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-typescript-patterns.py` | Validate a typed-shapes spec JSON against the contract. | After the agent emits the spec. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[typescript-strict-mode]] — sets the compiler flags this methodology assumes.
 - [[typescript-react-2026]] — drives where schemas live across server/client boundary.

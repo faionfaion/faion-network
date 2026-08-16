@@ -40,6 +40,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[prompt-ab-power-calculator]]` | Computes sample size for A/B variants. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-rag-bench-harness-template.py` | Validate rag-bench-spec | Pre-commit + before bench run |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[prompt-ab-power-calculator]]
 - [[rag-corpus-discovery-interview]]

@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/cost-quality-tradeoff-framework` | upstream framework that defines the SLO targets |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-cost-per-dau-defense-template.py` | Enforce the report contract | Before publishing to finance / business review |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[cost-quality-tradeoff-framework]] — upstream framework.
 - [[cost-quality-pareto-template]] — adjacent (visual Pareto).

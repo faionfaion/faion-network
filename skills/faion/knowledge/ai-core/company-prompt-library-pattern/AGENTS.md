@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/llm-integration` | parent skill — provides operating context for LLM-using teams |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-company-prompt-library-pattern.py` | Enforce the output contract | After the subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[eval-contract-template]] — wire up the eval gate this methodology mandates.
 - Upstream playbook: `p6-product-dev-team/Adopt faion org-wide and override with company patterns`.

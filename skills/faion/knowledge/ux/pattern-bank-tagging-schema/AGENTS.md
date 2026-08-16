@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/ux/anti-pattern-rationale-template` | Anti-pattern entries are bank-shape consumers. |
@@ -75,6 +77,8 @@
 | `scripts/validate-pattern-bank-tagging-schema.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[anti-pattern-rationale-template]]
 - [[heuristic-eval-severity-rubric]]

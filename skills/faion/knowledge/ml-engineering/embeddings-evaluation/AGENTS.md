@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[embeddings-model-selection]] | Defines candidate set from which this picks. |
@@ -67,6 +69,8 @@
 | `templates/eval-report.md` | Markdown skeleton for the eval report. Generated from `templates/eval-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[embeddings-model-selection]] — feeds candidates in.
 - [[embedding-generation]] — producer of the candidate embeddings.

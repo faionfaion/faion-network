@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[ai-enabled-business-analysis]]` | BA workflow with LLM assistance is in place |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-transcript-to-traceable-requirement.py` | Enforce the AI Transcript to Traceable Requirement output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-enabled-business-analysis]] — parent methodology.
 - [[ai-ac-hallucination-checklist]] — adjacent acceptance-criteria gate.

@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[fixed-vs-hourly-decision-framework]] | Pilot is a fixed shape — this is upstream context. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-freelance-pilot-pricing.py` | Validate one spec JSON against the schema | After draft, before publish |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[fixed-vs-hourly-decision-framework]]
 - [[freelance-rate-jump-tactics]]

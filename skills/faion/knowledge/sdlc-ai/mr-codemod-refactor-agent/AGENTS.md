@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[lint-autofix-vs-flag-decision-rule]] | Sibling policy on auto-application |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-codemod-refactor-agent.py` | Validate the playbook-step artefact. | pre-merge of codemod step |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[mr-graph-vs-diff-reviewer]]
 - [[lint-autofix-vs-flag-decision-rule]]

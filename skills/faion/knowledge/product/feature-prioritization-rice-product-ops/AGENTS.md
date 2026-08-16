@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/product/product-operations/backlog-management` | Source of items that enter scoring. |
@@ -68,6 +70,8 @@
 | `templates/rice-scoring-table.md` | RICE scoring table across all candidate features for a cycle. Generated from `templates/rice-scoring-table.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[backlog-management]]
 - [[spec-writing]]

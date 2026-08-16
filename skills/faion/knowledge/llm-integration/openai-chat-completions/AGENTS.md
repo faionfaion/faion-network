@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/llm-integration/prompt-basics` | Message-role discipline upstream of the call. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-openai-chat-completions.py` | Validate a logged-call JSON record matches the output contract (model, usage, finish_reason, content shape). | Post-call in pipeline; nightly audit of call logs. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[openai-function-calling]] — strict-schema extraction via `beta.parse`.
 - [[openai-embeddings]] — embedding sibling for the same SDK.

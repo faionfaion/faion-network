@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[ai-failure-mode-taxonomy]]` | Names the categories the judge labels. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-judge-calibration-protocol.py` | Validates calibration-report.json against schema and asserts κ ≥ 0.7 + non-empty confusion matrix. | After computing report; CI before shipping the judge. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/`
 - `[[jailbreak-eval-suite-bootstrap]]` — primary consumer of calibrated judges

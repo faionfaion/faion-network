@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[microservices-inter-service-comm]] | Pick HTTP vs gRPC vs messaging first; breaker rules differ. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-microservices-circuit-breaker.py` | Validate the breaker config artefact against the schema | Pre-commit + CI |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[microservices-inter-service-comm]]
 - [[microservices-observability]]

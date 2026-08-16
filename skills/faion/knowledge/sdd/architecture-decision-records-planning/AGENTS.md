@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/sdd/sdd-planning/spec-structure` | Spec provides the problem statement that triggers the decision. |
@@ -71,6 +73,8 @@
 | `templates/adr-template.md` | Nygard-format single-decision ADR — context, decision, alternatives considered, consequences. Generated from `templates/adr-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[design-doc-structure]]
 - [[writing-implementation-plans]]

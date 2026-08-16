@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/software-architect/arch-pattern-clean` | Clean rings are the implementation skeleton for each bounded context. |
@@ -74,6 +76,8 @@
 | `scripts/validate-arch-pattern-ddd.py` | Validate the output artefact against the schema in `content/02-output-contract.xml`. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[arch-pattern-clean]]
 - [[arch-pattern-hexagonal]]

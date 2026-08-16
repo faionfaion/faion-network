@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/ux/heuristic-eval-severity-rubric` | Severity rubric used in triage round. |
@@ -75,6 +77,8 @@
 | `scripts/validate-design-review-facilitation-script.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[design-decision-log-template]]
 - [[heuristic-eval-severity-rubric]]

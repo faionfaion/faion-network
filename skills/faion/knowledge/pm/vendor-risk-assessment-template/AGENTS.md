@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/pm/project-manager` | Operating context for who runs the assessment. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-vendor-risk-assessment-template.py` | Enforce vendor-risk output contract (DPA present, subprocessor list non-empty, owner is person, semver + last_reviewed). | Before assessment is filed to compliance folder. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[vendor-eval-framework]] — sibling pre-purchase selection methodology.
 - [[team-charter-working-agreement]] — peer versioned-artefact methodology sharing the same envelope.

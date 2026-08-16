@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/automation-tooling/trunk-based-dev-principles` | TBD is the branching substrate for XP's small releases. |
@@ -73,6 +75,8 @@
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[trunk-based-dev-principles]] — TBD is the branching substrate XP small-releases depends on.
 - [[ci-quality-gate-design]] — Done gate joins the CI design.

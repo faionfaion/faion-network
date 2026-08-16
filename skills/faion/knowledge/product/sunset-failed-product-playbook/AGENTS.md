@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/product/solo-go-no-go-criteria` | Verdict gate upstream. |
@@ -75,6 +77,8 @@
 | `scripts/validate-sunset-failed-product-playbook.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[solo-go-no-go-criteria]]
 - [[product-launch]]

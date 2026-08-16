@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/ux/ui-designer/prototyping` | Prototype context that surfaced the anti-pattern. |
@@ -74,6 +76,8 @@
 | `scripts/validate-anti-pattern-rationale-template.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[pattern-bank-tagging-schema]]
 - [[heuristic-eval-severity-rubric]]

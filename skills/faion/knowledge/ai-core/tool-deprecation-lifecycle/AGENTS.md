@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[tool-card-template]]` | card shape of both old and new tool |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-tool-deprecation-lifecycle.py` | Enforce the Tool Deprecation Lifecycle output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[tool-card-template]] — upstream artefact being deprecated.
 - [[vendor-feature-portability-matrix]] — adjacent vendor-migration view.

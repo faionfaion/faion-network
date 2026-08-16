@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[gcp-resource-hierarchy]] | Sibling methodology that supplies context required here. |
@@ -76,6 +78,8 @@
 | `scripts/validate-gcp-billing-cost.py` | Validate the report artefact against the JSON Schema in `02-output-contract.xml`. | CI on each artefact change; pre-commit; manual on draft. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[gcp-resource-hierarchy]]
 - [[gcp-org-policies]]

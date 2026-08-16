@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/sdd/sdd-planning/workflow-spec-phase` | Target methodology when phase resolves to Spec. |
@@ -71,6 +73,8 @@
 | `templates/route-record.md` | Canonical phase-route record with current phase, next methodology, and blockers. Generated from `templates/route-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[workflow-spec-phase]]
 - [[workflow-design-phase]]

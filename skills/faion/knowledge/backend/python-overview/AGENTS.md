@@ -30,6 +30,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `none` | First-load routing methodology; no upstream dependency. |
@@ -65,6 +67,8 @@
 | `scripts/validate-python-overview.py` | Verify decision record has exactly one domain, one framework, pinned Python version. | Pre-commit when decision record changes. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[python-basics]]
 - [[python-modern-2026]]

@@ -46,6 +46,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - `mcp-resource-vs-tool-vs-prompt` — once MCP is the chosen route, what shape the thing should take.
 - `mcp-transport-stdio-vs-http` — transport choice for a server this record decided to keep.
 - `mcp-security` — credential handling for the first-party servers that survive R5.

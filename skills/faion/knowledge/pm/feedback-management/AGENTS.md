@@ -40,6 +40,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[product-analytics]] | Provides segment/retention attributes used for weighting. |
@@ -82,6 +84,8 @@
 | `scripts/triage.py` | Triage one feedback item via LLM with strict JSON-schema output; normalises text, computes the dedup hash, validates topic against the taxonomy | Per item, at the classify step; PII must be stripped first |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[product-analytics]]
 - [[continuous-discovery-habits]]

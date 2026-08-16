@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ba-planning]] | Companion strategy doc; week-one is execution of plan |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ba-onboarding-week-one-template.py` | Validate pack manifest against output-contract; confirm all required files present | End of Day 5 + pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ba-planning]]
 - [[business-process-analysis]]

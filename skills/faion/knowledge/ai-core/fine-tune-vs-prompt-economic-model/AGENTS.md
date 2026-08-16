@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[fine-tune-vs-prompt-decision-tree]]` | Decision artefact consumes these numbers. |
@@ -59,6 +61,8 @@
 | Write narrative | opus | Synthesis for human reader. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/`
 - `[[fine-tune-vs-prompt-decision-tree]]` — consumes these numbers

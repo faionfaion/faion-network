@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `project-closure-with-lessons-extraction` | Provides closure artefacts that seed the runbook. |
@@ -75,6 +77,8 @@
 | `scripts/staleness-check.py` | Flag runbooks past their review window. | Weekly cron. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[project-closure-with-lessons-extraction]]
 - [[communications-management]]

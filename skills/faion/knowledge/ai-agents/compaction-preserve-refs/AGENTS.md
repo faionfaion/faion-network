@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `filesystem-as-working-memory` | Defines the offload primitives the compacted refs must point into. |
@@ -71,6 +73,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-compaction-preserve-refs.py` | Validates a compacted YAML against the schema (required keys, no free-text summary) | After every compaction call, before passing state downstream |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[filesystem-as-working-memory]]
 - [[file-reference-passing]]

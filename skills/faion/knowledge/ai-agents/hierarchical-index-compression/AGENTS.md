@@ -47,6 +47,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - `retrieval-cost-per-answer-audit` — the required upstream. It measures the index share; this methodology acts on it. Re-run it afterwards to confirm the cut.
 - `context-graph-engineering` — its `warrant: none` exit routes here. This is the structure it declines to replace with a graph.
 - `chunking-document-structure` — how a leaf is split. Orthogonal: that governs the body, this governs the map to it.

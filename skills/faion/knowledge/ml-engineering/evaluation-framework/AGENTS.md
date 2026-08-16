@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | none | Standalone — no upstream artefacts required. |
@@ -64,6 +66,8 @@
 | `scripts/validate-evaluation-framework.py` | Validate JSON artefact against 02-output-contract schema | After draft, before publish |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[evaluation-benchmarks]]
 - [[evaluation-metrics]]

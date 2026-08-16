@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/infra/server-craft/cloudflare-domain-dns` | Custom domain attached to Pages requires DNS already on Cloudflare. |
@@ -75,6 +77,8 @@
 | `scripts/validate-cloudflare-pages-github.py` | Validate artefact against the JSON Schema in content/02-output-contract.xml. Stdlib-only. | On artefact change; pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[cloudflare-domain-dns]]
 - [[deploy-scripts]]

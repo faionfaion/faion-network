@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[founder-led-qualification-rubric]] | Upstream qualification feeds the pipeline. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-founder-deal-kill-rule.py` | Validate one kill-batch JSON | After weekly review, before CRM update |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[founder-led-qualification-rubric]]
 - [[late-invoice-dunning-sequence]]

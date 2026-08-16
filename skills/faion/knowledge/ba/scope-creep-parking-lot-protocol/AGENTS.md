@@ -40,6 +40,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `pro/ba/business-analyst/requirements-lifecycle` | Triage outcomes flow into change-control. |
@@ -83,6 +85,8 @@
 | `scripts/validate-scope-creep-parking-lot-protocol.py` | Validate the produced artefact against the output-contract schema. | Pre-commit; CI on each artefact change. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[remote-workshop-toolkit]]
 - [[requirements-lifecycle]]

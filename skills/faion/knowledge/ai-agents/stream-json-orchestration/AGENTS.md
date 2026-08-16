@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ai-agents/headless-cli-four-guards` | Defines the four mandatory CLI flags this methodology consumes. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-stream-json-orchestration.py` | Validates a run report against `02-output-contract.xml` schema. | After each orchestrator run; called by the post-run hook before persisting the report. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[headless-cli-four-guards]] — the four flags (-p, --allowedTools, --max-turns, stream-json) this methodology operationalises.
 - [[subagent-as-context-firewall]] — each subagent gets its own stream; this methodology is the pipe.

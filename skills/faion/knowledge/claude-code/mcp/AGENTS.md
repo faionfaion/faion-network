@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[tool-description-as-prompt]] | upstream context required for this methodology |
@@ -74,6 +76,8 @@
 | `scripts/validate-mcp.py` | Validate the spec artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[mcp-basics]]
 - [[mcp-servers]]

@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | none | Tag glossary is self-contained. |
@@ -63,6 +65,8 @@
 | `templates/methodology-text.xml` | Empty `<text>` skeleton ready to fill. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[prompt-techniques]] — XML delimiters in prompts are the runtime analogue.
 - [[skills]] — file structure that wraps content/.

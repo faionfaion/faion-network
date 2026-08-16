@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[finetune-cost-vs-prompt-decision]]` | Numbers-first sibling. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-fine-tune-vs-prompt-decision-tree.py` | Validate the artefact against schema + rules. | Pre-commit in the RFC log. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/`
 - `[[finetune-cost-vs-prompt-decision]]` — numbers sister

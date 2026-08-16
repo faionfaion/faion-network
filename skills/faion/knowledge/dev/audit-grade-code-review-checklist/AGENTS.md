@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[audit-grade-api-design]] | Checklist references the API contract for conformance items |
@@ -74,6 +76,8 @@
 | `scripts/validate-audit-grade-code-review-checklist.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[audit-grade-api-design]]
 - [[architecture-review-meeting-facilitation]]

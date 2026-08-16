@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[design-tokens-fundamentals]] | Token architecture this methodology constrains |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-accessibility-first-design.py` | Validate a11y-first design-system spec JSON | Pre-commit on tokens/components changes |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[design-tokens-fundamentals]]
 - [[a11y-annotation-pattern-library]]

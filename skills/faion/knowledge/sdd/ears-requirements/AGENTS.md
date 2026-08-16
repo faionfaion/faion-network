@@ -49,6 +49,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - `spec-requirements` — owns identity, priority, verification method and traceability. EARS owns the statement sentence. Composition rule is `r6-ears-composes-with-fr-ids`; neither methodology is usable alone.
 - `user-flows-template` — the generation source. Happy path → `When`, negative path → `If … then`, precondition → `While`. Generating the keyword is 100% accurate where detecting it is a heuristic.
 - `readiness-checklist` — the done-gate that should read `ears_violations[]` before a feature moves.

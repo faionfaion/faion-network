@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `prompt-injection-defense` | Input-rail rule set assumes injection patterns already enumerated. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-guardrails-concepts.py` | Validate `guardrail-plan.json` against the schema | Before handing off to `guardrails-nemo` / `guardrails-custom-pipeline` |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[guardrails-nemo]] — Colang dialog rails referenced from the plan
 - [[guardrails-custom-pipeline]] — input/output rail implementation

@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `langchain-agents-architectures` | Each specialist uses one of the three single-agent architectures. |
@@ -68,6 +70,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-langchain-agents-multi-agent.py` | Validates a Route JSON against the schema | Pre-commit on supervisor changes |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[langchain-agents-architectures]]
 - [[handoff-id-payload]]

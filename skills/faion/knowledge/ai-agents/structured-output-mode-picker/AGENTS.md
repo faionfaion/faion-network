@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ai-agents/strict-mode-required-fields` | Strict SO constrains the schema shape; required reading if SO is the pick. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-structured-output-mode-picker.py` | Validates the decision-record JSON against `02-output-contract.xml`. | After authoring the decision-record, before merging the migration PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[strict-mode-required-fields]] — applies when SO strict is the chosen mode.
 - [[structured-tool-errors]] — applies when tool-call is the chosen mode.

@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | docker-compose-devops | Production deployment context. |
@@ -75,6 +77,8 @@
 | `scripts/validate-sentry-alert-routing-for-solos.py` | Validate Sentry Alert Routing for Solos output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[docker-compose]]
 - [[solo-deploy-checklist]]

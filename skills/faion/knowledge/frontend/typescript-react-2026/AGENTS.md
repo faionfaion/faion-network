@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[typescript-strict-mode]]` | Strict tsconfig baseline this spec extends. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-typescript-react-2026.py` | Validate an app-router spec JSON against the contract. | After the agent emits the spec, before codegen runs. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[typescript-strict-mode]] — tsconfig flags this spec assumes are enabled.
 - [[react-hooks]] — useActionState / useFormStatus form wiring.

@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/mcp-architecture` | Source of architectural prompts. |
@@ -63,6 +65,8 @@
 | `scripts/validate-mcp-dev-prompts.py` | Validate the prompt library (id, version, I/O shape, model recommendation). | Pre-merge of every prompt-library PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[mcp-architecture]] — source of architectural prompts.
 - [[mcp-security]] — source of security prompts.

@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[react-patterns]]` | Component structure + Context provider pattern referenced by this spec. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-react-hooks.py` | Validate a hooks-spec JSON against the output contract. | After the agent emits the spec, before codegen reads it. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[react-patterns]] — broader React feature-structure decisions consumed here.
 - [[typescript-react-2026]] — Server Component boundaries that gate where hooks may live.

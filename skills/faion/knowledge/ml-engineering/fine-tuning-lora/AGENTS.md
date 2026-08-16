@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/finetuning` | Parent decision record; this methodology consumes its 'LoRA' branch. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-fine-tuning-lora.py` | Validate that the LoRA config matches the schema (r, alpha, target_modules, lr). | Pre-merge of every LoRA config PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[finetuning]] — parent decision; this methodology implements its LoRA branch.
 - [[fine-tuning-openai-eval]] — eval pattern reused.

@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[requirements-traceability]] | Defines the graph schema this job rebuilds. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-traceability-auto-maintenance.py` | Validates the alert payload + graph artefact against the JSON Schema. | Post-job, pre-publish; pre-commit on the config repo. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[requirements-traceability]]
 - [[scope-drift-early-warning-metrics]]

@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | ssl-tls-management | Cert lifecycle owned upstream; this methodology consumes the cert paths. |
@@ -84,6 +86,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/nginx-audit.sh` | Lint live nginx config against the rule-set. | Weekly cron + post-change. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ssl-tls-management]]
 - [[firewall-management]]

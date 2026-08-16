@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[utm-taxonomy-discipline]] | Source/medium tagging consistency assumed. |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-cross-channel-cpa-rollup.py` | Validate one rollup-row JSON against the schema | Weekly, before publish. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[utm-taxonomy-discipline]]
 - [[multi-touch-attribution-modeling]]

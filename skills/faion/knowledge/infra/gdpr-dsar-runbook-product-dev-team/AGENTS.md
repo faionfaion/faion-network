@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/infra/banking-core-data-residency-rules` | Residency rules constrain processing of DSAR data. |
@@ -77,6 +79,8 @@
 | `scripts/validate-gdpr-dsar-runbook-product-dev-team.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/infra/`
 - `[[banking-core-data-residency-rules]]`

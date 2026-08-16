@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/product/product-manager/roadmap-design` | OKRs anchor roadmap horizons. |
@@ -68,6 +70,8 @@
 | `templates/weekly-checkin.md` | Weekly OKR check-in. Generated from `templates/weekly-checkin.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[roadmap-design]]
 - [[product-analytics]]

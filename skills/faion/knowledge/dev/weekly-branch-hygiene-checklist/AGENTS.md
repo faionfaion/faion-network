@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | timeboxed-refactor-session-template | Hygiene block uses the same timebox discipline. |
@@ -70,6 +72,8 @@
 | `scripts/validate-weekly-branch-hygiene-checklist.py` | Validate Weekly Branch Hygiene Checklist output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[timeboxed-refactor-session-template]]
 

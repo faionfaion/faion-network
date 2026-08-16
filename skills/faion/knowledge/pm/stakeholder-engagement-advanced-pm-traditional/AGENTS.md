@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `stakeholder-engagement` | Provides the base register + cadence. |
@@ -74,6 +76,8 @@
 | `scripts/engagement_diff.py` | Diff prior vs current register; surface NEW/CHANGED/CLOSED. | Weekly diff cycle. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[stakeholder-engagement]]
 - [[stakeholder-register]]

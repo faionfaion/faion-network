@@ -25,6 +25,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `TBD/path` | TBD — what upstream output this consumes |
@@ -65,5 +67,7 @@
 | TBD | TBD | TBD |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `solo/sdd/sdd-planning/`

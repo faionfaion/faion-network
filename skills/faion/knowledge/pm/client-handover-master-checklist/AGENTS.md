@@ -71,6 +71,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[change-request-pricing-rubric]]
 - [[client-status-email-template-agency]]
 - upstream playbook: `p4-outsource-specialist/Handover to client in-house team (3 weeks)`

@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/infra/devops-engineer/multi-region-active-active-pattern` | How residency interacts with active-active topology. |
@@ -75,6 +77,8 @@
 | `scripts/validate-banking-core-data-residency-rules.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/infra/`
 - `[[multi-region-active-active-pattern]]`

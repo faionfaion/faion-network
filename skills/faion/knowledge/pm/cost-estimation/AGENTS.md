@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ai-leverage-estimation-model]] | Multiplier rubric applied AFTER raw PERT estimate. |
@@ -78,6 +80,8 @@
 | `scripts/validate-cost-estimation.py` | Validate the output artefact against the schema | Pre-commit on every artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-leverage-estimation-model]]
 - [[earned-value-management]]

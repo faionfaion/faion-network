@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | [[langchain-basics]] | Need to understand chain composition. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-langchain-production-patterns.py` | Validates the hardening-plan JSON. | Pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[langchain-observability]] — tracing is non-optional once you wire fallbacks.
 - [[max-turns-circuit-breaker]] — retries × tools = turn explosion.

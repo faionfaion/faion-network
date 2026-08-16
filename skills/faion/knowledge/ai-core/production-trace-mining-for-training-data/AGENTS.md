@@ -40,6 +40,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[pii-scrubbing-recipe-for-eval-sets]]` | PII scrub precondition. |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-production-trace-mining-for-training-data.py` | Validate trace-mining-spec | Pre-commit + before fine-tune job |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[pii-scrubbing-recipe-for-eval-sets]]
 - [[prompt-ab-power-calculator]]

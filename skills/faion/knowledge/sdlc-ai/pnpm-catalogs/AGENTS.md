@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[lint-precommit-floor]] | Pre-commit hook can lint hard-coded shared deps. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-pnpm-catalogs.py` | Validate produced pnpm-workspace.yaml + package.json catalog refs. | pre-merge of workspace config |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[pyproject-single-source]]
 - [[lint-precommit-floor]]

@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `filesystem-as-working-memory` | Refs point into the offload store. |
@@ -70,6 +72,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-file-reference-passing.py` | Validates a ScanResult against the schema and ensures refs point to a manifest | After every scan stage |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[filesystem-as-working-memory]]
 - [[handoff-id-payload]]

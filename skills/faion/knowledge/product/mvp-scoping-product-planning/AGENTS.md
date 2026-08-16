@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/product/product-planning/minimum-product-frameworks` | Frame selection routing to MVP. |
@@ -68,6 +70,8 @@
 | `templates/mvp-scope-doc.md` | Full MVP scope document. Generated from `templates/mvp-scope-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[minimum-product-frameworks]]
 - [[micro-mvp-cut-rubric]]

@@ -46,6 +46,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - `gate-fail-closed-rule` — what a gate must do when it cannot evaluate. Placement decides the instrument; that decides its behaviour on failure.
 - `lint-autofix-vs-flag-decision-rule` — what to do with a finding once produced; this routes which instrument found it.
 - `lint-precommit-floor` — the hook carries rung 1 only; this is the rule that says why.

@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[postmortem-action-item-slo-tracking]] | Tracks action items including the eval case. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-regression-eval-before-fix-rule.py` | Validate decision-record artefact + check eval case file exists. | Pre-merge of fix PR |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[postmortem-action-item-slo-tracking]]
 - [[pr-time-cost-diff-tool]]

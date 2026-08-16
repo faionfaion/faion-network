@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[data-analysis]] | Sibling — defines data entities that flow across interfaces |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `templates/interface-catalog.md` | solution-wide interface catalog (one-row-per-interface index) Generated from `templates/interface-catalog.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[data-analysis]]
 - [[business-process-analysis]]

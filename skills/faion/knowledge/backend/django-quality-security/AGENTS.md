@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `django-quality-logging` | scrubbing PII from Sentry events depends on the logging methodology's `before_send` |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-django-quality-security.py` | validates the audit report against the schema | after report is generated, before commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[django-quality-logging]] — Sentry + before_send PII scrubber
 - [[django-serializers]] — input validation via DRF serializers

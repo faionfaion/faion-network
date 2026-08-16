@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[growth-content-marketing]]` | Newsletter cadence + tone conventions |
@@ -67,6 +69,8 @@
 | `scripts/validate-substack-beehiiv-pick.py` | Validates an output document against the 02-output-contract schema. | Pre-commit and CI before merge. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `free/marketing/`
 - `[[growth-content-marketing]]`

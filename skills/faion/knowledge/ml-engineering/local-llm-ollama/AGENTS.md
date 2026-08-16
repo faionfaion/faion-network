@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[function-calling-patterns]]` | OpenAI-compatible mode supports the same tool-call patterns. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-local-llm-ollama.py` | Validates ollama-config: model_size_fits_vram, Modelfile path exists, fallback model set, openai_compat flag. | Pre-commit on config. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/llm-integration/`
 - `[[function-calling-patterns]]`

@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ai-agents/multi-agent-basics` | Upstream spec. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-multi-agent-conversational.py` | Validates a conversational config (dual termination present, max_turns ≤30, sliding window cap set, distinct identities). | Pre-merge of any conversational-pattern PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[multi-agent-basics]] — upstream spec.
 - [[multi-agent-hierarchical]] — alternative when you have a plan.

@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[qa-risk-matrix-method]] | Risk matrix drives the focus-area selection. |
@@ -86,6 +88,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-qa-exploratory-charter-template.py` | Validate the charter + observation log + debrief against `content/02-output-contract.xml`. | After every session, before publishing the debrief. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[qa-risk-matrix-method]]
 - [[qa-ac-to-assertion-mapping]]

@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[sec-codeql-autofix-on-pr]] | Complementary SAST layer. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-sec-trivy-pinned-supply-chain-scan.py` | Validate workflow + SBOM emission config against schema. | Pre-merge of trivy.yml |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[sec-codeql-autofix-on-pr]]
 - [[sec-secrets-defense-in-depth]]

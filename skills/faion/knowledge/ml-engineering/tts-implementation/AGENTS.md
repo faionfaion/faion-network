@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/multimodal-ai/tts-basics` | core preprocess, voice-map, single-call cache key — TTSService builds on these. |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-tts-implementation.py` | Validate TTSService output JSON (long-form with chunks[]) against 02-output-contract. | Post-synthesize, before downstream consumes. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[tts-basics]] — single-call layer this service builds on.
 - [[voice-implementation]] — duplex voice agent that consumes TTSService streaming output.

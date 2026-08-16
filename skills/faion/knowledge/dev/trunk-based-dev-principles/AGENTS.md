@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/automation-tooling/trunk-based-feature-flags` | Companion: flag plumbing that makes "always-releasable trunk" feasible. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-trunk-based-dev-principles.py` | Validate a checklist JSON against the schema and consistency rules. | After scorer emits the checklist, before posting verdict back. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[trunk-based-feature-flags]] — flag plumbing required for "trunk is releasable".
 - [[changelog-automation-conventional-commits]] — small commits feed the changelog.

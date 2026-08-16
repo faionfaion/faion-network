@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `speech-to-text` | Sibling in voice-agent stack |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-text-to-speech.py` | Lint tts-config | Pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[speech-to-text]] — paired in voice agents
 - external: [OpenAI TTS](https://platform.openai.com/docs/guides/text-to-speech) · [ElevenLabs](https://elevenlabs.io/) · [Deepgram Aura](https://deepgram.com/product/voice-ai)

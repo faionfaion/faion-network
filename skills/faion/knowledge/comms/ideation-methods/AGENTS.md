@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[brainstorming-techniques]] | for group facilitation alternative |
@@ -78,6 +80,8 @@
 | `scripts/validate-ideation-methods.py` | Validate ideation-methods artefact against the schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[brainstorming-techniques]]
 - [[brainstorming-ideation]]

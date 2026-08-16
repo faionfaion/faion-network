@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[acceptance-criteria]] | Canonical AC format (Gherkin / G-W-T) and INVEST checks |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-acceptance-criteria-generator-reviewer.py` | Validate emitted rubric against output-contract schema | CI on each rubric file; pre-commit gate |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[acceptance-criteria]]
 - [[ai-elicitation-prompt-patterns]]

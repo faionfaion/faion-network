@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/python-developer/python-pytest-setup` | Provides base pytest config conventions this methodology extends. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-django-testing.py` | Validate that a test file uses django_db marker, format='json', and avoids ORM mocks. | Pre-commit and on every test added. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[python-pytest-setup]]
 - [[python-pytest-fixtures]]

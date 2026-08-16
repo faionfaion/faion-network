@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[cost-estimation]] | Cost baseline this register multiplies against for ROI. |
@@ -80,6 +82,8 @@
 | `scripts/validate-benefits-realization.py` | Validate the output artefact against the schema | Pre-commit on every artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[cost-estimation]]
 - [[earned-value-management]]

@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/infra/AGENTS.md` | parent group context (vocabulary, neighbouring methodologies) |
@@ -78,6 +80,8 @@
 | `scripts/validate-terraform-basics.py` | enforce `02-output-contract.xml` JSON Schema | after subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `pro/infra/`
 - peer methodology: see other entries in `skills/faion/knowledge/pro/infra/`

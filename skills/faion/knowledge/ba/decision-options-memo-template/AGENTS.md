@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[cr-options-matrix-template]] | CR-specific specialisation of this pattern. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-decision-options-memo-template.py` | Validates the options memo against the JSON Schema. | Before escalation; pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[decision-rationale-capture]]
 - [[cr-options-matrix-template]]

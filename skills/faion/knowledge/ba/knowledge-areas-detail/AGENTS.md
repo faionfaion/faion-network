@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `pro/ba/business-analyst/knowledge-areas-overview` | Provides L1 summary; this is L2 detail. |
@@ -85,6 +87,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-knowledge-areas-detail.py` | Validate the produced artefact against the output-contract schema. | Pre-commit; CI on each artefact change. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[knowledge-areas-overview]]
 - [[methodologies-detail]]

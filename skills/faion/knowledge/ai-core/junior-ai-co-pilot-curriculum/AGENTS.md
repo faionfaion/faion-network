@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[ai-failure-mode-taxonomy]]` | Junior must recognise the 6 base failure modes. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-junior-ai-co-pilot-curriculum.py` | Validates curriculum.json against the schema; asserts ≥6 modules, ≥1 exercise per module, rubric with ≥10 items. | Pre-commit on curriculum; before sharing with new hires. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/`
 - `[[ai-failure-mode-taxonomy]]` — referenced in the hallucination-check module

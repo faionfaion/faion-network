@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[go-backend]]` | service skeleton |
@@ -86,6 +88,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-go-http-handlers.py` | Enforce the Go HTTP Handlers (Gin / Echo / Chi / stdlib) output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[go-backend]]
 - [[go-error-handling]]

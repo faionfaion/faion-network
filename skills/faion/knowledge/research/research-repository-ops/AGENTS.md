@@ -40,6 +40,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[research-repository-setup]] | provided the initial taxonomy + permissions baseline |
@@ -81,6 +83,8 @@
 | `scripts/validate-research-repository-ops.py` | Validate the artefact against `content/02-output-contract.xml` schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[research-repository-setup]]
 - [[user-research-at-scale]]

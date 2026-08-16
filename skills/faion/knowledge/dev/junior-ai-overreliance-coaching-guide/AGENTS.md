@@ -72,6 +72,8 @@
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[java-spring-boot]]
 
 ## Decision tree

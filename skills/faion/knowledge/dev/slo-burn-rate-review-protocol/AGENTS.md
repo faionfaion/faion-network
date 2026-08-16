@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/infra/devops-engineer/slo-definition-template-per-service-class` | Defines the SLOs being reviewed. |
@@ -79,6 +81,8 @@
 | `scripts/validate-slo-burn-rate-review-protocol.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/dev/`
 - `[[slo-definition-template-per-service-class]]`

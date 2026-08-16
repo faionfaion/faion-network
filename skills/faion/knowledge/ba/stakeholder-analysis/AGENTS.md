@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[strategy-analysis-business-need]] | Defines why the project exists, which informs stakeholder relevance. |
@@ -84,6 +86,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-stakeholder-analysis.py` | Validates stakeholder register + RACI + comms plan against JSON Schema. | After register update; pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[strategy-analysis-business-need]]
 - [[use-case-modeling]]

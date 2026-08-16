@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/product/product-operations/feedback-management` | Downstream consumer of digest. |
@@ -75,6 +77,8 @@
 | `scripts/validate-support-tool-pm-triage-spec.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[feedback-management]]
 - [[verbatim-to-backlog-pattern]]

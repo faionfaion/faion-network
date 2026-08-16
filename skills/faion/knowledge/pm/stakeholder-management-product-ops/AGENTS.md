@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/product/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
@@ -73,6 +75,8 @@
 | `templates/stakeholder-register.md` | Power/Interest + Attitude register Generated from `templates/stakeholder-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `skills/faion/knowledge/pro/product/product-operations/`
 - peer methodologies: siblings under the parent skill

@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[token-organization]] | Defines the naming convention this token configuration uses |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-semantic-tokens-and-modes.py` | Validate the token-config artefact against the schema | Pre-commit; CI before Style Dictionary build |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[token-organization]]
 - [[cross-platform-token-distribution]]

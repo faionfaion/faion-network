@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[founder-deal-kill-rule]] | Downstream — disqualifies feed kill batch. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-founder-led-qualification-rubric.py` | Validate one rubric JSON against the schema | After draft, before publish |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[founder-deal-kill-rule]]
 - [[freelance-pilot-pricing]]

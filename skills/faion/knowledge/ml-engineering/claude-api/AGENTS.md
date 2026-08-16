@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[decision-framework]] | Selects the model and the prompt-vs-RAG-vs-fine-tune axis before this code runs. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-claude-api.py` | Validate an integration-record JSON against the contract in `02-output-contract.xml`. | After codegen, before opening PR; in CI on the integration manifest file. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[decision-framework]] — selects model + approach before this methodology runs.
 - [[cost-optimization]] — sets caching / batching policy this methodology implements.

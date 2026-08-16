@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/sdd/sdd-planning/definition-of-ready-template` | spikes use a relaxed DoR (no design link required) that the DoR methodology references. |
@@ -74,6 +76,8 @@
 | `scripts/validate-spike-protocol-template.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[definition-of-ready-template]]
 - [[definition-of-done-template]]

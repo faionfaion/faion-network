@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[kb-ai-assisted-lessons-learned-synthesis]] | Sibling pattern; shares clustering + citation discipline |
@@ -82,6 +84,8 @@
 | `scripts/validate-quarter-retro-synthesis.py` | Verify themes ≥ 2 sources + DORA numbers match snapshot | pre-publication |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[kb-ai-assisted-lessons-learned-synthesis]]
 - [[inc-postmortem-auto-draft-no-publish]]

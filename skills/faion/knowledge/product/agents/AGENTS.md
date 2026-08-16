@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/product/product-manager/ai-native-product-development` | Product-positioning context this pipeline consumes. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-agents.py` | Validate a subagent run record (mode, vcs_state, comparables count, human_review_status). | After every subagent invocation. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[agentic-ai-product-development]] — sibling autonomous-agent product methodology.
 - [[ai-feature-de-risking]] — peer methodology for shipping AI features safely.

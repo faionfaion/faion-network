@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[feature-flags]] | Wave 2 dual-run depends on flag-gated rollout. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-e2e-framework-migration-playbook.py` | Validate the wave record artefact metadata against 02-output-contract schema | Per-wave exit gate |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[feature-flags]]
 - [[trunk-based-dev-principles]]

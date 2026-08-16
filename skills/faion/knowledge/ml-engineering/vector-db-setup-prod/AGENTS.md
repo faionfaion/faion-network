@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `vector-databases` | DB chosen |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-vector-db-setup-prod.py` | Lint prod-deploy.yaml | Pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[vector-databases]] · [[vector-db-setup-dev]] · [[vector-db-monitoring]] · [[vector-db-security]] · [[vector-db-index-tuning]]
 - external: [Qdrant K8s](https://github.com/qdrant/qdrant-helm) · [Milvus on K8s](https://milvus.io/docs/install_cluster-helm.md)

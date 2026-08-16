@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[code-decomposition-patterns]] | Larger structural moves (Extract Class, Move Module) live there; this methodology handles fine-grained transformations. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-refactoring-patterns.py` | Validate refactor-playbook JSON against schema | After playbook generation, before commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[code-decomposition-patterns]] — larger structural moves.
 - [[code-coverage]] — characterisation tests precondition for safe refactor.

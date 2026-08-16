@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[rate-limiting]] | limits informing maximum load test target. |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/perf-gate.py` | Compare a current k6 summary vs baseline and fail when a tracked metric regresses beyond tolerance. | In CI after a load run, before merge; supports `--self-test`. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[sql-optimization]]
 - [[rate-limiting]]

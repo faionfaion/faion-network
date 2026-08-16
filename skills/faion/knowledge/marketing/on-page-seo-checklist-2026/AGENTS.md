@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/marketing/AGENTS.md` | Parent group context (vocabulary, neighbouring methodologies). |
@@ -75,6 +77,8 @@
 | `scripts/validate-on-page-seo-checklist-2026.py` | Validate the artefact against the 02-output-contract schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[search-intent-to-brief]]
 - [[seo-techniques]]

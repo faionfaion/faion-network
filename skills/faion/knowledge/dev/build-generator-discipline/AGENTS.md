@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[cdn-fronted-static-deploy]]` | The stamping step this build must perform atomically, and why a half-written tree defeats content-hashed URLs. |
@@ -56,6 +58,8 @@
 | Diagnose "the source looks right but the page is wrong" | opus | Flavour and extension interactions are where the non-obvious bugs live. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[cdn-fronted-static-deploy]] — where the generated URLs go, and why atomicity here decides invalidation there
 - [[ai-generated-code-lint-presets]] — the same "make the rule mechanical" posture applied to lint config

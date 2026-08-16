@@ -30,6 +30,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/python-developer/python-code-quality` | Ruff/mypy/pre-commit settings the lockfile pins. |
@@ -67,6 +69,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-python-poetry-setup.py` | Check pyproject has [project] (PEP 621), lockfile committed, dev group separate, virtualenvs.in-project=true, tight Python pin, `--sync` in CI, no `poetry install` in the final Dockerfile stage. | Pre-commit and on lockfile change. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[python-modern-2026]]
 - [[python-code-quality]]

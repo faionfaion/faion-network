@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/ml-engineer/rag-pipeline-design` | Defines the pipeline shape that is being rolled out. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-rag-canary-rollout-plan.py` | Validate the plan: 4 steps, sample_rate ≥0.05 during 5%, kill_switch criteria ≥4, atomic flip = true. | Pre-commit + per-step gate. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[rag-pipeline-design]]
 - [[rag-evaluation]]

@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[gumroad-ops-playbook]] | Sibling channel mechanics; useful when MoR comparison comes up. |
@@ -87,6 +89,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-pricing-experiment-runbook.py` | Validate plan + preflight + decision memo against 02-output-contract schema | Pre-commit / pre-publish gate |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[gumroad-ops-playbook]]
 - [[lemon-squeezy-ops-playbook]]

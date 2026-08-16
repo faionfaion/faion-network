@@ -33,6 +33,8 @@
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[readiness-checklist]] — primary consumer; items 4, 5, 6 derive applicability from this matrix.
 - [[user-flows-template]] — provides the Playwright pos+neg artefact this matrix gates.
 - [[ui-ux-design-template]] — provides the UI heuristics artefact this matrix gates.

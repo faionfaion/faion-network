@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[onboarding-30-day]] | 30-day learning phase must be closed before this phase opens |
@@ -74,6 +76,8 @@
 | `scripts/validate-onboarding-60-90-day.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[onboarding-30-day]]
 - [[structured-interview-design]]

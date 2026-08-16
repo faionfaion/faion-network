@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | systemd-user-services | EnvironmentFile= directive lives in service units we own. |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-secrets-management.py` | Validate SecretsPlan JSON against the output-contract schema. | Pre-deploy + post-rotation. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[systemd-user-services]]
 - [[ssh-hardening]]

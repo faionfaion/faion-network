@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[csharp-dotnet]] | Umbrella covering DI lifetimes that govern DbContext scope. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-csharp-entity-framework.py` | Validate the EF data-layer manifest against the JSON Schema. | Pre-commit; CI on every methodology PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[csharp-dotnet]]
 - [[csharp-dotnet-patterns]]

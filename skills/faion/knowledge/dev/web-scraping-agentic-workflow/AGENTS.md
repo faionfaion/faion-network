@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/automation-tooling/web-scraping-element-extraction` | Step 3 of this workflow — extraction details. |
@@ -83,6 +85,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-web-scraping-agentic-workflow.py` | Validate a scrape-run report JSON against schema + drift rule. | At end of each scrape run, before promoting raw → curated. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[web-scraping-element-extraction]] — inner extraction step.
 - [[web-scraping-pagination]] — pagination handling.

@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[java-spring-boot]] | Sub-module for service / controller layering. |
@@ -88,6 +90,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-java-jpa-hibernate.py` | Validate the JPA-layer manifest against the JSON Schema. | Pre-commit; CI on every methodology PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[java-spring-boot]]
 - [[java-junit-testing]]

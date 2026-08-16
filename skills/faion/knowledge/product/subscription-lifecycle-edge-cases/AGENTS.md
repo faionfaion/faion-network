@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/product/solo-saas-legal-docs-pack` | Legal preconditions for billing. |
@@ -76,6 +78,8 @@
 | `scripts/validate-subscription-lifecycle-edge-cases.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[solo-saas-legal-docs-pack]]
 - [[product-launch]]

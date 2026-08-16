@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[cost-estimation]] | PERT three-point baseline this rubric multiplies against |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-leverage-estimation-model.py` | Validate a leverage-estimate JSON against the output contract | Pre-commit on the estimate artefact; before sending to buyer |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[cost-estimation]]
 - [[earned-value-management]]

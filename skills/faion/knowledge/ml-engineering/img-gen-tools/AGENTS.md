@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/multimodal-ai/img-gen-basics` | Single-provider baseline. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-img-gen-tools.py` | Validate ImageService config: provider list, fallback chain, cache_uri, attribution enabled. | Pre-commit + CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[img-gen-basics]]
 - [[ai-cost-attribution-schema]]

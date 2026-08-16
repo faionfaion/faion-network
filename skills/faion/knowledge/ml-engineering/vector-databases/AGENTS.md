@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `rag-pipeline-design` | DB picked as part of pipeline tier |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-vector-databases.py` | Lint vector-db.yaml | Pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[rag-pipeline-design]] · [[vector-db-setup-dev]] · [[vector-db-setup-prod]] · [[vector-db-index-tuning]] · [[vector-db-monitoring]] · [[vector-db-security]]
 - external: [Qdrant docs](https://qdrant.tech/documentation/) · [pgvector](https://github.com/pgvector/pgvector) · [Pinecone](https://www.pinecone.io/learn/)

@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[verb-object-tool-naming]] | Naming has to be sound before descriptions are tuned. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-tool-description-as-prompt.py` | Validate the audit JSON against the rubric schema | After each catalog audit; pre-commit on the audit artefact |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[verb-object-tool-naming]] — naming sets the lexical anchor; description fills the gap.
 - [[terse-default-tool-output]] — description must declare summary/full mode and token bands.

@@ -40,6 +40,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/rag-evaluation-frameworks` | Vocabulary for faithfulness / answer-relevance / context-precision |
@@ -88,6 +90,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-rag-feature-acceptance-contract.py` | Lints `acceptance-contract.yaml` against schema, checks every intent has all three signatures and paired metrics | Pre-commit hook on the contract file |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[rag-evaluation]] — vocabulary the contract speaks
 - [[golden-set-curation-and-maintenance]] — the eval set referenced by the contract

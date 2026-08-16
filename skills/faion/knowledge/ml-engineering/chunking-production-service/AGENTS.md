@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/rag-engineer/chunking-basics` | Default recursive chunker + token measurement. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-chunking-production-service.py` | Verify service output envelope, check fallback chunks have a warning, metadata present on every chunk. | After each ingest batch. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[chunking-basics]] · [[chunking-document-structure]] · [[chunking-code-ast]] · [[chunking-semantic]] — dispatch targets.
 

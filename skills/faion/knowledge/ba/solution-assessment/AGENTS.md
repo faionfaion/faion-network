@@ -42,6 +42,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[requirements-traceability]] | Provides the requirement-to-deliverable mapping the assessment scores. |
@@ -89,6 +91,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-solution-assessment.py` | Validates assessment report against the JSON Schema in 02-output-contract.xml. | Before report sign-off; pre-commit on the report repo. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[requirements-traceability]]
 - [[scope-drift-early-warning-metrics]]

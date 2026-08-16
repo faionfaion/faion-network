@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[scope-management]] | Acceptance criteria must be observable and agreed before closure starts |
@@ -80,6 +82,8 @@
 | `scripts/closure-audit.py` | Validates closure_checklist.yaml completeness and evidence links | Pre-sponsor-signoff; CI on closure packet |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `pro/pm/project-manager/`
 - [[scope-management]]

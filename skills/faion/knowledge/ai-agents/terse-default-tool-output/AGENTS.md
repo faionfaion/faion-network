@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | none | This is a foundational tool-design rule; no upstream artefact required. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-terse-default-tool-output.py` | Validate a tool response JSON against the envelope schema | CI on each tool deploy + on captured agent traces |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[tool-description-as-prompt]] — tool description must declare the format modes and their token bands.
 - [[verb-object-tool-naming]] — naming + namespace pair with this methodology's output shape.

@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/fine-tuning-openai-sft` | Supplies fine-tuned model_id. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-fine-tuning-openai-eval.py` | Validate the eval report (scores, metrics, gate decision, CI). | Pre-merge of every eval report. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[fine-tuning-openai-sft]] — upstream.
 - [[fine-tuning-openai-deployment]] — downstream; consumes the gate decision.

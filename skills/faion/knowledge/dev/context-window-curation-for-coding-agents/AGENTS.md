@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/code-quality/framework-decomposition-patterns` | Bounded files = bounded context; sibling. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-context-window-curation-for-coding-agents.py` | Validate bundle JSON against schema + budget rule. | Before handing bundle to the agent. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[framework-decomposition-patterns]] — bounded files → bounded context.
 - [[changelog-automation-conventional-commits]] — small commits keep change area small.

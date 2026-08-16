@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[architecture-review-meeting-facilitation]] | Proposal is consumed by the review meeting |
@@ -72,6 +74,8 @@
 | `scripts/validate-architecture-proposal-document-template.py` | Validate output against 02-output-contract JSON Schema; exit 0 on pass, 1 on fail with violation list | After subagent returns, before downstream consumer reads; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[architecture-review-meeting-facilitation]]
 - [[arch-health-weekly-report-template]]

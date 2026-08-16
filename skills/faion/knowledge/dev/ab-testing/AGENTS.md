@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[feature-flag-cleanup-discipline]] | Flag cleanup gate after experiment ends. |
@@ -85,6 +87,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ab-testing.py` | Validate experiment-run artefact against schema + SRM gate + power gate | Pre-commit; CI on each experiment close |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[feature-flag-cleanup-discipline]]
 - [[deterministic-test-data-pattern]]

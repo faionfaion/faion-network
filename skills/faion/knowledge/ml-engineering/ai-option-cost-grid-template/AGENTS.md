@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/rag-engineer/rag-architecture` | Defines what "RAG" means as a row in the grid. |
@@ -71,6 +73,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-option-cost-grid-template.py` | Verify no TBDs, all required columns present, template_version stamped, worked example reachable. | Pre-commit + pre-sign-off. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[rag-architecture]] · [[embedding-cost-optimization]] · [[ai-feature-eval-set-design]]
 

@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[qa-ac-to-assertion-mapping]] | per-AC assertion discipline grounds the test names |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-test-as-living-documentation.py` | Validate Test as Living Documentation artefact against content/02-output-contract.xml. | After draft, before merge; pre-commit hook. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[qa-ac-to-assertion-mapping]]
 - [[qa-exploratory-charter-template]]

@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[definition-of-done-library]] | Source of canonical AC patterns. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-contractor-brief-template-self-contained.py` | Validates the contractor brief against the JSON Schema. | Before brief is sent to contractor; pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[definition-of-done-library]]
 - [[decision-options-memo-template]]

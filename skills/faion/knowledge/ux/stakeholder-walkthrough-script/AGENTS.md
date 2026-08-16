@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/ux/scope-creep-park-list-template` | Parking ritual used during walkthrough. |
@@ -75,6 +77,8 @@
 | `scripts/validate-stakeholder-walkthrough-script.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[scope-creep-park-list-template]]
 - [[design-decision-log-template]]

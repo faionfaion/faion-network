@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `django-quality-queries` | rule set on select_related / prefetch_related / assertNumQueries |
@@ -64,6 +66,8 @@
 | `scripts/validate-django-selectors.py` | static check: selector signature uses keyword-only, returns QuerySet/Model, lives in selectors.py | pre-commit / CI |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[django-service-layer]] — write half of the read/write split
 - [[django-quality-queries]] — selector is the canonical home for N+1 prevention

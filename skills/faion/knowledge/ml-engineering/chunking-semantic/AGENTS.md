@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/rag-engineer/chunking-basics` | Token measurement + metadata invariants. |
@@ -71,6 +73,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-chunking-semantic.py` | Verify schema; flag chunks below min or above max; check embedding_model field present. | After chunker run. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[chunking-basics]] · [[chunking-document-structure]] · [[chunking-code-ast]] · [[chunking-production-service]] · [[embedding-generation]]
 

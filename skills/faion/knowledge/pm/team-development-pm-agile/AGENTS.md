@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[scrum-ceremonies]] | retro cadence is the diagnostic instrument |
@@ -70,6 +72,8 @@
 | `templates/team-charter.md` | Team charter template: purpose, working agreements, decision rights Generated from `templates/team-charter.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[scrum-ceremonies]]
 - [[six-core-principles]]

@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/research/researcher` | parent role/operating context. |
@@ -76,6 +78,8 @@
 | `scripts/validate-win-loss-interview-program.py` | Validate the report artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[thematic-analysis]]
 - [[service-blueprint]]

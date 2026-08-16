@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/product/product-operations/product-analytics` | Source instrumentation. |
@@ -75,6 +77,8 @@
 | `scripts/validate-solo-kpi-dashboard-template.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[product-analytics]]
 - [[rice-for-one-person-cheatsheet]]

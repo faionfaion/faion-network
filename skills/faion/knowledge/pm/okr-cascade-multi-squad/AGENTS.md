@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[portfolio-strategy]] | Horizons constrain which Objectives the cascade flows from. |
@@ -78,6 +80,8 @@
 | `scripts/validate-okr-cascade-multi-squad.py` | Validate the methodology output artefact against the schema in content/02-output-contract.xml | Pre-commit + CI on artefact changes |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[portfolio-strategy]]
 - [[stakeholder-management]]

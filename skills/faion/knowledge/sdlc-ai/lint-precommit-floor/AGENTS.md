@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[lint-staged-only-not-whole-tree]] | Hook discipline complement |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-precommit-floor.py` | Validate hook-config artefact. | pre-merge of hook config |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[lint-staged-only-not-whole-tree]]
 - [[lint-ruff-and-biome-as-default]]

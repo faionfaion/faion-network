@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `idempotent-write-tools` | Headless agents that mutate state need idempotency keys for safe retry. |
@@ -68,6 +70,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-headless-cli-four-guards.py` | Lints a shell script for missing guards | Pre-commit on any cron/CI script that calls an agent CLI |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[idempotent-write-tools]]
 - [[generator-critic-bounded-loop]]

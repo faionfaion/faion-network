@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[gateway-adapter-template]]` | Same shape: tool-defn + retry + tokenizer pinning. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-faion-cli-as-agent-skill.py` | Validate tool-defs + system prompt against the contract. | Before agent ships. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/`
 - `[[gateway-adapter-template]]` — adapter shape for any LLM/RAG endpoint

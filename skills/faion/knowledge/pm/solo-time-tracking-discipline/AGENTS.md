@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[solo-rate-floor-calculator]] | billable_pct_actual feeds the rate-floor recalibration. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-solo-time-tracking-discipline.py` | Validate TimeReport against 02-output-contract schema | Friday end-of-week before invoice send |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[solo-rate-floor-calculator]]
 - [[solo-context-switch-protocol]]

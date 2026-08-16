@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/comms/` | parent domain context (vocabulary, neighbouring methodologies) |
@@ -73,6 +75,8 @@
 | `scripts/validate-freelancer-payment-chase-script-library.py` | Validate the checklist artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[freelancer-rate-raise-letter-template]]
 - [[graceful-offboard-script]]

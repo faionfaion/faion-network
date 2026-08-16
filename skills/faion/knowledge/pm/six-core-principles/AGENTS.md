@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ref-pmbok]] | Edition vocabulary |
@@ -72,6 +74,8 @@
 | `scripts/validate-six-core-principles.py` | Validate audit has exactly 6 rows in canonical order with evidence quotes per pass | Pre-commit; pre-gate |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `pro/pm/project-manager/`
 - [[ref-pmbok]]

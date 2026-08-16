@@ -42,6 +42,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `pro/ba/business-analyst/requirements-traceability` | Criteria trace back to BR-IDs. |
@@ -88,6 +90,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-decision-analysis.py` | Validate the produced artefact against the output-contract schema. | Pre-commit; CI on each artefact change. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[requirements-prioritization]]
 - [[requirements-traceability]]

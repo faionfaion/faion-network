@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/sdd/client-conventions-as-code` | day-job engagement conventions live in this file; personal project conventions do not. |
@@ -74,6 +76,8 @@
 | `scripts/validate-ip-sensitive-workflow-design.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[client-conventions-as-code]]
 - [[soc2-evidence-generator-cli]]

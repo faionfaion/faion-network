@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[fixed-price-risk-loading-model]]` | risk loading model produced the baseline buffer |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-fixed-price-vs-tm-cr-pricing-playbook.py` | Enforce the Fixed-Price vs T&M Change-Request Pricing Playbook output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[fixed-price-risk-loading-model]] — upstream risk-loading model.
 - [[compliance-traceability-pack]] — when CR touches compliance scope.

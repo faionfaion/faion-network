@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[typescript-strict-mode]]` | Strict tsconfig is the baseline for type-safe layer boundaries. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-nodejs-patterns.py` | Validate a scaffold-spec JSON file against the output contract. | After the agent emits the spec, before downstream codegen reads it. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[typescript-strict-mode]] — strict tsconfig baseline this spec assumes.
 - [[typescript-patterns]] — Result + discriminated unions consumed by the error classes section.

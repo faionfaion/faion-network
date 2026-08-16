@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/fine-tuning-openai-sft` | Required prior step; SFT fine-tune is the DPO base. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-fine-tuning-openai-dpo.py` | Validate that the DPO config matches the schema (pairs, beta, sft_base, eval). | Pre-merge of every DPO config PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[fine-tuning-openai-sft]] — supplies the SFT base.
 - [[fine-tuning-openai-eval]] — eval pattern.

@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[team-development]] | Tuckman staging consumes pulse alerts as a stage-transition signal. |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-team-morale-pulse-survey.py` | Validate a `MoralePulse` against the JSON Schema | Pre-commit on every published pulse |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[team-development]]
 - [[value-stream-management]]

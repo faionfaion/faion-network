@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[terse-default-tool-output]] | Verbose tool outputs are the most common cause of resource-axis regressions. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-trajectory-eval-otel.py` | Validate an eval-report JSON against the schema | CI on each eval run; pre-commit on baseline updates |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[terse-default-tool-output]] — resource-axis regressions usually trace to verbose tool outputs.
 - [[tool-description-as-prompt]] — trajectory regressions often correlate with description drift.

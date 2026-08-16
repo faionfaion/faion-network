@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[rust-ownership]] | Error types carry data; ownership shapes (`String` vs `&'static str`) matter. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-rust-error-handling.py` | Validate error-design spec JSON against schema | After spec generation |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[rust-ownership]] — error variants own their data; lifetime decisions matter.
 - [[rust-testing]] — `.unwrap()` is allowed in tests; clippy config relaxes there.

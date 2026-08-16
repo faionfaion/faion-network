@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[cost-estimation]] | PV curve is built from the cost estimate |
@@ -67,6 +69,8 @@
 | `templates/evm-report.md` | EVM report template: PV, EV, AC, SPI, CPI, EAC, TCPI per period Generated from `templates/evm-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[cost-estimation]]
 - [[project-integration]]

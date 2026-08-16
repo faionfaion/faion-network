@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ci-prod-readiness-gates]] | Review SLO + prod-readiness gates compose the PR-level concern surface |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-code-review-slo-and-rubric.py` | Validator script. | after subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ci-prod-readiness-gates]]
 - [[client-conventions-reverse-engineering]]

@@ -40,6 +40,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[portfolio-strategy]] | Horizon framing maps onto the lifecycle stage. |
@@ -79,6 +81,8 @@
 | `scripts/validate-product-lifecycle.py` | Validate the methodology output artefact against the schema in content/02-output-contract.xml | Pre-commit + CI on artefact changes |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[portfolio-strategy]]
 - [[solo-pivot-decision-framework]]

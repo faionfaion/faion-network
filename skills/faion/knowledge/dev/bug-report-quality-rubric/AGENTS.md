@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | none | Standalone — runs at ticket intake, no upstream artefacts. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-bug-report-quality-rubric.py` | Validate a rubric output JSON against the schema | After scoring, before posting verdict back to tracker |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[code-review]] — same artefact-gate pattern applied to PRs.
 - [[code-coverage]] — rubric for tests instead of bug reports.

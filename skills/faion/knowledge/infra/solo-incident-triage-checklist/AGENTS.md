@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | solo-deploy-checklist | Rollback procedure comes from the deploy plan. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-solo-incident-triage-checklist.py` | Validate IncidentReport JSON against the schema. | Post-incident before closing. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[solo-deploy-checklist]]
 - [[monitoring-logging]]

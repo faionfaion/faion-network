@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | server-init-bootstrap | Hardening runs in phase 4 of bootstrap; this methodology defines the exact config. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ssh-hardening.py` | Validate SshPlan JSON against the schema. | Before applying drop-in to /etc/ssh/sshd_config.d/. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[server-init-bootstrap]]
 - [[firewall-management]]

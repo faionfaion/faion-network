@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/ux/ui-designer/design-tokens-fundamentals` | Token tiers consumed by the generator. |
@@ -68,6 +70,8 @@
 | `templates/tailwind-design-tokens.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/tailwind-design-tokens.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[design-tokens-fundamentals]]
 - [[handoff-spec-template]]

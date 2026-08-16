@@ -29,6 +29,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/rag-engineer/rag-eval-production-monitoring` | Source of incident candidates. |
@@ -63,6 +65,8 @@
 | `scripts/validate-rag-failure-taxonomy.py` | Validates output against the 02-output-contract schema. | Pre-commit; CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[rag-eval-production-monitoring]]
 - [[rag-eval-pipeline]]

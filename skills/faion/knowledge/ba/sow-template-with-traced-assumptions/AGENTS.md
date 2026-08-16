@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/ba/business-analyst` | parent domain context (vocabulary, neighbouring methodologies) |
@@ -77,6 +79,8 @@
 | `scripts/validate-sow-template-with-traced-assumptions.py` | Validate the spec artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[scope-creep-firewall]]
 - [[change-request-impact-rubric]]

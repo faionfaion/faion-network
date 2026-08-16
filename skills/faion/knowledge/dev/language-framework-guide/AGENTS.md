@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[files-reference]]` | After choosing a language, route into the language-specific methodology. |
@@ -68,6 +70,8 @@
 | `scripts/validate-language-framework-guide.py` | Validates that a recommendation report contains primary + 2 alternatives + ADR fields. | Post-recommendation, pre-merge. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `free/dev/software-developer/`
 - `[[files-reference]]` — routes into language-specific methodology after the pick

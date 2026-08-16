@@ -41,6 +41,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[lb-technology-selection]] | The layer decision feeds the product / tool decision next. |
@@ -77,6 +79,8 @@
 | `scripts/validate-lb-layer-selection.py` | Validate the layer decision-record JSON against 02-output-contract schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[lb-algorithms]]
 - [[lb-health-checks]]

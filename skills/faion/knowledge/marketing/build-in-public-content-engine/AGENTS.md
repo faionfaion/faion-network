@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | build-in-public-cadence | Daily-weekly rhythm this engine plugs into. |
@@ -74,6 +76,8 @@
 | `scripts/validate-build-in-public-content-engine.py` | Validate Build-in-Public Content Engine output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[build-in-public-cadence]]
 - [[content-atomization-engine]]

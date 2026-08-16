@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | none | This methodology is self-contained; no upstream artefact required. |
@@ -69,6 +71,8 @@
 Up to 1.1.0 this methodology blamed the grammar mask for the accuracy loss. The prescription was right; the cause was wrong. Per arXiv:2604.03616 the loss sits overwhelmingly in the format INSTRUCTION in the prompt, so pass 1 must drop the schema from its prompt, not merely drop `response_format` from its request. Two knock-on corrections: a strict schema cannot cause a MISSING required field (constrained decoding makes the closing brace unreachable until it is emitted), so the ~30% required-field omission seen with the Anthropic Agent SDK `output_format=json_schema` on Sonnet 4.5 is an integration defect on that path rather than the format tax; and the production fix that followed it — plain text parsed into Pydantic — is the researched-correct shape, a one-pass degenerate form of what this methodology prescribes, not a superstitious workaround.
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[weak-model-preselection]]
 - [[tool-description-as-prompt]]

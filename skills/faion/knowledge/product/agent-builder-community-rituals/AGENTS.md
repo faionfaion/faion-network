@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/product/product-manager` | Parent skill — provides operating context for this methodology. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-agent-builder-community-rituals.py` | Validate calendar + per-session log against rule set (cadence, host rotation, artefact link, 90-day retention). | Weekly after each ritual. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-product-success-metrics-catalog]] — peer geek-product methodology consuming the retention metric.
 - [[segment-aware-design-system]] — sibling methodology for product-experience rituals.

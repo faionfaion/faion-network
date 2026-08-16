@@ -47,6 +47,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - `context-graph-engineering` — consumes this ledger. Its `Skip If` refuses the methodology outright when the incumbent cost is unmeasured; this is the upstream that supplies it.
 - `inference-cost-unit-economics` — money per feature and gross margin. This methodology is one input to it, denominated in tokens per lookup rather than currency per outcome.
 - `rag-eval-retrieval-metrics` — recall and MRR. Correctness here is a coarse binary used only to make cost-per-correct-answer computable; use that methodology for real quality measurement.

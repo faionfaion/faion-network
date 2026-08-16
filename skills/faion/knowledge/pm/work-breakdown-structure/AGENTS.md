@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[wbs-creation]] | Sibling — the build-focused playbook; this methodology is the framing standard. |
@@ -84,6 +86,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-work-breakdown-structure.py` | Validate a `WBS` against the JSON Schema + invariants | Pre-commit on WBS edits |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[wbs-creation]]
 - [[raci-ai-assisted]]

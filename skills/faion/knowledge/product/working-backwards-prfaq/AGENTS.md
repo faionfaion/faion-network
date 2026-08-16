@@ -48,6 +48,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - `kill-or-keep-criteria` — thresholds for a product line that already exists; this gate runs before one does.
 - `what-you-dont-know-about-launch-pre-mortem` — launch-time risk; the PR/FAQ is concept-time, and a pre-mortem on a concept that should have been killed is wasted.
 - `product-discovery` — what `proceed` authorises you to start.

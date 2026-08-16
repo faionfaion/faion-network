@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[php-laravel]] | Umbrella for service / queue patterns. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/laravel-layering-audit.sh` | Lint Eloquent calls in controllers, `DB::transaction` in controllers, raw model responses. | Pre-commit; CI on Laravel projects. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[php-laravel]]
 - [[php-laravel-patterns]]

@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/behavior-parity-verification` | Sibling: parity for production traffic; characterization for offline replay. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-characterization-test-recipes.py` | Validate the suite-manifest JSON against schema + branch-coverage rule. | After sweep, before refactor begins. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[behavior-parity-verification]] — parity for production traffic, sibling to this offline-replay methodology.
 - [[ci-quality-gate-design]] — CI gate that blocks refactor PRs without a characterization manifest.

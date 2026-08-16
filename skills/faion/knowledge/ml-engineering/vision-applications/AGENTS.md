@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/multimodal-ai/vision-basics` | core resize / encode / cache / Pydantic patterns reused here. |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-vision-applications.py` | Validate task-specific JSON against 02-output-contract task schemas. | Post-VLM call, before downstream auto-action. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[vision-basics]] — single-image typed extraction layer this builds on.
 - [[vision-classification-moderation]] — moderation patterns extended with policy enforcement.

@@ -30,6 +30,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `file-reference-passing` | Handoff payloads carry IDs, content lives in the store. |
@@ -69,6 +71,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-handoff-id-payload.py` | Validates a handoff payload against the schema | Before passing any handoff to the next agent |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[file-reference-passing]]
 - [[idempotent-write-tools]]

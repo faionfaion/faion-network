@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[risk-management]] | Process around the register (identify, plan, monitor) |
@@ -79,6 +81,8 @@
 | `scripts/validate-risk-register.py` | Lint register against opportunity quota + named-owner + trigger-observable rules | CI on register changes |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `pro/pm/project-manager/`
 - [[risk-management]]

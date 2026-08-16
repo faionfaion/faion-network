@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/ux/ui-designer/design-to-dev-handoff` | Process layer this spec sits inside. |
@@ -75,6 +77,8 @@
 | `scripts/validate-handoff-spec-template.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[design-to-dev-handoff]]
 - [[edge-case-checklist]]

@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `stakeholder-engagement` | Trio members are stakeholders themselves. |
@@ -75,6 +77,8 @@
 | `scripts/validate-product-trio-rituals.py` | Schema-validate the session artefact. | Pre-commit + weekly. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[communications-management]]
 - [[stakeholder-engagement]]

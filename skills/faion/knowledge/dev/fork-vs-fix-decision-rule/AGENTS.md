@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/software-developer/supply-chain-risk-checklist-spike` | Sister methodology — score the library; fork decision is the downstream action. |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-fork-vs-fix-decision-rule.py` | Validate FixDecision JSON against schema | Per fork-vs-fix decision; quarterly audit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[supply-chain-risk-checklist-spike]]
 - parent skill: `pro/dev/software-developer/`

@@ -34,6 +34,8 @@
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[sdd-workflow-overview]] — CR / BUG side-streams parallel the feature lifecycle.
 - [[project-spec-structure]] — BUG-driven business-rule updates land here.
 - [[readiness-checklist]] — does NOT apply to CR / BUG; they have their own lighter gate.

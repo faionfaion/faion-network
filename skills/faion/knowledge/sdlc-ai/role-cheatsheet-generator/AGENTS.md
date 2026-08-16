@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[mr-graph-vs-diff-reviewer]] | Corpus-graph traversal pattern reused here. |
@@ -77,6 +79,8 @@
 | `scripts/validate-role-cheatsheet-generator.py` | Validate generated cheatsheet artefact + verify tier-gating + deterministic header. | Pre-merge of every regenerate |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[mr-graph-vs-diff-reviewer]]
 - [[task-agent-drafts-spec-before-coding]]

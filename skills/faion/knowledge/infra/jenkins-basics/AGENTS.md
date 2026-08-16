@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[github-actions-basics]] | Comparator surface; decide whether Jenkins is even the right tool. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-jenkins-basics.py` | Validate the Jenkinsfile artefact JSON against 02-output-contract schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[jenkins-pipeline-patterns]]
 - [[github-actions-basics]]

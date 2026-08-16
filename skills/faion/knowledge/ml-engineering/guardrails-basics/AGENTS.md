@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[guardrails-implementation]]` | Sibling for advanced patterns (NeMo Guardrails, semantic router). |
@@ -70,6 +72,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-guardrails-basics.py` | Validates guardrails-spec.json: ≥4 layers, classifier is last, fail_closed default true. | Pre-commit on spec. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/llm-integration/`
 - `[[guardrails-implementation]]`

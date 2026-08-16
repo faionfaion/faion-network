@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `decimal-as-string-pattern` | Same sampling-time-mask principle for numeric/format fields. |
@@ -69,6 +71,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-enum-constraints-closed-vocabularies.py` | Validates a JSON instance against the enum value set | Pre-commit on schema changes |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[decimal-as-string-pattern]]
 - [[discriminated-union-output]]

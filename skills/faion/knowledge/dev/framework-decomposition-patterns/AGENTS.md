@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/characterization-test-recipes` | Pre-refactor safety net for behavior-preserving decomposition. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-framework-decomposition-patterns.py` | Validate a decomposition report against the schema + pattern-framework consistency. | After proposal; before extraction. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[characterization-test-recipes]] — safety net for the extraction.
 - [[context-window-curation-for-coding-agents]] — bounded files = bounded context.

@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[llm-drift-daily-triage]]` | Daily report references taxonomy ids. |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-failure-mode-taxonomy.py` | Validates taxonomy.json: exactly 12 modes, no duplicate ids, every mode has detector+severity+linked_methodology. | Pre-commit on taxonomy.json; CI before publishing. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/llm-integration/`
 - `[[llm-drift-daily-triage]]`

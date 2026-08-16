@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[gcp-security-iam]] | Sibling methodology that supplies context required here. |
@@ -75,6 +77,8 @@
 | `scripts/validate-gcp-overview-cli.py` | Validate the checklist artefact against the JSON Schema in `02-output-contract.xml`. | CI on each artefact change; pre-commit; manual on draft. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[gcp-security-iam]]
 - [[gcp-networking-vpc]]

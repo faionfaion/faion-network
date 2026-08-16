@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[accessibility-evaluation]] | Source of per-SC findings the conformance report cites |
@@ -73,6 +75,8 @@
 | `scripts/validate-ada-title-ii-compliance-2026.py` | Validate conformance-report JSON against schema | Pre-submission / pre-procurement |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[accessibility-evaluation]]
 - [[wcag-22-compliance]]

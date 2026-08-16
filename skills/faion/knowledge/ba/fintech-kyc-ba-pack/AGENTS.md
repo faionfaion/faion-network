@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[compliance-traceability-pack]]` | compliance-traceability pack pattern |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-fintech-kyc-ba-pack.py` | Enforce the FinTech KYC BA Pack output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[compliance-traceability-pack]] — parent pack methodology.
 - [[healthtech-fhir-ba-pack]] — sibling domain pack.

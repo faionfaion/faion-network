@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[go-project-structure]] | Layered packages live under internal/. |
@@ -68,6 +70,8 @@
 | `scripts/validate-go-standard-layout.py` | Validate layered package spec against 02-output-contract schema | Pre-publish gate / pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[go-project-structure]]
 - [[go-error-handling-patterns]]

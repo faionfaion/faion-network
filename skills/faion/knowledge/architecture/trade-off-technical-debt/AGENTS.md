@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[architecture-decision-records]] | Debt items often inline into an ADR Decision section. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-trade-off-technical-debt.py` | Validate debt-record against schema + budget sanity | Pre-commit; CI on each debt-backlog change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[trade-off-stakeholder-communication]]
 - [[architecture-decision-records]]

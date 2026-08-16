@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/python-developer/python-modern-2026` | Defines the 3.11+ baseline and tooling required for TaskGroup/asyncio.timeout. |
@@ -70,6 +72,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-python-async.py` | Scan a module for blocking calls in async def and missing task references. | Pre-commit and CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[python-fastapi]]
 - [[python-pytest-async]]

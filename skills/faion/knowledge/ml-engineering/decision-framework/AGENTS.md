@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | none | This methodology is the upstream decision; nothing else loads before it. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-decision-framework.py` | Validate a decision-record JSON against the contract. | Pre-commit on the record file; before opening the architecture-review PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[cost-optimization]] — consumes this decision and prices each axis.
 - [[claude-api]] — implements the chosen tier on the Anthropic path.

@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/llm-integration/prompt-basics` | PromptTemplate is the unit chained by PromptChain. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-prompt-techniques.py` | Validate a PromptLibrary entry JSON matches the output contract. | Pre-merge in CI; nightly drift scan. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[prompt-basics]] — base PromptTemplate.
 - [[chain-of-thought]] — one chaining pattern.

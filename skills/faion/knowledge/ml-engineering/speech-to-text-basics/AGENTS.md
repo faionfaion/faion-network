@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/multimodal-ai/speech-to-text-advanced` | Sibling: production patterns including speaker diarisation. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-speech-to-text-basics.py` | Validate stt-config: provider, language, format, timestamps enabled. | Pre-commit + CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[speech-to-text-advanced]]
 - [[openai-api-integration]]

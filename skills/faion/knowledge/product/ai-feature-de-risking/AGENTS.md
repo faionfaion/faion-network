@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/product/product-manager/ai-native-product-development` | Provides product-positioning context. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-feature-de-risking.py` | Enforce the eval-report contract (kill-criteria present, set version pinned, n + mean + CI present, cost logged). | After every eval run, before commit / publish. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-native-product-development]] — sibling methodology providing positioning context.
 - [[agentic-ai-product-development]] — peer methodology consuming the de-risking output as a gate.

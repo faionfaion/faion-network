@@ -46,6 +46,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - `verification-rung-placement-rule` — which instrument a check belongs on. That decides what the gate is; this decides what it does when it breaks.
 - `lint-autofix-vs-flag-decision-rule` — what to do with a finding once the gate produced one. Same discipline, one step later.
 - `ci-eval-gate-config` — the CI shape for eval gates; the fail-closed clause belongs in that config.

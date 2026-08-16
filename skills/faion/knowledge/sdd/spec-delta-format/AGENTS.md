@@ -45,6 +45,8 @@
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - `project-spec-structure` — the baseline this file is a delta against. `content/03-delta-update.xml` there mandates a same-PR delta and never defines one; this methodology is that definition. Neither is usable without the other, which is why both sit at the same tier.
 - `readiness-checklist` — item `i8-spec-delta` is the gate that asks whether the delta was written and merged. Verify-then-archive is the ordering that item depends on.
 - `spec-requirements` — the requirement ids that appear inside `CHANGED` and `ADDED` blocks, and that a `RENAMED` must carry across.

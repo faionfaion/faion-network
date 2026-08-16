@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[wcag-22-compliance]] | Source of the conformance criteria the report cites |
@@ -78,6 +80,8 @@
 | `scripts/validate-regulatory-compliance-2026.py` | Validate compliance-report JSON against the schema (required fields, jurisdictions, conformance level) | CI on every report change; pre-publication gate |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[wcag-22-compliance]]
 - [[testing-with-assistive-technology]]

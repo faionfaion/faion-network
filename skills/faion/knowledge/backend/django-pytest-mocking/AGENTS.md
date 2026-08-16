@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[django-pytest-fixtures]]` | Fixtures + CELERY_TASK_ALWAYS_EAGER setting. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-django-pytest-mocking.py` | Validate the mocking spec JSON. | After spec emission. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[django-pytest-fixtures]] — eager Celery setting consumed here.
 - [[django-pytest-integration]] — integration tests consuming these mocks.

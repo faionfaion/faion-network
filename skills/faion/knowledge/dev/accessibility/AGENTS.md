@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[a11y-audit-per-screen-checklist]] | Per-screen checklist this report fills in. |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-accessibility.py` | Validate a11y-report against schema + WCAG floors | Pre-commit; CI on each screen change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[a11y-audit-per-screen-checklist]]
 - [[design-tokens-basics]]

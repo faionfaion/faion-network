@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[embeddings-model-selection]] | Decides which model+dimension the producer must use. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-embedding-generation.py` | Validate a producer-config JSON against the contract. | Pre-commit; CI gate before deploy. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[embeddings-model-selection]] — chooses the model the producer wraps.
 - [[embeddings-provider-apis]] — per-provider SDK quirks.

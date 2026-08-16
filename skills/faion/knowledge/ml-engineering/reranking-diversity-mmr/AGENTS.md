@@ -30,6 +30,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `geek/ai/rag-engineer/reranking-two-stage` | MMR runs as the second stage. |
@@ -66,6 +68,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-reranking-diversity-mmr.py` | Validates output against the 02-output-contract schema. | Pre-commit; CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[reranking-two-stage]]
 - [[reranking-pipeline-integration]]

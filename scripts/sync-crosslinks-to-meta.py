@@ -24,9 +24,15 @@ choice is made.
 Links outside the two sections (prose in `Summary`, `Applies If`, `Skip If`)
 are left exactly where they are — they are sentences, not a graph.
 
+Each leaf then says so itself: `--annotate` stamps a `<!-- canonical: … -->`
+pointer under both headings, and `--check` is the gate that keeps the pointer
+honest. A provenance comment nothing verifies is how the corpus got here.
+
 Usage:
     python3 scripts/sync-crosslinks-to-meta.py             # dry run (default)
     python3 scripts/sync-crosslinks-to-meta.py --report    # per-file detail
+    python3 scripts/sync-crosslinks-to-meta.py --check     # drift gate, exit 1
+    python3 scripts/sync-crosslinks-to-meta.py --annotate --write
     python3 scripts/sync-crosslinks-to-meta.py --write     # apply
 """
 from __future__ import annotations
@@ -47,8 +53,38 @@ FENCE_RE = re.compile(r"^\s*(```|~~~)")
 
 # Heading vocabulary, lowercased. Mirrors SECTION_ALTERNATES in
 # validate-methodology-v2.py — writers use either v2-canonical or v1-legacy names.
-ASSUMES_HEADINGS = {"assumes loaded", "prerequisites"}
+ASSUMES_HEADINGS = {"assumes loaded"}
 RELATED_HEADINGS = {"related", "see also", "references"}
+
+# `## Prerequisites` is NOT one of them, though the validator lists it beside
+# `## Assumes Loaded` as an optional section. On disk it is an input-artefact
+# table — `| Input artifact | Format | Source |` — in 2,480 of the 2,497 leaves
+# that have it. The 17 exceptions put a wikilink in the *Source* column, naming
+# where an input comes from rather than what to load, and this parser reads the
+# first column, so none of them was ever lifted. Treating the heading as a
+# prerequisite list would put a false "canonical: meta.json" claim on 2,480
+# tables that have nothing to do with the cross-link graph.
+
+# Provenance markers written into AGENTS.md by --annotate. Detected by prefix so
+# the wording can be revised without orphaning the ones already on disk.
+# Kept short deliberately. The marker is a pointer, not an explanation — the
+# reasoning lives once in meta-json-spec.md §3.2 rather than 2,520 times on
+# disk, and every byte here is paid on every leaf an agent opens, including on
+# a customer's machine where meta.json does not ship and the "edit there"
+# half would be advice they cannot act on.
+MARKER_PREFIX = "<!-- canonical:"
+MARKER_ASSUMES = "<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->"
+# Deliberately narrower than the assumes marker. `## Related` is not wholly
+# derived: 2,168 of its bullets are prose that meta.json does not hold, and 434
+# of those name a pre-F-067 path (`pro/…`, `geek/…`) that resolves to nothing.
+# Claiming the whole section is generated would be false.
+#
+# It also must not contain a doubled-bracket example. `extract()` reads this
+# same file back, so a literal one in the marker would be lifted as a link to a
+# methodology named after the placeholder.
+MARKER_RELATED = (
+    "<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->"
+)
 
 
 def leaves() -> list[Path]:
@@ -144,6 +180,43 @@ def rewrite(meta: dict, assumes: list[dict], related: list[str]) -> dict:
     return out
 
 
+def annotate(text: str) -> str:
+    """Insert the provenance marker under each cross-link heading.
+
+    Idempotent: an existing marker on the line after the heading is replaced,
+    so revising the wording does not stack a second one.
+    """
+    lines = text.splitlines(keepends=True)
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        out.append(line)
+        i += 1
+        m = HEADING_RE.match(line.rstrip("\n"))
+        if not m:
+            continue
+        heading = m.group(1).strip().lower().split("(")[0].strip()
+        if heading in ASSUMES_HEADINGS:
+            marker = MARKER_ASSUMES
+        elif heading in RELATED_HEADINGS:
+            marker = MARKER_RELATED
+        else:
+            continue
+        # Drop whatever separates the heading from the body, replace any marker
+        # already there, and re-emit one canonical blank-marker-blank block.
+        # Consuming the trailing blanks too is what makes a second run a no-op
+        # rather than a file that grows one blank line per invocation.
+        while i < len(lines) and not lines[i].strip():
+            i += 1
+        if i < len(lines) and lines[i].lstrip().startswith(MARKER_PREFIX):
+            i += 1
+            while i < len(lines) and not lines[i].strip():
+                i += 1
+        out.append("\n" + marker + "\n\n")
+    return "".join(out)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -151,7 +224,15 @@ def main() -> int:
                     help="apply changes; without it the script only reports")
     ap.add_argument("--report", action="store_true",
                     help="list every file that would change")
+    ap.add_argument("--check", action="store_true",
+                    help="drift gate: exit 1 if any meta.json disagrees with its "
+                         "AGENTS.md, without writing anything")
+    ap.add_argument("--annotate", action="store_true",
+                    help="write the 'canonical: meta.json' marker under each "
+                         "cross-link heading in AGENTS.md (idempotent)")
     args = ap.parse_args()
+    if args.check:
+        args.write = False
 
     slugs = known_slugs()
     stats = Counter()
@@ -173,10 +254,15 @@ def main() -> int:
             stats["parse_error"] += 1
             continue
 
-        assumes, related = extract(
-            (leaf / "AGENTS.md").read_text(encoding="utf-8", errors="replace"),
-            meta.get("slug") or leaf.name,
-        )
+        agents_path = leaf / "AGENTS.md"
+        agents_text = agents_path.read_text(encoding="utf-8", errors="replace")
+        assumes, related = extract(agents_text, meta.get("slug") or leaf.name)
+
+        if args.annotate:
+            annotated = annotate(agents_text)
+            if annotated != agents_text:
+                stats["annotated"] += 1
+                agents_path.write_text(annotated, encoding="utf-8")
         for entry in assumes:
             if entry["slug"] not in slugs:
                 unresolved[entry["slug"]] += 1
@@ -215,9 +301,18 @@ def main() -> int:
     print(f"related entries:           {stats['related_entries']}")
     print(f"assumes rows without why:  {stats['assumes_without_why']}")
     print(f"skipped (reformat only):   {len(reformat_only)}")
+    if args.annotate:
+        print(f"AGENTS.md annotated:       {stats['annotated']}")
     if stats["meta_missing"] or stats["parse_error"]:
         print(f"meta.json missing:         {stats['meta_missing']}")
         print(f"meta.json unparseable:     {stats['parse_error']}")
+
+    if args.check and changed:
+        print(f"\nDRIFT: {len(changed)} meta.json files disagree with their "
+              f"AGENTS.md. Run --write.")
+        for path, a, r in changed[:20]:
+            print(f"  {path.parent.relative_to(ROOT)}  assumes={a} related={r}")
+        return 1
 
     if unresolved:
         print(f"\nUNRESOLVED slugs: {len(unresolved)} distinct, "

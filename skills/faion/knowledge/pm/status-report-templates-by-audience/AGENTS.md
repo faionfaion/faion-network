@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[reporting-dashboards]] | The source spreadsheet often comes from the reporting pipeline. |
@@ -87,6 +89,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-status-report-templates-by-audience.py` | Validate the emission record against 02-output-contract | Friday before send |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[reporting-dashboards]]
 - [[notion-pm]]

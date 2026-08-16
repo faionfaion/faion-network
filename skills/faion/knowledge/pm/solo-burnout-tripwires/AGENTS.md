@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[side-project-financial-runway]] | Financial pressure is the most common burnout amplifier; runway anchors the MRR-to-effort tripwire. |
@@ -74,6 +76,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-solo-burnout-tripwires.py` | Validate weekly review against 02-output-contract schema | Weekly review block |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[side-project-financial-runway]]
 - [[solo-context-switch-protocol]]

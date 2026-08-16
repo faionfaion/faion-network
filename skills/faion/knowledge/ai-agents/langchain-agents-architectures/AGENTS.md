@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `idempotent-write-tools` | LangGraph retries must be safe; use idempotency keys. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-langchain-agents-architectures.py` | Validates a tool-invocation result and confirms max_iterations + error handling are configured | Pre-commit on agent module changes |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[idempotent-write-tools]]
 - [[headless-cli-four-guards]]

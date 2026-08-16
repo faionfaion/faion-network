@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/pm/distressed-project-diagnostic-script` | This is the early-warning input to that script's rescue plan. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-stakeholder-sentiment-tracker.py` | Validate a weekly run JSON against the output contract (consent dates, three-class output, trend length, alarm/action-plan pairing). | After every weekly run, before commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ramp-task-difficulty-ladder]] — peer operating artefact in the same PM space.
 - [[team-charter-working-agreement]] — peer methodology shaping how the team handles trust signals.

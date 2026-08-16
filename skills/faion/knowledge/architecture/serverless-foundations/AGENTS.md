@@ -67,6 +67,8 @@
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[serverless-architecture-patterns]]
 - [[serverless-cold-start-optimization]]
 - [[serverless-cost-optimization]]

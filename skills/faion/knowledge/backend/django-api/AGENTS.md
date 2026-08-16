@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[django-models]]` | Field types + Meta consumed by serializers. |
@@ -83,6 +85,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-django-api.py` | Validate an API spec JSON against the contract. | After the spec is emitted, before endpoint codegen runs. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[django-base-model]] — uid pattern surfaced through serializers.
 - [[django-models]] — model field types consumed by ModelSerializer / ModelSchema.

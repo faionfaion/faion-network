@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/product/AGENTS.md` | Parent skill context (vocabulary, neighbouring methodologies) |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-agency-acquisition-prep.py` | Validate output artefact against JSON Schema | Pre-commit + CI on each artefact change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `skills/faion/knowledge/pro/product/product-operations/`
 - peer methodologies: siblings under the parent skill

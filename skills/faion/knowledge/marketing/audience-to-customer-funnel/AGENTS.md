@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | audience-to-paid-conversion-loop | Conversion stage shares definitions with the paid-loop methodology. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-audience-to-customer-funnel.py` | Validate FunnelArtefact JSON against the schema. | Monthly review + after KPI redefinition. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[audience-to-paid-conversion-loop]]
 - [[brand-voice-consistency-system]]

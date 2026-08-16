@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[gcp-iam-design]] | Sibling methodology that supplies context required here. |
@@ -76,6 +78,8 @@
 | `scripts/validate-gcp-resource-hierarchy.py` | Validate the spec artefact against the JSON Schema in `02-output-contract.xml`. | CI on each artefact change; pre-commit; manual on draft. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[gcp-iam-design]]
 - [[gcp-billing-cost]]

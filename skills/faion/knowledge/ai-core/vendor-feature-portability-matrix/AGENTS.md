@@ -70,6 +70,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[fine-tune-vs-prompt-decision-tree]] — depth axis on vendor lock-in.
 
 ## Decision tree

@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/sdlc-ai/methodology-as-json-feed` | supplies the JSON shape the adapter consumes. |
@@ -66,6 +68,8 @@
 | `scripts/validate-faion-cli-agent-adapter-pattern.py` | Validate the code artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[methodology-as-json-feed]]
 - [[citation-contract-back-to-source]]

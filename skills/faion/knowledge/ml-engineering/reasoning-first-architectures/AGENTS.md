@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/cost-optimization` | Per-model cost vocabulary |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-reasoning-first-architectures.py` | Lint reasoning-routing.yaml against schema + rules | Pre-commit + pre-deploy |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[cost-optimization]] — per-model rate cards
 - [[tool-use-function-calling]] — reasoning models often gate tool-call decisions

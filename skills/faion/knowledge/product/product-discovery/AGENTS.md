@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/product/product-planning/continuous-discovery` | Cadence layer that feeds raw signals into discovery cycles. |
@@ -75,6 +77,8 @@
 | `scripts/validate-product-discovery.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[continuous-discovery]]
 - [[spec-writing]]

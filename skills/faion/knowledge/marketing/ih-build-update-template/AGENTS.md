@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[hook-bank-template]] | IH post hooks feed the bank; bank patterns feed the hook draft. |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ih-build-update-template.py` | Validate IH post bundle (TL;DR length, body char range, 3 numbers, ask present) against 02-output-contract schema | Pre-publish gate / pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[hook-bank-template]]
 - [[icp-fit-scorecard-solo]]

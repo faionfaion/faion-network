@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[ai-transcript-to-traceable-requirement]]` | source requirement has a provenance trail |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-ac-hallucination-checklist.py` | Enforce the AI Acceptance Criteria Hallucination Checklist output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-story-truth-checklist]] — sister checklist on user stories.
 - [[ai-transcript-to-traceable-requirement]] — upstream traceability.

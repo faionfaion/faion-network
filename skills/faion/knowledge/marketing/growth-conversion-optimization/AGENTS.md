@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/marketing/conversion-optimizer` | Parent CRO context — funnel + activation discipline. |
@@ -80,6 +82,8 @@
 | `scripts/validate-growth-conversion-optimization.py` | Validate artefact against the JSON Schema in `content/02-output-contract.xml`. Stdlib-only. | CI on artefact change; pre-commit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[funnel-basics-framework]]
 - [[growth-conversion-optimization]]

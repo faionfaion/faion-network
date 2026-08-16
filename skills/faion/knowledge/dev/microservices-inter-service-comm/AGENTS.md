@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[microservices-service-boundaries]] | Boundary definition precedes communication choice. |
@@ -73,6 +75,8 @@
 | `scripts/validate-microservices-inter-service-comm.py` | Validate the call decision artefact against the schema | Pre-commit + CI |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[microservices-circuit-breaker]]
 - [[microservices-saga-pattern]]

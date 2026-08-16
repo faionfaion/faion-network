@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[php-laravel]] | Umbrella for controller / queue patterns. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/eloquent-n-plus-one-audit.sh` | Heuristic scan for likely N+1 sites (`::all()`, lazy access in a loop). | Pre-commit; CI on Laravel projects. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[php-laravel]]
 - [[laravel-patterns]]

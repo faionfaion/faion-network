@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[experiment-hypothesis-scoring]] | Upstream producer of the pre-registration. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-experiment-verdict-template.py` | Validate one verdict card JSON against the schema | After verdict draft, before close in ledger |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[experiment-hypothesis-scoring]]
 - [[experiment-ledger-discipline]]

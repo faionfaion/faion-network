@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | nginx-reverse-proxy | TLS config is consumed by nginx vhosts produced upstream. |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/test-tls-config.sh` | Runs testssl.sh / sslyze against the live config. | Post-config-change + monthly. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[nginx-reverse-proxy]]
 - [[cloudflare-domain-dns]]

@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/client-handover-package` | Sibling: the handover record produced at engagement end. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-client-conventions-intake.py` | Validate intake-report JSON against schema + sign-off rule. | End of intake; before first PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[client-handover-package]] — sibling at engagement end.
 - [[ci-quality-gate-design]] — CI gate dimension's input.

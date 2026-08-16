@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `video-generation-production-service` | Service wrapper |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-video-generation-async-api.py` | Lint VideoJob OR provider-config | Pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[video-generation-production-service]] · [[video-generation-prompt-engineering]]
 - external: [Runway API](https://docs.dev.runwayml.com/) · [Luma API](https://docs.lumalabs.ai/) · [Google Veo](https://cloud.google.com/vertex-ai/generative-ai/docs/video-generation/overview)

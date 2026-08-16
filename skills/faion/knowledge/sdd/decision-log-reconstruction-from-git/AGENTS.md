@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/sdd/dark-knowledge-extraction-protocol` | complementary methodology: this one extracts what git knows, that one extracts what only the leaver knows. |
@@ -74,6 +76,8 @@
 | `scripts/validate-decision-log-reconstruction-from-git.py` | Validate the report artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[dark-knowledge-extraction-protocol]]
 - [[agents-md-for-receiving-team]]

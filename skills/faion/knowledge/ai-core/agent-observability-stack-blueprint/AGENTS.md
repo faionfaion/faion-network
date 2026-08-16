@@ -67,6 +67,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - parent skill: `geek/ai/`
 - `[[agent-postmortem-template]]`
 - `[[agent-drift-detection-statistical]]`

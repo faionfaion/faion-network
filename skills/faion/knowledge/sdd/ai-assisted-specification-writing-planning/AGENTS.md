@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ai-assisted-specification-writing]] | spec-layer counterpart whose output we consume |
@@ -68,6 +70,8 @@
 | `templates/plan-prompt.md` | LLM prompt template for task decomposition Generated from `templates/plan-prompt.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-assisted-specification-writing]]
 - [[sprint-capacity-from-complexity-tags]]

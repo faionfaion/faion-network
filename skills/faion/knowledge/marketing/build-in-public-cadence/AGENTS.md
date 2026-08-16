@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | build-in-public-content-engine | Provides the post formats this cadence consumes. |
@@ -73,6 +75,8 @@
 | `scripts/validate-build-in-public-cadence.py` | Validate Build In Public Cadence output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[build-in-public-content-engine]]
 - [[content-atomization-engine]]

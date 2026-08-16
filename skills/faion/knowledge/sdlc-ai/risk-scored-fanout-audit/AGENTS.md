@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[citation-contract-back-to-source]]` | Defines what counts as evidence; this methodology only enforces that it is present. |
@@ -72,6 +74,8 @@
 | `scripts/validate-risk-scored-fanout-audit.py` | Validates a per-wave verdict set and normalises agent field drift on read (`verdict \|\| judgment \|\| decision \|\| assessment` → `PARSE_ERROR`), counting fallbacks. Enforces the evidence floor, no-auto-apply, suspect coverage, reconciled counts, unique ids and the calibration floor. `--normalise` rewrites with canonical names; `--self-test` replays twelve fixtures. | After every wave aggregation, before the report is shown to anyone. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[citation-contract-back-to-source]] — what a piece of evidence has to be
 - [[gate-fail-closed-rule]] — why the floor lives in the aggregator, not the prompt

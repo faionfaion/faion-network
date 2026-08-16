@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | qa-test-pyramid-vs-trophy-decision | Provides the per-module shape this policy enforces. |
@@ -70,6 +72,8 @@
 | `scripts/validate-test-pyramid-policy-enforcement.py` | Validate Test Pyramid Policy Enforcement output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[qa-test-pyramid-vs-trophy-decision]]
 

@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/dev/software-architect/retro-adr-workflow` | Source of ADR drafts reviewed. |
@@ -73,6 +75,8 @@
 | `scripts/validate-weekly-arch-review-agenda-template.py` | Validate methodology output against `02-output-contract.xml` schema. | Pre-commit and CI before merge. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/dev/`
 - `[[retro-adr-workflow]]`

@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[eval-set-stratified-sampling-recipe]]` | downstream eval set keeps stratification balanced |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-verbatim-to-eval-row-recipe.py` | Enforce the Verbatim To Eval Row Recipe output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[eval-set-stratified-sampling-recipe]] — adjacent eval-set design.
 - [[weekly-rag-spotcheck-protocol]] — periodic eval consumer.

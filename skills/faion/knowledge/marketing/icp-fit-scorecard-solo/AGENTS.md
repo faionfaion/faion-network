@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[pricing-experiment-runbook]] | Scorecard outputs feed the "who to grandfather" decision in a price change. |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-icp-fit-scorecard-solo.py` | Validate scorecard rows + math against 02-output-contract schema | Pre-commit / quarterly review |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[pricing-experiment-runbook]]
 - [[hook-bank-template]]

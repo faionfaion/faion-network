@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[definition-of-done-multi-role]] | promotion gate enforces per-role DoD readiness |
@@ -72,6 +74,8 @@
 | `scripts/validate-sdd-promotion-gate-checklist.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[definition-of-done-multi-role]]
 - [[ai-assisted-specification-writing]]

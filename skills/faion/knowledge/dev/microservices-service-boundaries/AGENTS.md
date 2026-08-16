@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[ddd-aggregates]] | Aggregate is the unit of consistency inside a bounded context. |
@@ -73,6 +75,8 @@
 | `scripts/validate-microservices-service-boundaries.py` | Validate the boundary artefact against the schema | Pre-commit + CI |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ddd-aggregates]]
 - [[microservices-inter-service-comm]]

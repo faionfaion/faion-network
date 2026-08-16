@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[work-breakdown-structure]] | Provides the deliverable taxonomy each flow item maps to. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-value-stream-management.py` | Validate a `ValueStreamReport` against the JSON Schema | Pre-commit on every report change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[work-breakdown-structure]]
 - [[team-development]]

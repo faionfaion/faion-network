@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer/finetuning` | Parent decision; this methodology elaborates its 'api-sft' branch. |
@@ -76,6 +78,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-fine-tuning-openai-data-prep.py` | Validate that the data-prep spec matches the schema (counts, splits, token budget). | Pre-upload of every OpenAI fine-tune dataset. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[fine-tuning-openai-sft]] — downstream training step.
 - [[fine-tuning-openai-eval]] — eval set comes from the same split logic.

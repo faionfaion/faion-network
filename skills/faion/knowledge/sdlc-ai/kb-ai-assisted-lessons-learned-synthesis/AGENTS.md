@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[kb-codebase-rag-symbol-chunked]] | RAG pattern adapted for retro corpora |
@@ -84,6 +86,8 @@
 | `scripts/validate-lessons-learned-synthesis.py` | Verify every theme has ≥ 2 verbatim quotes + traceable sources | pre-publication |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[kb-ai-assisted-quarter-retro-synthesis]]
 - [[kb-versioned-agent-memory-files]]

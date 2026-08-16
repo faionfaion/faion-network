@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `idempotent-write-tools` | Gateway-side retries must be idempotent across tool effects. |
@@ -70,6 +72,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-gateway-fallback-chain.py` | Validates a call config: cross-provider chain, 4xx surfaced, telemetry attrs | Pre-commit on any change to the gateway client |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[idempotent-write-tools]]
 - [[confidence-thresholded-cascade]]

@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[django-models]]` | Field definitions consuming the choices=. |
@@ -71,6 +73,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-django-constants.py` | Validate a constants spec JSON. | After spec emission, before codegen. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[django-models]] — fields that consume the enum classes.
 - [[django-quality-linting]] — lint rules that flag magic strings/numbers.

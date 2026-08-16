@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/dev/backend-systems/rust-error-handling/AGENTS.md` | shared AppError pattern affects test setup |
@@ -71,6 +73,8 @@
 | `scripts/validate-rust-testing-antipatterns.py` | Validate output against the schema in `content/02-output-contract.xml` | CI on each artefact change; pre-commit; `--self-test` in unit run |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - Parent: `pro/dev/backend-systems/`
 - [[rust-backend]]

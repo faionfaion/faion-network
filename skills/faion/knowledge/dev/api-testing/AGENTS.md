@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `free/dev/software-developer/code-coverage` | Coverage gate this suite plugs into. |
@@ -71,6 +73,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-api-testing.py` | Validates the produced test-suite report against `02-output-contract.xml`. | After running the test suite, before publishing the report artifact. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[code-coverage]] — coverage gate.
 - [[django-api]] — DRF API patterns this suite tests.

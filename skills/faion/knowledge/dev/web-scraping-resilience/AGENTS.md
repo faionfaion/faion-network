@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/automation-tooling/web-scraping-agentic-workflow` | Umbrella — resilience is the production-hardening layer. |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-web-scraping-resilience.py` | Validate the resilience config JSON against schema + consistency rules. | On scrape start; nightly in CI. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[web-scraping-agentic-workflow]] — umbrella.
 - [[web-scraping-pagination]] — pool config consumed here.

@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[django-pytest-factories]]` | Factories produce the data each fixture wraps. |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-django-pytest-fixtures.py` | Validate the fixtures spec JSON. | After spec emission. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[django-pytest-factories]] — factories feeding the fixtures.
 - [[django-pytest-integration]] — integration-test layer built on these fixtures.

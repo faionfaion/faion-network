@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[notion-pm]] | Notion is a frequent source for tasks; query patterns inform fetch step. |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-reporting-dashboards.py` | Validate the report artefact against 02-output-contract schema | Pre-deliver gate |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[notion-pm]]
 - [[status-report-templates-by-audience]]

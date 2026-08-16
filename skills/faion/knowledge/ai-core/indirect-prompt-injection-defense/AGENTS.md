@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `[[guardrails-basics]]` | Output-side filters cover what IPI defense input-side does not. |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-indirect-prompt-injection-defense.py` | Validates a defense-spec.json against the schema and asserts every untrusted source has ≥1 taint-rule + ≥1 eval-case. | Pre-commit on the spec file; CI on every PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `geek/ai/`
 - `[[guardrails-basics]]` — output-side companion

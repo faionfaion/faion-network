@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/sdlc-ai/ai-agent-guardrails-pack` | guardrails prevent some debt patterns at write time; this methodology catches what slipped through. |
@@ -74,6 +76,8 @@
 | `scripts/validate-ai-debt-detection.py` | Validate the report artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-agent-guardrails-pack]]
 - [[citation-contract-back-to-source]]

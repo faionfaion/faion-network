@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/product/product-manager` | Parent skill — provides the operating context. |
@@ -72,6 +74,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-product-success-metrics-catalog.py` | Enforce catalog contract (all 5 metrics present with definitions + sources, semver + last_reviewed, owner is person). | After catalog draft, before dashboard wiring. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-feature-de-risking]] — sibling AI-PM methodology consuming these metrics.
 - [[ai-feature-trust-metrics]] — peer geek research methodology covering trust-specific axes.

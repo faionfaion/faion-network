@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[product-lifecycle]] | Stage classification informs whether the metrics are pivot-warranting. |
@@ -75,6 +77,8 @@
 | `scripts/validate-solo-pivot-decision-framework.py` | Validate the methodology output artefact against the schema in content/02-output-contract.xml | Pre-commit + CI on artefact changes |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[product-lifecycle]]
 - [[continuous-discovery-habits]]

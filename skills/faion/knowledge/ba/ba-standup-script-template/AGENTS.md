@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[acceptance-criteria]] | Day-to-day AC pipeline this script reports against |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ba-standup-script-template.py` | Validate daily script against output-contract | Before posting to standup channel |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[acceptance-criteria]]
 - [[ba-to-qa-handoff-template]]

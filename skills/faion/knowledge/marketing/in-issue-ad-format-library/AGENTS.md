@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[hook-bank-template]] | Soft-PS copy and mid-issue case hooks feed the bank; bank patterns inform new ad copy. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-in-issue-ad-format-library.py` | Validate library + rotation plan against 02-output-contract schema | Pre-publish gate / monthly review |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[hook-bank-template]]
 - [[icp-fit-scorecard-solo]]

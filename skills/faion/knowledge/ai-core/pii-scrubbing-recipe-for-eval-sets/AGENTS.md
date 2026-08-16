@@ -40,6 +40,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ml-engineer` | parent role skill — provides ML-engineer operating context |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-pii-scrubbing-recipe-for-eval-sets.py` | Validate pii-scrub-spec against 02-output-contract schema | Pre-commit + before downstream eval-harness build |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[production-trace-mining-for-training-data]]
 - [[rag-corpus-discovery-interview]]

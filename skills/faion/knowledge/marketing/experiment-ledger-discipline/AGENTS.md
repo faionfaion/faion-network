@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[experiment-hypothesis-scoring]] | Upstream producer of queued hypotheses. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-experiment-ledger-discipline.py` | Validate one ledger entry JSON against the schema | On entry create + close |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[experiment-hypothesis-scoring]]
 - [[experiment-verdict-template]]

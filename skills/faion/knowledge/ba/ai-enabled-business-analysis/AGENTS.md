@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[ai-enabled-business-analysis]]` | ba-core flavour of the methodology informs the BA-role variant |
@@ -75,6 +77,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-ai-enabled-business-analysis.py` | Enforce the AI-Enabled Business Analysis (Business Analyst) output contract | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[ai-ac-hallucination-checklist]] — feeds the AC gate.
 - [[ai-story-truth-checklist]] — feeds the story gate.

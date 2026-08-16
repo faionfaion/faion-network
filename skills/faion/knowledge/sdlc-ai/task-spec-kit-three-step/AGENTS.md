@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | none | This methodology has no upstream dependencies. |
@@ -74,6 +76,8 @@
 | `scripts/validate-task-spec-kit-three-step.py` | Validate produced artefact against schema | CI on each artefact change; pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[task-plan-mode-locked-execution]]
 - [[task-worktree-runtime-isolation]]

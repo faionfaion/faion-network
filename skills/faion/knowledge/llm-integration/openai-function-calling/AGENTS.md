@@ -34,6 +34,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/llm-integration/openai-chat-completions` | Base SDK patterns (retry, finish_reason). |
@@ -73,6 +75,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-openai-function-calling.py` | Validate a parse/tool-call record JSON matches the output contract. | Post-call in pipeline; nightly audit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[openai-chat-completions]] — base SDK pattern.
 - [[tool-use-basics]] — generic tool-loop discipline (provider-agnostic).

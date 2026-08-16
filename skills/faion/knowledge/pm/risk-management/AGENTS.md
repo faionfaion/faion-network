@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[risk-register]] | Register schema and scoring scales |
@@ -79,6 +81,8 @@
 | `scripts/validate-risk-management.py` | Validate risk register invariants (named owner, trigger observable, Accept has contingency) | Pre-commit; CI |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - parent skill: `pro/pm/project-manager/`
 - [[risk-register]]

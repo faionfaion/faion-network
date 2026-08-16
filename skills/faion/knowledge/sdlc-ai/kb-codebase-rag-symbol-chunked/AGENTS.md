@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[kb-symbol-index-fresh-tags]] | Symbol index is the upstream artefact |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-codebase-rag-symbol-chunked.py` | Validate the chunker config against the schema. | pre-merge of chunker change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[kb-symbol-index-fresh-tags]]
 - [[kb-agents-md-context-pyramid]]

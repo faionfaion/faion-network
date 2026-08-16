@@ -46,6 +46,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - `structured-output-mode-picker` — picks json mode vs strict SO vs tool call vs grammar; this methodology starts after that choice and asks what the chosen mode does not enforce.
 - `two-pass-reason-then-extract` — where the reasoning goes when a format contract is in play; the semantic gap is orthogonal and applies to both passes' outputs.
 - `closed-set-output-validation` — the strongest instance of a post-validation: when the field's legal values are an enumerable set you supplied, membership replaces the regex entirely.

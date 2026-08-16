@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/infra/server-craft/dotfiles-management` | Dotfiles sync is the first checklist row. |
@@ -76,6 +78,8 @@
 | `scripts/validate-offline-toolkit-checklist.py` | Validate artefact against the JSON Schema in content/02-output-contract.xml. Stdlib-only. | Pre-departure: after filling the checklist. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[dotfiles-management]]
 - [[secrets-management]]

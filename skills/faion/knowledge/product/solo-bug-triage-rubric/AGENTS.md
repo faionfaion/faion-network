@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/dev/code-quality/bug-reporting` | Provides the bug report intake shape. |
@@ -73,6 +75,8 @@
 | `scripts/validate-solo-bug-triage-rubric.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[solo-go-no-go-criteria]]
 - [[support-tool-pm-triage-spec]]

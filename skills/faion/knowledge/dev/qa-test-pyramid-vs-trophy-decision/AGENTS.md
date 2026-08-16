@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | qa-risk-matrix-method | Risk matrix produces module list and impact scores. |
@@ -74,6 +76,8 @@
 | `scripts/validate-qa-test-pyramid-vs-trophy-decision.py` | Validate Test Pyramid vs Testing Trophy: Per-Module Decision output JSON against the schema. | After subagent returns, before downstream consumer reads. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[qa-risk-matrix-method]]
 - [[qa-changed-lines-coverage-dashboard]]

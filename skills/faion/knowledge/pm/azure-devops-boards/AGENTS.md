@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[pm-tool-selection]] | Upstream decision picking ADO over Jira/Linear/etc. |
@@ -82,6 +84,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-azure-devops-boards.py` | Validate the YAML config against the schema | Pre-commit on every config change |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[jira-workflow-management]]
 - [[gitlab-boards]]

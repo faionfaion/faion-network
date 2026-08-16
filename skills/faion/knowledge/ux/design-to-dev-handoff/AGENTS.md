@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/ux/handoff-spec-template` | Spec artefact this process delivers. |
@@ -75,6 +77,8 @@
 | `scripts/validate-design-to-dev-handoff.py` | Validates a filled artefact JSON against the output-contract schema. | Pre-merge + scheduled review. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[handoff-spec-template]]
 - [[edge-case-checklist]]

@@ -39,6 +39,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[daily-ads-anomaly-checklist]] | Same threshold-based triage pattern. |
@@ -81,6 +83,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-deliverability-incident-runbook.py` | Validate the incident report JSON against the schema | After report draft, pre-publish |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[daily-ads-anomaly-checklist]]
 - [[experiment-verdict-template]]

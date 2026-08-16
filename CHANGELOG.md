@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Cross-links: `meta.json` is declared canonical, the prose copy stays, and the
+  drift check is now actually wired into the gate.** *Second half authored by the
+  concurrent session; verified and landed here.*
+
+  The design is better than the removal I had assumed was coming. Each
+  `## Assumes Loaded` and `## Related` section gains a
+  `<!-- canonical: meta.json -> … -->` marker, and the `[[slug]]` bullets stay as
+  the human-readable view. So it is not two sources of truth — it is one
+  canonical source, one rendering, and a check that they agree. A `[[slug]]`
+  inside a sentence stays prose, correctly: that is a sentence, not a graph.
+
+  Only `assumes_loaded` reaches L2 as `<assumes>`, on a measurement rather than a
+  preference: a link earns a place in the index only if it changes *what you
+  retrieve*, and carrying `related` there too cost +43% index size against +19%.
+
+  **What I added: the check was real but nothing ran it.** `--check` exits 1 on
+  drift and 0 when clean, and it appeared in neither `check-validators.sh`, nor
+  `f066-validate-all.sh`, nor the hooks — a working check that no gate invokes is
+  not a gate. Now registered in both as validator 12 / fast id `crosslinks`, and
+  mutation-tested: one altered prose link produces `crosslinks EXIT:1` as a NEW
+  failure against the baseline, clean tree exits 0.
+
+  **Correcting myself twice here.** My previous entry said the links were "added,
+  not moved", leaving two sources of truth — the marker plus the drift check
+  answers that, and the entry was written before the marker existed. And my first
+  reading of the exit code said the check passed on drift; that was `$?` after a
+  pipe reporting `tail`'s status, the same SIGPIPE-adjacent trap I fixed in the
+  hooks this morning and then walked into while testing.
+
 - **Cross-links move into `meta.json` as validated data.** *Authored by a
   concurrent session; found uncommitted in the working tree, verified and landed
   here rather than left to rot.* `scripts/sync-crosslinks-to-meta.py` lifts the
@@ -89,6 +118,25 @@ All notable changes to this project will be documented in this file.
 
   Links written inside a *sentence* — `Summary`, `Applies If`, `Skip If`, 125 of
   them — are untouched. They are prose, not a graph.
+
+  **Each leaf now names its own source of truth.** `--annotate` writes a
+  `<!-- canonical: meta.json -> … -->` marker under both headings in all 2,520
+  leaves, and `--check` is the drift gate that stops the marker from being a
+  comment asserting a property nothing measures. The two markers are worded
+  differently because the claim is not equally true: `## Assumes Loaded` is
+  wholly derived (2,445 identical `| Methodology | Why |` tables), while
+  `## Related` also holds 2,168 prose bullets `meta.json` does not carry.
+
+  **`## Prerequisites` gets no marker.** The validator lists it beside
+  `## Assumes Loaded`, but on disk it is an input-artefact table in 2,480 of the
+  2,497 leaves that have one — the 17 exceptions put a wikilink in the *Source*
+  column, naming where an input comes from rather than what to load, and the
+  parser reads the first column, so none was ever lifted.
+
+  **Found and not fixed:** 434 prose bullets under `## Related` name a path, and
+  **zero resolve** — every one is the pre-F-067 tier-first layout (`pro/…`,
+  `geek/…`, `free/…`, `solo/…`) that was deleted. The same defect as the
+  wikilinks, one layer over, still unvalidated.
 
 - **The multi-site rule now also refuses two sites on ONE line, and the
   same-heading carve-out no longer shelters them.** A table row binding its

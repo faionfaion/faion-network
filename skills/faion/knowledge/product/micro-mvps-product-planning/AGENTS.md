@@ -32,6 +32,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/product/product-planning/micro-mvp-cut-rubric` | Rubric that cuts scope down. |
@@ -64,6 +66,8 @@
 | `templates/micro-mvps.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/micro-mvps.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[micro-mvp-cut-rubric]]
 - [[product-discovery]]

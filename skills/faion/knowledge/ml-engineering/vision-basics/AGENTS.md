@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/multimodal-ai/vision-applications` | downstream patterns for OCR / classification / moderation that build on this. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-vision-basics.py` | Validate extraction JSON against the declared Pydantic schema. | Post-VLM call, before downstream consumes. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[vision-applications]] — production patterns (OCR, classification, moderation) on top of these basics.
 - [[structured-output-basics]] — Pydantic + json_object contract used everywhere.

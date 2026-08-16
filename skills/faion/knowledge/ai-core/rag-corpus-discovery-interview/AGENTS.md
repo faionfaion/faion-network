@@ -40,6 +40,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `[[rag-bench-harness-template]]` | Downstream consumer of corpus audit findings. |
@@ -80,6 +82,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-rag-corpus-discovery-interview.py` | Validate corpus-discovery-report | Pre-commit + before rag-bench spec |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[rag-bench-harness-template]]
 - [[production-trace-mining-for-training-data]]

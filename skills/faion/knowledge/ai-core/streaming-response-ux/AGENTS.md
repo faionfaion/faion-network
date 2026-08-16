@@ -70,6 +70,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[ai-feature-ux-pattern-library]] — adjacent UX-pattern catalogue.
 
 ## Decision tree

@@ -47,6 +47,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - `agent-rollback-button-design` — reverts an agent *release*. This reverts one *run* to one *phase*; the two operate on different objects and both can be needed.
 - `agent-replay-harness-cookbook` — replays a captured failure deterministically for debugging. The ledger resumes a live run; the harness reproduces a dead one.
 - `subagent-as-context-firewall` — what a dispatched unit is allowed to see. The ledger records that a dispatch happened; that methodology bounds what it costs.

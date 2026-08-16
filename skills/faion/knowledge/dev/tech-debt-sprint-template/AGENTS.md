@@ -37,6 +37,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[timeboxed-refactor-session-template]] | intra-sprint refactor sessions feed this artefact |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-tech-debt-sprint-template.py` | Validate Tech Debt Sprint Template artefact against content/02-output-contract.xml. | After draft, before merge; pre-commit hook. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[timeboxed-refactor-session-template]]
 - [[weekly-branch-hygiene-checklist]]

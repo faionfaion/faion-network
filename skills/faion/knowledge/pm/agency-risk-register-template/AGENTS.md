@@ -34,6 +34,8 @@ A weekly 30-minute risk-register cadence focused on agency-level risks (not just
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/marketing/proposal-from-discovery-template` | Upstream artefact template that anchors this methodology's recurring loop. |
@@ -72,6 +74,9 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-agency-risk-register-template.py` | Validate a filled artefact against the schema declared in `content/02-output-contract.xml`. Supports `--help` and `--self-test`. | Pre-commit; before publishing the artefact. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[client-health-scorecard-agency]]
 - [[capacity-vs-ask-balancer]]
 - [[regulatory-uncertainty-buffer]]

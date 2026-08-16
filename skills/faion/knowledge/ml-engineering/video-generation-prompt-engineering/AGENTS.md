@@ -35,6 +35,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `video-generation-async-api` | Underlying primitive |
@@ -77,6 +79,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-video-generation-prompt-engineering.py` | Lint prompt-template.yaml | Pre-commit |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[video-generation-async-api]] · [[video-generation-production-service]]
 - external: [Runway prompt guide](https://help.runwayml.com/) · [Luma prompts](https://lumalabs.ai/learn) · [Sora system card](https://openai.com/sora)

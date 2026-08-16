@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ai-agents/role-specialized-models` | Pairs each role to the right model (planner=opus, executor=sonnet, classifier=haiku). |
@@ -79,6 +81,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-multi-agent-basics.py` | Validates a multi-agent spec against the output contract (non-overlapping roles, structured message schema, budget present, decision authority named). | Pre-merge of any multi-agent design PR. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[multi-agent-design-patterns]] — picks one of eight downstream patterns this spec selects from.
 - [[multi-agent-hierarchical]] — concrete impl shape for hierarchical pattern.

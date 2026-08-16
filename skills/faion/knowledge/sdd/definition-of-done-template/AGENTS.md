@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `pro/sdd/sdd-planning/definition-of-ready-template` | sibling methodology: DoR gates entry into the sprint, DoD gates exit to production. |
@@ -75,6 +77,8 @@
 | `scripts/validate-definition-of-done-template.py` | Validate the checklist artefact against the 02-output-contract schema | After subagent returns, before downstream consumer reads |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[definition-of-ready-template]]
 - [[spike-protocol-template]]

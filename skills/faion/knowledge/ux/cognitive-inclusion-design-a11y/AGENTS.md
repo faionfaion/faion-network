@@ -36,6 +36,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | a11y-basics | Provides WCAG POUR / conformance vocabulary used across the accessibility-specialist domain. |
@@ -66,6 +68,8 @@
 | `templates/cognitive-spec.md` | Markdown skeleton for cognitive-inclusion design spec. Generated from `templates/cognitive-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[accessibility-first-design]]
 - [[wcag-22-compliance]]

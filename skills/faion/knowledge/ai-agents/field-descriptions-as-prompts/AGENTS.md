@@ -31,6 +31,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |---|---|
 | `embedded-scratchpad-field` | Scratchpad descriptions are the highest-leverage application of this rule. |
@@ -70,6 +72,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-field-descriptions-as-prompts.py` | Audits a schema dump for missing or weak descriptions | Pre-commit on schema changes |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[embedded-scratchpad-field]]
 - [[enum-constraints-closed-vocabularies]]

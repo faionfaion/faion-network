@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `solo/sdd/sdd-planning/spec-structure` | Feature spec.md is the input to endpoint extraction. |
@@ -70,6 +72,8 @@
 | `templates/api-first-development.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/api-first-development.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[spec-structure]]
 - [[design-doc-structure]]

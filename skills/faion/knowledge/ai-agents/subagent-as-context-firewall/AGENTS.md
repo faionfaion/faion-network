@@ -33,6 +33,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | `geek/ai/ai-agents/stream-json-orchestration` | Subagent streams events back; firewall pattern relies on the orchestrator. |
@@ -71,6 +73,8 @@
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[stream-json-orchestration]] — per-subagent stream is the underlying pipe.
 - [[handoff-id-payload]] — when the parent needs to hand off, not just summarise.

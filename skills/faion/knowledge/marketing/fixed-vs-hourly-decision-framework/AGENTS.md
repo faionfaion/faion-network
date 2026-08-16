@@ -38,6 +38,8 @@
 
 ## Assumes Loaded
 
+<!-- canonical: meta.json -> assumes_loaded (spec §3.2) -->
+
 | Methodology | Why |
 |-------------|-----|
 | [[freelance-pilot-pricing]] | Pilot-pricing fits the hybrid bucket here. |
@@ -78,6 +80,8 @@ Files the packer does not ship standalone have their bodies inlined under `## Te
 | `scripts/validate-fixed-vs-hourly-decision-framework.py` | Validate the decision-record JSON | After scoring, before SOW finalization |
 
 ## Related
+
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
 
 - [[freelance-pilot-pricing]]
 - [[freelance-rate-jump-tactics]]

@@ -34,6 +34,8 @@
 
 ## Related
 
+<!-- canonical: meta.json -> related, wikilink bullets only (spec §3.2) -->
+
 - [[sdd-workflow-overview]] — where project-spec slots in.
 - [[readiness-checklist]] — `readiness.md` enforces the delta-update checkbox.
 - [[cr-bug-tracking]] — BUG that exposes missing business rule MUST update `business-rules.md` in the same PR.
