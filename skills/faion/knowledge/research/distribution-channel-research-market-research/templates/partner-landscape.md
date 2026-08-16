@@ -1,6 +1,12 @@
-## Partner Landscape: [Market / Category]
+<!-- purpose: Partner/marketplace landscape -- reach, exclusivity, take-rate per candidate partner, with confidence summary. -->
+<!-- consumes: marketplace/reseller public docs + partner-portal or job-posting inferences -->
+<!-- produces: Markdown partner landscape table -->
+<!-- depends-on: content/01-core-rules.xml (benchmark-carries-source-year-acv-band-motion-region) -->
+<!-- token-budget-impact: ~300-450 tokens when loaded as context -->
 
-**Market boundary:** [geo] + [segment] + [buyer] + [category]
+## Partner Landscape: <market_category>
+
+**Market boundary:** <geo> + <segment> + <buyer> + <category>
 **Source date:** YYYY-MM-DD
 
 | Partner | Type | Reach | Exclusivity | Take-rate | Source | Capture date |

@@ -63,6 +63,12 @@
 | `templates/ops-automation-workflow.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/ops-automation-workflow.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/ops-automation-workflow.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/ops-automation-workflow.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/automation-audit.md.j2` | Time-and-frequency audit of manual tasks, ranking automation candidates by ROI. |
+| `templates/automation-audit.md` | Time-and-frequency audit of manual tasks, ranking automation candidates by ROI. Generated from `templates/automation-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/automation-design-doc.md.j2` | Design doc for one automation -- trigger, workflow steps, error handling, manual fallback, monitoring. |
+| `templates/automation-design-doc.md` | Design doc for one automation -- trigger, workflow steps, error handling, manual fallback, monitoring. Generated from `templates/automation-design-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/automation-inventory.md.j2` | Running register of active automations by domain (lead, lifecycle, ops, content) with status and review date. |
+| `templates/automation-inventory.md` | Running register of active automations by domain (lead, lifecycle, ops, content) with status and review date. Generated from `templates/automation-inventory.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

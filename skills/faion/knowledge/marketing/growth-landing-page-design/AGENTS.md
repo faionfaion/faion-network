@@ -66,6 +66,10 @@
 | `templates/growth-landing-page-design.md.j2` | Markdown skeleton: artefact body + per-section table. |
 | `templates/growth-landing-page-design.md` | Markdown skeleton: artefact body + per-section table. Generated from `templates/growth-landing-page-design.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/growth-landing-page-design.json` | landing-page-copy JSON skeleton validating against scripts/. |
+| `templates/audit-checklist.md.j2` | Copy-auditable landing-page conversion checklist scored /60 (above-the-fold, copy, trust, technical). |
+| `templates/audit-checklist.md` | Copy-auditable landing-page conversion checklist scored /60 (above-the-fold, copy, trust, technical). Generated from `templates/audit-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/saas-page-structure.md.j2` | Full SaaS landing-page section-by-section copy skeleton (nav through footer). |
+| `templates/saas-page-structure.md` | Full SaaS landing-page section-by-section copy skeleton (nav through footer). Generated from `templates/saas-page-structure.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

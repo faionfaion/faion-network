@@ -1,4 +1,10 @@
-# Retargeting Campaign Structure: [Product]
+<!-- purpose: Full-funnel retargeting campaign structure — cold/warm/hot ad sets with message, budget, frequency cap. -->
+<!-- consumes: filled retargeting-audiences.md + per-stage creative inventory (Prerequisites) -->
+<!-- produces: working document (not the JSON plan artefact in content/02-output-contract.xml) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~300-450 tokens when loaded as context -->
+
+# Retargeting Campaign Structure: <product>
 
 ## Campaign: Retargeting — Full Funnel
 
@@ -35,4 +41,4 @@ Exclude: Purchasers (90d) from ALL ad sets below.
 - Message: Urgency, discount or free shipping, remove friction
 - Budget: $[X]/day
 - Frequency cap: 7/week for first week, then 5/week
-- Creative: [Urgency creative name]
+- Creative: <urgency_creative_name>

@@ -1,8 +1,14 @@
-# Partnership Proposal: [Partner Name]
+<!-- purpose: Outbound partnership proposal one-pager -- opportunity, partner benefit, audience proof, ask. -->
+<!-- consumes: partner name + own company proof points + audience size/engagement stats -->
+<!-- produces: Markdown partnership proposal -->
+<!-- depends-on: content/01-core-rules.xml (r4-lead-with-partner-benefit-first-paragraph) -->
+<!-- token-budget-impact: ~400-600 tokens when loaded as context -->
+
+# Partnership Proposal: <partner_name>
 
 **From:** [Your name], [Your company]
-**Date:** [YYYY-MM-DD]
-**Proposal type:** [Affiliate / Co-marketing / Integration / Reseller]
+**Date:** <date>
+**Proposal type:** <proposal_type>
 
 ---
 
@@ -12,9 +18,9 @@
 
 ## The Opportunity
 
-[One paragraph: specific proposal — what you're suggesting, what format it takes, and the timeframe. Be concrete: "a joint 60-minute webinar in [month] on [topic], promoted to both audiences, with a 14-day free trial offer for both subscriber lists."]
+[One paragraph: specific proposal — what you're suggesting, what format it takes, and the timeframe. Be concrete: "a joint 60-minute webinar in <month> on <topic>, promoted to both audiences, with a 14-day free trial offer for both subscriber lists."]
 
-## What's In It for [Partner Name]
+## What's In It for <partner_name>
 
 - [Benefit 1 — framed from their perspective, specific: "exposure to [X] customers in your target segment"]
 - [Benefit 2 — e.g., "co-created content you can repurpose for your own channels"]
@@ -22,7 +28,7 @@
 
 ## What We're Asking
 
-[One specific, time-bounded ask: "a 30-minute intro call to explore a joint webinar pilot in [month]"]
+[One specific, time-bounded ask: "a 30-minute intro call to explore a joint webinar pilot in <month>"]
 
 ## Our Audience
 
@@ -40,4 +46,4 @@
 2. Align on topic, format, and date
 3. Pilot a single webinar; evaluate results before any longer commitment
 
-**Contact:** [name] — [email] — [calendar link]
+**Contact:** <name> — <email> — <calendar_link>

@@ -1,8 +1,14 @@
-# Tax Planning Checklist: [Year]
+<!-- purpose: Year-round tax planning checklist -- entity structure, deductions, tax-advantaged accounts, quarterly estimates, year-end actions. -->
+<!-- consumes: current entity type + YTD net profit + retirement-account contribution room -->
+<!-- produces: Markdown checklist -->
+<!-- depends-on: content/01-core-rules.xml (r1-monthly-tax-savings-set-aside, r3-business-structure-decision-record, r5-name-retirement-vehicle) -->
+<!-- token-budget-impact: ~350-500 tokens when loaded as context -->
+
+# Tax Planning Checklist: <year>
 
 ## Entity Structure
-- [ ] Current entity: [Sole prop / LLC / S-Corp]
-- [ ] Reviewed S-Corp election threshold ($80K+ profit): [Yes / No]
+- [ ] Current entity: <current_entity>
+- [ ] Reviewed S-Corp election threshold ($80K+ profit): <yes_no>
 - [ ] Decision: [Keep current / Change to...]
 
 ## Deductions to Track

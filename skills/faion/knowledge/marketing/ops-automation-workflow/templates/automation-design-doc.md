@@ -1,4 +1,10 @@
-# Automation: [Name]
+<!-- purpose: Design doc for one automation -- trigger, workflow steps, error handling, manual fallback, monitoring. -->
+<!-- consumes: process to automate + tool inventory + notification channel -->
+<!-- produces: Markdown automation design doc -->
+<!-- depends-on: content/01-core-rules.xml (r3-named-owner-per-automation, r4-monitoring-required) -->
+<!-- token-budget-impact: ~300-500 tokens when loaded as context -->
+
+# Automation: <name>
 
 ## Purpose
 [One sentence: what this automation does and why it replaces the manual process]
@@ -9,14 +15,14 @@
 
 ## Workflow Steps
 1. [Step 1 — specific action with tool name]
-2. [Step 2]
-3. [Step 3]
+2. <step_2>
+3. <step_3>
 4. [Delay if needed: X minutes/hours]
-5. [Step 4]
+5. <step_4>
 
 ## Error Handling
-- If [step X fails]: [specific action — retry, notify, skip]
-- Notification channel: [Slack channel or email address]
+- If <step_x_fails>: [specific action — retry, notify, skip]
+- Notification channel: <notification_channel>
 - Retry policy: [retry X times with Y-second delay, then notify]
 
 ## Manual Fallback
@@ -31,4 +37,4 @@
 ## Monitoring
 - Success metric: [what to track to confirm it's working]
 - Check frequency: weekly
-- Last reviewed: [date]
+- Last reviewed: <date>

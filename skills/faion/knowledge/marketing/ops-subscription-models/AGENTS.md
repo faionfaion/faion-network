@@ -63,6 +63,8 @@
 | `templates/ops-subscription-models.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/ops-subscription-models.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/ops-subscription-models.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/ops-subscription-models.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/subscription-model-doc.md.j2` | Subscription model spec -- model type, billing, tiers, metric targets, lifecycle automation, dunning. |
+| `templates/subscription-model-doc.md` | Subscription model spec -- model type, billing, tiers, metric targets, lifecycle automation, dunning. Generated from `templates/subscription-model-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

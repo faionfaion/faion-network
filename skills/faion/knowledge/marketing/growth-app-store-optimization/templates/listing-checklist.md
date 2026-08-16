@@ -1,3 +1,9 @@
+<!-- purpose: iOS App Store + Google Play listing field/asset checklist. -->
+<!-- consumes: current app metadata snapshot (Prerequisites) -->
+<!-- produces: working document (not the JSON artefact in content/02-output-contract.xml) -->
+<!-- depends-on: content/01-core-rules.xml (rules r3-title-keyword-first, r4-screenshots-first-three-load-bearing) -->
+<!-- token-budget-impact: ~350-500 tokens when loaded as context -->
+
 # App Store Listing Checklist
 
 ## iOS App Store
@@ -25,7 +31,7 @@
 ## Google Play
 
 ### Metadata
-- [ ] Title (50 chars max): [Brand + Primary Keyword]
+- [ ] Title (50 chars max): <brand_primary_keyword>
 - [ ] Short description (80 chars, keyword in first sentence): [text]
 - [ ] Full description (4000 chars, keywords appear 3–5x naturally): [text]
 
@@ -36,7 +42,7 @@
 - [ ] Promo video (YouTube link, optional)
 
 ### Store Settings
-- [ ] Category: [selected]
-- [ ] Tags: [added]
-- [ ] Contact email: [set]
-- [ ] Privacy policy URL: [set]
+- [ ] Category: <selected>
+- [ ] Tags: <added>
+- [ ] Contact email: <set>
+- [ ] Privacy policy URL: <set>

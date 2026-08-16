@@ -1,7 +1,13 @@
+<!-- purpose: Platform/consumer product-development trend brief with a kill-list of retired GTM assumptions. -->
+<!-- consumes: input brief + source-of-truth refs (signal sources), per AGENTS.md Prerequisites -->
+<!-- produces: scored trend brief requiring a human checkpoint before feeding product docs -->
+<!-- depends-on: content/01-core-rules.xml (adoption-signal-needs-a-denominator, hype-phase-sourced-to-a-named-framework) -->
+<!-- token-budget-impact: ~500-1000 tokens when loaded as context -->
+
 ## Product Development Trends: Market Brief
 
 **Product/category:** [X] | **Date:** YYYY-MM-DD | **Signals:** [N kept / M total]
-**Scope:** [geo] + [segment] + [buyer]
+**Scope:** <geo> + <segment> + <buyer>
 
 ---
 
@@ -15,7 +21,7 @@
 
 | Score | Trend | State | Confidence | Market implication | Source | Date |
 |-------|-------|-------|------------|-------------------|--------|------|
-| X | [trend] | [state] | 0.X | [market implication] | [URL] | YYYY-MM-DD |
+| X | [trend] | <state> | 0.X | <market_implication> | [URL] | YYYY-MM-DD |
 
 ---
 
@@ -25,7 +31,7 @@ For every adopted trend: name one current GTM/pricing assumption to retire.
 
 | Retired assumption | Replaced by | Effective date |
 |-------------------|------------|----------------|
-| [old assumption] | [new trend implication] | YYYY-MM-DD |
+| <old_assumption> | <new_trend_implication> | YYYY-MM-DD |
 
 ---
 

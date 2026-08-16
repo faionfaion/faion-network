@@ -69,6 +69,10 @@
 | `templates/output-skeleton.md.j2` | Minimal skeleton conforming to the output contract |
 | `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract Generated from `templates/output-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
+| `templates/trend-analysis-report.md.j2` | Full trend-analysis report -- STEEP analysis, counter-signals, competitive landscape and a scored opportunity assessment. |
+| `templates/trend-analysis-report.md` | Full trend-analysis report -- STEEP analysis, counter-signals, competitive landscape and a scored opportunity assessment. Generated from `templates/trend-analysis-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/trend-monitoring-dashboard.md.j2` | Monthly recurring trend-watch dashboard tracking monitored trends, new signals and counter-signals. |
+| `templates/trend-monitoring-dashboard.md` | Monthly recurring trend-watch dashboard tracking monitored trends, new signals and counter-signals. Generated from `templates/trend-monitoring-dashboard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

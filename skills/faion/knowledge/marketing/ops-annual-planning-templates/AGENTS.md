@@ -69,6 +69,18 @@
 | `templates/ops-annual-planning-templates.md` | Working skeleton for the `ops-annual-planning-templates` artefact with required fields and `not_applicable: <reason>` markers per row. Generated from `templates/ops-annual-planning-templates.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled artefact used by the validator self-test. |
 | `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/annual-plan.md.j2` | Annual plan skeleton -- vision, goals, strategic priorities, quarterly breakdown, budget. |
+| `templates/annual-plan.md` | Annual plan skeleton -- vision, goals, strategic priorities, quarterly breakdown, budget. Generated from `templates/annual-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/annual-review.md.j2` | End-of-year review -- goal achievement, year-by-numbers, learnings, personal reflection. |
+| `templates/annual-review.md` | End-of-year review -- goal achievement, year-by-numbers, learnings, personal reflection. Generated from `templates/annual-review.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/monthly-plan.md.j2` | Monthly execution plan -- goal, quarterly-KR progress, weekly task breakdown, blockers. |
+| `templates/monthly-plan.md` | Monthly execution plan -- goal, quarterly-KR progress, weekly task breakdown, blockers. Generated from `templates/monthly-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/okr-template.md.j2` | Quarterly/annual OKR set -- objectives, key results with baseline/target, kill-switch. |
+| `templates/okr-template.md` | Quarterly/annual OKR set -- objectives, key results with baseline/target, kill-switch. Generated from `templates/okr-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/quarterly-review.md.j2` | Quarterly review -- results vs goals, wins, misses with structural cause, next-quarter focus. |
+| `templates/quarterly-review.md` | Quarterly review -- results vs goals, wins, misses with structural cause, next-quarter focus. Generated from `templates/quarterly-review.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/year-in-review.md.j2` | Narrative year-in-review -- wins, challenges with structural cause, metrics summary, personal growth. |
+| `templates/year-in-review.md` | Narrative year-in-review -- wins, challenges with structural cause, metrics summary, personal growth. Generated from `templates/year-in-review.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

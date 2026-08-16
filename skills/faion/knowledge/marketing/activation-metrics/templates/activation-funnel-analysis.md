@@ -1,4 +1,10 @@
-# Activation Funnel Analysis — [DATE]
+<!-- purpose: Weekly activation-funnel working analysis — definition, current performance, drop-off, this week's experiment. -->
+<!-- consumes: activation event definition + funnel step counts (Prerequisites: Brief / inputs) -->
+<!-- produces: working document (not the JSON `report` artefact in content/02-output-contract.xml) -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~300-450 tokens when loaded as context -->
+
+# Activation Funnel Analysis — <date>
 
 ## Activation Definition
 
@@ -11,8 +17,8 @@
 | Step | Users | Rate | Drop-off |
 |------|-------|------|----------|
 | Signup | 1,000 | 100% | — |
-| [Step 2] | | | |
-| [Step 3] | | | |
+| <step_2> | | | |
+| <step_3> | | | |
 | Activated | | | |
 
 **Overall activation rate:** ____%
@@ -21,12 +27,12 @@
 
 ## Drop-off Analysis
 
-### Biggest drop: [Step name]
+### Biggest drop: <step_name>
 
 **Why users drop (evidence):**
-- Session recording insight: [finding]
-- User feedback: [finding]
-- Funnel timing data: [finding]
+- Session recording insight: <finding>
+- User feedback: <finding>
+- Funnel timing data: <finding>
 
 ## Optimization Plan
 
@@ -38,8 +44,8 @@
 
 ## This Week's Experiment
 
-**Test:** [Description]
+**Test:** <description>
 **Primary metric:** Activation rate (Day [X])
 **Secondary metric:** [e.g., time-to-first-value]
-**Duration:** [Days]
+**Duration:** <days>
 **Decision threshold:** [Minimum lift to ship]

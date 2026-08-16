@@ -1,21 +1,27 @@
+<!-- purpose: Link-building campaign tracker Markdown skeleton covering prospecting, outreach, tracking, metrics and weekly process. -->
+<!-- consumes: backlink monitoring tool data (Ahrefs/SEMrush/GSC), target site list, outreach log -->
+<!-- produces: link-building campaign tracker artefact -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~300-700 tokens when loaded as context -->
+
 # Link Building Campaign Tracker
 
-## Campaign: [Content Asset Name]
+## Campaign: <content_asset_name>
 
 ### Asset Details
-- URL: [link]
-- Type: [guide / tool / research / infographic]
-- Target keywords: [list]
+- URL: <link>
+- Type: <type>
+- Target keywords: <list>
 - Current backlinks: [number from Ahrefs]
 
 ### Prospecting
-- Method: [competitor analysis / resource pages / broken links / HARO]
-- Target sites: [number]
+- Method: <method>
+- Target sites: <number>
 - Qualification criteria: DR [X]+, relevant audience
 
 ### Outreach
-- Template: [resource-page / broken-link / guest-post]
-- Personalization: [first line approach]
+- Template: <template>
+- Personalization: <first_line_approach>
 - Send volume: [X per day, max 50]
 
 ### Tracking
@@ -25,12 +31,12 @@
 | ... | ...     | ...   | Date | Yes/No   | Yes/No | ...  |
 
 ### Metrics
-- Sent: [number]
-- Responses: [number]
-- Links secured: [number]
+- Sent: <number>
+- Responses: <number>
+- Links secured: <number>
 - Response rate: [%]
 - Link rate: [%]
-- Avg DR of new links: [number]
+- Avg DR of new links: <number>
 
 ### Learnings
 - What worked:

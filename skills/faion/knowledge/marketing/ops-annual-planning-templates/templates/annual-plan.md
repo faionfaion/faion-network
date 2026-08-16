@@ -1,7 +1,13 @@
-# Annual Plan: [Year]
+<!-- purpose: Annual plan skeleton -- vision, goals, strategic priorities, quarterly breakdown, budget. -->
+<!-- consumes: vision statement + numeric goal baselines/targets + budget line items -->
+<!-- produces: Markdown annual plan -->
+<!-- depends-on: content/01-core-rules.xml (r1-fill-order, r3-not-doing-list-min-3) -->
+<!-- token-budget-impact: ~350-550 tokens when loaded as context -->
+
+# Annual Plan: <year>
 
 ## Vision
-[Where you want to be by December [Year] — vivid, specific, personal. Human writes this.]
+[Where you want to be by December <year> — vivid, specific, personal. Human writes this.]
 
 ## Theme
 [One word or phrase that captures the year's direction]
@@ -9,14 +15,14 @@
 ## Annual Goals (max 3)
 | Goal | Metric | Baseline | Target | Data Source |
 |------|--------|----------|--------|-------------|
-| [Goal 1] | [metric] | [current] | [target] | [tool] |
-| [Goal 2] | [metric] | [current] | [target] | [tool] |
-| [Goal 3] | [metric] | [current] | [target] | [tool] |
+| <goal_1> | [metric] | [current] | [target] | [tool] |
+| <goal_2> | [metric] | [current] | [target] | [tool] |
+| <goal_3> | [metric] | [current] | [target] | [tool] |
 
 ## Strategic Priorities (max 3)
-1. **[Priority 1]**: [Why this, what it enables]
-2. **[Priority 2]**: [Why this, what it enables]
-3. **[Priority 3]**: [Why this, what it enables]
+1. **<priority_1>**: [Why this, what it enables]
+2. **<priority_2>**: [Why this, what it enables]
+3. **<priority_3>**: [Why this, what it enables]
 
 ## Not Doing This Year (min 3 items — required)
 - [Specific thing to stop or defer — not a vague category]
@@ -25,21 +31,21 @@
 
 ## Quarterly Breakdown
 
-### Q1: [Theme]
+### Q1: <theme>
 Goals: [Goal 1 quarterly milestone] | [Goal 2 quarterly milestone]
-Key initiatives: [Initiative 1] | [Initiative 2]
+Key initiatives: <initiative_1> | <initiative_2>
 
-### Q2: [Theme]
+### Q2: <theme>
 Goals: [Goal 1 quarterly milestone] | [Goal 2 quarterly milestone]
-Key initiatives: [Initiative 1] | [Initiative 2]
+Key initiatives: <initiative_1> | <initiative_2>
 
-### Q3: [Theme]
+### Q3: <theme>
 Goals: [Goal 1 quarterly milestone] | [Goal 2 quarterly milestone]
-Key initiatives: [Initiative 1] | [Initiative 2]
+Key initiatives: <initiative_1> | <initiative_2>
 
-### Q4: [Theme]
+### Q4: <theme>
 Goals: [Goal 1 quarterly milestone] | [Goal 2 quarterly milestone]
-Key initiatives: [Initiative 1] | [Initiative 2]
+Key initiatives: <initiative_1> | <initiative_2>
 
 ## Budget
 | Category | Annual | Monthly |

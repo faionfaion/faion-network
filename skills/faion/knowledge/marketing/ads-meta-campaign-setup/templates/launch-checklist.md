@@ -1,6 +1,12 @@
+<!-- purpose: Pre-launch Meta campaign checklist — pixel, campaign/ad-set/ad settings, launch sign-off. -->
+<!-- consumes: filled campaign-spec.md + Pixel/CAPI installation report (Prerequisites) -->
+<!-- produces: working document (not the JSON campaign artefact in content/02-output-contract.xml) -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~300-450 tokens when loaded as context -->
+
 # Meta Campaign Launch Checklist
 
-## Campaign: [Name]
+## Campaign: <name>
 
 ### Pre-Launch
 - [ ] Meta Pixel installed and verified (green in Pixel Helper)

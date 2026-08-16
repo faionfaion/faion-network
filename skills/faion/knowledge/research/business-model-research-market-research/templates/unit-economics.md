@@ -1,8 +1,14 @@
-## Unit Economics: [Product]
+<!-- purpose: Unit economics worksheet -- ARPU, CAC, churn, LTV, LTV:CAC, payback, break-even, verdict. -->
+<!-- consumes: revenue/acquisition/retention metrics per AGENTS.md Prerequisites -->
+<!-- produces: Markdown unit-economics worksheet -->
+<!-- depends-on: content/01-core-rules.xml (ltv-cac-ge-3-and-cac-payback-gate) -->
+<!-- token-budget-impact: ~350-550 tokens when loaded as context -->
+
+## Unit Economics: <product>
 
 ### Revenue Metrics
 - **ARPU (Monthly):** $[X]
-- **ARPU (Annual):** $[X × 12]
+- **ARPU (Annual):** $<x_12>
 - **Effective ARPU (Annual):** $[X × (1 - avg discount) × annual-billing-mix] [required — not list price]
 - **Gross margin:** [X]%
 
@@ -15,7 +21,7 @@
 ### Retention Metrics
 - **Monthly gross churn:** [X]% (logo churn — accounts lost)
 - **Monthly net churn:** [X]% (revenue churn after expansion)
-- **Average customer lifetime:** [1 / churn rate] = [X] months
+- **Average customer lifetime:** <average_customer_lifetime> = [X] months
 
 ### LTV Calculation
 ```
@@ -40,10 +46,10 @@ Target: under 12 months. Above 18 = capital-intensive risk.
 
 ### Break-Even Analysis
 - Fixed costs: $[X]/month
-- Contribution margin per customer: $[ARPU × GM%]/month
-- Break-even point: [Fixed costs / Contribution margin] = [X] customers
+- Contribution margin per customer: $<arpu_gm>/month
+- Break-even point: <break_even_point> = [X] customers
 
 ### Verdict
 - [ ] Unit economics work — LTV/CAC above 3, payback under 12 months
-- [ ] Need to improve [specific metric] — current value is [X], target is [Y]
+- [ ] Need to improve <specific_metric> — current value is [X], target is <y>
 - [ ] Model not viable at current CAC/churn — requires structural change

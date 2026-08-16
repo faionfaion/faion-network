@@ -1,8 +1,14 @@
-# Competitive Landscape: [Market / Product Name]
+<!-- purpose: Competitive-landscape worksheet — direct, indirect, substitute competitors, potential entrants and confirmed whitespace. -->
+<!-- consumes: input brief + source-of-truth refs (competitor URLs/snapshots), per AGENTS.md Prerequisites -->
+<!-- produces: competitor inventory with a falsifiable whitespace map -->
+<!-- depends-on: content/01-core-rules.xml (boundary-as-inclusion-test) -->
+<!-- token-budget-impact: ~500-1100 tokens when loaded as context -->
+
+# Competitive Landscape: <market_product_name>
 
 **Date:** YYYY-MM-DD  
 **Snapshot folder:** `snapshots/YYYY-MM-DD/`  
-**Analyst:** [name / agent]
+**Analyst:** <name_agent>
 
 ---
 
@@ -40,7 +46,7 @@ Alternative approach that bypasses the category entirely.
 
 | # | Name / Approach | URL (if applicable) | Why buyers use this instead |
 |---|-----------------|---------------------|-----------------------------|
-| 1 | [e.g., Outsource to agency] | — | [cost / control / inertia] |
+| 1 | [e.g., Outsource to agency] | — | <cost_control_inertia> |
 | 2 | | | |
 | 3 | | | |
 
@@ -63,12 +69,12 @@ Gaps confirmed by the feature-matrix pass. Each gap must be falsifiable.
 
 | Gap | Evidence of demand | Competitors lacking it | Whitespace or intentional? |
 |-----|--------------------|------------------------|---------------------------|
-| [Feature/capability] | [≥5 G2/Capterra/Reddit citations] | [names] | [Whitespace: demand confirmed / Intentional: [reason]] |
+| <feature_capability> | [≥5 G2/Capterra/Reddit citations] | <names> | [Whitespace: demand confirmed / Intentional: <reason>] |
 
 Whitespace entry requirements:
-- Competitor pricing page URL confirming absence: [URL]
-- Competitor changelog URL confirming no roadmap entry: [URL]
-- ≥5 buyer complaints or requests: [source URLs]
+- Competitor pricing page URL confirming absence: <url>
+- Competitor changelog URL confirming no roadmap entry: <url>
+- ≥5 buyer complaints or requests: <source_urls>
 
 ---
 

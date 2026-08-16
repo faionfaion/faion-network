@@ -1,10 +1,16 @@
+<!-- purpose: 4-email activation lifecycle sequence for not-yet-activated signups. -->
+<!-- consumes: product name + the single most important first action (Prerequisites: Brief / inputs) -->
+<!-- produces: working document (not the JSON `playbook-step` artefact in content/02-output-contract.xml) -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~350-500 tokens when loaded as context -->
+
 # Activation Email Sequence
 
 Send to users who have not yet activated. One CTA per email.
 
 ## Email 1: Welcome (Day 0 — on signup)
 
-**Subject:** Welcome to [Product]! Here's your first step
+**Subject:** Welcome to <product>! Here's your first step
 **Goal:** Drive to the single most important first action
 
 Content:
@@ -34,7 +40,7 @@ Content:
 
 ## Email 4: Last Push (Day 7 — if not activated)
 
-**Subject:** Your [Product] account is waiting
+**Subject:** Your <product> account is waiting
 **Goal:** Urgency + social proof
 
 Content:

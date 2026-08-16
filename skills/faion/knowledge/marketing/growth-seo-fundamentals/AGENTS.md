@@ -67,6 +67,8 @@
 |------|---------|
 | `templates/seo-content-brief.md.j2` | Markdown SEO content brief: keyword data, SERP analysis, requirements, on-page details, internal links. |
 | `templates/seo-content-brief.md` | Markdown SEO content brief: keyword data, SERP analysis, requirements, on-page details, internal links. Generated from `templates/seo-content-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/monthly-seo-report.md.j2` | Monthly SEO report Markdown skeleton tracking the r5 metric baseline. |
+| `templates/monthly-seo-report.md` | Monthly SEO report Markdown skeleton tracking the r5 metric baseline. Generated from `templates/monthly-seo-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -68,6 +68,10 @@
 | `templates/output-skeleton.md.j2` | Minimal skeleton conforming to the output contract |
 | `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract Generated from `templates/output-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
+| `templates/feature-matrix.md.j2` | Competitor feature-parity matrix with evidence URLs and gap-validation verdicts. |
+| `templates/feature-matrix.md` | Competitor feature-parity matrix with evidence URLs and gap-validation verdicts. Generated from `templates/feature-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/landscape-table.md.j2` | Competitor landscape table -- direct/indirect competitors, substitutes, potential entrants, whitespace candidates. |
+| `templates/landscape-table.md` | Competitor landscape table -- direct/indirect competitors, substitutes, potential entrants, whitespace candidates. Generated from `templates/landscape-table.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

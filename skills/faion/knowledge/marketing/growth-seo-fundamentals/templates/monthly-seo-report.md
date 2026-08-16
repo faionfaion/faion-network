@@ -1,4 +1,10 @@
-# SEO Report — [Month Year]
+<!-- purpose: Monthly SEO report Markdown skeleton tracking the r5 metric baseline. -->
+<!-- consumes: analytics/SEO tool exports (organic sessions, keyword positions, referring domains, Core Web Vitals) plus prior month's report -->
+<!-- produces: monthly SEO report artefact -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~300-700 tokens when loaded as context -->
+
+# SEO Report — <month_year>
 
 ## Summary
 - Organic sessions: [X] ([+/-Y%] vs last month)
@@ -27,17 +33,17 @@
 | [keyword] | [pos] | [pos] | [+/-] |
 
 ## Core Web Vitals Status
-- LCP: [Good / Needs Work / Poor]
-- INP: [Good / Needs Work / Poor]
-- CLS: [Good / Needs Work / Poor]
+- LCP: <lcp>
+- INP: <inp>
+- CLS: <cls>
 
 ## Actions This Month
 1. [Action taken and result]
 2. [Action taken and result]
 
 ## Next Month Plan
-1. [Action planned]
-2. [Action planned]
+1. <action_planned>
+2. <action_planned>
 
 ## Issues to Address
-- [Issue]: [status]
+- <issue>: <status>

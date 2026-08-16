@@ -1,4 +1,10 @@
-## Feature Discovery Board: [Product]
+<!-- purpose: Quarterly feature-discovery board -- collected ideas, Kano classification, ODI opportunity score, RICE prioritization, validation plan, rejected list. -->
+<!-- consumes: feature request log + RICE weights + evidence sources, per AGENTS.md Prerequisites -->
+<!-- produces: Markdown feature-discovery board -->
+<!-- depends-on: content/01-core-rules.xml (rice-numeric-not-gut-score, top5-requires-3-plus-evidence-sources) -->
+<!-- token-budget-impact: ~450-650 tokens when loaded as context -->
+
+## Feature Discovery Board: <product>
 **Quarter:** [Q1/Q2/Q3/Q4 YYYY]
 
 ### Collection Sources Active
@@ -12,7 +18,7 @@
 
 | ID | Feature | Source | Problem | Segment | Frequency |
 |----|---------|--------|---------|---------|-----------|
-| F1 | [Name] | [Source] | [Problem] | [Seg] | High / Medium / Low |
+| F1 | [Name] | <source> | <problem> | [Seg] | High / Medium / Low |
 
 ### Kano Classification
 

@@ -1,4 +1,10 @@
-## Job Map: [Core Job Statement]
+<!-- purpose: Stage-by-stage job map (define/locate/prepare/confirm/execute/monitor/modify/conclude) for a multi-stage job. -->
+<!-- consumes: a core job statement plus per-stage customer-goal and pain observations from switcher interviews -->
+<!-- produces: stage-by-stage pain/opportunity map with stages ranked by pain severity -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~300-650 tokens when loaded as context -->
+
+## Job Map: <core_job_statement>
 
 Use this template only for jobs with 3+ distinct stages. Forcing it onto simple jobs creates artificial pain points.
 
@@ -44,5 +50,5 @@ Use this template only for jobs with 3+ distinct stages. Forcing it onto simple 
 
 ### Priority Stages (by pain severity)
 1. Stage [X] — [highest pain, evidence quotes]
-2. Stage [X] — [medium pain]
-3. Stage [X] — [lower pain]
+2. Stage [X] — <medium_pain>
+3. Stage [X] — <lower_pain>

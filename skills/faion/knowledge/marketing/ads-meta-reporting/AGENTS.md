@@ -70,6 +70,8 @@
 | `templates/breakdown-checklist.md.j2` | Breakdown checklist for the weekly cadence. |
 | `templates/breakdown-checklist.md` | Breakdown checklist for the weekly cadence. Generated from `templates/breakdown-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/report-artefact.json` | Schema-conformant sample artefact used by validator self-test. |
+| `templates/creative-analysis.md.j2` | Creative-fatigue and format performance breakdown with scale/iterate/kill recommendations. |
+| `templates/creative-analysis.md` | Creative-fatigue and format performance breakdown with scale/iterate/kill recommendations. Generated from `templates/creative-analysis.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

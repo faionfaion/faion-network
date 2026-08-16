@@ -67,6 +67,8 @@
 |------|---------|
 | `templates/link-building-checklist.md.j2` | Markdown checklist: target qualification, outreach drafts, anchor-text mix, toxic-link audit cadence. |
 | `templates/link-building-checklist.md` | Markdown checklist: target qualification, outreach drafts, anchor-text mix, toxic-link audit cadence. Generated from `templates/link-building-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/campaign-tracker.md.j2` | Link-building campaign tracker Markdown skeleton covering prospecting, outreach, tracking, metrics and weekly process. |
+| `templates/campaign-tracker.md` | Link-building campaign tracker Markdown skeleton covering prospecting, outreach, tracking, metrics and weekly process. Generated from `templates/campaign-tracker.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

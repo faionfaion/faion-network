@@ -70,6 +70,10 @@
 | `templates/idea-generation.md.j2` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml |
 | `templates/idea-generation.md` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml Generated from `templates/idea-generation.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/idea-generation.schema.json` | JSON Schema seed + filled fixture for the report artefact |
+| `templates/idea-discovery-session.md.j2` | Live session log for a 7-framework idea-generation session, scored on the canonical 5-criterion weighted matrix. |
+| `templates/idea-discovery-session.md` | Live session log for a 7-framework idea-generation session, scored on the canonical 5-criterion weighted matrix. Generated from `templates/idea-discovery-session.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/weekly-idea-capture.md.j2` | Rolling weekly log of raw idea seeds (problems, complaints, gig patterns) feeding the idea-discovery session. |
+| `templates/weekly-idea-capture.md` | Rolling weekly log of raw idea seeds (problems, complaints, gig patterns) feeding the idea-discovery session. Generated from `templates/weekly-idea-capture.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -1,15 +1,21 @@
-## Channel Research: [Product]
+<!-- purpose: Distribution-channel research report -- discovery-source interviews, channel scoring, economics, competitor channels, phased strategy, testing plan. -->
+<!-- consumes: customer-discovery interview notes + channel CAC/LTV benchmarks, per AGENTS.md Prerequisites -->
+<!-- produces: Markdown channel research report -->
+<!-- depends-on: content/01-core-rules.xml (single-cac-definition, payback-and-ltv-cac-gate, max-3-recommended-channels) -->
+<!-- token-budget-impact: ~450-650 tokens when loaded as context -->
+
+## Channel Research: <product>
 
 ### Customer Discovery Research
 
 **Interview insights (N=X):**
-- "I found [competitor] via [channel]"
-- "I usually discover tools through [source]"
+- "I found <competitor> via [channel]"
+- "I usually discover tools through <source>"
 
 **Top discovery sources:**
-1. [Channel 1]: [X]% of customers
-2. [Channel 2]: [X]% of customers
-3. [Channel 3]: [X]% of customers
+1. <channel_1>: [X]% of customers
+2. <channel_2>: [X]% of customers
+3. <channel_3>: [X]% of customers
 
 ### Channel Evaluation
 
@@ -29,12 +35,12 @@
 
 | Competitor | Primary Channel | Secondary | Source | Capture date |
 |------------|-----------------|-----------|--------|--------------|
-| [Comp 1] | [Channel] | [Channel] | [URL] | YYYY-MM-DD |
+| <comp_1> | [Channel] | [Channel] | [URL] | YYYY-MM-DD |
 
 ### Recommended Channel Strategy
 
 **Phase 1 (0-$10K MRR):** Primary: [Channel]. Test budget: $[X]. Success metric: CAC < $[X].
-**Phase 2 ($10-50K MRR):** Add: [Channel 2]. Scale: [Channel 1] if LTV:CAC > 3:1.
+**Phase 2 ($10-50K MRR):** Add: <channel_2>. Scale: <channel_1> if LTV:CAC > 3:1.
 
 ### Testing Plan
 

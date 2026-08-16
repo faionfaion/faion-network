@@ -63,6 +63,12 @@
 | `templates/ops-dashboard-setup.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/ops-dashboard-setup.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/ops-dashboard-setup.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/ops-dashboard-setup.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/dashboard-spec.md.j2` | Spec for one dashboard -- purpose, metrics, visualizations, filters, alert rules, access. |
+| `templates/dashboard-spec.md` | Spec for one dashboard -- purpose, metrics, visualizations, filters, alert rules, access. Generated from `templates/dashboard-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/monthly-metrics-tracker.md.j2` | Rolling monthly metrics tracker -- revenue, customers, unit economics, funnel, channel breakdown. |
+| `templates/monthly-metrics-tracker.md` | Rolling monthly metrics tracker -- revenue, customers, unit economics, funnel, channel breakdown. Generated from `templates/monthly-metrics-tracker.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/monthly-report.md.j2` | Monthly business report -- key metrics vs target, revenue/customer analysis, channel performance, next-month focus. |
+| `templates/monthly-report.md` | Monthly business report -- key metrics vs target, revenue/customer analysis, channel performance, next-month focus. Generated from `templates/monthly-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

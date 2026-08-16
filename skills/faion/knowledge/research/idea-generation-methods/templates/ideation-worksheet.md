@@ -1,6 +1,12 @@
+<!-- purpose: Live worksheet for a 7P-framework plus Paul-Graham-questions ideation session. -->
+<!-- consumes: 7P prompts + PG four questions answered by the operator, per AGENTS.md Prerequisites -->
+<!-- produces: scored idea worksheet with a ranked top-3 handed to niche-evaluation -->
+<!-- depends-on: content/01-core-rules.xml (honest-passion-answer, pg-four-as-gate) -->
+<!-- token-budget-impact: ~250-600 tokens when loaded as context -->
+
 # Ideation Worksheet
 
-## Session: [Date]
+## Session: <date>
 
 ## 7P Framework Ideas
 

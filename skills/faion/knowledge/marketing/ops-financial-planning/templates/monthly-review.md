@@ -1,4 +1,10 @@
-# Financial Review: [Month Year]
+<!-- purpose: Monthly financial review -- revenue/expense vs target, profitability, SaaS metrics, cash position, reinvestment split. -->
+<!-- consumes: billing + bank exports for the month + prior month's review for comparison -->
+<!-- produces: Markdown monthly financial review -->
+<!-- depends-on: content/01-core-rules.xml (r3-operating-buffer-reserve-20pct, r4-declare-reinvestment-split, r5-monthly-reconciliation) -->
+<!-- token-budget-impact: ~400-600 tokens when loaded as context -->
+
+# Financial Review: <month_year>
 
 ## Revenue
 | Source | Amount | vs. Last Month | vs. Target |

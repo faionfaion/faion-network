@@ -73,6 +73,10 @@
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 | `templates/job-statement.md.j2` | Job statement skeleton — situation, motivation, outcome across functional, emotional and social dimensions |
 | `templates/job-statement.md` | Job statement skeleton — situation, motivation, outcome across functional, emotional and social dimensions Generated from `templates/job-statement.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/job-map.md.j2` | Stage-by-stage job map (define/locate/prepare/confirm/execute/monitor/modify/conclude) for a multi-stage job. |
+| `templates/job-map.md` | Stage-by-stage job map (define/locate/prepare/confirm/execute/monitor/modify/conclude) for a multi-stage job. Generated from `templates/job-map.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/jtbd-interview.md.j2` | Structured switch interview guide (timeline questions + forces analysis) for one JTBD respondent. |
+| `templates/jtbd-interview.md` | Structured switch interview guide (timeline questions + forces analysis) for one JTBD respondent. Generated from `templates/jtbd-interview.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

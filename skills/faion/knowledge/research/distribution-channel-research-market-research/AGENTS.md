@@ -69,6 +69,12 @@
 | `templates/output-skeleton.md.j2` | Minimal skeleton conforming to the output contract |
 | `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract Generated from `templates/output-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
+| `templates/channel-research-report.md.j2` | Distribution-channel research report -- discovery-source interviews, channel scoring, economics, competitor channels, phased strategy, testing plan. |
+| `templates/channel-research-report.md` | Distribution-channel research report -- discovery-source interviews, channel scoring, economics, competitor channels, phased strategy, testing plan. Generated from `templates/channel-research-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/channel-test-report.md.j2` | Single-channel test readout -- budget/duration/targeting, funnel results, analysis, scale/optimize/pause/kill recommendation. |
+| `templates/channel-test-report.md` | Single-channel test readout -- budget/duration/targeting, funnel results, analysis, scale/optimize/pause/kill recommendation. Generated from `templates/channel-test-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/partner-landscape.md.j2` | Partner/marketplace landscape -- reach, exclusivity, take-rate per candidate partner, with confidence summary. |
+| `templates/partner-landscape.md` | Partner/marketplace landscape -- reach, exclusivity, take-rate per candidate partner, with confidence summary. Generated from `templates/partner-landscape.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -1,6 +1,12 @@
-## Risk Register: [Product/Business]
+<!-- purpose: Prioritized risk register (high/medium/low) with response and contingency plans per risk. -->
+<!-- consumes: risk rows from pre-mortem.md or upstream research artefacts, per AGENTS.md Prerequisites -->
+<!-- produces: scored, owned risk register with dashboard-observable trigger metrics -->
+<!-- depends-on: content/01-core-rules.xml (single-human-owner-per-risk, top-quartile-rows-carry-trigger-and-dated-mitigation) -->
+<!-- token-budget-impact: ~500-1000 tokens when loaded as context -->
 
-**Last Updated:** [Date]
+## Risk Register: <product_business>
+
+**Last Updated:** <last_reviewed_date>
 **Review Cadence:** Monthly (full register) / Weekly (top 3)
 
 ### High Priority Risks (Score 6-9)
@@ -26,11 +32,11 @@
 
 ### Response Plans
 
-#### [risk-id]: [Risk Name]
+#### <risk_id>: <risk_name>
 **Strategy:** [Avoid / Mitigate / Transfer / Accept]
 **Actions:**
-1. [Specific action] — Owner: [Name] — Trigger: [Observable metric]
-2. [Specific action] — Owner: [Name] — Trigger: [Observable metric]
+1. <specific_action> — Owner: <name> — Trigger: <observable_metric>
+2. <specific_action> — Owner: <name> — Trigger: <observable_metric>
 
 **Contingency Plan:**
 - **Trigger metric:** [Specific, dashboard-observable — e.g., "ARPU drops below $X for 2 months"]
@@ -38,4 +44,4 @@
 - **Resources needed:** [Budget cap, headcount, tooling]
 - **Kill/pivot criterion:** [Specific condition that triggers segment exit or major pivot]
 
-**Progress:** [Current status]
+**Progress:** <current_status>

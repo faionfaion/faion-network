@@ -1,6 +1,12 @@
+<!-- purpose: Single-competitor snapshot -- product summary, pricing, SWOT, market-share estimate, opportunity for us. -->
+<!-- consumes: one competitor's public pages + review-site data -->
+<!-- produces: Markdown competitor snapshot -->
+<!-- depends-on: content/01-core-rules.xml (price-cell-normalised-with-source-and-date, sentiment-cell-states-n-and-window) -->
+<!-- token-budget-impact: ~300-450 tokens when loaded as context -->
+
 ## [Competitor Name] Snapshot
 
-**Website:** [URL] | **Founded:** [Year] | **Employees:** ~[X] | **Funding:** $[X] (est.)
+**Website:** [URL] | **Founded:** <year> | **Employees:** ~[X] | **Funding:** $[X] (est.)
 **Captured:** YYYY-MM-DD
 
 ### Product
@@ -15,20 +21,20 @@
 |------|-------|---------------|--------|
 | [X] | $X | [X] | [URL, YYYY-MM-DD] |
 
-**Confidence:** [high = official source / med = proxy-triangulated / low = inferred]
+**Confidence:** <confidence>
 
 ### SWOT
 
 | Quadrant | Observation | Citation |
 |----------|-------------|---------|
 | Strength | [X] | [URL] |
-| Weakness | [X] | [review quote + URL] |
+| Weakness | [X] | <review_quote_url> |
 | Opportunity | [external trend they could ride] | [URL] |
 | Threat to us | [if they act on this trend] | [URL] |
 
 ### Market Share (est.)
 
-~[X]% (est.) of [TAM source] — proxies: [traffic source] + [headcount source]
+~[X]% (est.) of <tam_source> — proxies: <traffic_source> + <headcount_source>
 
 ### Opportunity for Us
 

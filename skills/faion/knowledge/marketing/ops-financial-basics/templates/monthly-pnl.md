@@ -1,4 +1,10 @@
-# Monthly P&L: [Month] [Year]
+<!-- purpose: Monthly P&L -- revenue, COGS, gross/operating profit, owner pay, tax reserve. -->
+<!-- consumes: billing export (subscriptions, one-time, services revenue) + hosting/transaction-fee costs + opex by category -->
+<!-- produces: Markdown monthly P&L -->
+<!-- depends-on: content/01-core-rules.xml (r3-categorized-opex-no-aggregate-expenses) -->
+<!-- token-budget-impact: ~350-500 tokens when loaded as context -->
+
+# Monthly P&L: <month> <year>
 
 ## Revenue
 | Source | Amount |

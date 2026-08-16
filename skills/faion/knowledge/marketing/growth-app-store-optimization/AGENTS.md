@@ -63,6 +63,10 @@
 | `templates/growth-app-store-optimization.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/growth-app-store-optimization.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/growth-app-store-optimization.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/growth-app-store-optimization.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/aso-audit.md.j2` | ASO competitive and keyword-gap audit with prioritized recommendations. |
+| `templates/aso-audit.md` | ASO competitive and keyword-gap audit with prioritized recommendations. Generated from `templates/aso-audit.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/listing-checklist.md.j2` | iOS App Store + Google Play listing field/asset checklist. |
+| `templates/listing-checklist.md` | iOS App Store + Google Play listing field/asset checklist. Generated from `templates/listing-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

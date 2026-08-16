@@ -69,6 +69,8 @@
 | `templates/niche-evaluation.md.j2` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml |
 | `templates/niche-evaluation.md` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml Generated from `templates/niche-evaluation.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/niche-evaluation.schema.json` | JSON Schema seed + filled fixture for the report artefact |
+| `templates/niche-scorecard.md.j2` | 5-factor weighted niche scorecard (market size, competition, accessibility, monetization, personal fit) with a decision band. |
+| `templates/niche-scorecard.md` | 5-factor weighted niche scorecard (market size, competition, accessibility, monetization, personal fit) with a decision band. Generated from `templates/niche-scorecard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

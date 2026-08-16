@@ -1,32 +1,38 @@
-# Q[X] Review: [Year]
+<!-- purpose: Quarterly review -- results vs goals, wins, misses with structural cause, next-quarter focus. -->
+<!-- consumes: quarter's goals/targets + actuals -->
+<!-- produces: Markdown quarterly review -->
+<!-- depends-on: content/01-core-rules.xml (r6-structural-cause-not-market-conditions) -->
+<!-- token-budget-impact: ~300-450 tokens when loaded as context -->
+
+# Q[X] Review: <year>
 
 ## Results vs Goals
 | Goal | Target | Actual | Status |
 |------|--------|--------|--------|
-| [Goal 1] | [X] | [X] | Hit / Miss / Partial |
-| [Goal 2] | [X] | [X] | Hit / Miss / Partial |
-| [Goal 3] | [X] | [X] | Hit / Miss / Partial |
+| <goal_1> | [X] | [X] | Hit / Miss / Partial |
+| <goal_2> | [X] | [X] | Hit / Miss / Partial |
+| <goal_3> | [X] | [X] | Hit / Miss / Partial |
 
 ## Wins
-1. [Win 1] — impact: [why it mattered]
-2. [Win 2] — impact: [why it mattered]
-3. [Win 3] — impact: [why it mattered]
+1. <win_1> — impact: [why it mattered]
+2. <win_2> — impact: [why it mattered]
+3. <win_3> — impact: [why it mattered]
 
 ## Misses
-1. [Miss 1] — structural cause: [what we under-resourced or deprioritized] — lesson: [what to change]
-2. [Miss 2] — structural cause: [what we under-resourced or deprioritized] — lesson: [what to change]
+1. <miss_1> — structural cause: <structural_cause> — lesson: [what to change]
+2. <miss_2> — structural cause: <structural_cause> — lesson: [what to change]
 
 **Note: "market conditions" is not a structural cause. Name the internal decision or resource gap.**
 
 ## Key Learnings
-- [Learning 1 — actionable for Q[X+1]]
-- [Learning 2 — actionable for Q[X+1]]
+- [Learning 1 — actionable for Q<x_1>]
+- [Learning 2 — actionable for Q<x_1>]
 
 ## Adjustments to Annual Plan
 - [Adjustment to goals or priorities — include reason]
 - [Anything to add to "not doing" list]
 
-## Q[X+1] Focus
-Theme: [one word or phrase]
+## Q<x_1> Focus
+Theme: <theme>
 Primary goal: [the single most important thing to achieve]
 Key risk: [leading indicator that would signal we are off track]

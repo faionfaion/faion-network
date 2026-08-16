@@ -1,8 +1,14 @@
-# Contractor Onboarding: [Role]
+<!-- purpose: Contractor onboarding kit -- business context, role, tools/access, working norms, quality bar, first task. -->
+<!-- consumes: role description + tool access list + example deliverables that meet the quality bar -->
+<!-- produces: Markdown onboarding document -->
+<!-- depends-on: content/01-core-rules.xml (r1-complete-onboarding-before-first-task, r4-task-assignment-shape) -->
+<!-- token-budget-impact: ~350-550 tokens when loaded as context -->
 
-**Date:** [YYYY-MM-DD]
-**Contractor:** [Name]
-**Engagement type:** [Project / Retainer / Hourly]
+# Contractor Onboarding: <role>
+
+**Date:** <date>
+**Contractor:** <name>
+**Engagement type:** <project_retainer_hourly>
 
 ---
 
@@ -16,20 +22,20 @@
 
 **Primary deliverables:**
 - [Deliverable 1 — format and frequency]
-- [Deliverable 2]
-- [Deliverable 3]
+- <deliverable_2>
+- <deliverable_3>
 
 ## Tools We Use
 
 | Tool | Purpose | Access |
 |------|---------|--------|
-| [Tool 1] | [Purpose] | [Login provided / invite sent] |
-| [Tool 2] | [Purpose] | [How to get access] |
-| [Tool 3] | [Purpose] | [Read-only / full access] |
+| <tool_1> | [Purpose] | [Login provided / invite sent] |
+| <tool_2> | [Purpose] | [How to get access] |
+| <tool_3> | [Purpose] | [Read-only / full access] |
 
 ## How We Work
 
-- **Communication channel:** [Slack channel or email]
+- **Communication channel:** <communication_channel>
 - **Daily updates:** [Expected format — e.g., end-of-day Slack message with: done / in progress / blocked]
 - **Weekly check-in:** [Day and time, or async format]
 - **Response time:** [Expected response window, e.g., same business day]
@@ -57,4 +63,4 @@ Do not share client information, pricing, strategies, or internal communications
 
 ## Questions
 
-Reach me at [contact method]. I aim to respond within [timeframe].
+Reach me at <contact_method>. I aim to respond within <timeframe>.

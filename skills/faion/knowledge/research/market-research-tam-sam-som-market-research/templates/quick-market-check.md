@@ -1,9 +1,15 @@
-## Quick Market Check: [Idea] (~15 minutes)
+<!-- purpose: 15-minute rough TAM/SAM/SOM gut-check with a go/no-go verdict. -->
+<!-- consumes: idea description + a quick industry-size search, per AGENTS.md Prerequisites -->
+<!-- produces: quick market-check verdict, escalates to market-sizing-report when big enough -->
+<!-- depends-on: content/01-core-rules.xml (two-methods-with-recorded-divergence-ratio) -->
+<!-- token-budget-impact: ~150-300 tokens when loaded as context -->
+
+## Quick Market Check: <idea> (~15 minutes)
 
 ### TAM (rough, top-down)
-Industry: [Name]
-Google search: "[industry] market size [current year]"
-Result: $[X] (Source: [URL], Year: [Y])
+Industry: <name>
+Google search: "<industry> market size <current_year>"
+Result: $[X] (Source: <url>, Year: <y>)
 
 ### SAM (segment filter)
 My segment: [geographic + industry + size constraints]
@@ -12,8 +18,8 @@ Estimate: [X]% of TAM = $[X]
 ### SOM (Year 1 bottom-up)
 Target customers (can you name 100?): [X]
 Average revenue per customer: $[X]/year
-Year 1 SOM: [X customers] × $[X] = $[X]
-Year 3 SOM: [X customers] × $[X] = $[X]
+Year 1 SOM: <x_customers> × $[X] = $[X]
+Year 3 SOM: <x_customers> × $[X] = $[X]
 
 ### Verdict
 - [ ] Big enough — SOM Year 3 exceeds $1M

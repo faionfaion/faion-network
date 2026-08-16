@@ -1,4 +1,10 @@
-# Expansion Revenue Dashboard — [Month YYYY]
+<!-- purpose: Monthly expansion-revenue dashboard -- NRR, expansion by type, top opportunities, trigger performance. -->
+<!-- consumes: billing export (MRR by account) + usage-trigger fire/conversion log -->
+<!-- produces: Markdown expansion dashboard -->
+<!-- depends-on: content/01-core-rules.xml (r4-report-nrr-and-expansion-arr-monthly) -->
+<!-- token-budget-impact: ~400-600 tokens when loaded as context -->
+
+# Expansion Revenue Dashboard — <month_yyyy>
 
 ## Summary
 
@@ -8,7 +14,7 @@
 | Expansion MRR | $[X] | $[X] | [+/-X%] |
 | Contraction MRR | $[X] | $[X] | |
 | Churn MRR | $[X] | $[X] | |
-| Net Revenue Retention | [X%] | [X%] | [+/-X pts] |
+| Net Revenue Retention | [X%] | [X%] | <x_pts> |
 
 ## Expansion by Type
 
@@ -26,7 +32,7 @@
 | Account | Current plan | Current MRR | Opportunity | Signal | Owner |
 |---------|-------------|-------------|-------------|--------|-------|
 | [Name] | Basic | $[X] | Upgrade to Pro | [90% limit] | [Name] |
-| [Name] | Pro | $[X] | Add 5 seats | [Team grew] | [Name] |
+| [Name] | Pro | $[X] | Add 5 seats | <team_grew> | [Name] |
 | [Name] | Pro | $[X] | Annual conversion | [12mo customer] | [Name] |
 
 ## Trigger Performance

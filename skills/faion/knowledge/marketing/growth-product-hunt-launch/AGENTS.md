@@ -67,6 +67,8 @@
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 | `templates/launch-email.md.j2` | Launch-day email to an existing list, pointing at the Product Hunt listing |
 | `templates/launch-email.md` | Launch-day email to an existing list, pointing at the Product Hunt listing Generated from `templates/launch-email.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/first-comment.md.j2` | Maker's first-comment post for a Product Hunt launch thread — why-built, differentiators, offer, roadmap. |
+| `templates/first-comment.md` | Maker's first-comment post for a Product Hunt launch thread — why-built, differentiators, offer, roadmap. Generated from `templates/first-comment.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

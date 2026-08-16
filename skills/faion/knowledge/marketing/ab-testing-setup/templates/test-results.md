@@ -1,11 +1,17 @@
-# A/B Test Results: [Name]
+<!-- purpose: Post-test A/B results readout — significance, decision, learning, next steps. -->
+<!-- consumes: filled test-plan.md + raw experiment metrics (control/treatment) -->
+<!-- produces: working document (not the JSON `spec` artefact in content/02-output-contract.xml) -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~200-350 tokens when loaded as context -->
+
+# A/B Test Results: <name>
 
 ## Summary
 | Metric | Control (A) | Treatment (B) | Difference | p-value |
 |--------|-------------|---------------|------------|---------|
-| [Primary] | X% | Y% | +Z% | 0.0X |
-| [Guardrail 1] | | | | |
-| [Guardrail 2] | | | | |
+| <primary> | X% | Y% | +Z% | 0.0X |
+| <guardrail_1> | | | | |
+| <guardrail_2> | | | | |
 
 ## Sample
 - Control: ______ users  Treatment: ______ users  Duration: ______ days

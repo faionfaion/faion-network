@@ -1,4 +1,10 @@
-# Retargeting Audiences: [Product]
+<!-- purpose: Website/engagement/exclusion retargeting audience inventory for a product. -->
+<!-- consumes: Pixel event taxonomy (Prerequisites) -->
+<!-- produces: working document (not the JSON plan artefact in content/02-output-contract.xml) -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~250-350 tokens when loaded as context -->
+
+# Retargeting Audiences: <product>
 
 ## Website Audiences
 

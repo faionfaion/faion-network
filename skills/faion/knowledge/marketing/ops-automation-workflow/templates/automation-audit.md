@@ -1,4 +1,10 @@
-# Automation Audit: [Date]
+<!-- purpose: Time-and-frequency audit of manual tasks, ranking automation candidates by ROI. -->
+<!-- consumes: task time log (daily/weekly/event-based) + founder hourly cost -->
+<!-- produces: Markdown automation audit -->
+<!-- depends-on: content/01-core-rules.xml (r1-inventory-before-build, r2-roi-ranked) -->
+<!-- token-budget-impact: ~300-450 tokens when loaded as context -->
+
+# Automation Audit: <date>
 
 ## Daily Tasks
 | Task | Time/Day (min) | Frequency/Week | Total min/week | Automate? | Priority |

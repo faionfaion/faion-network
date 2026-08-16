@@ -1,4 +1,10 @@
-# Partnership Pipeline Tracker — [Quarter / Year]
+<!-- purpose: Partnership pipeline tracker -- active partners, in-discussion, target list, closed/declined, review notes. -->
+<!-- consumes: partnership CRM/deal records + scoring on reach/relevance/trust/effort/risk -->
+<!-- produces: Markdown pipeline tracker -->
+<!-- depends-on: content/01-core-rules.xml (r2-score-five-axes, r5-scheduled-30-60-90-day-reviews) -->
+<!-- token-budget-impact: ~350-500 tokens when loaded as context -->
+
+# Partnership Pipeline Tracker — <quarter_year>
 
 ## Active Partners
 
@@ -12,8 +18,8 @@
 
 | Partner | Type | Score (/25) | Stage | Next action | Owner |
 |---------|------|-------------|-------|-------------|-------|
-| [Name] | Affiliate | [20] | Proposal sent | Follow up [Date] | [Name] |
-| [Name] | Co-marketing | [18] | Call scheduled | Discovery call [Date] | [Name] |
+| [Name] | Affiliate | <affiliate> | Proposal sent | Follow up [Date] | [Name] |
+| [Name] | Co-marketing | <co_marketing> | Call scheduled | Discovery call [Date] | [Name] |
 
 ## Target List
 
@@ -26,7 +32,7 @@
 
 | Partner | Type | Outcome | Date | Why | Re-engage? |
 |---------|------|---------|------|-----|-----------|
-| [Name] | [Type] | Declined | [Date] | [Reason] | [Yes in 6mo / No] |
+| [Name] | <type> | Declined | [Date] | <reason> | <declined> |
 
 ---
 

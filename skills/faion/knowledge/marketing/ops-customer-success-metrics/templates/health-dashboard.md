@@ -1,4 +1,10 @@
-# Customer Health Dashboard — [Month YYYY]
+<!-- purpose: Monthly customer health dashboard -- distribution by tier, at-risk/critical accounts, expansion-ready accounts. -->
+<!-- consumes: health-score data per account + MRR by account -->
+<!-- produces: Markdown health dashboard -->
+<!-- depends-on: content/01-core-rules.xml (r1-weighted-health-score, r3-leading-indicator-alerts) -->
+<!-- token-budget-impact: ~350-550 tokens when loaded as context -->
+
+# Customer Health Dashboard — <month_yyyy>
 
 ## Health Distribution
 
@@ -14,14 +20,14 @@
 
 | Account | Health score | MRR | Top risk driver | Assigned to | Action | Due |
 |---------|-------------|-----|-----------------|-------------|--------|-----|
-| [Name] | [45] | $[X] | [Low usage 14d] | [CSM] | [Outreach scheduled] | [Date] |
-| [Name] | [52] | $[X] | [Support escalation] | [CSM] | [Call booked] | [Date] |
+| [Name] | [45] | $[X] | <low_usage_14d> | [CSM] | <outreach_scheduled> | [Date] |
+| [Name] | [52] | $[X] | <support_escalation> | [CSM] | <call_booked> | [Date] |
 
 ## Critical Accounts (<40)
 
 | Account | Health score | MRR | Days in critical | Assigned to | Status |
 |---------|-------------|-----|------------------|-------------|--------|
-| [Name] | [25] | $[X] | [14] | [Name] | [Daily monitoring] |
+| [Name] | [25] | $[X] | [14] | [Name] | <daily_monitoring> |
 
 ## Expansion Ready (Healthy + high signals)
 
@@ -41,4 +47,4 @@
 ## Actions Required
 
 - [ ] [Action 1 — owner — due date]
-- [ ] [Action 2]
+- [ ] <action_2>

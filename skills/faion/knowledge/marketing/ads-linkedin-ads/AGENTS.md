@@ -68,6 +68,10 @@
 | `templates/campaign-plan.md` | LinkedIn campaign plan skeleton with objective, audience, format, bid, creative. Generated from `templates/campaign-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/abm-account-list.csv` | Matched-account list CSV header for ABM seeding. |
 | `templates/campaign-plan.json` | Schema-conformant sample artefact used by validator self-test. |
+| `templates/ad-copy.md.j2` | LinkedIn single-image/video ad copy skeleton — intro, headline, description, CTA, variant matrix. |
+| `templates/ad-copy.md` | LinkedIn single-image/video ad copy skeleton — intro, headline, description, CTA, variant matrix. Generated from `templates/ad-copy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/campaign-checklist.md.j2` | Pre-launch LinkedIn campaign checklist — tagging, targeting, creative, budget, lead-gen form, sign-off. |
+| `templates/campaign-checklist.md` | Pre-launch LinkedIn campaign checklist — tagging, targeting, creative, budget, lead-gen form, sign-off. Generated from `templates/campaign-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

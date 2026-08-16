@@ -69,6 +69,10 @@
 | `templates/retargeting-plan.md` | Retargeting plan Markdown skeleton with the 5-tier ladder. Generated from `templates/retargeting-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/frequency-matrix.csv` | Per-stage frequency cap matrix. |
 | `templates/retargeting-plan.json` | Schema-conformant sample artefact used by validator self-test. |
+| `templates/retargeting-audiences.md.j2` | Website/engagement/exclusion retargeting audience inventory for a product. |
+| `templates/retargeting-audiences.md` | Website/engagement/exclusion retargeting audience inventory for a product. Generated from `templates/retargeting-audiences.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/retargeting-campaign-structure.md.j2` | Full-funnel retargeting campaign structure — cold/warm/hot ad sets with message, budget, frequency cap. |
+| `templates/retargeting-campaign-structure.md` | Full-funnel retargeting campaign structure — cold/warm/hot ad sets with message, budget, frequency cap. Generated from `templates/retargeting-campaign-structure.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

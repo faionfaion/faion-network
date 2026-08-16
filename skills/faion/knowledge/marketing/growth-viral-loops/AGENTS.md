@@ -69,6 +69,10 @@
 | `templates/growth-viral-loops.spec.md` | Markdown spec skeleton with 5-line header Generated from `templates/growth-viral-loops.spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/growth-viral-loops.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
+| `templates/loop-anatomy.md.j2` | Viral loop anatomy worksheet — loop type, fit argument, action/artifact/distribution/motivation/friction breakdown, K-factor estimate, events to instrument. |
+| `templates/loop-anatomy.md` | Viral loop anatomy worksheet — loop type, fit argument, action/artifact/distribution/motivation/friction breakdown, K-factor estimate, events to instrument. Generated from `templates/loop-anatomy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/referral-program.md.j2` | Referral program design worksheet — value proposition, reward mechanics, offer ladder, fraud rules, tracking, compliance checklist. |
+| `templates/referral-program.md` | Referral program design worksheet — value proposition, reward mechanics, offer ladder, fraud rules, tracking, compliance checklist. Generated from `templates/referral-program.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

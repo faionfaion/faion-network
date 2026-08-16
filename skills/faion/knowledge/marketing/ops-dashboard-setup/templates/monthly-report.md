@@ -1,4 +1,10 @@
-# Monthly Report: [Month Year]
+<!-- purpose: Monthly business report -- key metrics vs target, revenue/customer analysis, channel performance, next-month focus. -->
+<!-- consumes: billing + analytics exports for the month + prior month's report for comparison -->
+<!-- produces: Markdown monthly report -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~350-500 tokens when loaded as context -->
+
+# Monthly Report: <month_year>
 
 ## Executive Summary
 [2-3 sentences: what happened this month, key wins, key concerns]
@@ -35,8 +41,8 @@
 
 ## Insights
 - [Key insight 1 — what caused a notable change]
-- [Key insight 2]
-- [Key insight 3]
+- <key_insight_2>
+- <key_insight_3>
 
 ## Next Month Focus
 - [Priority 1 with measurable goal]

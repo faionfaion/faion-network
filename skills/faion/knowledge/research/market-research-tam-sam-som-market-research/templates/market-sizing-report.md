@@ -1,15 +1,21 @@
-## Market Sizing: [Product/Niche]
+<!-- purpose: Full TAM/SAM/SOM market-sizing report with top-down + bottom-up validation and a conclusion. -->
+<!-- consumes: input brief + source-of-truth refs, per AGENTS.md Prerequisites -->
+<!-- produces: market-sizing report artefact feeding content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml (two-methods-with-recorded-divergence-ratio) -->
+<!-- token-budget-impact: ~500-900 tokens when loaded as context -->
+
+## Market Sizing: <product_niche>
 
 ### Executive Summary
 - **TAM:** $[X] ([Source, Year])
 - **SAM:** $[X]
 - **SOM (Year 3):** $[X]
-- **Confidence:** [High / Medium / Low]
+- **Confidence:** <high_medium_low>
 
 ### TAM Calculation (Top-Down)
-**Industry:** [Name]
-**Global market size:** $[X] (Source: [URL], [Year], p.[N])
-**Growth rate:** [X]% CAGR ([Source])
+**Industry:** <name>
+**Global market size:** $[X] (Source: <url>, <year>, p.[N])
+**Growth rate:** [X]% CAGR (<source>)
 
 **Calculation:**
 - Total potential buyers: [X]
@@ -21,15 +27,15 @@
 
 | Constraint | % of TAM | Resulting Value |
 |------------|----------|-----------------|
-| Geography ([region]) | [X]% | $[X] |
-| Industry ([segment]) | [X]% | $[X] |
-| Company size ([range]) | [X]% | $[X] |
+| Geography (<region>) | [X]% | $[X] |
+| Industry (<segment>) | [X]% | $[X] |
+| Company size (<range>) | [X]% | $[X] |
 
-**SAM = TAM × [combined %] = $[X]**
+**SAM = TAM × <combined> = $[X]**
 
 ### SOM Calculation (Bottom-Up)
 **Countable target customers:**
-- LinkedIn / industry database search: [X] results for [search criteria]
+- LinkedIn / industry database search: [X] results for <search_criteria>
 - Estimated reachable with marketing budget: [X]
 
 **Conversion funnel:**
@@ -46,18 +52,18 @@
 | Method | Result | Confidence | Note |
 |--------|--------|------------|------|
 | Top-down | $[X] | Medium | [Source, year] |
-| Bottom-up | $[X] | High | [Key assumption] |
-| Competitor-based | $[X] | Medium | [Competitors used] |
+| Bottom-up | $[X] | High | <key_assumption> |
+| Competitor-based | $[X] | Medium | <competitors_used> |
 
 **Variance:** [X]% — [within 2x = acceptable / above 2x = research gap requiring investigation]
 
 ### Market Dynamics
 **Growth drivers:**
-1. [Driver] — impact: [High/Med/Low]
-2. [Driver] — impact: [High/Med/Low]
+1. <driver> — impact: <high_med_low>
+2. <driver> — impact: <high_med_low>
 
 **Risks:**
-1. [Risk] — likelihood: [H/M/L]
+1. <risk> — likelihood: <h_m_l>
 
 ### Conclusion
 [Is this market worth pursuing? Reference SOM vs. cost of building.]

@@ -4,6 +4,54 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **105 finished-but-undeclared `marketing` and `research` templates now carry
+  a five-key header, a `## Templates` row and the Jinja forms.** Same shape as
+  the two entries below — neither header nor row, so nothing in the corpus
+  pointed at them. Reproduced the brief's count independently on disk: **105**,
+  over 54 methodology dirs (68 `marketing`, 37 `research` split across the two
+  domains yields 105; 16 marketing dirs and 12 research dirs carried more than
+  one undeclared template). Every one of the 54 already had a `## Templates`
+  section, so each row was an append. `consumes` / `produces` / `depends-on`
+  were written from each methodology's Prerequisites table, its
+  `content/01-core-rules.xml` and `content/02-output-contract.xml`, never
+  guessed — several of the `ops-*` and `*-market-research` templates are
+  standalone Markdown documents that do not conform to their dir's JSON output
+  contract (that contract belongs to the dir's other, already-migrated
+  skeleton), so `produces` says "Markdown <artefact>" rather than falsely
+  claiming contract conformance. Several templates in `ops-annual-planning-templates`
+  and `ops-upselling-cross-selling` trace `depends-on` to specific rule ids
+  (e.g. `r6-structural-cause-not-market-conditions`) where the template's own
+  fields visibly encode that rule (a "not 'market conditions'" note baked into
+  the row itself); templates with no such traceable dependency say
+  `depends-on: none` rather than padding the field.
+
+  `--migrate` ran **exactly once per template**: exit 0 on the templates whose
+  placeholders all resolved, exit 1 (the normal outcome — prose, per-row-table
+  repeats and name collisions correctly left for a human) on the rest.
+  **Zero refusals: no exit 2, 3, 4 or 5 anywhere in the 105.** Verified
+  afterwards: `--check` **drift=0 on all 105**, `validate-methodology-v2`
+  **54/54 pass, 0 failures**, `validate-tools` **0 findings**,
+  `validate-vars-dictionary` exit 0, and `check-validators.sh --check-fast`
+  reports **no new failures** against the baseline. `tpl-render` on 5 of the
+  105 (spanning both domains) produced sane documents with every declared
+  variable substituted.
+
+  **One thing worth flagging rather than silently fixing:** several
+  customer-facing email templates (`ops-customer-support/email-acknowledgment`,
+  `ops-upselling-cross-selling/crosssell-email` and siblings) greet a named
+  recipient (`Hi [Name],`). The migration resolver correctly left that
+  placeholder as a plain local `name: string` rather than marking it
+  `x-faion-sensitive`, because `vars-dictionary.schema.json`'s nine sensitive
+  entries cover `owner`/`reviewer`/`author`/`candidate` names but have no
+  `customer_name` or `recipient_name` entry — there was nothing to resolve
+  onto, and inventing one was out of this change's scope. That gap now has
+  live examples to point at.
+
+  `validate-methodology-templates.py --all` counts methodology
+  **directories** (2521), not templates, and reads 2521 pass / 0 fail before
+  and after — that total cannot move by declaring templates; the load-bearing
+  evidence is drift=0 and a clean v2, not the unchanged 2521.
+
 - **82 finished-but-undeclared `ux` and `hr` templates now carry a five-key
   header, a `## Templates` row and the Jinja forms.** Distinct from the 78
   below: those already had a complete header and lacked only the row; these

@@ -69,6 +69,8 @@
 | `templates/ops-financial-basics.md` | Working skeleton for the `ops-financial-basics` artefact with required fields and `not_applicable: <reason>` markers per row. Generated from `templates/ops-financial-basics.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled artefact used by the validator self-test. |
 | `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/monthly-pnl.md.j2` | Monthly P&L -- revenue, COGS, gross/operating profit, owner pay, tax reserve. |
+| `templates/monthly-pnl.md` | Monthly P&L -- revenue, COGS, gross/operating profit, owner pay, tax reserve. Generated from `templates/monthly-pnl.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

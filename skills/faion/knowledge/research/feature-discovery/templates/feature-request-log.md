@@ -1,14 +1,20 @@
-## Feature Request: [Feature Name]
+<!-- purpose: Single feature-request record -- metadata, problem, proposed solution, impact assessment, validation, decision. -->
+<!-- consumes: one feature request from support/sales/research intake -->
+<!-- produces: Markdown feature-request log entry -->
+<!-- depends-on: content/01-core-rules.xml (single-owner-per-top5-feature, parked-feature-carries-revisit-trigger) -->
+<!-- token-budget-impact: ~300-450 tokens when loaded as context -->
+
+## Feature Request: <feature_name>
 
 ### Metadata
 - **ID:** FR-[XXX]
-- **Created:** [Date]
+- **Created:** <date>
 - **Status:** New / Validating / Planned / Building / Shipped / Rejected
 
 ### Request Details
 - **Source:** Customer / Prospect / Internal / Competitor analysis
-- **Requester segment:** [free / paid / enterprise / power user]
-- **Request count:** [N times requested from [N] distinct users]
+- **Requester segment:** <requester_segment>
+- **Request count:** [N times requested from <request_count> distinct users]
 - **ARR weight:** [total ARR of requesters, if available]
 
 ### Problem
@@ -19,8 +25,8 @@
 
 ### Impact Assessment
 - **Users affected:** [Segment and estimated count]
-- **Retention impact:** High / Medium / Low — [rationale]
-- **Acquisition impact:** High / Medium / Low — [rationale]
+- **Retention impact:** High / Medium / Low — <rationale>
+- **Acquisition impact:** High / Medium / Low — <rationale>
 - **Effort estimate:** XS / S / M / L / XL
 
 ### Validation
@@ -30,8 +36,8 @@
 
 ### Decision
 **Status:** Planned / Rejected / Deferred
-**Reasoning:** [Why]
-**If planned — target quarter:** [QXYYYY]
+**Reasoning:** <why>
+**If planned — target quarter:** <qxyyyy>
 
 ### Related
 - Similar requests: [FR-XXX, FR-XXX]

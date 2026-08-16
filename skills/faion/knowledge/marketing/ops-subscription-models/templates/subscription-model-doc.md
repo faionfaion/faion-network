@@ -1,4 +1,10 @@
-# Subscription Model: [Product Name]
+<!-- purpose: Subscription model spec -- model type, billing, tiers, metric targets, lifecycle automation, dunning. -->
+<!-- consumes: model intent + feature/cost inventory + billing platform config -->
+<!-- produces: Markdown subscription model doc -->
+<!-- depends-on: content/01-core-rules.xml (r1-pick-exactly-one-model, r4-dunning-auto-then-manual, r5-lifecycle-policy-coverage) -->
+<!-- token-budget-impact: ~400-600 tokens when loaded as context -->
+
+# Subscription Model: <product_name>
 
 ## Model Type
 - [ ] SaaS (software access)
@@ -10,12 +16,12 @@
 ## Billing
 - Monthly: $X
 - Annual: $X (presented as "2 months free")
-- Usage component: [Yes — $X per unit / No]
+- Usage component: <usage_component>
 
 ## Tiers
 | Tier   | Price    | Target Customer | Key Differentiator | Usage Limit |
 |--------|----------|-----------------|-------------------|-------------|
-| Free   | $0       | [Persona]       | [Feature]         | [Limit]     |
+| Free   | $0       | [Persona]       | [Feature]         | <limit>     |
 | Pro    | $X/mo    | [Persona]       | [Feature]         | Unlimited   |
 | Team   | $X/mo    | [Persona]       | Collaboration     | Custom      |
 

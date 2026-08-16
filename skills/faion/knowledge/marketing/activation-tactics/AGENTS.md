@@ -68,6 +68,8 @@
 | `templates/activation-tactics.playbook-step.md` | Markdown playbook-step skeleton with 5-line header Generated from `templates/activation-tactics.playbook-step.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/activation-tactics.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
+| `templates/email-sequence.md.j2` | 4-email activation lifecycle sequence for not-yet-activated signups. |
+| `templates/email-sequence.md` | 4-email activation lifecycle sequence for not-yet-activated signups. Generated from `templates/email-sequence.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

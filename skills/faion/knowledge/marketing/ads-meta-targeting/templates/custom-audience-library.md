@@ -1,4 +1,10 @@
-# Custom Audience Library: [Product]
+<!-- purpose: Checklist of Custom audiences (website, engagement, customer, exclusion tiers) to create before launch. -->
+<!-- consumes: Pixel + CAPI live status + CRM purchaser/subscriber lists (Prerequisites) -->
+<!-- produces: working document (not the JSON audience artefact in content/02-output-contract.xml) -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~250-350 tokens when loaded as context -->
+
+# Custom Audience Library: <product>
 
 ## Website Audiences (create all before launching)
 

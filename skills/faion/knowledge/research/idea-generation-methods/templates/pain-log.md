@@ -1,6 +1,12 @@
+<!-- purpose: Weekly log of observed complaints, workarounds and tool-stack gaps, ranked into pain signals. -->
+<!-- consumes: operator's week of observed complaints, workarounds and tool dissatisfaction -->
+<!-- produces: weekly pain-point log with a weighted (frequency x intensity) top-signal ranking -->
+<!-- depends-on: content/01-core-rules.xml (pain-point-evidence-link) -->
+<!-- token-budget-impact: ~200-450 tokens when loaded as context -->
+
 # Pain Point Log
 
-## Week of: [Date]
+## Week of: <date>
 
 | Date | Complaint | Category | Frequency | Intensity (1-10) | Workaround | Notes |
 |------|-----------|----------|-----------|-----------------|------------|-------|

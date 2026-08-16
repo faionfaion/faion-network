@@ -1,4 +1,10 @@
-# Weekly Ads Report: Week of [Date]
+<!-- purpose: Weekly cross-channel paid-acquisition performance report — spend, CPA, ROAS, learnings, next-week actions. -->
+<!-- consumes: filled growth-plan.md kill/scale criteria + campaign performance data -->
+<!-- produces: working document (not the JSON growth-plan artefact in content/02-output-contract.xml) -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~250-350 tokens when loaded as context -->
+
+# Weekly Ads Report: Week of <date>
 
 ## Summary
 - Total Spend: $[X]
@@ -18,4 +24,4 @@
 ## Next Week Actions
 - [ ] [Kill / scale specific campaigns]
 - [ ] [New creative or audience to test]
-- [ ] [Budget adjustment]
+- [ ] <budget_adjustment>

@@ -1,7 +1,13 @@
-# Campaign Plan: [Name]
+<!-- purpose: Single paid-acquisition campaign plan working document — goals, audiences, creative, tracking, kill/scale criteria. -->
+<!-- consumes: unit economics + audience-channel fit hypothesis (Prerequisites) -->
+<!-- produces: working document (not the JSON growth-plan artefact in content/02-output-contract.xml) -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~300-450 tokens when loaded as context -->
+
+# Campaign Plan: <name>
 
 ## Goals
-- Objective: [Awareness / Traffic / Conversions]
+- Objective: <awareness_traffic_conversions>
 - LTV: $[X] | Target CAC: $[X] | Max CPA: $[X]
 - Daily budget: $[X]
 - Test duration: [X] days
@@ -12,20 +18,20 @@
 | | | | |
 
 ## Creative (3-5 variations)
-- Format: [Image / Video / Carousel]
-- Copy angles: [list]
-- CTAs: [list]
+- Format: <image_video_carousel>
+- Copy angles: <list>
+- CTAs: <list>
 
 ## Tracking
 - Pixel installed: [ ]
 - Conversion API: [ ]
 - UTM structure: utm_source=[X]&utm_medium=paid&utm_campaign=[X]
-- Primary conversion event: [Event name]
+- Primary conversion event: <event_name>
 
 ## Kill/Scale Criteria
 - Kill if: CTR below 0.5% after 1,000 impressions
 - Kill if: CPA above $[2x target] after $50 spend
-- Scale if: CPA below $[target] for 3+ consecutive days
+- Scale if: CPA below $<target> for 3+ consecutive days
 
 ## Decision Date
 [Date when first optimization review happens]

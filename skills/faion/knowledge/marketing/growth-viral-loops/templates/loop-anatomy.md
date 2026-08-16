@@ -1,4 +1,10 @@
-# Loop: [Name]
+<!-- purpose: Viral loop anatomy worksheet — loop type, fit argument, action/artifact/distribution/motivation/friction breakdown, K-factor estimate, events to instrument. -->
+<!-- consumes: product/ICP context, comparable-product K-factor benchmarks -->
+<!-- produces: loop anatomy worksheet artefact -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~250-500 tokens when loaded as context -->
+
+# Loop: <name>
 
 ## Loop Type
 [inherent / word-of-mouth / incentivized / social / collaborative / content / embedded]
@@ -22,13 +28,13 @@
 - Cycle time target: _____ days
 
 ## Events to Instrument (minimum 5)
-1. [event_name]: [what it captures]
+1. <event_name>: [what it captures]
 2.
 3.
 4.
 5.
 
 ## Measurement Plan
-- Tool tracking funnel: [PostHog / Mixpanel / Amplitude]
-- Tool tracking attribution: [Branch / AppsFlyer / UTM]
+- Tool tracking funnel: <tool_tracking_funnel>
+- Tool tracking attribution: <tool_tracking_attribution>
 - Reporting cadence: weekly K-factor review

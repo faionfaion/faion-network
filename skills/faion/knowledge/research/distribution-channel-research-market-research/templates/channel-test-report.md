@@ -1,10 +1,16 @@
-## Channel Test: [Channel Name]
+<!-- purpose: Single-channel test readout -- budget/duration/targeting, funnel results, analysis, scale/optimize/pause/kill recommendation. -->
+<!-- consumes: campaign platform export (impressions, clicks, conversions, spend) for the tested channel -->
+<!-- produces: Markdown channel test report -->
+<!-- depends-on: content/01-core-rules.xml (payback-and-ltv-cac-gate, recommendation-carries-kill-threshold) -->
+<!-- token-budget-impact: ~250-400 tokens when loaded as context -->
+
+## Channel Test: <channel_name>
 
 ### Test Parameters
 - **Budget:** $[X]
 - **Duration:** [X] days
-- **Targeting:** [Audience]
-- **Creative:** [Description]
+- **Targeting:** <audience>
+- **Creative:** <description>
 
 ### Results
 
@@ -20,9 +26,9 @@
 | LTV:CAC | [X]:1 | [X]:1 |
 
 ### Analysis
-- **What worked:** [Observation]
-- **What didn't:** [Observation]
-- **Learnings:** [Key insights]
+- **What worked:** <observation>
+- **What didn't:** <observation>
+- **Learnings:** <key_insights>
 
 ### Recommendation
 - [ ] Scale (increase budget to $X — LTV:CAC > 3:1 confirmed)
@@ -31,5 +37,5 @@
 - [ ] Kill (LTV:CAC < 1.5:1, move to other channels)
 
 ### Next Steps
-1. [Action]
-2. [Action]
+1. <action>
+2. <action>

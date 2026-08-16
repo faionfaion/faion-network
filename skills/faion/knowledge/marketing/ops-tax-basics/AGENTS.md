@@ -68,6 +68,10 @@
 | `templates/ops-tax-basics.md` | Working skeleton for the `ops-tax-basics` artefact with required fields and `not_applicable: <reason>` markers per row. Generated from `templates/ops-tax-basics.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled artefact used by the validator self-test. |
 | `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/annual-tax-summary.md.j2` | Annual tax summary (CPA prep package) -- income, deductions, tax calculations, quarterly payments made, retirement contributions. |
+| `templates/annual-tax-summary.md` | Annual tax summary (CPA prep package) -- income, deductions, tax calculations, quarterly payments made, retirement contributions. Generated from `templates/annual-tax-summary.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/tax-planning-checklist.md.j2` | Year-round tax planning checklist -- entity structure, deductions, tax-advantaged accounts, quarterly estimates, year-end actions. |
+| `templates/tax-planning-checklist.md` | Year-round tax planning checklist -- entity structure, deductions, tax-advantaged accounts, quarterly estimates, year-end actions. Generated from `templates/tax-planning-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

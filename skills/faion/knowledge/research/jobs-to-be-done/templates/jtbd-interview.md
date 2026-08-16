@@ -1,4 +1,10 @@
-## JTBD Interview: [Respondent ID]
+<!-- purpose: Structured switch interview guide (timeline questions + forces analysis) for one JTBD respondent. -->
+<!-- consumes: a switcher-cohort respondent plus the JTBD interview guide, per AGENTS.md Prerequisites -->
+<!-- produces: filled interview transcript with push/pull/habit/fear forces and a draft job statement -->
+<!-- depends-on: content/01-core-rules.xml -->
+<!-- token-budget-impact: ~350-750 tokens when loaded as context -->
+
+## JTBD Interview: <respondent_id>
 
 ### Context
 - **Product purchased / switched to:** [X]
@@ -9,7 +15,7 @@
 ### Timeline Questions
 
 **First thought:**
-"When did you first start thinking you needed something different for [category]?"
+"When did you first start thinking you needed something different for <category>?"
 Notes: [verbatim or close paraphrase + date reference if given]
 
 **Situation:**
@@ -35,21 +41,21 @@ Notes:
 ### Forces Analysis
 
 **Push (pain with the old way):**
-- "[Quote]"
+- "<quote>"
 
 **Pull (attraction to the new solution):**
-- "[Quote]"
+- "<quote>"
 
 **Habit (comfort with the old way):**
-- "[Quote]"
+- "<quote>"
 
 **Fear (anxiety about the new solution):**
-- "[Quote]"
+- "<quote>"
 
 ### Draft Job Statement
-When [situation]
-I want to [action]
-So I can [outcome]
+When <situation>
+I want to <action>
+So I can <outcome>
 
 ### Commitment signals observed
 - [ ] Follow-up meeting agreed

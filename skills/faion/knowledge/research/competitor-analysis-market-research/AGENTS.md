@@ -69,6 +69,10 @@
 | `templates/output-skeleton.md.j2` | Minimal skeleton conforming to the output contract |
 | `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract Generated from `templates/output-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
+| `templates/competitor-report.md.j2` | Full competitor analysis -- competitor map, per-competitor SWOT/pricing, positioning matrix, gap analysis, differentiation statement, monitoring plan. |
+| `templates/competitor-report.md` | Full competitor analysis -- competitor map, per-competitor SWOT/pricing, positioning matrix, gap analysis, differentiation statement, monitoring plan. Generated from `templates/competitor-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/competitor-snapshot.md.j2` | Single-competitor snapshot -- product summary, pricing, SWOT, market-share estimate, opportunity for us. |
+| `templates/competitor-snapshot.md` | Single-competitor snapshot -- product summary, pricing, SWOT, market-share estimate, opportunity for us. Generated from `templates/competitor-snapshot.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

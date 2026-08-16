@@ -69,6 +69,8 @@
 | `templates/growth-loops.spec.md` | Markdown spec skeleton with 5-line header Generated from `templates/growth-loops.spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/growth-loops.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
+| `templates/growth-loop-design.md.j2` | Single growth-loop design working canvas — flow, per-step metrics, bottleneck, optimization experiments. |
+| `templates/growth-loop-design.md` | Single growth-loop design working canvas — flow, per-step metrics, bottleneck, optimization experiments. Generated from `templates/growth-loop-design.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

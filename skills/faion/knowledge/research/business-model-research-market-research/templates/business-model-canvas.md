@@ -1,12 +1,18 @@
-## Business Model Canvas: [Product]
+<!-- purpose: Business Model Canvas -- segments, value props, channels, relationships, revenue, resources, activities, partners, costs. -->
+<!-- consumes: product/ICP context + revenue stream assumptions + cost structure -->
+<!-- produces: Markdown business model canvas -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~350-500 tokens when loaded as context -->
+
+## Business Model Canvas: <product>
 
 ### Customer Segments
 - **Primary:** [Segment 1 — specific firmographic or demographic description]
 - **Secondary:** [Segment 2]
 
 ### Value Propositions
-- For [segment 1]: [Specific value delivered — pain relieved or gain enabled]
-- For [segment 2]: [Specific value delivered]
+- For <segment_1>: [Specific value delivered — pain relieved or gain enabled]
+- For [segment 2]: <specific_value_delivered>
 
 ### Channels
 - **Awareness:** [How they discover us]
@@ -16,14 +22,14 @@
 - **After sales:** [How we retain and expand]
 
 ### Customer Relationships
-- Type: [Self-serve / Sales-assisted / Automated / Community]
-- Retention mechanisms: [Specific features or programs]
+- Type: <type>
+- Retention mechanisms: <retention_mechanisms>
 
 ### Revenue Streams
 | Stream | Model | Price | % of Revenue | Notes |
 |--------|-------|-------|--------------|-------|
-| [Stream 1] | [Subscription/One-time/etc.] | $[X] | [X]% | |
-| [Stream 2] | | $[X] | [X]% | |
+| <stream_1> | [Subscription/One-time/etc.] | $[X] | [X]% | |
+| <stream_2> | | $[X] | [X]% | |
 
 ### Key Resources
 - **Intellectual:** [IP, data, algorithms, brand]
@@ -33,18 +39,18 @@
 
 ### Key Activities
 1. [Critical activity 1 — what must be excellent]
-2. [Critical activity 2]
-3. [Critical activity 3]
+2. <critical_activity_2>
+3. <critical_activity_3>
 
 ### Key Partners
 | Partner | What They Provide | What They Get |
 |---------|------------------|---------------|
-| [Partner 1] | [Value in] | [Value out] |
+| <partner_1> | [Value in] | <value_out> |
 
 ### Cost Structure
 | Cost | Type | Amount |
 |------|------|--------|
-| [Cost 1] | Fixed | $[X]/mo |
-| [Cost 2] | Variable | $[X]/unit |
+| <cost_1> | Fixed | $[X]/mo |
+| <cost_2> | Variable | $[X]/unit |
 
 **Cost structure type:** [ ] Cost-driven [ ] Value-driven

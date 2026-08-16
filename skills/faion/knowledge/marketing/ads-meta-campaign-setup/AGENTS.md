@@ -70,6 +70,8 @@
 | `templates/naming-checklist.md.j2` | Naming convention checklist. |
 | `templates/naming-checklist.md` | Naming convention checklist. Generated from `templates/naming-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/campaign-spec.json` | Schema-conformant sample artefact used by validator self-test. |
+| `templates/launch-checklist.md.j2` | Pre-launch Meta campaign checklist — pixel, campaign/ad-set/ad settings, launch sign-off. |
+| `templates/launch-checklist.md` | Pre-launch Meta campaign checklist — pixel, campaign/ad-set/ad settings, launch sign-off. Generated from `templates/launch-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

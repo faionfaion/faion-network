@@ -69,6 +69,10 @@
 | `templates/ab-testing-setup.spec.md` | Markdown spec skeleton with 5-line header Generated from `templates/ab-testing-setup.spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/ab-testing-setup.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
+| `templates/test-plan.md.j2` | Pre-launch A/B test plan working document — hypothesis, variants, sample size, schedule, owner. |
+| `templates/test-plan.md` | Pre-launch A/B test plan working document — hypothesis, variants, sample size, schedule, owner. Generated from `templates/test-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/test-results.md.j2` | Post-test A/B results readout working document — significance, decision, learning, next steps. |
+| `templates/test-results.md` | Post-test A/B results readout working document — significance, decision, learning, next steps. Generated from `templates/test-results.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

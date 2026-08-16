@@ -68,6 +68,10 @@
 | `templates/creative-brief.md` | Meta creative brief Markdown skeleton. Generated from `templates/creative-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/variant-matrix.csv` | Variant matrix CSV header for production hand-off. |
 | `templates/creative-brief.json` | Schema-conformant sample artefact used by validator self-test. |
+| `templates/image-ad-spec.md.j2` | Meta static/image ad spec — visual, copy, CTA button, UTM tracking. |
+| `templates/image-ad-spec.md` | Meta static/image ad spec — visual, copy, CTA button, UTM tracking. Generated from `templates/image-ad-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/video-ad-script.md.j2` | Meta 30-second video ad script skeleton — hook/problem/solution/proof/CTA scene breakdown. |
+| `templates/video-ad-script.md` | Meta 30-second video ad script skeleton — hook/problem/solution/proof/CTA scene breakdown. Generated from `templates/video-ad-script.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

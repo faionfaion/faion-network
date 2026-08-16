@@ -1,4 +1,10 @@
-# Contractor Review: [Name] — [Period: YYYY-MM to YYYY-MM]
+<!-- purpose: Structured periodic contractor performance review with ratings, metrics, and a continue/adjust/end decision. -->
+<!-- consumes: contractor's deliverable log + prior period's metrics -->
+<!-- produces: Markdown contractor evaluation -->
+<!-- depends-on: content/01-core-rules.xml (r6-structured-monthly-review-five-areas) -->
+<!-- token-budget-impact: ~300-450 tokens when loaded as context -->
+
+# Contractor Review: <name> — [Period: YYYY-MM to YYYY-MM]
 
 ## Performance Ratings (1–5)
 
@@ -35,8 +41,8 @@
 ## Decision
 
 - [ ] Continue as-is
-- [ ] Adjust scope: [describe]
-- [ ] Adjust rate: [describe]
-- [ ] End engagement — reason: [describe]
+- [ ] Adjust scope: <describe>
+- [ ] Adjust rate: <describe>
+- [ ] End engagement — reason: <describe>
 
-**Next review date:** [YYYY-MM-DD]
+**Next review date:** <next_review_date>

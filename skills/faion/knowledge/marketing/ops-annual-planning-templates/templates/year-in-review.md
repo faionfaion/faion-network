@@ -1,33 +1,39 @@
+<!-- purpose: Narrative year-in-review -- wins, challenges with structural cause, metrics summary, personal growth. -->
+<!-- consumes: annual plan's goals + year's metrics + personal reflection notes -->
+<!-- produces: Markdown year-in-review document -->
+<!-- depends-on: content/01-core-rules.xml (r6-structural-cause-not-market-conditions, r8-founder-approval-before-external-share) -->
+<!-- token-budget-impact: ~400-600 tokens when loaded as context -->
+
 # [Year] Year in Review
 
 ## Wins
-1. **[Win 1]**
-   - What: [description]
+1. **<win_1>**
+   - What: <description>
    - Impact: [measurable outcome — cite a number]
    - Why it mattered: [significance to the business or to you]
 
-2. **[Win 2]**
-   - What: [description]
-   - Impact: [measurable outcome]
-   - Why it mattered: [significance]
+2. **<win_2>**
+   - What: <description>
+   - Impact: <measurable_outcome>
+   - Why it mattered: <significance>
 
-3. **[Win 3]**
-   - What: [description]
-   - Impact: [measurable outcome]
-   - Why it mattered: [significance]
+3. **<win_3>**
+   - What: <description>
+   - Impact: <measurable_outcome>
+   - Why it mattered: <significance>
 
 ## Challenges
-1. **[Challenge 1]**
-   - What happened: [description]
+1. **<challenge_1>**
+   - What happened: <description>
    - Structural cause: [internal decision or resource gap — not "market conditions"]
-   - How I handled it: [response]
-   - What I learned: [lesson]
+   - How I handled it: <response>
+   - What I learned: <lesson>
 
-2. **[Challenge 2]**
-   - What happened: [description]
-   - Structural cause: [internal decision or resource gap]
-   - How I handled it: [response]
-   - What I learned: [lesson]
+2. **<challenge_2>**
+   - What happened: <description>
+   - Structural cause: <structural_cause>
+   - How I handled it: <response>
+   - What I learned: <lesson>
 
 ## Metrics Summary
 | Area | Start | End | Change |
@@ -43,8 +49,8 @@
 
 ## What I Would Do Differently
 - [Specific change 1 — not "be more focused"; name the actual decision]
-- [Specific change 2]
-- [Specific change 3]
+- <specific_change_2>
+- <specific_change_3>
 
 ## Key Takeaways
 1. [Lesson 1 — how it shapes next year]
@@ -52,6 +58,6 @@
 3. [Lesson 3 — how it shapes next year]
 
 ## Personal Growth
-- Skills learned: [list]
-- Habits formed: [list]
-- Energy and satisfaction: [honest assessment]
+- Skills learned: <list>
+- Habits formed: <list>
+- Energy and satisfaction: <honest_assessment>

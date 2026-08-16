@@ -1,4 +1,10 @@
-# Feature Matrix: [Market / Product Name]
+<!-- purpose: Feature-matrix worksheet classifying competitor features into table-stakes/opportunity/validate-demand, with evidence. -->
+<!-- consumes: competitor snapshots from competitive-landscape.md + reviews/roadmap evidence -->
+<!-- produces: classified feature matrix with a demand-validated gap summary -->
+<!-- depends-on: content/01-core-rules.xml (demand-side-segmentation) -->
+<!-- token-budget-impact: ~500-1200 tokens when loaded as context -->
+
+# Feature Matrix: <market_product_name>
 
 **Date:** YYYY-MM-DD  
 **Snapshot date:** YYYY-MM-DD (must match competitor snapshots)  
@@ -11,12 +17,12 @@ Legend: Y = present | N = absent | P = partial / on roadmap
 
 ## Matrix
 
-| Feature | [Comp 1] | [Comp 2] | [Comp 3] | [Comp 4] | [Comp 5] | Classification |
+| Feature | <comp_1> | <comp_2> | <comp_3> | <comp_4> | <comp_5> | Classification |
 |---------|----------|----------|----------|----------|----------|----------------|
 | [Feature A] | Y | Y | Y | Y | Y | Table stakes |
-| [Feature B] | Y | Y | N | P | N | Opportunity |
-| [Feature C] | N | N | N | N | N | Validate demand |
-| [Feature D] | Y | N | N | N | N | Opportunity |
+| <feature_b> | Y | Y | N | P | N | Opportunity |
+| <feature_c> | N | N | N | N | N | Validate demand |
+| <feature_d> | Y | N | N | N | N | Opportunity |
 
 *Process: chunk to ≤5 competitors per invocation to avoid long-context degradation.*
 
@@ -36,7 +42,7 @@ Legend: Y = present | N = absent | P = partial / on roadmap
 
 For each feature classified as Opportunity or Validate demand, document evidence before claiming whitespace.
 
-### [Feature B]
+### <feature_b>
 
 **Classification:** Opportunity
 
@@ -44,7 +50,7 @@ For each feature classified as Opportunity or Validate demand, document evidence
 |----------------|-------------------|-----|------|
 | G2 review | "[buyer quote about needing X]" | [URL] | |
 | Capterra review | | | |
-| Reddit r/[subreddit] | "[post title]" / X upvotes | [URL] | |
+| Reddit r/<subreddit> | "<post_title>" / X upvotes | [URL] | |
 | Competitor forum | X votes on request | [URL] | |
 | Competitor roadmap | [listed / not listed] | [URL] | |
 
@@ -75,5 +81,5 @@ For each feature classified as Opportunity or Validate demand, document evidence
 
 | Date | Changes since last run | Re-run trigger |
 |------|------------------------|----------------|
-| YYYY-MM-DD | [initial] | — |
+| YYYY-MM-DD | <initial> | — |
 | | | [competitor shipped X / 90 days elapsed] |

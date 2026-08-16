@@ -1,3 +1,9 @@
+<!-- purpose: Two-email referral-program lifecycle sequence — announcement + no-referrals-yet reminder. -->
+<!-- consumes: Brief / inputs (Prerequisites) + incentive structure from filled spec -->
+<!-- produces: working document (not the JSON `spec` artefact in content/02-output-contract.xml) -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~300-450 tokens when loaded as context -->
+
 # Referral Program Emails
 
 ## Announcement Email
@@ -7,16 +13,16 @@
 Body:
 Hey {first_name},
 
-You've been a [Product] customer for {months} months, and we want to say thanks.
+You've been a <product> customer for {months} months, and we want to say thanks.
 
-Starting today, earn $20 for every friend you refer to [Product].
+Starting today, earn $20 for every friend you refer to <product>.
 
 Here's how:
 1. Share your unique link: {referral_link}
 2. Your friend gets $20 off
 3. You get $20 credit — no limit
 
-[Share My Link]
+<share_my_link>
 
 ---
 
@@ -35,6 +41,6 @@ Share your link: {referral_link}
 - You get: $20 credit
 - No limits
 
-[Share Now]
+<share_now>
 
 P.S. This month's top referrer has earned $300. Could be you!

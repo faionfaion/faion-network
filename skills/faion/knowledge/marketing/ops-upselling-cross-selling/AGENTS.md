@@ -68,6 +68,14 @@
 | `templates/ops-upselling-cross-selling.md` | Working skeleton for the `ops-upselling-cross-selling` artefact with required fields and `not_applicable: <reason>` markers per row. Generated from `templates/ops-upselling-cross-selling.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled artefact used by the validator self-test. |
 | `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/crosssell-email.md.j2` | Cross-sell email offering a related product to an existing customer, with a time-boxed discount. |
+| `templates/crosssell-email.md` | Cross-sell email offering a related product to an existing customer, with a time-boxed discount. Generated from `templates/crosssell-email.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/expansion-dashboard.md.j2` | Monthly expansion-revenue dashboard -- NRR, expansion by type, top opportunities, trigger performance. |
+| `templates/expansion-dashboard.md` | Monthly expansion-revenue dashboard -- NRR, expansion by type, top opportunities, trigger performance. Generated from `templates/expansion-dashboard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/upsell-feature-email.md.j2` | Feature-usage-triggered upsell email offering a free trial of the next plan tier. |
+| `templates/upsell-feature-email.md` | Feature-usage-triggered upsell email offering a free trial of the next plan tier. Generated from `templates/upsell-feature-email.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/upsell-usage-email.md.j2` | Usage-limit-triggered upsell email offering a one-click plan upgrade. |
+| `templates/upsell-usage-email.md` | Usage-limit-triggered upsell email offering a one-click plan upgrade. Generated from `templates/upsell-usage-email.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

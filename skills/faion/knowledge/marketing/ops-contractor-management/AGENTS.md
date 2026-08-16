@@ -68,6 +68,12 @@
 | `templates/ops-contractor-management.md` | Working skeleton for the `ops-contractor-management` artefact with required fields and `not_applicable: <reason>` markers per row. Generated from `templates/ops-contractor-management.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled artefact used by the validator self-test. |
 | `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/evaluation.md.j2` | Structured periodic contractor performance review with ratings, metrics, and a continue/adjust/end decision. |
+| `templates/evaluation.md` | Structured periodic contractor performance review with ratings, metrics, and a continue/adjust/end decision. Generated from `templates/evaluation.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/onboarding-doc.md.j2` | Contractor onboarding kit -- business context, role, tools/access, working norms, quality bar, first task. |
+| `templates/onboarding-doc.md` | Contractor onboarding kit -- business context, role, tools/access, working norms, quality bar, first task. Generated from `templates/onboarding-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/weekly-checkin.md.j2` | Weekly async check-in from a contractor -- completed/in-progress work, blockers, time logged. |
+| `templates/weekly-checkin.md` | Weekly async check-in from a contractor -- completed/in-progress work, blockers, time logged. Generated from `templates/weekly-checkin.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

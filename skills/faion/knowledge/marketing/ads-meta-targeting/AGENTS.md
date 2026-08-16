@@ -70,6 +70,10 @@
 | `templates/exclusions-checklist.md.j2` | Exclusion audiences checklist before launch. |
 | `templates/exclusions-checklist.md` | Exclusion audiences checklist before launch. Generated from `templates/exclusions-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/audience-spec.json` | Schema-conformant sample artefact used by validator self-test. |
+| `templates/audience-testing-log.md.j2` | Audience-tier A/B test log — spend/CPA/ROAS per audience, winner, next test. |
+| `templates/audience-testing-log.md` | Audience-tier A/B test log — spend/CPA/ROAS per audience, winner, next test. Generated from `templates/audience-testing-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/custom-audience-library.md.j2` | Checklist of Custom audiences (website, engagement, customer, exclusion tiers) to create before launch. |
+| `templates/custom-audience-library.md` | Checklist of Custom audiences (website, engagement, customer, exclusion tiers) to create before launch. Generated from `templates/custom-audience-library.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

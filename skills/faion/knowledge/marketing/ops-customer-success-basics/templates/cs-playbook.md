@@ -1,8 +1,14 @@
-# Customer Success Playbook: [Product Name]
+<!-- purpose: CS motion playbook -- onboarding cadence, ongoing engagement triggers, at-risk intervention, expansion triggers. -->
+<!-- consumes: north-star success metric + product lifecycle event definitions -->
+<!-- produces: Markdown CS playbook -->
+<!-- depends-on: content/01-core-rules.xml (r1-one-north-star-metric, r2-trigger-on-behavior-not-calendar, r4-cap-automated-reengagement) -->
+<!-- token-budget-impact: ~350-550 tokens when loaded as context -->
+
+# Customer Success Playbook: <product_name>
 
 ## Success Definition
-Our customers are successful when they: [primary outcome]
-Measured by: [north-star metric] — target: [X]
+Our customers are successful when they: <primary_outcome>
+Measured by: <north_star_metric> — target: [X]
 
 ## Onboarding (Day 1-30)
 

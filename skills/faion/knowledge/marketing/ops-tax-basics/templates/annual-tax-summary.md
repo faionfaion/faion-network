@@ -1,4 +1,10 @@
-# Annual Tax Summary: [Year]
+<!-- purpose: Annual tax summary (CPA prep package) -- income, deductions, tax calculations, quarterly payments made, retirement contributions. -->
+<!-- consumes: income by source + deduction categories + quarterly payment records -->
+<!-- produces: Markdown tax summary (not a filing) -->
+<!-- depends-on: content/01-core-rules.xml (r2-safe-harbor-quarterly-estimates, r4-deductible-expense-ledger) -->
+<!-- token-budget-impact: ~400-600 tokens when loaded as context -->
+
+# Annual Tax Summary: <year>
 # (CPA prep package — do not file without professional review)
 
 ## Income
@@ -17,7 +23,7 @@
 | Software / tools | $[X] | |
 | Marketing / ads | $[X] | |
 | Professional services | $[X] | |
-| Equipment | $[X] | [Section 179 or depreciation] |
+| Equipment | $[X] | <equipment> |
 | Education | $[X] | |
 | Travel (business) | $[X] | |
 | Health insurance premiums | $[X] | |

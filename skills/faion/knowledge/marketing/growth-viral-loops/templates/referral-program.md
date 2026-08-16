@@ -1,12 +1,18 @@
-# Referral Program Design: [Product]
+<!-- purpose: Referral program design worksheet — value proposition, reward mechanics, offer ladder, fraud rules, tracking, compliance checklist. -->
+<!-- consumes: product context, reward budget, legal/compliance constraints (GDPR/CASL/FTC) -->
+<!-- produces: referral program design artefact -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~250-500 tokens when loaded as context -->
+
+# Referral Program Design: <product>
 
 ## Value Proposition
-Share [Product] with friends and both of you get [reward].
+Share <product> with friends and both of you get <reward>.
 
 ## Mechanics
 - Referred friend gets: [X — delivered at activation, not signup]
 - Referrer gets: [Y — delivered at invitee activation, not signup]
-- Reward trigger: invitee reaches [activation milestone] within [N] days
+- Reward trigger: invitee reaches <activation_milestone> within <reward_trigger> days
 
 ## Sharing Options
 - [ ] Unique referral link
@@ -17,9 +23,9 @@ Share [Product] with friends and both of you get [reward].
 ## Offer Ladder
 | Referrals | Referrer Reward |
 |-----------|-----------------|
-| 1 | [base reward] |
+| 1 | <base_reward> |
 | 5 | [mid-tier reward + badge] |
-| 10 | [premium reward] |
+| 10 | <premium_reward> |
 
 ## Fraud Rules
 - Maximum rewards per user: [N] per 12 months

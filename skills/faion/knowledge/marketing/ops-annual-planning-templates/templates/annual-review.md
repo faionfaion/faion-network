@@ -1,3 +1,9 @@
+<!-- purpose: End-of-year review -- goal achievement, year-by-numbers, learnings, personal reflection. -->
+<!-- consumes: annual plan's goals/targets + actuals from finance/analytics -->
+<!-- produces: Markdown annual review -->
+<!-- depends-on: content/01-core-rules.xml (r2-no-invented-metrics, r5-metrics-traceable-to-input) -->
+<!-- token-budget-impact: ~350-550 tokens when loaded as context -->
+
 # [Year] Annual Review
 
 ## Executive Summary
@@ -6,9 +12,9 @@
 ## Goals Achievement
 | Goal | Target | Actual | Achievement % |
 |------|--------|--------|---------------|
-| [Goal 1] | [X] | [X] | [X]% |
-| [Goal 2] | [X] | [X] | [X]% |
-| [Goal 3] | [X] | [X] | [X]% |
+| <goal_1> | [X] | [X] | [X]% |
+| <goal_2> | [X] | [X] | [X]% |
+| <goal_3> | [X] | [X] | [X]% |
 
 ## Year by Numbers
 | Metric | Start of Year | End of Year | Change |
@@ -19,13 +25,13 @@
 | Products | [X] | [X] | +[X] |
 
 ## Major Accomplishments
-1. [Accomplishment 1]
-2. [Accomplishment 2]
-3. [Accomplishment 3]
+1. <accomplishment_1>
+2. <accomplishment_2>
+3. <accomplishment_3>
 
 ## Major Challenges
-1. [Challenge 1] — how addressed: [response]
-2. [Challenge 2] — how addressed: [response]
+1. <challenge_1> — how addressed: <response>
+2. <challenge_2> — how addressed: <response>
 
 ## What Worked
 - [Strategy or tactic 1 — why it worked]
@@ -42,8 +48,8 @@
 
 ## Personal Reflection
 - Energy level throughout the year: [high / medium / low / variable — describe]
-- Satisfaction with the work: [assessment]
-- Work-life balance: [assessment]
-- Skills developed: [list]
-- Habits formed: [list]
+- Satisfaction with the work: <assessment>
+- Work-life balance: <assessment>
+- Skills developed: <list>
+- Habits formed: <list>
 - What I would do differently: [specific changes, not general aspirations]

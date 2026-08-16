@@ -1,4 +1,10 @@
-# Annual Budget: [Year]
+<!-- purpose: Annual budget -- bottom-up revenue forecast, expense budget by quarter, target profitability, stress case. -->
+<!-- consumes: customer/ARPU growth assumptions + expense category estimates -->
+<!-- produces: Markdown annual budget -->
+<!-- depends-on: content/01-core-rules.xml (r1-3-and-12-month-projection) -->
+<!-- token-budget-impact: ~400-600 tokens when loaded as context -->
+
+# Annual Budget: <year>
 
 ## Revenue Forecast (bottom-up)
 | Quarter | Customers | ARPU | Target | Assumption |
@@ -28,9 +34,9 @@
 
 ## Investment Plan (from operating profit)
 Priority order: retention → conversion → acquisition → operations → expansion
-1. [Investment 1 — retention]: $X
-2. [Investment 2 — conversion]: $X
-3. [Investment 3 — acquisition]: $X
+1. <investment_1_retention>: $X
+2. <investment_2_conversion>: $X
+3. <investment_3_acquisition>: $X
 
 ## Stress Case (20% revenue drop)
 - Stressed revenue: $X

@@ -1,4 +1,10 @@
-# Support Review: Week of [Date]
+<!-- purpose: Weekly support-ops review -- ticket volume by category, response/resolution performance, top recurring issues. -->
+<!-- consumes: ticket-tool export (volume, response times, CSAT) for the week -->
+<!-- produces: Markdown weekly support review -->
+<!-- depends-on: content/01-core-rules.xml (r3-canned-reply-coverage-60-pct, r4-weekly-pattern-review) -->
+<!-- token-budget-impact: ~300-450 tokens when loaded as context -->
+
+# Support Review: Week of <date>
 
 ## Volume
 - Total tickets: X
@@ -18,16 +24,16 @@
 - Unresolved at week end: X tickets
 
 ## Top Issues (5+ similar tickets = recurring)
-1. [Issue description] — X tickets — [Action: add to FAQ / fix bug / improve docs]
-2. [Issue description] — X tickets — [Action]
-3. [Issue description] — X tickets — [Action]
+1. <issue_description> — X tickets — [Action: add to FAQ / fix bug / improve docs]
+2. <issue_description> — X tickets — <action>
+3. <issue_description> — X tickets — <action>
 
 ## Product Signals
-- Features requested 3+ times this week: [list]
+- Features requested 3+ times this week: <list>
 - Flows causing how-to confusion above 20%: [list → consider UX review]
 
 ## Action Items
-- [ ] Add FAQ article for: [topic]
-- [ ] File bug ticket for: [description]
-- [ ] Improve docs for: [feature]
-- [ ] Review UX for: [confusing flow]
+- [ ] Add FAQ article for: <topic>
+- [ ] File bug ticket for: <description>
+- [ ] Improve docs for: <feature>
+- [ ] Review UX for: <confusing_flow>

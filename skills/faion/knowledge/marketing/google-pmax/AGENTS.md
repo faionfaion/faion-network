@@ -70,6 +70,8 @@
 | `templates/pmax-spec.md` | PMax spec Markdown skeleton with asset groups + signals + negatives. Generated from `templates/pmax-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/brand-negatives.csv` | Brand negatives seed CSV. |
 | `templates/pmax-spec.json` | Schema-conformant sample artefact used by validator self-test. |
+| `templates/asset-spec.md.j2` | PMax asset-group creation checklist — pre-requisites, text/image/video assets, URLs, audience signals, go-live gate. |
+| `templates/asset-spec.md` | PMax asset-group creation checklist — pre-requisites, text/image/video assets, URLs, audience signals, go-live gate. Generated from `templates/asset-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

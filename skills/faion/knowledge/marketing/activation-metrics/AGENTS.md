@@ -69,6 +69,8 @@
 | `templates/activation-metrics.report.md` | Markdown report skeleton with 5-line header Generated from `templates/activation-metrics.report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/activation-metrics.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
+| `templates/activation-funnel-analysis.md.j2` | Weekly activation-funnel working analysis — definition, current performance, drop-off, this week's experiment. |
+| `templates/activation-funnel-analysis.md` | Weekly activation-funnel working analysis — definition, current performance, drop-off, this week's experiment. Generated from `templates/activation-funnel-analysis.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

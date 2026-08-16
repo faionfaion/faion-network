@@ -68,6 +68,8 @@
 | `templates/ops-legal-compliance-checklist.md` | Working skeleton for the `ops-legal-compliance-checklist` artefact with required fields and `not_applicable: <reason>` markers per row. Generated from `templates/ops-legal-compliance-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled artefact used by the validator self-test. |
 | `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/policy-update-notification.md.j2` | Material-change notification email for a ToS/Privacy Policy update, plus the internal pre-send checklist. |
+| `templates/policy-update-notification.md` | Material-change notification email for a ToS/Privacy Policy update, plus the internal pre-send checklist. Generated from `templates/policy-update-notification.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -69,6 +69,10 @@
 | `templates/naming-and-domains.md.j2` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml |
 | `templates/naming-and-domains.md` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml Generated from `templates/naming-and-domains.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/naming-and-domains.schema.json` | JSON Schema seed + filled fixture for the report artefact |
+| `templates/domain-check-report.md.j2` | Domain-availability, social-handle and trademark pre-check report for a candidate name. |
+| `templates/domain-check-report.md` | Domain-availability, social-handle and trademark pre-check report for a candidate name. Generated from `templates/domain-check-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/naming-brief.md.j2` | Brand-attribute keyword brief with scored name candidates and a top-3 recommendation. |
+| `templates/naming-brief.md` | Brand-attribute keyword brief with scored name candidates and a top-3 recommendation. Generated from `templates/naming-brief.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

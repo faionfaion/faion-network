@@ -1,21 +1,27 @@
-Subject: The next step for [Product] users
+<!-- purpose: Cross-sell email offering a related product to an existing customer, with a time-boxed discount. -->
+<!-- consumes: customer name + usage milestone + related-product offer terms -->
+<!-- produces: Markdown email template -->
+<!-- depends-on: content/01-core-rules.xml (r2-frame-with-customers-own-usage-data) -->
+<!-- token-budget-impact: ~200-350 tokens when loaded as context -->
 
-Hi [Name],
+Subject: The next step for <product> users
 
-You've been using [Product] for [X months] now — [reference a specific milestone or usage signal if available].
+Hi <name>,
 
-Customers who've reached this stage often find that [Related Product] helps them [specific outcome that follows naturally from current product usage]:
+You've been using <product> for <x_months> now — [reference a specific milestone or usage signal if available].
+
+Customers who've reached this stage often find that <related_product> helps them [specific outcome that follows naturally from current product usage]:
 - [Benefit 1 — concrete]
 - [Benefit 2 — concrete]
 - [Benefit 3 — concrete]
 
-**As a [Product] customer, you get [30]% off [Related Product]:**
+**As a <product> customer, you get [30]% off <related_product>:**
 
-[Learn More About [Related Product]]
+[Learn More About <related_product>]
 
-This offer is for [Product] customers only and expires [DATE / "in 7 days"].
+This offer is for <product> customers only and expires [DATE / "in 7 days"].
 
 [Your name]
 
 ---
-*You're receiving this as a [Product] customer. [Unsubscribe from product announcements]*
+*You're receiving this as a <product> customer. [Unsubscribe from product announcements]*

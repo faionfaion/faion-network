@@ -69,6 +69,10 @@
 | `templates/output-skeleton.md.j2` | Minimal skeleton conforming to the output contract |
 | `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract Generated from `templates/output-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
+| `templates/business-model-canvas.md.j2` | Business Model Canvas -- segments, value props, channels, relationships, revenue, resources, activities, partners, costs. |
+| `templates/business-model-canvas.md` | Business Model Canvas -- segments, value props, channels, relationships, revenue, resources, activities, partners, costs. Generated from `templates/business-model-canvas.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/unit-economics.md.j2` | Unit economics worksheet -- ARPU, CAC, churn, LTV, LTV:CAC, payback, break-even, verdict. |
+| `templates/unit-economics.md` | Unit economics worksheet -- ARPU, CAC, churn, LTV, LTV:CAC, payback, break-even, verdict. Generated from `templates/unit-economics.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

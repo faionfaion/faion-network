@@ -68,6 +68,12 @@
 | `templates/ops-partnership-strategy.md` | Working skeleton for the `ops-partnership-strategy` artefact with required fields and `not_applicable: <reason>` markers per row. Generated from `templates/ops-partnership-strategy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled artefact used by the validator self-test. |
 | `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/affiliate-agreement.md.j2` | Affiliate partnership agreement -- commission terms, responsibilities, prohibited activities, term. |
+| `templates/affiliate-agreement.md` | Affiliate partnership agreement -- commission terms, responsibilities, prohibited activities, term. Generated from `templates/affiliate-agreement.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/one-pager.md.j2` | Outbound partnership proposal one-pager -- opportunity, partner benefit, audience proof, ask. |
+| `templates/one-pager.md` | Outbound partnership proposal one-pager -- opportunity, partner benefit, audience proof, ask. Generated from `templates/one-pager.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/tracker.md.j2` | Partnership pipeline tracker -- active partners, in-discussion, target list, closed/declined, review notes. |
+| `templates/tracker.md` | Partnership pipeline tracker -- active partners, in-discussion, target list, closed/declined, review notes. Generated from `templates/tracker.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

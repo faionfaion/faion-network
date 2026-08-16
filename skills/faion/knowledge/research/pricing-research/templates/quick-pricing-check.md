@@ -1,4 +1,10 @@
-## Pricing Quick Check: [Product Name]
+<!-- purpose: Quick competitor-benchmark and value-based pricing estimate with a confidence rating. -->
+<!-- consumes: competitor price matrix + customer value-anchor data, per AGENTS.md Prerequisites -->
+<!-- produces: quick pricing-check verdict, escalates to a full Van Westendorp survey when confidence is low -->
+<!-- depends-on: content/01-core-rules.xml (value-anchor-from-interviews, confidence-band-tied-to-evidence) -->
+<!-- token-budget-impact: ~200-350 tokens when loaded as context -->
+
+## Pricing Quick Check: <product_name>
 
 ### Competitor benchmark
 - Average price: $[X]/month
@@ -12,12 +18,12 @@
 
 ### Customer feedback
 - Average "would pay": $[X] (N=[X] — note: N < 30 is indicative only)
-- Key quote: "[quote]"
+- Key quote: "<quote>"
 
 ### Recommended price
 $[X]/month
 
-### Confidence: [Low / Medium / High]
+### Confidence: <low_medium_high>
 **Reasoning:** [Why this confidence level]
 
 ### Next step

@@ -1,21 +1,27 @@
-## Week of [Date]
+<!-- purpose: Rolling weekly log of raw idea seeds (problems, complaints, gig patterns) feeding the idea-discovery session. -->
+<!-- consumes: operator's own week of observed problems, online complaints and freelance-gig patterns -->
+<!-- produces: weekly idea-capture log, backlog counts, entries promoted to the discovery session -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~150-350 tokens when loaded as context -->
+
+## Week of <date>
 
 ### Problems I Encountered
-1. [Problem description] — Potential idea: [Y/N] — Notes: [X]
-2. [Problem description] — Potential idea: [Y/N] — Notes: [X]
+1. <problem_description> — Potential idea: <y_n> — Notes: [X]
+2. <problem_description> — Potential idea: <y_n> — Notes: [X]
 
 ### Complaints I Saw Online
-1. [Source URL] — Summary: [pain in one line] — Potential idea: [Y/N]
-2. [Source URL] — Summary: [pain in one line] — Potential idea: [Y/N]
+1. <source_url> — Summary: [pain in one line] — Potential idea: <y_n>
+2. <source_url> — Summary: [pain in one line] — Potential idea: <y_n>
 
 ### Interesting Services on Upwork/Fiverr
-1. [Gig type] — Frequency: [high/medium] — Could be productized: [Y/N]
-2. [Gig type] — Frequency: [high/medium] — Could be productized: [Y/N]
+1. <gig_type> — Frequency: <high_medium> — Could be productized: <y_n>
+2. <gig_type> — Frequency: <high_medium> — Could be productized: <y_n>
 
 ### Market Stacking Observations
-1. [Niche A] x [Niche B] = [potential angle]
+1. [Niche A] x <niche_b> = <potential_angle>
 
 ### Weekly Totals
 - Ideas added to backlog: [N]
-- Ideas worth scoring: [N]
+- Ideas worth scoring: <ideas_worth_scoring>
 - Ideas moved to discovery session: [N]

@@ -69,6 +69,10 @@
 | `templates/feature-discovery.md.j2` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml |
 | `templates/feature-discovery.md` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml Generated from `templates/feature-discovery.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/feature-discovery.schema.json` | JSON Schema seed + filled fixture for the report artefact |
+| `templates/feature-discovery-board.md.j2` | Quarterly feature-discovery board -- collected ideas, Kano classification, ODI opportunity score, RICE prioritization, validation plan, rejected list. |
+| `templates/feature-discovery-board.md` | Quarterly feature-discovery board -- collected ideas, Kano classification, ODI opportunity score, RICE prioritization, validation plan, rejected list. Generated from `templates/feature-discovery-board.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/feature-request-log.md.j2` | Single feature-request record -- metadata, problem, proposed solution, impact assessment, validation, decision. |
+| `templates/feature-request-log.md` | Single feature-request record -- metadata, problem, proposed solution, impact assessment, validation, decision. Generated from `templates/feature-request-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -69,6 +69,14 @@
 | `templates/output-skeleton.md.j2` | Minimal skeleton conforming to the output contract |
 | `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract Generated from `templates/output-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
+| `templates/competitive-landscape.md.j2` | Competitive-landscape worksheet — direct, indirect, substitute competitors, potential entrants and confirmed whitespace. |
+| `templates/competitive-landscape.md` | Competitive-landscape worksheet — direct, indirect, substitute competitors, potential entrants and confirmed whitespace. Generated from `templates/competitive-landscape.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/feature-matrix.md.j2` | Feature-matrix worksheet classifying competitor features into table-stakes/opportunity/validate-demand, with evidence. |
+| `templates/feature-matrix.md` | Feature-matrix worksheet classifying competitor features into table-stakes/opportunity/validate-demand, with evidence. Generated from `templates/feature-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/market-sizing.md.j2` | Market-sizing worksheet — top-down TAM/SAM, bottom-up SOM build, and a divergence check between the two. |
+| `templates/market-sizing.md` | Market-sizing worksheet — top-down TAM/SAM, bottom-up SOM build, and a divergence check between the two. Generated from `templates/market-sizing.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/trend-analysis.md.j2` | Trend-analysis worksheet — growth drivers, adoption-curve position, timing verdict and threats. |
+| `templates/trend-analysis.md` | Trend-analysis worksheet — growth drivers, adoption-curve position, timing verdict and threats. Generated from `templates/trend-analysis.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -1,9 +1,15 @@
-# Video Ad Script: [Video Name] — [Length] sec
+<!-- purpose: Meta 30-second video ad script skeleton — hook/problem/solution/proof/CTA scene breakdown. -->
+<!-- consumes: filled creative-brief.md (hook, value-prop, CTA) -->
+<!-- produces: working document (not the JSON creative artefact in content/02-output-contract.xml) -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~250-350 tokens when loaded as context -->
+
+# Video Ad Script: <video_name> — <length> sec
 
 ## Scene 1 (0-3 sec) — HOOK
 
 Visual: [What is on screen — face, action, text card]
-Audio: [Spoken line or sound]
+Audio: <audio>
 Text overlay: [On-screen text]
 
 ## Scene 2 (3-10 sec) — PROBLEM

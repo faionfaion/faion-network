@@ -1,4 +1,10 @@
-# Market Sizing: [Market / Product Name]
+<!-- purpose: Market-sizing worksheet — top-down TAM/SAM, bottom-up SOM build, and a divergence check between the two. -->
+<!-- consumes: source-of-truth market data (analyst reports, Sales Navigator counts, pricing assumptions) -->
+<!-- produces: TAM/SAM/SOM summary with confidence ratings and a named-account sanity check -->
+<!-- depends-on: content/01-core-rules.xml (growth-rate-carries-base-year-and-unit) -->
+<!-- token-budget-impact: ~500-1100 tokens when loaded as context -->
+
+# Market Sizing: <market_product_name>
 
 **Date:** YYYY-MM-DD
 **Geography:** [e.g., US, EU, Global]
@@ -12,7 +18,7 @@
 
 | Number | Source | Year | Geography | Notes |
 |--------|--------|------|-----------|-------|
-| $X B | [Analyst / URL] | 20XX | [Region] | [Definition used] |
+| $X B | <analyst_url> | 20XX | <region> | <definition_used> |
 
 TAM definition: [exact scope — who counts, what counts as revenue]
 
@@ -39,8 +45,8 @@ Constraints applied (remove rows that do not apply):
 | Source | Count | Notes |
 |--------|-------|-------|
 | LinkedIn Sales Navigator: [query] | X,XXX | [date of count] |
-| [Industry database]: [query] | X,XXX | [date] |
-| **Overlap-adjusted total** | ~X,XXX | [dedup method] |
+| <industry_database>: [query] | X,XXX | <date> |
+| **Overlap-adjusted total** | ~X,XXX | <dedup_method> |
 
 ### Step 2 — Reachable fraction
 
@@ -54,14 +60,14 @@ Constraints applied (remove rows that do not apply):
 
 | Stage | Rate | Basis |
 |-------|------|-------|
-| Reachable → Trial | X% | [comparable product / cohort] |
+| Reachable → Trial | X% | <comparable_product_cohort> |
 | Trial → Paid | X% | [basis] |
-| ARPU | $X / mo | [pricing tier assumption] |
+| ARPU | $X / mo | <pricing_tier_assumption> |
 
-**Year 1 SOM:** [reachable] × [trial rate] × [paid rate] × $ARPU × 12 = **$X M**
+**Year 1 SOM:** <reachable> × <trial_rate> × <paid_rate> × $ARPU × 12 = **$X M**
 **Year 3 SOM:** [model assumption for growth] = **$X M**
 
-**Bottom-up SAM check:** [reachable universe] × ARPU × 12 = **$X M**
+**Bottom-up SAM check:** <reachable_universe> × ARPU × 12 = **$X M**
 
 ---
 
@@ -92,8 +98,8 @@ Can you name 100 specific target accounts? List at least 10 here as a spot-check
 
 | Metric | Value | Confidence |
 |--------|-------|------------|
-| TAM | $X B | [High/Med/Low] — [source quality] |
+| TAM | $X B | [High/Med/Low] — <source_quality> |
 | SAM | $X M | [High/Med/Low] |
 | SOM Year 1 | $X M | [High/Med/Low] |
 | SOM Year 3 | $X M | [High/Med/Low] |
-| CAGR | X% | [source] — rounded to nearest 1% |
+| CAGR | X% | <source> — rounded to nearest 1% |

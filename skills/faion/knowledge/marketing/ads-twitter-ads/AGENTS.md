@@ -68,6 +68,8 @@
 | `templates/campaign-spec.md` | X campaign spec Markdown skeleton. Generated from `templates/campaign-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/brand-safety-exclusions.json` | Standard brand-safety category exclusion list. |
 | `templates/campaign-spec.json` | Schema-conformant sample artefact used by validator self-test. |
+| `templates/campaign-checklist.md.j2` | Pre-launch X/Twitter campaign checklist — objective, targeting, creative, budget, tracking, post-launch. |
+| `templates/campaign-checklist.md` | Pre-launch X/Twitter campaign checklist — objective, targeting, creative, budget, tracking, post-launch. Generated from `templates/campaign-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -69,6 +69,8 @@
 | `templates/ops-customer-success-basics.md` | Working skeleton for the `ops-customer-success-basics` artefact with required fields and `not_applicable: <reason>` markers per row. Generated from `templates/ops-customer-success-basics.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled artefact used by the validator self-test. |
 | `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/cs-playbook.md.j2` | CS motion playbook -- onboarding cadence, ongoing engagement triggers, at-risk intervention, expansion triggers. |
+| `templates/cs-playbook.md` | CS motion playbook -- onboarding cadence, ongoing engagement triggers, at-risk intervention, expansion triggers. Generated from `templates/cs-playbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

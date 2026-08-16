@@ -1,4 +1,10 @@
-# Growth Loop: [Name]
+<!-- purpose: Single growth-loop design working canvas — flow, per-step metrics, bottleneck, optimization experiments. -->
+<!-- consumes: Brief / inputs (Prerequisites) -->
+<!-- produces: working document (not the JSON `spec` artefact in content/02-output-contract.xml) -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~300-450 tokens when loaded as context -->
+
+# Growth Loop: <name>
 
 ## Loop Type
 
@@ -6,16 +12,16 @@
 
 ## Loop Flow
 
-[Step 1] → [Step 2] → [Step 3] → [Step 4]
+<step_1> → <step_2> → <step_3> → <step_4>
     ^                              |
     └──────────────────────────────┘
 
 ## Steps
 
-1. **[Input]:** What starts the loop?
-2. **[Action]:** What does the user do?
-3. **[Output]:** What result is produced?
-4. **[Reinvestment]:** How does the output become new input?
+1. **<input>:** What starts the loop?
+2. **<action>:** What does the user do?
+3. **<output>:** What result is produced?
+4. **<reinvestment>:** How does the output become new input?
 
 ## Metrics
 
@@ -29,9 +35,9 @@
 
 ## Bottleneck
 
-**Which step has the lowest conversion?** [Step]
+**Which step has the lowest conversion?** <step>
 **Current conversion:** [%]
-**Impact of doubling:** loop efficiency goes from [X] to [Y]
+**Impact of doubling:** loop efficiency goes from [X] to <y>
 
 ## Optimization Experiments
 

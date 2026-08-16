@@ -1,4 +1,10 @@
-# Pricing Research Report: [Product]
+<!-- purpose: Full pricing research report — value analysis, competitor analysis, Van Westendorp synthesis, recommended tiers, validation plan and risk assessment. -->
+<!-- consumes: customer-value math + competitor price matrix + Van Westendorp survey results, per AGENTS.md Prerequisites -->
+<!-- produces: pricing research report feeding content/02-output-contract.xml -->
+<!-- depends-on: content/01-core-rules.xml (value-anchored, vw-min-30, tier-feature-distribution, billing-model-named) -->
+<!-- token-budget-impact: ~700-1300 tokens when loaded as context -->
+
+# Pricing Research Report: <product>
 
 ## 1. Value Analysis
 
@@ -6,12 +12,12 @@
 | Value type | Quantified impact | Calculation |
 |------------|------------------|-------------|
 | Time saved | [X] hours/week | X hrs x $rate x 4 wks = $X/mo |
-| Money saved/earned | $X/month | [method] |
+| Money saved/earned | $X/month | <method> |
 | **Total monthly value** | **$X/mo** | |
 
 **Value-based price ceiling:**
-- Category: [devtools 1-3% | productivity 5-10% | vertical SaaS 15-25%]
-- Capture rate applied: [N]%
+- Category: <category>
+- Capture rate applied: <capture_rate_applied>%
 - Price ceiling: $X/mo
 
 ---
@@ -20,7 +26,7 @@
 
 | Competitor | Free? | Entry | Mid | Pro/Enterprise | Notes |
 |------------|-------|-------|-----|----------------|-------|
-| [Name] | Y/N | $X/mo | $X/mo | $X/mo or "contact" | [model notes] |
+| <name> | Y/N | $X/mo | $X/mo | $X/mo or "contact" | <model_notes> |
 
 Competitor processing order: randomized (prevents anchoring)
 Sales-led tiers: marked as "negotiated" — excluded from median calculations
@@ -34,7 +40,7 @@ Sales-led tiers: marked as "negotiated" — excluded from median calculations
 
 ## 3. Customer Research (Van Westendorp)
 
-N respondents: [N] — must be >= 30 for synthesis. If < 30, skip synthesis, record raw quotes only.
+N respondents: <n_respondents> — must be >= 30 for synthesis. If < 30, skip synthesis, record raw quotes only.
 
 | Question | Median response |
 |----------|----------------|
@@ -45,19 +51,19 @@ N respondents: [N] — must be >= 30 for synthesis. If < 30, skip synthesis, rec
 | **Optimal price point** | **$X** |
 
 **Interview quotes:**
-- "[Quote about pricing]"
-- "[Quote about value]"
+- "<quote_about_pricing>"
+- "<quote_about_value>"
 
 ---
 
 ## 4. Recommended Pricing
 
-**Billing model:** [Subscription | One-time | Usage-based | Hybrid]
+**Billing model:** <billing_model>
 **Rationale:** [Why this model fits the usage pattern]
 
 | Tier | Price | Target user | Key differentiator | Upgrade trigger |
 |------|-------|-------------|-------------------|-----------------|
-| Starter | $X/mo | [Who] | [Feature] | [What forces upgrade] |
+| Starter | $X/mo | [Who] | [Feature] | <what_forces_upgrade> |
 | Pro | $X/mo | [Who] | [Feature] | |
 | Enterprise | Custom | [Who] | [Feature] | |
 

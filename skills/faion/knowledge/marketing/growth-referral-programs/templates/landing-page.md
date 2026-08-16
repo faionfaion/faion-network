@@ -1,10 +1,16 @@
+<!-- purpose: Referral-program landing page copy — headline, how-it-works, live stats, FAQ. -->
+<!-- consumes: incentive structure + fraud-guard rules from filled spec -->
+<!-- produces: working document (not the JSON `spec` artefact in content/02-output-contract.xml) -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~300-450 tokens when loaded as context -->
+
 # Referral Program Landing Page
 
 ## Headline
 Give $20, Get $20
 
 ## Subheadline
-Share [Product] with friends. They get $20 off, you get $20 credit.
+Share <product> with friends. They get $20 off, you get $20 credit.
 
 ## How It Works
 
@@ -12,9 +18,9 @@ Share [Product] with friends. They get $20 off, you get $20 credit.
 2. **Friend signs up** — They get $20 off their first purchase.
 3. **You get rewarded** — $20 credit added to your account automatically.
 
-[Your unique link: product.com/r/USER_CODE] [Copy Button]
+[Your unique link: product.com/r/USER_CODE] <copy_button>
 
-Or share directly: [Email] [Twitter] [WhatsApp] [LinkedIn]
+Or share directly: <email> <twitter> <whats_app> [LinkedIn]
 
 ## Your Stats
 

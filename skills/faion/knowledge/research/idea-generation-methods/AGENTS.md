@@ -69,6 +69,12 @@
 | `templates/idea-generation-methods.md.j2` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml |
 | `templates/idea-generation-methods.md` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml Generated from `templates/idea-generation-methods.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/idea-generation-methods.schema.json` | JSON Schema seed + filled fixture for the report artefact |
+| `templates/ideation-worksheet.md.j2` | Live worksheet for a 7P-framework plus Paul-Graham-questions ideation session. |
+| `templates/ideation-worksheet.md` | Live worksheet for a 7P-framework plus Paul-Graham-questions ideation session. Generated from `templates/ideation-worksheet.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/pain-log.md.j2` | Weekly log of observed complaints, workarounds and tool-stack gaps, ranked into pain signals. |
+| `templates/pain-log.md` | Weekly log of observed complaints, workarounds and tool-stack gaps, ranked into pain signals. Generated from `templates/pain-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/scoring-matrix.md.j2` | 5-dimension weighted scoring matrix for ranking a batch of candidate ideas into proceed/pivot/pass bands. |
+| `templates/scoring-matrix.md` | 5-dimension weighted scoring matrix for ranking a batch of candidate ideas into proceed/pivot/pass bands. Generated from `templates/scoring-matrix.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

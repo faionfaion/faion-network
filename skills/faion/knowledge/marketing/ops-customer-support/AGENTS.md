@@ -63,6 +63,14 @@
 | `templates/ops-customer-support.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/ops-customer-support.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/ops-customer-support.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/ops-customer-support.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/email-acknowledgment.md.j2` | First-response acknowledgment email for a new support ticket. |
+| `templates/email-acknowledgment.md` | First-response acknowledgment email for a new support ticket. Generated from `templates/email-acknowledgment.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/email-resolution.md.j2` | Resolution-response email closing out a support ticket with root cause and fix steps. |
+| `templates/email-resolution.md` | Resolution-response email closing out a support ticket with root cause and fix steps. Generated from `templates/email-resolution.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/support-policy.md.j2` | Support policy -- channels, SLA by plan tier, escalation contacts, refund policy, out-of-hours message. |
+| `templates/support-policy.md` | Support policy -- channels, SLA by plan tier, escalation contacts, refund policy, out-of-hours message. Generated from `templates/support-policy.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/weekly-review.md.j2` | Weekly support-ops review -- ticket volume by category, response/resolution performance, top recurring issues. |
+| `templates/weekly-review.md` | Weekly support-ops review -- ticket volume by category, response/resolution performance, top recurring issues. Generated from `templates/weekly-review.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

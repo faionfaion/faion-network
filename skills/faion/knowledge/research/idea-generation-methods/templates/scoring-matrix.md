@@ -1,6 +1,12 @@
+<!-- purpose: 5-dimension weighted scoring matrix for ranking a batch of candidate ideas into proceed/pivot/pass bands. -->
+<!-- consumes: a batch of 10+ candidate ideas plus sourced market-size and competition data -->
+<!-- produces: scored matrix with decision-band verdicts per idea -->
+<!-- depends-on: content/01-core-rules.xml (matrix-weights-pinned) -->
+<!-- token-budget-impact: ~250-500 tokens when loaded as context -->
+
 # 5-Dimension Niche Scoring Matrix
 
-## Idea Batch: [Date]
+## Idea Batch: <date>
 
 | Idea | Market Size (1-5) | Competition (1-5) | Barriers (1-5) | Monetization (1-5) | Personal Fit (1-5) | Total /25 |
 |------|-------------------|-------------------|----------------|--------------------|--------------------|-----------|
@@ -12,8 +18,8 @@
 
 | Dimension | 1-2 | 3-4 | 5 |
 |-----------|-----|-----|---|
-| Market Size | <$10M | $10M-$100M | >$100M |
-| Competition | Red ocean 10+ | Moderate 3-10 | Blue ocean <3 |
+| Market Size | Under $10M | $10M-$100M | Over $100M |
+| Competition | Red ocean 10+ | Moderate 3-10 | Blue ocean under 3 |
 | Barriers | High (capital/regulatory) | Medium | Low (technical only) |
 | Monetization | Unclear path | Possible | Obvious model |
 | Personal Fit | No relevant skills | Some skills | Perfect match |

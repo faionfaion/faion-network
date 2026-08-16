@@ -1,4 +1,10 @@
-# Pricing Quick Check: [Product]
+<!-- purpose: Quick competitor-benchmark and value-based pricing estimate with a confidence rating. -->
+<!-- consumes: competitor price matrix + customer-value math, per AGENTS.md Prerequisites -->
+<!-- produces: quick pricing-check verdict, escalates to pricing-report when confidence is low -->
+<!-- depends-on: content/01-core-rules.xml (value-anchored, vw-min-30) -->
+<!-- token-budget-impact: ~200-350 tokens when loaded as context -->
+
+# Pricing Quick Check: <product>
 
 ## Competitor benchmark
 - Lowest: $X/mo
@@ -16,13 +22,13 @@
 - Notable quote: "[...]"
 
 ## Recommended price
-$X/mo [Starter] / $X/mo [Pro]
+$X/mo <starter> / $X/mo <pro>
 Annual: $X/yr (= monthly x 10)
 
-## Confidence: [Low / Medium / High]
+## Confidence: <low_medium_high>
 - Low: < 5 competitors checked, < 10 customer data points
 - Medium: 5-10 competitors, 10-30 customer data points
 - High: > 10 competitors, > 30 Van Westendorp responses
 
 ## Open questions before launch
-- [ ] [Unresolved pricing question]
+- [ ] <unresolved_pricing_question>

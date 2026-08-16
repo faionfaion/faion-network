@@ -1,14 +1,20 @@
+<!-- purpose: LinkedIn single-image/video ad copy skeleton — intro, headline, description, CTA, variant matrix. -->
+<!-- consumes: ICP definition (Prerequisites) + creative brief hook/value-prop -->
+<!-- produces: working document (not the JSON campaign artefact in content/02-output-contract.xml) -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~250-400 tokens when loaded as context -->
+
 # LinkedIn Ad Copy Template
 
-## Ad: [Ad Name] — ICP: [Role at Company Type]
+## Ad: <ad_name> — ICP: [Role at Company Type]
 
 ### Intro Text (max 150 chars shown)
 [Role-specific problem or question that resonates with the target persona]
 
 Example angles:
-- Pain: "Still managing [task] in spreadsheets?"
-- Challenge: "Scaling [function] without adding headcount?"
-- Outcome: "How [similar companies] cut [metric] by X%"
+- Pain: "Still managing <task> in spreadsheets?"
+- Challenge: "Scaling <function> without adding headcount?"
+- Outcome: "How <similar_companies> cut <metric> by X%"
 
 ### Headline (max 70 chars)
 [Clear value proposition for this ICP]

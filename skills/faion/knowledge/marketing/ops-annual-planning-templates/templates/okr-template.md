@@ -1,3 +1,9 @@
+<!-- purpose: Quarterly/annual OKR set -- objectives, key results with baseline/target, kill-switch. -->
+<!-- consumes: strategic priorities + numeric baselines and targets per key result -->
+<!-- produces: Markdown OKR document -->
+<!-- depends-on: content/01-core-rules.xml (r4-outcome-language-numeric-target, r7-run-okr-validator) -->
+<!-- token-budget-impact: ~300-450 tokens when loaded as context -->
+
 # [Quarter/Year] OKRs
 
 ## Objective 1: [Ambitious outcome — not an activity]
@@ -11,14 +17,14 @@
 | [Measurable outcome 3] | [current] | [target] | [date] | [tool] |
 
 **Initiatives:**
-1. [Initiative 1] — owner: [who]
-2. [Initiative 2] — owner: [who]
+1. <initiative_1> — owner: <who>
+2. <initiative_2> — owner: <who>
 
-**Kill-switch:** If [leading indicator] is not [threshold] by [mid-quarter date], re-evaluate this objective.
+**Kill-switch:** If <leading_indicator> is not <threshold> by <mid_quarter_date>, re-evaluate this objective.
 
 ---
 
-## Objective 2: [Ambitious outcome]
+## Objective 2: <ambitious_outcome>
 **Why this matters:** [Business context and expected impact]
 
 ### Key Results
@@ -29,10 +35,10 @@
 | [Measurable outcome 3] | [current] | [target] | [date] | [tool] |
 
 **Initiatives:**
-1. [Initiative 1] — owner: [who]
-2. [Initiative 2] — owner: [who]
+1. <initiative_1> — owner: <who>
+2. <initiative_2> — owner: <who>
 
-**Kill-switch:** If [leading indicator] is not [threshold] by [mid-quarter date], re-evaluate this objective.
+**Kill-switch:** If <leading_indicator> is not <threshold> by <mid_quarter_date>, re-evaluate this objective.
 
 ---
 

@@ -1,3 +1,9 @@
+<!-- purpose: Full competitor analysis -- competitor map, per-competitor SWOT/pricing, positioning matrix, gap analysis, differentiation statement, monitoring plan. -->
+<!-- consumes: competitor list (direct/indirect) + pricing pages + review-site sentiment, per AGENTS.md Prerequisites -->
+<!-- produces: Markdown competitor analysis report -->
+<!-- depends-on: content/01-core-rules.xml (direct-vs-indirect-substitute-definition, recommendation-names-where-we-lose) -->
+<!-- token-budget-impact: ~500-800 tokens when loaded as context -->
+
 ## Competitor Analysis: [Your Product]
 
 **Category:** [X] | **Date:** YYYY-MM-DD | **Competitors identified:** [X direct, X indirect, X future]
@@ -11,11 +17,11 @@
 
 ### Detailed Analysis
 
-#### [Competitor 1]
+#### <competitor_1>
 
 **Website:** [URL] | **Pricing page:** [URL, captured YYYY-MM-DD]
 
-**Product:** Core features: [List] | Unique: [List] | Missing: [List]
+**Product:** Core features: <list> | Unique: <list> | Missing: <list>
 
 **Pricing:**
 | Tier | Price | Features |
@@ -46,12 +52,12 @@ Whitespace identified: [description — validate before acting]
 | Gap Type | Opportunity | Competitors Missing | Priority | Demand evidence |
 |----------|-------------|---------------------|----------|-----------------|
 | Feature | [X] | A, B, C | High | [review quote + URL] |
-| Audience | [X] | All | Medium | [interview insight] |
+| Audience | [X] | All | Medium | <interview_insight> |
 
 ### Our Differentiation
 
-For [audience] who [need], we are [category] that [benefit].
-Unlike [competitors], we [differentiator].
+For <audience> who <need>, we are <category> that <benefit>.
+Unlike <competitors>, we <differentiator>.
 
 ### Monitoring Plan
 

@@ -1,6 +1,12 @@
-# Audience Test Log: [Test Name]
+<!-- purpose: Audience-tier A/B test log — spend/CPA/ROAS per audience, winner, next test. -->
+<!-- consumes: filled audience-spec.md tiers under test -->
+<!-- produces: working document (not the JSON audience artefact in content/02-output-contract.xml) -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~250-400 tokens when loaded as context -->
 
-**Date range:** [Start] — [End]
+# Audience Test Log: <test_name>
+
+**Date range:** <start> — <end>
 **Creatives:** [Identical across all ad sets — list names]
 **Budget per ad set:** $[X]/day
 
@@ -14,7 +20,7 @@
 | LAL 2-3% | $X | X | X | X | $X | X:1 |
 | Retarget | $X | X | X | X | $X | X:1 |
 
-**Winner:** [Audience name]
+**Winner:** <audience_name>
 **Rationale:** [Why this audience won — CPA, scale, ROAS]
 
 ## Next Steps
@@ -22,4 +28,4 @@
 - [ ] Scale winning audience budget by 20-30%
 - [ ] Create LAL from winning audience source
 - [ ] Pause bottom 2 performers
-- [ ] Test next hypothesis: [Description]
+- [ ] Test next hypothesis: <description>

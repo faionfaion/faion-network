@@ -1,4 +1,10 @@
-# Creative Performance Analysis: [Date Range]
+<!-- purpose: Creative-fatigue and format performance breakdown with scale/iterate/kill recommendations. -->
+<!-- consumes: last 30-day creative + audience inventory (Prerequisites) -->
+<!-- produces: working document (not the JSON report artefact in content/02-output-contract.xml) -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~300-450 tokens when loaded as context -->
+
+# Creative Performance Analysis: <date_range>
 
 ## By Format
 
@@ -12,7 +18,7 @@
 
 | Creative | Hook Type | Spend | CTR | CVR | CPA |
 |----------|-----------|-------|-----|-----|-----|
-| [Name] | [Question/Claim/Social proof] | $X | X% | X% | $X |
+| <name> | [Question/Claim/Social proof] | $X | X% | X% | $X |
 
 ## Fatigue Signals
 

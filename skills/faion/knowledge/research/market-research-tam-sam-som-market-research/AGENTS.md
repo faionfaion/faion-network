@@ -69,6 +69,10 @@
 | `templates/output-skeleton.md.j2` | Minimal skeleton conforming to the output contract |
 | `templates/output-skeleton.md` | Minimal skeleton conforming to the output contract Generated from `templates/output-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Smallest filled-in example used by `validate-<slug>.py --self-test` |
+| `templates/market-sizing-report.md.j2` | Full TAM/SAM/SOM market-sizing report with top-down + bottom-up validation and a conclusion. |
+| `templates/market-sizing-report.md` | Full TAM/SAM/SOM market-sizing report with top-down + bottom-up validation and a conclusion. Generated from `templates/market-sizing-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/quick-market-check.md.j2` | 15-minute rough TAM/SAM/SOM gut-check with a go/no-go verdict. |
+| `templates/quick-market-check.md` | 15-minute rough TAM/SAM/SOM gut-check with a go/no-go verdict. Generated from `templates/quick-market-check.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

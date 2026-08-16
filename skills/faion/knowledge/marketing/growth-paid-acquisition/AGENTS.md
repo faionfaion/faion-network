@@ -69,6 +69,10 @@
 | `templates/growth-plan.md` | Paid acquisition growth plan Markdown skeleton. Generated from `templates/growth-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/unit-economics.csv` | Unit economics CSV header. |
 | `templates/growth-plan.json` | Schema-conformant sample artefact used by validator self-test. |
+| `templates/campaign-plan.md.j2` | Single paid-acquisition campaign plan working document — goals, audiences, creative, tracking, kill/scale criteria. |
+| `templates/campaign-plan.md` | Single paid-acquisition campaign plan working document — goals, audiences, creative, tracking, kill/scale criteria. Generated from `templates/campaign-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/weekly-ads-report.md.j2` | Weekly cross-channel paid-acquisition performance report — spend, CPA, ROAS, learnings, next-week actions. |
+| `templates/weekly-ads-report.md` | Weekly cross-channel paid-acquisition performance report — spend, CPA, ROAS, learnings, next-week actions. Generated from `templates/weekly-ads-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

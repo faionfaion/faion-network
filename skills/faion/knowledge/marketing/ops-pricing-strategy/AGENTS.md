@@ -67,6 +67,8 @@
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 | `templates/pricing-strategy-doc.md.j2` | Pricing strategy doc skeleton — value analysis, competitor scan, model choice, validation plan |
 | `templates/pricing-strategy-doc.md` | Pricing strategy doc skeleton — value analysis, competitor scan, model choice, validation plan Generated from `templates/pricing-strategy-doc.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/price-comparison-table.md.j2` | Pricing-page comparison table structure (Free/Pro/Team tiers) with layout notes. |
+| `templates/price-comparison-table.md` | Pricing-page comparison table structure (Free/Pro/Team tiers) with layout notes. Generated from `templates/price-comparison-table.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -69,6 +69,10 @@
 | `templates/growth-referral-programs.spec.md` | Markdown spec skeleton with 5-line header Generated from `templates/growth-referral-programs.spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/growth-referral-programs.example.json` | Example output JSON conforming to 02-output-contract.xml |
 | `templates/_smoke-test.json` | Minimum viable filled-in artefact for the validator self-test |
+| `templates/emails.md.j2` | Two-email referral-program lifecycle sequence — announcement + no-referrals-yet reminder. |
+| `templates/emails.md` | Two-email referral-program lifecycle sequence — announcement + no-referrals-yet reminder. Generated from `templates/emails.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/landing-page.md.j2` | Referral-program landing page copy — headline, how-it-works, live stats, FAQ. |
+| `templates/landing-page.md` | Referral-program landing page copy — headline, how-it-works, live stats, FAQ. Generated from `templates/landing-page.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

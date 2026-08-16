@@ -1,17 +1,23 @@
+<!-- purpose: Pre-launch X/Twitter campaign checklist — objective, targeting, creative, budget, tracking, post-launch. -->
+<!-- consumes: filled campaign-spec.md + brand-safety exclusion list (Prerequisites) -->
+<!-- produces: working document (not the JSON campaign artefact in content/02-output-contract.xml) -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~300-450 tokens when loaded as context -->
+
 # Twitter/X Campaign Launch Checklist
 
-## Campaign: [Name]
+## Campaign: <name>
 
 ### Objective
 - [ ] Objective selected: Website Traffic / Conversions / Followers / Video Views
-- [ ] Conversion event configured: [event name]
+- [ ] Conversion event configured: <event_name>
 
 ### Targeting
-- [ ] Location: [countries/cities]
+- [ ] Location: <countries_cities>
 - [ ] Follower lookalikes: [@account1, @account2, @account3]
 - [ ] Keywords: [list of 5-10 relevant terms]
 - [ ] Interests: [2-3 relevant categories]
-- [ ] Tailored audiences: [website pixel / email list]
+- [ ] Tailored audiences: <tailored_audiences>
 - [ ] Estimated audience size: [X]
 
 ### Creative
@@ -24,7 +30,7 @@
 ### Budget
 - [ ] Daily budget: $[___] (minimum $20, recommended $50+)
 - [ ] Bid strategy: Automatic / Maximum / Target
-- [ ] Schedule: [Start date] → [End date or ongoing]
+- [ ] Schedule: <start_date> → <schedule>
 
 ### Tracking
 - [ ] Twitter pixel installed on site

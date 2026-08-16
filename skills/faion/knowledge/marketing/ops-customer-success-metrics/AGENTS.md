@@ -68,6 +68,10 @@
 | `templates/ops-customer-success-metrics.md` | Working skeleton for the `ops-customer-success-metrics` artefact with required fields and `not_applicable: <reason>` markers per row. Generated from `templates/ops-customer-success-metrics.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.md.j2` | Minimum viable filled artefact used by the validator self-test. |
 | `templates/_smoke-test.md` | Minimum viable filled artefact used by the validator self-test. Generated from `templates/_smoke-test.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/health-dashboard.md.j2` | Monthly customer health dashboard -- distribution by tier, at-risk/critical accounts, expansion-ready accounts. |
+| `templates/health-dashboard.md` | Monthly customer health dashboard -- distribution by tier, at-risk/critical accounts, expansion-ready accounts. Generated from `templates/health-dashboard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/metric-tracking.md.j2` | Monthly CS metrics report -- NPS/CSAT, cohort retention, survey cadence, leading-indicator alerts. |
+| `templates/metric-tracking.md` | Monthly CS metrics report -- NPS/CSAT, cohort retention, survey cadence, leading-indicator alerts. Generated from `templates/metric-tracking.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

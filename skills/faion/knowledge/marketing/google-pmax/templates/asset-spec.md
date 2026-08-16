@@ -1,3 +1,9 @@
+<!-- purpose: PMax asset-group creation checklist — pre-requisites, text/image/video assets, URLs, audience signals, go-live gate. -->
+<!-- consumes: filled pmax-spec.md (asset groups + audience signals) -->
+<!-- produces: working document (not the JSON campaign artefact in content/02-output-contract.xml) -->
+<!-- depends-on: none -->
+<!-- token-budget-impact: ~350-500 tokens when loaded as context -->
+
 # PMax Asset Group Creation Checklist
 
 ## Campaign Pre-Requisites
@@ -9,24 +15,24 @@
 - [ ] URL expansion: disabled for lead-gen, enabled for broad e-commerce
 - [ ] account-level negative keywords for brand terms added (via support request)
 
-## Asset Group: [Name]
+## Asset Group: <name>
 
 ### Text Assets (validated char limits)
 
 | Type | Min | Count | Char Limit | Status |
 |------|-----|-------|-----------|--------|
-| HEADLINE | 5 | [N] | 30 | [ ] |
-| LONG_HEADLINE | 5 | [N] | 90 | [ ] |
-| DESCRIPTION | 4 | [N] | 90 | [ ] |
+| HEADLINE | 5 | <headline> | 30 | [ ] |
+| LONG_HEADLINE | 5 | <long_headline> | 90 | [ ] |
+| DESCRIPTION | 4 | <description> | 90 | [ ] |
 | BUSINESS_NAME | 1 | 1 | — | [ ] |
 
 ### Image Assets
 
 | Type | Min | Count | Dimensions | Status |
 |------|-----|-------|-----------|--------|
-| MARKETING_IMAGE | 4 | [N] | 1200x628 | [ ] |
-| SQUARE_MARKETING_IMAGE | 2 | [N] | 1200x1200 | [ ] |
-| LOGO | 1 | [N] | 128x128+ | [ ] |
+| MARKETING_IMAGE | 4 | <marketing_image> | 1200x628 | [ ] |
+| SQUARE_MARKETING_IMAGE | 2 | <square_marketing_image> | 1200x1200 | [ ] |
+| LOGO | 1 | <logo> | 128x128+ | [ ] |
 
 ### Video Assets (optional, recommended)
 

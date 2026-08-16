@@ -1,3 +1,9 @@
+<!-- purpose: Monthly execution plan -- goal, quarterly-KR progress, weekly task breakdown, blockers. -->
+<!-- consumes: quarterly OKRs + prior month's carry-forward tasks -->
+<!-- produces: Markdown monthly plan -->
+<!-- depends-on: content/01-core-rules.xml (r5-metrics-traceable-to-input) -->
+<!-- token-budget-impact: ~300-500 tokens when loaded as context -->
+
 # [Month] [Year] Plan
 
 ## Monthly Goal
@@ -6,45 +12,45 @@
 ## Quarterly Goal Progress
 | KR | Q Target | Current | On Track? |
 |----|----------|---------|-----------|
-| [KR 1] | [X] | [X] | Yes / At risk / Off track |
-| [KR 2] | [X] | [X] | Yes / At risk / Off track |
+| <kr_1> | [X] | [X] | Yes / At risk / Off track |
+| <kr_2> | [X] | [X] | Yes / At risk / Off track |
 
 ## Key Metrics
 | Metric | Last Month | This Month Target |
 |--------|------------|-------------------|
-| [Metric 1] | [X] | [X] |
-| [Metric 2] | [X] | [X] |
-| [Metric 3] | [X] | [X] |
+| <metric_1> | [X] | [X] |
+| <metric_2> | [X] | [X] |
+| <metric_3> | [X] | [X] |
 
 ## Weekly Breakdown
 
-### Week 1 ([dates])
-Focus: [theme]
+### Week 1 (<dates>)
+Focus: <theme>
 - [ ] [Task 1 — specific, shippable deliverable]
-- [ ] [Task 2]
-- [ ] [Task 3]
+- [ ] <task_2>
+- [ ] <task_3>
 
-### Week 2 ([dates])
-Focus: [theme]
-- [ ] [Task 1]
-- [ ] [Task 2]
-- [ ] [Task 3]
+### Week 2 (<dates>)
+Focus: <theme>
+- [ ] <task_1>
+- [ ] <task_2>
+- [ ] <task_3>
 
-### Week 3 ([dates])
-Focus: [theme]
-- [ ] [Task 1]
-- [ ] [Task 2]
-- [ ] [Task 3]
+### Week 3 (<dates>)
+Focus: <theme>
+- [ ] <task_1>
+- [ ] <task_2>
+- [ ] <task_3>
 
-### Week 4 ([dates])
-Focus: [theme]
-- [ ] [Task 1]
-- [ ] [Task 2]
-- [ ] [Task 3]
+### Week 4 (<dates>)
+Focus: <theme>
+- [ ] <task_1>
+- [ ] <task_2>
+- [ ] <task_3>
 
 ## Blockers and Risks
 - [Blocker 1: what might prevent progress on the monthly goal]
-- [Risk 2]
+- <risk_2>
 
 ## Carry Forward from Last Month
 - [Unfinished task 1 — decision: continue or drop]

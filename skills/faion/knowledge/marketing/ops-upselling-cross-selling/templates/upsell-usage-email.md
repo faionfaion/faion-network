@@ -1,17 +1,23 @@
-Subject: You've reached [X]% of your [resource] limit
+<!-- purpose: Usage-limit-triggered upsell email offering a one-click plan upgrade. -->
+<!-- consumes: customer name + current usage/limit + next-plan price delta -->
+<!-- produces: Markdown email template -->
+<!-- depends-on: content/01-core-rules.xml (r1-trigger-from-usage-signals-not-calendar, r3-one-click-upgrade-prorated) -->
+<!-- token-budget-impact: ~200-350 tokens when loaded as context -->
 
-Hi [Name],
+Subject: You've reached [X]% of your <resource> limit
 
-Good news — you've used [USAGE_AMOUNT] of your [LIMIT] [resource] this month. That means [Product] is doing real work for you.
+Hi <name>,
 
-You're currently on [Current Plan] with a limit of [LIMIT] [resource].
+Good news — you've used <usage_amount> of your <limit> <resource> this month. That means <product> is doing real work for you.
+
+You're currently on <current_plan> with a limit of <limit> <resource>.
 
 [Next Plan] gives you:
 - [Higher/unlimited] [resource]
 - [Additional feature relevant to their usage pattern]
 - [Third benefit specific to this plan]
 
-**Upgrade to [Next Plan] for $[PRICE]/month** — only $[DELTA] more than you pay now.
+**Upgrade to <next_plan> for $<price>/month** — only $<delta> more than you pay now.
 
 [Upgrade Now — One Click]
 
@@ -20,4 +26,4 @@ Any questions? Just reply.
 [Your name]
 
 ---
-*You're receiving this because you're approaching your [resource] limit on [Plan]. [Manage preferences]*
+*You're receiving this because you're approaching your <resource> limit on <plan>. <manage_preferences>*

@@ -69,6 +69,10 @@
 | `templates/pain-point-research.md.j2` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml |
 | `templates/pain-point-research.md` | Markdown skeleton for the report artefact, matching content/02-output-contract.xml Generated from `templates/pain-point-research.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/pain-point-research.schema.json` | JSON Schema seed + filled fixture for the report artefact |
+| `templates/pain-point-log.md.j2` | Structured pain-point log scored on frequency/severity/reach/spend/alternatives with a prioritized top 5. |
+| `templates/pain-point-log.md` | Structured pain-point log scored on frequency/severity/reach/spend/alternatives with a prioritized top 5. Generated from `templates/pain-point-log.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/reddit-mining.md.j2` | Subreddit-mining session log extracting pain points with verbatim quotes and cross-platform observations. |
+| `templates/reddit-mining.md` | Subreddit-mining session log extracting pain points with verbatim quotes and cross-platform observations. Generated from `templates/reddit-mining.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

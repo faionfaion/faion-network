@@ -63,6 +63,10 @@
 | `templates/ops-financial-planning.json` | JSON skeleton conforming to the output contract schema. |
 | `templates/ops-financial-planning.md.j2` | Markdown skeleton for human-readable artefact rendering. |
 | `templates/ops-financial-planning.md` | Markdown skeleton for human-readable artefact rendering. Generated from `templates/ops-financial-planning.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/annual-budget.md.j2` | Annual budget -- bottom-up revenue forecast, expense budget by quarter, target profitability, stress case. |
+| `templates/annual-budget.md` | Annual budget -- bottom-up revenue forecast, expense budget by quarter, target profitability, stress case. Generated from `templates/annual-budget.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/monthly-review.md.j2` | Monthly financial review -- revenue/expense vs target, profitability, SaaS metrics, cash position, reinvestment split. |
+| `templates/monthly-review.md` | Monthly financial review -- revenue/expense vs target, profitability, SaaS metrics, cash position, reinvestment split. Generated from `templates/monthly-review.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 
