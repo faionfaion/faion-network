@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Ratified `template-jinja-migration.md` §1a: rendering happens on the backend,
+  and the `.md` survives as a generated output.** Both points came from the owner
+  correcting a question I had asked from a false premise.
+
+  Templates are assembled and filled **on the backend**; the client receives a
+  finished document. That kills the objection I was about to raise — that a
+  `.md.j2` needs Jinja installed before anyone can use it — because Jinja lives on
+  the server (`jinja2` 3.1.2 already importable there, `KNOWLEDGE_ROOT` already
+  wired; the render endpoint belongs to `faion-net-be` and does not exist yet).
+
+  Less comfortably, it makes `retrieval-content-contracts.md` §2.2's *"the
+  assembler runs on behalf of other accounts"* **the literal architecture rather
+  than a hypothetical.** The nine sensitive dictionary entries are therefore not
+  caution: those values must never reach the backend at all. It also sharpens §8
+  of the findings — the client's local store and the multi-tenant backend are
+  demonstrably two different surfaces, which is the entire argument for splitting
+  the flag.
+
+  **The `.md` is not deleted; it becomes an output.** Source of truth is
+  `<name>.md.j2` + `<name>.vars.schema.json`; `<name>.html.j2` and `<name>.md` are
+  generated. The reason is concrete: `faion-solo-framework/scripts/init_project.py`
+  is "the one supported way to instantiate the template", it substitutes four fixed
+  tokens by literal string replacement, and its `--check` exits 1 on a survivor.
+  That pipeline eats Markdown with angle-bracket tokens — it does not eat Jinja,
+  and it would pass over a `{{ var }}` without substituting it *and* without
+  `--check` flagging it. Drift is answered as §1 answers it: one generator writes
+  every form in one pass.
+
 - **Validator 11: `scripts/validate-vars-dictionary.py`.** `skills/faion/templates/`
   shipped with **no gate at all** — nothing in `scripts/` opened either file. The
   failure that mattered: a resolver rule naming a renamed or deleted dictionary

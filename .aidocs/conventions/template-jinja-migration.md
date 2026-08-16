@@ -51,6 +51,47 @@ Markdown is authored; HTML is generated **from the Markdown source structure**, 
 rendered Markdown through a converter at runtime. The HTML template carries its own inline CSS and
 must be self-contained — no external stylesheet, font or image.
 
+## 1a. Where rendering happens, and why the `.md` survives
+
+**Ratified 2026-08-16, after the owner corrected a question I had asked from a false premise.**
+
+**Templates are assembled and filled on the BACKEND; a finished document is returned to the
+client.** Nobody hand-fills a `.md`. That settles two things at once.
+
+First, it removes the objection I was about to raise — that a `.md.j2` needs Jinja installed before
+anyone can use it. Jinja lives on the server. `jinja2` 3.1.2 is already importable in the backend
+environment and `KNOWLEDGE_ROOT` is already wired; the render endpoint itself does not exist yet and
+belongs to `faion-net-be`, not here.
+
+Second, and less comfortably: it makes `retrieval-content-contracts.md` §2.2's *"the assembler runs
+on behalf of other accounts"* **the literal architecture rather than a hypothetical**. So the nine
+`x-faion-sensitive` dictionary entries are not caution — their values must never reach the backend
+at all. The server emits the placeholder; substitution is client-side. This also sharpens §8 of
+`variable-dictionary-findings.md`: the client's local store and the multi-tenant backend are now
+demonstrably **two different surfaces**, which is the whole of the argument for splitting the flag.
+
+### The `.md` is not deleted — it becomes an output
+
+A template exists in **both** a standalone form and a framework-consumable one. So:
+
+| File | Role |
+|---|---|
+| `<name>.md.j2` | **source of truth** |
+| `<name>.vars.schema.json` | **source of truth** |
+| `<name>.html.j2` | generated |
+| `<name>.md` | generated — the standalone artefact, and what the framework consumes |
+
+The reason the `.md` cannot simply go away is concrete, not sentimental.
+`faion-solo-framework/scripts/init_project.py` is *"the one supported way to instantiate the
+template"*. It substitutes four fixed tokens — `<PROJECT>`, `<project>`, `<domain>`, `<org>` — by
+literal string replacement, and its `--check` mode exits 1 if any placeholder survived. That
+pipeline eats Markdown with angle-bracket tokens. It does not eat Jinja, and — worse — it would pass
+straight over a `{{ var }}` without substituting it *and* without `--check` flagging it.
+
+Drift is answered exactly as §1 answers it: **one generator writes every form in a single pass**, so
+they drift only when someone hand-edits an output, which a `--check` that regenerates and compares
+can detect. That is the same shape `init_project.py --check` already has.
+
 ## 2. Variables live in JSON Schema
 
 ```
