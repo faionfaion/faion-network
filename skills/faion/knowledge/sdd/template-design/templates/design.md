@@ -6,11 +6,11 @@ depends-on: content/01-core-rules.xml
 token-budget-impact: ~900-1400 tokens when loaded as context
 -->
 
-# Design: {Feature Name}
+# Design: <feature_name>
 
 **Version:** 1.0
 **Status:** Draft | Review | Approved
-**Author:** {Name}
+**Author:** <author_name>
 **Date:** YYYY-MM-DD
 **Spec:** {link to spec.md}
 
@@ -34,43 +34,43 @@ token-budget-impact: ~900-1400 tokens when loaded as context
 
 ## Architecture Decisions
 
-### AD-1: {Decision Name}
+### AD-1: <decision_name>
 
 **Context:**
 {Problem being solved and relevant context}
 
 **Options:**
-- **A: {Option}** — Pros: {benefits}. Cons: {drawbacks}.
-- **B: {Option}** — Pros: {benefits}. Cons: {drawbacks}.
+- **A: <option>** — Pros: <benefits>. Cons: <drawbacks>.
+- **B: <option>** — Pros: <benefits>. Cons: <drawbacks>.
 
-**Decision:** {Chosen solution}
+**Decision:** <chosen_solution>
 
 **Rationale:** {Why this solution; which constraints drove the choice}
 
 **Consequences:**
-- Positive: {benefits}
-- Negative: {trade-offs}
+- Positive: <benefits>
+- Negative: <trade_offs>
 - Risks: {what could go wrong}
 
 **Traces to:** FR-001, NFR-002
 
-### AD-2: {Decision Name}
+### AD-2: <decision_name>
 ...
 
 ---
 
 ## Components
 
-### Component 1: {Name}
+### Component 1: <name>
 - **Purpose:** {what it does}
-- **Location:** {path}
+- **Location:** <path>
 - **Dependencies:** {what it uses}
 
 ---
 
 ## Data Flow
 
-{Component A} → validate → {Component B} → process → {Component C} → persist
+{Component A} → validate → <component_b> → process → <component_c> → persist
 
 Error path: {Component A} → validation failure → return 400
 
@@ -78,7 +78,7 @@ Error path: {Component A} → validation failure → return 400
 
 ## Data Models
 
-### {Model Name}
+### <model_name>
 
 | Field | Type | Constraints | Description |
 |-------|------|-------------|-------------|
@@ -94,7 +94,7 @@ Reference: `contracts.md` section {X}
 | Method | Path | Description | FR |
 |--------|------|-------------|-----|
 | POST | /api/v1/{resource} | Create | FR-001 |
-| GET | /api/v1/{resource}/{id} | Read | FR-002 |
+| GET | /api/v1/{resource}/<id> | Read | FR-002 |
 
 ---
 
@@ -114,13 +114,13 @@ Reference: `contracts.md` section {X}
 
 | Component | Test File | Coverage Target |
 |-----------|-----------|----------------|
-| {component} | test_{component}.py | {target}% |
+| <component> | test_<component>.py | <target>% |
 
 ### Integration Tests
 
 | Flow | Test File | Description |
 |------|-----------|-------------|
-| {flow} | test_{flow}_integration.py | {description} |
+| <flow> | test_<flow>_integration.py | <description> |
 
 ---
 
@@ -128,7 +128,7 @@ Reference: `contracts.md` section {X}
 
 | Risk | Impact | Probability | Mitigation |
 |------|--------|-------------|------------|
-| {risk} | High/Med/Low | High/Med/Low | {mitigation} |
+| <risk> | High/Med/Low | High/Med/Low | <mitigation> |
 
 ---
 

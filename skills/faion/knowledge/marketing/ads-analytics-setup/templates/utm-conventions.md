@@ -52,7 +52,7 @@ Examples:
 
 ## utm_term (keyword — paid search only)
 
-Use the actual keyword. Set automatically by Google Ads via {keyword} ValueTrack parameter.
+Use the actual keyword. Set automatically by Google Ads via <keyword> ValueTrack parameter.
 
 ## Implementation
 

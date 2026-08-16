@@ -20,8 +20,8 @@ token-budget-impact: ~150-250 tokens when loaded as context
 
 ## Architecture Decision
 
-**Options:** {Option A} vs {Option B}
-**Decision:** {Option X}
+**Options:** {Option A} vs <option_b>
+**Decision:** <option_x>
 **Reason:** {One sentence why}
 
 ## Key Interfaces
@@ -32,7 +32,7 @@ token-budget-impact: ~150-250 tokens when loaded as context
 
 ## Out of Scope
 
-- {Explicit exclusion}
+- <explicit_exclusion>
 
 ## Open Questions
 

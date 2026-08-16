@@ -15,16 +15,16 @@ token-budget-impact: ~220 tokens when filled
 "{Original requestor wording — never paraphrase}"
 
 ### User Story
-**As a** {user type}
-**I want** {action}
-**So that** {benefit}
+**As a** <user_type>
+**I want** <action>
+**So that** <benefit>
 
 ### Context
 {Background: why this matters, who asked, what triggered it}
 
 ### Acceptance Criteria
-- [ ] Given {context}, when {action}, then {result}
-- [ ] Given {context}, when {action}, then {result}
+- [ ] Given <context>, when <action>, then <result>
+- [ ] Given <context>, when <action>, then <result>
 - [ ] {Additional criterion — minimum 3 distinct preconditions}
 
 ### Out of Scope
@@ -37,7 +37,7 @@ token-budget-impact: ~220 tokens when filled
 {XS/S/M/L/XL} — rationale: {based on similar past item or decomposition}
 
 ### Priority
-{P1/P2/P3} — {Rationale: why this rank vs alternatives}
+<p1_p2_p3> — {Rationale: why this rank vs alternatives}
 
 ### Links
 - Design: {Link or "none"}

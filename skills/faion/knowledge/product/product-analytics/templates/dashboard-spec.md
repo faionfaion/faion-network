@@ -6,7 +6,7 @@ depends-on: content/01-core-rules.xml (r2-five-metric-cap, r4-dashboard-first)
 token-budget-impact: ~350 tokens when filled
 -->
 
-## Dashboard: {Name} — {Audience}
+## Dashboard: <name> — <audience>
 
 ### Purpose
 {One sentence: what decision or ritual this dashboard supports}
@@ -20,7 +20,7 @@ token-budget-impact: ~350 tokens when filled
 | D1 Retention | % returning on day 1 after signup | 40% | <35% |
 | D7 Retention | % returning on day 7 after signup | 20% | <15% |
 | Activation Rate | % completing onboarding | 60% | <50% |
-| {Custom metric} | {Formula} | {Target} | {Alert} |
+| <custom_metric> | <formula> | <target> | <alert> |
 
 ### Charts
 

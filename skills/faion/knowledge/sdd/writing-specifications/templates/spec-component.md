@@ -19,37 +19,37 @@ token-budget-impact: ~280 tokens when filled
 | Prop | Type | Required | Default | Description |
 |------|------|----------|---------|-------------|
 | `propName` | `string` | yes | — | {what it controls} |
-| `onAction` | `(id: string) => void` | no | `undefined` | {callback description} |
-| `variant` | `'primary' \| 'secondary'` | no | `'primary'` | {visual variant} |
+| `onAction` | `(id: string) => void` | no | `undefined` | <callback_description> |
+| `variant` | `'primary' \| 'secondary'` | no | `'primary'` | <visual_variant> |
 
 ## States
 
 | State | Trigger | Visual |
 |-------|---------|--------|
-| default | initial | {description} |
+| default | initial | <description> |
 | loading | async op in progress | spinner, disabled |
 | error | async op failed | error message, retry |
 | disabled | `disabled` prop | muted, no interaction |
 
 ## Behavior
 
-### FR-1: {Behavior title}
+### FR-1: <behavior_title>
 
 {What the component does}
 
-- Given: {precondition}
-- When: {user action}
-- Then: {expected result}
+- Given: <precondition>
+- When: <user_action>
+- Then: <expected_result>
 
-### FR-2: {Behavior title}
+### FR-2: <behavior_title>
 
-- Given: {precondition}
-- When: {user action}
-- Then: {expected result}
+- Given: <precondition>
+- When: <user_action>
+- Then: <expected_result>
 
 ## Accessibility
 
-- Keyboard: {Tab / Enter / Escape behavior}
+- Keyboard: <keyboard>
 - Screen reader: {ARIA roles, labels}
 - Focus: {focus management on open/close/action}
 
@@ -59,4 +59,4 @@ token-budget-impact: ~280 tokens when filled
 
 ## Open Questions
 
-- {Unresolved design question}
+- <unresolved_design_question>

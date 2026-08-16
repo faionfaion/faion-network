@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~190 tokens filled -->
 
-# Niche Viability Scorecard: {Niche Name}
+# Niche Viability Scorecard: <niche_name>
 
 | Criterion | Score | Weight | Weighted | Justification |
 |-----------|-------|--------|----------|---------------|
@@ -13,7 +13,7 @@
 | Barriers | {1-10} | 20% | {score x 0.20} | {evidence} |
 | Profitability | {1-10} | 20% | {score x 0.20} | {evidence} |
 | Your Fit | {1-10} | 15% | {score x 0.15} | {evidence} |
-| **Total** | | | **{sum}** | |
+| **Total** | | | **<sum>** | |
 
 ## Decision
 - 7.5-10: Strong opportunity
@@ -21,8 +21,8 @@
 - 3.5-5.4: Significant risks
 - &lt;3.5: Pass
 
-**Decision: {threshold label}** — {one-sentence rationale}
+**Decision: <threshold_label>** — {one-sentence rationale}
 
 ## Risk Mitigation
-- {risk 1}: {mitigation}
-- {risk 2}: {mitigation}
+- <risk_1>: <mitigation>
+- <risk_2>: <mitigation>

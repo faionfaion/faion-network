@@ -5,20 +5,20 @@ produces: filled playbook-step artefact validated by scripts/validate-openteleme
 depends-on: content/01-core-rules.xml, content/02-output-contract.xml
 token-budget-impact: ~600 tokens for a typical instance
 -->
-# OpenTelemetry Instrumentation Playbook — {artefact_id}
+# OpenTelemetry Instrumentation Playbook — <artefact_id>
 
 | Field | Value |
 |-------|-------|
-| artefact_id | {artefact_id} |
+| artefact_id | <artefact_id> |
 | produces | playbook-step |
-| owner | {owner} |
-| version | {version} |
-| last_reviewed | {YYYY-MM-DD} |
+| owner | <owner> |
+| version | <version> |
+| last_reviewed | <last_reviewed> |
 | status | draft \| active \| review \| deprecated |
 
 ## Inputs used
 
-- {input-name} — {source-uri-or-path}
+- <input_name> — {source-uri-or-path}
 
 ## Decision
 

@@ -5,7 +5,7 @@ produces: artefact conforming to content/02-output-contract.xml
 depends-on: content/01-core-rules.xml
 token-budget-impact: ~300-600 tokens when loaded as context
 -->
-# Internal Leadership Brief — {project} — Week {n}
+# Internal Leadership Brief — <project> — Week {n}
 
 ## Headline
 
@@ -13,13 +13,13 @@ token-budget-impact: ~300-600 tokens when loaded as context
 
 ## Numbers that matter
 
-- {business metric}: {value} ({delta vs last week})
-- {business metric}: {value}
-- {business metric}: {value}
+- <business_metric>: <value> ({delta vs last week})
+- <business_metric>: <value>
+- <business_metric>: <value>
 
 ## What changed for users
 
-- {feature / fix} → {user impact described in plain language}
+- <feature_fix> → {user impact described in plain language}
 
 ## Confidence
 

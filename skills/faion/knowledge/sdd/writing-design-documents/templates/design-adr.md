@@ -6,10 +6,10 @@ depends-on: content/01-core-rules.xml
 token-budget-impact: ~400-650 tokens when loaded as context
 -->
 
-# ADR-{NNN}: {Decision title}
+# ADR-{NNN}: <decision_title>
 
 **Status:** Proposed / Accepted / Deprecated / Superseded by ADR-<status>
-**Date:** {YYYY-MM-DD}
+**Date:** <date>
 **Feature:** {feature-NNN-name or "cross-cutting"}
 
 ## Context
@@ -22,29 +22,29 @@ token-budget-impact: ~400-650 tokens when loaded as context
 
 ## Options Considered
 
-### Option A: {name}
+### Option A: <name>
 
-{Description}
-
-Pros:
-- {pro}
-- {pro}
-
-Cons:
-- {con}
-- {con}
-
-### Option B: {name}
-
-{Description}
+<description>
 
 Pros:
-- {pro}
+- <pro>
+- <pro>
 
 Cons:
-- {con}
+- <con>
+- <con>
 
-### Option C: {name} (if applicable)
+### Option B: <name>
+
+<description>
+
+Pros:
+- <pro>
+
+Cons:
+- <con>
+
+### Option C: <name> (if applicable)
 
 {Description, pros, cons}
 
@@ -59,7 +59,7 @@ Cons:
 - {What new capability this enables}
 
 **Negative:**
-- {What becomes harder}
+- <what_becomes_harder>
 - {Technical debt or risk accepted}
 
 **Neutral:**
@@ -67,5 +67,5 @@ Cons:
 
 ## Related
 
-- ADR-<adr>: {related decision}
-- Constitution section: {relevant section}
+- ADR-<adr>: <related_decision>
+- Constitution section: <relevant_section>

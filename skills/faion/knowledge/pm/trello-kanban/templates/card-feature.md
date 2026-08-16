@@ -5,10 +5,10 @@ produces: artefact conforming to content/02-output-contract.xml
 depends-on: content/01-core-rules.xml
 token-budget-impact: ~150-400 tokens when loaded as context
 -->
-## Feature: {Title}
+## Feature: <title>
 
 ### User Story
-As a {user type}, I want {capability} so that {benefit}.
+As a <user_type>, I want <capability> so that <benefit>.
 
 ### Acceptance Criteria
 - [ ] Users can...
@@ -21,8 +21,8 @@ As a {user type}, I want {capability} so that {benefit}.
 
 ### Technical Notes
 - API endpoint: /api/v1/...
-- Database changes: none / {describe}
-- Dependencies: none / {package or service}
+- Database changes: none / <describe>
+- Dependencies: none / <dependencies>
 
 ### Definition of Done
 - [ ] Code complete

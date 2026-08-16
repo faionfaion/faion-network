@@ -6,7 +6,7 @@ depends-on: content/01-core-rules.xml
 token-budget-impact: ~1000-1600 tokens when loaded as context
 -->
 
-# TASK_XXX: {Title}
+# TASK_XXX: <title>
 <!-- SUMMARY: {One sentence describing business value} -->
 
 ## Metadata
@@ -16,13 +16,13 @@ token-budget-impact: ~1000-1600 tokens when loaded as context
 | **Complexity** | simple / normal / complex |
 | **Est. Tokens** | ~Xk |
 | **Priority** | P0 / P1 / P2 |
-| **Feature** | {feature-NNN-name} |
+| **Feature** | <feature_nnn_name> |
 
 ## SDD References
 
 | Document | Path | Sections |
 |----------|------|----------|
-| Constitution | `.aidocs/constitution.md` | {relevant sections} |
+| Constitution | `.aidocs/constitution.md` | <relevant_sections> |
 | Spec | `.aidocs/{status}/{feature}/spec.md` | FR-X, FR-Y |
 | Design | `.aidocs/{status}/{feature}/design.md` | AD-X, AD-Y |
 
@@ -47,18 +47,18 @@ TASK_YYY ({title})
 **Skills:**
 | Skill | Purpose |
 |-------|---------|
-| faion-{skill} | {when to use} |
+| faion-<skill> | {when to use} |
 
 ---
 
 ## Requirements Coverage
 
-### FR-X: {requirement title}
+### FR-X: <requirement_title>
 {Full text of requirement from spec.md}
 
 ## Architecture Decisions
 
-### AD-X: {decision title}
+### AD-X: <decision_title>
 {Full text of decision from design.md}
 
 ---
@@ -91,25 +91,25 @@ TASK_YYY ({title})
 
 ## Acceptance Criteria
 
-**AC-1: {Scenario name}**
-- Given: {precondition}
-- When: {action}
-- Then: {expected result}
+**AC-1: <scenario_name>**
+- Given: <precondition>
+- When: <action>
+- Then: <expected_result>
 
-**AC-2: {Error scenario}**
-- Given: {precondition}
-- When: {action}
-- Then: {error handling}
+**AC-2: <error_scenario>**
+- Given: <precondition>
+- When: <action>
+- Then: <error_handling>
 
 ---
 
 ## Dependencies
 
 **Depends on (FS):**
-- TASK_YYY <fs> - {reason}
+- TASK_YYY <fs> - <reason>
 
 **Blocks:**
-- TASK_ZZZ - {reason}
+- TASK_ZZZ - <reason>
 
 ---
 
@@ -117,8 +117,8 @@ TASK_YYY ({title})
 
 | Action | File | Scope |
 |--------|------|-------|
-| CREATE | `path/to/new_file.py` | {description} |
-| MODIFY | `path/to/existing.py` | {what changes} |
+| CREATE | `path/to/new_file.py` | <description> |
+| MODIFY | `path/to/existing.py` | <what_changes> |
 
 ---
 
@@ -137,10 +137,10 @@ TASK_YYY ({title})
 
 ## Subtasks
 
-- [ ] 01. Research: {description}
-- [ ] 02. Implement: {description}
-- [ ] 03. Test: {description}
-- [ ] 04. Verify: {description}
+- [ ] 01. Research: <description>
+- [ ] 02. Implement: <description>
+- [ ] 03. Test: <description>
+- [ ] 04. Verify: <description>
 
 ---
 
@@ -148,7 +148,7 @@ TASK_YYY ({title})
 <!-- Filled after completion -->
 
 **What was done:**
-- {Achievement 1}
+- <achievement_1>
 
 **Patterns established:**
 - {Pattern for future tasks}

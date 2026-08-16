@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml + content/02-output-contract.xml -->
 <!-- token-budget-impact: ~200-1000 tokens when loaded as context -->
 
-# Vendor Eval Pilot Template — {artefact_id}
+# Vendor Eval Pilot Template — <artefact_id>
 
 - owner: {named human; never 'team' / 'we' / 'us'}
 - version: 1.0.0

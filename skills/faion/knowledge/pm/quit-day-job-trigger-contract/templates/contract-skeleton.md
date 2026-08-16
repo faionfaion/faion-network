@@ -8,12 +8,12 @@ token-budget-impact: ~200-400 tokens when loaded as context
 # Quit Day Job — Contract
 
 ## Owner
-{name + role}
+<name_role>
 
 ## Trigger (numeric, dated, named)
 - Kind: threshold | event | schedule
 - Metric: {mrr_usd | runway_months | ...}
-- Threshold: {number}
+- Threshold: <number>
 - Window: {n consecutive months above / specific date / event}
 
 ## Output shape
@@ -24,7 +24,7 @@ token-budget-impact: ~200-400 tokens when loaded as context
 
 ### Evidence anchors
 - {link to dashboard / runway model / Stripe screenshot}
-- {link}
+- <link>
 
 ## Reversal clause
 {Concrete condition that flips the decision back. Numeric + dated.}

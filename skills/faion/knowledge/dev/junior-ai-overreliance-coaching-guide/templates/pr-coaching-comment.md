@@ -14,8 +14,8 @@
 
 ## Signals I'd like to discuss
 
-- **{signal-name-1}** — {one-line observation}. {one probing question, never assertion}
-- **{signal-name-2}** — {one-line observation}. {one probing question}
+- **<signal_name_1>** — {one-line observation}. {one probing question, never assertion}
+- **<signal_name_2>** — {one-line observation}. {one probing question}
 
 ## Without-AI check
 
@@ -23,6 +23,6 @@ Walk me through how you'd write {file:lines} without the AI suggestion. What wou
 
 ## Resolution
 
-- [ ] Address {signal-1} (block)
-- [ ] Address {signal-2} (block)
+- [ ] Address <signal_1> (block)
+- [ ] Address <signal_2> (block)
 - [ ] Reply to without-AI question

@@ -6,10 +6,10 @@ depends-on: nothing
 token-budget-impact: ~350-500 tokens when loaded as context
 -->
 
-# Product Roadmap: {Product Name}
+# Product Roadmap: <product_name>
 
 **Last Updated:** YYYY-MM-DD
-**Time Horizon:** {X months}
+**Time Horizon:** <x_months>
 
 ## Vision
 
@@ -17,9 +17,9 @@ token-budget-impact: ~350-500 tokens when loaded as context
 
 ## Now (Current Quarter)
 
-### {Milestone 1 Name}
+### <milestone_1_name>
 
-**Target:** {Month}
+**Target:** <month>
 **Status:** On Track | At Risk | Delayed
 
 Features:
@@ -29,9 +29,9 @@ Features:
 
 ## Next (Next Quarter)
 
-### {Milestone Name}
+### <milestone_name>
 
-**Target:** {Month}
+**Target:** <month>
 **Confidence:** High | Medium | Low
 
 Features:
@@ -40,7 +40,7 @@ Features:
 
 ## Later (6-12 months)
 
-### {Theme Name}
+### <theme_name>
 
 Features under consideration:
 - {Feature 1}
@@ -52,17 +52,17 @@ Features under consideration:
 
 | Item | Reason |
 |------|--------|
-| {Item 1} | {Why not} |
-| {Item 2} | {Why not} |
+| <item_1> | {Why not} |
+| <item_2> | {Why not} |
 
 ## Dependencies
 
 | Item | Depends On | Risk |
 |------|------------|------|
-| {Item} | {Dependency} | {Level} |
+| <item> | <dependency> | <level> |
 
 ## Change Log
 
 | Date | Change |
 |------|--------|
-| YYYY-MM-DD | {What changed} |
+| YYYY-MM-DD | <what_changed> |

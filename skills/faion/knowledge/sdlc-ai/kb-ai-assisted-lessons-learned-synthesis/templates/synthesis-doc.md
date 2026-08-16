@@ -4,7 +4,7 @@
 <!-- depends-on: content/02-output-contract.xml (schema) -->
 <!-- token-budget-impact: low — ~100-400 tokens when loaded as context -->
 
-# Lessons-Learned Synthesis — {window_start} to {window_end}
+# Lessons-Learned Synthesis — <window_start> to <window_end>
 
 ## Top themes
 

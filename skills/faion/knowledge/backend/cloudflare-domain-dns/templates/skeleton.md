@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~400-1000 tokens when loaded as context -->
 
-# Cloudflare DNS Plan — {zone}
+# Cloudflare DNS Plan — <zone>
 
 ## Zone
 
@@ -18,11 +18,11 @@
 
 | type | name | content | proxied | rationale |
 |------|------|---------|---------|-----------|
-| A | @ | {ipv4} | ON | HTTPS origin behind proxy |
-| AAAA | @ | {ipv6} | ON | dual-stack origin |
+| A | @ | <ipv4> | ON | HTTPS origin behind proxy |
+| AAAA | @ | <ipv6> | ON | dual-stack origin |
 | CNAME | www | @ | ON | mirror canonical |
-| MX | @ | {mx_host} | n/a | mail delivered off-origin (provider or separate mail host) |
-| TXT | @ | v=spf1 include:{mail_provider} -all | n/a | SPF scoped to the mail path |
+| MX | @ | <mx_host> | n/a | mail delivered off-origin (provider or separate mail host) |
+| TXT | @ | v=spf1 include:<mail_provider> -all | n/a | SPF scoped to the mail path |
 
 Do NOT add `A mail -> {ipv4}`. An unproxied record pointing at the web origin publishes
 the origin address and lets an attacker bypass Cloudflare for the whole zone. If you self-host

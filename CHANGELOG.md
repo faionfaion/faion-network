@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **158 templates re-converted from their PRE-MIGRATION source; 90 of them were
+  reporting a false `exit 0`.** The repair path CR-013 names: `git show
+  <migrating commit>~1:<path>` for each affected template, then `--migrate`
+  once with the corrected scanner. `--migrate` is never re-run on an
+  already-converted template — the regenerated `.md` carries no `variables:`
+  block, so a second pass re-proposes from scratch and demotes backticked
+  tokens to examples, which is how 78 templates were rewritten backwards on
+  2026-08-16. For the **61** whose five-key header was authored *by* the
+  migration commit, that header is spliced back onto the pre-migration body,
+  because it is not in the file git holds and losing it fails validator 5.
+
+  **1,847 brace tokens became visible** across those sources: **921 declared**,
+  **926 refused** — prose 478, per-row-table 141, no-name 91,
+  options-without-name 64, no-context 57, instruction 49, format-token 20,
+  unnameable 16, collision 10. A refusal is the success case: the template now
+  exits 1 with the token named, instead of exiting 0 with it invisible.
+  Corpus-wide, templates carrying an unseen mixed-case brace outside code drop
+  from **158 / 1,677 tokens to 138 / 804**, and every one of the 804 is a token
+  the converter refuses by name.
+
+  128 templates changed on disk; 30 produced byte-identical output because every
+  token they carry is one the converter refuses. `--check` drift=0 on all 158,
+  `validate-methodology-templates.py --all` 2521 pass / 0 fail, `-v2` clean on
+  all 90 methodologies touched, no new failure against the validator baseline.
+
 - **The placeholder scanner now sees a mixed-case `{brace}` — CR-013 §1.** It
   recognised `{BRACE}` in ALL-CAPS only, so `{owner}` was not flagged `unclear`,
   it was **not seen at all**: the template reported `variables=0`, exited 0 and

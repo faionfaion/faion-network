@@ -6,13 +6,13 @@ depends-on: content/01-core-rules.xml
 token-budget-impact: ~800-1300 tokens when loaded as context
 -->
 
-# Feature: {Feature Name}
+# Feature: <feature_name>
 
 **Version:** 1.0
 **Status:** Draft | Review | Approved
-**Author:** {Name}
+**Author:** <author_name>
 **Date:** YYYY-MM-DD
-**Project:** {project-name}
+**Project:** <project_name>
 
 ---
 
@@ -33,9 +33,9 @@ token-budget-impact: ~800-1300 tokens when loaded as context
 
 ## Problem Statement
 
-**Who:** {User persona}
+**Who:** <user_persona>
 **Problem:** {What they cannot do}
-**Impact:** {Business/user impact}
+**Impact:** <business_user_impact>
 **Solution:** {High-level approach — no implementation details}
 **Success Metric:** {How we measure success — must be measurable}
 
@@ -43,34 +43,34 @@ token-budget-impact: ~800-1300 tokens when loaded as context
 
 ## User Personas
 
-### Persona 1: {Name/Archetype}
+### Persona 1: <name_archetype>
 - **Role:** {What they do}
-- **Goal:** {What they want}
-- **Pain Points:** {Current frustrations}
+- **Goal:** <what_they_want>
+- **Pain Points:** <current_frustrations>
 - **Context:** {When/where they use product}
 
-### Persona 2: {Name/Archetype}
+### Persona 2: <name_archetype>
 - **Role:** {What they do}
-- **Goal:** {What they want}
-- **Pain Points:** {Current frustrations}
+- **Goal:** <what_they_want>
+- **Pain Points:** <current_frustrations>
 - **Context:** {When/where they use product}
 
 ---
 
 ## User Stories
 
-### US-001: {Story Title}
-**As a** {persona}
-**I want to** {action}
-**So that** {benefit — required}
+### US-001: <story_title>
+**As a** <persona>
+**I want to** <action>
+**So that** <benefit_required>
 
 **Priority:** Must | Should | Could | Won't
 **Acceptance Criteria:** AC-001
 
-### US-002: {Story Title}
-**As a** {persona}
-**I want to** {action}
-**So that** {benefit}
+### US-002: <story_title>
+**As a** <persona>
+**I want to** <action>
+**So that** <benefit>
 
 **Priority:** Must | Should | Could | Won't
 
@@ -91,27 +91,27 @@ token-budget-impact: ~800-1300 tokens when loaded as context
 | ID | Category | Requirement | Target | Priority |
 |----|----------|-------------|--------|----------|
 | NFR-001 | Performance | Response time | < 500ms p95 | Must |
-| NFR-002 | Security | {requirement} | {numeric target} | Must |
+| NFR-002 | Security | <requirement> | <numeric_target> | Must |
 
 ---
 
 ## Acceptance Criteria
 
-### AC-001: {Scenario Title}
+### AC-001: <scenario_title>
 
-**Scenario:** {Brief description}
+**Scenario:** <brief_description>
 
-**Given:** {precondition}
-**And:** {additional precondition}
-**When:** {action}
+**Given:** <precondition>
+**And:** <additional_precondition>
+**When:** <action>
 **Then:** {expected result with specific values}
-**And:** {additional result}
+**And:** <additional_result>
 
-### AC-002: {Error Scenario Title}
+### AC-002: <error_scenario_title>
 
-**Given:** {precondition}
+**Given:** <precondition>
 **When:** {action with invalid input}
-**Then:** {specific error response}
+**Then:** <specific_error_response>
 
 ---
 
@@ -132,8 +132,8 @@ token-budget-impact: ~800-1300 tokens when loaded as context
 - {Assumption about system state}
 
 ### Constraints
-- {Technical constraint}
-- {Business constraint}
+- <technical_constraint>
+- <business_constraint>
 
 ---
 

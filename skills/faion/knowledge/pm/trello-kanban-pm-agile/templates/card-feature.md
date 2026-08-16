@@ -4,7 +4,7 @@
 <!-- depends-on: nothing -->
 <!-- token-budget-impact: ~150 tokens when filled -->
 
-## Feature: {Title}
+## Feature: <title>
 
 ### User Story
 As a <user_type>, I want <capability> so that <benefit>.

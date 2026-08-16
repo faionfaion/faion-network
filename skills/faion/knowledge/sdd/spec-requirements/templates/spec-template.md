@@ -6,25 +6,25 @@ depends-on: content/01-core-rules.xml
 token-budget-impact: ~700-1100 tokens when loaded as context
 -->
 
-# Feature: {Feature Name}
+# Feature: <feature_name>
 
 ## Business Value Statement
 
 <who> currently cannot <what> because <why>.
 This results in <impact>.
-By implementing <solution>, we will <benefit>.
+By implementing <solution>, we will {BENEFIT}.
 
 ---
 
 ## User Personas
 
-### Persona 1: {Name} — "{Archetype}"
+### Persona 1: <name> — "<archetype>"
 - **Role:** {What they do}
 - **Goal:** {What they want to achieve}
-- **Pain Points:** {Current frustrations}
+- **Pain Points:** <current_frustrations>
 - **Context:** {When/where they use the product}
 
-### Persona 2: {Name} — "{Archetype}"
+### Persona 2: <name> — "<archetype>"
 - **Role:**
 - **Goal:**
 - **Pain Points:**
@@ -34,9 +34,9 @@ By implementing <solution>, we will <benefit>.
 
 ## User Stories
 
-### US-001: {Title} ({Priority})
-**As a** {persona}
-**I want to** {action}
+### US-001: <title> (<priority>)
+**As a** <persona>
+**I want to** <action>
 **So that** {benefit}
 
 **INVEST:** Independent ✅ | Negotiable ✅ | Valuable ✅ | Estimable ✅ | Small ✅ | Testable ✅
@@ -47,15 +47,15 @@ By implementing <solution>, we will <benefit>.
 
 ## Functional Requirements
 
-### FR-001: {Title}
+### FR-001: <title>
 
 **Requirement:** System SHALL {specific, testable requirement}.
 
 **Rationale:** {Why this is needed}
 
 **Validation Rules:**
-- {Rule 1}
-- {Rule 2}
+- <rule_1>
+- <rule_2>
 
 **Traces to:** US-001
 **Acceptance Criteria:** AC-001, AC-002
@@ -65,7 +65,7 @@ By implementing <solution>, we will <benefit>.
 
 ## Non-Functional Requirements
 
-### NFR-001: {Category} — {Title}
+### NFR-001: <category> — <title>
 
 **Requirement:** {System SHALL ... target ... measurement conditions}.
 
@@ -77,14 +77,14 @@ By implementing <solution>, we will <benefit>.
 
 ## Acceptance Criteria
 
-### AC-001: {Scenario Name} (Happy Path)
+### AC-001: <scenario_name> (Happy Path)
 
 **Given:** {precondition with specific values}
 **When:** {action with specific values}
 **Then:** {observable outcome with specific values}
-**And:** {additional observable outcomes}
+**And:** <additional_observable_outcomes>
 
-### AC-002: {Scenario Name} (Error Case)
+### AC-002: <scenario_name> (Error Case)
 
 **Given:** ...
 **When:** ...
@@ -95,15 +95,15 @@ By implementing <solution>, we will <benefit>.
 ## Scope
 
 ### In Scope
-- {Feature 1}
-- {Feature 2}
+- <feature_1>
+- <feature_2>
 
 ### Out of Scope
 
 | Feature | Reason | Timeline |
 |---------|--------|----------|
-| {Feature X} | {Reason} | Phase 2 |
-| {Feature Y} | {Reason} | Not planned |
+| <feature_x> | {Reason} | Phase 2 |
+| <feature_y> | {Reason} | Not planned |
 
 ---
 
@@ -115,5 +115,5 @@ By implementing <solution>, we will <benefit>.
 
 ## Constraints
 
-- {Technical constraint}
-- {Business constraint}
+- <technical_constraint>
+- <business_constraint>

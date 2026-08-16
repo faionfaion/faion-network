@@ -14,7 +14,7 @@ token-budget-impact: ~560 tokens when filled
 
 | Field | Value |
 |-------|-------|
-| **Feature** | {feature-NNN-name} |
+| **Feature** | <feature_nnn_name> |
 | **Status** | draft / review / approved |
 | **Priority** | P0 / P1 / P2 |
 | **Complexity** | Low / Medium / High |
@@ -24,7 +24,7 @@ token-budget-impact: ~560 tokens when filled
 {2-3 sentences: what pain point does this solve? Who experiences it? What is the cost of not solving it?}
 
 **User:** {who is affected}
-**Problem:** {what is broken or missing}
+**Problem:** <problem>
 **Impact:** {measurable consequence of the problem}
 
 ## Goals
@@ -48,28 +48,28 @@ token-budget-impact: ~560 tokens when filled
 
 ## Functional Requirements
 
-### FR-1: {Requirement title}
+### FR-1: <requirement_title>
 
 {Full description of what the system must do — active voice, present tense}
 
 **Acceptance Criteria:**
-- Given: {precondition}
-- When: {action}
-- Then: {verifiable result}
+- Given: <precondition>
+- When: <action>
+- Then: <verifiable_result>
 
-### FR-2: {Requirement title}
+### FR-2: <requirement_title>
 
-{Full description}
+<full_description>
 
 **Acceptance Criteria:**
-- Given: {precondition}
-- When: {action}
-- Then: {verifiable result}
+- Given: <precondition>
+- When: <action>
+- Then: <verifiable_result>
 
 **Edge case:**
-- Given: {error precondition}
-- When: {action}
-- Then: {error handling result}
+- Given: <error_precondition>
+- When: <action>
+- Then: <error_handling_result>
 
 ## Non-Functional Requirements
 
@@ -88,20 +88,20 @@ token-budget-impact: ~560 tokens when filled
 ## Constraints
 
 - {Technical constraint from constitution.md}
-- {Business constraint}
+- <business_constraint>
 - {Dependency or integration constraint}
 
 ## Out of Scope
 
 | Item | Reason |
 |------|--------|
-| {feature or capability} | {why excluded} |
+| {feature or capability} | <why_excluded> |
 
 ## Open Questions
 
 | # | Question | Owner | Status |
 |---|----------|-------|--------|
-| 1 | {unresolved question blocking design} | {person/role} | open |
+| 1 | {unresolved question blocking design} | <person_role> | open |
 
 ## Dependencies
 

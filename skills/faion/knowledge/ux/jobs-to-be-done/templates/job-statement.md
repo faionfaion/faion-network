@@ -4,15 +4,15 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200 tokens filled -->
 
-# Job Statement: {Product/Feature}
+# Job Statement: <product_feature>
 
 ## Core Job
 When {situation with emotional context}
-I want to {action/motivation}
-So I can {functional + emotional outcome}
+I want to <action_motivation>
+So I can <functional_emotional_outcome>
 
 ## Functional Dimension
-- Goal: {specific outcome}
+- Goal: <specific_outcome>
 - Metrics: {how success is measured}
 
 ## Emotional Dimension
@@ -24,11 +24,11 @@ So I can {functional + emotional outcome}
 - Status signal: {what success signals to others}
 
 ## Key Circumstances
-- When: {specific trigger moments}
-- Where: {context/environment}
-- Why now: {what changed}
+- When: <specific_trigger_moments>
+- Where: <context_environment>
+- Why now: <what_changed>
 
 ## Competitors (Same Job)
-- Direct: {obvious competitors}
+- Direct: <obvious_competitors>
 - Indirect: {non-obvious — doing nothing, workarounds}
 - Internal: {habits, existing processes}

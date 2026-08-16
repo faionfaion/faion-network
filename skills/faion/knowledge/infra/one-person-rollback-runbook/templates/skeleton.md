@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~400-1000 tokens when loaded as context -->
 
-# Rollback Runbook — {release_tag}
+# Rollback Runbook — <release_tag>
 
 ## Release context
 

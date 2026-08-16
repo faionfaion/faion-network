@@ -16,8 +16,8 @@ token-budget-impact: ~220 tokens when filled
 
 ## Goals
 
-1. {Measurable outcome}
-2. {Measurable outcome}
+1. <measurable_outcome>
+2. <measurable_outcome>
 
 ## Non-Goals
 
@@ -25,25 +25,25 @@ token-budget-impact: ~220 tokens when filled
 
 ## Requirements
 
-### FR-1: {Title}
+### FR-1: <title>
 
 {What the system must do}
 
-- Given: {precondition}
-- When: {action}
-- Then: {result}
+- Given: <precondition>
+- When: <action>
+- Then: <result>
 
-### FR-2: {Title}
+### FR-2: <title>
 
 {What the system must do}
 
-- Given: {precondition}
-- When: {action}
-- Then: {result}
+- Given: <precondition>
+- When: <action>
+- Then: <result>
 
 ## Out of Scope
 
-- {Explicit exclusion}
+- <explicit_exclusion>
 
 ## Open Questions
 

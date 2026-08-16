@@ -6,7 +6,7 @@ depends-on: content/01-core-rules.xml
 token-budget-impact: ~350 tokens when loaded as context
 -->
 
-# BACKLOG: {Item Title}
+# BACKLOG: <item_title>
 
 **ID:** BL-<id>
 **Status:** Idea | Validated | Specified | Designed | Ready
@@ -24,20 +24,20 @@ token-budget-impact: ~350 tokens when loaded as context
 
 ## Proposed Solution
 
-{High-level approach}
+<high_level_approach>
 
 ## User Stories
 
-- As a {user}, I want {action}, so that {benefit}
+- As a <user>, I want <action>, so that <benefit>
 
 ## RICE Score
 
 | Factor | Value | Notes |
 |--------|-------|-------|
-| Reach | {1-10} | {how many users} |
+| Reach | {1-10} | <how_many_users> |
 | Impact | {0.25/0.5/1/2/3} | {per-user impact} |
-| Confidence | {50/80/100}% | {data source} |
-| Effort | {months} | {person-months} |
+| Confidence | {50/80/100}% | <data_source> |
+| Effort | <months> | <person_months> |
 | **Score** | **(R×I×C)/E** | |
 
 ## MoSCoW
@@ -54,7 +54,7 @@ token-budget-impact: ~350 tokens when loaded as context
 
 ## Risks
 
-- {Risk 1}
+- <risk_1>
 
 ## Next Steps
 

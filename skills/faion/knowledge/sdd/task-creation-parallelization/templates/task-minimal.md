@@ -6,7 +6,7 @@ depends-on: content/01-core-rules.xml
 token-budget-impact: ~150-250 tokens when loaded as context
 -->
 
-# TASK_XXX: {Title}
+# TASK_XXX: <title>
 
 | Field | Value |
 |-------|-------|
@@ -20,10 +20,10 @@ token-budget-impact: ~150-250 tokens when loaded as context
 
 ## Acceptance Criteria
 
-**AC-1: {Happy path}**
-- Given: {precondition}
-- When: {action}
-- Then: {result}
+**AC-1: <happy_path>**
+- Given: <precondition>
+- When: <action>
+- Then: <result>
 
 ## Files to Change
 

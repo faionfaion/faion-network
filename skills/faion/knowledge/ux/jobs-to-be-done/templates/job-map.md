@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~300 tokens filled -->
 
-# Job Map: {Core Job}
+# Job Map: <core_job>
 
 ## Stage 1: Define
 - Customer goals: {what they are trying to figure out}
@@ -18,7 +18,7 @@
 
 ## Stage 3: Prepare
 - Customer goals: {what they are getting ready to do}
-- Current pain: {setup friction}
+- Current pain: <setup_friction>
 - Opportunity: {how to help}
 
 ## Stage 4: Confirm
@@ -32,18 +32,18 @@
 - Opportunity: {how to help}
 
 ## Stage 6: Monitor
-- Customer goals: {check progress}
+- Customer goals: <check_progress>
 - Current pain: {lack of feedback}
 - Opportunity: {how to help}
 
 ## Stage 7: Modify
-- Customer goals: {make adjustments}
-- Current pain: {limited flexibility}
+- Customer goals: <make_adjustments>
+- Current pain: <limited_flexibility>
 - Opportunity: {how to help}
 
 ## Stage 8: Conclude
 - Customer goals: {finish the job}
-- Current pain: {unclear completion}
+- Current pain: <unclear_completion>
 - Opportunity: {how to help}
 
 ## Priority Stages (by pain severity)

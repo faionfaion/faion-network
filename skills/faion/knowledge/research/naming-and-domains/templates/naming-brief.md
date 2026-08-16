@@ -4,12 +4,12 @@
 <!-- depends-on: content/01-core-rules.xml (pronounceable-in-locales, ranked-rationale) -->
 <!-- token-budget-impact: ~250-500 tokens when loaded as context -->
 
-## Naming Brief: {Product Description}
+## Naming Brief: <product_description>
 
 ### Brand Attributes
-- {attribute 1 — adjective}
-- {attribute 2 — adjective}
-- {attribute 3 — adjective}
+- <attribute_1_adjective>
+- <attribute_2_adjective>
+- <attribute_3_adjective>
 
 ### Keywords
 - Product: {words describing what it does}
@@ -33,8 +33,8 @@
 
 ### Top 3 Recommendations
 1. **{name}** — {reasoning: availability + memorability + fit}
-2. **{name}** — {reasoning}
-3. **{name}** — {reasoning}
+2. **{name}** — <reasoning>
+3. **{name}** — <reasoning>
 
 ### Next Steps
 - [ ] Register .com and fallback TLD for top choice

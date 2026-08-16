@@ -6,8 +6,6 @@ depends-on: content/02-output-contract.xml
 token-budget-impact: ~150 tokens when filled
 -->
 
-<!-- AUTO-MIGRATION-BODY — managed by codemod runner; edit only below HUMAN line -->
-
 ## Migration
 - From: `{from_symbol_or_version}`
 - To: `{to_symbol_or_version}`
@@ -21,13 +19,13 @@ token-budget-impact: ~150 tokens when filled
 ## Stats
 | Metric | Value |
 |--------|-------|
-| Files touched | {files_count} |
-| Call-sites rewritten | {call_sites} |
-| LLM tail-pass files | {tail_files} |
+| Files touched | <files_count> |
+| Call-sites rewritten | <call_sites> |
+| LLM tail-pass files | <tail_files> |
 | Idempotence check | passed |
 
 ## Risk
-{risk_level} — {risk_one_liner}
+<risk_level> — {risk_one_liner}
 
 ## Out of scope
 - {out_of_scope_1}

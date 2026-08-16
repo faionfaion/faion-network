@@ -6,7 +6,7 @@ depends-on: content/01-core-rules.xml (r2-confidence-floor, r5-decision-record)
 token-budget-impact: ~300 tokens when filled
 -->
 
-## RICE Decision: {Feature Name}
+## RICE Decision: <feature_name>
 
 ### Scoring
 
@@ -15,18 +15,18 @@ token-budget-impact: ~300 tokens when filled
 | Reach | {X} users/quarter | {How estimated: analytics segment, funnel data, etc.} |
 | Impact | {3/2/1/0.5/0.25} | {Why this rating vs adjacent values on scale} |
 | Confidence | {50%/80%/100%} | {Evidence: URL or "none → capped at 50%"} |
-| Effort | {X} person-months | Design: {Xd}, Dev: {Xd}, QA: {Xd}, Docs: {Xd} |
+| Effort | {X} person-months | Design: <xd>, Dev: <xd>, QA: <xd>, Docs: <xd> |
 
 ### Calculation
-RICE = (<r> × <i> × <c>) / <e> = **{Score}**
+RICE = (<r> × <i> × <c>) / <e> = **<score>**
 
 ### Rank
 #{X} out of <y> candidates
 
 ### Decision
-[ ] Prioritize for {quarter/sprint}
+[ ] Prioritize for <quarter_sprint>
 [ ] Next cycle backlog
-[ ] Reject — reason: {why}
+[ ] Reject — reason: <why>
 
 ### Sequencing Check
 - Dependencies: {items that must be done first, or "none"}

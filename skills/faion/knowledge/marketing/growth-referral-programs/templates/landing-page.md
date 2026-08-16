@@ -24,9 +24,9 @@ Or share directly: <email> <twitter> <whats_app> [LinkedIn]
 
 ## Your Stats
 
-- Links shared: {shared_count}
-- Friends signed up: {referral_count}
-- Total earned: ${total_earned}
+- Links shared: <shared_count>
+- Friends signed up: <referral_count>
+- Total earned: $<total_earned>
 
 ## FAQ
 

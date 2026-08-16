@@ -4,8 +4,8 @@
 <!-- depends-on: content/01-core-rules.xml, content/02-output-contract.xml -->
 <!-- token-budget-impact: ~350 tokens filled -->
 
-# Feature Discovery Board: {Product}
-Period: {Quarter/Month}
+# Feature Discovery Board: <product>
+Period: <quarter_month>
 
 ## Collection Sources Active
 - [ ] Customer interviews (N=X)

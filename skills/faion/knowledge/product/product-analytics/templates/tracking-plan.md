@@ -6,12 +6,12 @@ depends-on: content/01-core-rules.xml (r3-plan-before-track)
 token-budget-impact: ~450 tokens when filled
 -->
 
-## Tracking Plan: {Product} — {Feature/Release}
+## Tracking Plan: <product> — <feature_release>
 
 ### Key Questions This Plan Answers
 1. {Question 1 — what decision will this data inform?}
-2. {Question 2}
-3. {Question 3}
+2. <question_2>
+3. <question_3>
 
 ### User Properties
 
@@ -20,7 +20,7 @@ token-budget-impact: ~450 tokens when filled
 | user_id | string | Unique user identifier | "usr_abc123" |
 | plan | string | Subscription tier | "pro" |
 | signup_date | date (UTC) | Account creation date | "2024-01-15" |
-| {custom} | {type} | {description} | {example} |
+| <custom> | <type> | <description> | <example> |
 
 ### Events (max 12 per feature)
 

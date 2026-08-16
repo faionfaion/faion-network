@@ -6,7 +6,7 @@ depends-on: content/01-core-rules.xml
 token-budget-impact: ~300-500 tokens when loaded as context
 -->
 
-## PAT-{NNN}: {Short Name}
+## PAT-{NNN}: <short_name>
 
 **Domain:** {React | Database | API | Integration | DevOps | ...}
 **Context:** {When this pattern applies — specific trigger condition}
@@ -16,8 +16,8 @@ token-budget-impact: ~300-500 tokens when loaded as context
 {Actionable steps in "When X, do Y" form. Include code example if applicable.}
 
 **Benefits:**
-- {Concrete benefit 1}
-- {Concrete benefit 2}
+- <concrete_benefit_1>
+- <concrete_benefit_2>
 
 **Trade-offs:**
 - {Known limitation or cost}
@@ -26,5 +26,5 @@ token-budget-impact: ~300-500 tokens when loaded as context
 |-------|-------|
 | Confidence | 0.50 |
 | Usage Count | 0 |
-| Last Used | {YYYY-MM-DD} |
-| Source | {TASK-NNN} |
+| Last Used | <last_used> |
+| Source | <task_nnn> |

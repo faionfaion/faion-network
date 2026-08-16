@@ -6,12 +6,12 @@ depends-on: content/01-core-rules.xml
 token-budget-impact: ~600-1000 tokens when loaded as context
 -->
 
-# RFC-{NNN}: {Title}
+# RFC-{NNN}: <title>
 
 **Status:** Draft / Under Review / Accepted / Rejected / Superseded
-**Author:** {name}
-**Created:** {YYYY-MM-DD}
-**Last updated:** {YYYY-MM-DD}
+**Author:** <author_name>
+**Created:** <created>
+**Last updated:** <last_updated>
 **Supersedes:** RFC-<supersedes> (if applicable)
 **Superseded by:** — (filled if rejected/superseded)
 
@@ -37,11 +37,11 @@ token-budget-impact: ~600-1000 tokens when loaded as context
 
 ## Alternatives Considered
 
-### Alternative A: {name}
+### Alternative A: <name>
 
 {Description, pros, cons, why not chosen}
 
-### Alternative B: {name}
+### Alternative B: <name>
 
 {Description, pros, cons, why not chosen}
 
@@ -52,15 +52,15 @@ token-budget-impact: ~600-1000 tokens when loaded as context
 ## Open Questions
 
 1. {Unresolved question — must be answered before RFC can be accepted}
-2. {Unresolved question}
+2. <unresolved_question>
 
 ## Implementation Plan
 
 {High-level sequence of work if this RFC is accepted. Not a full task breakdown — just phases.}
 
-1. Phase 1: {what}
-2. Phase 2: {what}
-3. Phase 3: {what}
+1. Phase 1: <what>
+2. Phase 2: <what>
+3. Phase 3: <what>
 
 ## References
 

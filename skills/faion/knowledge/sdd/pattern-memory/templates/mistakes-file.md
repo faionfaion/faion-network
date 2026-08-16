@@ -6,17 +6,17 @@ depends-on: nothing
 token-budget-impact: ~250-450 tokens when loaded as context
 -->
 
-# Mistakes: {project-name}
+# Mistakes: <project_name>
 
-Project: {project-name}
-Updated: {YYYY-MM-DD}
+Project: <project_name>
+Updated: <updated>
 
 <!-- This file captures recurring errors and how to prevent them.
      Add entries after code review cycles and post-mortems.
      Each entry should include the detection method so future reviews catch it early.
      Resolved mistakes (not seen in 3+ features) can be archived. -->
 
-## {mistake-name}
+## <mistake_name>
 
 **Frequency:** rare / occasional / frequent
 **Root cause:** {why this mistake happens}
@@ -32,7 +32,7 @@ Updated: {YYYY-MM-DD}
 **Detection:**
 {How to catch this in code review or automated checks}
 
-**First seen:** {feature-NNN-name}
+**First seen:** <feature_nnn_name>
 **Last seen:** {feature-NNN-name or "not recurred"}
 
 ---
@@ -43,8 +43,8 @@ Updated: {YYYY-MM-DD}
 **Root cause:** {root cause}
 **Impact:** {impact}
 
-**Fix:** {fix description}
+**Fix:** <fix_description>
 
-**Detection:** {detection method}
+**Detection:** <detection_method>
 
-**First seen:** {feature-NNN-name}
+**First seen:** <feature_nnn_name>

@@ -6,7 +6,7 @@ depends-on: nothing
 token-budget-impact: ~200-350 tokens when loaded as context
 -->
 
-## Confidence Check: {Phase}
+## Confidence Check: <phase>
 
 **Date:** YYYY-MM-DD
 **Phase:** Pre-Spec | Pre-Design | Pre-Task | Pre-Implementation
@@ -22,10 +22,10 @@ token-budget-impact: ~200-350 tokens when loaded as context
 
 ### Questions to Answer First
 
-1. {question}
-2. {question}
+1. <question>
+2. <question>
 
 ### Recommended Actions
 
-- {action}
-- {action}
+- <action>
+- <action>

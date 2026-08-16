@@ -6,7 +6,7 @@ depends-on: content/01-core-rules.xml (r2-age-cap, r4-capacity-ratio)
 token-budget-impact: ~220 tokens when filled
 -->
 
-## Backlog Health Check: {Product} — {Date}
+## Backlog Health Check: <product> — <date>
 
 ### Snapshot
 - **Total items:** {X}
@@ -42,5 +42,5 @@ token-budget-impact: ~220 tokens when filled
 | P1 % | {X}% | <20% | OK/Not |
 
 ### Actions Needed
-- [ ] {Action 1}
-- [ ] {Action 2}
+- [ ] <action_1>
+- [ ] <action_2>

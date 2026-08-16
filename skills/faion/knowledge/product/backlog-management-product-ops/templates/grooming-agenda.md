@@ -6,12 +6,12 @@ depends-on: content/04-procedure.xml (grooming procedure steps)
 token-budget-impact: ~350 tokens when filled
 -->
 
-## Grooming Session: {Date}
+## Grooming Session: <date>
 
 ### Attendees
-- Product: {Name}
-- Engineering: {Name}
-- Design: {Name}
+- Product: <name>
+- Engineering: <name>
+- Design: <name>
 
 ### New Items to Triage ({X} items)
 
@@ -23,18 +23,18 @@ token-budget-impact: ~350 tokens when filled
 
 | Item | Status | Ready? | Blocker |
 |------|--------|--------|---------|
-| {Item} | {Status} | Y/N | {What's needed} |
+| {Item} | <status> | Y/N | {What's needed} |
 
 ### Items to Refine
 
-#### {Item 1}
-**Raw request (verbatim):** "{original text}"
-**Current state:** {Description}
+#### <item_1>
+**Raw request (verbatim):** "<original_text>"
+**Current state:** <description>
 **Questions to resolve:**
 - {Question 1}
 **After refinement:**
-- Scope: {Updated scope}
-- AC added: Given {context}, when {action}, then {result}
+- Scope: <updated_scope>
+- AC added: Given <context>, when <action>, then <result>
 
 ### Estimates Needed
 
@@ -44,7 +44,7 @@ token-budget-impact: ~350 tokens when filled
 
 ### Cleanup Summary
 - Archived: {X} stale items (6+ months, no roadmap link)
-- Merged: {Items combined — reason}
-- Deleted: {Duplicates removed}
+- Merged: <items_combined_reason>
+- Deleted: <duplicates_removed>
 
-### Next Session: {Date}
+### Next Session: <date>

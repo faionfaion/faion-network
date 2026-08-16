@@ -5,7 +5,7 @@ produces: human-reviewable boundaries section, copy-paste targets for defense-sp
 depends-on: content/04-procedure.xml step 2; templates/defense-spec.schema.json
 token-budget-impact: not loaded by agent; reference doc for human reviewer only
 -->
-# Trust boundaries — {agent_name}
+# Trust boundaries — <agent_name>
 
 ## Diagram
 
@@ -31,19 +31,19 @@ flowchart LR
 
 | source | trust_level | max_size_kb | content_type |
 |--------|-------------|-------------|--------------|
-| {source_name} | untrusted | <untrusted> | {mime} |
+| <source_name> | untrusted | <untrusted> | <mime> |
 
 ## Taint rules
 
 | source_pattern | wrap_with | max_quote_chars |
 |----------------|-----------|-----------------|
-| {regex} | `<untrusted-content source="...">{body}</untrusted-content>` | 16000 |
+| <regex> | `<untrusted-content source="...">{body}</untrusted-content>` | 16000 |
 
 ## Tool scope allow-lists
 
 | tool | allowed_paths | allowed_hosts |
 |------|---------------|---------------|
-| {tool_name} | [...] | [...] |
+| <tool_name> | [...] | [...] |
 
 ## Canary
 

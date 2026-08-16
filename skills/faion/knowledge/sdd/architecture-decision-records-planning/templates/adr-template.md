@@ -6,11 +6,11 @@ depends-on: content/01-core-rules.xml
 token-budget-impact: ~350-600 tokens when loaded as context
 -->
 
-# ADR-{NNN}: {Decision Title}
+# ADR-{NNN}: <decision_title>
 
 **Status:** Proposed | Accepted | Deprecated | Superseded by ADR-<status>
 **Date:** YYYY-MM-DD
-**Deciders:** {List of people or roles involved}
+**Deciders:** <deciders>
 
 ## Context
 
@@ -26,21 +26,21 @@ Keep under 100 words. This is the choice, not the justification.}
 
 ## Alternatives Considered
 
-### Alternative 1: {Name}
-- **Pros:** {benefits}
-- **Cons:** {drawbacks}
-- **Why rejected:** {specific reason}
+### Alternative 1: <name>
+- **Pros:** <benefits>
+- **Cons:** <drawbacks>
+- **Why rejected:** <specific_reason>
 
-### Alternative 2: {Name}
-- **Pros:** {benefits}
-- **Cons:** {drawbacks}
-- **Why rejected:** {specific reason}
+### Alternative 2: <name>
+- **Pros:** <benefits>
+- **Cons:** <drawbacks>
+- **Why rejected:** <specific_reason>
 
 ## Consequences
 
 ### Positive
 - {Benefit 1 — downstream effect, not restatement of the decision}
-- {Benefit 2}
+- <benefit_2>
 
 ### Negative
 - {Tradeoff 1 — what this choice costs us}
@@ -51,4 +51,4 @@ Keep under 100 words. This is the choice, not the justification.}
 
 ## Related Decisions
 
-- ADR-<adr>: {Related decision title}
+- ADR-<adr>: <related_decision_title>

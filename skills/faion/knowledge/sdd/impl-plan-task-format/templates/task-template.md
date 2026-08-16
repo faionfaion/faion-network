@@ -27,18 +27,18 @@ token-budget-impact: ~350-500 tokens when loaded as context
 
 **Acceptance Criteria:**
 - [ ] {Specific, observable outcome — HTTP status code, database state assertion, or measurable value}
-- [ ] {Another specific criterion}
+- [ ] <another_specific_criterion>
 - [ ] {At least 3 criteria for normal/complex tasks}
 
 **Files:**
 | Action | File | Purpose |
 |--------|------|---------|
 | CREATE | `{path}` | {what this file does} |
-| MODIFY | `{path}` | {what to add or change} |
+| MODIFY | `{path}` | <modify> |
 
 **Technical Notes:**
 {Cite exact file path and pattern to follow, not generic advice. Write after Wave N-1 execution for Wave N+ tasks.}
 
 **Tests:**
-- [ ] Unit: {specific test description}
-- [ ] Integration: {specific test description}
+- [ ] Unit: <specific_test_description>
+- [ ] Integration: <specific_test_description>

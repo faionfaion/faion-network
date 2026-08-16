@@ -4,7 +4,7 @@
 <!-- depends-on: content/01-core-rules.xml -->
 <!-- token-budget-impact: ~200 tokens filled -->
 
-# Feature Request: {Feature Name}
+# Feature Request: <feature_name>
 
 ## Metadata
 - ID: FR-{XXX}
@@ -12,8 +12,8 @@
 
 ## Request Details
 - Source: {Customer/Prospect/Internal/Competitor}
-- Requester: {Name/Segment}
-- Request count: {N times requested}
+- Requester: <name_segment>
+- Request count: <n_times_requested>
 
 ## Problem
 {What problem does this solve?}
@@ -23,15 +23,15 @@
 
 ## Impact Assessment
 - Users affected: {Segment and estimate}
-- Retention impact: {High/Medium/Low}
-- Revenue impact: {High/Medium/Low}
+- Retention impact: <high_medium_low>
+- Revenue impact: <high_medium_low>
 - Effort estimate: {XS/S/M/L/XL}
 
 ## Validation
 - [ ] Validated problem exists
 - [ ] Validated solution fits
-- [ ] Estimated demand: {N users}
+- [ ] Estimated demand: <n_users>
 
 ## Decision
-Status: {Planned/Rejected/Deferred}
-Reasoning: {Why}
+Status: <planned_rejected_deferred>
+Reasoning: <why>

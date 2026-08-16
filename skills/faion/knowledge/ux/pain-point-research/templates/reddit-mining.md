@@ -4,7 +4,7 @@
 <!-- depends-on: none -->
 <!-- token-budget-impact: ~100 tokens filled -->
 
-# Reddit Research: r/{subreddit}
+# Reddit Research: r/<subreddit>
 
 ## Posts Analyzed
 - Date range: {X}
@@ -15,12 +15,12 @@
 
 | Post Title | Upvotes | Pain Point | Category |
 |------------|---------|------------|----------|
-| "{Title}" | X | {pain} | {cat} |
+| "<title>" | X | <pain> | <cat> |
 
 ## Notable Quotes
-1. "{Quote}" — {link}
-2. "{Quote}" — {link}
+1. "<quote>" — <link>
+2. "<quote>" — <link>
 
 ## Patterns Noticed
-- {Pattern 1}
-- {Pattern 2}
+- <pattern_1>
+- <pattern_2>
