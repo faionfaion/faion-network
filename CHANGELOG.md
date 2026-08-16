@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **11 variables that name a real person were not marked sensitive; now they are.**
+  A customer's `first_name` in outreach, press-pitch and launch emails, an
+  employee's `manager_name` and `person` in HR onboarding, a `full_name` under
+  Testimonials, `named_person` and `engagement_manager_name` on sign-off blocks.
+  §5a's test is *"would this value identify a person, or open a door?"* — every one
+  is a yes, and under §1a the backend renders, so an unflagged value travels to a
+  multi-tenant assembler. Each now carries `x-faion-sensitive` plus its placeholder
+  and is dropped from `required`; `tpl-render` refuses a supplied value and emits
+  the placeholder instead. Sensitive slots corpus-wide: 664 → **676**.
+
+  **Found by disproving two agents, not by believing them.** Two independent
+  reports stated "no `x-faion-sensitive` variable exists anywhere in the corpus,
+  confirmed corpus-wide". That is false: 9 dictionary entries carry the flag, it
+  resolves in 664 slots across 517 templates, and a live render refuses
+  `owner_handle=@nero` by name. Had I taken either report at face value I would
+  have shipped believing a control was absent while it was working — and missed
+  the 11 places where it genuinely was.
+
 - **CR-013 filed: two placeholder classes the converter gets wrong, both silently.**
   The migration exists to guarantee that a parameter is either declared or refused,
   never silently passed through. Each of these breaks that guarantee differently,
