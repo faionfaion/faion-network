@@ -346,11 +346,32 @@ def prepare_values(schema: dict, values: dict, base: Path | None = None,
     resolved: dict[str, dict] = {}
     for name, raw in properties.items():
         prop = raw
-        if isinstance(raw, dict) and "$ref" in raw:
-            prop = _resolve_ref(raw["$ref"], schema, base)
-            if not prop:
-                unresolved += 1
-                prop = {}
+        if isinstance(raw, dict):
+            refs = [raw["$ref"]] if "$ref" in raw else []
+            # A property whose source template authored its own description
+            # carries the reference under `allOf`, not at the top level —
+            # build_schema puts it there precisely because draft-07 ignores a
+            # keyword sibling to `$ref`. Reading only the top level therefore
+            # missed 1,633 of the corpus's 1,677 dictionary references, and
+            # with them the `type`, the `enum` and — for 619 slots across 478
+            # templates — the `x-faion-sensitive` flag, so a named human's
+            # value was accepted and rendered into the document instead of the
+            # placeholder §2.2 requires.
+            refs += [member["$ref"] for member in (raw.get("allOf") or [])
+                     if isinstance(member, dict) and "$ref" in member]
+            if refs:
+                merged: dict = {}
+                for ref in refs:
+                    target = _resolve_ref(ref, schema, base)
+                    if target:
+                        merged.update(target)
+                    else:
+                        unresolved += 1
+                # The authored keywords win, which is the same precedence
+                # build_schema wrote them with.
+                merged.update({key: value for key, value in raw.items()
+                               if key not in ("$ref", "allOf")})
+                prop = merged
         resolved[name] = prop if isinstance(prop, dict) else {}
 
     if schema.get("additionalProperties") is False:
@@ -426,16 +447,31 @@ EXTERNAL_REF = re.compile(
     re.IGNORECASE)
 EXTERNAL_TAG = re.compile(r"<(?:link|script|iframe|img|object|embed)\b",
                           re.IGNORECASE)
+# An `<a href="https://…">` is NAVIGATION, not a fetch: nothing is retrieved
+# unless a reader clicks, and §1's requirement is that the document carries its
+# own stylesheet, font and images — not that it may never cite a URL. The one
+# href-carrying tag that DOES fetch is `<link>`, and EXTERNAL_TAG already names
+# it, so exempting the anchor costs the gate nothing.
+#
+# Measured, not assumed: `md_to_html` emits a real `<a href>` for every
+# Markdown link, and `dev/changelog-automation-conventional-commits` — a Keep a
+# Changelog skeleton whose two canonical citations are its whole point — was
+# refused whole by this rule with "the generated templates did not verify".
+ANCHOR_TAG = re.compile(r"<a\b[^>]*>", re.IGNORECASE)
 
 
 def external_references(html: str) -> list[str]:
-    """Every way this HTML could reach off-box. §1 requires self-contained.
+    """Every way this HTML could FETCH off-box. §1 requires self-contained.
 
     Both a protocol-relative URL and a bare `<script>` are findings: the first
-    fetches, the second is the tag a fetch would be added to next.
+    fetches, the second is the tag a fetch would be added to next. A link a
+    reader can click is neither — see ANCHOR_TAG.
     """
     found: list[str] = []
+    anchors = [m.span() for m in ANCHOR_TAG.finditer(html)]
     for match in EXTERNAL_REF.finditer(html):
+        if any(a <= match.start() < b for a, b in anchors):
+            continue
         found.append(f"external reference at offset {match.start()}: "
                      f"{html[match.start():match.start() + 48]!r}")
     for match in EXTERNAL_TAG.finditer(html):

@@ -62,8 +62,10 @@
 | File | Purpose |
 |---|---|
 | `templates/grid.schema.json` | JSON Schema for the decision grid. |
-| `templates/grid-skeleton.md` | Markdown skeleton listing call sites x columns. |
-| `templates/rollout-report.md` | ABx rollout-gate report template. |
+| `templates/grid-skeleton.md.j2` | Markdown skeleton listing call sites x columns. |
+| `templates/grid-skeleton.md` | Markdown skeleton listing call sites x columns. Generated from `templates/grid-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/rollout-report.md.j2` | ABx rollout-gate report template. |
+| `templates/rollout-report.md` | ABx rollout-gate report template. Generated from `templates/rollout-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | 3-site smoke grid. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

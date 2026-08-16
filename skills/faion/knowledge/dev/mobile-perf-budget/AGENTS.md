@@ -59,7 +59,8 @@
 |------|---------|
 | `templates/budgets.json` | Lighthouse CI budgets.json for per-route thresholds |
 | `templates/lhci-config.json` | Lighthouse CI config wiring mobile preset + budgets |
-| `templates/perf-budget.md` | Human-readable budget doc with rationale + change process |
+| `templates/perf-budget.md.j2` | Human-readable budget doc with rationale + change process |
+| `templates/perf-budget.md` | Human-readable budget doc with rationale + change process Generated from `templates/perf-budget.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

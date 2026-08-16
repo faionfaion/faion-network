@@ -1,10 +1,15 @@
-<!-- purpose: April Dunford 6-step positioning canvas -->
-<!-- consumes: competitor analysis, customer interviews -->
-<!-- produces: positioning statement + canvas markdown -->
-<!-- depends-on: none -->
-<!-- token-budget-impact: low -->
+<!--
 
-# Positioning Canvas — {{product}}
+purpose: April Dunford 6-step positioning canvas
+consumes: competitor analysis, customer interviews
+produces: positioning statement + canvas markdown
+depends-on: none
+token-budget-impact: low
+-->
+
+
+
+# Positioning Canvas — <product_name>
 
 ## 1. Competitive Alternatives (3-7, including 'do nothing' and 'spreadsheet')
 -
@@ -26,4 +31,4 @@
 -
 
 ## 6. Positioning Statement
-- For [best-fit customer] who [trigger event], [product] is the [market category] that [unique value], unlike [alternatives].
+- For <best_fit_customer> who <trigger_event>, <product_name> is the <market_category> that <unique_value>, unlike <alternatives>.

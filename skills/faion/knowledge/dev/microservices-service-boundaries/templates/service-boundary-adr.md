@@ -1,46 +1,51 @@
-<!-- purpose: ADR template per service: context + data + team + contract -->
-<!-- consumes: see content/02-output-contract.xml inputs -->
-<!-- produces: artefact conforming to content/02-output-contract.xml -->
-<!-- depends-on: content/01-core-rules.xml -->
-<!-- token-budget-impact: ~400 tokens when loaded as context -->
+<!--
 
-# ADR-XXX: {{service_name}} boundary
+purpose: ADR template per service: context + data + team + contract
+consumes: see content/02-output-contract.xml inputs
+produces: artefact conforming to content/02-output-contract.xml
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~400 tokens when loaded as context
+-->
+
+
+
+# ADR-XXX: <system_name> boundary
 
 ## Bounded context
 
-{{Order Management | Billing | Inventory | ...}}
+<bounded_context>
 
 ## Domain language
 
-- Aggregate root: {{Order}}
-- Value objects: {{LineItem, OrderStatus, ...}}
-- Domain events: {{OrderCreated, OrderShipped, ...}}
+- Aggregate root: <aggregate_root>
+- Value objects: <value_objects>
+- Domain events: <domain_events>
 
 ## Data sovereignty
 
 Owned tables:
-- {{orders}}
-- {{order_items}}
+- <owned_table_1>
+- <owned_table_2>
 
 Cross-context references:
-- {{customer_id → customer-profile-service (CDC replica)}}
+- <cross_context_references>
 
 ## Team
 
-- Owner: {{checkout-team}}
-- Consumers: {{billing-service, inventory-service, analytics-pipeline}}
+- Owner: <team_name>
+- Consumers: <consumers>
 
 ## Contract
 
-- OpenAPI: {{https://schema-registry.example.com/order-service/v1}}
-- Events published: {{orders.created.v1, orders.cancelled.v1}}
-- Events consumed: {{payments.charged.v1, inventory.reserved.v1}}
+- OpenAPI: <openapi_url>
+- Events published: <events_published>
+- Events consumed: <events_consumed>
 
 ## Cross-service transactions
 
-- {{place-order saga (see /sagas/place-order.md)}}
+- <cross_service_transactions>
 
 ## Alternatives considered
 
-- Keep in monolith → rejected because {{independent deploy frequency required}}.
-- Split further (Order + LineItem services) → rejected because {{within same aggregate, single tx required}}.
+- Keep in monolith → rejected because <monolith_rejection_reason>.
+- Split further (Order + LineItem services) → rejected because <further_split_rejection_reason>.

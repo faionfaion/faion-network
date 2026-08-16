@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/service-boundary-adr.md` | ADR template per service: context + data + team + contract |
+| `templates/service-boundary-adr.md.j2` | ADR template per service: context + data + team + contract |
+| `templates/service-boundary-adr.md` | ADR template per service: context + data + team + contract Generated from `templates/service-boundary-adr.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

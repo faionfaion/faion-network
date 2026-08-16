@@ -1,10 +1,15 @@
-<!-- purpose: Sunset vs Fold decision record template -->
-<!-- consumes: product data: revenue, adjacency, migration, morale, concentration -->
-<!-- produces: versioned decision record -->
-<!-- depends-on: none -->
-<!-- token-budget-impact: low -->
+<!--
 
-# Sunset vs Fold Decision — {{product}} — v{{version}}
+purpose: Sunset vs Fold decision record template
+consumes: product data: revenue, adjacency, migration, morale, concentration
+produces: versioned decision record
+depends-on: none
+token-budget-impact: low
+-->
+
+
+
+# Sunset vs Fold Decision — <product_name> — v<document_version>
 
 ## Criteria Matrix (each 0-5)
 
@@ -16,7 +21,7 @@
 | Team morale           |       |
 | Customer concentration|       |
 
-## Decision: {{sunset|fold|defer}}
+## Decision: <decision>
 
 ### If fold
 - Receiving product:

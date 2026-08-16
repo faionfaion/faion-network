@@ -1,14 +1,17 @@
 <!--
+
 purpose: 6-week onboarding skeleton with required module headers and exercise stubs.
 consumes: tech-stack + tool-name + junior baseline
 produces: filled curriculum.json after tailoring
 depends-on: content/04-procedure.xml step 2
 token-budget-impact: docs-only; never loaded by agent runtime
 -->
-# Junior AI Co-Pilot Curriculum — {{junior_name}}
 
-Tool: {{tool}}
-Mentor: {{mentor_name}}
+
+# Junior AI Co-Pilot Curriculum — <junior_name>
+
+Tool: <tool_name>
+Mentor: <mentor_name>
 Duration: 6 weeks, 30-min mentor sync every Friday.
 
 ## Week 1 — Prompt anatomy

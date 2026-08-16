@@ -65,9 +65,12 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/communication-plan.md` | Per-stakeholder communication cadence + channel |
-| `templates/meeting-template.md` | Stakeholder meeting agenda template |
-| `templates/stakeholder-register.md` | Power/Interest + Attitude register |
+| `templates/communication-plan.md.j2` | Per-stakeholder communication cadence + channel |
+| `templates/communication-plan.md` | Per-stakeholder communication cadence + channel Generated from `templates/communication-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/meeting-template.md.j2` | Stakeholder meeting agenda template |
+| `templates/meeting-template.md` | Stakeholder meeting agenda template Generated from `templates/meeting-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/stakeholder-register.md.j2` | Power/Interest + Attitude register |
+| `templates/stakeholder-register.md` | Power/Interest + Attitude register Generated from `templates/stakeholder-register.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Related
 

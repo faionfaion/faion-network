@@ -1,10 +1,15 @@
-<!-- purpose: Service-level observability spec listing pillar status + SLO + alert rules -->
-<!-- consumes: see content/02-output-contract.xml inputs -->
-<!-- produces: artefact conforming to content/02-output-contract.xml -->
-<!-- depends-on: content/01-core-rules.xml -->
-<!-- token-budget-impact: ~350 tokens when loaded as context -->
+<!--
 
-# {{service_name}} — observability spec
+purpose: Service-level observability spec listing pillar status + SLO + alert rules
+consumes: see content/02-output-contract.xml inputs
+produces: artefact conforming to content/02-output-contract.xml
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~350 tokens when loaded as context
+-->
+
+
+
+# <system_name> — observability spec
 
 ## Pillars
 
@@ -15,17 +20,17 @@
 
 ## OTel config
 
-- SDK: {{language SDK + version}}
-- Endpoint: {{OTLP_ENDPOINT}}
+- SDK: <otel_sdk>
+- Endpoint: <otlp_endpoint>
 - Propagator: `tracecontext,baggage`
-- Resource attrs: service.name={{service_name}}, service.version={{semver}}, deployment.environment={{env}}
+- Resource attrs: service.name=<system_name>, service.version=<service_version>, deployment.environment=<deployment_environment>
 
 ## SLO
 
 | Metric | Target | Alert |
 |--------|--------|-------|
 | Availability | 99.9% | error rate > 0.1% for 5min |
-| p99 latency | < {{p99_ms}}ms | p99 > target for 5min |
+| p99 latency | < <p99_ms>ms | p99 above target for 5min |
 
 ## RED metrics
 

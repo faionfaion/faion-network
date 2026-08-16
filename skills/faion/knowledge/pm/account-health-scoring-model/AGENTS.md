@@ -64,8 +64,10 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/account-health-card.md` | Per-account score card with 6 signals, trend, action |
-| `templates/weekly-dashboard.md` | All accounts on one page with traffic-light status |
+| `templates/account-health-card.md.j2` | Per-account score card with 6 signals, trend, action |
+| `templates/account-health-card.md` | Per-account score card with 6 signals, trend, action Generated from `templates/account-health-card.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/weekly-dashboard.md.j2` | All accounts on one page with traffic-light status |
+| `templates/weekly-dashboard.md` | All accounts on one page with traffic-light status Generated from `templates/weekly-dashboard.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/signal-thresholds.md.j2` | The cutoffs for each 0/1/2 score per signal |
 | `templates/signal-thresholds.md` | The cutoffs for each 0/1/2 score per signal Generated from `templates/signal-thresholds.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 

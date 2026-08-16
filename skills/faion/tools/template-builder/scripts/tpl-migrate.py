@@ -95,6 +95,16 @@ HTML_TAGS = {
     "sup", "table", "tbody", "td", "th", "thead", "tr", "u", "ul", "details",
     "figure", "figcaption", "main", "nav", "section", "header", "footer",
 }
+# HTML_TAGS is a closed list, and the tags that actually matter here are not
+# HTML at all: a prompt template that tells a model to answer between
+# `<reasoning>` and `</reasoning>` carries them as LITERAL markup the model must
+# emit. The general rule needs no list — **a placeholder has no closing form.**
+# So an angle token whose `</name>` also appears in the body is markup, not a
+# slot, and naming it would both invent a parameter and delete the tag the
+# prompt depends on. Measured before it was added: 0 of the 2,463 templates
+# already migrated carry a variable whose closing tag is also in the file, so
+# this changes nothing that has shipped.
+CLOSING_TAG = re.compile(r"</([A-Za-z][A-Za-z0-9_-]*)\s*>")
 
 # --------------------------------------------------------- the name rules
 
@@ -317,6 +327,7 @@ def draft_description(name: str, ctx: dict) -> str | None:
 def candidates(body: str) -> list[dict]:
     """Every placeholder-shaped span in the body, in position order."""
     fences, spans = code_ranges(body)
+    closed = {m.group(1).lower() for m in CLOSING_TAG.finditer(body)}
     claimed: list[tuple[int, int]] = []
     found: list[dict] = []
 
@@ -335,6 +346,7 @@ def candidates(body: str) -> list[dict]:
                 first = inner.split()[0].lower() if inner.split() else ""
                 if inner[:1] in "/!?" or ATTRIBUTE.search(inner) \
                         or first.rstrip("/") in HTML_TAGS \
+                        or first.rstrip("/") in closed \
                         or AUTOLINK.match(inner):
                     continue
             if kind == "bracket" and (not any(c.isalnum() for c in inner)

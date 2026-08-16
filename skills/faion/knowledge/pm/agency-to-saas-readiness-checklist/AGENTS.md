@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/readiness-checklist.md` | 5-section readiness checklist scoring template |
+| `templates/readiness-checklist.md.j2` | 5-section readiness checklist scoring template |
+| `templates/readiness-checklist.md` | 5-section readiness checklist scoring template Generated from `templates/readiness-checklist.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

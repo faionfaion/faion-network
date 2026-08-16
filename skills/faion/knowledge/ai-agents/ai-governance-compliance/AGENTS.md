@@ -68,8 +68,10 @@
 |------|---------|
 | `templates/output-schema.json` | JSON Schema for the governance pack manifest. |
 | `templates/output.example.json` | Filled example. |
-| `templates/model-card.md` | Markdown skeleton with EU AI Act + ISO 42001 fields. |
-| `templates/bias-audit-report.md` | Markdown skeleton for statistical bias audit. |
+| `templates/model-card.md.j2` | Markdown skeleton with EU AI Act + ISO 42001 fields. |
+| `templates/model-card.md` | Markdown skeleton with EU AI Act + ISO 42001 fields. Generated from `templates/model-card.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/bias-audit-report.md.j2` | Markdown skeleton for statistical bias audit. |
+| `templates/bias-audit-report.md` | Markdown skeleton for statistical bias audit. Generated from `templates/bias-audit-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

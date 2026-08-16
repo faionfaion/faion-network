@@ -1,15 +1,20 @@
-<!-- purpose: Per-account health score card (single account, weekly) -->
-<!-- consumes: signals from timesheet, CRM, billing -->
-<!-- produces: single-account health card markdown -->
-<!-- depends-on: signal-thresholds.md -->
-<!-- token-budget-impact: low (~250 tokens per account) -->
+<!--
 
-# Account Health Card — {{account_name}}
+purpose: Per-account health score card (single account, weekly)
+consumes: signals from timesheet, CRM, billing
+produces: single-account health card markdown
+depends-on: signal-thresholds.md
+token-budget-impact: low (~250 tokens per account)
+-->
 
-- **Week:** {{YYYY-Www}}
-- **Tier:** {{green|yellow|red}}
-- **Score:** {{0-12}}
-- **Trend:** {{up|flat|down}}
+
+
+# Account Health Card — <client_name>
+
+- **Week:** <period_label>
+- **Tier:** <health_tier>
+- **Score:** <health_score>
+- **Trend:** <trend>
 
 ## Signals
 
@@ -24,8 +29,8 @@
 
 ## Action this week
 
-- {{action}}
+- <action_this_week>
 
 ## Notes
 
-- {{free-text}}
+- <notes>

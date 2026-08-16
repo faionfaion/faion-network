@@ -1,13 +1,16 @@
 <!--
+
 purpose: ABx rollout-gate report for a proposed model swap on one call site.
 consumes: 48h of telemetry + baseline
 produces: ship | revert decision
 depends-on: content/04-procedure.xml step 4
 token-budget-impact: docs-only
 -->
-# Rollout report — {{site_id}}
 
-Window: {{start}} → {{end}} (≥48h)
+
+# Rollout report — <site_id>
+
+Window: <window_start> → <window_end> (≥48h)
 Traffic split: 10% candidate / 90% baseline
 
 ## Latency

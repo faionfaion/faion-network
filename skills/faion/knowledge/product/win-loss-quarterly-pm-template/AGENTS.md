@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/win-loss-quarterly.md` | Quarterly win-loss synthesis report template |
+| `templates/win-loss-quarterly.md.j2` | Quarterly win-loss synthesis report template |
+| `templates/win-loss-quarterly.md` | Quarterly win-loss synthesis report template Generated from `templates/win-loss-quarterly.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

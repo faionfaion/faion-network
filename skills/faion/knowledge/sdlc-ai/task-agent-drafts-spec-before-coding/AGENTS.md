@@ -66,7 +66,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/spec-comment.md` | Spec-comment skeleton with current state / desired state / proposed plan blocks. |
+| `templates/spec-comment.md.j2` | Spec-comment skeleton with current state / desired state / proposed plan blocks. |
+| `templates/spec-comment.md` | Spec-comment skeleton with current state / desired state / proposed plan blocks. Generated from `templates/spec-comment.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/approval-gate.yaml` | Tracker automation snippet (Linear / Jira) for `agent:approved` label transition. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

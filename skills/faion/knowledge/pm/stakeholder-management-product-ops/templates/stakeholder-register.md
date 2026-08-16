@@ -1,10 +1,15 @@
-<!-- purpose: Power/Interest + Attitude stakeholder register -->
-<!-- consumes: stakeholder identification -->
-<!-- produces: register markdown -->
-<!-- depends-on: none -->
-<!-- token-budget-impact: low -->
+<!--
 
-# Stakeholder Register — {{project}}
+purpose: Power/Interest + Attitude stakeholder register
+consumes: stakeholder identification
+produces: register markdown
+depends-on: none
+token-budget-impact: low
+-->
+
+
+
+# Stakeholder Register — <project_name>
 
 | Name        | Power | Interest | Attitude  | Owner | Cadence  | Last Contact |
 |-------------|-------|----------|-----------|-------|----------|--------------|

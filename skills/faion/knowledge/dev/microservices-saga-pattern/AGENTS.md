@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/saga-definition.md` | Saga spec template (steps + compensations + coordination + outbox) |
+| `templates/saga-definition.md.j2` | Saga spec template (steps + compensations + coordination + outbox) |
+| `templates/saga-definition.md` | Saga spec template (steps + compensations + coordination + outbox) Generated from `templates/saga-definition.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/OrderSagaWorkflow.java` | Temporal workflow skeleton with reverse-order compensations |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

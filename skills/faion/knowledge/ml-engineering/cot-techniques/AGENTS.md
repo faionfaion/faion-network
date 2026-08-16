@@ -62,8 +62,10 @@
 |---|---|
 | `templates/cot-config.schema.json` | JSON Schema for cot-config.json. |
 | `templates/self-consistency-runner.py` | Reference parallel runner with majority vote. |
-| `templates/few-shot-cot.md` | Prompt skeleton with 2 worked examples. |
-| `templates/lift-report.md` | A/B lift report template. |
+| `templates/few-shot-cot.md.j2` | Prompt skeleton with 2 worked examples. |
+| `templates/few-shot-cot.md` | Prompt skeleton with 2 worked examples. Generated from `templates/few-shot-cot.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
+| `templates/lift-report.md.j2` | A/B lift report template. |
+| `templates/lift-report.md` | A/B lift report template. Generated from `templates/lift-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum valid cot-config. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

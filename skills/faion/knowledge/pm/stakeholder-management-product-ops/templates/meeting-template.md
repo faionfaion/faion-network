@@ -1,10 +1,15 @@
-<!-- purpose: Stakeholder meeting agenda template -->
-<!-- consumes: prior meeting notes -->
-<!-- produces: agenda + action items -->
-<!-- depends-on: stakeholder-register.md -->
-<!-- token-budget-impact: low -->
+<!--
 
-# {{stakeholder}} — {{date}}
+purpose: Stakeholder meeting agenda template
+consumes: prior meeting notes
+produces: agenda + action items
+depends-on: stakeholder-register.md
+token-budget-impact: low
+-->
+
+
+
+# <stakeholder_name> — <meeting_date>
 
 ## Agenda
 1. Outcomes since last meeting
@@ -13,4 +18,4 @@
 4. Asks
 
 ## Action Items
-- [ ] {{owner}} — {{action}} — due {{date}}
+- [ ] <next_action_owner> — <action_item> — due <due_date>

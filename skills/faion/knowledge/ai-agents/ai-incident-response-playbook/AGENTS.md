@@ -67,7 +67,8 @@
 |------|---------|
 | `templates/output-schema.json` | JSON Schema for the runbook. |
 | `templates/output.example.json` | Filled example. |
-| `templates/runbook.md` | Markdown skeleton with escalation header + step table. |
+| `templates/runbook.md.j2` | Markdown skeleton with escalation header + step table. |
+| `templates/runbook.md` | Markdown skeleton with escalation header + step table. Generated from `templates/runbook.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

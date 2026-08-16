@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/qbr-deck.md` | 10-slide QBR deck Markdown skeleton |
+| `templates/qbr-deck.md.j2` | 10-slide QBR deck Markdown skeleton |
+| `templates/qbr-deck.md` | 10-slide QBR deck Markdown skeleton Generated from `templates/qbr-deck.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

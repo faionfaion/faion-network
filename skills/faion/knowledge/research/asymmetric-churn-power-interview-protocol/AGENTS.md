@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/interview-protocol.md` | Asymmetric churn interview protocol template |
+| `templates/interview-protocol.md.j2` | Asymmetric churn interview protocol template |
+| `templates/interview-protocol.md` | Asymmetric churn interview protocol template Generated from `templates/interview-protocol.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -61,7 +61,8 @@
 | File | Purpose |
 |---|---|
 | `templates/triage-report.schema.json` | JSON Schema for the daily report. |
-| `templates/triage-report.md` | Markdown skeleton (3 deltas + 3 traces + decision). |
+| `templates/triage-report.md.j2` | Markdown skeleton (3 deltas + 3 traces + decision). |
+| `templates/triage-report.md` | Markdown skeleton (3 deltas + 3 traces + decision). Generated from `templates/triage-report.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/runner.py` | Reference runner that produces triage-report.json from telemetry sources. |
 | `templates/_smoke-test.json` | Minimum-viable triage report. |
 

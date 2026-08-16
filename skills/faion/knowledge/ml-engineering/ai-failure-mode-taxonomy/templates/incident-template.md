@@ -1,17 +1,20 @@
 <!--
+
 purpose: Postmortem template referencing one taxonomy mode id.
 consumes: incident facts + taxonomy.json
 produces: postmortem doc with mode id + mitigation reference
 depends-on: content/01-core-rules.xml r5
 token-budget-impact: docs-only
 -->
-# Incident — {{title}}
 
-- date: {{YYYY-MM-DD}}
-- owner: {{name}}
-- severity: {{low|medium|high|critical}}
-- failure_mode_id: {{fm.x.y}}   <!-- must match taxonomy.json -->
-- linked_methodology: {{slug}}   <!-- copied from taxonomy entry -->
+
+# Incident — <artefact_title>
+
+- date: <artefact_date>
+- owner: <owner_full_name>
+- severity: <incident_severity>
+- failure_mode_id: <failure_mode_id>   <!-- must match taxonomy.json -->
+- linked_methodology: <linked_methodology_slug>   <!-- copied from taxonomy entry -->
 
 ## Timeline
 

@@ -1,10 +1,15 @@
-<!-- purpose: All accounts on one page, traffic-light dashboard -->
-<!-- consumes: per-account health cards -->
-<!-- produces: dashboard markdown for weekly review -->
-<!-- depends-on: account-health-card.md -->
-<!-- token-budget-impact: low (~300 tokens for 20 accounts) -->
+<!--
 
-# Account Health — Week {{YYYY-Www}}
+purpose: All accounts on one page, traffic-light dashboard
+consumes: per-account health cards
+produces: dashboard markdown for weekly review
+depends-on: account-health-card.md
+token-budget-impact: low (~300 tokens for 20 accounts)
+-->
+
+
+
+# Account Health — Week <period_label>
 
 | Account | Tier  | Score | Trend | Action  | Owner |
 |---------|-------|-------|-------|---------|-------|

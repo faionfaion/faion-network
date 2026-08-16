@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/strategy-memo.md` | 2-page strategy memo Markdown skeleton |
+| `templates/strategy-memo.md.j2` | 2-page strategy memo Markdown skeleton |
+| `templates/strategy-memo.md` | 2-page strategy memo Markdown skeleton Generated from `templates/strategy-memo.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

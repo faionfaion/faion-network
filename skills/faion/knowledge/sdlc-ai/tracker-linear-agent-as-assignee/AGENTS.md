@@ -62,7 +62,8 @@
 | File | Purpose |
 |------|---------|
 | `templates/agent-identity.yaml` | Per-vendor Linear user setup (display name, avatar, scope). |
-| `templates/checkpoint-comment.md` | Checkpoint comment template (elapsed time + current step). |
+| `templates/checkpoint-comment.md.j2` | Checkpoint comment template (elapsed time + current step). |
+| `templates/checkpoint-comment.md` | Checkpoint comment template (elapsed time + current step). Generated from `templates/checkpoint-comment.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

@@ -1,13 +1,18 @@
-<!-- purpose: 5-section readiness checklist scoring template -->
-<!-- consumes: operating data, contracts, P&L -->
-<!-- produces: scored readiness markdown -->
-<!-- depends-on: none -->
-<!-- token-budget-impact: low -->
+<!--
 
-# Agency-to-SaaS Readiness — {{assessment_date}}
+purpose: 5-section readiness checklist scoring template
+consumes: operating data, contracts, P&L
+produces: scored readiness markdown
+depends-on: none
+token-budget-impact: low
+-->
+
+
+
+# Agency-to-SaaS Readiness — <artefact_date>
 
 ## 1. IP Rights
-- Score: {{green|yellow|red}}
+- Score: (green | yellow | red)
 - Owner:
 - Evidence:
 

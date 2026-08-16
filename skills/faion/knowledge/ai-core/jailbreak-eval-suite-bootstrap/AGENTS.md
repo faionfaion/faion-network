@@ -61,7 +61,8 @@
 | File | Purpose |
 |---|---|
 | `templates/eval-cases.jsonl` | 10-category seed (5 cases each = 50 cases). |
-| `templates/judge-prompt.md` | Binary refusal-judge prompt template. |
+| `templates/judge-prompt.md.j2` | Binary refusal-judge prompt template. |
+| `templates/judge-prompt.md` | Binary refusal-judge prompt template. Generated from `templates/judge-prompt.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/suite-config.yaml` | Per-category thresholds, runner args, output paths. |
 | `templates/runner.py` | Reference parallel runner that loads cases, calls model + judge, emits report.json. |
 | `templates/_smoke-test.jsonl` | 5-case minimum-viable suite for the smoke loop. |

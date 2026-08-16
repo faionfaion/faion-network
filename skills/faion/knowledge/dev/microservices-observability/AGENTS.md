@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/observability-spec.md` | Service-level observability spec listing pillar status + SLO + alert rules |
+| `templates/observability-spec.md.j2` | Service-level observability spec listing pillar status + SLO + alert rules |
+| `templates/observability-spec.md` | Service-level observability spec listing pillar status + SLO + alert rules Generated from `templates/observability-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/otel-config.yaml` | OpenTelemetry Collector config: receivers + processors + exporters |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

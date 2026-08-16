@@ -68,7 +68,8 @@
 |------|---------|
 | `templates/release-plan.md.j2` | Release plan skeleton with cadence + matrix + deprecations. |
 | `templates/release-plan.md` | Release plan skeleton with cadence + matrix + deprecations. Generated from `templates/release-plan.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
-| `templates/release-notes.md` | Customer-facing release notes template. |
+| `templates/release-notes.md.j2` | Customer-facing release notes template. |
+| `templates/release-notes.md` | Customer-facing release notes template. Generated from `templates/release-notes.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/release_readiness_lint.py` | Lint script for readiness matrix completeness. |
 | `templates/prompt-manifest-generation.txt` | Prompt template for change-control manifest. |
 | `templates/prompt-readiness-matrix.txt` | Prompt template for matrix synthesis. |

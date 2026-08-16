@@ -1,27 +1,32 @@
-<!-- purpose: Saga spec template (steps + compensations + coordination + outbox) -->
-<!-- consumes: see content/02-output-contract.xml inputs -->
-<!-- produces: artefact conforming to content/02-output-contract.xml -->
-<!-- depends-on: content/01-core-rules.xml -->
-<!-- token-budget-impact: ~450 tokens when loaded as context -->
+<!--
 
-# {{saga_name}} — saga definition
+purpose: Saga spec template (steps + compensations + coordination + outbox)
+consumes: see content/02-output-contract.xml inputs
+produces: artefact conforming to content/02-output-contract.xml
+depends-on: content/01-core-rules.xml
+token-budget-impact: ~450 tokens when loaded as context
+-->
+
+
+
+# <saga_name> — saga definition
 
 ## Coordination
 
-- Style: {{orchestration | choreography}}
-- Orchestrator: {{temporal | camunda | step-functions | n/a}}
+- Style: <coordination_style>
+- Orchestrator: <orchestrator>
 
 ## Steps
 
 | # | Service | Action | Compensation | Idempotency Key |
 |---|---------|--------|--------------|-----------------|
-| 1 | {{svc}} | {{action}} | {{comp}} | (saga_id, step_id) |
+| 1 | <step_1_service> | <step_1_action> | <step_1_compensation> | (saga_id, step_id) |
 | 2 | ... | ... | ... | ... |
 
 ## Outbox
 
 - Every step writes via transactional outbox (insert into `outbox` table in same DB tx).
-- CDC: Debezium → Kafka topic `{{topic}}.events`.
+- CDC: Debezium → Kafka topic `<outbox_topic>.events`.
 
 ## Failure handling
 

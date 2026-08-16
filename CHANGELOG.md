@@ -4,6 +4,99 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Wave 3: the 41 refusals adjudicated — 38 converted, 3 left alone on purpose.
+  2,502 of 2,505 declared templates are now Jinja.** 322 variables declared by
+  hand, each with a description written as the question put to a human, because
+  that description is the wire format (`template-jinja-migration.md` §1b) and an
+  invented one is the failure the converter refuses in order to avoid.
+
+  **The refusal census in the wave-2 entry above is wrong.** It reads "22 raw
+  `{{token}}` with no declaration, 19 braces that are not identifiers"; the log
+  says **19 / 10**, and there are six more classes it does not mention. Measured
+  from `--migrate` stderr over the same 41: 19 orphan `{{var}}` with no
+  declaration · 10 `{{...}}` that is not an identifier · **5** — not 6 —
+  `{{a|b}}` read as a filter · 2 raw `{#` · 2 header flow mappings · 1
+  `sections:` · 1 header line that is not a supported construct · 1 whose
+  generated forms did not verify. 19+10+5+2+2+1+1+1 = 41.
+
+  What the fixes were, by class. The 19 got a real `variables:` block. The 10
+  were renamed to identifiers (`{{eval_gate.golden_set_version}}` →
+  `eval_gate_golden_set_version`) or, where the brace held guidance rather than a
+  value (`{{1-sentence summary}}`, `{{2026-Q1}}`), rewritten as the literal text
+  it always was. The 5 pipes became `enum` + `options`, which is what
+  `{{sunset|fold|defer}}` meant. Both flow mappings were prose in a `consumes:`
+  line that happened to start with `{`. The `sections:` one dropped its
+  conditional block, the path its own refusal message offers. The header one was
+  indented two spaces and carried free prose, which moved into a second comment
+  below the header.
+
+  **Three templates are left unconverted, and each is a real limit, not a
+  shortcut.** `dev/qa-changed-lines-coverage-dashboard/pr-comment.md` and
+  `ux/vui-market-context-ux-research/brief.md` are Mustache **loops** over a
+  per-file and a per-row collection; §2.3 has no loops, and collapsing them to a
+  fixed row count would break the bot that consumes them —
+  `variable-dictionary-findings.md` §1 books this as the migration's largest
+  structural blocker. `dev/changelog-automation-conventional-commits/CHANGELOG.md`
+  refused for a reason that only became visible once the verify gate was fixed:
+  the converter names `[Unreleased]` — the section heading Keep a Changelog
+  mandates and this repo's own hook greps for — and the regenerated `.md` would
+  then read `## [<unreleased>]` in a file whose whole purpose is being copied
+  verbatim. There is no way to tell the converter a bracket is literal, and the
+  general rules that would cover it are wrong: 6 already-migrated templates carry
+  a heading that is entirely one variable (`# {{ api_name }}`), and every one of
+  them is a genuine title slot.
+
+- **Three converter defects found by executing the checks, not by reading.**
+
+  **1. `external_references` treated a hyperlink as a fetch.** `md_to_html` emits
+  a real `<a href>` for every Markdown link, and the self-containment gate
+  matched `href` on any tag — so the Keep a Changelog skeleton, whose two
+  canonical citations are the point of it, was refused whole with *"the generated
+  templates did not verify"*, a message naming neither the link nor the rule.
+  §1 requires the HTML to carry its own stylesheet, font and images; a link a
+  reader may click fetches nothing. `<a>` is now exempt and nothing else is —
+  `<link href>` is still caught, by `EXTERNAL_TAG`.
+
+  **2. A placeholder has no closing form.** A prompt template telling a model to
+  answer between `<reasoning>` and `</reasoning>` had both opening tags turned
+  into variables, deleting the tags the prompt depends on. An angle token whose
+  `</name>` also appears in the body is now markup, not a slot. Measured before
+  the change: **0 of the 2,463 templates already migrated** carry a variable
+  whose closing tag is also in the file, so nothing shipped moves.
+
+  **3. `prepare_values` resolved a `$ref` only at the top level, and 97.4% of
+  them are not there.** A property whose source authored its own description
+  carries the reference under `allOf` — that is exactly what the
+  description-wins fix in the wave-2 entry above put there. So of the corpus's
+  1,677 dictionary references, **1,633 were invisible to the renderer**, and with
+  them the `type`, the `enum` and — for **619 sensitive slots across 478
+  templates** — `x-faion-sensitive`. `tpl-render` therefore accepted a named
+  human's value for `owner_handle` and rendered it into the document instead of
+  emitting `<OWNER_HANDLE>`: the ratified §2.2 rule that a sensitive value never
+  reaches the assembler was bypassed corpus-wide. Reproduced against
+  `backend/wireguard-vpn` before and after. `allOf` members are now resolved and
+  merged, authored keywords winning.
+
+  **Still open, deliberately unfixed here.** `build_schema` decides `required`
+  from the LOCAL declaration's `sensitive`, so a dictionary-backed sensitive
+  variable is still listed as required in 478 shipped schemas. `prepare_values`
+  short-circuits it, so no render breaks — but the schema is the wire format, and
+  a client reading it will ask a human for a field the server was never going to
+  accept. Fixing it means regenerating every schema in the corpus, which is a
+  wave of its own.
+
+  Verified by execution: `--check` **drift=0 on all 38**;
+  `validate-methodology-templates.py --all` **2521 pass / 0 fail**, unchanged;
+  `validate-tools.py` 0 findings; `validate-vars-dictionary.py` exit 0;
+  `validate-methodology-v2.py` clean on all 32 touched methodology dirs;
+  `check-validators.sh --check-fast` no new failures (10 current, all in the
+  15-line baseline); all four `--self-test` suites clean (tpl-jinja 81,
+  tpl-build 30, tpl-render 26, tpl-migrate 20). All 38 rendered through
+  `tpl-render` with every declared value supplied — 0 failures, no Jinja
+  surviving into the output, and all **7 sensitive slots emitting their
+  placeholder**. Every regenerated `.md` diffed against `HEAD` with placeholder
+  spelling normalised: no prose lost.
+
 - **Migration wave 2: 1,340 more templates converted — 2,464 of 2,505 declared
   templates are now Jinja.** Each carries `<name>.md.j2` + `<name>.vars.schema.json`
   as source with `<name>.html.j2` and a regenerated `<name>.md` as outputs.

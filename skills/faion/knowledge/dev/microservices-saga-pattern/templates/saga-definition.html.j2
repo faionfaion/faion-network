@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>{{ saga_name }} — saga definition</title>
+<style>:root{color-scheme:light dark}
+body{margin:0 auto;max-width:52rem;padding:2rem 1.25rem;
+font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+color:#1b1b1b;background:#fff}
+h1,h2,h3,h4,h5,h6{line-height:1.25;margin:2rem 0 .6rem}
+h1{font-size:1.9rem} h2{font-size:1.45rem} h3{font-size:1.15rem}
+p,ul,ol,blockquote,table,pre{margin:0 0 1rem}
+code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;
+background:#f2f2f2;padding:.1em .3em;border-radius:3px}
+pre{background:#f6f6f6;padding:.9rem 1rem;border-radius:5px;overflow-x:auto}
+pre code{background:none;padding:0}
+blockquote{border-left:3px solid #d0d0d0;margin-left:0;padding-left:1rem;
+color:#4a4a4a}
+table{border-collapse:collapse;width:100%;display:block;overflow-x:auto}
+th,td{border:1px solid #ddd;padding:.4rem .6rem;text-align:left}
+th{background:#f6f6f6}
+hr{border:0;border-top:1px solid #ddd;margin:2rem 0}
+a{color:#0b57d0}
+@media(prefers-color-scheme:dark){
+body{color:#e6e6e6;background:#151515}
+code{background:#242424} pre{background:#1d1d1d}
+th{background:#1d1d1d} th,td{border-color:#333}
+blockquote{border-left-color:#3a3a3a;color:#b0b0b0} a{color:#8ab4f8}}</style></head>
+<body>
+<h1>{{ saga_name }} — saga definition</h1>
+<h2>Coordination</h2>
+<ul><li>Style: {{ coordination_style }}</li><li>Orchestrator: {{ orchestrator }}</li></ul>
+<h2>Steps</h2>
+<table><thead><tr><th>#</th><th>Service</th><th>Action</th><th>Compensation</th><th>Idempotency Key</th></tr></thead><tbody><tr><td>1</td><td>{{ step_1_service }}</td><td>{{ step_1_action }}</td><td>{{ step_1_compensation }}</td><td>(saga_id, step_id)</td></tr><tr><td>2</td><td>...</td><td>...</td><td>...</td><td>...</td></tr></tbody></table>
+<h2>Outbox</h2>
+<ul><li>Every step writes via transactional outbox (insert into <code>outbox</code> table in same DB tx).</li><li>CDC: Debezium → Kafka topic <code>{{ outbox_topic }}.events</code>.</li></ul>
+<h2>Failure handling</h2>
+<ul><li>On step N failure: orchestrator executes comp(N-1) → comp(N-2) → ... → comp(1) in reverse order.</li><li>All compensations are idempotent (dedupe via saga_id + step_id).</li></ul>
+<h2>Chaos test plan</h2>
+<ul><li>[ ] Kill step 1 → no compensations needed (nothing committed).</li><li>[ ] Kill step 2 → comp(1) executes; verify state consistent.</li><li>[ ] Kill step N → comp(N-1)..comp(1) execute in reverse.</li><li>[ ] Duplicate step delivery → no double-effect (idempotency works).</li></ul>
+<h2>Observability</h2>
+<ul><li>Saga ID propagated in every event/span as <code>saga.id</code> attribute.</li><li>Dashboards: saga.completion_rate, saga.compensation_count, saga.duration_p99.</li></ul>
+</body></html>

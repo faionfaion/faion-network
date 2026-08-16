@@ -64,7 +64,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/sunset-vs-fold-decision.md` | Decision record template with criteria matrix |
+| `templates/sunset-vs-fold-decision.md.j2` | Decision record template with criteria matrix |
+| `templates/sunset-vs-fold-decision.md` | Decision record template with criteria matrix Generated from `templates/sunset-vs-fold-decision.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

@@ -63,7 +63,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/comm-decision-record.md` | ADR template for one inter-service communication decision |
+| `templates/comm-decision-record.md.j2` | ADR template for one inter-service communication decision |
+| `templates/comm-decision-record.md` | ADR template for one inter-service communication decision Generated from `templates/comm-decision-record.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 ## Scripts
 

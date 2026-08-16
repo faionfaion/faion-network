@@ -1,10 +1,15 @@
-<!-- purpose: 2-page strategy memo markdown skeleton (<=1200 words) -->
-<!-- consumes: annual planning inputs -->
-<!-- produces: strategy memo markdown -->
-<!-- depends-on: none -->
-<!-- token-budget-impact: low -->
+<!--
 
-# {{title}}
+purpose: 2-page strategy memo markdown skeleton (<=1200 words)
+consumes: annual planning inputs
+produces: strategy memo markdown
+depends-on: none
+token-budget-impact: low
+-->
+
+
+
+# <artefact_title>
 
 (word target: <=1200 words)
 

@@ -67,7 +67,8 @@
 |------|---------|
 | `templates/output-schema.json` | JSON Schema for the postmortem report. |
 | `templates/output.example.json` | Filled example. |
-| `templates/postmortem.md` | Markdown skeleton with the required ML-specific sections. |
+| `templates/postmortem.md.j2` | Markdown skeleton with the required ML-specific sections. |
+| `templates/postmortem.md` | Markdown skeleton with the required ML-specific sections. Generated from `templates/postmortem.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

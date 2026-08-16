@@ -65,7 +65,8 @@
 |------|---------|
 | `templates/output-schema.json` | JSON Schema for the UX spec. |
 | `templates/output.example.json` | Filled example. |
-| `templates/pattern-picker.md` | One-page picker template (seven core patterns × mandatory/optional). |
+| `templates/pattern-picker.md.j2` | One-page picker template (seven core patterns × mandatory/optional). |
+| `templates/pattern-picker.md` | One-page picker template (seven core patterns × mandatory/optional). Generated from `templates/pattern-picker.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

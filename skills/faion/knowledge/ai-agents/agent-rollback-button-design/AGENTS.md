@@ -66,7 +66,8 @@
 |------|---------|
 | `templates/output-schema.json` | JSON Schema for the rollback-button spec. |
 | `templates/rollback-spec.example.json` | Filled minimal valid example. |
-| `templates/rollback-spec.md` | Markdown skeleton with required sections. |
+| `templates/rollback-spec.md.j2` | Markdown skeleton with required sections. |
+| `templates/rollback-spec.md` | Markdown skeleton with required sections. Generated from `templates/rollback-spec.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
 

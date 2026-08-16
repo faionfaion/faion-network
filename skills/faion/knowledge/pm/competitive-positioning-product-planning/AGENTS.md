@@ -65,7 +65,8 @@
 
 | File | Purpose |
 |------|---------|
-| `templates/positioning-canvas.md` | April Dunford 6-step positioning canvas |
+| `templates/positioning-canvas.md.j2` | April Dunford 6-step positioning canvas |
+| `templates/positioning-canvas.md` | April Dunford 6-step positioning canvas Generated from `templates/positioning-canvas.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/positioning-lint.sh` | Lint positioning statement for missing elements |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

@@ -61,7 +61,8 @@
 | File | Purpose |
 |---|---|
 | `templates/curriculum.schema.json` | JSON Schema for curriculum.json. |
-| `templates/curriculum-skeleton.md` | 6-week skeleton with module headers. |
+| `templates/curriculum-skeleton.md.j2` | 6-week skeleton with module headers. |
+| `templates/curriculum-skeleton.md` | 6-week skeleton with module headers. Generated from `templates/curriculum-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/rubric.md.j2` | Gating rubric (binary pass/fail per item). |
 | `templates/rubric.md` | Gating rubric (binary pass/fail per item). Generated from `templates/rubric.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/mentor-checklist.md.j2` | Weekly review checklist for mentors. |

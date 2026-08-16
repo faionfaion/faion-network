@@ -61,7 +61,8 @@
 |---|---|
 | `templates/calibration-report.schema.json` | JSON Schema for the report. |
 | `templates/holdout.jsonl` | Hand-label fixture skeleton (id + content + label slots). |
-| `templates/judge-prompt-skeleton.md` | Binary-label judge prompt skeleton with positive/negative examples. |
+| `templates/judge-prompt-skeleton.md.j2` | Binary-label judge prompt skeleton with positive/negative examples. |
+| `templates/judge-prompt-skeleton.md` | Binary-label judge prompt skeleton with positive/negative examples. Generated from `templates/judge-prompt-skeleton.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.jsonl` | 5-row fixture for the protocol smoke loop. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.

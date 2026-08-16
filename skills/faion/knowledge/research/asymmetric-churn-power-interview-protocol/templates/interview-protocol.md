@@ -1,8 +1,13 @@
-<!-- purpose: Asymmetric churn power-interview protocol -->
-<!-- consumes: churn cohort + power-user cohort -->
-<!-- produces: interview script + coding rubric -->
-<!-- depends-on: none -->
-<!-- token-budget-impact: low -->
+<!--
+
+purpose: Asymmetric churn power-interview protocol
+consumes: churn cohort + power-user cohort
+produces: interview script + coding rubric
+depends-on: none
+token-budget-impact: low
+-->
+
+
 
 # Churn Power Interview Protocol — v1
 
@@ -15,7 +20,7 @@
 - Churn:Power-user ratio = 3:1
 
 ## Open Questions (open-ended only)
-1. Walk me through how you started using {{product}}.
+1. Walk me through how you started using <product_name>.
 2. What was the last moment you got real value out of it?
 3. What changed before you stopped using it?
 4. If you could rewind, what would have kept you?

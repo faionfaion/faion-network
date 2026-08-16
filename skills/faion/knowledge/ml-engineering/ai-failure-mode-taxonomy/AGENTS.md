@@ -62,7 +62,8 @@
 |---|---|
 | `templates/taxonomy.schema.json` | JSON Schema for taxonomy.json. |
 | `templates/taxonomy-skeleton.json` | 12-mode skeleton with placeholder detectors. |
-| `templates/incident-template.md` | Postmortem template that references a mode id. |
+| `templates/incident-template.md.j2` | Postmortem template that references a mode id. |
+| `templates/incident-template.md` | Postmortem template that references a mode id. Generated from `templates/incident-template.md.j2` by `tpl-jinja --migrate`; do not hand-edit. |
 | `templates/_smoke-test.json` | Minimum valid 12-mode taxonomy. |
 
 Files the packer does not ship standalone have their bodies inlined under `## Template Contents` at the end of this file - read them there, do not fetch the path.
