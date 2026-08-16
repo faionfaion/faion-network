@@ -4,6 +4,34 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Validator 5 now requires the header to be COMMENTED, which it never checked.**
+  A bare `purpose: …` at the top of a Markdown template passed: the key regex
+  tolerated any leading punctuation but never required a comment marker. That is
+  not a header at all — `split_header` captures nothing, so the five lines fall
+  into the **body** and render into the delivered artefact as visible
+  `purpose: …` text.
+
+  Found because a repair pass spliced a header back unwrapped and **every check
+  stayed green**, `--check` drift included. The failure is silent by
+  construction: the keys are present, so the key check passes, and the rendering
+  damage is downstream of everything that looks.
+
+  The accepted openers are measured, not guessed — the first attempt failed 86
+  templates because I listed only `<!--`, `/*`, `#`, `//`, `--`. The corpus also
+  uses **Python docstrings for 141 `.py`/`.tmpl` headers**, `<?php` for 6, plus
+  one each of XML, INI, VB and Mermaid `%%`. A docstring header is as valid as a
+  comment one; neither renders, which is the property being checked. Corpus back
+  to 2521 pass / 0 fail, and the unwrapped probe fails.
+
+- **The 29 templates still sharing a variable are content work, not tool work —
+  verified, not assumed.** Every one sampled has a pre-migration source that was
+  *already hand-written Jinja* with its own `variables:` block, so restoring and
+  re-converting returns the same file by construction: an existing `{{name}}`
+  never enters the candidate list, and the converter honours the author's
+  declaration. Deciding whether `{{ date }}` used twice is one date or two is
+  exactly the judgement §5 forbids the tool from making, so it belongs in a
+  review queue rather than in another repair pass.
+
 - **Headings that differ only after a colon are different sections again.**
   `clean_label` truncates at `:` — correct for a field label (`**Owner:**
   <name>` → `Owner`), wrong for a heading, where the part after the colon is the

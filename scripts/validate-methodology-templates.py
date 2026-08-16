@@ -38,6 +38,14 @@ HEADER_KEYS = ("purpose", "consumes", "produces", "depends-on", "token-budget-im
 # parse as of 2026-08-15 and this set is what keeps them that way.
 JSON_LIKE = {".json", ".jsonl", ".webmanifest"}
 
+# Every comment opener the corpus's template formats actually use, measured
+# rather than guessed: 141 `.py`/`.tmpl` files carry the header in a module
+# docstring, 6 `.php` open with `<?php`, and there is one each of XML, INI, VB
+# and Mermaid. A docstring header is as valid as a `<!-- -->` one — neither
+# renders into the artefact, which is the property being checked.
+COMMENT_OPENERS = ("<!--", "/*", "#", "//", "--", '"""', "'''", "<?", ";",
+                   "'", "%%")
+
 
 def _templates_listed(agents_md: Path) -> list[str]:
     if not agents_md.exists():
@@ -88,9 +96,28 @@ def _missing_header_keys(p: Path) -> list[str]:
         return list(HEADER_KEYS)
     if p.suffix in JSON_LIKE:
         return [] if "__faion_header__" in text else ["__faion_header__"]
-    head = "\n".join(text.splitlines()[:20]).lower()
-    return [k for k in HEADER_KEYS
-            if not re.search(rf"^\s*\W*\s*{re.escape(k)}\s*:\s*\S", head, re.M)]
+    lines = text.splitlines()[:20]
+    head = "\n".join(lines).lower()
+    missing = [k for k in HEADER_KEYS
+               if not re.search(rf"^\s*\W*\s*{re.escape(k)}\s*:\s*\S", head, re.M)]
+    if missing:
+        return missing
+    # B3.4 the header must be COMMENTED. Matching the key regardless of comment
+    # markers accepted a bare `purpose: ...` at the top of a Markdown file — and
+    # that is not a header at all: `split_header` captures nothing, so the five
+    # lines fall into the BODY and render into the delivered document as visible
+    # text. A repair pass spliced one back unwrapped and every check stayed green,
+    # `--check` included, which is how this was found.
+    for line in lines:
+        s = line.strip()
+        if not s:
+            continue
+        if s.startswith(COMMENT_OPENERS):
+            return []
+        # the first non-blank line is not a comment opener, so whatever follows
+        # is body text no matter which keys it happens to contain.
+        return ["a commented header (the keys are bare text, so they render)"]
+    return []
 
 
 VAR_NAME = re.compile(r"^[a-z][a-z0-9_]{0,63}$")
