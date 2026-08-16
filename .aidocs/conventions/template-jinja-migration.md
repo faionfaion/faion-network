@@ -1,0 +1,143 @@
+---
+type: convention
+title: "Templates become Jinja, variables become JSON Schema, names become one dictionary"
+created: 2026-08-16
+status: ratified
+supersedes_parts_of: ".aidocs/conventions/template-builder.md §1, §2, §3 and its §2.3 inheritance"
+applies_to: [skills/faion/knowledge/*/*/templates, skills/faion/tools/template-builder]
+---
+
+# Jinja migration
+
+Three changes, decided together because each is weaker alone:
+
+1. Every artefact template becomes **two Jinja templates** — `<name>.md.j2` and `<name>.html.j2`.
+2. Variables are declared in **JSON Schema**, in a sibling file, not in a YAML-ish comment header.
+3. All schemas draw their names from **one corpus-wide variable dictionary**, so a variable that
+   appears in two templates means the same thing in both.
+
+## 0. What this reverses, and the reasoning that was wrong
+
+`template-builder.md` §2.3 inherited a prohibition from `retrieval-content-contracts.md`:
+*"No expressions, loops, nesting, partials-in-partials or filters"*, justified as **SSTI on a
+multi-tenant assembler**.
+
+**That justification does not survive contact with the actual threat model.** Server-side template
+injection requires an attacker who controls the *template*. Here the corpus authors every template
+and the user supplies only **values**. Jinja binds values as context, never as source — so unless
+the renderer double-renders (renders output as a template again, which this one must never do), a
+value cannot become syntax. Under `SandboxedEnvironment`, with autoescape on for HTML, there is no
+injection surface that the old `{{name}}`-only substitution did not equally have.
+
+The other two reasons in §2.3 — author-learning cost and validator cost — were real and are
+answered rather than dismissed: authors write **no Jinja by hand** (the converter does), and the
+validator cost is paid once, in JSON Schema, which the corpus already validates in 2,081 places.
+
+**What stays prohibited: double rendering.** The renderer takes a template and a value map. It never
+treats a rendered result, a value, or anything a user supplied as template source. That single rule
+is what keeps the SSTI surface at zero, and it is worth more than the whole ban it replaces.
+
+## 1. Two templates, not one with branches
+
+`<name>.md.j2` and `<name>.html.j2` are siblings, share one schema, and are rendered from the same
+value map.
+
+They are **not** one template with `{% if fmt == 'html' %}` in it. A conditional on output format
+puts two documents in one file and guarantees they drift — the corpus already has 187 cases of
+exactly that failure mode between template files and their inlined copies. Two files that a
+generator writes together drift only if someone edits one by hand, which the converter can detect.
+
+Markdown is authored; HTML is generated **from the Markdown source structure**, not by piping
+rendered Markdown through a converter at runtime. The HTML template carries its own inline CSS and
+must be self-contained — no external stylesheet, font or image.
+
+## 2. Variables live in JSON Schema
+
+```
+templates/<name>.md.j2
+templates/<name>.html.j2
+templates/<name>.vars.schema.json
+```
+
+Draft-07, matching the 2,081 output contracts the corpus already ships. Every property carries:
+
+| keyword | meaning here |
+|---|---|
+| `type` | `string` · `integer` · `boolean` · `array` |
+| `title` | the short label |
+| `description` | **the question put to the author** — this is the load-bearing field |
+| `enum` | closed vocabulary where one applies |
+| `default` | used when the author does not answer |
+| `x-faion-compose` | `true` when an LLM writes the prose from the author's answer (the old `text` type) |
+| `x-faion-sensitive` | `true` for a credential **or personal data**; carries `x-faion-placeholder` |
+| `$ref` | **into the dictionary — see §3** |
+
+JSON Schema replaces the YAML-ish subset because it is machine-readable by tools that already exist,
+it composes with `$ref` (15 contracts already use it), and it removes a hand-written parser that has
+already been the source of two blockers this week.
+
+## 3. The variable dictionary — the point of the whole exercise
+
+```
+skills/faion/templates/vars-dictionary.schema.json
+```
+
+One file. Every canonical variable, defined once, with its type, its meaning and its question. A
+template's schema `$ref`s into it and adds only what is genuinely local.
+
+**Convergence means fewer ambiguous names, which usually means MORE names.** This is the part that
+is easy to get backwards. The most common proposed name in the corpus today is `name`, at **682
+occurrences** — and that is the single worst variable we have, because it means 682 different
+things. Collapsing `product_name`, `project_name` and `team_name` into `name` would make the count
+look tidier and make the project store carry the wrong value silently, which is the exact opposite
+of the goal.
+
+So the rule is:
+
+> **A dictionary entry is a name plus a meaning. Two uses share a name only when they share the
+> meaning — well enough that a value carried from one artefact to the other is still correct.**
+
+That last clause is the operational test, because the project store *does* carry values between
+artefacts. If `owner` on a risk register and `owner` on a design doc would legitimately be different
+people, they are two entries, not one.
+
+Seeds, measured across the corpus by the migration tool, with their current occurrence counts —
+these are candidates to *disambiguate*, not to bless: `name` 682, `date` 269, `value` 175,
+`source` 116, `url` 116, `email` 111, `slug` 92, `action` 89, `artefact_id` 76, `full_name` 74.
+
+## 4. Where Jinja may be imported
+
+`validate-tools.py` enforces stdlib-only imports in tool-pack scripts, and it has **zero** baseline
+entries — a clean gate, and weakening it with a blanket exemption would be a bad trade for one
+dependency.
+
+Instead: **a pack declares its dependencies in `meta.json`, and the validator checks imports against
+stdlib plus what is declared.** The gate stays meaningful, an undeclared third-party import still
+fails, and the dependency becomes visible in the manifest rather than hidden in a source file.
+
+The rule the stdlib constraint exists to protect is unchanged and still binds: a tool must run on a
+user's machine. So a tool that needs Jinja must **fail with an actionable message** when it is
+absent, never half-work.
+
+## 5. Migration is generated, then adjudicated
+
+2,919 Markdown templates become 5,838 Jinja files plus their schemas. That is a converter's job.
+
+The converter proposes; a human or an agent adjudicates the cases it flags. It has already been
+measured on this corpus: of 1,469 templates carrying placeholders, **57% of placeholders map
+mechanically but only 11.5% of templates need no human at all.** Those numbers set the plan — this
+is batch conversion with a review queue, not an unattended script, and any schedule that assumes
+otherwise is wrong.
+
+The converter must refuse rather than guess. A placeholder that is prose (`<Optional: 'ready for
+owner review'>`) is guidance to a reader, not a variable, and declaring it produces a build that
+refuses by name for a parameter that should never have existed.
+
+## 6. What is out of scope
+
+- **Non-Markdown templates.** The 1,705 `.json`, 799 `.py`, 546 `.yaml` and 257 `.sh` templates are
+  code and config scaffolds, not documents. They keep their current form.
+- **Runtime substitution.** A template needing values filled per-invocation rather than per-artefact
+  (`ai-core/judge-calibration-protocol`) is still unserved; §5b of the builder doc records it.
+- **The 1,183 already-HTML-escaped placeholders.** They must be un-escaped before they can be
+  variables at all. That is a prerequisite, not part of this.

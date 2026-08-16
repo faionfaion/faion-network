@@ -4,6 +4,56 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **Ratified `.aidocs/conventions/template-jinja-migration.md`** — templates
+  become Jinja, variables become JSON Schema, and every schema draws its names
+  from one corpus-wide dictionary. Three changes decided together because each is
+  weaker alone.
+
+  **It reverses a prohibition I wrote, and the reasoning I gave was the weak
+  part.** `template-builder.md` §2.3 inherited *"no expressions, loops, filters"*
+  from `retrieval-content-contracts.md`, justified as SSTI on a multi-tenant
+  assembler. That does not survive the actual threat model: **server-side
+  template injection needs an attacker who controls the template**, and here the
+  corpus authors every template while the user supplies only values. Jinja binds
+  values as context, never as source. The two remaining reasons were real and are
+  answered rather than waved off — authors write no Jinja by hand (a converter
+  does), and the validator cost is paid once in JSON Schema, which the corpus
+  already validates in 2,081 places.
+
+  **One rule replaces the whole ban, and is stronger than it was: never double
+  render.** The renderer takes a template and a value map and never treats a
+  rendered result, a value, or anything a user supplied as template source. That
+  single constraint is what holds the injection surface at zero.
+
+  **Two files per artefact, not one with `{% if fmt == 'html' %}`.** A
+  format conditional puts two documents in one file and guarantees drift — the
+  corpus already carries 187 live instances of exactly that failure between
+  template files and their inlined copies.
+
+  **The dictionary is the point, and the intuition about it is backwards.**
+  Convergence means fewer *ambiguous* names, which usually means **more** names.
+  The most common proposed variable today is `name` at **682 occurrences**, and
+  that makes it the worst variable in the corpus, because it means 682 things.
+  The operational test is the project store: two uses share an entry only if a
+  value carried from one artefact to the other is **still correct**. If `owner`
+  on a risk register and `owner` on a design doc could be different people, that
+  is two entries.
+
+  **Jinja becomes a declared dependency rather than an exemption.**
+  `validate-tools.py` has zero baseline entries and a blanket stdlib exemption
+  would be a bad trade for one library, so a pack now declares its dependencies
+  in `meta.json` and the validator checks imports against stdlib **plus what is
+  declared**. An undeclared third-party import still fails, and the dependency
+  becomes visible in the manifest instead of hidden in a source file.
+
+  Scope, measured: 2,919 Markdown templates become 5,838 Jinja files plus
+  schemas. Already measured on this corpus: 57% of placeholders map mechanically
+  but only **11.5% of templates need no human at all** — so this is batch
+  conversion with a review queue, and any plan assuming an unattended script is
+  wrong. The 1,705 `.json`, 799 `.py`, 546 `.yaml` and 257 `.sh` templates are
+  code scaffolds, not documents, and stay as they are.
+
+
 - **`variables:` adoption goes from 0 to 56 templates / 358 parameters across 18
   domains**, each verified end to end through `tpl-params` → `tpl-build` to both
   `.md` and `.html`. Types: 205 `string`, 95 `text`, 35 `enum`, 18 `integer`,
