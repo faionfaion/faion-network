@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+- **The placeholder scanner now sees a mixed-case `{brace}` — CR-013 §1.** It
+  recognised `{BRACE}` in ALL-CAPS only, so `{owner}` was not flagged `unclear`,
+  it was **not seen at all**: the template reported `variables=0`, exited 0 and
+  passed every gate while a render would ship `{Product}` literally to a user.
+  `BRACE` is now as wide as `ANGLE` and `BRACKET`, and the ambiguity the narrow
+  rule was justified by (*"f-strings, Go templates"*) is answered where it is
+  real rather than everywhere — inside a fenced block or a code span only the
+  old ALL-CAPS shape is still read, byte-for-byte the set that was read there
+  before. Measured across the migrated corpus: 1,643 of these tokens sit in
+  prose and tables, 53 in code spans, 42 in fences.
+
+  Seven new `--self-test` checks in `tpl-migrate` and eight in `tpl-jinja`, each
+  proven red by mutating the fix back out: caps-only loses the parameter and both
+  refusals, dropping the code exemption reads `{width}` in a code span as a slot,
+  and exempting all of code stops flagging an ALL-CAPS token in a fence.
+
 - **11 variables that name a real person were not marked sensitive; now they are.**
   A customer's `first_name` in outreach, press-pitch and launch emails, an
   employee's `manager_name` and `person` in HR onboarding, a `full_name` under

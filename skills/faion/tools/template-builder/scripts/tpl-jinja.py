@@ -1059,6 +1059,27 @@ TABLE_FIXTURE = """# Risks
 | <risk_title> | <owner_name> | open |
 """
 
+# CR-013 §1. Before the brace form was widened this whole fixture converted to
+# `variables=0`, exit 0, drift-free — and rendered `{product_name}` at a user.
+BRACE_FIXTURE = """<!--
+purpose: release note
+produces: markdown release note
+-->
+# Release
+
+## Identity
+
+Product name: {product_name}
+
+Ships on {YYYY-MM-DD}, recording {one-line decision the artefact records}.
+
+Call `format(fmt={width})` when the column is narrow.
+
+```py
+print(f"{owner} shipped it")
+```
+"""
+
 ESCAPED_FIXTURE = "# Doc\n\nIdentity: &lt;artefact_id&gt;\n"
 
 SECTIONS_FIXTURE = """<!--
@@ -1588,7 +1609,7 @@ def migrate_checks() -> list[str]:
 
 def self_test() -> list[str]:
     """Every judgement and every guarantee this converter is not allowed to
-    get wrong. Eighty-one checks."""
+    get wrong. Eighty-nine checks."""
     failures: list[str] = []
     try:
         mods = JINJA.load_jinja()
@@ -1651,6 +1672,29 @@ def self_test() -> list[str]:
         failures.append("a per-row table placeholder was not reported")
     if "<risk_title>" not in table["md_j2"]:
         failures.append("a per-row table placeholder was rewritten anyway")
+
+    brace = _convert(BRACE_FIXTURE)
+    if "product_name" not in brace["schema"]["properties"]:
+        failures.append("a mixed-case {product_name} did not reach the schema")
+    if "{{ product_name }}" not in brace["md_j2"]:
+        failures.append("a mixed-case brace parameter was not substituted")
+    for raw in ("{YYYY-MM-DD}", "{one-line decision the artefact records}"):
+        if raw not in brace["md_j2"]:
+            failures.append(f"a mixed-case brace that is not a variable was "
+                            f"rewritten: {raw}")
+    if not any(i["verdict"] == "unclear" and i["kind"] == "brace"
+               for i in brace["items"]):
+        failures.append("a mixed-case brace this converter must refuse was not "
+                        "reported unclear — the false `exit 0` CR-013 §1 is "
+                        "about")
+    if any(i["raw"] in ("{width}", "{owner}") for i in brace["items"]):
+        failures.append("a mixed-case brace inside a code span or a fence was "
+                        "read as a placeholder")
+    if "{width}" not in brace["md_j2"] or "{owner}" not in brace["md_j2"]:
+        failures.append("a mixed-case brace inside a code span or a fence was "
+                        "rewritten")
+    for problem in verify(brace, mods):
+        failures.append(f"brace fixture: {problem}")
 
     for label, fixture, code in (("html-escaped", ESCAPED_FIXTURE, 3),
                                  ("sections:", SECTIONS_FIXTURE, 4),
@@ -1806,7 +1850,7 @@ def main() -> int:
         failures = self_test()
         for failure in failures:
             print(f"{NAME}: self-test: {failure}", file=sys.stderr)
-        print(f"{NAME}: self-test checks=81 failures={len(failures)}")
+        print(f"{NAME}: self-test checks=89 failures={len(failures)}")
         return 1 if failures else 0
 
     try:

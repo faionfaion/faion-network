@@ -81,7 +81,20 @@ ESCAPED = re.compile(r"&lt;([^&<>\n]{1,80})&gt;")
 # are all bracket-shaped, so each is excluded by lookaround rather than by a
 # post-filter that would have to re-find the context.
 BRACKET = re.compile(r"(?<![\]\^])\[([^\[\]\n]{1,80})\](?![\(\[])")
-BRACE = re.compile(r"(?<!\{)\{([A-Z][A-Z0-9_]{0,60})\}(?!\})")
+# `{brace}`: as wide as ANGLE and BRACKET, and mixed case on purpose — CR-013
+# §1. The ALL-CAPS-only rule this replaces was justified as *"ambiguous with
+# f-strings, Go templates"*, which is true INSIDE code and nowhere else: of the
+# mixed-case tokens measured across the migrated corpus, 1,643 sit in prose and
+# tables against 42 in a fenced block and 53 in a code span. A `{owner}` matched
+# none of the four forms, so it was not flagged unclear — it was NOT SEEN, and a
+# template carrying it reported `variables=0`, exited 0 and passed every gate
+# while a render would ship `{Product}` literally to a user.
+#
+# The ambiguity is answered where it is real rather than everywhere: inside a
+# fence or a code span, only what BRACE_LEGACY_CAPS matches is still a
+# candidate, which is byte-for-byte the set the old pattern saw there.
+BRACE = re.compile(r"(?<!\{)\{([^{}\n]{1,80})\}(?!\})")
+BRACE_LEGACY_CAPS = re.compile(r"^[A-Z][A-Z0-9_]{0,60}$")
 TOKEN = re.compile(r"\b(FILL[_-]?ME|FILL|TBD|XXX|PLACEHOLDER|FIXME)\b")
 FENCE = re.compile(r"^\s*(```|~~~)")
 CODE_SPAN = re.compile(r"`[^`\n]*`")
@@ -342,6 +355,16 @@ def candidates(body: str) -> list[dict]:
             if overlaps(span):
                 continue
             inner = match.group(1).strip()
+            in_code = ("in-fence" if in_range(span[0], fences)
+                       else "in-code-span" if in_range(span[0], spans) else "")
+            if kind == "brace":
+                # Same alnum guard the bracket form uses, then the code
+                # exemption: `{fmt}` in a Python f-string is syntax, `{owner}`
+                # in a table cell is a slot nobody can fill.
+                if not any(c.isalnum() for c in inner):
+                    continue
+                if in_code and not BRACE_LEGACY_CAPS.match(match.group(1)):
+                    continue
             if kind == "angle":
                 first = inner.split()[0].lower() if inner.split() else ""
                 if inner[:1] in "/!?" or ATTRIBUTE.search(inner) \
@@ -355,9 +378,7 @@ def candidates(body: str) -> list[dict]:
             claimed.append(span)
             found.append({"kind": kind, "raw": match.group(0), "text": inner,
                           "start": span[0], "end": span[1],
-                          "in_code": "in-fence" if in_range(span[0], fences)
-                          else "in-code-span" if in_range(span[0], spans)
-                          else ""})
+                          "in_code": in_code})
     found.sort(key=lambda c: c["start"])
     return found
 
@@ -673,6 +694,29 @@ INLINE_FIXTURE = """<!-- purpose: release note -->
 Release tag: <release_tag>
 """
 
+# CR-013 §1. Five judgements about `{brace}`, and the last two are the reason
+# the form is not simply widened everywhere: `{width}` in a code span and
+# `{owner}` in a fence are syntax, while `{RELEASE_TAG}` in that same fence is
+# still read exactly as it was before the widening.
+BRACE_FIXTURE = """<!--
+purpose: brace fixture
+produces: markdown release note
+-->
+# Release
+
+## Identity
+
+Product name: {product_name}
+
+Ships on {YYYY-MM-DD}, recording {one-line decision the artefact records}.
+
+Call `format(fmt={width})` when the column is narrow.
+
+```py
+print(f"{owner} shipped {RELEASE_TAG}")
+```
+"""
+
 COLLIDE_FIXTURE = """# Inputs
 
 ## Wiring
@@ -684,7 +728,7 @@ Second: <input-name>
 
 
 def self_test() -> list[str]:
-    """The five judgements this tool is not allowed to get wrong."""
+    """The six judgements this tool is not allowed to get wrong."""
     failures: list[str] = []
     plan = build_plan(CLEAN_FIXTURE, "fixture")
     names = [d["name"] for d in plan["declarations"]]
@@ -738,6 +782,34 @@ def self_test() -> list[str]:
         failures.append("a header past the 40-line window validator 5 reads "
                         "was not flagged")
 
+    braces = build_plan(BRACE_FIXTURE, "fixture")
+    raws = {i["raw"]: i for i in braces["items"]}
+    if [d["name"] for d in braces["declarations"]] != ["product_name"]:
+        failures.append(f"a mixed-case {{product_name}} did not become the one "
+                        f"declared parameter: "
+                        f"{[d['name'] for d in braces['declarations']]}")
+    if "{{product_name}}" not in braces["text"]:
+        failures.append("a mixed-case brace parameter was not substituted")
+    for raw, why in (("{YYYY-MM-DD}", "format-token"),
+                     ("{one-line decision the artefact records}", "prose")):
+        if raw not in raws:
+            failures.append(f"a mixed-case brace {raw} was not seen at all")
+        elif raws[raw]["verdict"] != "unclear":
+            failures.append(f"{raw} was declared instead of flagged {why}")
+        elif raw not in braces["text"]:
+            failures.append(f"{raw} was not left alone in the body")
+    for raw, where in (("{width}", "a code span"), ("{owner}", "a fence")):
+        if raw in raws:
+            failures.append(f"a mixed-case brace inside {where} was read as a "
+                            f"placeholder: {raw}")
+        if raw not in braces["text"]:
+            failures.append(f"a mixed-case brace inside {where} was rewritten: "
+                            f"{raw}")
+    caps = raws.get("{RELEASE_TAG}")
+    if caps is None or caps["reason"] != "in-fence":
+        failures.append("an ALL-CAPS brace inside a fence stopped being "
+                        "flagged in-fence when the form was widened")
+
     collided = build_plan(COLLIDE_FIXTURE, "fixture")
     if not collided["collisions"]:
         failures.append("two placeholders normalising onto input_name were "
@@ -790,7 +862,7 @@ def main() -> int:
         failures = self_test()
         for failure in failures:
             print(f"{NAME}: self-test: {failure}", file=sys.stderr)
-        print(f"{NAME}: self-test checks=20 failures={len(failures)}")
+        print(f"{NAME}: self-test checks=27 failures={len(failures)}")
         return 1 if failures else 0
 
     if args.report:
