@@ -28,7 +28,7 @@ All notable changes to this project will be documented in this file.
   the two entries below — neither header nor row, so nothing in the corpus
   pointed at them. Reproduced the brief's count independently on disk: **105**,
   over 54 methodology dirs (68 `marketing`, 37 `research` split across the two
-  domains yields 105; 16 marketing dirs and 12 research dirs carried more than
+  domains yields 105; 20 marketing dirs and 15 research dirs carried more than
   one undeclared template). Every one of the 54 already had a `## Templates`
   section, so each row was an append. `consumes` / `produces` / `depends-on`
   were written from each methodology's Prerequisites table, its
@@ -65,6 +65,19 @@ All notable changes to this project will be documented in this file.
   `customer_name` or `recipient_name` entry — there was nothing to resolve
   onto, and inventing one was out of this change's scope. That gap now has
   live examples to point at.
+
+  **A second pre-existing converter gap, same shape as the one the `sdd`/`pm`
+  entry above records:** lowercase `{snake_case}` placeholders are not
+  recognised by `tpl-migrate.py`'s scanner (its `BRACE` regex matches only
+  uppercase `{FOO}`), so they pass through as literal text — neither declared
+  as a variable nor reported as unclear. Live in this batch:
+  `growth-referral-programs/emails` and `landing-page` (`{first_name}`,
+  `{referral_link}`, `{shared_count}`) and both `naming-and-domains` templates,
+  which migrated with **0 variables** for that reason. `--check` still reports
+  drift=0 because the converter is self-consistent, so no gate catches this;
+  whether those tokens are runtime substitution (out of scope per the migration
+  convention §6) or should be renamed to the `<angle>` convention for a later
+  pass is a human decision, left open here.
 
   `validate-methodology-templates.py --all` counts methodology
   **directories** (2521), not templates, and reads 2521 pass / 0 fail before
